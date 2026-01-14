@@ -57,6 +57,17 @@
     .kpiValue{ font-size:22px; font-weight:950; margin-top:6px; letter-spacing:-.02em; }
     .sub{ font-size:12px; color:var(--muted); margin-top:6px; }
 
+    /* KPI cards with iconography (4-up on desktop) */
+    .kpiRow{ display:grid; grid-template-columns:repeat(12, 1fr); gap:12px; width:100%; }
+    .kpiCard{ grid-column: span 3; }
+    .kpiTop{ display:flex; align-items:center; gap:12px; }
+    .kpiIcon{
+      width:40px; height:40px; border-radius:12px;
+      background:#eef2ff; border:1px solid #c7d2fe;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px; flex:0 0 auto;
+    }
+
     .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
     .action{
       border:none; border-radius:12px; padding:12px 14px; cursor:pointer;
@@ -75,20 +86,17 @@
     .segmented{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
     .segmented button{
       border:1px solid var(--border); background:#fff; color:var(--text);
-      padding:8px 10px; border-radius:999px; cursor:pointer; font-size:13px;
+      padding:8px 10px; border-radius:999px; cursor:pointer; font-size:13px; font-weight:850;
     }
     .segmented button.active{ background:#eef2ff; border-color:#c7d2fe; color:#3730a3; }
 
-    /* Quick section switcher (dropdown) */
-    .switcher{
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-      margin-top:10px;
-    }
+    /* Quick section switcher */
+    .switcher{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; }
     .switcher select{
       padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fff; font-size:14px;
     }
 
-    /* Tabs (bottom) */
+    /* Bottom tabs */
     .tabbar{
       position:fixed; left:0; right:0; bottom:0; z-index:20;
       background:#ffffff; border-top:1px solid var(--border);
@@ -130,7 +138,7 @@
     .note{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
     .hr{ height:1px; background:var(--border); margin:12px 0; }
 
-    /* Modal */
+    /* Modal (fixed + scroll) */
     .backdrop{
       position:fixed; inset:0; background:rgba(0,0,0,.35);
       display:none; align-items:center; justify-content:center;
@@ -159,19 +167,22 @@
     .success{ color:var(--ok); font-size:13px; margin-top:8px; }
     .error{ color:#dc2626; font-size:13px; margin-top:8px; }
 
-    /* Canvas charts */
+    /* Charts */
     .chartWrap{ margin-top:10px; }
     canvas{ width:100%; height:220px; display:block; }
 
-    
+    @media (max-width: 980px){
+      .span3,.span4,.span5,.span6,.span7,.span8{ grid-column: span 12; }
+      .kpiCard{ grid-column: span 6; } /* 2x2 */
+      .who{ max-width:70vw; }
+      .twoCols{ grid-template-columns:1fr; }
+    }
+    @media (max-width: 520px){
+      .kpiCard{ grid-column: span 12; } /* stack */
+    }
     @media (max-width: 600px){
       .backdrop{ align-items:flex-end; justify-content:center; padding:12px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
       .modal{ width:100%; border-radius:18px 18px 0 0; max-height:calc(100vh - 24px - env(safe-area-inset-bottom)); }
-    }
-@media (max-width: 980px){
-      .span3,.span4,.span5,.span6,.span7,.span8{ grid-column: span 12; }
-      .who{ max-width:70vw; }
-      .twoCols{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -211,29 +222,56 @@
   <!-- INICIO -->
   <div id="sec-home" class="section active">
     <div class="grid">
-      <div class="card span3">
-        <div class="kpiLabel">Cuotas pendientes</div>
-        <div class="kpiValue" id="kpiPendingCount">—</div>
-        <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
-      </div>
 
-      <div class="card span3">
-        <div class="kpiLabel">Próxima cuota</div>
-        <div class="kpiValue" id="kpiNextDue">—</div>
-        <div class="sub" id="kpiNextDueSub">—</div>
-      </div>
+      <!-- KPIs row -->
+      <div class="span12">
+        <div class="kpiRow">
+          <div class="card kpiCard">
+            <div class="kpiTop">
+              <div class="kpiIcon">🧾</div>
+              <div>
+                <div class="kpiLabel">Cuotas pendientes</div>
+                <div class="kpiValue" id="kpiPendingCount">—</div>
+              </div>
+            </div>
+            <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
+          </div>
 
-      <div class="card span3">
-        <div class="kpiLabel">Pagado este año</div>
-        <div class="kpiValue" id="kpiPaidYTD">—</div>
-        <div class="sub">Incluye actividades (demo)</div>
-      </div>
+          <div class="card kpiCard">
+            <div class="kpiTop">
+              <div class="kpiIcon">🗓️</div>
+              <div>
+                <div class="kpiLabel">Próxima cuota</div>
+                <div class="kpiValue" id="kpiNextDue">—</div>
+              </div>
+            </div>
+            <div class="sub" id="kpiNextDueSub">—</div>
+          </div>
 
-      <div class="card span3">
-        <div class="kpiLabel">Retiros por autorizar</div>
-        <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
-        <div class="sub">Requiere tu aprobación</div>
+          <div class="card kpiCard">
+            <div class="kpiTop">
+              <div class="kpiIcon">💰</div>
+              <div>
+                <div class="kpiLabel">Pagado este año</div>
+                <div class="kpiValue" id="kpiPaidYTD">—</div>
+              </div>
+            </div>
+            <div class="sub">Incluye actividades (demo)</div>
+          </div>
+
+          <div class="card kpiCard">
+            <div class="kpiTop">
+              <div class="kpiIcon">🛡️</div>
+              <div>
+                <div class="kpiLabel">Retiros por autorizar</div>
+                <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
+              </div>
+            </div>
+            <div class="sub">Requiere tu aprobación</div>
+          </div>
+        </div>
       </div>
+      <!-- /KPIs row -->
 
       <div class="card span12">
         <div style="font-weight:950;">Acciones rápidas</div>
@@ -268,7 +306,7 @@
 
         <div style="height:12px;"></div>
 
-        <details open>
+        <details open id="detailsHomeCharts">
           <summary>
             <span>Gráficos de pagos y cuotas</span>
             <span class="tag ok">Gráficos</span>
@@ -294,7 +332,7 @@
 
   <!-- PAGOS -->
   <div id="sec-payments" class="section">
-    <div class="segmented" style="margin-bottom:12px;">
+    <div class="segmented" style="margin-top:12px;">
       <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas pendientes</button>
       <button id="tab-pay-history" onclick="showPayTab('history')">Historial de pagos</button>
     </div>
@@ -323,7 +361,7 @@
         <div class="note">Demo: el pago muestra un comprobante simulado.</div>
       </div>
 
-      <div class="card span4">
+      <div class="card span4" id="pay-receipts">
         <div style="font-weight:950;">Comprobantes recientes</div>
         <div class="muted">Acceso rápido (demo)</div>
         <table>
@@ -333,7 +371,7 @@
       </div>
 
       <div class="span12" id="pay-history" style="display:none;">
-        <details>
+        <details open>
           <summary>
             <span>Historial de pagos</span>
             <span class="pill">Demo</span>
@@ -352,7 +390,7 @@
   <!-- RETIROS -->
   <div id="sec-withdrawals" class="section">
     <div class="grid">
-      <div class="card span8" id="pay-pending">
+      <div class="card span8">
         <div class="row">
           <div>
             <div style="font-weight:950;">Retiros por autorizar</div>
@@ -366,9 +404,7 @@
           <tbody id="withdrawalsTable"></tbody>
         </table>
 
-        <div class="note">
-          Este flujo simula OTP. En producción: SMS/Email real + auditoría.
-        </div>
+        <div class="note">Este flujo simula OTP. En producción: SMS/Email real + auditoría.</div>
       </div>
 
       <div class="card span4">
@@ -382,8 +418,8 @@
         </div>
       </div>
 
-      <div class="span12" id="pay-history" style="display:none;">
-        <details>
+      <div class="span12">
+        <details open id="detailsWithdrawalsChart">
           <summary>
             <span>Gráfico de autorizaciones</span>
             <span class="tag ok">Gráfico</span>
@@ -423,9 +459,7 @@
           <button class="action" onclick="alert('Demo: abrir soporte')">Soporte</button>
         </div>
 
-        <div class="note">
-          En producción, cambios sensibles requieren verificación y auditoría.
-        </div>
+        <div class="note">En producción, cambios sensibles requieren verificación y auditoría.</div>
       </div>
 
       <div class="card span6">
@@ -441,14 +475,14 @@
 
         <div class="actions">
           <button class="action" onclick="alert('Demo: activar 2FA permanente')">Activar 2FA</button>
-          <button class="action danger" onclick="logout()">Cerrar sesión</button>
+          <button class="action" style="background:#fee2e2;color:#991b1b;" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL GENÉRICO -->
+<!-- MODAL -->
 <div id="modalBackdrop" class="backdrop" onclick="closeModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modalHeader">
@@ -534,9 +568,8 @@
     window.location.href = "login.html";
   }
 
-  // ---------------- Navigation (tabs + dropdown) ----------------
+  // ---------------- Navigation ----------------
   const sections = ['home','payments','withdrawals','profile'];
-
   function goTo(key){
     sections.forEach(k => {
       document.getElementById('sec-'+k).classList.toggle('active', k===key);
@@ -561,13 +594,19 @@
   function toggleCompact(){
     demo.compactMode = !demo.compactMode;
     const panels = document.querySelectorAll('#homePanels details');
-    panels.forEach((d,i)=>{
-      if (demo.compactMode){
-        d.removeAttribute('open');
-      } else {
-        d.setAttribute('open','');
-      }
+    panels.forEach(d=>{
+      if (demo.compactMode){ d.removeAttribute('open'); }
+      else { d.setAttribute('open',''); }
     });
+  }
+
+  // Payments section main tabs
+  function showPayTab(which){
+    document.getElementById('pay-pending').style.display = (which==='pending')?'block':'none';
+    document.getElementById('pay-receipts').style.display = (which==='pending')?'block':'none';
+    document.getElementById('pay-history').style.display = (which==='history')?'block':'none';
+    document.getElementById('tab-pay-pending').classList.toggle('active', which==='pending');
+    document.getElementById('tab-pay-history').classList.toggle('active', which==='history');
   }
 
   // ---------------- Home rendering ----------------
@@ -588,10 +627,8 @@
     const pending = demo.payments.filter(p => p.status==='pending');
     const pendingTotal = pending.reduce((a,b)=>a+b.amount,0);
     const pendingCount = pending.length;
-
     const next = pending[0] || null;
     const ytd = demo.history.reduce((a,b)=>a+b.amount,0);
-
     const toApprove = demo.withdrawals.filter(w => w.state==='pending_me').length;
 
     document.getElementById('kpiPendingCount').innerText = pendingCount;
@@ -839,7 +876,7 @@
        <div id="otpMsg"></div>
        <div id="otpDemo" class="note"></div>`,
       `<button class="btn" onclick="openWithdrawOTP('${w.id}')">Atrás</button>
-       <button class="btn primary" id="btnVerify" onclick="verifyOTP()">Verificar</button>`
+       <button class="btn primary" onclick="verifyOTP()">Verificar</button>`
     );
   }
 
@@ -864,7 +901,6 @@
     if (input === otpState.code){
       otpState.verified = true;
       msg.innerHTML = `<div class="success">Código verificado ✅</div>`;
-      // proceed to finalize
       setTimeout(() => finalizeWithdrawApproval(otpState.forId), 350);
       return;
     }
@@ -882,11 +918,9 @@
     const w = demo.withdrawals.find(x=>x.id===withdrawId);
     if (!w) return;
 
-    // demo logic: record my approval and set as approved
     w.approvals = Math.min(w.required, w.approvals + 1);
     w.state = 'approved';
     w.audit = {by:user.name, at: nowLabel()};
-
     demo.notifications.unshift({type:'Retiro', msg:`Autorizaste retiro #${w.id}.`, date:'Hoy'});
 
     closeModal();
@@ -936,7 +970,7 @@
     if (canvas.width !== w || canvas.height !== h){
       canvas.width = w; canvas.height = h;
     }
-    return {ctx: canvas.getContext('2d'), w, h, dpr};
+    return {ctx: canvas.getContext('2d'), w, h};
   }
   function clearChart(ctx, w, h){
     ctx.clearRect(0,0,w,h);
@@ -1011,16 +1045,6 @@
     ctx.fillStyle='#6b7280';
     ctx.font='12px system-ui';
     ctx.fillText(parts.map(p=>p.value).reduce((a,b)=>a+b,0)+' total', cx, cy+16);
-
-    ctx.textAlign='left';
-    ctx.font='12px system-ui';
-    let lx=16, ly=16;
-    parts.forEach((p,idx)=>{
-      ctx.fillStyle=palette[idx%palette.length];
-      ctx.fillRect(lx, ly + idx*18, 10, 10);
-      ctx.fillStyle='#6b7280';
-      ctx.fillText(p.label + ' ('+p.value+')', lx + 16, ly + 9 + idx*18);
-    });
   }
   function drawStackedBars(canvas, labels, seriesA, seriesB, labelA, labelB){
     const {ctx,w,h} = setupCanvas(canvas);
@@ -1051,15 +1075,6 @@
       const x=pad+i*gap+gap/2;
       ctx.fillText(lab, x, h-10);
     });
-    ctx.textAlign='left';
-    ctx.fillStyle='#4f46e5';
-    ctx.fillRect(pad, pad-14, 10, 10);
-    ctx.fillStyle='#6b7280';
-    ctx.fillText(labelA, pad+16, pad-5);
-    ctx.fillStyle='#ef4444';
-    ctx.fillRect(pad+110, pad-14, 10, 10);
-    ctx.fillStyle='#6b7280';
-    ctx.fillText(labelB, pad+126, pad-5);
   }
 
   function drawHomeCharts(){
@@ -1089,17 +1104,8 @@
     );
   }
 
-  // ---------------- Init render ----------------
-  
-  function showPayTab(which){
-    document.getElementById('pay-pending').style.display = (which==='pending')?'block':'none';
-    document.getElementById('pay-history').style.display = (which==='history')?'block':'none';
-    document.getElementById('tab-pay-pending').classList.toggle('active', which==='pending');
-    document.getElementById('tab-pay-history').classList.toggle('active', which==='history');
-  }
-
+  // ---------------- Init ----------------
   function init(){
-
     renderNotifications();
     computeKPIs();
     renderPaymentsTable();
@@ -1109,12 +1115,28 @@
     loadProfile();
     drawHomeCharts();
     drawWithdrawalsChart();
+    showPayTab('pending');
   }
 
   window.addEventListener('resize', () => {
     drawHomeCharts();
     drawWithdrawalsChart();
   });
+
+
+    // Redibujar gráficos cuando se abren los paneles plegables (si estaban cerrados al cargar)
+    const homeCharts = document.getElementById('detailsHomeCharts');
+    if (homeCharts) {
+      homeCharts.addEventListener('toggle', () => {
+        if (homeCharts.open) setTimeout(drawHomeCharts, 50);
+      });
+    }
+    const wChart = document.getElementById('detailsWithdrawalsChart');
+    if (wChart) {
+      wChart.addEventListener('toggle', () => {
+        if (wChart.open) setTimeout(drawWithdrawalsChart, 50);
+      });
+    }
 
   init();
 </script>
