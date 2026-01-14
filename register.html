@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro Apoderado | Cursapp</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont; background:#f5f7fb; }
+    .card {
+      max-width:520px; margin:60px auto; background:#fff;
+      padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08)
+    }
+    .step { display:none }
+    .step.active { display:block }
+    input, select {
+      width:100%; padding:12px; margin-top:12px;
+      border-radius:8px; border:1px solid #d1d5db; font-size:15px
+    }
+    button {
+      width:100%; padding:14px; margin-top:16px;
+      border:none; border-radius:8px; font-size:16px; cursor:pointer;
+      background:#4f46e5; color:#fff
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div id="step1" class="step active">
+    <h3>Datos del Apoderado</h3>
+    <input placeholder="Nombre del apoderado" />
+    <input placeholder="Correo electrónico" />
+    <button onclick="next(1)">Continuar</button>
+  </div>
+
+  <div id="step2" class="step">
+    <h3>Datos del Alumno</h3>
+    <input placeholder="Nombre del alumno" />
+    <select>
+      <option>Curso</option>
+      <option>1° Básico</option>
+      <option>2° Básico</option>
+    </select>
+    <button onclick="next(2)">Continuar</button>
+  </div>
+
+  <div id="step3" class="step">
+    <h3>Términos</h3>
+    <p>Al continuar aceptas los términos y condiciones.</p>
+    <button onclick="finish()">Finalizar</button>
+  </div>
+</div>
+
+<script>
+  function next(step) {
+    document.getElementById('step' + step).classList.remove('active');
+    document.getElementById('step' + (step + 1)).classList.add('active');
+  }
+
+  function finish() {
+    alert('Registro completado (ficticio)');
+  }
+</script>
+
+</body>
+</html>
