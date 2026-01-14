@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registro Apoderado | Cursapp</title>
+  <title>Onboarding Apoderado - Cursapp</title>
   <style>
     :root{
       --bg:#F5F7FA;
@@ -111,6 +111,20 @@
     }
     .small{ font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.35; text-align:center; }
     code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  
+    .otpCard{
+      margin-top:14px;
+      padding:14px;
+      border-radius:12px;
+      border:1px dashed rgba(15,23,42,.25);
+      background:rgba(248,250,252,.9);
+    }
+    .otpTitle{ font-weight:700; margin-bottom:6px; }
+    .otpHint{ font-size:12px; color:rgba(15,23,42,.7); margin-bottom:10px; }
+    .otpRow{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .otpMini{ font-size:12px; color:rgba(15,23,42,.7); flex:1; }
+    .otpDemo{ margin-top:10px; font-size:12px; color:rgba(2,132,199,1); }
+
   </style>
 </head>
 <body>
@@ -164,6 +178,35 @@
 
         <label for="email">Correo Electrónico</label>
         <input type="email" id="email" placeholder="correo@email.com" autocomplete="email" />
+
+        <div class="otpCard" id="otpCard">
+          <div class="otpTitle">Verificación (código)</div>
+          <div class="otpHint">Para continuar, verifica tu correo o celular con un código de 6 dígitos.</div>
+
+          <label for="otpChannel">Enviar código por</label>
+          <select id="otpChannel">
+            <option value="email">Correo electrónico</option>
+            <option value="sms">SMS (celular)</option>
+          </select>
+
+          <div id="phoneWrap" style="display:none;">
+            <label for="telefono">Celular</label>
+            <input type="tel" id="telefono" placeholder="+56 9 1234 5678" inputmode="tel" autocomplete="tel" />
+          </div>
+
+          <div class="otpRow">
+            <button class="btnGhost" id="sendOtp" type="button">Enviar código</button>
+            <div class="otpMini" id="otpStatus"></div>
+          </div>
+
+          <label for="otpCode">Código</label>
+          <input type="text" id="otpCode" placeholder="6 dígitos" inputmode="numeric" autocomplete="one-time-code" />
+
+          <button class="btnPrimary" id="verifyOtp" type="button">Verificar código</button>
+
+          <div class="otpDemo" id="otpDemo" style="display:none;"></div>
+        </div>
+
 
         <div class="actions">
           <button class="btnGhost" id="back2" type="button">Atrás</button>
@@ -224,6 +267,9 @@
         curso: document.getElementById('curso'),
         nombreApoderado: document.getElementById('nombreApoderado'),
         email: document.getElementById('email'),
+        otpChannel: document.getElementById('otpChannel'),
+        telefono: document.getElementById('telefono'),
+        otpCode: document.getElementById('otpCode'),
         alumno: document.getElementById('alumno'),
         terminos: document.getElementById('terminos')
       };
@@ -328,7 +374,24 @@
       }
 
       // --- Listeners ---
-      const next1 = document.getElementById('next1');
+      
+      // OTP (demo) - Bloquea el paso 2 hasta verificar un código
+      const phoneWrap = document.getElementById('phoneWrap');
+      const sendOtpBtn = document.getElementById('sendOtp');
+      const verifyOtpBtn = document.getElementById('verifyOtp');
+      const otpStatus = document.getElementById('otpStatus');
+      const otpDemo = document.getElementById('otpDemo');
+
+      let otpGenerated = null;
+      let otpVerified = false;
+
+      function setNext2Enabled(enabled){
+        next2.disabled = !enabled;
+        next2.style.opacity = enabled ? '1' : '.5';
+      }
+
+      function normalizeDigits(str){ return (str || '').replace(/\D+/g,''); }
+const next1 = document.getElementById('next1');
       const back2 = document.getElementById('back2');
       const next2 = document.getElementById('next2');
       const back3 = document.getElementById('back3');
@@ -339,6 +402,69 @@
         showError('Error: no se pudieron inicializar los botones. Revisa que el archivo se haya guardado completo.');
         return;
       }
+
+
+      // Inicializar OTP UI
+      if(fields.otpChannel && phoneWrap){
+        fields.otpChannel.addEventListener('change', () => {
+          const v = fields.otpChannel.value;
+          phoneWrap.style.display = (v === 'sms') ? 'block' : 'none';
+          // Al cambiar canal, invalida verificación anterior
+          otpVerified = false;
+          otpGenerated = null;
+          otpStatus.textContent = '';
+          otpDemo.style.display = 'none';
+          setNext2Enabled(false);
+        });
+      }
+
+      // Al entrar al paso 2, bloquea hasta verificar
+      setNext2Enabled(false);
+
+      function sendOTP(){
+        clearError();
+
+        const data = getFormData();
+        const channel = fields.otpChannel ? fields.otpChannel.value : 'email';
+
+        // Validaciones básicas antes de enviar OTP
+        if(!data.nombreApoderado) return showError('Ingresa el nombre del apoderado antes de enviar el código.');
+        if(!data.email) return showError('Ingresa el correo electrónico antes de enviar el código.');
+        if(!validEmail(data.email)) return showError('El correo no parece válido. Revisa el formato (ej: nombre@correo.com).');
+
+        if(channel === 'sms'){
+          const tel = fields.telefono ? fields.telefono.value : '';
+          if(!tel) return showError('Ingresa tu celular para recibir el código por SMS.');
+          const digits = normalizeDigits(tel);
+          if(digits.length < 8) return showError('El celular parece incompleto. Revisa el número.');
+        }
+
+        otpGenerated = String(Math.floor(100000 + Math.random() * 900000));
+        otpVerified = false;
+        setNext2Enabled(false);
+        otpStatus.textContent = 'Código enviado (demo).';
+        otpDemo.textContent = 'Demo: tu código es ' + otpGenerated;
+        otpDemo.style.display = 'block';
+      }
+
+      function verifyOTP(){
+        clearError();
+        if(!otpGenerated) return showError('Primero debes enviar el código.');
+        const entered = normalizeDigits(fields.otpCode ? fields.otpCode.value : '');
+        if(entered.length !== 6) return showError('Ingresa el código de 6 dígitos.');
+        if(entered !== otpGenerated){
+          otpVerified = false;
+          setNext2Enabled(false);
+          otpStatus.textContent = 'Código incorrecto.';
+          return;
+        }
+        otpVerified = true;
+        otpStatus.textContent = 'Código verificado ✅';
+        setNext2Enabled(true);
+      }
+
+      if(sendOtpBtn) sendOtpBtn.addEventListener('click', sendOTP);
+      if(verifyOtpBtn) verifyOtpBtn.addEventListener('click', verifyOTP);
 
       next1.addEventListener('click', () => {
         const {colegio, curso} = getFormData();
@@ -351,6 +477,7 @@
 
       next2.addEventListener('click', () => {
         const {nombreApoderado, email} = getFormData();
+        if(!otpVerified) return showError('Verifica el código enviado a tu correo o celular para continuar.');
         if(!nombreApoderado) return showError('Ingresa el nombre del apoderado.');
         if(!email) return showError('Ingresa el correo electrónico.');
         if(!validEmail(email)) return showError('El correo no parece válido. Revisa el formato (ej: nombre@correo.com).');
