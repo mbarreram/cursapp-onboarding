@@ -2,65 +2,401 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Registro Apoderado | Cursapp</title>
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont; background:#f5f7fb; }
-    .card {
-      max-width:520px; margin:60px auto; background:#fff;
-      padding:24px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08)
+    :root{
+      --bg:#F5F7FA;
+      --card:#FFFFFF;
+      --text:#111827;
+      --muted:#6B7280;
+      --border:#D1D5DB;
+      --primary:#4F46E5;
+      --primaryHover:#4338CA;
+      --danger:#DC2626;
+      --radius:10px;
     }
-    .step { display:none }
-    .step.active { display:block }
-    input, select {
-      width:100%; padding:12px; margin-top:12px;
-      border-radius:8px; border:1px solid #d1d5db; font-size:15px
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
     }
-    button {
-      width:100%; padding:14px; margin-top:16px;
-      border:none; border-radius:8px; font-size:16px; cursor:pointer;
-      background:#4f46e5; color:#fff
+    .wrap{ max-width: 420px; margin: 0 auto; }
+    .brand{ display:flex; align-items:center; gap:10px; margin: 6px 0 14px; }
+    .logo{
+      width:34px;height:34px;border-radius:10px;
+      background: var(--primary);
+      display:flex;align-items:center;justify-content:center;
+      color:white;font-weight:700; letter-spacing:.5px;
     }
+    .card{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      padding: 22px;
+    }
+    h1{ font-size: 20px; margin: 0 0 6px; text-align:center; }
+    .subtitle{ margin: 0 0 16px; text-align:center; color: var(--muted); font-size: 13px; }
+
+    .progressRow{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; margin: 10px 0 18px; font-size: 12px; color: var(--muted);
+    }
+    .bar{ flex:1; height: 8px; background: #E5E7EB; border-radius: 999px; overflow:hidden; }
+    .bar > div{ height:100%; width:0%; background: var(--primary); border-radius: 999px; transition: width .25s ease; }
+
+    label{ display:block; margin-top: 14px; font-weight: 700; font-size: 13px; }
+    input, select{
+      width:100%;
+      padding: 11px 12px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      background: white;
+    }
+    input:focus, select:focus{
+      outline:none; border-color: #A5B4FC;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.15);
+    }
+    .hint{ margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .error{
+      margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+      background: rgba(220,38,38,0.08);
+      border: 1px solid rgba(220,38,38,0.25);
+      color: var(--danger); font-size: 13px; display:none;
+    }
+
+    .checkboxRow{ display:flex; align-items:flex-start; gap:10px; margin-top: 16px; }
+    .checkboxRow input{ width:auto; margin-top: 2px; transform: scale(1.05); }
+    .checkboxRow label{ margin:0; font-weight: 600; font-size: 13px; line-height: 1.25; }
+
+    .actions{ display:flex; gap: 10px; margin-top: 18px; }
+    button{
+      width:100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor:pointer;
+    }
+    .btnPrimary{ background: var(--primary); color: white; }
+    .btnPrimary:hover{ background: var(--primaryHover); }
+    .btnGhost{ background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btnGhost:hover{ background: #F9FAFB; }
+
+    .step{ display:none; }
+    .step.active{ display:block; }
+
+    .review{
+      background:#F9FAFB; border:1px solid #E5E7EB; border-radius: 10px;
+      padding: 12px; margin-top: 12px; font-size: 13px;
+    }
+    .review .row{ display:flex; justify-content:space-between; gap:10px; padding: 6px 0; border-bottom: 1px dashed #E5E7EB; }
+    .review .row:last-child{ border-bottom:none; }
+    .review .k{ color: var(--muted); }
+
+    .successIcon{
+      width:52px;height:52px;border-radius:16px;
+      background: rgba(34,197,94,0.12);
+      color:#16A34A;
+      display:flex;align-items:center;justify-content:center;
+      font-size: 26px;
+      margin: 6px auto 10px;
+      border: 1px solid rgba(22,163,74,0.25);
+    }
+    .small{ font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.35; text-align:center; }
+    code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <div class="brand" aria-label="Cursapp">
+      <div class="logo">C</div>
+      <div>
+        <div style="font-weight:800;line-height:1">Cursapp</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.1">Onboarding apoderado</div>
+      </div>
+    </div>
 
-<div class="card">
-  <div id="step1" class="step active">
-    <h3>Datos del Apoderado</h3>
-    <input placeholder="Nombre del apoderado" />
-    <input placeholder="Correo electrónico" />
-    <button onclick="next(1)">Continuar</button>
+    <div class="card">
+      <h1 id="title">Registro Apoderado</h1>
+      <p class="subtitle" id="subtitle">Completa los datos para unirte al curso.</p>
+
+      <div class="progressRow" id="progressRow">
+        <span id="stepLabel">Paso 1 de 3</span>
+        <div class="bar" aria-label="Progreso">
+          <div id="barFill"></div>
+        </div>
+      </div>
+
+      <div class="error" id="errorBox" role="alert"></div>
+
+      <!-- STEP 1 -->
+      <section class="step active" data-step="1" aria-label="Paso 1">
+        <label for="colegio">Colegio</label>
+        <select id="colegio" required>
+          <option value="">Selecciona colegio</option>
+          <option value="Colegio San Martín">Colegio San Martín</option>
+          <option value="Colegio Los Andes">Colegio Los Andes</option>
+        </select>
+
+        <label for="curso">Curso</label>
+        <select id="curso" required>
+          <option value="">Selecciona curso</option>
+          <option value="1° Básico A">1° Básico A</option>
+          <option value="2° Básico B">2° Básico B</option>
+        </select>
+
+        <div class="actions">
+          <button class="btnPrimary" id="next1" type="button">Continuar</button>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" data-step="2" aria-label="Paso 2">
+        <label for="nombreApoderado">Nombre Apoderado</label>
+        <input type="text" id="nombreApoderado" placeholder="Ej: Juan Pérez" autocomplete="name" />
+
+        <label for="email">Correo Electrónico</label>
+        <input type="email" id="email" placeholder="correo@email.com" autocomplete="email" />
+
+        <div class="actions">
+          <button class="btnGhost" id="back2" type="button">Atrás</button>
+          <button class="btnPrimary" id="next2" type="button">Continuar</button>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" data-step="3" aria-label="Paso 3">
+        <label for="alumno">Nombre del Alumno</label>
+        <input type="text" id="alumno" placeholder="Nombre completo del alumno" />
+
+        <p class="hint">Por privacidad, no mostramos lista de alumnos. Ingresa el nombre tal como está registrado en el colegio.</p>
+
+        <div class="checkboxRow">
+          <input type="checkbox" id="terminos" />
+          <label for="terminos">Acepto términos y condiciones.</label>
+        </div>
+
+        <div class="actions">
+          <button class="btnGhost" id="back3" type="button">Atrás</button>
+          <button class="btnPrimary" id="finish" type="button">Finalizar</button>
+        </div>
+      </section>
+
+      <!-- SUCCESS -->
+      <section class="step" data-step="4" aria-label="Confirmación">
+        <div class="successIcon">✓</div>
+        <h1 style="margin-top:0">Solicitud enviada</h1>
+        <p class="subtitle" style="margin-bottom:10px">Revisaremos la información y te agregaremos al curso.</p>
+
+        <div class="review" id="reviewBox" aria-label="Resumen"></div>
+
+        <div class="actions" style="margin-top:16px">
+          <button class="btnPrimary" id="restart" type="button">Registrar otro apoderado</button>
+        </div>
+
+        <div class="small">
+          Tip: si quieres conectar esto a backend luego, captura los datos en <code>formData</code> y envíalos a tu API.
+        </div>
+      </section>
+    </div>
   </div>
 
-  <div id="step2" class="step">
-    <h3>Datos del Alumno</h3>
-    <input placeholder="Nombre del alumno" />
-    <select>
-      <option>Curso</option>
-      <option>1° Básico</option>
-      <option>2° Básico</option>
-    </select>
-    <button onclick="next(2)">Continuar</button>
-  </div>
+  <script>
+    // Ejecutar cuando el DOM ya esté listo (más robusto en móvil)
+    document.addEventListener('DOMContentLoaded', () => {
+      const steps = Array.from(document.querySelectorAll('.step'));
+      const errorBox = document.getElementById('errorBox');
+      const barFill = document.getElementById('barFill');
+      const stepLabel = document.getElementById('stepLabel');
+      const progressRow = document.getElementById('progressRow');
+      const title = document.getElementById('title');
+      const subtitle = document.getElementById('subtitle');
 
-  <div id="step3" class="step">
-    <h3>Términos</h3>
-    <p>Al continuar aceptas los términos y condiciones.</p>
-    <button onclick="finish()">Finalizar</button>
-  </div>
-</div>
+      const fields = {
+        colegio: document.getElementById('colegio'),
+        curso: document.getElementById('curso'),
+        nombreApoderado: document.getElementById('nombreApoderado'),
+        email: document.getElementById('email'),
+        alumno: document.getElementById('alumno'),
+        terminos: document.getElementById('terminos')
+      };
 
-<script>
-  function next(step) {
-    document.getElementById('step' + step).classList.remove('active');
-    document.getElementById('step' + (step + 1)).classList.add('active');
-  }
+      const STORAGE_KEY = 'cursapp_onboarding_apoderado_v1';
 
-  function finish() {
-    alert('Registro completado (ficticio)');
-  }
-</script>
+      function getFormData(){
+        return {
+          colegio: (fields.colegio.value || '').trim(),
+          curso: (fields.curso.value || '').trim(),
+          nombreApoderado: (fields.nombreApoderado.value || '').trim(),
+          email: (fields.email.value || '').trim(),
+          alumno: (fields.alumno.value || '').trim(),
+          terminos: !!fields.terminos.checked
+        };
+      }
 
+      function setFormData(data){
+        fields.colegio.value = data.colegio || '';
+        fields.curso.value = data.curso || '';
+        fields.nombreApoderado.value = data.nombreApoderado || '';
+        fields.email.value = data.email || '';
+        fields.alumno.value = data.alumno || '';
+        fields.terminos.checked = !!data.terminos;
+      }
+
+      function save(){
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(getFormData())); }catch(e){}
+      }
+      function load(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(!raw) return;
+          setFormData(JSON.parse(raw));
+        }catch(e){}
+      }
+      function clear(){
+        try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+      }
+
+      function showError(msg){
+        errorBox.textContent = msg;
+        errorBox.style.display = 'block';
+      }
+      function clearError(){
+        errorBox.textContent = '';
+        errorBox.style.display = 'none';
+      }
+
+      function setProgress(step){
+        const pct = Math.round((step - 1) / 2 * 100); // 0, 50, 100
+        barFill.style.width = pct + '%';
+        stepLabel.textContent = `Paso ${step} de 3`;
+      }
+
+      function setHeaderForStep(step){
+        if(step === 1){
+          title.textContent = 'Registro Apoderado';
+          subtitle.textContent = 'Completa los datos para unirte al curso.';
+          progressRow.style.display = 'flex';
+          setProgress(1);
+        } else if(step === 2){
+          title.textContent = 'Datos del apoderado';
+          subtitle.textContent = 'Usaremos estos datos para notificaciones y pagos.';
+          progressRow.style.display = 'flex';
+          setProgress(2);
+        } else if(step === 3){
+          title.textContent = 'Datos del alumno';
+          subtitle.textContent = 'Esto nos ayuda a asociarte al estudiante correcto.';
+          progressRow.style.display = 'flex';
+          setProgress(3);
+        } else {
+          progressRow.style.display = 'none';
+          title.textContent = '';
+          subtitle.textContent = '';
+        }
+      }
+
+      function goTo(stepNumber){
+        clearError();
+        steps.forEach(s => s.classList.remove('active'));
+        const target = steps.find(s => Number(s.dataset.step) === stepNumber);
+        if(target) target.classList.add('active');
+        setHeaderForStep(stepNumber);
+        save();
+        const focusable = target ? target.querySelector('select, input') : null;
+        if(focusable) focusable.focus();
+      }
+
+      function validEmail(email){
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      }
+
+      // Escape HTML (sin replaceAll, para máxima compatibilidad)
+      function escapeHtml(str){
+        return String(str)
+          .replace(/&/g,'&amp;')
+          .replace(/</g,'&lt;')
+          .replace(/>/g,'&gt;')
+          .replace(/"/g,'&quot;')
+          .replace(/'/g,'&#039;');
+      }
+
+      // --- Listeners ---
+      const next1 = document.getElementById('next1');
+      const back2 = document.getElementById('back2');
+      const next2 = document.getElementById('next2');
+      const back3 = document.getElementById('back3');
+      const finish = document.getElementById('finish');
+      const restart = document.getElementById('restart');
+
+      if(!next1 || !next2 || !finish){
+        showError('Error: no se pudieron inicializar los botones. Revisa que el archivo se haya guardado completo.');
+        return;
+      }
+
+      next1.addEventListener('click', () => {
+        const {colegio, curso} = getFormData();
+        if(!colegio) return showError('Selecciona un colegio para continuar.');
+        if(!curso) return showError('Selecciona un curso para continuar.');
+        goTo(2);
+      });
+
+      back2.addEventListener('click', () => goTo(1));
+
+      next2.addEventListener('click', () => {
+        const {nombreApoderado, email} = getFormData();
+        if(!nombreApoderado) return showError('Ingresa el nombre del apoderado.');
+        if(!email) return showError('Ingresa el correo electrónico.');
+        if(!validEmail(email)) return showError('El correo no parece válido. Revisa el formato (ej: nombre@correo.com).');
+        goTo(3);
+      });
+
+      back3.addEventListener('click', () => goTo(2));
+
+      finish.addEventListener('click', () => {
+        const {alumno, terminos} = getFormData();
+        if(!alumno) return showError('Ingresa el nombre del alumno para continuar.');
+        if(!terminos) return showError('Debes aceptar los términos y condiciones para finalizar.');
+
+        const data = getFormData();
+        const review = document.getElementById('reviewBox');
+        review.innerHTML = `
+          <div class="row"><div class="k">Colegio</div><div class="v">${escapeHtml(data.colegio)}</div></div>
+          <div class="row"><div class="k">Curso</div><div class="v">${escapeHtml(data.curso)}</div></div>
+          <div class="row"><div class="k">Apoderado</div><div class="v">${escapeHtml(data.nombreApoderado)}</div></div>
+          <div class="row"><div class="k">Correo</div><div class="v">${escapeHtml(data.email)}</div></div>
+          <div class="row"><div class="k">Alumno</div><div class="v">${escapeHtml(data.alumno)}</div></div>
+        `;
+
+        goTo(4);
+        clear();
+      });
+
+      restart.addEventListener('click', () => {
+        setFormData({colegio:'', curso:'', nombreApoderado:'', email:'', alumno:'', terminos:false});
+        clear();
+        goTo(1);
+      });
+
+      Object.values(fields).forEach(el => {
+        el.addEventListener('input', save);
+        el.addEventListener('change', save);
+      });
+
+      // Captura errores JS y muéstralos en pantalla (para debug)
+      window.addEventListener('error', (e) => {
+        showError('Error de script: ' + (e.message || 'desconocido'));
+      });
+
+      load();
+      goTo(1);
+    });
+  </script>
 </body>
 </html>
