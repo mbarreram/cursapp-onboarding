@@ -9,7 +9,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const root = document.getElementById("dashboard-root");
   if (!root) {
     // Evita pantalla blanca silenciosa
-    document.body.insertAdjacentHTML("beforeend", "<p style='padding:12px;color:#ef4444'>Error: #dashboard-root no existe.</p>");
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      "<p style='padding:12px;color:#ef4444'>Error: #dashboard-root no existe.</p>"
+    );
     return;
   }
 
@@ -20,11 +23,12 @@ document.addEventListener("DOMContentLoaded", () => {
     case "tesorero":
       root.innerHTML = renderTesorero();
       break;
-    case "admin":
-      root.innerHTML = renderAdmin();
+    case "presidente":
+      root.innerHTML = renderPresidente();
       break;
     default:
-      root.innerHTML = "<div class='card'><h2>Rol no reconocido</h2><p class='muted'>No pudimos cargar tu perfil.</p></div>";
+      root.innerHTML =
+        "<div class='card'><h2>Rol no reconocido</h2><p class='muted'>No pudimos cargar tu perfil.</p></div>";
   }
 });
 
@@ -129,9 +133,9 @@ function renderTesorero() {
   `;
 }
 
-function renderAdmin() {
+function renderPresidente() {
   return `
-    <h1>Admin</h1>
+    <h1>Presidente</h1>
 
     <div class="grid">
       <section class="card">
@@ -141,7 +145,9 @@ function renderAdmin() {
           <li>Gestionar roles (presidente, tesorero, apoderado)</li>
           <li>Configuración de cuenta bancaria</li>
         </ul>
-        <p class="hint" style="margin-top:10px;">(Demo) Este panel controla configuración y permisos.</p>
+        <p class="hint" style="margin-top:10px;">
+          (Demo) Este panel corresponde al presidente del curso (no a un admin de plataforma).
+        </p>
       </section>
 
       <aside class="card">
