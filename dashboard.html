@@ -264,7 +264,22 @@
       padding:10px;
     }
 
-  </style>
+  
+    /* KPI tabs layout fix */
+    .kpiTabs{ width:100%; }
+    .kpiTabs{ grid-column: span 12; }
+    @media (max-width: 600px){
+      .kpiTabs{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        flex-wrap:nowrap;
+        gap:10px;
+        padding-bottom:6px;
+      }
+      .kpiTab{ white-space:nowrap; }
+    }
+
+</style>
 </head>
 <body>
 
@@ -311,14 +326,14 @@
   <div id="sec-home" class="section active">
     <div class="grid">
       <!-- KPIs -->
-      <div class="kpiTabs">
+      <div class="kpiTabs span12">
         <button class="kpiTab active" id="kpiTab0" onclick="showKPI(0)">📌 Pendientes</button>
         <button class="kpiTab" id="kpiTab1" onclick="showKPI(1)">📅 Próxima</button>
         <button class="kpiTab" id="kpiTab2" onclick="showKPI(2)">📈 Año</button>
         <button class="kpiTab" id="kpiTab3" onclick="showKPI(3)">✅ Retiros</button>
       </div>
 
-      <div class="kpiRow">
+      <div class="kpiRow span12">
 
       <div class="card span3 kpiCard" id="kpiCard0">
         <div class="kpiTop">
