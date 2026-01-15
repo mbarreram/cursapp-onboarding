@@ -6,7 +6,6 @@
   <title>Login | Cursapp</title>
   <link rel="stylesheet" href="assets/styles.css">
   <style>
-    /* Login page small additions */
     .loginWrap{ max-width:520px; margin:0 auto; padding:24px 16px 120px; }
     .loginCard{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:18px; }
     .logoBig{ width:56px; height:56px; border-radius:16px; background:var(--primary); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:950; font-size:22px; }
@@ -36,6 +35,13 @@
         </div>
       </div>
 
+      <div class="fieldLabel">Rol</div>
+      <select id="role">
+        <option value="Apoderado">Apoderado</option>
+        <option value="Tesorero">Tesorero</option>
+        <option value="Admin">Admin</option>
+      </select>
+
       <div class="fieldLabel">Nombre</div>
       <input id="name" placeholder="Ej: Mauricio" />
 
@@ -59,28 +65,31 @@
 
 <script>
   function fillDemo(){
+    document.getElementById('role').value = 'Apoderado';
     document.getElementById('name').value = 'Mauricio (Demo)';
     document.getElementById('email').value = 'demo@cursapp.cl';
     document.getElementById('course').value = '2° Básico A';
     document.getElementById('school').value = 'Colegio Demo';
   }
 
+  function routeByRole(role){
+    if (role === 'Tesorero') return 'dashboard-tesorero.html';
+    if (role === 'Admin') return 'dashboard-admin.html';
+    return 'dashboard-apoderado.html';
+  }
+
   function login(){
+    const role = document.getElementById('role').value || 'Apoderado';
     const user = {
+      role,
       name: (document.getElementById('name').value || '').trim() || 'Mauricio (Demo)',
       email: (document.getElementById('email').value || '').trim() || 'demo@cursapp.cl',
       course: (document.getElementById('course').value || '').trim() || '2° Básico A',
       school: (document.getElementById('school').value || '').trim() || 'Colegio Demo'
     };
     localStorage.setItem('cursapp_demo_user', JSON.stringify(user));
-    window.location.href = "dashboard.html";
+    window.location.href = routeByRole(role);
   }
-
-  // Si ya hay sesión, ir directo
-  try{
-    const u = JSON.parse(localStorage.getItem('cursapp_demo_user') || 'null');
-    if (u && u.email) window.location.href = "dashboard.html";
-  }catch(e){}
 </script>
 </body>
 </html>

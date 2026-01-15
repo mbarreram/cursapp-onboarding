@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Admin | Cursapp</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div style="min-width:0;">
+        <div class="brandTitle">Cursapp</div>
+        <div class="who" id="whoLine">Cargando…</div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">
+        ☰
+      </button>
+      <button class="btn" onclick="logout()">Cerrar sesión</button>
+
+      <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Pagar cuota</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('history'); closeQuickMenu()">🧾 Historial de pagos</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Autorizar retiro</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('profile'); closeQuickMenu()">👤 Mi perfil</button>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+<div class="container">
+  <div class="row">
+    <div>
+      <h1 id="pageTitle">Inicio</h1>
+      <div class="muted" id="pageSubtitle">Resumen del apoderado: cuotas, pagos y autorizaciones.</div>
+      <div class="switcher" style="display:none;">
+        <span class="pill" id="rolePill">Rol: —</span>
+        <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INICIO -->
+  <div id="sec-home" class="section active">
+    <div class="grid">
+      <!-- KPIs -->
+      <div class="kpiTabs">
+        <button class="kpiTab active" id="kpiTab0" onclick="showKPI(0)">📌 Pendientes</button>
+        <button class="kpiTab" id="kpiTab1" onclick="showKPI(1)">📅 Próxima</button>
+        <button class="kpiTab" id="kpiTab2" onclick="showKPI(2)">📈 Año</button>
+        <button class="kpiTab" id="kpiTab3" onclick="showKPI(3)">✅ Retiros</button>
+      </div>
+
+      <div class="kpiRow">
+
+      <div class="card span3 kpiCard" id="kpiCard0">
+        <div class="kpiTop">
+          <div class="kpiIcon">🧾</div>
+          <div>
+            <div class="kpiLabel">Cuotas pendientes</div>
+            <div class="kpiValue" id="kpiPendingCount">—</div>
+          </div>
+        </div>
+        <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard1">
+        <div class="kpiTop">
+          <div class="kpiIcon">🗓️</div>
+          <div>
+            <div class="kpiLabel">Próxima cuota</div>
+            <div class="kpiValue" id="kpiNextDue">—</div>
+          </div>
+        </div>
+        <div class="sub"><span id="kpiNextDueSub">—</span></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard2">
+        <div class="kpiTop">
+          <div class="kpiIcon">💰</div>
+          <div>
+            <div class="kpiLabel">Pagado este año</div>
+            <div class="kpiValue" id="kpiPaidYTD">—</div>
+          </div>
+        </div>
+        <div class="sub">Incluye actividades (demo)</div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard3">
+        <div class="kpiTop">
+          <div class="kpiIcon">🛡️</div>
+          <div>
+            <div class="kpiLabel">Retiros por autorizar</div>
+            <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
+          </div>
+        </div>
+        <div class="sub">Requiere tu aprobación</div>
+      </div>
+
+      </div>
+      <!-- /KPIs -->
+
+      <!-- Collapsibles -->
+      <div class="span12" id="homePanels">
+        <details open>
+          <summary>
+            <span>Notificaciones</span>
+            <span class="pill" id="notifPill">—</span>
+          </summary>
+          <div class="detailsBody">
+            <table>
+              <thead><tr><th>Tipo</th><th>Mensaje</th><th>Fecha</th></tr></thead>
+              <tbody id="notifTable"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <div style="height:12px;"></div>
+
+        <details open>
+          <summary>
+            <span>Gráficos de pagos y cuotas</span>
+            <span class="tag ok">Gráficos</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="grid" style="margin-top:0;">
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Pagos últimos 6 meses</div>
+                <div class="muted">Monto total pagado por mes (demo)</div>
+                <div class="chartWrap"><canvas id="chartPayments"></canvas></div>
+              </div>
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Cuotas: pagadas vs pendientes</div>
+                <div class="muted">Distribución actual (demo)</div>
+                <div class="chartWrap"><canvas id="chartStatus"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGOS -->
+  <div id="sec-payments" class="section">
+    <div class="segmented" style="margin-bottom:12px;">
+      <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas pendientes</button>
+      <button id="tab-pay-history" onclick="showPayTab('history')">Historial de pagos</button>
+    </div>
+
+    <div class="grid">
+      <div class="card span8" id="pay-pending">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Mis cuotas</div>
+            <div class="muted">Filtra y paga tus cuotas pendientes</div>
+          </div>
+          <button class="btn primary" onclick="openPayModal()">Pagar ahora</button>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Filtro cuotas">
+          <button id="f-all" class="active" onclick="setPaymentFilter('all')">Todas</button>
+          <button id="f-pending" onclick="setPaymentFilter('pending')">Pendientes</button>
+          <button id="f-paid" onclick="setPaymentFilter('paid')">Pagadas</button>
+        </div>
+
+        <table>
+          <thead><tr><th>Concepto</th><th>Vence</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="paymentsTable"></tbody>
+        </table>
+
+        <div class="note">Demo: el pago muestra un comprobante simulado.</div>
+      </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Comprobantes recientes</div>
+        <div class="muted">Acceso rápido (demo)</div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Detalle</th></tr></thead>
+          <tbody id="receiptsTable"></tbody>
+        </table>
+      </div>
+
+      <div class="span12" id="pay-history" style="display:none;">
+        <details>
+          <summary>
+            <span>Historial de pagos</span>
+            <span class="pill">Demo</span>
+          </summary>
+          <div class="detailsBody">
+            <table>
+              <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody id="historyTable"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- RETIROS -->
+  <div id="sec-withdrawals" class="section">
+    <div class="grid">
+      <!-- FIX: id único -->
+      <div class="card span8" id="withdraw-pending">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Retiros por autorizar</div>
+            <div class="muted">Aprueba con OTP (2FA) para mayor seguridad</div>
+          </div>
+          <span class="pill" id="withdrawCountPill">—</span>
+        </div>
+
+        <table>
+          <thead><tr><th>Solicitud</th><th>Monto</th><th>Motivo</th><th>Progreso</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="withdrawalsTable"></tbody>
+        </table>
+
+        <div class="note">
+          Este flujo simula OTP. En producción: SMS/Email real + auditoría.
+        </div>
+      </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Política del curso</div>
+        <div class="muted">Vista informativa (demo)</div>
+        <div class="hr"></div>
+        <div class="note">
+          • Solicitudes deben anunciarse con anticipación.<br/>
+          • Autorizaciones quedan registradas.<br/>
+          • El tesorero ejecuta el retiro en la ventana definida.
+        </div>
+      </div>
+
+      <!-- FIX: id único (si lo activas más adelante) -->
+      <div class="span12" id="withdraw-history" style="display:none;">
+        <details>
+          <summary>
+            <span>Gráfico de autorizaciones</span>
+            <span class="tag ok">Gráfico</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="chartWrap"><canvas id="chartWithdrawals"></canvas></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERFIL -->
+  <div id="sec-profile" class="section">
+    <div class="grid">
+      <div class="card span6">
+        <div style="font-weight:950;">Mi perfil</div>
+        <div class="muted">Datos visibles para la demo</div>
+
+        <div class="twoCols" style="margin-top:6px;">
+          <div><div class="kpiLabel">Nombre</div><input id="pName" /></div>
+          <div><div class="kpiLabel">Rol</div><input id="pRole" disabled /></div>
+        </div>
+
+        <div class="twoCols">
+          <div><div class="kpiLabel">Correo</div><input id="pEmail" /></div>
+          <div><div class="kpiLabel">Celular</div><input id="pPhone" /></div>
+        </div>
+
+        <div class="twoCols">
+          <div><div class="kpiLabel">Colegio</div><input id="pSchool" disabled /></div>
+          <div><div class="kpiLabel">Curso</div><input id="pCourse" disabled /></div>
+        </div>
+
+        <div class="actions">
+          <button class="action primary" onclick="saveProfile()">Guardar (demo)</button>
+          <button class="action" onclick="alert('Demo: abrir soporte')">Soporte</button>
+        </div>
+
+        <div class="note">
+          En producción, cambios sensibles requieren verificación y auditoría.
+        </div>
+      </div>
+
+      <div class="card span6">
+        <div style="font-weight:950;">Seguridad</div>
+        <div class="muted">Recomendaciones (demo)</div>
+        <div class="hr"></div>
+
+        <div class="note">
+          ✅ Sesión demo en <code>localStorage</code><br/>
+          🔒 OTP para autorizar retiros (simulado)<br/>
+          🧾 Auditoría: quién autorizó y cuándo
+        </div>
+
+        <div class="actions">
+          <button class="action" onclick="alert('Demo: activar 2FA permanente')">Activar 2FA</button>
+          <button class="action danger" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modalBackdrop" class="backdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">—</div>
+      <button class="btn" onclick="closeModal()">Cerrar</button>
+    </div>
+    <div class="modalBody" id="modalBody"></div>
+    <div class="modalActions" id="modalActions"></div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <div class="tabbarInner">
+    <button class="tab active" id="tab-home" onclick="goTo('home')"><div class="ico">🏠</div><div>Inicio</div></button>
+    <button class="tab" id="tab-payments" onclick="goTo('payments')"><div class="ico">💳</div><div>Pagos</div></button>
+    <button class="tab" id="tab-withdrawals" onclick="goTo('withdrawals')"><div class="ico">✅</div><div>Retiros</div></button>
+    <button class="tab" id="tab-profile" onclick="goTo('profile')"><div class="ico">👤</div><div>Perfil</div></button>
+  </div>
+</div>
+
+
+<script>window.cursappRole = "Admin";</script>
+<script src="assets/demoData-admin.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
