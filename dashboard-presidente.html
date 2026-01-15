@@ -1,174 +1,123 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cursapp | Presidente</title>
+  <title>Dashboard Presidente | Cursapp</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <style>
+    :root{ --tabbar-h:96px; }
+    .container{ padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+    .section{ padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  </style>
 </head>
 <body>
 
-<h1>Dashboard Presidente</h1>
-<p>Rol: Presidente del curso</p>
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <div class="brandTitle">Cursapp</div>
+        <div class="who">Presidente (Demo)</div>
+      </div>
+    </div>
+    <button class="btn" onclick="logout()">Cerrar sesión</button>
+  </div>
+</header>
 
-<nav>
-  <ul>
-    <li>Inicio</li>
-    <li>Pagos del curso</li>
-    <li>Retiros</li>
-    <li>Tareas del curso</li>
-  </ul>
-</nav>
+<div class="container">
 
-<section>
-  <h2>Tareas del curso</h2>
-  <p>Aquí el presidente puede crear tareas de recaudación.</p>
-</section>
+  <h1>Inicio</h1>
+  <p class="muted">Administración del curso y recaudaciones.</p>
 
+  <!-- TAREAS -->
+  <div class="card">
+    <h2>Crear tarea de recaudación</h2>
+    <form id="taskForm">
+      <label>Nombre</label>
+      <input id="taskName" placeholder="Ej: Rifa del huevo" required>
+      <label>Monto</label>
+      <input id="taskAmount" type="number" placeholder="Ej: 2000" required>
+      <label>Fecha límite</label>
+      <input id="taskDue" type="date" required>
+      <button class="btn primary" type="submit">Crear tarea</button>
+    </form>
+  </div>
 
-<script>
-/* ============================
-   Cursapp Patch: Presidente
-   - Guardar tareas como catálogo global
-   - Generar cobros para todos los apoderados
-   ============================ */
-(function(){
-  const LS_TASKS = 'cursapp_tasks_v1';
-  const LS_PAY = 'cursapp_course_payments_v1';
-  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+  <div class="card" style="margin-top:16px;">
+    <h2>Tareas del curso</h2>
+    <table>
+      <thead>
+        <tr><th>Tarea</th><th>Monto</th><th>Límite</th></tr>
+      </thead>
+      <tbody id="tasksTable"></tbody>
+    </table>
+  </div>
 
-  function loadJSON(key, fb){
-    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
-  }
-  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+</div>
 
-  function ensureRoster(){
-    let r = loadJSON(LS_ROSTER, null);
-    if (!Array.isArray(r) || r.length === 0){
-      r = ['Apoderado Demo'];
-      saveJSON(LS_ROSTER, r);
-    }
-    return r;
-  }
-
-  window.__createTaskAndPayments = function(name, amount, due){
-    // 1) Save task catalog
-    const tasks = loadJSON(LS_TASKS, []);
-    tasks.unshift({ id:'t_'+Math.random().toString(16).slice(2,8), name, amount:Number(amount), due });
-    saveJSON(LS_TASKS, tasks);
-
-    // 2) Generate payments for all guardians
-    const roster = ensureRoster();
-    const pays = loadJSON(LS_PAY, []);
-    const today = new Date().toISOString().slice(0,10);
-
-    roster.forEach(guardian => {
-      pays.unshift({
-        type:'task',
-        name: guardian,
-        concept: name,
-        amount:Number(amount),
-        status:'pending',
-        date:'-',
-        createdAt: today
-      });
-    });
-    saveJSON(LS_PAY, pays);
-  };
-})();
-</script>
-
+<div class="tabbar">
+  <div class="tabbarInner">
+    <button class="tab active">🏠 Inicio</button>
+    <button class="tab">💳 Pagos</button>
+    <button class="tab">✅ Retiros</button>
+    <button class="tab">👤 Perfil</button>
+  </div>
+</div>
 
 <script>
-/* ============================
-   FINAL PATCH (Presidente)
-   Garantiza:
-   - Tareas en cursapp_tasks_v1 (catálogo)
-   - Cobros por tarea en cursapp_course_payments_v1 con type:"task"
-   ============================ */
-(function(){
-  const LS_TASKS = 'cursapp_tasks_v1';
-  const LS_PAY = 'cursapp_course_payments_v1';
-  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+const LS_TASKS = 'cursapp_tasks_v1';
+const LS_PAY = 'cursapp_course_payments_v1';
+const LS_ROSTER = 'cursapp_guardians_roster_v1';
 
-  function loadJSON(key, fb){
-    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
+function load(key, fb){ try{return JSON.parse(localStorage.getItem(key))||fb}catch(e){return fb}}
+function save(key,v){ localStorage.setItem(key, JSON.stringify(v)); }
+
+function ensureRoster(){
+  let r = load(LS_ROSTER, []);
+  if(!r.length){
+    r = ['Ana Soto','Carlos Díaz','María Pérez','José Rivas'];
+    save(LS_ROSTER, r);
   }
-  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+  return r;
+}
 
-  function ensureRoster(){
-    let roster = loadJSON(LS_ROSTER, null);
-    if (!Array.isArray(roster) || roster.length === 0){
-      roster = [
-        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
-        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
-      ];
-      saveJSON(LS_ROSTER, roster);
-    }
-    return roster;
-  }
+function render(){
+  const tasks = load(LS_TASKS, []);
+  const tb = document.getElementById('tasksTable');
+  tb.innerHTML = tasks.length ? tasks.map(t=>`
+    <tr><td>${t.name}</td><td>$${t.amount}</td><td>${t.due}</td></tr>
+  `).join('') : '<tr><td colspan="3">Sin tareas</td></tr>';
+}
 
-  function ensurePayments(){
-    let rows = loadJSON(LS_PAY, null);
-    if (!Array.isArray(rows)) rows = [];
-    saveJSON(LS_PAY, rows);
-    return rows;
-  }
+document.getElementById('taskForm').onsubmit = e =>{
+  e.preventDefault();
+  const name = taskName.value.trim();
+  const amount = Number(taskAmount.value);
+  const due = taskDue.value;
 
-  function ensureTasks(){
-    let tasks = loadJSON(LS_TASKS, null);
-    if (!Array.isArray(tasks)) tasks = [];
-    saveJSON(LS_TASKS, tasks);
-    return tasks;
-  }
+  const tasks = load(LS_TASKS, []);
+  tasks.unshift({ id:Date.now(), name, amount, due });
+  save(LS_TASKS, tasks);
 
-  function normalizeTaskPayments(){
-    const tasks = ensureTasks();
-    if (!tasks.length) return;
+  const roster = ensureRoster();
+  const pays = load(LS_PAY, []);
+  roster.forEach(n=>{
+    pays.unshift({ type:'task', name:n, concept:name, amount, status:'pending', date:'-' });
+  });
+  save(LS_PAY, pays);
 
-    const roster = ensureRoster();
-    const rows = ensurePayments();
-    const today = new Date().toISOString().slice(0,10);
+  taskName.value=''; taskAmount.value=''; taskDue.value='';
+  render();
+};
 
-    tasks.forEach(task => {
-      const taskName = task.name || task.nombre || task.title;
-      const amount = Number(task.amount || task.monto || 0);
-      if (!taskName || !amount) return;
+function logout(){
+  localStorage.removeItem('cursapp_demo_user');
+  location.href='login.html';
+}
 
-      roster.forEach((guardianName, idx) => {
-        const exists = rows.some(r =>
-          r.type === 'task' &&
-          r.concept === taskName &&
-          r.name === guardianName
-        );
-        if (exists) return;
-
-        rows.unshift({
-          type: 'task',
-          name: guardianName,
-          concept: taskName,
-          amount: amount,
-          status: 'pending',
-          date: '-',
-          createdAt: today
-        });
-      });
-    });
-
-    saveJSON(LS_PAY, rows);
-  }
-
-  // Re-normaliza al cargar
-  normalizeTaskPayments();
-
-  // Re-normaliza después de crear tarea (escuchando submit en captura, luego dejamos que handler existente haga lo suyo)
-  const form = document.getElementById('taskForm');
-  if (form){
-    form.addEventListener('submit', function(){
-      // esperamos a que el handler original guarde la tarea
-      setTimeout(normalizeTaskPayments, 0);
-    }, true);
-  }
-})();
+render();
 </script>
 
 </body>
