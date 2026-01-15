@@ -162,8 +162,6 @@
     .chartWrap{ margin-top:10px; }
     canvas{ width:100%; height:220px; display:block; }
 
-    
-    
     /* KPI cards with iconography + responsive tabs */
     .kpiTop{ display:flex; align-items:center; gap:12px; }
     .kpiIcon{
@@ -208,7 +206,7 @@
       .kpiCard.active{ display:block; }
     }
 
-@media (max-width: 600px){
+    @media (max-width: 600px){
       .backdrop{ align-items:flex-end; justify-content:center; padding:12px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
       .modal{ width:100%; border-radius:18px 18px 0 0; max-height:calc(100vh - 24px - env(safe-area-inset-bottom)); }
     }
@@ -241,12 +239,12 @@
     }
     .quickMenuItem:hover{ background:#f3f4f6; }
 
-@media (max-width: 980px){
+    @media (max-width: 980px){
       .span3,.span4,.span5,.span6,.span7,.span8{ grid-column: span 12; }
       .who{ max-width:70vw; }
       .twoCols{ grid-template-columns:1fr; }
     }
-  
+
     /* Floating bottom tab bar enhancement */
     .tabbar{
       position:fixed;
@@ -266,7 +264,7 @@
       padding:10px;
     }
 
-</style>
+  </style>
 </head>
 <body>
 
@@ -279,7 +277,7 @@
         <div class="who" id="whoLine">Cargando…</div>
       </div>
     </div>
-    
+
     <div style="display:flex; align-items:center; gap:10px;">
       <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">
         ☰
@@ -304,7 +302,6 @@
       <div class="muted" id="pageSubtitle">Resumen del apoderado: cuotas, pagos y autorizaciones.</div>
       <div class="switcher" style="display:none;">
         <span class="pill" id="rolePill">Rol: —</span>
-        
         <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
       </div>
     </div>
@@ -369,7 +366,8 @@
 
       </div>
       <!-- /KPIs -->
-<!-- Collapsibles to avoid long scroll -->
+
+      <!-- Collapsibles -->
       <div class="span12" id="homePanels">
         <details open>
           <summary>
@@ -470,7 +468,8 @@
   <!-- RETIROS -->
   <div id="sec-withdrawals" class="section">
     <div class="grid">
-      <div class="card span8" id="pay-pending">
+      <!-- FIX: id único -->
+      <div class="card span8" id="withdraw-pending">
         <div class="row">
           <div>
             <div style="font-weight:950;">Retiros por autorizar</div>
@@ -500,7 +499,8 @@
         </div>
       </div>
 
-      <div class="span12" id="pay-history" style="display:none;">
+      <!-- FIX: id único (si lo activas más adelante) -->
+      <div class="span12" id="withdraw-history" style="display:none;">
         <details>
           <summary>
             <span>Gráfico de autorizaciones</span>
@@ -675,18 +675,17 @@
     if (key==='withdrawals'){ drawWithdrawalsChart(); }
   }
 
+  // ✅ FIX: toggleCompact bien cerrado
   function toggleCompact(){
     demo.compactMode = !demo.compactMode;
     const panels = document.querySelectorAll('#homePanels details');
-    panels.forEach((d,i)=>{
-      if (demo.compactMode){
-        d.removeAttribute('open');
-      } else {
-        d.setAttribute('open','');
-      }
+    panels.forEach((d)=>{
+      if (demo.compactMode) d.removeAttribute('open');
+      else d.setAttribute('open','');
     });
-  
-  // KPI tabs (mobile)
+  }
+
+  // ✅ FIX: showKPI global
   function showKPI(idx){
     for (let i=0;i<4;i++){
       const card = document.getElementById('kpiCard'+i);
@@ -695,7 +694,6 @@
       if (tab) tab.classList.toggle('active', i===idx);
     }
   }
-}
 
   // ---------------- Home rendering ----------------
   function moneyCLP(n){ return "$ " + n.toLocaleString('es-CL'); }
@@ -991,7 +989,6 @@
     if (input === otpState.code){
       otpState.verified = true;
       msg.innerHTML = `<div class="success">Código verificado ✅</div>`;
-      // proceed to finalize
       setTimeout(() => finalizeWithdrawApproval(otpState.forId), 350);
       return;
     }
@@ -1009,7 +1006,6 @@
     const w = demo.withdrawals.find(x=>x.id===withdrawId);
     if (!w) return;
 
-    // demo logic: record my approval and set as approved
     w.approvals = Math.min(w.required, w.approvals + 1);
     w.state = 'approved';
     w.audit = {by:user.name, at: nowLabel()};
@@ -1217,7 +1213,6 @@
   }
 
   // ---------------- Init render ----------------
-  
   function showPayTab(which){
     document.getElementById('pay-pending').style.display = (which==='pending')?'block':'none';
     document.getElementById('pay-history').style.display = (which==='history')?'block':'none';
@@ -1225,7 +1220,6 @@
     document.getElementById('tab-pay-history').classList.toggle('active', which==='history');
   }
 
-  
   // Quick menu (header)
   function toggleQuickMenu(){
     const menu = document.getElementById('quickMenu');
@@ -1255,9 +1249,7 @@
     if (e.key === 'Escape') closeQuickMenu();
   });
 
-
   function init(){
-
     renderNotifications();
     computeKPIs();
     renderPaymentsTable();
