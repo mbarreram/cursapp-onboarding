@@ -366,6 +366,37 @@
 
       </div>
       <!-- /KPIs -->
+      <!-- KPI CONTENT PANELS -->
+      <div class="card span12 kpiContent" id="kpiContent0">
+        <div style="font-weight:950;">Cuotas pendientes</div>
+        <div class="muted">Detalle de tus cuotas por pagar</div>
+        <table>
+          <thead><tr><th>Concepto</th><th>Vence</th><th>Monto</th></tr></thead>
+          <tbody id="homePendingTable"></tbody>
+        </table>
+      </div>
+
+      <div class="card span12 kpiContent" id="kpiContent1" style="display:none;">
+        <div style="font-weight:950;">Próxima cuota</div>
+        <div class="muted">La cuota más cercana a vencer</div>
+        <div id="homeNextDue"></div>
+      </div>
+
+      <div class="card span12 kpiContent" id="kpiContent2" style="display:none;">
+        <div style="font-weight:950;">Pagado este año</div>
+        <div class="muted">Resumen anual</div>
+        <div id="homePaidYTD"></div>
+      </div>
+
+      <div class="card span12 kpiContent" id="kpiContent3" style="display:none;">
+        <div style="font-weight:950;">Retiros pendientes de autorización</div>
+        <div class="muted">Solicitudes que requieren tu acción</div>
+        <table>
+          <thead><tr><th>ID</th><th>Monto</th><th>Motivo</th></tr></thead>
+          <tbody id="homeWithdrawalsTable"></tbody>
+        </table>
+      </div>
+
 
       <!-- Collapsibles -->
       <div class="span12" id="homePanels">
@@ -687,12 +718,15 @@
 
   // ✅ FIX: showKPI global
   function showKPI(idx){
-    for (let i=0;i<4;i++){
-      const card = document.getElementById('kpiCard'+i);
-      const tab = document.getElementById('kpiTab'+i);
-      if (card) card.classList.toggle('active', i===idx);
-      if (tab) tab.classList.toggle('active', i===idx);
-    }
+  for (let i=0;i<4;i++){
+    const card = document.getElementById('kpiCard'+i);
+    const tab = document.getElementById('kpiTab'+i);
+    const panel = document.getElementById('kpiContent'+i);
+    if (card) card.classList.toggle('active', i===idx);
+    if (tab) tab.classList.toggle('active', i===idx);
+    if (panel) panel.style.display = (i===idx)?'block':'none';
+  }
+}
   }
 
   // ---------------- Home rendering ----------------
@@ -1249,6 +1283,44 @@
     if (e.key === 'Escape') closeQuickMenu();
   });
 
+  
+  function renderHomeKPIContents(){
+    // Pendientes
+    const pt = document.getElementById('homePendingTable');
+    if (pt){
+      pt.innerHTML='';
+      demo.payments.filter(p=>p.status==='pending').forEach(p=>{
+        pt.innerHTML += `<tr><td>${p.concept}</td><td>${p.due}</td><td>${moneyCLP(p.amount)}</td></tr>`;
+      });
+    }
+
+    // Próxima
+    const next = demo.payments.find(p=>p.status==='pending');
+    const nd = document.getElementById('homeNextDue');
+    if (nd){
+      nd.innerHTML = next
+        ? `<b>${next.concept}</b><br/>Vence: ${next.due}<br/>Monto: ${moneyCLP(next.amount)}`
+        : 'No tienes cuotas pendientes.';
+    }
+
+    // Año
+    const y = demo.history.reduce((a,b)=>a+b.amount,0);
+    const ytd = document.getElementById('homePaidYTD');
+    if (ytd){
+      ytd.innerHTML = `<b>Total:</b> ${moneyCLP(y)}<br/>Pagos realizados: ${demo.history.length}`;
+    }
+
+    // Retiros
+    const wt = document.getElementById('homeWithdrawalsTable');
+    if (wt){
+      wt.innerHTML='';
+      demo.withdrawals.filter(w=>w.state==='pending_me').forEach(w=>{
+        wt.innerHTML += `<tr><td>#${w.id}</td><td>${moneyCLP(w.amount)}</td><td>${w.reason}</td></tr>`;
+      });
+    }
+  }
+
+
   function init(){
     renderNotifications();
     computeKPIs();
@@ -1267,6 +1339,7 @@
   });
 
   showKPI(0);
+  renderHomeKPIContents();
   init();
 </script>
 
