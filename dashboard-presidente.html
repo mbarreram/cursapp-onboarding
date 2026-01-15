@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard Presidente | Cursapp</title>
   <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/mobile-fix.css">
+
+  <style>
+    /* TABBAR SAFE AREA FIX: evita que el menú inferior tape el contenido */
+    :root{ --tabbar-h: 96px; }
+    .container{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+    .section{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+  </style>
+
 </head>
 <body>
 
