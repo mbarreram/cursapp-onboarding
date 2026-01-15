@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Apoderado | Cursapp</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+      --primary:#4f46e5; --danger:#ef4444; --ok:#16a34a; --shadow:0 10px 24px rgba(0,0,0,.05);
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family: system-ui, -apple-system, BlinkMacSystemFont; background:var(--bg); color:var(--text); }
+    header{
+      background:#ffffff; border-bottom:1px solid var(--border);
+      padding:12px 16px; position:sticky; top:0; z-index:10;
+    }
+    .topbar{ position:relative; max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .logo{
+      width:36px; height:36px; border-radius:10px; background:var(--primary);
+      display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900;
+    }
+    .brandTitle{ font-weight:900; line-height:1.1; }
+    .who{ font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:50vw; }
+
+    .btn{
+      border:none; border-radius:10px; padding:10px 12px; cursor:pointer;
+      background:#e5e7eb; color:var(--text); font-size:14px;
+    }
+    .btn.primary{ background:var(--primary); color:#fff; }
+    .btn.danger{ background:#fee2e2; color:#991b1b; }
+    .btn.ghost{ background:#fff; border:1px solid var(--border); }
+
+    .container{ max-width:1100px; margin:12px auto; padding:0 16px 110px; }
+    h1{ font-size:20px; margin:0; }
+    .muted{ color:var(--muted); font-size:13px; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 10px;
+      border-radius:999px; background:#f3f4f6; color:var(--text);
+    }
+
+    .grid{ display:grid; grid-template-columns:repeat(12, 1fr); gap:12px; margin-top:12px; }
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);
+    }
+    .span3{ grid-column: span 3; }
+    .span4{ grid-column: span 4; }
+    .span5{ grid-column: span 5; }
+    .span6{ grid-column: span 6; }
+    .span7{ grid-column: span 7; }
+    .span8{ grid-column: span 8; }
+    .span12{ grid-column: span 12; }
+
+    .kpiLabel{ font-size:12px; color:var(--muted); }
+    .kpiValue{ font-size:22px; font-weight:950; margin-top:6px; letter-spacing:-.02em; }
+    .sub{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+    .actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+    .action{
+      border:none; border-radius:12px; padding:12px 14px; cursor:pointer;
+      background:#e5e7eb; color:var(--text); font-size:14px;
+    }
+    .action.primary{ background:var(--primary); color:#fff; }
+    .tag{ font-size:12px; padding:4px 8px; border-radius:999px; background:#f3f4f6; }
+    .tag.ok{ background:#dcfce7; color:#166534; }
+    .tag.warn{ background:#fef9c3; color:#854d0e; }
+    .tag.bad{ background:#fee2e2; color:#991b1b; }
+
+    table{ width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td{ text-align:left; padding:10px 8px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:top; }
+    th{ font-size:12px; color:var(--muted); font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+
+    .segmented{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .segmented button{
+      border:1px solid var(--border); background:#fff; color:var(--text);
+      padding:8px 10px; border-radius:999px; cursor:pointer; font-size:13px;
+    }
+    .segmented button.active{ background:#eef2ff; border-color:#c7d2fe; color:#3730a3; }
+
+    /* Quick section switcher (dropdown) */
+    .switcher{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      margin-top:10px;
+    }
+    /* Tabs (bottom) */
+    .tabbar{
+      position:fixed; left:0; right:0; bottom:0; z-index:20;
+      background:rgba(255,255,255,.92);
+      border-top:1px solid var(--border);
+      padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+      backdrop-filter: blur(10px);
+      box-shadow:0 -10px 24px rgba(0,0,0,.06);
+    }
+    .tabbarInner{ max-width:1100px; margin:0 auto; display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+    .tab{
+      border:none; background:#fff; cursor:pointer; padding:10px 8px; border-radius:12px;
+      display:flex; flex-direction:column; align-items:center; gap:4px; font-size:12px; color:var(--muted);
+    }
+    .tab.active{ background:#eef2ff; color:#3730a3; }
+    .tab .ico{ font-size:16px; }
+
+    /* Sections */
+    .section{ display:none; }
+    .section.active{ display:block; }
+
+    /* Collapsible panels */
+    details{
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+      box-shadow:var(--shadow);
+      padding:0;
+      overflow:hidden;
+    }
+    summary{
+      list-style:none;
+      cursor:pointer;
+      padding:14px 16px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      font-weight:950;
+    }
+    summary::-webkit-details-marker{ display:none; }
+    .detailsBody{ padding:0 16px 16px; border-top:1px solid var(--border); }
+    .note{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35; }
+    .hr{ height:1px; background:var(--border); margin:12px 0; }
+
+    /* Modal */
+    .backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.35);
+      display:none; align-items:center; justify-content:center;
+      padding:16px; z-index:50;
+    }
+    .backdrop.show{ display:flex; }
+    .modal{
+      width:min(560px, 100%);
+      background:#fff; border-radius:18px;
+      box-shadow:0 30px 60px rgba(0,0,0,.25); border:1px solid var(--border);
+      overflow:hidden;
+      max-height:calc(100vh - 32px - env(safe-area-inset-bottom));
+      display:flex; flex-direction:column;
+    }
+    .modalHeader{ padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .modalTitle{ font-weight:950; }
+    .modalBody{ padding:16px; overflow:auto; }
+    .modalActions{ padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; }
+    .modalActions .btn{ flex:1; min-width:140px; }
+
+    input, select{
+      width:100%; padding:12px; margin-top:10px;
+      border-radius:10px; border:1px solid var(--border); font-size:14px; background:#fff;
+    }
+    .twoCols{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .success{ color:var(--ok); font-size:13px; margin-top:8px; }
+    .error{ color:#dc2626; font-size:13px; margin-top:8px; }
+
+    /* Canvas charts */
+    .chartWrap{ margin-top:10px; }
+    canvas{ width:100%; height:220px; display:block; }
+
+    /* KPI cards with iconography + responsive tabs */
+    .kpiTop{ display:flex; align-items:center; gap:12px; }
+    .kpiIcon{
+      width:40px; height:40px; border-radius:12px;
+      background:#eef2ff; border:1px solid #c7d2fe;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px;
+      flex:0 0 auto;
+    }
+    .kpiRow{ display:grid; grid-template-columns:repeat(12, 1fr); gap:12px; width:100%; }
+    .kpiCard{ grid-column: span 3; }
+    .kpiTabs{
+      display:none;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+    .kpiTab{
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      padding:8px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font-size:13px;
+      font-weight:800;
+    }
+    .kpiTab.active{
+      background:#eef2ff; border-color:#c7d2fe; color:#3730a3;
+    }
+
+    @media (max-width: 980px){
+      /* Keep all cards visible on tablets but stack when needed */
+      .kpiCard{ grid-column: span 12; }
+    }
+
+    @media (max-width: 600px){
+      /* On phones: show KPI tabs and only one KPI card at a time */
+      .kpiTabs{ display:flex; }
+      .kpiRow{ grid-template-columns:repeat(12,1fr); }
+      .kpiCard{ display:none; grid-column: span 12; }
+      .kpiCard.active{ display:block; }
+    }
+
+    @media (max-width: 600px){
+      .backdrop{ align-items:flex-end; justify-content:center; padding:12px; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+      .modal{ width:100%; border-radius:18px 18px 0 0; max-height:calc(100vh - 24px - env(safe-area-inset-bottom)); }
+    }
+
+    /* Quick menu (header) */
+    .quickMenu{
+      position:absolute;
+      top:56px;
+      right:0;
+      width:min(260px, calc(100vw - 32px));
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow:0 20px 40px rgba(0,0,0,.12);
+      padding:8px;
+      display:none;
+      z-index:30;
+    }
+    .quickMenu.show{ display:block; }
+    .quickMenuItem{
+      width:100%;
+      text-align:left;
+      border:none;
+      background:#fff;
+      padding:12px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:14px;
+      color:var(--text);
+    }
+    .quickMenuItem:hover{ background:#f3f4f6; }
+
+    @media (max-width: 980px){
+      .span3,.span4,.span5,.span6,.span7,.span8{ grid-column: span 12; }
+      .who{ max-width:70vw; }
+      .twoCols{ grid-template-columns:1fr; }
+    }
+
+    /* Floating bottom tab bar enhancement */
+    .tabbar{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      background:transparent;
+      border-top:none;
+      padding:0 12px calc(12px + env(safe-area-inset-bottom));
+      z-index:20;
+    }
+    .tabbarInner{
+      background:#ffffff;
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow:0 10px 30px rgba(0,0,0,.12);
+      padding:10px;
+    }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div style="min-width:0;">
+        <div class="brandTitle">Cursapp</div>
+        <div class="who" id="whoLine">Cargando…</div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">
+        ☰
+      </button>
+      <button class="btn" onclick="logout()">Cerrar sesión</button>
+
+      <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Pagar cuota</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('history'); closeQuickMenu()">🧾 Historial de pagos</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Autorizar retiro</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('profile'); closeQuickMenu()">👤 Mi perfil</button>
+      </div>
+    </div>
+
+  </div>
+</header>
+
+<div class="container">
+  <div class="row">
+    <div>
+      <h1 id="pageTitle">Inicio</h1>
+      <div class="muted" id="pageSubtitle">Resumen del apoderado: cuotas, pagos y autorizaciones.</div>
+      <div class="switcher" style="display:none;">
+        <span class="pill" id="rolePill">Rol: —</span>
+        <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INICIO -->
+  <div id="sec-home" class="section active">
+    <div class="grid">
+      <!-- KPIs -->
+      <div class="kpiTabs">
+        <button class="kpiTab active" id="kpiTab0" onclick="showKPI(0)">📌 Pendientes</button>
+        <button class="kpiTab" id="kpiTab1" onclick="showKPI(1)">📅 Próxima</button>
+        <button class="kpiTab" id="kpiTab2" onclick="showKPI(2)">📈 Año</button>
+        <button class="kpiTab" id="kpiTab3" onclick="showKPI(3)">✅ Retiros</button>
+      </div>
+
+      <div class="kpiRow">
+
+      <div class="card span3 kpiCard" id="kpiCard0">
+        <div class="kpiTop">
+          <div class="kpiIcon">🧾</div>
+          <div>
+            <div class="kpiLabel">Cuotas pendientes</div>
+            <div class="kpiValue" id="kpiPendingCount">—</div>
+          </div>
+        </div>
+        <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard1">
+        <div class="kpiTop">
+          <div class="kpiIcon">🗓️</div>
+          <div>
+            <div class="kpiLabel">Próxima cuota</div>
+            <div class="kpiValue" id="kpiNextDue">—</div>
+          </div>
+        </div>
+        <div class="sub"><span id="kpiNextDueSub">—</span></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard2">
+        <div class="kpiTop">
+          <div class="kpiIcon">💰</div>
+          <div>
+            <div class="kpiLabel">Pagado este año</div>
+            <div class="kpiValue" id="kpiPaidYTD">—</div>
+          </div>
+        </div>
+        <div class="sub">Incluye actividades (demo)</div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard3">
+        <div class="kpiTop">
+          <div class="kpiIcon">🛡️</div>
+          <div>
+            <div class="kpiLabel">Retiros por autorizar</div>
+            <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
+          </div>
+        </div>
+        <div class="sub">Requiere tu aprobación</div>
+      </div>
+
+      </div>
+      <!-- /KPIs -->
+
+      <!-- Collapsibles -->
+      <div class="span12" id="homePanels">
+        <details open>
+          <summary>
+            <span>Notificaciones</span>
+            <span class="pill" id="notifPill">—</span>
+          </summary>
+          <div class="detailsBody">
+            <table>
+              <thead><tr><th>Tipo</th><th>Mensaje</th><th>Fecha</th></tr></thead>
+              <tbody id="notifTable"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <div style="height:12px;"></div>
+
+        <details open>
+          <summary>
+            <span>Gráficos de pagos y cuotas</span>
+            <span class="tag ok">Gráficos</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="grid" style="margin-top:0;">
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Pagos últimos 6 meses</div>
+                <div class="muted">Monto total pagado por mes (demo)</div>
+                <div class="chartWrap"><canvas id="chartPayments"></canvas></div>
+              </div>
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Cuotas: pagadas vs pendientes</div>
+                <div class="muted">Distribución actual (demo)</div>
+                <div class="chartWrap"><canvas id="chartStatus"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGOS -->
+  <div id="sec-payments" class="section">
+    <div class="segmented" style="margin-bottom:12px;">
+      <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas pendientes</button>
+      <button id="tab-pay-history" onclick="showPayTab('history')">Historial de pagos</button>
+    </div>
+
+    <div class="grid">
+      <div class="card span8" id="pay-pending">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Mis cuotas</div>
+            <div class="muted">Filtra y paga tus cuotas pendientes</div>
+          </div>
+          <button class="btn primary" onclick="openPayModal()">Pagar ahora</button>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Filtro cuotas">
+          <button id="f-all" class="active" onclick="setPaymentFilter('all')">Todas</button>
+          <button id="f-pending" onclick="setPaymentFilter('pending')">Pendientes</button>
+          <button id="f-paid" onclick="setPaymentFilter('paid')">Pagadas</button>
+        </div>
+
+        <table>
+          <thead><tr><th>Concepto</th><th>Vence</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="paymentsTable"></tbody>
+        </table>
+
+        <div class="note">Demo: el pago muestra un comprobante simulado.</div>
+      </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Comprobantes recientes</div>
+        <div class="muted">Acceso rápido (demo)</div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Detalle</th></tr></thead>
+          <tbody id="receiptsTable"></tbody>
+        </table>
+      </div>
+
+      <div class="span12" id="pay-history" style="display:none;">
+        <details>
+          <summary>
+            <span>Historial de pagos</span>
+            <span class="pill">Demo</span>
+          </summary>
+          <div class="detailsBody">
+            <table>
+              <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody id="historyTable"></tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- RETIROS -->
+  <div id="sec-withdrawals" class="section">
+    <div class="grid">
+      <!-- FIX: id único -->
+      <div class="card span8" id="withdraw-pending">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Retiros por autorizar</div>
+            <div class="muted">Aprueba con OTP (2FA) para mayor seguridad</div>
+          </div>
+          <span class="pill" id="withdrawCountPill">—</span>
+        </div>
+
+        <table>
+          <thead><tr><th>Solicitud</th><th>Monto</th><th>Motivo</th><th>Progreso</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="withdrawalsTable"></tbody>
+        </table>
+
+        <div class="note">
+          Este flujo simula OTP. En producción: SMS/Email real + auditoría.
+        </div>
+      </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Política del curso</div>
+        <div class="muted">Vista informativa (demo)</div>
+        <div class="hr"></div>
+        <div class="note">
+          • Solicitudes deben anunciarse con anticipación.<br/>
+          • Autorizaciones quedan registradas.<br/>
+          • El tesorero ejecuta el retiro en la ventana definida.
+        </div>
+      </div>
+
+      <!-- FIX: id único (si lo activas más adelante) -->
+      <div class="span12" id="withdraw-history" style="display:none;">
+        <details>
+          <summary>
+            <span>Gráfico de autorizaciones</span>
+            <span class="tag ok">Gráfico</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="chartWrap"><canvas id="chartWithdrawals"></canvas></div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERFIL -->
+  <div id="sec-profile" class="section">
+    <div class="grid">
+      <div class="card span6">
+        <div style="font-weight:950;">Mi perfil</div>
+        <div class="muted">Datos visibles para la demo</div>
+
+        <div class="twoCols" style="margin-top:6px;">
+          <div><div class="kpiLabel">Nombre</div><input id="pName" /></div>
+          <div><div class="kpiLabel">Rol</div><input id="pRole" disabled /></div>
+        </div>
+
+        <div class="twoCols">
+          <div><div class="kpiLabel">Correo</div><input id="pEmail" /></div>
+          <div><div class="kpiLabel">Celular</div><input id="pPhone" /></div>
+        </div>
+
+        <div class="twoCols">
+          <div><div class="kpiLabel">Colegio</div><input id="pSchool" disabled /></div>
+          <div><div class="kpiLabel">Curso</div><input id="pCourse" disabled /></div>
+        </div>
+
+        <div class="actions">
+          <button class="action primary" onclick="saveProfile()">Guardar (demo)</button>
+          <button class="action" onclick="alert('Demo: abrir soporte')">Soporte</button>
+        </div>
+
+        <div class="note">
+          En producción, cambios sensibles requieren verificación y auditoría.
+        </div>
+      </div>
+
+      <div class="card span6">
+        <div style="font-weight:950;">Seguridad</div>
+        <div class="muted">Recomendaciones (demo)</div>
+        <div class="hr"></div>
+
+        <div class="note">
+          ✅ Sesión demo en <code>localStorage</code><br/>
+          🔒 OTP para autorizar retiros (simulado)<br/>
+          🧾 Auditoría: quién autorizó y cuándo
+        </div>
+
+        <div class="actions">
+          <button class="action" onclick="alert('Demo: activar 2FA permanente')">Activar 2FA</button>
+          <button class="action danger" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modalBackdrop" class="backdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">—</div>
+      <button class="btn" onclick="closeModal()">Cerrar</button>
+    </div>
+    <div class="modalBody" id="modalBody"></div>
+    <div class="modalActions" id="modalActions"></div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <div class="tabbarInner">
+    <button class="tab active" id="tab-home" onclick="goTo('home')"><div class="ico">🏠</div><div>Inicio</div></button>
+    <button class="tab" id="tab-payments" onclick="goTo('payments')"><div class="ico">💳</div><div>Pagos</div></button>
+    <button class="tab" id="tab-withdrawals" onclick="goTo('withdrawals')"><div class="ico">✅</div><div>Retiros</div></button>
+    <button class="tab" id="tab-profile" onclick="goTo('profile')"><div class="ico">👤</div><div>Perfil</div></button>
+  </div>
+</div>
+
+<script>
+  // ---------------- Demo data ----------------
+  const demo = {
+    compactMode: false,
+    notifications: [
+      {type:'Cuota', msg:'Se publicó “Cuota Febrero”.', date:'Hoy'},
+      {type:'Retiro', msg:'Solicitud #R-1024 requiere tu autorización.', date:'Ayer'},
+      {type:'Pago', msg:'Pago confirmado: Actividad paseo.', date:'12 Ene'}
+    ],
+    payments: [
+      {id:'p1', concept:'Cuota Enero', due:'20 Ene', amount:15000, status:'pending'},
+      {id:'p2', concept:'Cuota Febrero', due:'20 Feb', amount:10000, status:'pending'},
+      {id:'p3', concept:'Actividad paseo', due:'—', amount:15000, status:'paid', paidDate:'14 Ene', receipt:'RC-8891'}
+    ],
+    history: [
+      {date:'14 Ene', concept:'Actividad paseo', amount:15000, status:'Confirmado'},
+      {date:'05 Ene', concept:'Cuota Diciembre', amount:15000, status:'Confirmado'},
+      {date:'12 Dic', concept:'Cuota Noviembre', amount:15000, status:'Confirmado'}
+    ],
+    withdrawals: [
+      {id:'R-1024', amount:80000, reason:'Compra materiales actividad', requester:'Tesorero (Demo)', approvals:3, required:5, state:'pending_me', attachment:'cotizacion_materiales.pdf (demo)', audit:null},
+      {id:'R-1018', amount:45000, reason:'Transporte paseo', requester:'Tesorero (Demo)', approvals:5, required:5, state:'approved', attachment:'boleta_transporte.jpg (demo)', audit:{by:'Mauricio (Demo)', at:'12 Dic 10:41'}}
+    ],
+    charts: {
+      payments6m: [
+        {label:'Ago', value:0},
+        {label:'Sep', value:15000},
+        {label:'Oct', value:15000},
+        {label:'Nov', value:15000},
+        {label:'Dic', value:15000},
+        {label:'Ene', value:30000},
+      ],
+      withdrawals6m: [
+        {label:'Ago', approved:0, rejected:0},
+        {label:'Sep', approved:1, rejected:0},
+        {label:'Oct', approved:0, rejected:0},
+        {label:'Nov', approved:1, rejected:1},
+        {label:'Dic', approved:2, rejected:0},
+        {label:'Ene', approved:1, rejected:0},
+      ]
+    }
+  };
+
+  // ---------------- Session / user ----------------
+  const user = JSON.parse(localStorage.getItem('cursapp_demo_user') || 'null');
+  if (!user) {
+    window.location.href = "login.html";
+  } else {
+    user.role = 'Apoderado';
+    user.school = user.school || 'Colegio Demo';
+    user.course = user.course || '2° Básico A';
+    user.phone = user.phone || '+56 9 1234 5678';
+    user.name = user.name || 'Mauricio (Demo)';
+    user.email = user.email || 'demo@cursapp.cl';
+    localStorage.setItem('cursapp_demo_user', JSON.stringify(user));
+    document.getElementById('whoLine').innerText = user.name + " · " + user.course + " · " + user.email;
+    document.getElementById('rolePill').innerText = "Rol: " + user.role;
+  }
+
+  function logout(){
+    localStorage.removeItem('cursapp_demo_user');
+    window.location.href = "login.html";
+  }
+
+  // ---------------- Navigation (tabs + dropdown) ----------------
+  const sections = ['home','payments','withdrawals','profile'];
+
+  function goTo(key){
+    sections.forEach(k => {
+      document.getElementById('sec-'+k).classList.toggle('active', k===key);
+      document.getElementById('tab-'+k).classList.toggle('active', k===key);
+    });
+
+    const titleMap = {home:'Inicio', payments:'Pagos', withdrawals:'Retiros', profile:'Perfil'};
+    const subMap = {
+      home:'Resumen del apoderado: cuotas, pagos y autorizaciones.',
+      payments:'Gestiona y paga tus cuotas. Revisa comprobantes.',
+      withdrawals:'Autoriza o rechaza retiros del curso (con OTP).',
+      profile:'Tus datos y seguridad.'
+    };
+    document.getElementById('pageTitle').innerText = titleMap[key];
+    document.getElementById('pageSubtitle').innerText = subMap[key];
+
+    if (key==='home'){ drawHomeCharts(); }
+    if (key==='withdrawals'){ drawWithdrawalsChart(); }
+  }
+
+  // ✅ FIX: toggleCompact bien cerrado
+  function toggleCompact(){
+    demo.compactMode = !demo.compactMode;
+    const panels = document.querySelectorAll('#homePanels details');
+    panels.forEach((d)=>{
+      if (demo.compactMode) d.removeAttribute('open');
+      else d.setAttribute('open','');
+    });
+  }
+
+  // ✅ FIX: showKPI global
+  function showKPI(idx){
+    for (let i=0;i<4;i++){
+      const card = document.getElementById('kpiCard'+i);
+      const tab = document.getElementById('kpiTab'+i);
+      if (card) card.classList.toggle('active', i===idx);
+      if (tab) tab.classList.toggle('active', i===idx);
+    }
+  }
+
+  // ---------------- Home rendering ----------------
+  function moneyCLP(n){ return "$ " + n.toLocaleString('es-CL'); }
+
+  function renderNotifications(){
+    const body = document.getElementById('notifTable');
+    body.innerHTML = '';
+    demo.notifications.slice(0,8).forEach(n => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="tag">${n.type}</span></td><td>${n.msg}</td><td class="muted">${n.date}</td>`;
+      body.appendChild(tr);
+    });
+    document.getElementById('notifPill').innerText = demo.notifications.length + " nuevas";
+  }
+
+  function computeKPIs(){
+    const pending = demo.payments.filter(p => p.status==='pending');
+    const pendingTotal = pending.reduce((a,b)=>a+b.amount,0);
+    const pendingCount = pending.length;
+
+    const next = pending[0] || null;
+    const ytd = demo.history.reduce((a,b)=>a+b.amount,0);
+
+    const toApprove = demo.withdrawals.filter(w => w.state==='pending_me').length;
+
+    document.getElementById('kpiPendingCount').innerText = pendingCount;
+    document.getElementById('kpiPendingTotal').innerText = moneyCLP(pendingTotal);
+
+    if (next){
+      document.getElementById('kpiNextDue').innerText = next.due;
+      document.getElementById('kpiNextDueSub').innerHTML = `${next.concept} · <b>${moneyCLP(next.amount)}</b>`;
+    } else {
+      document.getElementById('kpiNextDue').innerText = "—";
+      document.getElementById('kpiNextDueSub').innerText = "No tienes cuotas pendientes.";
+    }
+
+    document.getElementById('kpiPaidYTD').innerText = moneyCLP(ytd);
+    document.getElementById('kpiWithdrawToApprove').innerText = toApprove;
+    document.getElementById('withdrawCountPill').innerText = toApprove + " pendientes";
+  }
+
+  // ---------------- Payments rendering ----------------
+  let paymentFilter = 'all';
+
+  function setPaymentFilter(f){
+    paymentFilter = f;
+    ['all','pending','paid'].forEach(k => {
+      document.getElementById('f-'+k).classList.toggle('active', k===f);
+    });
+    renderPaymentsTable();
+  }
+
+  function statusTag(status){
+    if (status==='paid') return `<span class="tag ok">Pagado</span>`;
+    if (status==='pending') return `<span class="tag warn">Pendiente</span>`;
+    return `<span class="tag">${status}</span>`;
+  }
+
+  function renderPaymentsTable(){
+    const body = document.getElementById('paymentsTable');
+    body.innerHTML='';
+    const items = demo.payments.filter(p => paymentFilter==='all' ? true : p.status===paymentFilter);
+
+    items.forEach(p => {
+      const tr = document.createElement('tr');
+      const btn = (p.status==='pending')
+        ? `<button class="btn primary" style="padding:8px 10px;" onclick="openPayModal('${p.id}')">Pagar</button>`
+        : `<button class="btn" style="padding:8px 10px;" onclick="openReceipt('${p.receipt || 'RC-0000'}')">Comprobante</button>`;
+
+      tr.innerHTML = `<td>${p.concept}</td><td>${p.due}</td><td>${moneyCLP(p.amount)}</td><td>${statusTag(p.status)}</td><td>${btn}</td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  function renderReceipts(){
+    const body = document.getElementById('receiptsTable');
+    body.innerHTML='';
+    const paid = demo.payments.filter(p=>p.status==='paid').slice(0,5);
+    paid.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="muted">${p.paidDate || '—'}</td><td>${p.concept}<div class="muted">${p.receipt || 'RC-—'}</div></td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  function renderHistory(){
+    const body = document.getElementById('historyTable');
+    body.innerHTML='';
+    demo.history.forEach(h => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="muted">${h.date}</td><td>${h.concept}</td><td>${moneyCLP(h.amount)}</td><td><span class="tag ok">${h.status}</span></td>`;
+      body.appendChild(tr);
+    });
+  }
+
+  // ---------------- Withdrawals rendering ----------------
+  function withdrawalStateTag(w){
+    if (w.state==='pending_me') return `<span class="tag warn">Pendiente de mi autorización</span>`;
+    if (w.state==='approved') return `<span class="tag ok">Aprobado</span>`;
+    if (w.state==='rejected') return `<span class="tag bad">Rechazado</span>`;
+    return `<span class="tag">${w.state}</span>`;
+  }
+
+  function renderWithdrawals(){
+    const body = document.getElementById('withdrawalsTable');
+    body.innerHTML='';
+    demo.withdrawals.forEach(w => {
+      const progress = `${w.approvals}/${w.required}`;
+      const auditLine = w.audit ? `<div class="muted">Audit: ${w.audit.by} · ${w.audit.at}</div>` : '';
+      const actions = (w.state==='pending_me')
+        ? `<div style="display:flex; gap:8px; flex-wrap:wrap;">
+             <button class="btn primary" style="padding:8px 10px;" onclick="openWithdrawOTP('${w.id}')">Autorizar</button>
+             <button class="btn danger" style="padding:8px 10px;" onclick="openWithdrawReject('${w.id}')">Rechazar</button>
+           </div>`
+        : `<span class="muted">—</span>`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><b>#${w.id}</b>
+            <div class="muted">Solicita: ${w.requester}</div>
+            <div class="muted">Adjunto: ${w.attachment}</div>
+            ${auditLine}
+        </td>
+        <td>${moneyCLP(w.amount)}</td>
+        <td>${w.reason}</td>
+        <td><span class="pill">${progress}</span></td>
+        <td>${withdrawalStateTag(w)}</td>
+        <td>${actions}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  // ---------------- Modal helpers ----------------
+  function openModal(title, bodyHtml, actionsHtml){
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalActions').innerHTML = actionsHtml || '';
+    document.getElementById('modalBackdrop').classList.add('show');
+  }
+  function closeModal(e){
+    if (e && e.target && e.target.classList && !e.target.classList.contains('backdrop')) return;
+    document.getElementById('modalBackdrop').classList.remove('show');
+  }
+
+  // ---------------- Payments modal ----------------
+  function openReceipt(code){
+    openModal("Comprobante (demo)",
+      `<div><b>Código:</b> ${code}</div>
+       <div class="hr"></div>
+       <div class="note">Comprobante simulado. En producción: PDF/Email + referencia transacción.</div>`,
+      `<button class="btn" onclick="closeModal()">Cerrar</button>`
+    );
+  }
+
+  function openPayModal(paymentId){
+    const pending = demo.payments.filter(p=>p.status==='pending');
+    const p = paymentId ? demo.payments.find(x=>x.id===paymentId) : (pending[0] || null);
+    if (!p){
+      openModal("Pagar", `<div class="note">No tienes cuotas pendientes.</div>`, `<button class="btn" onclick="closeModal()">Cerrar</button>`);
+      return;
+    }
+
+    openModal("Pagar cuota",
+      `<div><b>${p.concept}</b></div>
+       <div class="muted">Vence: ${p.due}</div>
+       <div style="margin-top:10px; font-weight:950; font-size:18px;">${moneyCLP(p.amount)}</div>
+       <div class="hr"></div>
+       <label class="kpiLabel">Método de pago (demo)</label>
+       <select id="payMethod">
+         <option>Tarjeta (crédito/débito)</option>
+         <option>Transferencia</option>
+         <option>WebPay / Onepay (demo)</option>
+       </select>
+       <div class="note">En producción: pasarela + validación + conciliación.</div>`,
+      `<button class="btn" onclick="closeModal()">Cancelar</button>
+       <button class="btn primary" onclick="confirmPay('${p.id}')">Confirmar pago</button>`
+    );
+  }
+
+  function confirmPay(paymentId){
+    const p = demo.payments.find(x=>x.id===paymentId);
+    if (!p) return;
+
+    p.status='paid';
+    p.paidDate='Hoy';
+    p.receipt='RC-' + Math.floor(1000 + Math.random()*9000);
+    demo.history.unshift({date:'Hoy', concept:p.concept, amount:p.amount, status:'Confirmado'});
+    demo.notifications.unshift({type:'Pago', msg:`Pago confirmado: ${p.concept}.`, date:'Hoy'});
+
+    closeModal();
+    openReceipt(p.receipt);
+
+    computeKPIs();
+    renderPaymentsTable();
+    renderReceipts();
+    renderHistory();
+    renderNotifications();
+    drawHomeCharts();
+  }
+
+  // ---------------- Withdrawals: Reject ----------------
+  function openWithdrawReject(withdrawId){
+    const w = demo.withdrawals.find(x=>x.id===withdrawId);
+    if (!w) return;
+
+    openModal(`Rechazar retiro #${w.id}`,
+      `<div><b>Monto:</b> ${moneyCLP(w.amount)}</div>
+       <div><b>Motivo:</b> ${w.reason}</div>
+       <div class="muted">Adjunto: ${w.attachment}</div>
+       <div class="hr"></div>
+       <label class="kpiLabel">Motivo del rechazo (demo)</label>
+       <input id="rejReason" placeholder="Ej: Falta cotización / no corresponde" />`,
+      `<button class="btn" onclick="closeModal()">Cancelar</button>
+       <button class="btn danger" onclick="confirmReject('${w.id}')">Rechazar</button>`
+    );
+  }
+
+  function confirmReject(withdrawId){
+    const w = demo.withdrawals.find(x=>x.id===withdrawId);
+    if (!w) return;
+    w.state='rejected';
+    w.audit = {by:user.name, at: nowLabel()};
+    demo.notifications.unshift({type:'Retiro', msg:`Rechazaste retiro #${w.id}.`, date:'Hoy'});
+    closeModal();
+    alert("❌ Retiro rechazado (demo).");
+    computeKPIs(); renderWithdrawals(); renderNotifications(); drawWithdrawalsChart();
+  }
+
+  // ---------------- Withdrawals: Approve with OTP ----------------
+  let otpState = { code:null, forId:null, attempts:0, verified:false, channel:'email' };
+
+  function openWithdrawOTP(withdrawId){
+    const w = demo.withdrawals.find(x=>x.id===withdrawId);
+    if (!w) return;
+
+    otpState = { code:null, forId:withdrawId, attempts:0, verified:false, channel:'email' };
+
+    openModal(`Autorizar retiro #${w.id}`,
+      `<div><b>Monto:</b> ${moneyCLP(w.amount)}</div>
+       <div><b>Motivo:</b> ${w.reason}</div>
+       <div><b>Solicita:</b> ${w.requester}</div>
+       <div class="muted">Adjunto: ${w.attachment}</div>
+       <div class="hr"></div>
+       <div class="note"><b>Seguridad:</b> para autorizar debes validar un código (OTP).</div>`,
+      `<button class="btn" onclick="closeModal()">Cancelar</button>
+       <button class="btn primary" onclick="openOTPStep()">Continuar</button>`
+    );
+  }
+
+  function openOTPStep(){
+    const w = demo.withdrawals.find(x=>x.id===otpState.forId);
+    if (!w) return;
+
+    openModal(`OTP para autorizar #${w.id}`,
+      `<div class="note">Elige canal y solicita el código. (Demo: se mostrará en pantalla).</div>
+       <label class="kpiLabel">Canal</label>
+       <select id="otpChannel" onchange="otpState.channel=this.value">
+         <option value="email">Correo (${user.email})</option>
+         <option value="sms">SMS (${user.phone})</option>
+       </select>
+
+       <button class="btn ghost" style="margin-top:10px; width:100%;" onclick="sendOTP()">Enviar código</button>
+
+       <div class="hr"></div>
+       <label class="kpiLabel">Código de 6 dígitos</label>
+       <input id="otpInput" placeholder="123456" inputmode="numeric" />
+       <div id="otpMsg"></div>
+       <div id="otpDemo" class="note"></div>`,
+      `<button class="btn" onclick="openWithdrawOTP('${w.id}')">Atrás</button>
+       <button class="btn primary" id="btnVerify" onclick="verifyOTP()">Verificar</button>`
+    );
+  }
+
+  function sendOTP(){
+    otpState.code = String(Math.floor(100000 + Math.random()*900000));
+    otpState.verified = false;
+    otpState.attempts = 0;
+    document.getElementById('otpDemo').innerHTML = `<span class="note">Demo: tu código es <b>${otpState.code}</b></span>`;
+    document.getElementById('otpMsg').innerHTML = `<div class="success">Código enviado por ${otpState.channel==='sms'?'SMS':'correo'} (demo).</div>`;
+  }
+
+  function verifyOTP(){
+    const input = (document.getElementById('otpInput').value || '').trim();
+    const msg = document.getElementById('otpMsg');
+
+    if (!otpState.code){
+      msg.innerHTML = `<div class="error">Primero debes enviar el código.</div>`;
+      return;
+    }
+
+    otpState.attempts += 1;
+    if (input === otpState.code){
+      otpState.verified = true;
+      msg.innerHTML = `<div class="success">Código verificado ✅</div>`;
+      setTimeout(() => finalizeWithdrawApproval(otpState.forId), 350);
+      return;
+    }
+
+    if (otpState.attempts >= 3){
+      msg.innerHTML = `<div class="error">Demasiados intentos. Vuelve a enviar el código.</div>`;
+      otpState.code = null;
+      return;
+    }
+
+    msg.innerHTML = `<div class="error">Código incorrecto. Intento ${otpState.attempts}/3</div>`;
+  }
+
+  function finalizeWithdrawApproval(withdrawId){
+    const w = demo.withdrawals.find(x=>x.id===withdrawId);
+    if (!w) return;
+
+    w.approvals = Math.min(w.required, w.approvals + 1);
+    w.state = 'approved';
+    w.audit = {by:user.name, at: nowLabel()};
+
+    demo.notifications.unshift({type:'Retiro', msg:`Autorizaste retiro #${w.id}.`, date:'Hoy'});
+
+    closeModal();
+    alert("✅ Retiro autorizado (demo).");
+
+    computeKPIs();
+    renderWithdrawals();
+    renderNotifications();
+    drawWithdrawalsChart();
+  }
+
+  function nowLabel(){
+    const d = new Date();
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = months[d.getMonth()];
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return `${dd} ${mm} ${hh}:${mi}`;
+  }
+
+  // ---------------- Profile ----------------
+  function loadProfile(){
+    document.getElementById('pName').value = user.name || '';
+    document.getElementById('pRole').value = user.role || 'Apoderado';
+    document.getElementById('pEmail').value = user.email || '';
+    document.getElementById('pPhone').value = user.phone || '';
+    document.getElementById('pSchool').value = user.school || '';
+    document.getElementById('pCourse').value = user.course || '';
+  }
+
+  function saveProfile(){
+    user.name = document.getElementById('pName').value || user.name;
+    user.email = document.getElementById('pEmail').value || user.email;
+    user.phone = document.getElementById('pPhone').value || user.phone;
+    localStorage.setItem('cursapp_demo_user', JSON.stringify(user));
+    document.getElementById('whoLine').innerText = user.name + " · " + user.course + " · " + user.email;
+    alert("Perfil guardado (demo).");
+  }
+
+  // ---------------- Charts (no libraries) ----------------
+  function setupCanvas(canvas){
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width * dpr));
+    const h = Math.max(1, Math.floor(rect.height * dpr));
+    if (canvas.width !== w || canvas.height !== h){
+      canvas.width = w; canvas.height = h;
+    }
+    return {ctx: canvas.getContext('2d'), w, h, dpr};
+  }
+  function clearChart(ctx, w, h){
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,w,h);
+  }
+  function drawAxes(ctx, w, h, pad){
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, pad);
+    ctx.lineTo(pad, h-pad);
+    ctx.lineTo(w-pad, h-pad);
+    ctx.stroke();
+  }
+  function drawBarChart(canvas, labels, values){
+    const {ctx,w,h} = setupCanvas(canvas);
+    const pad = 28;
+    clearChart(ctx,w,h); drawAxes(ctx,w,h,pad);
+    const maxV = Math.max(1, ...values);
+    const n = values.length;
+    const plotW = (w - pad*2);
+    const plotH = (h - pad*2);
+    const gap = plotW / n;
+    const barW = gap * 0.55;
+
+    ctx.fillStyle = '#4f46e5';
+    for (let i=0;i<n;i++){
+      const v = values[i];
+      const barH = Math.round((v/maxV) * plotH);
+      const x = pad + i*gap + (gap-barW)/2;
+      const y = (h - pad) - barH;
+      ctx.fillRect(x, y, barW, barH);
+    }
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'center';
+    labels.forEach((lab,i)=>{
+      const x = pad + i*gap + gap/2;
+      ctx.fillText(lab, x, h - 10);
+    });
+  }
+  function drawDonut(canvas, parts){
+    const {ctx,w,h} = setupCanvas(canvas);
+    clearChart(ctx,w,h);
+    const cx=w/2, cy=h/2;
+    const r=Math.min(w,h)*0.32;
+    const r2=r*0.62;
+    const total = parts.reduce((a,b)=>a+b.value,0) || 1;
+    let start=-Math.PI/2;
+    const palette=['#4f46e5','#f59e0b','#10b981','#ef4444'];
+
+    parts.forEach((p,idx)=>{
+      const ang=(p.value/total)*Math.PI*2;
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.fillStyle=palette[idx%palette.length];
+      ctx.arc(cx,cy,r,start,start+ang);
+      ctx.closePath();
+      ctx.fill();
+      start+=ang;
+    });
+    ctx.beginPath();
+    ctx.fillStyle='#ffffff';
+    ctx.arc(cx,cy,r2,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle='#111827';
+    ctx.font='700 14px system-ui';
+    ctx.textAlign='center';
+    ctx.fillText('Cuotas', cx, cy-2);
+    ctx.fillStyle='#6b7280';
+    ctx.font='12px system-ui';
+    ctx.fillText(parts.map(p=>p.value).reduce((a,b)=>a+b,0)+' total', cx, cy+16);
+
+    ctx.textAlign='left';
+    ctx.font='12px system-ui';
+    let lx=16, ly=16;
+    parts.forEach((p,idx)=>{
+      ctx.fillStyle=palette[idx%palette.length];
+      ctx.fillRect(lx, ly + idx*18, 10, 10);
+      ctx.fillStyle='#6b7280';
+      ctx.fillText(p.label + ' ('+p.value+')', lx + 16, ly + 9 + idx*18);
+    });
+  }
+  function drawStackedBars(canvas, labels, seriesA, seriesB, labelA, labelB){
+    const {ctx,w,h} = setupCanvas(canvas);
+    const pad=28;
+    clearChart(ctx,w,h); drawAxes(ctx,w,h,pad);
+    const maxV=Math.max(1, ...labels.map((_,i)=>seriesA[i]+seriesB[i]));
+    const n=labels.length;
+    const plotW=(w-pad*2);
+    const plotH=(h-pad*2);
+    const gap=plotW/n;
+    const barW=gap*0.55;
+
+    for (let i=0;i<n;i++){
+      const a=seriesA[i], b=seriesB[i];
+      const ha=Math.round((a/maxV)*plotH);
+      const hb=Math.round((b/maxV)*plotH);
+      const x=pad + i*gap + (gap-barW)/2;
+      const y0=(h-pad);
+      ctx.fillStyle='#4f46e5';
+      ctx.fillRect(x, y0 - ha, barW, ha);
+      ctx.fillStyle='#ef4444';
+      ctx.fillRect(x, y0 - ha - hb, barW, hb);
+    }
+    ctx.fillStyle='#6b7280';
+    ctx.font='12px system-ui';
+    ctx.textAlign='center';
+    labels.forEach((lab,i)=>{
+      const x=pad+i*gap+gap/2;
+      ctx.fillText(lab, x, h-10);
+    });
+    ctx.textAlign='left';
+    ctx.fillStyle='#4f46e5';
+    ctx.fillRect(pad, pad-14, 10, 10);
+    ctx.fillStyle='#6b7280';
+    ctx.fillText(labelA, pad+16, pad-5);
+    ctx.fillStyle='#ef4444';
+    ctx.fillRect(pad+110, pad-14, 10, 10);
+    ctx.fillStyle='#6b7280';
+    ctx.fillText(labelB, pad+126, pad-5);
+  }
+
+  function drawHomeCharts(){
+    const c1=document.getElementById('chartPayments');
+    if (c1){
+      drawBarChart(c1,
+        demo.charts.payments6m.map(x=>x.label),
+        demo.charts.payments6m.map(x=>x.value)
+      );
+    }
+    const c2=document.getElementById('chartStatus');
+    if (c2){
+      const paid=demo.payments.filter(p=>p.status==='paid').length;
+      const pending=demo.payments.filter(p=>p.status==='pending').length;
+      drawDonut(c2, [{label:'Pagadas', value:paid},{label:'Pendientes', value:pending}]);
+    }
+  }
+
+  function drawWithdrawalsChart(){
+    const c=document.getElementById('chartWithdrawals');
+    if (!c) return;
+    drawStackedBars(c,
+      demo.charts.withdrawals6m.map(x=>x.label),
+      demo.charts.withdrawals6m.map(x=>x.approved),
+      demo.charts.withdrawals6m.map(x=>x.rejected),
+      'Aprobadas','Rechazadas'
+    );
+  }
+
+  // ---------------- Init render ----------------
+  function showPayTab(which){
+    document.getElementById('pay-pending').style.display = (which==='pending')?'block':'none';
+    document.getElementById('pay-history').style.display = (which==='history')?'block':'none';
+    document.getElementById('tab-pay-pending').classList.toggle('active', which==='pending');
+    document.getElementById('tab-pay-history').classList.toggle('active', which==='history');
+  }
+
+  // Quick menu (header)
+  function toggleQuickMenu(){
+    const menu = document.getElementById('quickMenu');
+    const btn = document.getElementById('quickMenuBtn');
+    if (!menu || !btn) return;
+    const open = menu.classList.toggle('show');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  function closeQuickMenu(){
+    const menu = document.getElementById('quickMenu');
+    const btn = document.getElementById('quickMenuBtn');
+    if (!menu || !btn) return;
+    menu.classList.remove('show');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+
+  window.addEventListener('click', (e) => {
+    const menu = document.getElementById('quickMenu');
+    const btn = document.getElementById('quickMenuBtn');
+    if (!menu || !btn) return;
+    const inside = menu.contains(e.target) || btn.contains(e.target);
+    if (!inside) closeQuickMenu();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeQuickMenu();
+  });
+
+  function init(){
+    renderNotifications();
+    computeKPIs();
+    renderPaymentsTable();
+    renderReceipts();
+    renderHistory();
+    renderWithdrawals();
+    loadProfile();
+    drawHomeCharts();
+    drawWithdrawalsChart();
+  }
+
+  window.addEventListener('resize', () => {
+    drawHomeCharts();
+    drawWithdrawalsChart();
+  });
+
+  showKPI(0);
+  init();
+</script>
+
+</body>
+</html>
