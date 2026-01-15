@@ -3,482 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard Presidente | Cursapp</title>
-  <link rel="stylesheet" href="assets/styles.css">
-  <link rel="stylesheet" href="assets/mobile-fix.css">
-
-  <style>
-    /* TABBAR SAFE AREA FIX: evita que el menú inferior tape el contenido */
-    :root{ --tabbar-h: 96px; }
-    .container{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
-    .section{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
-  </style>
-
+  <title>Cursapp | Presidente</title>
 </head>
 <body>
 
-<header>
-  <div class="topbar">
-    <div class="brand">
-      <div class="logo">C</div>
-      <div style="min-width:0;">
-        <div class="brandTitle">Cursapp</div>
-        <div class="who" id="whoLine">Cargando…</div>
-      </div>
-    </div>
+<h1>Dashboard Presidente</h1>
+<p>Rol: Presidente del curso</p>
 
-    <div style="display:flex; align-items:center; gap:10px;">
-      <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">
-        ☰
-      </button>
-      <button class="btn" onclick="logout()">Cerrar sesión</button>
+<nav>
+  <ul>
+    <li>Inicio</li>
+    <li>Pagos del curso</li>
+    <li>Retiros</li>
+    <li>Tareas del curso</li>
+  </ul>
+</nav>
 
-      <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('tasks'); closeQuickMenu()">🗂️ Crear tarea</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Ver cuotas</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('history'); closeQuickMenu()">🧾 Historial</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Retiros</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){}; closeQuickMenu();">🗂️ Tareas del curso</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('profile'); closeQuickMenu()">👤 Mi perfil</button>
-      </div>
-    </div>
-
-  </div>
-</header>
-
-<div class="container">
-  <div class="row">
-    <div>
-      <h1 id="pageTitle">Inicio</h1>
-      <div class="muted" id="pageSubtitle">Resumen del presidente: finanzas del curso + creación de tareas de recaudación.</div>
-      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn primary" id="btnGoTasks" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){};">🗂️ Ir a tareas del curso</button>
-        <button class="btn ghost" onclick="goTo('payments'); showPaymentsScope && showPaymentsScope('all');">📊 Ver pagos del curso</button>
-      </div>
-      <div class="switcher" style="display:none;">
-        <span class="pill" id="rolePill">Rol: —</span>
-        <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- INICIO -->
-  <div id="sec-home" class="section active">
-    <div class="grid">
-      <!-- KPIs -->
-      <div class="kpiTabs">
-        <button class="kpiTab active" id="kpiTab0" onclick="showKPI(0)">📌 Pendientes</button>
-        <button class="kpiTab" id="kpiTab1" onclick="showKPI(1)">📅 Próxima</button>
-        <button class="kpiTab" id="kpiTab2" onclick="showKPI(2)">📈 Año</button>
-        <button class="kpiTab" id="kpiTab3" onclick="showKPI(3)">✅ Retiros</button>
-      </div>
-
-      <div class="kpiRow">
-
-      <div class="card span3 kpiCard" id="kpiCard0">
-        <div class="kpiTop">
-          <div class="kpiIcon">🧾</div>
-          <div>
-            <div class="kpiLabel">Cuotas pendientes</div>
-            <div class="kpiValue" id="kpiPendingCount">—</div>
-          </div>
-        </div>
-        <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
-      </div>
-
-      <div class="card span3 kpiCard" id="kpiCard1">
-        <div class="kpiTop">
-          <div class="kpiIcon">🗓️</div>
-          <div>
-            <div class="kpiLabel">Próxima cuota</div>
-            <div class="kpiValue" id="kpiNextDue">—</div>
-          </div>
-        </div>
-        <div class="sub"><span id="kpiNextDueSub">—</span></div>
-      </div>
-
-      <div class="card span3 kpiCard" id="kpiCard2">
-        <div class="kpiTop">
-          <div class="kpiIcon">💰</div>
-          <div>
-            <div class="kpiLabel">Pagado este año</div>
-            <div class="kpiValue" id="kpiPaidYTD">—</div>
-          </div>
-        </div>
-        <div class="sub">Incluye actividades (demo)</div>
-      </div>
-
-      <div class="card span3 kpiCard" id="kpiCard3">
-        <div class="kpiTop">
-          <div class="kpiIcon">🛡️</div>
-          <div>
-            <div class="kpiLabel">Retiros en votación</div>
-            <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
-          </div>
-        </div>
-        <div class="sub">Requiere 30% aprobación</div>
-      </div>
-
-      </div>
-      <!-- /KPIs -->
-
-      <!-- Collapsibles -->
-      <div class="span12" id="homePanels">
-        <details open>
-          <summary>
-            <span>Notificaciones</span>
-            <span class="pill" id="notifPill">—</span>
-          </summary>
-          <div class="detailsBody">
-            <table>
-              <thead><tr><th>Tipo</th><th>Mensaje</th><th>Fecha</th></tr></thead>
-              <tbody id="notifTable"></tbody>
-            </table>
-          </div>
-        </details>
-
-        <div style="height:12px;"></div>
-
-        <details open>
-          <summary>
-            <span>Gráficos de pagos y cuotas</span>
-            <span class="tag ok">Gráficos</span>
-          </summary>
-          <div class="detailsBody">
-            <div class="grid" style="margin-top:0;">
-              <div class="card span6" style="box-shadow:none;">
-                <div style="font-weight:950;">Pagos últimos 6 meses</div>
-                <div class="muted">Monto total pagado por mes (demo)</div>
-                <div class="chartWrap"><canvas id="chartPayments"></canvas></div>
-              </div>
-              <div class="card span6" style="box-shadow:none;">
-                <div style="font-weight:950;">Cuotas: pagadas vs pendientes</div>
-                <div class="muted">Distribución actual (demo)</div>
-                <div class="chartWrap"><canvas id="chartStatus"></canvas></div>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        
-        <div style="height:12px;"></div>
-        <details open>
-          <summary>
-            <span>Tareas del curso</span>
-            <span class="tag ok">Presidente</span>
-          </summary>
-          <div class="detailsBody">
-            <div class="muted" style="margin-bottom:10px;">Crea tareas de recaudación para el curso (demo).</div>
-            <form id="taskForm" class="twoCols" style="gap:10px;">
-              <div>
-                <div class="kpiLabel">Nombre</div>
-                <input id="taskName" placeholder="Ej: Paseo de curso" required />
-              </div>
-              <div>
-                <div class="kpiLabel">Monto</div>
-                <input id="taskAmount" type="number" min="1" placeholder="Ej: 10000" required />
-              </div>
-              <div>
-                <div class="kpiLabel">Fecha límite</div>
-                <input id="taskDue" type="date" required />
-              </div>
-              <div style="display:flex; align-items:flex-end;">
-                <button class="btn primary" type="submit">Crear tarea</button>
-              </div>
-            </form>
-            <div class="hr"></div>
-            <table>
-              <thead><tr><th>Tarea</th><th>Monto</th><th>Límite</th><th></th></tr></thead>
-              <tbody id="tasksTbody"></tbody>
-            </table>
-          </div>
-        </details>
-
-
-      </div>
-    </div>
-  </div>
-
-  <!-- PAGOS -->
-  <div id="sec-payments" class="section">
-
-    
-  <details open>
-    <summary>
-      <span>Pagos del curso (visión general)</span>
-      <span class="tag ok">Tesorero</span>
-    </summary>
-    <div class="detailsBody">
-      <div class="muted" style="margin-bottom:10px;">Totales y detalle por apoderado (demo).</div>
-      <table>
-        <thead><tr><th>Apoderado</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
-        <tbody id="coursePaymentsTbody"></tbody>
-      </table>
-    </div>
-  </details>
-  <div style="height:12px;"></div>
-
-
-    <div class="segmented" style="margin-bottom:12px;">
-      <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas pendientes</button>
-      <button id="tab-pay-history" onclick="showPayTab('history')">Historial de pagos</button>
-    </div>
-
-    <div class="grid">
-      <div class="card span8" id="pay-pending">
-        <div class="row">
-          <div>
-            <div style="font-weight:950;">Mis cuotas</div>
-            <div class="muted">Filtra y paga tus cuotas pendientes</div>
-          </div>
-          <button class="btn primary" onclick="openPayModal()">Pagar ahora</button>
-        </div>
-
-        <div class="segmented" role="tablist" aria-label="Filtro cuotas">
-          <button id="f-all" class="active" onclick="setPaymentFilter('all')">Todas</button>
-          <button id="f-pending" onclick="setPaymentFilter('pending')">Pendientes</button>
-          <button id="f-paid" onclick="setPaymentFilter('paid')">Pagadas</button>
-        </div>
-
-        <table>
-          <thead><tr><th>Concepto</th><th>Vence</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="paymentsTable"></tbody>
-        </table>
-
-        <div class="note">Demo: el pago muestra un comprobante simulado.</div>
-      </div>
-
-      <div class="card span4">
-        <div style="font-weight:950;">Comprobantes recientes</div>
-        <div class="muted">Acceso rápido (demo)</div>
-        <table>
-          <thead><tr><th>Fecha</th><th>Detalle</th></tr></thead>
-          <tbody id="receiptsTable"></tbody>
-        </table>
-      </div>
-
-      <div class="span12" id="pay-history" style="display:none;">
-        <details>
-          <summary>
-            <span>Historial de pagos</span>
-            <span class="pill">Demo</span>
-          </summary>
-          <div class="detailsBody">
-            <table>
-              <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr></thead>
-              <tbody id="historyTable"></tbody>
-            </table>
-          </div>
-        </details>
-      </div>
-    </div>
-  </div>
-
-  <!-- RETIROS -->
-  <div id="sec-withdrawals" class="section">
-    <div class="grid">
-
-      
-      <div class="card span4">
-        <div style="font-weight:950;">Solicitar retiro</div>
-        <div class="muted">Crea una solicitud para votación del curso</div>
-        <div class="hr"></div>
-        <form id="withdrawRequestForm">
-          <div class="kpiLabel">Monto</div>
-          <input id="wrAmount" type="number" min="1" placeholder="Ej: 25000" required />
-          <div class="kpiLabel" style="margin-top:10px;">Motivo</div>
-          <input id="wrReason" type="text" placeholder="Ej: Materiales sala" required />
-          <div style="margin-top:12px; display:flex; gap:10px;">
-            <button class="btn primary" type="submit">Enviar a votación</button>
-            <button class="btn ghost" type="button" onclick="demoSeedWithdrawals()">Demo</button>
-          </div>
-        </form>
-        <div class="note" style="margin-top:10px;">
-          Umbral: <b id="withdrawThresholdLabel">—</b> aprobaciones (30%).
-        </div>
-      </div>
-
-
-      <div class="card span8" id="withdraw-pending">
-        <div class="row">
-          <div>
-            <div style="font-weight:950;">Retiros (votación)</div>
-            <div class="muted">Se aprueba al alcanzar 30% de apoderados del curso</div>
-          </div>
-          <span class="pill" id="withdrawCountPill">—</span>
-        </div>
-
-        <table>
-          <thead><tr><th>Solicitud</th><th>Monto</th><th>Motivo</th><th>Progreso</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="withdrawalsTable"></tbody>
-        </table>
-
-        <div class="note">
-          Demo: puedes simular aprobaciones para probar la regla del 30%.
-        </div>
-      </div>
-
-      <div class="card span4">
-        <div style="font-weight:950;">Política del curso</div>
-        <div class="muted">Vista informativa (demo)</div>
-        <div class="hr"></div>
-        <div class="note">
-          • Solicitudes deben anunciarse con anticipación.<br/>
-          • Autorizaciones quedan registradas.<br/>
-          • Se ejecuta al alcanzar 30% de aprobación.
-        </div>
-      </div>
-
-      <div class="span12" id="withdraw-history" style="display:none;">
-        <details>
-          <summary>
-            <span>Gráfico de autorizaciones</span>
-            <span class="tag ok">Gráfico</span>
-          </summary>
-          <div class="detailsBody">
-            <div class="chartWrap"><canvas id="chartWithdrawals"></canvas></div>
-          </div>
-        </details>
-      </div>
-    </div>
-  </div>
-
-  
-  <!-- TAREAS DEL CURSO -->
-  <div id="sec-tasks" class="section">
-    <div class="grid">
-      <div class="card span6">
-        <div style="font-weight:950;">Crear tarea de recaudación</div>
-        <div class="muted">Visible solo para Presidente</div>
-        <div class="hr"></div>
-
-        <form id="taskForm">
-          <div class="kpiLabel">Nombre</div>
-          <input id="taskName" placeholder="Ej: Paseo de curso" required />
-
-          <div class="kpiLabel" style="margin-top:10px;">Monto</div>
-          <input id="taskAmount" type="number" min="1" placeholder="Ej: 10000" required />
-
-          <div class="kpiLabel" style="margin-top:10px;">Fecha límite</div>
-          <input id="taskDue" type="date" required />
-
-          <div class="actions" style="margin-top:12px;">
-            <button class="action primary" type="submit">Crear tarea</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card span6">
-        <div style="font-weight:950;">Tareas creadas</div>
-        <table>
-          <thead><tr><th>Nombre</th><th>Monto</th><th>Fecha</th></tr></thead>
-          <tbody id="tasksTbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- PERFIL -->
-        
-  <div id="sec-profile" class="section">
-    <div class="grid">
-      <div class="card span6">
-        <div style="font-weight:950;">Mi perfil</div>
-        <div class="muted">Datos visibles para la demo</div>
-
-        <div class="twoCols" style="margin-top:6px;">
-          <div><div class="kpiLabel">Nombre</div><input id="pName" /></div>
-          <div><div class="kpiLabel">Rol</div><input id="pRole" disabled /></div>
-        </div>
-
-        <div class="twoCols">
-          <div><div class="kpiLabel">Correo</div><input id="pEmail" /></div>
-          <div><div class="kpiLabel">Celular</div><input id="pPhone" /></div>
-        </div>
-
-        <div class="twoCols">
-          <div><div class="kpiLabel">Colegio</div><input id="pSchool" disabled /></div>
-          <div><div class="kpiLabel">Curso</div><input id="pCourse" disabled /></div>
-        </div>
-
-        <div class="actions">
-          <button class="action primary" onclick="saveProfile()">Guardar (demo)</button>
-          <button class="action" onclick="alert('Demo: abrir soporte')">Soporte</button>
-        </div>
-
-        <div class="note">
-          En producción, cambios sensibles requieren verificación y auditoría.
-        </div>
-      </div>
-
-      <div class="card span6">
-        <div style="font-weight:950;">Seguridad</div>
-        <div class="muted">Recomendaciones (demo)</div>
-        <div class="hr"></div>
-
-        <div class="note">
-          ✅ Sesión demo en <code>localStorage</code><br/>
-          🔒 OTP para autorizar retiros (simulado)<br/>
-          🧾 Auditoría: quién autorizó y cuándo
-        </div>
-
-        <div class="actions">
-          <button class="action" onclick="alert('Demo: activar 2FA permanente')">Activar 2FA</button>
-          <button class="action danger" onclick="logout()">Cerrar sesión</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL GENÉRICO -->
-<div id="modalBackdrop" class="backdrop" onclick="closeModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modalHeader">
-      <div class="modalTitle" id="modalTitle">—</div>
-      <button class="btn" onclick="closeModal()">Cerrar</button>
-    </div>
-    <div class="modalBody" id="modalBody"></div>
-    <div class="modalActions" id="modalActions"></div>
-  </div>
-</div>
-
-<!-- TAB BAR -->
-<div class="tabbar">
-  <div class="tabbarInner">
-    <button class="tab active" id="tab-home" onclick="goTo('home')"><div class="ico">🏠</div><div>Inicio</div></button>
-    <button class="tab" id="tab-payments" onclick="goTo('payments')"><div class="ico">💳</div><div>Pagos</div></button>
-    <button class="tab" id="tab-withdrawals" onclick="goTo('withdrawals')"><div class="ico">✅</div><div>Retiros</div></button>
-    
-    <button class="tab" id="tab-tasks" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){}"><div class="ico">📌</div><div>Tareas</div></button>
-
-    <button class="tab" id="tab-profile" onclick="goTo('profile')"><div class="ico">👤</div><div>Perfil</div></button>
-  </div>
-</div>
-
-<script>window.cursappRole = "Presidente";</script>
-<script src="assets/demoData-tesorero.js"></script>
-<script src="assets/app.js"></script>
+<section>
+  <h2>Tareas del curso</h2>
+  <p>Aquí el presidente puede crear tareas de recaudación.</p>
+</section>
 
 
 <script>
+/* ============================
+   Cursapp Patch: Presidente
+   - Guardar tareas como catálogo global
+   - Generar cobros para todos los apoderados
+   ============================ */
 (function(){
-  // ====== Helpers
-  const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
-  const todayISO = ()=> new Date().toISOString().slice(0,10);
-
-  // ====== User/course demo context
-  const user = (()=>{
-    try { return JSON.parse(localStorage.getItem('cursapp_demo_user')||'null'); } catch(e){ return null; }
-  })();
-  const totalGuardians = Number(user?.totalGuardians || user?.guardiansCount || 40); // fallback demo
-  const threshold = Math.ceil(totalGuardians * 0.30);
-
-  // label umbral
-  const tLabel = document.getElementById('withdrawThresholdLabel');
-  if (tLabel) tLabel.textContent = `${threshold} de ${totalGuardians}`;
-
-  // ====== Pagos del curso (localStorage demo)
+  const LS_TASKS = 'cursapp_tasks_v1';
   const LS_PAY = 'cursapp_course_payments_v1';
   const LS_ROSTER = 'cursapp_guardians_roster_v1';
 
@@ -488,188 +42,51 @@
   function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
   function ensureRoster(){
-    let roster = loadJSON(LS_ROSTER, null);
-    if (!Array.isArray(roster) || roster.length === 0){
-      roster = [
-        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
-        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
-      ];
-      saveJSON(LS_ROSTER, roster);
+    let r = loadJSON(LS_ROSTER, null);
+    if (!Array.isArray(r) || r.length === 0){
+      r = ['Apoderado Demo'];
+      saveJSON(LS_ROSTER, r);
     }
-    return roster;
+    return r;
   }
 
-  function ensureCoursePayments(){
-    let rows = loadJSON(LS_PAY, null);
-    if (!Array.isArray(rows) || rows.length === 0){
-      const roster = ensureRoster();
-      // seed: una cuota + una actividad
-      rows = [
-        { name: roster[0], concept:'Cuota Marzo', amount:10000, status:'paid', date:'2026-01-10' },
-        { name: roster[1], concept:'Cuota Marzo', amount:10000, status:'pending', date:'-' },
-        { name: roster[2], concept:'Actividad', amount:5000, status:'paid', date:'2026-01-11' },
-        { name: roster[3], concept:'Actividad', amount:5000, status:'pending', date:'-' }
-      ];
-      saveJSON(LS_PAY, rows);
-    }
-    return rows;
-  }
+  window.__createTaskAndPayments = function(name, amount, due){
+    // 1) Save task catalog
+    const tasks = loadJSON(LS_TASKS, []);
+    tasks.unshift({ id:'t_'+Math.random().toString(16).slice(2,8), name, amount:Number(amount), due });
+    saveJSON(LS_TASKS, tasks);
 
-  function renderCoursePayments(){
-    const cpTbody = document.getElementById('coursePaymentsTbody');
-    if (!cpTbody) return;
-    const rows = ensureCoursePayments();
-    cpTbody.innerHTML = rows.map(p=>`
-      <tr>
-        <td>${p.name}</td>
-        <td>${p.concept}</td>
-        <td>${money(p.amount)}</td>
-        <td>${p.status === 'paid' ? 'Pagado' : 'Pendiente'}</td>
-      </tr>
-    `).join('');
-  }
-  renderCoursePayments();
+    // 2) Generate payments for all guardians
+    const roster = ensureRoster();
+    const pays = loadJSON(LS_PAY, []);
+    const today = new Date().toISOString().slice(0,10);
 
-  // ====== Retiros con votación 30% (persistente en localStorage)
-  const LS_KEY = 'cursapp_withdrawals_v2';
-  const load = ()=>{
-    try { return JSON.parse(localStorage.getItem(LS_KEY)||'[]'); } catch(e){ return []; }
-  };
-  const save = (arr)=> localStorage.setItem(LS_KEY, JSON.stringify(arr));
-
-  const seedIfEmpty = ()=>{
-    const arr = load();
-    if (arr.length) return arr;
-    const demo = [{
-      id: 'w_' + Date.now(),
-      createdAt: todayISO(),
-      amount: 25000,
-      reason: 'Materiales sala',
-      approvals: 8,  // demo
-      status: 'En votación'
-    }];
-    save(demo);
-    return demo;
-  };
-
-  window.demoSeedWithdrawals = function(){
-    seedIfEmpty();
-    renderWithdrawals();
-    alert('Demo: se cargó 1 retiro en votación.');
-  };
-
-  function statusFromApprovals(approvals){
-    return approvals >= threshold ? 'Aprobado' : 'En votación';
-  }
-
-  function renderWithdrawals(){
-    // IMPORTANTE: esto puede sobrescribir lo que pinte app.js, pero es la intención del tesorero v2.
-    const tbody = document.getElementById('withdrawalsTable');
-    if (!tbody) return;
-
-    const arr = load();
-    tbody.innerHTML = arr.map(w=>{
-      const st = statusFromApprovals(w.approvals);
-      const prog = `${w.approvals}/${totalGuardians} · umbral ${threshold}`;
-      return `
-        <tr>
-          <td>${w.createdAt}</td>
-          <td>${money(w.amount)}</td>
-          <td>${w.reason}</td>
-          <td>${prog}</td>
-          <td>${st}</td>
-          <td style="white-space:nowrap; display:flex; gap:8px;">
-            <button class="btn ghost" onclick="simulateApprove('${w.id}')">+1</button>
-            <button class="btn" onclick="removeWithdrawal('${w.id}')">Eliminar</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const pill = document.getElementById('withdrawCountPill');
-    if (pill) pill.textContent = `${arr.length} activos`;
-
-    // KPI (reusa el id existente para no romper app.js)
-    const kpi = document.getElementById('kpiWithdrawToApprove');
-    if (kpi){
-      const votingCount = arr.filter(w=>statusFromApprovals(w.approvals)==='En votación').length;
-      kpi.textContent = votingCount;
-    }
-  }
-
-  window.simulateApprove = function(id){
-    const arr = load();
-    const w = arr.find(x=>x.id===id);
-    if (!w) return;
-    w.approvals = Number(w.approvals||0) + 1;
-    w.status = statusFromApprovals(w.approvals);
-    save(arr);
-    renderWithdrawals();
-  };
-
-  window.removeWithdrawal = function(id){
-    const arr = load().filter(x=>x.id!==id);
-    save(arr);
-    renderWithdrawals();
-  };
-
-  // Crear solicitud
-  const form = document.getElementById('withdrawRequestForm');
-  if (form){
-    form.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const amount = Number(document.getElementById('wrAmount')?.value || 0);
-      const reason = (document.getElementById('wrReason')?.value || '').trim();
-      if (!amount || !reason) return;
-
-      const arr = load();
-      arr.unshift({
-        id: 'w_' + Math.random().toString(16).slice(2),
-        createdAt: todayISO(),
-        amount,
-        reason,
-        approvals: 0,
-        status: 'En votación'
+    roster.forEach(guardian => {
+      pays.unshift({
+        type:'task',
+        name: guardian,
+        concept: name,
+        amount:Number(amount),
+        status:'pending',
+        date:'-',
+        createdAt: today
       });
-      save(arr);
-      form.reset();
-      renderWithdrawals();
-      // salto a sección retiros
-      try{ window.goTo && window.goTo('withdrawals'); }catch(e){}
     });
-  }
-
-  // Render inicial (después de app.js)
-  setTimeout(()=>{
-    // render inicial
-    renderWithdrawals();
-    renderCoursePayments();
-  }, 0);
-
-  // refrescar al entrar a Pagos
-  const _goTo = window.goTo;
-  if (typeof _goTo === 'function'){
-    window.goTo = function(id){
-      _goTo(id);
-      if (id === 'payments') renderCoursePayments();
-      if (id === 'tasks'){
-        document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-        const t = document.getElementById('sec-tasks');
-        if (t) t.classList.add('active');
-      }
-    };
-    window.goTo = function(id){
-      _goTo(id);
-      if (id === 'payments') renderCoursePayments();
-    };
-  }
-
+    saveJSON(LS_PAY, pays);
+  };
 })();
 </script>
 
+
 <script>
+/* ============================
+   FINAL PATCH (Presidente)
+   Garantiza:
+   - Tareas en cursapp_tasks_v1 (catálogo)
+   - Cobros por tarea en cursapp_course_payments_v1 con type:"task"
+   ============================ */
 (function(){
-  const LS_KEY = 'cursapp_tasks_v1';
+  const LS_TASKS = 'cursapp_tasks_v1';
   const LS_PAY = 'cursapp_course_payments_v1';
   const LS_ROSTER = 'cursapp_guardians_roster_v1';
 
@@ -697,165 +114,60 @@
     return rows;
   }
 
-  function addTaskPayments(task){
-    // Crea una fila por apoderado: estado pendiente (demo)
+  function ensureTasks(){
+    let tasks = loadJSON(LS_TASKS, null);
+    if (!Array.isArray(tasks)) tasks = [];
+    saveJSON(LS_TASKS, tasks);
+    return tasks;
+  }
+
+  function normalizeTaskPayments(){
+    const tasks = ensureTasks();
+    if (!tasks.length) return;
+
     const roster = ensureRoster();
     const rows = ensurePayments();
-
     const today = new Date().toISOString().slice(0,10);
-    roster.forEach((name, idx) => {
-      // demo: algunos ya pagan para que se vea movimiento
-      const paid = (idx % 7 === 0); // ~14%
-      rows.unshift({
-        name,
-        concept: task.name,
-        amount: task.amount,
-        status: paid ? 'paid' : 'pending',
-        date: paid ? today : '-'
+
+    tasks.forEach(task => {
+      const taskName = task.name || task.nombre || task.title;
+      const amount = Number(task.amount || task.monto || 0);
+      if (!taskName || !amount) return;
+
+      roster.forEach((guardianName, idx) => {
+        const exists = rows.some(r =>
+          r.type === 'task' &&
+          r.concept === taskName &&
+          r.name === guardianName
+        );
+        if (exists) return;
+
+        rows.unshift({
+          type: 'task',
+          name: guardianName,
+          concept: taskName,
+          amount: amount,
+          status: 'pending',
+          date: '-',
+          createdAt: today
+        });
       });
     });
 
     saveJSON(LS_PAY, rows);
   }
 
-  const load = ()=>{ try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch(e){return [];} };
-  const save = (arr)=> localStorage.setItem(LS_KEY, JSON.stringify(arr));
-  const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
+  // Re-normaliza al cargar
+  normalizeTaskPayments();
 
-  function render(){
-    const tbody = document.getElementById('tasksTbody');
-    if (!tbody) return;
-    const arr = load();
-    tbody.innerHTML = arr.length ? arr.map(t=>`
-      <tr>
-        <td>${t.name}</td>
-        <td>${money(t.amount)}</td>
-        <td>${t.due}</td>
-        <td><button class="btn ghost" onclick="deleteTask('${t.id}')">Eliminar</button></td>
-      </tr>
-    `).join('') : `<tr><td colspan="4" class="muted">Aún no hay tareas creadas.</td></tr>`;
-  }
-
-  window.deleteTask = function(id){
-    save(load().filter(x=>x.id!==id));
-    render();
-  };
-
+  // Re-normaliza después de crear tarea (escuchando submit en captura, luego dejamos que handler existente haga lo suyo)
   const form = document.getElementById('taskForm');
   if (form){
-    form.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const name = (document.getElementById('taskName')?.value||'').trim();
-      const amount = Number(document.getElementById('taskAmount')?.value||0);
-      const due = document.getElementById('taskDue')?.value||'';
-      if (!name || !amount || !due) return;
-      const arr = load();
-      arr.unshift({ id:'t_'+Math.random().toString(16).slice(2), name, amount, due });
-      save(arr);
-
-      // Conectar tarea → pagos del curso (demo)
-      addTaskPayments({ name, amount, due });
-
-      form.reset();
-      render();
-      alert('Tarea creada y cobros generados (demo).');
-    });
+    form.addEventListener('submit', function(){
+      // esperamos a que el handler original guarde la tarea
+      setTimeout(normalizeTaskPayments, 0);
+    }, true);
   }
-
-  setTimeout(render, 0);
-})();
-</script>
-
-
-
-<script>
-/* ============================
-   Cursapp Patch: Tareas -> Pagos del curso
-   ============================ */
-(function(){
-  const LS_TASKS = 'cursapp_tasks_v1';
-  const LS_COURSE_PAYMENTS = 'cursapp_course_payments_v2';
-  const LS_USER = 'cursapp_demo_user';
-
-  const user = (()=>{
-    try { return JSON.parse(localStorage.getItem(LS_USER)||'null'); } catch(e){ return null; }
-  })();
-
-  const guardians = Number(user?.totalGuardians || user?.guardiansCount || 40);
-
-  function read(key, fb){
-    try { return JSON.parse(localStorage.getItem(key)||'null') ?? fb; } catch(e){ return fb; }
-  }
-  function write(key, val){
-    localStorage.setItem(key, JSON.stringify(val));
-  }
-
-  function money(n){
-    try { return '$' + Number(n).toLocaleString('es-CL'); } catch(e){ return '$' + n; }
-  }
-
-  // Ensure payments store
-  function ensurePayments(){
-    let p = read(LS_COURSE_PAYMENTS, null);
-    if (!Array.isArray(p)) p = [];
-    write(LS_COURSE_PAYMENTS, p);
-    return p;
-  }
-
-  // When a task is created, generate payments
-  function syncTasksToPayments(){
-    const tasks = read(LS_TASKS, []);
-    let payments = ensurePayments();
-
-    tasks.forEach(t => {
-      const exists = payments.some(p => p.taskId === t.id);
-      if (!exists){
-        payments.push({
-          taskId: t.id,
-          concept: t.name,
-          amount: t.amount,
-          due: t.due,
-          totalGuardians: guardians,
-          paidCount: 0,
-          status: 'Pendiente'
-        });
-      }
-    });
-
-    write(LS_COURSE_PAYMENTS, payments);
-  }
-
-  // Render in Pagos del curso table if exists
-  function renderCoursePayments(){
-    const tbody = document.getElementById('coursePaymentsTbody');
-    if (!tbody) return;
-
-    const payments = ensurePayments();
-    tbody.innerHTML = payments.map(p => `
-      <tr>
-        <td>Curso completo</td>
-        <td>${p.concept}</td>
-        <td>${money(p.amount)}</td>
-        <td>${p.paidCount}/${p.totalGuardians}</td>
-      </tr>
-    `).join('');
-  }
-
-  // Hook into task creation (Presidente)
-  const taskForm = document.getElementById('taskForm');
-  if (taskForm){
-    taskForm.addEventListener('submit', ()=>{
-      setTimeout(()=>{
-        syncTasksToPayments();
-        renderCoursePayments();
-      }, 0);
-    });
-  }
-
-  // Initial sync
-  syncTasksToPayments();
-  renderCoursePayments();
-
 })();
 </script>
 
