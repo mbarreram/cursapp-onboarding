@@ -6,10 +6,13 @@
   <title>Login | Cursapp</title>
   <link rel="stylesheet" href="assets/styles.css">
   <style>
-    .loginWrap{ max-width:520px; margin:0 auto; padding:24px 16px 120px; }
-    .loginCard{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:18px; }
+    .wrap{ max-width:520px; margin:0 auto; padding:24px 16px 120px; }
+    .card{ background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:18px; }
     .logoBig{ width:56px; height:56px; border-radius:16px; background:var(--primary); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:950; font-size:22px; }
-    .fieldLabel{ font-size:12px; color:var(--muted); font-weight:800; margin-top:12px; }
+    .label{ font-size:12px; color:var(--muted); font-weight:900; margin-top:12px; }
+    .hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.35; }
+    .demoBox{ margin-top:12px; padding:12px; border:1px dashed var(--border); border-radius:14px; background:#fafafa; }
+    code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body>
@@ -19,77 +22,100 @@
         <div class="logo">C</div>
         <div style="min-width:0;">
           <div class="brandTitle">Cursapp</div>
-          <div class="who">Acceso demo</div>
+          <div class="who">Acceso</div>
         </div>
       </div>
     </div>
   </header>
 
-  <div class="loginWrap">
-    <div class="loginCard">
+  <div class="wrap">
+    <div class="card">
       <div style="display:flex; align-items:center; gap:12px;">
         <div class="logoBig">C</div>
         <div>
           <div style="font-weight:950; font-size:18px;">Iniciar sesión</div>
-          <div class="muted">Demo local (localStorage)</div>
+          <div class="muted">Usuario y contraseña</div>
         </div>
       </div>
 
-      <div class="fieldLabel">Rol</div>
-      <select id="role">
-        <option value="Apoderado">Apoderado</option>
-        <option value="Tesorero">Tesorero</option>
-        <option value="Admin">Admin</option>
-      </select>
+      <div class="label">Usuario</div>
+      <input id="username" placeholder="correo@demo.cl" inputmode="email" autocomplete="username" />
 
-      <div class="fieldLabel">Nombre</div>
-      <input id="name" placeholder="Ej: Mauricio" />
+      <div class="label">Password</div>
+      <input id="password" type="password" placeholder="••••••" autocomplete="current-password" />
 
-      <div class="fieldLabel">Correo</div>
-      <input id="email" placeholder="demo@cursapp.cl" inputmode="email" />
-
-      <div class="fieldLabel">Curso</div>
-      <input id="course" placeholder="2° Básico A" />
-
-      <div class="fieldLabel">Colegio</div>
-      <input id="school" placeholder="Colegio Demo" />
+      <div id="msg" style="margin-top:10px;"></div>
 
       <div class="actions" style="margin-top:14px;">
         <button class="action primary" onclick="login()">Entrar</button>
-        <button class="action" onclick="fillDemo()">Autocompletar</button>
+        <button class="action" onclick="fill('apoderado')">Apoderado</button>
+        <button class="action" onclick="fill('tesorero')">Tesorero</button>
+        <button class="action" onclick="fill('admin')">Admin</button>
       </div>
 
-      <div class="note">Al entrar se guardará una sesión demo en <code>localStorage</code>.</div>
+      <div class="demoBox">
+        <div style="font-weight:900;">Credenciales demo</div>
+        <div class="hint">
+          Apoderado: <code>apoderado@demo.cl</code> / <code>demo</code><br/>
+          Tesorero: <code>tesorero@demo.cl</code> / <code>demo</code><br/>
+          Admin: <code>admin@demo.cl</code> / <code>demo</code>
+        </div>
+      </div>
+
+      <div class="hint">Luego de autenticar, si falta onboarding te enviará a <code>onboarding.html</code>.</div>
     </div>
   </div>
 
 <script>
-  function fillDemo(){
-    document.getElementById('role').value = 'Apoderado';
-    document.getElementById('name').value = 'Mauricio (Demo)';
-    document.getElementById('email').value = 'demo@cursapp.cl';
-    document.getElementById('course').value = '2° Básico A';
-    document.getElementById('school').value = 'Colegio Demo';
+  function roleFromUser(u){
+    const s = (u || '').toLowerCase();
+    if (s.includes('tesorero')) return 'Tesorero';
+    if (s.includes('admin')) return 'Admin';
+    return 'Apoderado';
   }
 
-  function routeByRole(role){
-    if (role === 'Tesorero') return 'dashboard-tesorero.html';
-    if (role === 'Admin') return 'dashboard-admin.html';
-    return 'dashboard-apoderado.html';
+  function fill(kind){
+    if (kind==='tesorero') document.getElementById('username').value = 'tesorero@demo.cl';
+    else if (kind==='admin') document.getElementById('username').value = 'admin@demo.cl';
+    else document.getElementById('username').value = 'apoderado@demo.cl';
+    document.getElementById('password').value = 'demo';
   }
 
   function login(){
-    const role = document.getElementById('role').value || 'Apoderado';
+    const u = (document.getElementById('username').value || '').trim();
+    const p = (document.getElementById('password').value || '').trim();
+    const msg = document.getElementById('msg');
+    msg.innerHTML = '';
+
+    // Demo auth rules
+    const allowed = ['apoderado@demo.cl','tesorero@demo.cl','admin@demo.cl'];
+    if (!u || !p){
+      msg.innerHTML = '<div class="error">Ingresa usuario y password.</div>';
+      return;
+    }
+    if (!allowed.includes(u.toLowerCase()) || p !== 'demo'){
+      msg.innerHTML = '<div class="error">Usuario o contraseña incorrectos (demo).</div>';
+      return;
+    }
+
+    const role = roleFromUser(u);
     const user = {
       role,
-      name: (document.getElementById('name').value || '').trim() || 'Mauricio (Demo)',
-      email: (document.getElementById('email').value || '').trim() || 'demo@cursapp.cl',
-      course: (document.getElementById('course').value || '').trim() || '2° Básico A',
-      school: (document.getElementById('school').value || '').trim() || 'Colegio Demo'
+      name: role + ' (Demo)',
+      email: u.toLowerCase()
     };
+
+    // Reset onboarding fields on each login (so onboarding is visible after login)
+    delete user.school; delete user.course; delete user.studentName; delete user.termsAccepted;
+
     localStorage.setItem('cursapp_demo_user', JSON.stringify(user));
-    window.location.href = routeByRole(role);
+    window.location.href = 'onboarding.html';
   }
+
+  // Enter key submits
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter') login();
+  });
 </script>
 </body>
 </html>

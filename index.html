@@ -12,10 +12,18 @@
     if (role === 'Admin') return 'dashboard-admin.html';
     return 'dashboard-apoderado.html';
   }
+  function needsOnboarding(u){
+    if (!u) return true;
+    if (!u.school || !u.course) return true;
+    if (u.role === 'Apoderado' && !u.studentName) return true;
+    if (!u.termsAccepted) return true;
+    return false;
+  }
   try{
     const u = JSON.parse(localStorage.getItem('cursapp_demo_user') || 'null');
     if (u && u.email){
-      window.location.replace(routeByRole(u.role));
+      if (needsOnboarding(u)) window.location.replace('onboarding.html');
+      else window.location.replace(routeByRole(u.role));
     } else {
       window.location.replace('login.html');
     }
