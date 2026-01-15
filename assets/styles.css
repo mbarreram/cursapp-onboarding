@@ -256,3 +256,21 @@
       box-shadow:0 10px 30px rgba(0,0,0,.12);
       padding:10px;
     }
+
+
+/* --- FIX: Home KPI layout should span full width (avoid sidebar look) --- */
+.kpiTabs{ grid-column: span 12; width:100%; }
+.kpiRow{ grid-column: span 12; width:100%; }
+
+@media (max-width: 600px){
+  .kpiTabs{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    flex-wrap:nowrap;
+    gap:10px;
+    padding-bottom:6px;
+  }
+  .kpiTab{ white-space:nowrap; }
+}
+/* --- END FIX --- */
+
