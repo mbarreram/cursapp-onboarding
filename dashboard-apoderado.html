@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Dashboard Apoderado | Cursapp</title>
   <link rel="stylesheet" href="assets/styles.css">
+
   <style>
     /* TABBAR SAFE AREA FIX: evita que el menú inferior tape el contenido */
     :root{ --tabbar-h: 96px; }
     .container{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
     .section{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   </style>
+
 </head>
 <body>
 
@@ -25,16 +27,21 @@
     </div>
 
     <div style="display:flex; align-items:center; gap:10px;">
-      <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">☰</button>
+      <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">
+        ☰
+      </button>
       <button class="btn" onclick="logout()">Cerrar sesión</button>
 
       <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Ver cuotas</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Pagar cuota</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('history'); closeQuickMenu()">🧾 Historial</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showTaskTab(); closeQuickMenu()">📌 Tareas del curso</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Votar retiros</button>
+        
         <button class="quickMenuItem" role="menuitem" onclick="goTo('profile'); closeQuickMenu()">👤 Mi perfil</button>
       </div>
     </div>
+
   </div>
 </header>
 
@@ -42,11 +49,10 @@
   <div class="row">
     <div>
       <h1 id="pageTitle">Inicio</h1>
-      <div class="muted" id="pageSubtitle">Resumen del apoderado: cuotas y tareas del curso.</div>
-
-      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn primary" onclick="goTo('payments'); showTaskTab();">📌 Ver tareas del curso</button>
-        <button class="btn ghost" onclick="goTo('withdrawals');">✅ Votar retiros</button>
+      <div class="muted" id="pageSubtitle">Resumen del apoderado: mis cuotas, tareas del curso y votaciones de retiro.</div>
+      <div class="switcher" style="display:none;">
+        <span class="pill" id="rolePill">Rol: —</span>
+        <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
       </div>
     </div>
   </div>
@@ -54,28 +60,118 @@
   <!-- INICIO -->
   <div id="sec-home" class="section active">
     <div class="grid">
-      <div class="card span6">
-        <div style="font-weight:950;">Mis tareas pendientes</div>
-        <div class="muted">Tareas creadas por el presidente (demo)</div>
-        <div class="hr"></div>
-        <div id="homeTasksMini"></div>
+      <!-- KPIs -->
+      <div class="kpiTabs">
+        <button class="kpiTab active" id="kpiTab0" onclick="showKPI(0)">📌 Pendientes</button>
+        <button class="kpiTab" id="kpiTab1" onclick="showKPI(1)">📅 Próxima</button>
+        <button class="kpiTab" id="kpiTab2" onclick="showKPI(2)">📈 Año</button>
+        <button class="kpiTab" id="kpiTab3" onclick="showKPI(3)">✅ Votar retiros</button>
       </div>
 
-      <div class="card span6">
-        <div style="font-weight:950;">Retiros en votación</div>
-        <div class="muted">Aprueba o revisa progreso (demo)</div>
-        <div class="hr"></div>
-        <div id="homeWithdrawMini"></div>
+      <div class="kpiRow">
+
+      <div class="card span3 kpiCard" id="kpiCard0">
+        <div class="kpiTop">
+          <div class="kpiIcon">🧾</div>
+          <div>
+            <div class="kpiLabel">Cuotas pendientes</div>
+            <div class="kpiValue" id="kpiPendingCount">—</div>
+          </div>
+        </div>
+        <div class="sub">Total a pagar: <b id="kpiPendingTotal">—</b></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard1">
+        <div class="kpiTop">
+          <div class="kpiIcon">🗓️</div>
+          <div>
+            <div class="kpiLabel">Próxima cuota</div>
+            <div class="kpiValue" id="kpiNextDue">—</div>
+          </div>
+        </div>
+        <div class="sub"><span id="kpiNextDueSub">—</span></div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard2">
+        <div class="kpiTop">
+          <div class="kpiIcon">💰</div>
+          <div>
+            <div class="kpiLabel">Pagado este año</div>
+            <div class="kpiValue" id="kpiPaidYTD">—</div>
+          </div>
+        </div>
+        <div class="sub">Incluye actividades (demo)</div>
+      </div>
+
+      <div class="card span3 kpiCard" id="kpiCard3">
+        <div class="kpiTop">
+          <div class="kpiIcon">🛡️</div>
+          <div>
+            <div class="kpiLabel">Retiros en votación</div>
+            <div class="kpiValue" id="kpiWithdrawToApprove">—</div>
+          </div>
+        </div>
+        <div class="sub">Requiere 30% aprobación</div>
+      </div>
+
+      </div>
+      <!-- /KPIs -->
+
+      <!-- Collapsibles -->
+      <div class="span12" id="homePanels">
+        <details open>
+          <summary>
+            <span>Notificaciones</span>
+            <span class="pill" id="notifPill">—</span>
+          </summary>
+          <div class="detailsBody">
+            <table>
+              <thead><tr><th>Tipo</th><th>Mensaje</th><th>Fecha</th></tr></thead>
+              <tbody id="notifTable"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <div style="height:12px;"></div>
+
+        <details open>
+          <summary>
+            <span>Gráficos de pagos y cuotas</span>
+            <span class="tag ok">Gráficos</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="grid" style="margin-top:0;">
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Pagos últimos 6 meses</div>
+                <div class="muted">Monto total pagado por mes (demo)</div>
+                <div class="chartWrap"><canvas id="chartPayments"></canvas></div>
+              </div>
+              <div class="card span6" style="box-shadow:none;">
+                <div style="font-weight:950;">Cuotas: pagadas vs pendientes</div>
+                <div class="muted">Distribución actual (demo)</div>
+                <div class="chartWrap"><canvas id="chartStatus"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        
+
       </div>
     </div>
   </div>
 
   <!-- PAGOS -->
   <div id="sec-payments" class="section">
+
+    
+  <!-- Oculto para apoderado: pagos del curso (visión general) -->
+
+
     <div class="segmented" style="margin-bottom:12px;">
-      <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas</button>
+      <button id="tab-pay-pending" class="active" onclick="showPayTab('pending')">Cuotas pendientes</button>
+      <button id="tab-pay-history" onclick="showPayTab('history')">Historial de pagos</button>
       <button id="tab-pay-tasks" onclick="showTaskTab()">Tareas del curso</button>
-      <button id="tab-pay-history" onclick="showPayTab('history')">Historial</button>
     </div>
 
     <div class="grid">
@@ -88,11 +184,29 @@
           <button class="btn primary" onclick="openPayModal()">Pagar ahora</button>
         </div>
 
+        <div class="segmented" role="tablist" aria-label="Filtro cuotas">
+          <button id="f-all" class="active" onclick="setPaymentFilter('all')">Todas</button>
+          <button id="f-pending" onclick="setPaymentFilter('pending')">Pendientes</button>
+          <button id="f-paid" onclick="setPaymentFilter('paid')">Pagadas</button>
+        </div>
+
         <table>
           <thead><tr><th>Concepto</th><th>Vence</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
           <tbody id="paymentsTable"></tbody>
         </table>
+
+        <div class="note">Demo: el pago muestra un comprobante simulado.</div>
       </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Comprobantes recientes</div>
+        <div class="muted">Acceso rápido (demo)</div>
+        <table>
+          <thead><tr><th>Fecha</th><th>Detalle</th></tr></thead>
+          <tbody id="receiptsTable"></tbody>
+        </table>
+      </div>
+
 
       <div class="card span8" id="pay-tasks" style="display:none;">
         <div class="row">
@@ -109,15 +223,6 @@
         </table>
 
         <div class="note">Al pagar, cambia a “Pagado” y se refleja en la vista del Tesorero (demo localStorage).</div>
-      </div>
-
-      <div class="card span4">
-        <div style="font-weight:950;">Comprobantes recientes</div>
-        <div class="muted">Acceso rápido (demo)</div>
-        <table>
-          <thead><tr><th>Fecha</th><th>Detalle</th></tr></thead>
-          <tbody id="receiptsTable"></tbody>
-        </table>
       </div>
 
       <div class="span12" id="pay-history" style="display:none;">
@@ -140,19 +245,68 @@
   <!-- RETIROS -->
   <div id="sec-withdrawals" class="section">
     <div class="grid">
-      <div class="card span12">
+
+      
+      <div class="card span4">
+        <div style="font-weight:950;">Solicitar retiro</div>
+        <div class="muted">Crea una solicitud para votación del curso</div>
+        <div class="hr"></div>
+        <form id="withdrawRequestForm">
+          <div class="kpiLabel">Monto</div>
+          <input id="wrAmount" type="number" min="1" placeholder="Ej: 25000" required />
+          <div class="kpiLabel" style="margin-top:10px;">Motivo</div>
+          <input id="wrReason" type="text" placeholder="Ej: Materiales sala" required />
+          <div style="margin-top:12px; display:flex; gap:10px;">
+            <button class="btn primary" type="submit">Enviar a votación</button>
+            <button class="btn ghost" type="button" onclick="demoSeedWithdrawals()">Demo</button>
+          </div>
+        </form>
+        <div class="note" style="margin-top:10px;">
+          Umbral: <b id="withdrawThresholdLabel">—</b> aprobaciones (30%).
+        </div>
+      </div>
+
+
+      <div class="card span8" id="withdraw-pending">
         <div class="row">
           <div>
             <div style="font-weight:950;">Votaciones de retiro</div>
-            <div class="muted">Se aprueba al alcanzar 30% de apoderados del curso (demo).</div>
+            <div class="muted">Se aprueba al alcanzar 30% de apoderados del curso</div>
           </div>
-          <span class="pill" id="withdrawPill">—</span>
+          <span class="pill" id="withdrawCountPill">—</span>
         </div>
 
         <table>
-          <thead><tr><th>ID</th><th>Monto</th><th>Motivo</th><th>Aprobaciones</th><th>Estado</th><th></th></tr></thead>
-          <tbody id="withdrawVoteTbody"></tbody>
+          <thead><tr><th>Solicitud</th><th>Monto</th><th>Motivo</th><th>Progreso</th><th>Estado</th><th></th></tr></thead>
+          <tbody id="withdrawalsTable"></tbody>
         </table>
+
+        <div class="note">
+          Demo: cada apoderado puede votar. Aquí se simula sumando +1.
+        </div>
+      </div>
+
+      <div class="card span4">
+        <div style="font-weight:950;">Política del curso</div>
+        <div class="muted">Vista informativa (demo)</div>
+        <div class="hr"></div>
+        <div class="note">
+          • Solicitudes deben anunciarse con anticipación.<br/>
+          • Autorizaciones quedan registradas.<br/>
+          • Se ejecuta al alcanzar 30% de aprobación.
+        </div>
+      </div>
+
+      <div class="span12" id="withdraw-history" style="display:none;">
+        <details>
+          <summary>
+            <span>Gráfico de autorizaciones</span>
+            <span class="tag ok">Gráfico</span>
+          </summary>
+          <div class="detailsBody">
+            <div class="chartWrap"><canvas id="chartWithdrawals"></canvas></div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -160,26 +314,64 @@
   <!-- PERFIL -->
   <div id="sec-profile" class="section">
     <div class="grid">
-      <div class="card span12">
+      <div class="card span6">
         <div style="font-weight:950;">Mi perfil</div>
-        <div class="muted">Datos demo</div>
-        <div class="hr"></div>
+        <div class="muted">Datos visibles para la demo</div>
 
-        <div class="twoCols">
+        <div class="twoCols" style="margin-top:6px;">
           <div><div class="kpiLabel">Nombre</div><input id="pName" /></div>
           <div><div class="kpiLabel">Rol</div><input id="pRole" disabled /></div>
         </div>
+
         <div class="twoCols">
           <div><div class="kpiLabel">Correo</div><input id="pEmail" /></div>
           <div><div class="kpiLabel">Celular</div><input id="pPhone" /></div>
         </div>
 
+        <div class="twoCols">
+          <div><div class="kpiLabel">Colegio</div><input id="pSchool" disabled /></div>
+          <div><div class="kpiLabel">Curso</div><input id="pCourse" disabled /></div>
+        </div>
+
         <div class="actions">
           <button class="action primary" onclick="saveProfile()">Guardar (demo)</button>
+          <button class="action" onclick="alert('Demo: abrir soporte')">Soporte</button>
+        </div>
+
+        <div class="note">
+          En producción, cambios sensibles requieren verificación y auditoría.
+        </div>
+      </div>
+
+      <div class="card span6">
+        <div style="font-weight:950;">Seguridad</div>
+        <div class="muted">Recomendaciones (demo)</div>
+        <div class="hr"></div>
+
+        <div class="note">
+          ✅ Sesión demo en <code>localStorage</code><br/>
+          🔒 OTP para autorizar retiros (simulado)<br/>
+          🧾 Auditoría: quién autorizó y cuándo
+        </div>
+
+        <div class="actions">
+          <button class="action" onclick="alert('Demo: activar 2FA permanente')">Activar 2FA</button>
           <button class="action danger" onclick="logout()">Cerrar sesión</button>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modalBackdrop" class="backdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modalHeader">
+      <div class="modalTitle" id="modalTitle">—</div>
+      <button class="btn" onclick="closeModal()">Cerrar</button>
+    </div>
+    <div class="modalBody" id="modalBody"></div>
+    <div class="modalActions" id="modalActions"></div>
   </div>
 </div>
 
@@ -189,6 +381,7 @@
     <button class="tab active" id="tab-home" onclick="goTo('home')"><div class="ico">🏠</div><div>Inicio</div></button>
     <button class="tab" id="tab-payments" onclick="goTo('payments')"><div class="ico">💳</div><div>Pagos</div></button>
     <button class="tab" id="tab-withdrawals" onclick="goTo('withdrawals')"><div class="ico">✅</div><div>Retiros</div></button>
+    
     <button class="tab" id="tab-profile" onclick="goTo('profile')"><div class="ico">👤</div><div>Perfil</div></button>
   </div>
 </div>
@@ -197,11 +390,303 @@
 <script src="assets/demoData-apoderado.js"></script>
 <script src="assets/app.js"></script>
 
+
+<script>
+(function(){
+  // ====== Helpers
+  const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
+  const todayISO = ()=> new Date().toISOString().slice(0,10);
+
+  // ====== User/course demo context
+  const user = (()=>{
+    try { return JSON.parse(localStorage.getItem('cursapp_demo_user')||'null'); } catch(e){ return null; }
+  })();
+  const totalGuardians = Number(user?.totalGuardians || user?.guardiansCount || 40); // fallback demo
+  const threshold = Math.ceil(totalGuardians * 0.30);
+
+  // label umbral
+  const tLabel = document.getElementById('withdrawThresholdLabel');
+  if (tLabel) tLabel.textContent = `${threshold} de ${totalGuardians}`;
+
+  // ====== Pagos del curso (localStorage demo)
+  const LS_PAY = 'cursapp_course_payments_v1';
+  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+
+  function loadJSON(key, fb){
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
+  }
+  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+  function ensureRoster(){
+    let roster = loadJSON(LS_ROSTER, null);
+    if (!Array.isArray(roster) || roster.length === 0){
+      roster = [
+        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
+        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
+      ];
+      saveJSON(LS_ROSTER, roster);
+    }
+    return roster;
+  }
+
+  function ensureCoursePayments(){
+    let rows = loadJSON(LS_PAY, null);
+    if (!Array.isArray(rows) || rows.length === 0){
+      const roster = ensureRoster();
+      // seed: una cuota + una actividad
+      rows = [
+        { name: roster[0], concept:'Cuota Marzo', amount:10000, status:'paid', date:'2026-01-10' },
+        { name: roster[1], concept:'Cuota Marzo', amount:10000, status:'pending', date:'-' },
+        { name: roster[2], concept:'Actividad', amount:5000, status:'paid', date:'2026-01-11' },
+        { name: roster[3], concept:'Actividad', amount:5000, status:'pending', date:'-' }
+      ];
+      saveJSON(LS_PAY, rows);
+    }
+    return rows;
+  }
+
+  function renderCoursePayments(){
+    const cpTbody = document.getElementById('coursePaymentsTbody');
+    if (!cpTbody) return;
+    const rows = ensureCoursePayments();
+    cpTbody.innerHTML = rows.map(p=>`
+      <tr>
+        <td>${p.name}</td>
+        <td>${p.concept}</td>
+        <td>${money(p.amount)}</td>
+        <td>${p.status === 'paid' ? 'Pagado' : 'Pendiente'}</td>
+      </tr>
+    `).join('');
+  }
+  renderCoursePayments();
+
+  // ====== Retiros con votación 30% (persistente en localStorage)
+  const LS_KEY = 'cursapp_withdrawals_v2';
+  const load = ()=>{
+    try { return JSON.parse(localStorage.getItem(LS_KEY)||'[]'); } catch(e){ return []; }
+  };
+  const save = (arr)=> localStorage.setItem(LS_KEY, JSON.stringify(arr));
+
+  const seedIfEmpty = ()=>{
+    const arr = load();
+    if (arr.length) return arr;
+    const demo = [{
+      id: 'w_' + Date.now(),
+      createdAt: todayISO(),
+      amount: 25000,
+      reason: 'Materiales sala',
+      approvals: 8,  // demo
+      status: 'En votación'
+    }];
+    save(demo);
+    return demo;
+  };
+
+  window.demoSeedWithdrawals = function(){
+    seedIfEmpty();
+    renderWithdrawals();
+    alert('Demo: se cargó 1 retiro en votación.');
+  };
+
+  function statusFromApprovals(approvals){
+    return approvals >= threshold ? 'Aprobado' : 'En votación';
+  }
+
+  function renderWithdrawals(){
+    // IMPORTANTE: esto puede sobrescribir lo que pinte app.js, pero es la intención del tesorero v2.
+    const tbody = document.getElementById('withdrawalsTable');
+    if (!tbody) return;
+
+    const arr = load();
+    tbody.innerHTML = arr.map(w=>{
+      const st = statusFromApprovals(w.approvals);
+      const prog = `${w.approvals}/${totalGuardians} · umbral ${threshold}`;
+      return `
+        <tr>
+          <td>${w.createdAt}</td>
+          <td>${money(w.amount)}</td>
+          <td>${w.reason}</td>
+          <td>${prog}</td>
+          <td>${st}</td>
+          <td style="white-space:nowrap; display:flex; gap:8px;">
+            <button class="btn ghost" onclick="simulateApprove('${w.id}')">+1</button>
+            <button class="btn" onclick="removeWithdrawal('${w.id}')">Eliminar</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const pill = document.getElementById('withdrawCountPill');
+    if (pill) pill.textContent = `${arr.length} activos`;
+
+    // KPI (reusa el id existente para no romper app.js)
+    const kpi = document.getElementById('kpiWithdrawToApprove');
+    if (kpi){
+      const votingCount = arr.filter(w=>statusFromApprovals(w.approvals)==='En votación').length;
+      kpi.textContent = votingCount;
+    }
+  }
+
+  window.simulateApprove = function(id){
+    const arr = load();
+    const w = arr.find(x=>x.id===id);
+    if (!w) return;
+    w.approvals = Number(w.approvals||0) + 1;
+    w.status = statusFromApprovals(w.approvals);
+    save(arr);
+    renderWithdrawals();
+  };
+
+  window.removeWithdrawal = function(id){
+    const arr = load().filter(x=>x.id!==id);
+    save(arr);
+    renderWithdrawals();
+  };
+
+  // Crear solicitud
+  const form = document.getElementById('withdrawRequestForm');
+  if (form){
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const amount = Number(document.getElementById('wrAmount')?.value || 0);
+      const reason = (document.getElementById('wrReason')?.value || '').trim();
+      if (!amount || !reason) return;
+
+      const arr = load();
+      arr.unshift({
+        id: 'w_' + Math.random().toString(16).slice(2),
+        createdAt: todayISO(),
+        amount,
+        reason,
+        approvals: 0,
+        status: 'En votación'
+      });
+      save(arr);
+      form.reset();
+      renderWithdrawals();
+      // salto a sección retiros
+      try{ window.goTo && window.goTo('withdrawals'); }catch(e){}
+    });
+  }
+
+  // Render inicial (después de app.js)
+  setTimeout(()=>{
+    // render inicial
+    renderWithdrawals();
+    renderCoursePayments();
+  }, 0);
+
+  // refrescar al entrar a Pagos
+  const _goTo = window.goTo;
+  if (typeof _goTo === 'function'){
+    window.goTo = function(id){
+      _goTo(id);
+      if (id === 'payments') renderCoursePayments();
+    };
+  }
+
+})();
+</script>
+
+
+
+<script>
+/* ============================
+   Cursapp Patch: Tareas -> Pagos del curso
+   ============================ */
+(function(){
+  const LS_TASKS = 'cursapp_tasks_v1';
+  const LS_COURSE_PAYMENTS = 'cursapp_course_payments_v2';
+  const LS_USER = 'cursapp_demo_user';
+
+  const user = (()=>{
+    try { return JSON.parse(localStorage.getItem(LS_USER)||'null'); } catch(e){ return null; }
+  })();
+
+  const guardians = Number(user?.totalGuardians || user?.guardiansCount || 40);
+
+  function read(key, fb){
+    try { return JSON.parse(localStorage.getItem(key)||'null') ?? fb; } catch(e){ return fb; }
+  }
+  function write(key, val){
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+
+  function money(n){
+    try { return '$' + Number(n).toLocaleString('es-CL'); } catch(e){ return '$' + n; }
+  }
+
+  // Ensure payments store
+  function ensurePayments(){
+    let p = read(LS_COURSE_PAYMENTS, null);
+    if (!Array.isArray(p)) p = [];
+    write(LS_COURSE_PAYMENTS, p);
+    return p;
+  }
+
+  // When a task is created, generate payments
+  function syncTasksToPayments(){
+    const tasks = read(LS_TASKS, []);
+    let payments = ensurePayments();
+
+    tasks.forEach(t => {
+      const exists = payments.some(p => p.taskId === t.id);
+      if (!exists){
+        payments.push({
+          taskId: t.id,
+          concept: t.name,
+          amount: t.amount,
+          due: t.due,
+          totalGuardians: guardians,
+          paidCount: 0,
+          status: 'Pendiente'
+        });
+      }
+    });
+
+    write(LS_COURSE_PAYMENTS, payments);
+  }
+
+  // Render in Pagos del curso table if exists
+  function renderCoursePayments(){
+    const tbody = document.getElementById('coursePaymentsTbody');
+    if (!tbody) return;
+
+    const payments = ensurePayments();
+    tbody.innerHTML = payments.map(p => `
+      <tr>
+        <td>Curso completo</td>
+        <td>${p.concept}</td>
+        <td>${money(p.amount)}</td>
+        <td>${p.paidCount}/${p.totalGuardians}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Hook into task creation (Presidente)
+  const taskForm = document.getElementById('taskForm');
+  if (taskForm){
+    taskForm.addEventListener('submit', ()=>{
+      setTimeout(()=>{
+        syncTasksToPayments();
+        renderCoursePayments();
+      }, 0);
+    });
+  }
+
+  // Initial sync
+  syncTasksToPayments();
+  renderCoursePayments();
+
+})();
+</script>
+
+
 <script>
 /* ============================
    Cursapp Patch: Apoderado
    - Ver tareas creadas por presidente (cobros) y pagarlas (demo)
-   - Votar retiros (demo) usando el mismo store de retiros
+   - Votar retiros (demo) sumando +1 a aprobaciones (solo demo)
    ============================ */
 (function(){
   const LS_USER = 'cursapp_demo_user';
@@ -213,9 +698,7 @@
   const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
   const todayISO = ()=> new Date().toISOString().slice(0,10);
 
-  function readJSON(key, fb){
-    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
-  }
+  function readJSON(key, fb){ try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; } }
   function writeJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
   const user = readJSON(LS_USER, {});
@@ -247,8 +730,6 @@
     return t;
   }
 
-  // Si el presidente creó tareas pero aún no se generaron cobros (fallback),
-  // generamos cobros pendientes para todos (demo).
   function backfillTaskPaymentsIfNeeded(){
     const tasks = ensureTasks();
     if (!tasks.length) return;
@@ -259,15 +740,8 @@
     tasks.forEach(task => {
       const exists = rows.some(r => r.concept === task.name);
       if (exists) return;
-      const today = todayISO();
-      roster.forEach((name, idx) => {
-        rows.unshift({
-          name,
-          concept: task.name,
-          amount: task.amount,
-          status: 'pending',
-          date: '-'
-        });
+      roster.forEach(name => {
+        rows.unshift({ name, concept: task.name, amount: task.amount, status: 'pending', date: '-' });
       });
     });
 
@@ -277,15 +751,13 @@
   function myTaskRows(){
     backfillTaskPaymentsIfNeeded();
     const rows = ensurePayments();
-    // Si no hay nombre en perfil, mostramos todas como fallback (para no quedar vacío)
+    const taskNames = new Set(ensureTasks().map(t=>t.name));
+
     if (!myName){
-      return rows.filter(r => {
-        // consideramos "tarea" como todo lo que coincide con un task name
-        const taskNames = new Set(ensureTasks().map(t=>t.name));
-        return taskNames.has(r.concept);
-      });
+      // fallback: mostrar todas las tareas (para no quedar en blanco si falta nombre)
+      return rows.filter(r => taskNames.has(r.concept));
     }
-    return rows.filter(r => r.name === myName);
+    return rows.filter(r => r.name === myName && taskNames.has(r.concept));
   }
 
   function renderTasksPayments(){
@@ -293,14 +765,10 @@
     if (!tbody) return;
 
     const rows = myTaskRows();
-    const taskNames = new Set(ensureTasks().map(t=>t.name));
-    const onlyTasks = rows.filter(r => taskNames.has(r.concept));
 
-    tbody.innerHTML = onlyTasks.length ? onlyTasks.map(r => {
+    tbody.innerHTML = rows.length ? rows.map(r => {
       const status = r.status === 'paid' ? '<span class="tag ok">Pagado</span>' : '<span class="tag warn">Pendiente</span>';
-      const action = r.status === 'paid'
-        ? ''
-        : `<button class="btn primary" onclick="payTask('${encodeURIComponent(r.concept)}')">Pagar</button>`;
+      const action = r.status === 'paid' ? '' : `<button class="btn primary" onclick="payTask('${encodeURIComponent(r.concept)}')">Pagar</button>`;
       return `
         <tr>
           <td>${r.concept}</td>
@@ -309,18 +777,17 @@
           <td style="text-align:right;">${action}</td>
         </tr>
       `;
-    }).join('') : `<tr><td colspan="4" class="muted">Aún no hay tareas asignadas.</td></tr>`;
+    }).join('') : `<tr><td colspan="4" class="muted">Aún no hay tareas para mostrar.</td></tr>`;
 
     const pill = document.getElementById('taskPill');
-    if (pill) pill.textContent = `${onlyTasks.length} tareas`;
+    if (pill) pill.textContent = `${rows.length} tareas`;
   }
 
   window.payTask = function(conceptEnc){
     const concept = decodeURIComponent(conceptEnc);
     const rows = ensurePayments();
-
-    // marca pagada SOLO para este apoderado (si lo conocemos)
     let changed = 0;
+
     rows.forEach(r => {
       if (r.concept !== concept) return;
       if (myName && r.name !== myName) return;
@@ -332,140 +799,63 @@
 
     writeJSON(LS_PAY, rows);
     renderTasksPayments();
-    alert(changed ? `Pago registrado (demo): ${concept}` : 'No se pudo registrar el pago (falta tu nombre en perfil o ya estaba pagado).');
+    alert(changed ? `Pago registrado (demo): ${concept}` : 'No se pudo registrar el pago (ya estaba pagado o falta tu nombre en perfil).');
   };
 
-  // Tabs inside payments
+  // Tabs: mostrar panel tareas
   window.showTaskTab = function(){
-    document.getElementById('pay-pending').style.display = 'none';
-    document.getElementById('pay-history').style.display = 'none';
-    document.getElementById('pay-tasks').style.display = '';
-    document.getElementById('tab-pay-pending').classList.remove('active');
-    document.getElementById('tab-pay-history').classList.remove('active');
-    document.getElementById('tab-pay-tasks').classList.add('active');
+    document.getElementById('pay-pending') && (document.getElementById('pay-pending').style.display = 'none');
+    document.getElementById('pay-history') && (document.getElementById('pay-history').style.display = 'none');
+    document.getElementById('pay-tasks') && (document.getElementById('pay-tasks').style.display = '');
+
+    document.getElementById('tab-pay-pending')?.classList.remove('active');
+    document.getElementById('tab-pay-history')?.classList.remove('active');
+    document.getElementById('tab-pay-tasks')?.classList.add('active');
+
     renderTasksPayments();
   };
 
-  // If existing showPayTab exists, wrap to keep behavior and hide tasks
   const _showPayTab = window.showPayTab;
   if (typeof _showPayTab === 'function'){
     window.showPayTab = function(which){
       _showPayTab(which);
-      // hide tasks panel when using original tabs
-      const tp = document.getElementById('pay-tasks');
-      if (tp) tp.style.display = 'none';
+      document.getElementById('pay-tasks') && (document.getElementById('pay-tasks').style.display = 'none');
       document.getElementById('tab-pay-tasks')?.classList.remove('active');
       if (which === 'pending') document.getElementById('tab-pay-pending')?.classList.add('active');
       if (which === 'history') document.getElementById('tab-pay-history')?.classList.add('active');
     };
   }
 
-  // ===== Retiros: votar (demo)
-  function loadWithdrawals(){
-    let w = readJSON(LS_WITHDRAW, []);
-    if (!Array.isArray(w)) w = [];
-    writeJSON(LS_WITHDRAW, w);
-    return w;
+  // Retiros: reusar el store y sumar +1 (demo) usando botones ya existentes en tabla (simulateApprove)
+  // Si la tabla de retiros está renderizada por patch tesorero, la reutilizamos; si no, al menos refrescamos KPI.
+  function renderMini(){
+    // refresca KPI retiros en home si existe
+    const kpi = document.getElementById('kpiWithdrawToApprove');
+    if (kpi){
+      try{
+        const w = readJSON(LS_WITHDRAW, []);
+        kpi.textContent = Array.isArray(w) ? w.length : '0';
+      }catch(e){}
+    }
   }
 
-  function guardiansTotal(){
-    // En tu demo no tenemos el total real, usamos roster o 40
-    const roster = ensureRoster();
-    return Number(user.totalGuardians || roster.length || 40);
-  }
-  function threshold(){
-    return Math.ceil(guardiansTotal() * 0.30);
-  }
-
-  function renderWithdrawVotes(){
-    const tbody = document.getElementById('withdrawVoteTbody');
-    if (!tbody) return;
-    const w = loadWithdrawals();
-    const total = guardiansTotal();
-    const thr = threshold();
-
-    tbody.innerHTML = w.length ? w.map(item => {
-      const approvals = Number(item.approvals || 0);
-      const st = approvals >= thr ? '<span class="tag ok">Aprobado</span>' : '<span class="tag warn">En votación</span>';
-      return `
-        <tr>
-          <td><code>${item.id}</code></td>
-          <td>${money(item.amount)}</td>
-          <td>${item.reason}</td>
-          <td>${approvals}/${total} (umbral ${thr})</td>
-          <td>${st}</td>
-          <td style="text-align:right;">
-            <button class="btn primary" onclick="voteWithdraw('${item.id}')">Aprobar</button>
-          </td>
-        </tr>
-      `;
-    }).join('') : `<tr><td colspan="6" class="muted">No hay retiros en votación.</td></tr>`;
-
-    const pill = document.getElementById('withdrawPill');
-    if (pill) pill.textContent = `${w.length} solicitudes`;
-  }
-
-  window.voteWithdraw = function(id){
-    // DEMO: suma +1 aprobación (en producción sería 1 voto por apoderado)
-    const w = loadWithdrawals();
-    const item = w.find(x=>x.id===id);
-    if (!item) return;
-    item.approvals = Number(item.approvals||0) + 1;
-    writeJSON(LS_WITHDRAW, w);
-    renderWithdrawVotes();
-    alert('Voto registrado (demo).');
-  };
-
-  // Home mini panels
-  function renderHomeMini(){
-    const tasksMini = document.getElementById('homeTasksMini');
-    const tasks = myTaskRows();
-    const taskNames = new Set(ensureTasks().map(t=>t.name));
-    const pending = tasks.filter(r => taskNames.has(r.concept) && r.status !== 'paid').slice(0,3);
-    tasksMini.innerHTML = pending.length ? pending.map(r=>`
-      <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,.06);">
-        <div><b>${r.concept}</b><div class="muted">${money(r.amount)}</div></div>
-        <button class="btn primary" onclick="goTo('payments'); showTaskTab();">Pagar</button>
-      </div>
-    `).join('') : `<div class="muted">No tienes tareas pendientes.</div>`;
-
-    const wMini = document.getElementById('homeWithdrawMini');
-    const w = loadWithdrawals().slice(0,2);
-    const total = guardiansTotal();
-    const thr = threshold();
-    wMini.innerHTML = w.length ? w.map(item=>`
-      <div style="padding:8px 0; border-bottom:1px solid rgba(0,0,0,.06);">
-        <div><b>${money(item.amount)}</b> · ${item.reason}</div>
-        <div class="muted">${Number(item.approvals||0)}/${total} · umbral ${thr}</div>
-      </div>
-    `).join('') : `<div class="muted">Sin retiros en votación.</div>`;
-  }
-
-  // Refresh on navigation
   const _goTo = window.goTo;
   if (typeof _goTo === 'function'){
     window.goTo = function(id){
       _goTo(id);
       if (id === 'payments') renderTasksPayments();
-      if (id === 'withdrawals') renderWithdrawVotes();
-      if (id === 'home') renderHomeMini();
+      if (id === 'home') renderMini();
     };
   }
 
-  // Initial
   setTimeout(()=>{
-    // rellena perfil básico si existe
+    // Perfil básico
     try{
       document.getElementById('pRole').value = 'Apoderado';
-      if (user?.name) document.getElementById('pName').value = user.name;
-      if (user?.email) document.getElementById('pEmail').value = user.email;
-      if (user?.phone) document.getElementById('pPhone').value = user.phone;
     }catch(e){}
     renderTasksPayments();
-    renderWithdrawVotes();
-    renderHomeMini();
+    renderMini();
   }, 0);
-
 })();
 </script>
 
