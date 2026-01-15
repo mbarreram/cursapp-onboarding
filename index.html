@@ -1,37 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="refresh" content="0; url=login.html"/>
   <title>Cursapp</title>
 </head>
 <body>
-<script>
-  function normalizeRole(role){
-    if (!role) return 'Apoderado';
-    const r = role.toLowerCase();
-    if (r === 'admin' || r === 'presidente') return 'Presidente';
-    if (r === 'tesorero') return 'Tesorero';
-    return 'Apoderado';
-  }
-
-  function routeByRole(role){
-    const r = normalizeRole(role);
-    if (r === 'Tesorero') return 'dashboard-tesorero-v3.html';
-    if (r === 'Presidente') return 'dashboard-presidente-v3.html';
-    return 'dashboard-apoderado-v3.html';
-  }
-
-  try {
-    const u = JSON.parse(localStorage.getItem('cursapp_demo_user') || 'null');
-    if (u && u.email) {
-      window.location.replace(routeByRole(u.role));
-    } else {
-      window.location.replace('login.html');
-    }
-  } catch (e) {
-    window.location.replace('login.html');
-  }
-</script>
+  <p>Redirigiendo a login…</p>
+  <script>
+    window.location.replace("login.html");
+  </script>
 </body>
 </html>
