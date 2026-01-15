@@ -25,10 +25,11 @@
       <button class="btn" onclick="logout()">Cerrar sesión</button>
 
       <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('tasks'); closeQuickMenu()">🗂️ Crear tarea</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Ver cuotas</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('history'); closeQuickMenu()">🧾 Historial</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Retiros</button>
-        <button class="quickMenuItem" role="menuitem" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){} closeQuickMenu()">📌 Crear tarea</button>
+        <button class="quickMenuItem" role="menuitem" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){}; closeQuickMenu();">🗂️ Tareas del curso</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('profile'); closeQuickMenu()">👤 Mi perfil</button>
       </div>
     </div>
@@ -41,6 +42,10 @@
     <div>
       <h1 id="pageTitle">Inicio</h1>
       <div class="muted" id="pageSubtitle">Resumen del presidente: finanzas del curso + creación de tareas de recaudación.</div>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn primary" id="btnGoTasks" onclick="goTo('home'); try{document.getElementById('taskForm')?.scrollIntoView({behavior:'smooth'});}catch(e){};">🗂️ Ir a tareas del curso</button>
+        <button class="btn ghost" onclick="goTo('payments'); showPaymentsScope && showPaymentsScope('all');">📊 Ver pagos del curso</button>
+      </div>
       <div class="switcher" style="display:none;">
         <span class="pill" id="rolePill">Rol: —</span>
         <button class="btn ghost" onclick="toggleCompact()">Compactar/Expandir</button>
@@ -329,7 +334,43 @@
     </div>
   </div>
 
+  
+  <!-- TAREAS DEL CURSO -->
+  <div id="sec-tasks" class="section">
+    <div class="grid">
+      <div class="card span6">
+        <div style="font-weight:950;">Crear tarea de recaudación</div>
+        <div class="muted">Visible solo para Presidente</div>
+        <div class="hr"></div>
+
+        <form id="taskForm">
+          <div class="kpiLabel">Nombre</div>
+          <input id="taskName" placeholder="Ej: Paseo de curso" required />
+
+          <div class="kpiLabel" style="margin-top:10px;">Monto</div>
+          <input id="taskAmount" type="number" min="1" placeholder="Ej: 10000" required />
+
+          <div class="kpiLabel" style="margin-top:10px;">Fecha límite</div>
+          <input id="taskDue" type="date" required />
+
+          <div class="actions" style="margin-top:12px;">
+            <button class="action primary" type="submit">Crear tarea</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card span6">
+        <div style="font-weight:950;">Tareas creadas</div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Monto</th><th>Fecha</th></tr></thead>
+          <tbody id="tasksTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- PERFIL -->
+        
   <div id="sec-profile" class="section">
     <div class="grid">
       <div class="card span6">
@@ -428,23 +469,57 @@
   const tLabel = document.getElementById('withdrawThresholdLabel');
   if (tLabel) tLabel.textContent = `${threshold} de ${totalGuardians}`;
 
-  // ====== Pagos del curso (demo)
-  const coursePayments = [
-    { name:'Ana Soto', concept:'Cuota Marzo', amount:10000, status:'Pagado' },
-    { name:'Carlos Díaz', concept:'Cuota Marzo', amount:10000, status:'Pendiente' },
-    { name:'María Pérez', concept:'Actividad', amount:5000, status:'Pagado' },
-  ];
-  const cpTbody = document.getElementById('coursePaymentsTbody');
-  if (cpTbody){
-    cpTbody.innerHTML = coursePayments.map(p=>`
+  // ====== Pagos del curso (localStorage demo)
+  const LS_PAY = 'cursapp_course_payments_v1';
+  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+
+  function loadJSON(key, fb){
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
+  }
+  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+  function ensureRoster(){
+    let roster = loadJSON(LS_ROSTER, null);
+    if (!Array.isArray(roster) || roster.length === 0){
+      roster = [
+        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
+        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
+      ];
+      saveJSON(LS_ROSTER, roster);
+    }
+    return roster;
+  }
+
+  function ensureCoursePayments(){
+    let rows = loadJSON(LS_PAY, null);
+    if (!Array.isArray(rows) || rows.length === 0){
+      const roster = ensureRoster();
+      // seed: una cuota + una actividad
+      rows = [
+        { name: roster[0], concept:'Cuota Marzo', amount:10000, status:'paid', date:'2026-01-10' },
+        { name: roster[1], concept:'Cuota Marzo', amount:10000, status:'pending', date:'-' },
+        { name: roster[2], concept:'Actividad', amount:5000, status:'paid', date:'2026-01-11' },
+        { name: roster[3], concept:'Actividad', amount:5000, status:'pending', date:'-' }
+      ];
+      saveJSON(LS_PAY, rows);
+    }
+    return rows;
+  }
+
+  function renderCoursePayments(){
+    const cpTbody = document.getElementById('coursePaymentsTbody');
+    if (!cpTbody) return;
+    const rows = ensureCoursePayments();
+    cpTbody.innerHTML = rows.map(p=>`
       <tr>
         <td>${p.name}</td>
         <td>${p.concept}</td>
         <td>${money(p.amount)}</td>
-        <td>${p.status}</td>
+        <td>${p.status === 'paid' ? 'Pagado' : 'Pendiente'}</td>
       </tr>
     `).join('');
   }
+  renderCoursePayments();
 
   // ====== Retiros con votación 30% (persistente en localStorage)
   const LS_KEY = 'cursapp_withdrawals_v2';
@@ -557,9 +632,28 @@
 
   // Render inicial (después de app.js)
   setTimeout(()=>{
-    // si no hay data, dejamos vacío (para no invadir). El botón Demo lo carga.
+    // render inicial
     renderWithdrawals();
+    renderCoursePayments();
   }, 0);
+
+  // refrescar al entrar a Pagos
+  const _goTo = window.goTo;
+  if (typeof _goTo === 'function'){
+    window.goTo = function(id){
+      _goTo(id);
+      if (id === 'payments') renderCoursePayments();
+      if (id === 'tasks'){
+        document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+        const t = document.getElementById('sec-tasks');
+        if (t) t.classList.add('active');
+      }
+    };
+    window.goTo = function(id){
+      _goTo(id);
+      if (id === 'payments') renderCoursePayments();
+    };
+  }
 
 })();
 </script>
@@ -567,6 +661,54 @@
 <script>
 (function(){
   const LS_KEY = 'cursapp_tasks_v1';
+  const LS_PAY = 'cursapp_course_payments_v1';
+  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+
+  function loadJSON(key, fb){
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
+  }
+  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+  function ensureRoster(){
+    let roster = loadJSON(LS_ROSTER, null);
+    if (!Array.isArray(roster) || roster.length === 0){
+      roster = [
+        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
+        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
+      ];
+      saveJSON(LS_ROSTER, roster);
+    }
+    return roster;
+  }
+
+  function ensurePayments(){
+    let rows = loadJSON(LS_PAY, null);
+    if (!Array.isArray(rows)) rows = [];
+    saveJSON(LS_PAY, rows);
+    return rows;
+  }
+
+  function addTaskPayments(task){
+    // Crea una fila por apoderado: estado pendiente (demo)
+    const roster = ensureRoster();
+    const rows = ensurePayments();
+
+    const today = new Date().toISOString().slice(0,10);
+    roster.forEach((name, idx) => {
+      // demo: algunos ya pagan para que se vea movimiento
+      const paid = (idx % 7 === 0); // ~14%
+      rows.unshift({
+        name,
+        concept: task.name,
+        amount: task.amount,
+        status: paid ? 'paid' : 'pending',
+        date: paid ? today : '-'
+      });
+    });
+
+    saveJSON(LS_PAY, rows);
+  }
+
   const load = ()=>{ try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch(e){return [];} };
   const save = (arr)=> localStorage.setItem(LS_KEY, JSON.stringify(arr));
   const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
@@ -601,9 +743,13 @@
       const arr = load();
       arr.unshift({ id:'t_'+Math.random().toString(16).slice(2), name, amount, due });
       save(arr);
+
+      // Conectar tarea → pagos del curso (demo)
+      addTaskPayments({ name, amount, due });
+
       form.reset();
       render();
-      alert('Tarea creada (demo).');
+      alert('Tarea creada y cobros generados (demo).');
     });
   }
 
@@ -611,6 +757,98 @@
 })();
 </script>
 
+
+
+<script>
+/* ============================
+   Cursapp Patch: Tareas -> Pagos del curso
+   ============================ */
+(function(){
+  const LS_TASKS = 'cursapp_tasks_v1';
+  const LS_COURSE_PAYMENTS = 'cursapp_course_payments_v2';
+  const LS_USER = 'cursapp_demo_user';
+
+  const user = (()=>{
+    try { return JSON.parse(localStorage.getItem(LS_USER)||'null'); } catch(e){ return null; }
+  })();
+
+  const guardians = Number(user?.totalGuardians || user?.guardiansCount || 40);
+
+  function read(key, fb){
+    try { return JSON.parse(localStorage.getItem(key)||'null') ?? fb; } catch(e){ return fb; }
+  }
+  function write(key, val){
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+
+  function money(n){
+    try { return '$' + Number(n).toLocaleString('es-CL'); } catch(e){ return '$' + n; }
+  }
+
+  // Ensure payments store
+  function ensurePayments(){
+    let p = read(LS_COURSE_PAYMENTS, null);
+    if (!Array.isArray(p)) p = [];
+    write(LS_COURSE_PAYMENTS, p);
+    return p;
+  }
+
+  // When a task is created, generate payments
+  function syncTasksToPayments(){
+    const tasks = read(LS_TASKS, []);
+    let payments = ensurePayments();
+
+    tasks.forEach(t => {
+      const exists = payments.some(p => p.taskId === t.id);
+      if (!exists){
+        payments.push({
+          taskId: t.id,
+          concept: t.name,
+          amount: t.amount,
+          due: t.due,
+          totalGuardians: guardians,
+          paidCount: 0,
+          status: 'Pendiente'
+        });
+      }
+    });
+
+    write(LS_COURSE_PAYMENTS, payments);
+  }
+
+  // Render in Pagos del curso table if exists
+  function renderCoursePayments(){
+    const tbody = document.getElementById('coursePaymentsTbody');
+    if (!tbody) return;
+
+    const payments = ensurePayments();
+    tbody.innerHTML = payments.map(p => `
+      <tr>
+        <td>Curso completo</td>
+        <td>${p.concept}</td>
+        <td>${money(p.amount)}</td>
+        <td>${p.paidCount}/${p.totalGuardians}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Hook into task creation (Presidente)
+  const taskForm = document.getElementById('taskForm');
+  if (taskForm){
+    taskForm.addEventListener('submit', ()=>{
+      setTimeout(()=>{
+        syncTasksToPayments();
+        renderCoursePayments();
+      }, 0);
+    });
+  }
+
+  // Initial sync
+  syncTasksToPayments();
+  renderCoursePayments();
+
+})();
+</script>
 
 </body>
 </html>
