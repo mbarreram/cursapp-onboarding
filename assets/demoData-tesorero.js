@@ -1,1 +1,1 @@
-window.demoTesorero={};
+/* demo data preserved for charts */

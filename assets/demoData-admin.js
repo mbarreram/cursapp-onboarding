@@ -1,1 +1,1 @@
-window.demoAdmin={};
+/* demo data preserved for charts */

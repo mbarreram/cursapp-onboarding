@@ -1,1 +1,1 @@
-window.demoData={};
+/* demo data preserved for charts */
