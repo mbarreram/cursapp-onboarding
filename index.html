@@ -6,48 +6,32 @@
   <title>Cursapp</title>
 </head>
 <body>
-
 <script>
-  /* =====================================================
-     Router principal (SIN forzar onboarding)
-     - Login lleva directo al dashboard según rol
-     - Onboarding queda separado y se accede desde login o menú
-     ===================================================== */
-
   function normalizeRole(role){
     if (!role) return 'Apoderado';
-
-    // Compatibilidad con valores antiguos
     if (role === 'Admin' || role === 'admin') return 'Presidente';
-
     if (role === 'APODERADO') return 'Apoderado';
     if (role === 'TESORERO') return 'Tesorero';
     if (role === 'PRESIDENTE') return 'Presidente';
-
     return role;
   }
-
   function routeByRole(role){
     const r = normalizeRole(role);
-    if (r === 'Tesorero') return 'dashboard-tesorero.html';
-    if (r === 'Presidente') return 'dashboard-presidente.html';
-    return 'dashboard-apoderado.html';
+    if (r === 'Tesorero') return 'dashboard-tesorero-v3.html';
+    if (r === 'Presidente') return 'dashboard-presidente-v3.html';
+    return 'dashboard-apoderado-v3.html';
   }
-
-  try {
+  try{
     const u = JSON.parse(localStorage.getItem('cursapp_demo_user') || 'null');
-
-    if (u && u.email) {
+    if (u && u.email){
       u.role = normalizeRole(u.role);
-      // ✅ Ya NO se fuerza onboarding aquí
       window.location.replace(routeByRole(u.role));
     } else {
       window.location.replace('login.html');
     }
-  } catch (e) {
+  }catch(e){
     window.location.replace('login.html');
   }
 </script>
-
 </body>
 </html>
