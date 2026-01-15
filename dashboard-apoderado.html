@@ -28,7 +28,7 @@
       <button class="btn ghost" id="quickMenuBtn" onclick="toggleQuickMenu()" aria-haspopup="true" aria-expanded="false" title="Menú rápido">☰</button>
       <button class="btn" onclick="logout()">Cerrar sesión</button>
 
-      <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido">
+      <div class="quickMenu" id="quickMenu" role="menu" aria-label="Menú rápido" style="display:none">
         <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showPayTab('pending'); closeQuickMenu()">💳 Ver cuotas</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('payments'); showTaskTab(); closeQuickMenu()">📌 Tareas del curso</button>
         <button class="quickMenuItem" role="menuitem" onclick="goTo('withdrawals'); closeQuickMenu()">✅ Votar retiros</button>
@@ -295,182 +295,74 @@
 
 <script>
 /* ============================
-   FINAL PATCH (Apoderado)
-   - Siempre muestra tareas creadas por presidente (cursapp_tasks_v1)
-   - Si catálogo está vacío, deriva tareas desde pagos (type:"task")
+   
+
+
+<script>
+/* ============================
+   SAFE PATCH (Apoderado)
+   - No sobreescribe goTo
+   - No bloquea interacción
    ============================ */
 (function(){
-  const LS_USER = 'cursapp_demo_user';
   const LS_TASKS = 'cursapp_tasks_v1';
   const LS_PAY = 'cursapp_course_payments_v1';
-  const LS_ROSTER = 'cursapp_guardians_roster_v1';
+  const LS_USER = 'cursapp_demo_user';
 
   function loadJSON(key, fb){
-    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; } catch(e){ return fb; }
+    try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fb; }
+    catch(e){ return fb; }
   }
-  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
   const money = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
-  const todayISO = ()=> new Date().toISOString().slice(0,10);
-
   const user = loadJSON(LS_USER, {});
-  const myName = (user.name || user.fullName || user.displayName || '').trim();
-
-  function ensureRoster(){
-    let roster = loadJSON(LS_ROSTER, null);
-    if (!Array.isArray(roster) || roster.length === 0){
-      roster = [
-        'Ana Soto','Carlos Díaz','María Pérez','José Rivas','Paula Muñoz','Felipe Torres',
-        'Camila Fuentes','Diego Herrera','Valentina Vega','Ignacio Silva','Constanza Lara','Ricardo Núñez'
-      ];
-      saveJSON(LS_ROSTER, roster);
-    }
-    // asegura que tu nombre exista para futuros cobros
-    if (myName && !roster.includes(myName)){
-      roster.unshift(myName);
-      saveJSON(LS_ROSTER, roster);
-    }
-    return roster;
-  }
-
-  function ensurePayments(){
-    let rows = loadJSON(LS_PAY, null);
-    if (!Array.isArray(rows)) rows = [];
-    saveJSON(LS_PAY, rows);
-    return rows;
-  }
-
-  function ensureTasks(){
-    let tasks = loadJSON(LS_TASKS, null);
-    if (!Array.isArray(tasks)) tasks = [];
-    saveJSON(LS_TASKS, tasks);
-    return tasks;
-  }
-
-  function deriveTasksFromPayments(){
-    const rows = ensurePayments();
-    const map = new Map();
-    rows.filter(r => r.type === 'task').forEach(r => {
-      if (!map.has(r.concept)){
-        map.set(r.concept, { name: r.concept, amount: Number(r.amount||0) });
-      }
-    });
-    return Array.from(map.values());
-  }
-
-  function ensureTaskPayments(tasks){
-    // si hay tareas pero no hay cobros, los creamos como pending (demo)
-    const roster = ensureRoster();
-    const rows = ensurePayments();
-    const today = todayISO();
-
-    tasks.forEach(t => {
-      const taskName = t.name || t.nombre || t.title;
-      const amount = Number(t.amount || t.monto || 0);
-      if (!taskName || !amount) return;
-
-      roster.forEach(name => {
-        const exists = rows.some(r => r.type === 'task' && r.concept === taskName && r.name === name);
-        if (exists) return;
-        rows.unshift({ type:'task', name, concept: taskName, amount, status:'pending', date:'-', createdAt: today });
-      });
-    });
-
-    saveJSON(LS_PAY, rows);
-  }
+  const myName = (user.name || '').trim();
 
   function renderTasks(){
     const tbody = document.getElementById('tasksPaymentsTbody');
     const pill = document.getElementById('taskPill');
     if (!tbody) return;
 
-    let tasks = ensureTasks();
+    let tasks = loadJSON(LS_TASKS, []);
+    const rows = loadJSON(LS_PAY, []);
+
+    // fallback: derive from payments
     if (!tasks.length){
-      tasks = deriveTasksFromPayments();
+      const map = new Map();
+      rows.filter(r=>r.type==='task').forEach(r=>{
+        if (!map.has(r.concept)){
+          map.set(r.concept, { name:r.concept, amount:r.amount });
+        }
+      });
+      tasks = Array.from(map.values());
     }
-    // normaliza cobros
-    ensureTaskPayments(tasks);
 
-    const rows = ensurePayments();
-    const view = tasks.map(t => {
-      const taskName = t.name || t.nombre || t.title;
-      const amount = Number(t.amount || t.monto || t.amount || 0);
-      let paid = false;
-      if (myName){
-        const row = rows.find(r => r.type === 'task' && r.concept === taskName && r.name === myName);
-        paid = !!row && row.status === 'paid';
-      }
-      return { name: taskName, amount, paid };
-    });
+    tbody.innerHTML = tasks.length ? tasks.map(t=>{
+      const paid = myName && rows.some(r=>r.type==='task' && r.concept===t.name && r.name===myName && r.status==='paid');
+      const status = paid ? '<span class="tag ok">Pagado</span>' : '<span class="tag warn">Pendiente</span>';
+      const action = paid ? '' : `<button class="btn primary" onclick="alert('Demo pago tarea')">Pagar</button>`;
+      return `<tr>
+        <td>${t.name}</td>
+        <td>${money(t.amount)}</td>
+        <td>${status}</td>
+        <td style="text-align:right;">${action}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="4" class="muted">Aún no hay tareas.</td></tr>`;
 
-    tbody.innerHTML = view.length ? view.map(t => {
-      const status = t.paid ? '<span class="tag ok">Pagado</span>' : '<span class="tag warn">Pendiente</span>';
-      const action = t.paid ? '' : `<button class="btn primary" onclick="payTaskFinal('${encodeURIComponent(t.name)}')">Pagar</button>`;
-      return `
-        <tr>
-          <td>${t.name}</td>
-          <td>${money(t.amount)}</td>
-          <td>${status}</td>
-          <td style="text-align:right;">${action}</td>
-        </tr>
-      `;
-    }).join('') : `<tr><td colspan="4" class="muted">Aún no hay tareas creadas por el presidente.</td></tr>`;
-
-    if (pill) pill.textContent = `${view.length} tareas`;
+    if (pill) pill.textContent = tasks.length + ' tareas';
   }
 
-  window.payTaskFinal = function(nameEnc){
-    const taskName = decodeURIComponent(nameEnc);
-    const rows = ensurePayments();
-    const today = todayISO();
-
-    if (myName){
-      const row = rows.find(r => r.type === 'task' && r.concept === taskName && r.name === myName);
-      if (row){
-        row.status = 'paid';
-        row.date = today;
-      } else {
-        // si no existía fila, la creamos pagada
-        rows.unshift({ type:'task', name: myName, concept: taskName, amount: 0, status:'paid', date: today, createdAt: today });
-      }
-      saveJSON(LS_PAY, rows);
-      renderTasks();
-      return alert(`Pago registrado (demo): ${taskName}`);
-    }
-
-    // fallback demo sin nombre: marca todas como pagadas
-    rows.forEach(r => {
-      if (r.type === 'task' && r.concept === taskName){
-        r.status = 'paid';
-        r.date = today;
-      }
-    });
-    saveJSON(LS_PAY, rows);
-    renderTasks();
-    alert(`Pago registrado (demo): ${taskName}`);
-  };
-
-  // Reemplaza/asegura showTaskTab
+  // Hook only the tab button
   window.showTaskTab = function(){
-    document.getElementById('pay-pending') && (document.getElementById('pay-pending').style.display = 'none');
-    document.getElementById('pay-history') && (document.getElementById('pay-history').style.display = 'none');
-    document.getElementById('pay-tasks') && (document.getElementById('pay-tasks').style.display = '');
-    document.getElementById('tab-pay-tasks')?.classList.add('active');
-    document.getElementById('tab-pay-pending')?.classList.remove('active');
-    document.getElementById('tab-pay-history')?.classList.remove('active');
+    const pending = document.getElementById('pay-pending');
+    const history = document.getElementById('pay-history');
+    const tasks = document.getElementById('pay-tasks');
+    if (pending) pending.style.display = 'none';
+    if (history) history.style.display = 'none';
+    if (tasks) tasks.style.display = '';
     renderTasks();
   };
 
-  // Hook navegación
-  const _goTo = window.goTo;
-  if (typeof _goTo === 'function'){
-    window.goTo = function(id){
-      _goTo(id);
-      if (id === 'payments') renderTasks();
-    };
-  }
-
-  // Render inicial
-  setTimeout(renderTasks, 0);
 })();
 </script>
 
