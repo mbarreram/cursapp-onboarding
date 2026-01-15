@@ -256,18 +256,3 @@
       box-shadow:0 10px 30px rgba(0,0,0,.12);
       padding:10px;
     }
-
-  
-    /* KPI tabs layout fix */
-    .kpiTabs{ width:100%; }
-    .kpiTabs{ grid-column: span 12; }
-    @media (max-width: 600px){
-      .kpiTabs{
-        overflow-x:auto;
-        -webkit-overflow-scrolling:touch;
-        flex-wrap:nowrap;
-        gap:10px;
-        padding-bottom:6px;
-      }
-      .kpiTab{ white-space:nowrap; }
-    }

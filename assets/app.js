@@ -1,7 +1,11 @@
-// Cursapp Dashboard JS (split)
-if (!window.cursappDemo) {
-  console.error("demoData.js no cargado: window.cursappDemo no existe");
-}
+// Cursapp Dashboard (assets/app.js) - roles
+(function(){
+  if (!window.cursappDemo) {
+    console.error("Falta demoData: window.cursappDemo no está definido");
+    window.cursappDemo = {notifications:[], payments:[], history:[], withdrawals:[], charts:{payments6m:[], withdrawals6m:[]}};
+  }
+  window.cursappRole = window.cursappRole || null;
+})();
 
 // ---------------- Demo data ----------------
   
@@ -11,7 +15,7 @@ if (!window.cursappDemo) {
   if (!user) {
     window.location.href = "login.html";
   } else {
-    user.role = 'Apoderado';
+    user.role = window.cursappRole || user.role || 'Apoderado';
     user.school = user.school || 'Colegio Demo';
     user.course = user.course || '2° Básico A';
     user.phone = user.phone || '+56 9 1234 5678';
@@ -65,29 +69,9 @@ if (!window.cursappDemo) {
     for (let i=0;i<4;i++){
       const card = document.getElementById('kpiCard'+i);
       const tab = document.getElementById('kpiTab'+i);
-      const panel = document.getElementById('kpiContent'+i);
       if (card) card.classList.toggle('active', i===idx);
       if (tab) tab.classList.toggle('active', i===idx);
-      if (panel) panel.style.display = (i===idx)?'block':'none';
     }
-
-    // Redibujar gráficos cuando el panel está visible (clave en mobile)
-    requestAnimationFrame(() => {
-      if (idx === 0){
-        const c2 = document.getElementById('chartStatus');
-        if (c2){
-          const paid = window.cursappDemo.payments.filter(p=>p.status==='paid').length;
-          const pending = window.cursappDemo.payments.filter(p=>p.status==='pending').length;
-          drawDonut(c2, [{label:'Pagadas', value:paid},{label:'Pendientes', value:pending}]);
-        }
-      }
-      if (idx === 2){
-        drawHomeCharts();
-      }
-      if (idx === 3){
-        drawWithdrawalsChart();
-      }
-    });
   }
 
   // ---------------- Home rendering ----------------
