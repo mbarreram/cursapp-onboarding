@@ -419,8 +419,7 @@
     if(!user()) return;
 
     ensureCourse();
-    ensureStudents();
-    seedPaymentsIfEmpty();
+    seedPayments();
     setWhoLine();
 
     const container = document.querySelector(".container");
