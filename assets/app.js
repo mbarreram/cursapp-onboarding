@@ -1,22 +1,29 @@
-/* Cursapp assets/app.js – v3.3 (Votaciones de retiros)
-   - Sin librerías externas (charts en SVG)
-   - Roles:
-     * apoderado: ve gráficos generales + puede VOTAR retiros (sí/no) / no puede solicitar
-     * tesorero: puede solicitar retiro / ve resultados
-     * presidente: puede solicitar retiro / ve resultados / puede CERRAR votación
+/* Cursapp assets/app.js – v3.5 (Pagos realistas + pasarela demo + comprobantes)
+   Incluye:
+   - Retiros con votación (apoderado vota, presidente cierra)
+   - Pagos:
+     * Vista Curso (tesorero/presidente): filtros + marcar pagado/pendiente
+     * Vista Como Apoderado (todos los roles): pagar con "pasarela" demo + generar comprobante
+   - Cobros:
+     * Presidente crea cobro para todos o para un apoderado específico
+   - Gráficos (SVG)
 */
 
 function jload(k,d){ try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d} }
 function jsave(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function today(){ return new Date().toISOString().slice(0,10); }
-function nowIso(){ return new Date().toISOString(); }
 function formatCLP(n){ return Number(n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}); }
 
-/* ---- KEYS ---- */
 const TASKS_KEY='cursapp_tasks_v1';
 const PAY_KEY='cursapp_course_payments_v1';
 const ROSTER_KEY='cursapp_roster_v1';
 const WITHDRAWALS_KEY='cursapp_withdrawals_v1';
+const RECEIPTS_KEY='cursapp_receipts_v1';
+const MY_APO_KEY='cursapp_my_apoderado_v1';
+
+function makeId(prefix){
+  return (prefix||'id')+'_'+Math.random().toString(16).slice(2)+'_'+Date.now().toString(16);
+}
 
 /* ---- LOGOUT ---- */
 function logout(){
@@ -25,7 +32,7 @@ function logout(){
   location.href='login.html';
 }
 
-/* ---- DATA SEED / SYNC ---- */
+/* ---- ROSTER / SEED ---- */
 function ensureRoster(){
   let r=jload(ROSTER_KEY,[]);
   if(!r.length){
@@ -33,7 +40,9 @@ function ensureRoster(){
     jsave(ROSTER_KEY,r);
   }
   const u=jload('cursapp_demo_user',null);
-  if(u?.name && !r.includes(u.name)){ r.unshift(u.name); jsave(ROSTER_KEY,r); }
+  if(u?.name && !r.includes(u.name)){
+    r.unshift(u.name); jsave(ROSTER_KEY,r);
+  }
   return r;
 }
 
@@ -42,17 +51,33 @@ function seedPaymentsIfEmpty(){
   if(pays.length) return;
   const roster=ensureRoster();
   pays = roster.map((n,i)=>({
+    id: makeId('pay'),
     type:'fee',
     name:n,
     concept:'Cuota Marzo',
     amount:10000,
     status:(i%3===0?'paid':'pending'),
-    date:'2026-03-10',
+    date:(i%3===0?'2026-03-08':'-'),
     createdAt:'2026-03-01'
   }));
   jsave(PAY_KEY,pays);
 }
 
+function seedWithdrawalsIfEmpty(){
+  const w=jload(WITHDRAWALS_KEY,[]);
+  if(w.length) return;
+  jsave(WITHDRAWALS_KEY, [{
+    id: makeId('wd'),
+    reason: 'Rifa del huevo',
+    amount: 70000,
+    createdAt: today(),
+    createdBy: 'tesorero',
+    status: 'voting',
+    votes: { yes: [], no: [] }
+  }]);
+}
+
+/* ---- TASKS -> PAYMENTS (shared) ---- */
 function syncTasks(){
   const tasks=jload(TASKS_KEY,[]);
   let pays=jload(PAY_KEY,[]);
@@ -60,30 +85,43 @@ function syncTasks(){
   tasks.forEach(t=>{
     roster.forEach(n=>{
       if(!pays.some(p=>p.type==='task'&&p.name===n&&p.concept===t.name)){
-        pays.unshift({type:'task',name:n,concept:t.name,amount:t.amount,status:'pending',date:'-',createdAt:today()});
+        pays.unshift({id: makeId('pay'), type:'task',name:n,concept:t.name,amount:t.amount,status:'pending',date:'-',createdAt:today()});
       }
     });
   });
   jsave(PAY_KEY,pays);
 }
 
-function seedWithdrawalsIfEmpty(){
-  const w=jload(WITHDRAWALS_KEY,[]);
-  if(w.length) return;
-  const sample = [{
-    id: makeId(),
-    reason: 'Rifa del huevo',
-    amount: 70000,
-    createdAt: today(),
-    createdBy: 'tesorero',
-    status: 'voting',
-    votes: { yes: [], no: [] }
-  }];
-  jsave(WITHDRAWALS_KEY, sample);
+/* ---- VIEW (pay as apoderado) ---- */
+function getMyApoderado(){
+  const u=jload('cursapp_demo_user',null);
+  const stored=jload(MY_APO_KEY,null);
+  if(stored) return stored;
+  if((u?.role||'').toLowerCase()==='apoderado' && u?.name) return u.name;
+  const roster=ensureRoster();
+  return roster[0] || (u?.name || 'Apoderado');
 }
+function setMyApoderado(name){ jsave(MY_APO_KEY, name); }
 
-function makeId(){
-  return 'wd_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16);
+/* ---- RECEIPTS ---- */
+function addReceiptForPayment(p, method){
+  const receipts=jload(RECEIPTS_KEY,[]);
+  const rec = {
+    id: makeId('rc'),
+    paymentId: p.id,
+    name: p.name,
+    concept: p.concept,
+    amount: p.amount,
+    method,
+    paidAt: new Date().toISOString()
+  };
+  receipts.unshift(rec);
+  jsave(RECEIPTS_KEY, receipts);
+  return rec;
+}
+function getReceiptByPaymentId(pid){
+  const receipts=jload(RECEIPTS_KEY,[]);
+  return receipts.find(r=>r.paymentId===pid) || null;
 }
 
 /* ---- NAV ---- */
@@ -99,7 +137,6 @@ function goTo(id){
   closeQuickMenu();
 }
 
-/* ---- QUICK MENU ---- */
 function toggleQuickMenu(){
   const qm=document.getElementById('quickMenu'); if(!qm) return;
   const open=qm.classList.toggle('open');
@@ -147,15 +184,9 @@ function renderUI(role){
     <section id="sec-withdrawals" class="section"></section>
 
     <nav class="tabbar floating" style="z-index:9999;pointer-events:auto;">
-      <button class="tab active" data-tab="home" onclick="goTo('home')">
-        <span class="ico">🏠</span><span>Inicio</span>
-      </button>
-      <button class="tab" data-tab="payments" onclick="goTo('payments')">
-        <span class="ico">💳</span><span>Pagos</span>
-      </button>
-      <button class="tab" data-tab="withdrawals" onclick="goTo('withdrawals')">
-        <span class="ico">🏦</span><span>Retiros</span>
-      </button>
+      <button class="tab active" data-tab="home" onclick="goTo('home')"><span class="ico">🏠</span><span>Inicio</span></button>
+      <button class="tab" data-tab="payments" onclick="goTo('payments')"><span class="ico">💳</span><span>Pagos</span></button>
+      <button class="tab" data-tab="withdrawals" onclick="goTo('withdrawals')"><span class="ico">🏦</span><span>Retiros</span></button>
     </nav>
   `;
 
@@ -189,47 +220,17 @@ function renderHome(role){
 
       <div class="card span12" style="${enableCharts ? '' : 'display:none;'}">
         <div class="row">
-          <div>
-            <div style="font-weight:950;">Recaudación últimos 12 meses</div>
-            <div class="muted">Cobrado vs pendiente</div>
-          </div>
+          <div><div style="font-weight:950;">Recaudación últimos 12 meses</div><div class="muted">Cobrado vs pendiente</div></div>
           <span class="pill">Demo</span>
         </div>
         <div style="margin-top:12px;" id="chartArea"></div>
       </div>
-
-      <div class="card span12" style="${enableCharts ? '' : 'display:none;'}">
-        <div class="row">
-          <div>
-            <div style="font-weight:950;">Presupuesto vs gasto (global)</div>
-            <div class="muted">Total por categoría (demo)</div>
-          </div>
-          <span class="pill">Demo</span>
-        </div>
-        <div style="margin-top:12px;" id="chartBudgetArea"></div>
-      </div>
-
-      <div class="card span12" style="${(enableCharts && role!=='apoderado') ? '' : 'display:none;'}">
-        <div class="row">
-          <div>
-            <div style="font-weight:950;">Pendientes por apoderado</div>
-            <div class="muted">Top 6 pendientes (demo)</div>
-          </div>
-          <span class="pill">Demo</span>
-        </div>
-        <div style="margin-top:12px;" id="chartPendingArea"></div>
-      </div>
     </div>
   `;
 
-  if(enableCharts){
-    renderChartCollection();
-    renderChartBudgetGlobal();
-    if(role!=='apoderado') renderChartPendingByPerson();
-  }
+  if(enableCharts){ renderChartCollection(); }
 }
 
-/* ---- CHARTS (SVG) ---- */
 function renderChartCollection(){
   const demo = window.CursappDemoData || {};
   const months = demo.months || [];
@@ -262,10 +263,7 @@ function renderChartCollection(){
   }
 
   area.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
-      ${bars}
-      ${labels}
-    </svg>
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${bars}${labels}</svg>
     <div class="row" style="margin-top:8px;">
       <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:var(--primary);display:inline-block;"></span> Cobrado</span>
       <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:#cbd5e1;display:inline-block;"></span> Pendiente</span>
@@ -273,89 +271,62 @@ function renderChartCollection(){
   `;
 }
 
-function renderChartBudgetGlobal(){
-  const demo = window.CursappDemoData || {};
-  const budget = demo.budget || [];
-  const area=document.getElementById('chartBudgetArea');
-  if(!area || !budget.length) return;
-
-  const maxV = Math.max(...budget.map(b=>Math.max(b.planned||0,b.spent||0)), 1);
-  const w=900, h=220, pad=20;
-  const n=budget.length;
-  const colW = Math.floor((w-pad*2)/n) - 10;
-  function y(v){ return h - pad - Math.round((v/maxV)*(h - pad*2)); }
-
-  let bars='';
-  budget.forEach((b,i)=>{
-    const x0 = pad + i*(colW+10);
-    const yp = y(b.planned||0), ys = y(b.spent||0);
-    const hp = (h-pad)-yp, hs=(h-pad)-ys;
-    bars += `<rect x="${x0}" y="${yp}" width="${Math.max(8, Math.floor(colW*0.55))}" height="${hp}" rx="6" fill="#cbd5e1"></rect>`;
-    bars += `<rect x="${x0+Math.floor(colW*0.6)}" y="${ys}" width="${Math.max(8, Math.floor(colW*0.4))}" height="${hs}" rx="6" fill="var(--primary)" opacity="0.9"></rect>`;
-    bars += `<text x="${x0}" y="${h-4}" font-size="11" fill="var(--muted)">${escapeShort(b.category,10)}</text>`;
-  });
-
-  area.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
-      ${bars}
-    </svg>
-    <div class="row" style="margin-top:8px;">
-      <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:#cbd5e1;display:inline-block;"></span> Presupuesto</span>
-      <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:var(--primary);display:inline-block;"></span> Gasto</span>
-    </div>
-  `;
-}
-
-function renderChartPendingByPerson(){
-  const pays = jload(PAY_KEY, []);
-  const map = {};
-  pays.forEach(p=>{ if(p.status==='pending'){ map[p.name]=(map[p.name]||0)+Number(p.amount||0); } });
-  if(Object.keys(map).length===0){ ensureRoster().forEach((n,i)=> map[n]=(6-i)*7000 ); }
-  const data = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const area=document.getElementById('chartPendingArea');
-  if(!area || !data.length) return;
-
-  const maxV = Math.max(...data.map(d=>d[1]), 1);
-  const w=900, rowH=34, pad=20, h=pad*2 + rowH*data.length;
-  function x(v){ return pad + Math.round((v/maxV)*(w - pad*2)); }
-
-  let rows='';
-  data.forEach((d,i)=>{
-    const name=d[0], val=d[1];
-    const y = pad + i*rowH;
-    const barX = pad+180;
-    const barW = Math.max(6, x(val) - barX);
-    rows += `
-      <text x="${pad}" y="${y+22}" font-size="12" fill="var(--text)">${escapeShort(name,18)}</text>
-      <rect x="${barX}" y="${y+8}" width="${barW}" height="16" rx="8" fill="var(--primary)" opacity="0.85"></rect>
-      <text x="${barX+barW+8}" y="${y+22}" font-size="12" fill="var(--muted)">${formatCLP(val)}</text>
-    `;
-  });
-
-  area.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${rows}</svg>`;
-}
-
 /* ---- PAYMENTS ---- */
 function renderPayments(role){
   const el=document.getElementById('sec-payments'); if(!el) return;
 
+  const isAdmin = (role==='tesorero' || role==='presidente');
+  const isApoderado = (role==='apoderado');
+  const canToggleMyView = !isApoderado;
+  const viewMode = canToggleMyView ? (window.__cursapp_view_mode || 'course') : 'my';
+
   el.innerHTML = `
     <div class="row">
       <div>
-        <h2 style="margin:0;">Pagos del curso</h2>
-        <div class="muted">${role==='apoderado' ? 'Tus pagos y pendientes (demo)' : 'Cuotas + tareas del presidente (demo)'}</div>
+        <h2 style="margin:0;">Pagos</h2>
+        <div class="muted">${(viewMode==='my' || isApoderado) ? 'Simula pago y genera comprobante' : 'Vista curso (admin)'}</div>
       </div>
-      ${role==='presidente' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
+      ${role==='presidente' && viewMode==='course' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
     </div>
+
+    ${canToggleMyView ? `
+      <div class="card" style="margin-top:12px;">
+        <div class="row">
+          <div style="font-weight:950;">Vista</div>
+          <div class="segmented" style="margin-top:0;">
+            <button class="${viewMode==='course'?'active':''}" onclick="setViewMode('course')">Curso</button>
+            <button class="${viewMode==='my'?'active':''}" onclick="setViewMode('my')">Como apoderado</button>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btn ghost" onclick="pickMyApoderado()">Elegir apoderado demo</button>
+          <span class="pill">Actual: <strong>${escapeHtml(getMyApoderado())}</strong></span>
+        </div>
+      </div>
+    ` : ``}
+
+    ${isAdmin && viewMode==='course' ? `
+      <div class="card" style="margin-top:12px;">
+        <div class="row">
+          <div style="font-weight:950;">Filtros</div>
+          <div class="segmented" style="margin-top:0;">
+            <button id="fltAll" class="active" onclick="setPaymentFilter('all')">Todos</button>
+            <button id="fltPending" onclick="setPaymentFilter('pending')">Pendientes</button>
+            <button id="fltPaid" onclick="setPaymentFilter('paid')">Pagados</button>
+          </div>
+        </div>
+      </div>
+    ` : ``}
 
     <div class="card" style="margin-top:12px;">
       <table>
         <thead>
           <tr>
-            <th>${role==='apoderado' ? 'Tu nombre' : 'Apoderado'}</th>
+            <th>Apoderado</th>
             <th>Concepto</th>
             <th>Monto</th>
             <th>Estado</th>
+            <th style="text-align:right;">Acción</th>
           </tr>
         </thead>
         <tbody id="paymentsTbody"></tbody>
@@ -364,10 +335,10 @@ function renderPayments(role){
 
     <div class="card" id="createTaskCard" style="display:none; margin-top:12px;">
       <div style="font-weight:950;">Nuevo cobro</div>
-      <div class="muted">Se agregará como pendiente para todos.</div>
+      <div class="muted">Para todos o para un apoderado específico.</div>
       <div class="actions">
         <input id="taskName" placeholder="Concepto (ej: Cuota Abril)" style="flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
-        <select id="taskTarget" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;min-width:200px;">
+        <select id="taskTarget" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;min-width:220px;">
           <option value="all">Para todos</option>
         </select>
         <input id="taskAmount" placeholder="Monto (ej: 12000)" inputmode="numeric" style="width:160px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
@@ -375,8 +346,41 @@ function renderPayments(role){
         <button class="btn" onclick="closeCreateTask()">Cancelar</button>
       </div>
     </div>
+
+    <div id="payModalRoot"></div>
   `;
+
+  fillTaskTarget();
   renderPaymentsTable();
+}
+
+function setViewMode(mode){
+  window.__cursapp_view_mode = mode;
+  renderPayments((jload('cursapp_demo_user',null)?.role || 'apoderado').toLowerCase());
+}
+
+function setPaymentFilter(f){
+  window.__cursapp_payment_filter = f;
+  const bAll=document.getElementById('fltAll');
+  const bPend=document.getElementById('fltPending');
+  const bPaid=document.getElementById('fltPaid');
+  [bAll,bPend,bPaid].forEach(b=>b&&b.classList.remove('active'));
+  if(f==='pending' && bPend) bPend.classList.add('active');
+  else if(f==='paid' && bPaid) bPaid.classList.add('active');
+  else if(bAll) bAll.classList.add('active');
+  renderPaymentsTable();
+}
+
+function pickMyApoderado(){
+  const roster = ensureRoster();
+  const current = getMyApoderado();
+  const choice = prompt('Escribe el nombre exacto del apoderado demo:\\n' + roster.join('\\n'), current);
+  if(choice && roster.includes(choice)){
+    setMyApoderado(choice);
+    renderPayments((jload('cursapp_demo_user',null)?.role || 'apoderado').toLowerCase());
+  } else if(choice){
+    alert('Nombre no encontrado en roster.');
+  }
 }
 
 function renderPaymentsTable(){
@@ -387,48 +391,91 @@ function renderPaymentsTable(){
   syncTasks();
 
   let pays=jload(PAY_KEY,[]);
+  // normalize ids
+  let changed=false;
+  pays.forEach(p=>{ if(!p.id){ p.id=makeId('pay'); changed=true; } });
+  if(changed) jsave(PAY_KEY,pays);
+
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
+  const isAdmin = (role==='tesorero' || role==='presidente');
+  const viewMode = (role==='apoderado') ? 'my' : (window.__cursapp_view_mode || 'course');
+  const myName = (role==='apoderado') ? (u?.name || getMyApoderado()) : getMyApoderado();
 
-  const view = (role==='apoderado' && u?.name) ? pays.filter(p=>p.name===u.name) : pays;
+  let view=pays;
 
-  const rows = view.slice(0,40).map(p=>{
-    const tag = p.status==='paid' ? `<span class="tag ok">Pagado</span>`
-              : p.status==='pending' ? `<span class="tag warn">Pendiente</span>`
-              : `<span class="tag">${escapeHtml(p.status||'-')}</span>`;
+  if(viewMode==='my'){
+    view = pays.filter(p=>p.name===myName);
+  } else {
+    const f = window.__cursapp_payment_filter || 'all';
+    if(f==='pending') view = view.filter(p=>p.status==='pending');
+    if(f==='paid') view = view.filter(p=>p.status==='paid');
+  }
+
+  const rows = view.slice(0,120).map(p=>{
+    const tag = p.status==='paid' ? `<span class="tag ok">Pagado</span>` : `<span class="tag warn">Pendiente</span>`;
+    const receipt = getReceiptByPaymentId(p.id);
+
+    let action = `<span class="muted">—</span>`;
+    if(viewMode==='my' && p.status!=='paid'){
+      action = `<button class="btn primary" onclick="openPayModal('${p.id}')">Pagar</button>`;
+    } else if(p.status==='paid' && receipt){
+      action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+    } else if(isAdmin && viewMode==='course'){
+      const toggleLabel = (p.status==='paid') ? 'Marcar pendiente' : 'Marcar pagado';
+      const receiptBtn = receipt ? ` <button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>` : '';
+      action = `<button class="btn" onclick="togglePaid('${p.id}')">${toggleLabel}</button>${receiptBtn}`;
+    }
 
     return `<tr>
       <td>${escapeHtml(p.name||'-')}</td>
       <td>${escapeHtml(p.concept||'-')}</td>
       <td>${formatCLP(p.amount||0)}</td>
       <td>${tag}</td>
+      <td style="text-align:right; white-space:nowrap;">${action}</td>
     </tr>`;
   }).join('');
 
-  tbody.innerHTML = rows || `<tr><td colspan="4" class="muted">Sin datos</td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="5" class="muted">Sin datos</td></tr>`;
 }
 
-function openCreateTask(){ const c=document.getElementById('createTaskCard'); if(c) c.style.display='block'; fillTaskTarget(); }
+function togglePaid(id){
+  let pays=jload(PAY_KEY,[]);
+  const idx=pays.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const next = (pays[idx].status==='paid') ? 'pending' : 'paid';
+  pays[idx].status = next;
+  pays[idx].date = next==='paid' ? today() : '-';
+  jsave(PAY_KEY,pays);
+
+  if(next==='paid' && !getReceiptByPaymentId(id)){
+    addReceiptForPayment(pays[idx], 'Conciliación (Demo)');
+  }
+
+  renderPaymentsTable();
+}
+
+/* ---- Create Cobro ---- */
+function openCreateTask(){
+  const c=document.getElementById('createTaskCard'); if(c) c.style.display='block';
+  fillTaskTarget();
+}
+function closeCreateTask(){
+  const c=document.getElementById('createTaskCard'); if(c) c.style.display='none';
+}
 
 function fillTaskTarget(){
   const sel=document.getElementById('taskTarget');
   if(!sel) return;
-
-  // Preserve current selection if possible
   const current = sel.value || 'all';
-
-  const roster = ensureRoster ? ensureRoster() : [];
-  // Rebuild options
+  const roster = ensureRoster();
   sel.innerHTML = '<option value="all">Para todos</option>' + roster.map(n=>(
     '<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>'
   )).join('');
-
-  // Restore selection
   const opt = Array.from(sel.options).find(o=>o.value===current);
   if(opt) sel.value=current;
 }
 
-function closeCreateTask(){ const c=document.getElementById('createTaskCard'); if(c) c.style.display='none'; }
 function createTask(){
   const nameEl=document.getElementById('taskName');
   const amountEl=document.getElementById('taskAmount');
@@ -440,28 +487,16 @@ function createTask(){
 
   if(!concept || !amount || amount<=0){ alert('Completa concepto y monto'); return; }
 
-  if(target === 'all'){
-    // Cobro para todos (se sincroniza vía TASKS_KEY)
+  if(target==='all'){
     const tasks=jload(TASKS_KEY,[]);
     tasks.unshift({name: concept, amount, createdAt:today()});
     jsave(TASKS_KEY,tasks);
     syncTasks();
   } else {
-    // Cobro para un apoderado específico (se agrega directo a PAY_KEY)
     let pays=jload(PAY_KEY,[]);
-    // Evita duplicado exacto
     const exists = pays.some(p=>p.type==='task' && p.name===target && p.concept===concept);
     if(!exists){
-      pays.unshift({
-        id: makeId(),
-        type:'task',
-        name: target,
-        concept,
-        amount,
-        status:'pending',
-        date:'-',
-        createdAt:today()
-      });
+      pays.unshift({id: makeId('pay'), type:'task', name: target, concept, amount, status:'pending', date:'-', createdAt:today()});
       jsave(PAY_KEY,pays);
     }
   }
@@ -472,6 +507,114 @@ function createTask(){
 
   renderPaymentsTable();
   alert(target==='all' ? 'Cobro creado para todos (demo).' : 'Cobro creado para '+target+' (demo).');
+}
+
+/* ---- PAYMENT GATEWAY (DEMO) + RECEIPT ---- */
+function openPayModal(paymentId){
+  const root=document.getElementById('payModalRoot');
+  if(!root) return;
+
+  const pays=jload(PAY_KEY,[]);
+  const p=pays.find(x=>x.id===paymentId);
+  if(!p) return;
+
+  root.innerHTML = `
+    <div style="position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:10000; display:flex; align-items:flex-end; justify-content:center; padding:14px;">
+      <div class="card" style="width:min(560px, 100%); margin-bottom:12px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950; font-size:18px;">Pasarela de pago (Demo)</div>
+            <div class="muted">${escapeHtml(p.concept||'Cobro')} · ${formatCLP(p.amount||0)}</div>
+          </div>
+          <button class="btn" onclick="closePayModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="kpiLabel">Método</div>
+          <select id="payMethod" style="width:100%; margin-top:6px;">
+            <option value="Webpay (Demo)">Webpay (Demo)</option>
+            <option value="Transferencia (Demo)">Transferencia (Demo)</option>
+          </select>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="kpiLabel">Tarjeta (demo)</div>
+          <input placeholder="1234 5678 9012 3456" inputmode="numeric" style="width:100%; margin-top:6px;">
+          <div class="row" style="margin-top:8px;">
+            <input placeholder="MM/AA" inputmode="numeric" style="flex:1;">
+            <input placeholder="CVC" inputmode="numeric" style="width:120px;">
+          </div>
+          <div class="muted" style="margin-top:8px;">No se guarda información real. Es solo simulación.</div>
+        </div>
+
+        <div class="actions" style="justify-content:flex-end;">
+          <button class="btn ghost" onclick="closePayModal()">Cancelar</button>
+          <button class="btn primary" onclick="confirmPay('${p.id}')">Pagar ${formatCLP(p.amount||0)}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function closePayModal(){
+  const root=document.getElementById('payModalRoot');
+  if(root) root.innerHTML='';
+}
+
+function confirmPay(paymentId){
+  const method = document.getElementById('payMethod')?.value || 'Webpay (Demo)';
+  let pays=jload(PAY_KEY,[]);
+  const idx=pays.findIndex(x=>x.id===paymentId);
+  if(idx<0) return;
+
+  pays[idx].status='paid';
+  pays[idx].date=today();
+  jsave(PAY_KEY,pays);
+
+  addReceiptForPayment(pays[idx], method);
+
+  closePayModal();
+  renderPaymentsTable();
+  alert('Pago aprobado (demo). Comprobante generado.');
+}
+
+function openReceipt(paymentId){
+  const rec = getReceiptByPaymentId(paymentId);
+  if(!rec){ alert('No hay comprobante.'); return; }
+
+  const html = `
+    <html lang="es">
+    <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <title>Comprobante ${rec.id}</title>
+      <style>
+        body{ font-family: system-ui, -apple-system; background:#f5f7fb; margin:0; padding:16px; }
+        .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; max-width:560px; margin:0 auto; }
+        h1{ font-size:18px; margin:0 0 10px; }
+        .muted{ color:#6b7280; font-size:13px; }
+        .row{ display:flex; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap; }
+        .k{ color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:.04em; font-weight:800; }
+        .v{ font-weight:900; }
+        button{ border:none; padding:10px 12px; border-radius:12px; background:#4f46e5; color:#fff; font-weight:800; width:100%; margin-top:14px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Comprobante de pago</h1>
+        <div class="muted">ID: ${rec.id}</div>
+
+        <div class="row"><div><div class="k">Apoderado</div><div class="v">${escapeHtml(rec.name)}</div></div><div><div class="k">Monto</div><div class="v">${formatCLP(rec.amount)}</div></div></div>
+        <div class="row"><div><div class="k">Concepto</div><div class="v">${escapeHtml(rec.concept)}</div></div><div><div class="k">Método</div><div class="v">${escapeHtml(rec.method)}</div></div></div>
+        <div class="row"><div><div class="k">Fecha</div><div class="v">${escapeHtml(new Date(rec.paidAt).toLocaleString('es-CL'))}</div></div><div></div></div>
+
+        <button onclick="window.print()">Imprimir / Guardar PDF</button>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const w = window.open('', '_blank');
+  if(!w){ alert('Bloqueado por el navegador.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 /* ---- WITHDRAWALS + VOTING ---- */
@@ -496,7 +639,7 @@ function renderWithdrawalsBody(){
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
   const canRequest = (role==='presidente' || role==='tesorero');
-  const canClose = (role==='presidente'); // cierre de votación
+  const canClose = (role==='presidente');
 
   const withdrawals=jload(WITHDRAWALS_KEY,[]);
   const active = withdrawals.filter(w=>w.status==='voting');
@@ -508,8 +651,8 @@ function renderWithdrawalsBody(){
         <div style="font-weight:950;">Solicitar retiro</div>
         <div class="muted">Se enviará a votación del curso.</div>
         <div class="actions" style="flex-wrap:wrap;">
-          <input id="wdReason" placeholder="Motivo (ej: Pago bus paseo)" style="flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
-          <input id="wdAmount" placeholder="Monto (ej: 50000)" inputmode="numeric" style="width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
+          <input id="wdReason" placeholder="Motivo (ej: Pago bus paseo)" style="flex:1;min-width:180px;">
+          <input id="wdAmount" placeholder="Monto (ej: 50000)" inputmode="numeric" style="width:180px;">
           <button class="btn primary" onclick="submitWithdrawal()">Enviar a votación</button>
         </div>
       </div>
@@ -591,21 +734,14 @@ function closedCard(w){
 }
 
 function submitWithdrawal(){
-  const reasonEl=document.getElementById('wdReason');
-  const amountEl=document.getElementById('wdAmount');
-
-  const reason=(reasonEl?.value||'').trim();
-  const amount=Number((amountEl?.value||'').trim());
-
-  if(!reason || !amount || amount<=0){
-    alert('Completa motivo y monto.');
-    return;
-  }
+  const reason=(document.getElementById('wdReason')?.value||'').trim();
+  const amount=Number((document.getElementById('wdAmount')?.value||'').trim());
+  if(!reason || !amount || amount<=0){ alert('Completa motivo y monto.'); return; }
 
   const u=jload('cursapp_demo_user',null);
   const withdrawals=jload(WITHDRAWALS_KEY,[]);
   withdrawals.unshift({
-    id: makeId(),
+    id: makeId('wd'),
     reason,
     amount,
     createdAt: today(),
@@ -614,9 +750,6 @@ function submitWithdrawal(){
     votes: { yes: [], no: [] }
   });
   jsave(WITHDRAWALS_KEY,withdrawals);
-
-  if(reasonEl) reasonEl.value='';
-  if(amountEl) amountEl.value='';
 
   alert('Solicitud enviada a votación (demo).');
   renderWithdrawalsBody();
@@ -632,7 +765,6 @@ function voteWithdrawal(id, side){
   if(!w || w.status!=='voting') return;
 
   w.votes = w.votes || {yes:[], no:[]};
-  // remove from both
   w.votes.yes = (w.votes.yes||[]).filter(n=>n!==voter);
   w.votes.no  = (w.votes.no ||[]).filter(n=>n!==voter);
 
@@ -661,10 +793,6 @@ function countActiveWithdrawals(){
   return withdrawals.filter(w=>w.status==='voting').length || 0;
 }
 
-function makeId(){
-  return 'wd_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16);
-}
-
 /* ---- INIT ---- */
 document.addEventListener('DOMContentLoaded', ()=>{
   seedPaymentsIfEmpty();
@@ -677,6 +805,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     w.textContent = (u.name||'Usuario')+' · '+(u.role||'');
     w.className = 'who';
   }
+
+  // defaults
+  window.__cursapp_payment_filter = window.__cursapp_payment_filter || 'all';
+  window.__cursapp_view_mode = window.__cursapp_view_mode || ((u?.role||'').toLowerCase()==='apoderado' ? 'my' : 'course');
 
   const role = (u?.role || '').toLowerCase() || 'apoderado';
   renderUI(role);
