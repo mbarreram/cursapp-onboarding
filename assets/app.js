@@ -220,15 +220,44 @@ function renderHome(role){
 
       <div class="card span12" style="${enableCharts ? '' : 'display:none;'}">
         <div class="row">
-          <div><div style="font-weight:950;">Recaudación últimos 12 meses</div><div class="muted">Cobrado vs pendiente</div></div>
+          <div>
+            <div style="font-weight:950;">Recaudación últimos 12 meses</div>
+            <div class="muted">Cobrado vs pendiente</div>
+          </div>
           <span class="pill">Demo</span>
         </div>
         <div style="margin-top:12px;" id="chartArea"></div>
       </div>
+
+      <div class="card span12" style="${enableCharts ? '' : 'display:none;'}">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Presupuesto vs gasto (global)</div>
+            <div class="muted">Por categoría (demo)</div>
+          </div>
+          <span class="pill">Demo</span>
+        </div>
+        <div style="margin-top:12px;" id="chartBudgetArea"></div>
+      </div>
+
+      <div class="card span12" style="${(enableCharts && role!=='apoderado') ? '' : 'display:none;'}">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;">Pendientes por apoderado</div>
+            <div class="muted">Top 6 pendientes (demo)</div>
+          </div>
+          <span class="pill">Demo</span>
+        </div>
+        <div style="margin-top:12px;" id="chartPendingArea"></div>
+      </div>
     </div>
   `;
 
-  if(enableCharts){ renderChartCollection(); }
+  if(enableCharts){
+    renderChartCollection();
+    renderChartBudgetGlobal();
+    if(role!=='apoderado') renderChartPendingByPerson();
+  }
 }
 
 function renderChartCollection(){
@@ -269,6 +298,68 @@ function renderChartCollection(){
       <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:#cbd5e1;display:inline-block;"></span> Pendiente</span>
     </div>
   `;
+}
+
+
+
+function renderChartBudgetGlobal(){
+  const demo = window.CursappDemoData || {};
+  const budget = demo.budget || [];
+  const area=document.getElementById('chartBudgetArea');
+  if(!area || !budget.length) return;
+
+  const maxV = Math.max(...budget.map(b=>Math.max(b.planned||0,b.spent||0)), 1);
+  const w=900, h=220, pad=20;
+  const n=budget.length;
+  const colW = Math.floor((w-pad*2)/n) - 10;
+  function y(v){ return h - pad - Math.round((v/maxV)*(h - pad*2)); }
+
+  let bars='';
+  budget.forEach((b,i)=>{
+    const x0 = pad + i*(colW+10);
+    const yp = y(b.planned||0), ys = y(b.spent||0);
+    const hp = (h-pad)-yp, hs=(h-pad)-ys;
+    bars += `<rect x="${x0}" y="${yp}" width="${Math.max(8, Math.floor(colW*0.55))}" height="${hp}" rx="6" fill="#cbd5e1"></rect>`;
+    bars += `<rect x="${x0+Math.floor(colW*0.6)}" y="${ys}" width="${Math.max(8, Math.floor(colW*0.4))}" height="${hs}" rx="6" fill="var(--primary)" opacity="0.9"></rect>`;
+    bars += `<text x="${x0}" y="${h-4}" font-size="11" fill="var(--muted)">${escapeShort(b.category,10)}</text>`;
+  });
+
+  area.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${bars}</svg>
+    <div class="row" style="margin-top:8px;">
+      <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:#cbd5e1;display:inline-block;"></span> Presupuesto</span>
+      <span class="pill"><span style="width:10px;height:10px;border-radius:3px;background:var(--primary);display:inline-block;"></span> Gasto</span>
+    </div>
+  `;
+}
+
+function renderChartPendingByPerson(){
+  const pays = jload(PAY_KEY, []);
+  const map = {};
+  pays.forEach(p=>{ if(p.status==='pending'){ map[p.name]=(map[p.name]||0)+Number(p.amount||0); } });
+  if(Object.keys(map).length===0){ ensureRoster().forEach((n,i)=> map[n]=(6-i)*7000 ); }
+  const data = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const area=document.getElementById('chartPendingArea');
+  if(!area || !data.length) return;
+
+  const maxV = Math.max(...data.map(d=>d[1]), 1);
+  const w=900, rowH=34, pad=20, h=pad*2 + rowH*data.length;
+  function x(v){ return pad + Math.round((v/maxV)*(w - pad*2)); }
+
+  let rows='';
+  data.forEach((d,i)=>{
+    const name=d[0], val=d[1];
+    const y = pad + i*rowH;
+    const barX = pad+180;
+    const barW = Math.max(6, x(val) - barX);
+    rows += `
+      <text x="${pad}" y="${y+22}" font-size="12" fill="var(--text)">${escapeShort(name,18)}</text>
+      <rect x="${barX}" y="${y+8}" width="${barW}" height="16" rx="8" fill="var(--primary)" opacity="0.85"></rect>
+      <text x="${barX+barW+8}" y="${y+22}" font-size="12" fill="var(--muted)">${formatCLP(val)}</text>
+    `;
+  });
+
+  area.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">${rows}</svg>`;
 }
 
 /* ---- PAYMENTS ---- */
