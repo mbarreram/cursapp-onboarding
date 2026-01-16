@@ -1,5 +1,13 @@
 /* ========= Cursapp – app.js BASE ESTABLE (gráfico visible iOS) ========= */
-
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("logoutBtn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      localStorage.removeItem("cursapp_demo_user");
+      window.location.href = "login.html";
+    });
+  }
+});
 /* helpers */
 function jload(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d } catch(e){ return d } }
 function jsave(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
