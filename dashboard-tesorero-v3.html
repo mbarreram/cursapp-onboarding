@@ -2,158 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard Tesorero | Cursapp</title>
-  <link rel="stylesheet" href="assets/styles.css">
-
-  <style>
-    /* TABBAR SAFE AREA FIX: evita que el menú inferior tape el contenido */
-    :root{ --tabbar-h: 96px; }
-    .container{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
-    .section{ padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
-  </style>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tesorero</title>
+  <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
-
-<header>
-  <div class="topbar">
-    <div class="brand">
-      <div class="logo">C</div>
-      <div>
-        <div class="brandTitle">Cursapp</div>
-        <div class="who" id="whoLine">Tesorero · Curso</div>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo">C</div>
+        <div id="whoLine"></div>
       </div>
+      <button onclick="logout()">Cerrar sesión</button>
     </div>
-    <button class="btn" onclick="logout()">Cerrar sesión</button>
-  </div>
-</header>
+  </header>
 
-<div class="container">
+  <div class="container"></div>
 
-  <!-- INICIO -->
-  <section id="sec-home" class="screen">
-    <h1>Inicio</h1>
-    <p class="muted">Resumen financiero del curso</p>
-
-    <div class="grid">
-      <div class="card">
-        <h3>Total recaudado</h3>
-        <div class="kpiValue">$1.250.000</div>
-      </div>
-      <div class="card">
-        <h3>Total pendiente</h3>
-        <div class="kpiValue">$320.000</div>
-      </div>
-      <div class="card">
-        <h3>Retiros en votación</h3>
-        <div class="kpiValue" id="kpiWithdrawVoting">1</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PAGOS DEL CURSO -->
-  <section id="sec-pagos-curso" class="screen">
-    <h1>Pagos del curso</h1>
-    <table>
-      <thead>
-        <tr><th>Apoderado</th><th>Concepto</th><th>Monto</th><th>Estado</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Ana Soto</td><td>Cuota Marzo</td><td>$10.000</td><td>Pagado</td></tr>
-        <tr><td>Carlos Díaz</td><td>Cuota Marzo</td><td>$10.000</td><td>Pendiente</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <!-- RETIROS -->
-  <section id="sec-retiros" class="screen">
-    <h1>Retiros</h1>
-
-    <div class="card">
-      <h3>Solicitar retiro</h3>
-      <form onsubmit="createWithdrawal(event)">
-        <input id="wAmount" type="number" placeholder="Monto" required />
-        <input id="wReason" type="text" placeholder="Motivo" required />
-        <button class="btn primary">Enviar a votación</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Votaciones activas</h3>
-      <div id="withdrawList"></div>
-    </div>
-  </section>
-
-</div>
-
-<div class="tabbar">
-  <button onclick="show('sec-home')">Inicio</button>
-  <button onclick="show('sec-pagos-curso')">Pagos curso</button>
-  <button onclick="show('sec-retiros')">Retiros</button>
-</div>
-
-<script>
-  window.cursappRole = "Tesorero";
-
-  const totalGuardians = 40;
-  const threshold = Math.ceil(totalGuardians * 0.3);
-
-  let withdrawals = [
-    { id: 1, amount: 25000, reason: "Materiales", approvals: 12 }
-  ];
-
-  function show(id){
-    document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
-    document.getElementById(id).style.display = 'block';
-  }
-  show('sec-home');
-
-  function renderWithdrawals(){
-    const el = document.getElementById('withdrawList');
-    el.innerHTML = withdrawals.map(w => {
-      const ok = w.approvals >= threshold;
-      return `<div class="card">
-        <b>$${w.amount}</b> · ${w.reason}<br/>
-        Aprobaciones: ${w.approvals}/${totalGuardians} (30% = ${threshold})<br/>
-        Estado: <b>${ok ? 'APROBADO' : 'EN VOTACIÓN'}</b>
-      </div>`;
-    }).join('');
-  }
-
-  function createWithdrawal(e){
-    e.preventDefault();
-    const amount = Number(wAmount.value);
-    const reason = wReason.value;
-    withdrawals.push({ id: Date.now(), amount, reason, approvals: 0 });
-    e.target.reset();
-    renderWithdrawals();
-  }
-
-  function logout(){
-    localStorage.removeItem('cursapp_demo_user');
-    location.href = 'login.html';
-  }
-
-  renderWithdrawals();
-</script>
-
-
-<script>
-/* OVERLAY SAFETY: evita que un backdrop/quickmenu invisible bloquee taps en iOS */
-(function(){
-  function forceClose(){
-    try{
-      const qm = document.getElementById('quickMenu');
-      if (qm){ qm.style.display = 'none'; }
-      const mb = document.getElementById('modalBackdrop');
-      if (mb){ mb.style.display = 'none'; }
-    }catch(e){}
-  }
-  document.addEventListener('DOMContentLoaded', forceClose);
-  setTimeout(forceClose, 0);
-})();
-</script>
-
+  <script>window.CURSAPP_ENABLE_CHARTS = true;</script>
+  <script src="assets/app.js"></script>
+  <script src="assets/demoData.js"></script>
 </body>
 </html>
