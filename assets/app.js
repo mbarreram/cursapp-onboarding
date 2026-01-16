@@ -194,13 +194,25 @@
       const pending = pays.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
 
       document.getElementById("secHome").innerHTML = `
-        <p class="muted">Resumen financiero del curso</p>
-        <div class="grid">
-          <div class="card span4"><div class="kpiLabel">Total recaudado</div><div class="kpiValue">${clp(collected)}</div></div>
-          <div class="card span4"><div class="kpiLabel">Total pendiente</div><div class="kpiValue">${clp(pending)}</div></div>
-          <div class="card span4"><div class="kpiLabel">${directiva?"Alumnos curso":"Tus alumnos"}</div><div class="kpiValue">${directiva?studentsInCourse().length:myStudents().length}</div></div>
-        </div>
-      `;
+  <p class="muted">Resumen financiero del curso</p>
+
+  <div class="grid">
+    <div class="card span4">
+      <div class="kpiLabel">Total recaudado</div>
+      <div class="kpiValue">${formatCLP(collected)}</div>
+    </div>
+
+    <div class="card span4">
+      <div class="kpiLabel">Total pendiente</div>
+      <div class="kpiValue">${formatCLP(pending)}</div>
+    </div>
+
+    <div class="card span4">
+      <div class="kpiLabel">Tus alumnos</div>
+      <div class="kpiValue">${myStudents().length}</div>
+    </div>
+  </div>
+`;
     }
 
     function renderPay(){
