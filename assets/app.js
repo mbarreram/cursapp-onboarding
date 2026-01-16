@@ -42,7 +42,6 @@ function seedPaymentsIfEmpty(){
   if(pays.length) return;
   const roster=ensureRoster();
   pays = roster.map((n,i)=>({
-    id: makeId(),
     type:'fee',
     name:n,
     concept:'Cuota Marzo',
@@ -61,7 +60,7 @@ function syncTasks(){
   tasks.forEach(t=>{
     roster.forEach(n=>{
       if(!pays.some(p=>p.type==='task'&&p.name===n&&p.concept===t.name)){
-        pays.unshift({id: makeId(), type:'task',name:n,concept:t.name,amount:t.amount,status:'pending',date:'-',createdAt:today()});
+        pays.unshift({type:'task',name:n,concept:t.name,amount:t.amount,status:'pending',date:'-',createdAt:today()});
       }
     });
   });
@@ -340,41 +339,23 @@ function renderChartPendingByPerson(){
 function renderPayments(role){
   const el=document.getElementById('sec-payments'); if(!el) return;
 
-  const isAdmin = (role==='tesorero' || role==='presidente');
-  const isApoderado = (role==='apoderado');
-
   el.innerHTML = `
     <div class="row">
       <div>
         <h2 style="margin:0;">Pagos del curso</h2>
-        <div class="muted">${isApoderado ? 'Tus pagos y pendientes (demo)' : 'Cuotas + tareas del presidente (demo)'}</div>
+        <div class="muted">${role==='apoderado' ? 'Tus pagos y pendientes (demo)' : 'Cuotas + tareas del presidente (demo)'}</div>
       </div>
       ${role==='presidente' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
     </div>
-
-    ${isAdmin ? `
-      <div class="card" style="margin-top:12px;">
-        <div class="row">
-          <div style="font-weight:950;">Filtros</div>
-          <div class="segmented" style="margin-top:0;">
-            <button id="fltAll" class="active" onclick="setPaymentFilter('all')">Todos</button>
-            <button id="fltPending" onclick="setPaymentFilter('pending')">Pendientes</button>
-            <button id="fltPaid" onclick="setPaymentFilter('paid')">Pagados</button>
-          </div>
-        </div>
-        <div class="muted" style="margin-top:8px;">Tip: puedes marcar pagos como pagados (demo).</div>
-      </div>
-    ` : ``}
 
     <div class="card" style="margin-top:12px;">
       <table>
         <thead>
           <tr>
-            <th>Apoderado</th>
+            <th>${role==='apoderado' ? 'Tu nombre' : 'Apoderado'}</th>
             <th>Concepto</th>
             <th>Monto</th>
             <th>Estado</th>
-            <th style="text-align:right;">Acción</th>
           </tr>
         </thead>
         <tbody id="paymentsTbody"></tbody>
@@ -386,51 +367,15 @@ function renderPayments(role){
       <div class="muted">Se agregará como pendiente para todos.</div>
       <div class="actions">
         <input id="taskName" placeholder="Concepto (ej: Cuota Abril)" style="flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
+        <select id="taskTarget" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;min-width:200px;">
+          <option value="all">Para todos</option>
+        </select>
         <input id="taskAmount" placeholder="Monto (ej: 12000)" inputmode="numeric" style="width:160px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
         <button class="btn primary" onclick="createTask()">Guardar</button>
         <button class="btn" onclick="closeCreateTask()">Cancelar</button>
       </div>
     </div>
   `;
-
-  window.__cursapp_payment_filter = 'all';
-  renderPaymentsTable();
-}
-
-function setPaymentFilter(f){
-  window.__cursapp_payment_filter = f;
-
-  const bAll=document.getElementById('fltAll');
-  const bPend=document.getElementById('fltPending');
-  const bPaid=document.getElementById('fltPaid');
-  [bAll,bPend,bPaid].forEach(b=>b&&b.classList.remove('active'));
-  if(f==='pending' && bPend) bPend.classList.add('active');
-  else if(f==='paid' && bPaid) bPaid.classList.add('active');
-  else if(bAll) bAll.classList.add('active');
-
-  renderPaymentsTable();
-}
-
-function payMyItem(id){
-  setPaymentStatus(id, 'paid');
-  alert('Pago simulado: marcado como pagado.');
-}
-
-function togglePaid(id){
-  const pays=jload(PAY_KEY,[]);
-  const p=pays.find(x=>x.id===id);
-  if(!p) return;
-  const next = (p.status==='paid') ? 'pending' : 'paid';
-  setPaymentStatus(id, next);
-}
-
-function setPaymentStatus(id, status){
-  let pays=jload(PAY_KEY,[]);
-  const idx=pays.findIndex(x=>x.id===id);
-  if(idx<0) return;
-  pays[idx].status=status;
-  pays[idx].date = status==='paid' ? today() : pays[idx].date;
-  jsave(PAY_KEY,pays);
   renderPaymentsTable();
 }
 
@@ -445,69 +390,88 @@ function renderPaymentsTable(){
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
 
-  // Normalize ids if older data exists
-  let changed=false;
-  pays.forEach(p=>{
-    if(!p.id){ p.id = makeId(); changed=true; }
-  });
-  if(changed){ jsave(PAY_KEY,pays); }
+  const view = (role==='apoderado' && u?.name) ? pays.filter(p=>p.name===u.name) : pays;
 
-  // Filter by role
-  let view = pays;
-  if(role==='apoderado' && u?.name){
-    view = pays.filter(p=>p.name===u.name);
-  }
-
-  // Filter by status (admin view only)
-  const f = window.__cursapp_payment_filter || 'all';
-  if(f==='pending') view = view.filter(p=>p.status==='pending');
-  if(f==='paid') view = view.filter(p=>p.status==='paid');
-
-  const isAdmin = (role==='tesorero' || role==='presidente');
-
-  const rows = view.slice(0,80).map(p=>{
-    const tag = p.status==='paid'
-      ? `<span class="tag ok">Pagado</span>`
-      : `<span class="tag warn">Pendiente</span>`;
-
-    const action = (role==='apoderado' && p.status!=='paid')
-      ? `<button class="btn primary" onclick="payMyItem('${p.id}')">Pagar</button>`
-      : (isAdmin
-          ? `<button class="btn" onclick="togglePaid('${p.id}')">${p.status==='paid'?'Marcar pendiente':'Marcar pagado'}</button>`
-          : `<span class="muted">—</span>`);
+  const rows = view.slice(0,40).map(p=>{
+    const tag = p.status==='paid' ? `<span class="tag ok">Pagado</span>`
+              : p.status==='pending' ? `<span class="tag warn">Pendiente</span>`
+              : `<span class="tag">${escapeHtml(p.status||'-')}</span>`;
 
     return `<tr>
       <td>${escapeHtml(p.name||'-')}</td>
       <td>${escapeHtml(p.concept||'-')}</td>
       <td>${formatCLP(p.amount||0)}</td>
       <td>${tag}</td>
-      <td style="text-align:right;">${action}</td>
     </tr>`;
   }).join('');
 
-  tbody.innerHTML = rows || `<tr><td colspan="5" class="muted">Sin datos</td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="4" class="muted">Sin datos</td></tr>`;
 }
 
-function openCreateTask(){ const c=document.getElementById('createTaskCard'); if(c) c.style.display='block'; }
+function openCreateTask(){ const c=document.getElementById('createTaskCard'); if(c) c.style.display='block'; fillTaskTarget(); }
+
+function fillTaskTarget(){
+  const sel=document.getElementById('taskTarget');
+  if(!sel) return;
+
+  // Preserve current selection if possible
+  const current = sel.value || 'all';
+
+  const roster = ensureRoster ? ensureRoster() : [];
+  // Rebuild options
+  sel.innerHTML = '<option value="all">Para todos</option>' + roster.map(n=>(
+    '<option value="'+escapeHtml(n)+'">'+escapeHtml(n)+'</option>'
+  )).join('');
+
+  // Restore selection
+  const opt = Array.from(sel.options).find(o=>o.value===current);
+  if(opt) sel.value=current;
+}
+
 function closeCreateTask(){ const c=document.getElementById('createTaskCard'); if(c) c.style.display='none'; }
 function createTask(){
   const nameEl=document.getElementById('taskName');
   const amountEl=document.getElementById('taskAmount');
-  const name=(nameEl?.value||'').trim();
-  const amount=Number((amountEl?.value||'').trim());
-  if(!name || !amount || amount<=0){ alert('Completa concepto y monto'); return; }
+  const targetEl=document.getElementById('taskTarget');
 
-  const tasks=jload(TASKS_KEY,[]);
-  tasks.unshift({name, amount, createdAt:today()});
-  jsave(TASKS_KEY,tasks);
+  const concept=(nameEl?.value||'').trim();
+  const amount=Number((amountEl?.value||'').trim());
+  const target=(targetEl?.value||'all').trim();
+
+  if(!concept || !amount || amount<=0){ alert('Completa concepto y monto'); return; }
+
+  if(target === 'all'){
+    // Cobro para todos (se sincroniza vía TASKS_KEY)
+    const tasks=jload(TASKS_KEY,[]);
+    tasks.unshift({name: concept, amount, createdAt:today()});
+    jsave(TASKS_KEY,tasks);
+    syncTasks();
+  } else {
+    // Cobro para un apoderado específico (se agrega directo a PAY_KEY)
+    let pays=jload(PAY_KEY,[]);
+    // Evita duplicado exacto
+    const exists = pays.some(p=>p.type==='task' && p.name===target && p.concept===concept);
+    if(!exists){
+      pays.unshift({
+        id: makeId(),
+        type:'task',
+        name: target,
+        concept,
+        amount,
+        status:'pending',
+        date:'-',
+        createdAt:today()
+      });
+      jsave(PAY_KEY,pays);
+    }
+  }
 
   if(nameEl) nameEl.value='';
   if(amountEl) amountEl.value='';
   closeCreateTask();
 
-  syncTasks();
   renderPaymentsTable();
-  alert('Cobro creado (demo).');
+  alert(target==='all' ? 'Cobro creado para todos (demo).' : 'Cobro creado para '+target+' (demo).');
 }
 
 /* ---- WITHDRAWALS + VOTING ---- */
