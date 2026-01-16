@@ -1,19 +1,20 @@
-/* Cursapp assets/app.js – v3.7 (Pagos por alumno + curso + conciliación manual/automática)
-   Reglas:
-   - Scope: 1 curso activo (2°B 2026 · Colegio X) para la demo.
-   - Pago automático: apoderado paga por pasarela demo -> queda pagado en todas las vistas + comprobante.
-   - Conciliación manual (directiva): marca pagado por Efectivo/Transferencia/Otro y registra ID + fecha + método.
+/* Cursapp assets/app.js – v3.8 (Roles separados: Apoderado paga / Directiva administra)
+   Regla:
+   - Presidente/Tesorero: administración del curso (cobros, conciliación manual, ver comprobantes)
+   - Apoderado: paga por sus alumnos (pasarela demo, ver comprobantes)
+   - Si presidente/tesorero tiene hijos: debe entrar como APODERADO y registrarlos en onboarding (fuera de este archivo).
 
-   Vistas en Pagos:
-   - "Pagar como apoderado": SOLO tus alumnos del curso.
-   - "Administrar curso": directiva ve todos los alumnos del curso (sin ver otros cursos).
+   Scope demo:
+   - 1 curso activo (2°B 2026 · Colegio X)
 */
 
 function jload(k,d){ try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d} }
 function jsave(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function today(){ return new Date().toISOString().slice(0,10); }
 function formatCLP(n){ return Number(n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}); }
+function makeId(prefix){ return (prefix||'id')+'_'+Math.random().toString(16).slice(2)+'_'+Date.now().toString(16); }
 
+/* ---- KEYS ---- */
 const COURSE_KEY='cursapp_active_course_v1';
 const COURSES_KEY='cursapp_courses_v1';
 
@@ -21,10 +22,7 @@ const TASKS_KEY='cursapp_tasks_v1';
 const PAY_KEY='cursapp_course_payments_v1';
 const STUDENTS_KEY='cursapp_students_v1';
 
-const WITHDRAWALS_KEY='cursapp_withdrawals_v1';
 const RECEIPTS_KEY='cursapp_receipts_v1';
-
-function makeId(prefix){ return (prefix||'id')+'_'+Math.random().toString(16).slice(2)+'_'+Date.now().toString(16); }
 
 /* ---- LOGOUT ---- */
 function logout(){
@@ -47,7 +45,7 @@ function ensureCourse(){
 function getActiveCourseId(){ return ensureCourse().active; }
 function getActiveCourse(){ const {courses, active}=ensureCourse(); return courses.find(c=>c.id===active) || courses[0]; }
 
-/* ---- STUDENTS (by course) ---- */
+/* ---- STUDENTS (course-scoped) ---- */
 function ensureStudents(){
   const courseId=getActiveCourseId();
   const u=jload('cursapp_demo_user',null);
@@ -57,33 +55,39 @@ function ensureStudents(){
   const hasThisCourse = students.some(s=>s.cursoId===courseId);
   if(!hasThisCourse){
     students = students.filter(s=>s.cursoId!==courseId);
+
+    // Demo: apoderados del curso
     const others = [
       {id:makeId('alu'), cursoId:courseId, alumno:'Ana Soto (Hija)', apoderado:'Ana Soto'},
       {id:makeId('alu'), cursoId:courseId, alumno:'Carlos Díaz (Hijo)', apoderado:'Carlos Díaz'},
       {id:makeId('alu'), cursoId:courseId, alumno:'María Pérez (Hija)', apoderado:'María Pérez'},
     ];
+
+    // Si el usuario es apoderado, le damos 2 alumnos demo (hermanos) para pagar
     const mine = [
       {id:makeId('alu'), cursoId:courseId, alumno:'Hermano 1', apoderado: myName},
       {id:makeId('alu'), cursoId:courseId, alumno:'Hermano 2', apoderado: myName},
     ];
+
     students = [...mine, ...others, ...students];
     jsave(STUDENTS_KEY, students);
   }
   return students;
 }
-function getMyStudents(){
-  const courseId=getActiveCourseId();
-  const u=jload('cursapp_demo_user',null);
-  const myName=(u?.name||'Apoderado').trim();
-  const students=ensureStudents();
-  return students.filter(s=>s.cursoId===courseId && s.apoderado===myName);
-}
+
 function getStudentsInCourse(){
   const courseId=getActiveCourseId();
   return ensureStudents().filter(s=>s.cursoId===courseId);
 }
 
-/* ---- PAYMENTS (by student + course) ---- */
+function getMyStudents(){
+  const courseId=getActiveCourseId();
+  const u=jload('cursapp_demo_user',null);
+  const myName=(u?.name||'Apoderado').trim();
+  return ensureStudents().filter(s=>s.cursoId===courseId && s.apoderado===myName);
+}
+
+/* ---- PAYMENTS ---- */
 function seedPaymentsIfEmpty(){
   const courseId=getActiveCourseId();
   let pays=jload(PAY_KEY,[]);
@@ -103,11 +107,19 @@ function seedPaymentsIfEmpty(){
     createdAt: '2026-03-01',
     type: 'fee'
   }));
+
   pays = [...seeded, ...pays];
   jsave(PAY_KEY,pays);
+
+  // Seed receipts for paid
+  seeded.filter(p=>p.status==='paid').forEach(p=>{
+    if(!getReceiptByPaymentId(p.id)){
+      addReceiptForPayment(p, {method:'Conciliación inicial (Demo)', ref:'SEED', note:'Pago seed', at:new Date().toISOString()});
+    }
+  });
 }
 
-/* ---- TASKS -> PAYMENTS (course-scoped) ---- */
+/* ---- TASKS -> PAYMENTS (cobros para todos o alumno) ---- */
 function syncTasks(){
   const courseId=getActiveCourseId();
   const tasks=jload(TASKS_KEY,[]).filter(t=>t.cursoId===courseId);
@@ -134,11 +146,12 @@ function syncTasks(){
       }
     });
   });
+
   jsave(PAY_KEY,pays);
 }
 
 /* ---- RECEIPTS ---- */
-function addReceiptForPayment(p, method, controlId){
+function addReceiptForPayment(p, payload){
   const receipts=jload(RECEIPTS_KEY,[]);
   const rec = {
     id: makeId('rc'),
@@ -149,12 +162,14 @@ function addReceiptForPayment(p, method, controlId){
     apoderado: p.apoderado,
     concept: p.concept,
     amount: p.amount,
-    method,
-    controlId: controlId || null,   // ID de control/folio/manual
-    paidAt: new Date().toISOString()
+    method: payload?.method || 'Webpay (Demo)',
+    ref: payload?.ref || '',
+    note: payload?.note || '',
+    paidAt: payload?.at || new Date().toISOString()
   };
-  receipts.unshift(rec);
-  jsave(RECEIPTS_KEY, receipts);
+  const filtered = receipts.filter(r=>r.paymentId!==p.id);
+  filtered.unshift(rec);
+  jsave(RECEIPTS_KEY, filtered);
   return rec;
 }
 function getReceiptByPaymentId(pid){
@@ -213,24 +228,20 @@ function renderUI(role){
       <div class="segmented">
         <button onclick="goTo('home')">Inicio</button>
         <button onclick="goTo('payments')">Pagos</button>
-        <button onclick="goTo('withdrawals')">Retiros</button>
       </div>
     </div>
 
     <section id="sec-home" class="section active"></section>
     <section id="sec-payments" class="section"></section>
-    <section id="sec-withdrawals" class="section"></section>
 
     <nav class="tabbar floating" style="z-index:9999;pointer-events:auto;">
       <button class="tab active" data-tab="home" onclick="goTo('home')"><span class="ico">🏠</span><span>Inicio</span></button>
       <button class="tab" data-tab="payments" onclick="goTo('payments')"><span class="ico">💳</span><span>Pagos</span></button>
-      <button class="tab" data-tab="withdrawals" onclick="goTo('withdrawals')"><span class="ico">🏦</span><span>Retiros</span></button>
     </nav>
   `;
 
   renderHome(role);
   renderPayments(role);
-  renderWithdrawals(role);
 }
 
 /* ---- HOME ---- */
@@ -254,26 +265,19 @@ function renderHome(role){
         <div class="kpiValue">${formatCLP(pending)}</div>
       </div>
       <div class="card span4">
-        <div class="kpiLabel">Tus alumnos</div>
-        <div class="kpiValue">${getMyStudents().length}</div>
+        <div class="kpiLabel">${role==='apoderado' ? 'Tus alumnos' : 'Alumnos curso'}</div>
+        <div class="kpiValue">${role==='apoderado' ? getMyStudents().length : getStudentsInCourse().length}</div>
       </div>
     </div>
   `;
 }
 
-/* ---- PAYMENTS ---- */
+/* ---- PAYMENTS (role separated) ---- */
 function renderPayments(role){
   const el=document.getElementById('sec-payments'); if(!el) return;
 
-  // Mode selector
   const directiva = isDirectiva(role);
-  const mode = directiva ? (window.__cursapp_pay_mode || 'admin') : 'payer';
-
-  const myStudents=getMyStudents();
-  const allStudents=getStudentsInCourse();
-
-  // Student selector depends on mode:
-  const studentsForSelector = (mode==='payer') ? myStudents : allStudents;
+  const studentsForSelector = directiva ? getStudentsInCourse() : getMyStudents();
 
   const opts = studentsForSelector.map(s=>`<option value="${s.id}">${escapeHtml(s.alumno)} · ${escapeHtml(s.apoderado)}</option>`).join('');
   const fallbackId = studentsForSelector[0]?.id || '';
@@ -283,25 +287,10 @@ function renderPayments(role){
     <div class="row">
       <div>
         <h2 style="margin:0;">Pagos</h2>
-        <div class="muted">${mode==='payer' ? 'Pagar por tus alumnos (curso activo)' : 'Administración del curso (2°B)'}</div>
+        <div class="muted">${directiva ? 'Administración del curso (conciliación manual)' : 'Pago por tus alumnos (pasarela demo)'}</div>
       </div>
-      ${role==='presidente' && mode==='admin' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
+      ${role==='presidente' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
     </div>
-
-    ${directiva ? `
-      <div class="card" style="margin-top:12px;">
-        <div class="row">
-          <div style="font-weight:950;">Modo</div>
-          <div class="segmented" style="margin-top:0;">
-            <button id="mAdmin" class="${mode==='admin'?'active':''}" onclick="setPayMode('admin')">Administrar curso</button>
-            <button id="mPayer" class="${mode==='payer'?'active':''}" onclick="setPayMode('payer')">Pagar como apoderado</button>
-          </div>
-        </div>
-        <div class="muted" style="margin-top:8px;">
-          Regla: aunque seas directiva, solo puedes pagar cobros de tus alumnos del curso activo.
-        </div>
-      </div>
-    ` : ``}
 
     <div class="card" style="margin-top:12px;">
       <div class="row">
@@ -311,11 +300,11 @@ function renderPayments(role){
             ${opts || `<option value="">Sin alumnos</option>`}
           </select>
         </div>
-        <div class="muted">${mode==='payer' ? 'Solo verás tus alumnos.' : 'Ves todo el curso (no otros cursos).'}</div>
+        <div class="muted">${directiva ? 'Ves todo el curso (no otros cursos).' : 'Solo ves tus alumnos del curso.'}</div>
       </div>
     </div>
 
-    ${directiva && mode==='admin' ? `
+    ${directiva ? `
       <div class="card" style="margin-top:12px;">
         <div class="row">
           <div style="font-weight:950;">Filtros</div>
@@ -325,7 +314,7 @@ function renderPayments(role){
             <button id="fltPaid" onclick="setPaymentFilter('paid')">Pagados</button>
           </div>
         </div>
-        <div class="muted" style="margin-top:8px;">Conciliación manual disponible (efectivo/transferencia) con ID de control.</div>
+        <div class="muted" style="margin-top:8px;">Para pagos en efectivo/transferencia usa “Conciliar” e ingresa referencia.</div>
       </div>
     ` : ``}
 
@@ -371,13 +360,6 @@ function renderPayments(role){
   renderPaymentsTable();
 }
 
-function setPayMode(m){
-  window.__cursapp_pay_mode = m;
-  // reset selection
-  window.__cursapp_selected_student = '';
-  renderPayments((jload('cursapp_demo_user',null)?.role || 'apoderado').toLowerCase());
-}
-
 function selectStudent(studentId){
   window.__cursapp_selected_student = studentId;
   renderPaymentsTable();
@@ -407,20 +389,15 @@ function renderPaymentsTable(){
 
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
-  const directiva = isDirectiva(role);
-  const mode = directiva ? (window.__cursapp_pay_mode || 'admin') : 'payer';
+  const directiva=isDirectiva(role);
 
-  const myStudents = getMyStudents();
-  const myStudentIds = new Set(myStudents.map(s=>s.id));
-  const studentsForSelector = (mode==='payer') ? myStudents : getStudentsInCourse();
-
+  const studentsForSelector = directiva ? getStudentsInCourse() : getMyStudents();
   const selected = window.__cursapp_selected_student || (studentsForSelector[0]?.id || '');
   if(!window.__cursapp_selected_student) window.__cursapp_selected_student = selected;
 
   let view = selected ? pays.filter(p=>p.alumnoId===selected) : [];
 
-  // filter in admin mode
-  if(directiva && mode==='admin'){
+  if(directiva){
     const f=window.__cursapp_payment_filter || 'all';
     if(f==='pending') view = view.filter(p=>p.status==='pending');
     if(f==='paid') view = view.filter(p=>p.status==='paid');
@@ -430,26 +407,21 @@ function renderPaymentsTable(){
     const tag = p.status==='paid' ? `<span class="tag ok">Pagado</span>` : `<span class="tag warn">Pendiente</span>`;
     const receipt = getReceiptByPaymentId(p.id);
 
-    // Actions:
-    // - payer mode: only allow pay if payment belongs to my student
-    // - admin mode: allow manual reconciliation (mark paid) + receipt view
-    const canPay = (mode==='payer') && myStudentIds.has(p.alumnoId) && p.status!=='paid';
-    const canSeeReceipt = (p.status==='paid' && receipt);
-
     let action = `<span class="muted">—</span>`;
 
-    if(canPay){
-      action = `<button class="btn primary" onclick="openPayModal('${p.id}')">Pagar</button>`;
-    } else if(canSeeReceipt){
-      action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
-    } else if(directiva && mode==='admin'){
-      // manual reconciliation allowed for pending items (cash/transfer)
+    if(!directiva){
+      // Apoderado: paga automático
+      if(p.status!=='paid'){
+        action = `<button class="btn primary" onclick="openPayModal('${p.id}')">Pagar</button>`;
+      } else if(receipt){
+        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+      }
+    } else {
+      // Directiva: no paga, solo concilia manual o revisa comprobante
       if(p.status!=='paid'){
         action = `<button class="btn" onclick="openReconModal('${p.id}')">Conciliar</button>`;
-      } else {
-        action = receipt
-          ? `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`
-          : `<span class="muted">Pagado</span>`;
+      } else if(receipt){
+        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
       }
     }
 
@@ -465,7 +437,7 @@ function renderPaymentsTable(){
   tbody.innerHTML = rows || `<tr><td colspan="5" class="muted">Sin datos para el alumno seleccionado</td></tr>`;
 }
 
-/* ---- Create Cobro (course scope) ---- */
+/* ---- Create Cobro (presidente only) ---- */
 function openCreateTask(){
   const c=document.getElementById('createTaskCard'); if(c) c.style.display='block';
   fillTaskTarget();
@@ -473,12 +445,10 @@ function openCreateTask(){
 function closeCreateTask(){
   const c=document.getElementById('createTaskCard'); if(c) c.style.display='none';
 }
-
 function fillTaskTarget(){
   const sel=document.getElementById('taskTarget');
   if(!sel) return;
   const current = sel.value || 'all';
-  const courseId=getActiveCourseId();
   const students=getStudentsInCourse();
   sel.innerHTML = '<option value="all">Para todos</option>' + students.map(s=>(
     '<option value="'+s.id+'">'+escapeHtml(s.alumno)+' · '+escapeHtml(s.apoderado)+'</option>'
@@ -486,7 +456,6 @@ function fillTaskTarget(){
   const opt = Array.from(sel.options).find(o=>o.value===current);
   if(opt) sel.value=current;
 }
-
 function createTask(){
   const nameEl=document.getElementById('taskName');
   const amountEl=document.getElementById('taskAmount');
@@ -505,10 +474,10 @@ function createTask(){
     jsave(TASKS_KEY,tasks);
     syncTasks();
   } else {
-    let pays=jload(PAY_KEY,[]);
     const student = getStudentsInCourse().find(s=>s.id===target);
     if(!student){ alert('Alumno no encontrado'); return; }
 
+    let pays=jload(PAY_KEY,[]);
     const exists = pays.some(p=>p.cursoId===courseId && p.type==='task' && p.alumnoId===target && p.concept===concept);
     if(!exists){
       pays.unshift({
@@ -531,12 +500,11 @@ function createTask(){
   if(nameEl) nameEl.value='';
   if(amountEl) amountEl.value='';
   closeCreateTask();
-
   renderPaymentsTable();
   alert('Cobro creado (demo).');
 }
 
-/* ---- PAYMENT GATEWAY (DEMO) + RECEIPT ---- */
+/* ---- AUTOMATIC PAYMENT (apoderado) ---- */
 function openPayModal(paymentId){
   const root=document.getElementById('payModalRoot');
   if(!root) return;
@@ -596,54 +564,14 @@ function confirmPay(paymentId){
   pays[idx].date=today();
   jsave(PAY_KEY,pays);
 
-  addReceiptForPayment(pays[idx], method, null);
+  addReceiptForPayment(pays[idx], {method, ref: makeId('trx'), note:'Pago automático (demo)', at:new Date().toISOString()});
 
   closePayModal();
   renderPaymentsTable();
   alert('Pago aprobado (demo). Comprobante generado.');
 }
-function openReceipt(paymentId){
-  const rec = getReceiptByPaymentId(paymentId);
-  if(!rec){ alert('No hay comprobante.'); return; }
 
-  const html = `
-    <html lang="es">
-    <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-      <title>Comprobante ${rec.id}</title>
-      <style>
-        body{ font-family: system-ui, -apple-system; background:#f5f7fb; margin:0; padding:16px; }
-        .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; max-width:560px; margin:0 auto; }
-        h1{ font-size:18px; margin:0 0 10px; }
-        .muted{ color:#6b7280; font-size:13px; }
-        .row{ display:flex; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap; }
-        .k{ color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:.04em; font-weight:800; }
-        .v{ font-weight:900; }
-        button{ border:none; padding:10px 12px; border-radius:12px; background:#4f46e5; color:#fff; font-weight:800; width:100%; margin-top:14px; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <h1>Comprobante de pago</h1>
-        <div class="muted">ID: ${rec.id}</div>
-
-        <div class="row"><div><div class="k">Curso</div><div class="v">${escapeHtml(getActiveCourse().name)}</div></div><div><div class="k">Monto</div><div class="v">${formatCLP(rec.amount)}</div></div></div>
-        <div class="row"><div><div class="k">Alumno</div><div class="v">${escapeHtml(rec.alumno)}</div></div><div><div class="k">Apoderado</div><div class="v">${escapeHtml(rec.apoderado)}</div></div></div>
-        <div class="row"><div><div class="k">Concepto</div><div class="v">${escapeHtml(rec.concept)}</div></div><div><div class="k">Método</div><div class="v">${escapeHtml(rec.method)}</div></div></div>
-        <div class="row"><div><div class="k">Fecha</div><div class="v">${escapeHtml(new Date(rec.paidAt).toLocaleString('es-CL'))}</div></div><div></div></div>
-        ${rec.controlId ? `<div class="row"><div><div class="k">Control</div><div class="v">${escapeHtml(rec.controlId)}</div></div><div></div></div>` : ``}
-
-        <button onclick="window.print()">Imprimir / Guardar PDF</button>
-      </div>
-    </body>
-    </html>
-  `;
-
-  const w = window.open('', '_blank');
-  if(!w){ alert('Bloqueado por el navegador.'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
-}
-
-/* ---- MANUAL RECONCILIATION (DIRECTIVA) ---- */
+/* ---- MANUAL RECONCILIATION (directiva) ---- */
 function openReconModal(paymentId){
   const root=document.getElementById('reconModalRoot');
   if(!root) return;
@@ -674,9 +602,14 @@ function openReconModal(paymentId){
         </div>
 
         <div style="margin-top:12px;">
-          <div class="kpiLabel">ID de control / folio</div>
-          <input id="reconControl" placeholder="Ej: BOLETA-123 / TRANSF-987" style="width:100%; margin-top:6px;">
-          <div class="muted" style="margin-top:8px;">Quedará registrado en el comprobante junto a fecha y método.</div>
+          <div class="kpiLabel">Referencia / folio (obligatorio)</div>
+          <input id="reconRef" placeholder="Ej: BOLETA-123 / TRANSF-987" style="width:100%; margin-top:6px;">
+          <div class="muted" style="margin-top:8px;">Se registra en comprobante junto a método y fecha.</div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="kpiLabel">Nota</div>
+          <input id="reconNote" placeholder="Ej: pagó en reunión apoderados" style="width:100%; margin-top:6px;">
         </div>
 
         <div class="actions" style="justify-content:flex-end;">
@@ -687,19 +620,15 @@ function openReconModal(paymentId){
     </div>
   `;
 }
-
 function closeReconModal(){
   const root=document.getElementById('reconModalRoot');
   if(root) root.innerHTML='';
 }
-
 function confirmRecon(paymentId){
   const method = document.getElementById('reconMethod')?.value || 'Efectivo';
-  const control = (document.getElementById('reconControl')?.value || '').trim();
-  if(!control){
-    alert('Ingresa un ID de control / folio.');
-    return;
-  }
+  const ref = (document.getElementById('reconRef')?.value || '').trim();
+  const note = (document.getElementById('reconNote')?.value || '').trim();
+  if(!ref){ alert('Ingresa referencia/folio.'); return; }
 
   let pays=jload(PAY_KEY,[]);
   const idx=pays.findIndex(x=>x.id===paymentId);
@@ -709,34 +638,53 @@ function confirmRecon(paymentId){
   pays[idx].date=today();
   jsave(PAY_KEY,pays);
 
-  // Generate receipt with control id
-  addReceiptForPayment(pays[idx], method, control);
+  addReceiptForPayment(pays[idx], {method, ref, note: note||'Conciliación manual (demo)', at:new Date().toISOString()});
 
   closeReconModal();
   renderPaymentsTable();
-  alert('Conciliado: marcado como pagado y registrado (demo).');
+  alert('Conciliación registrada (demo). Comprobante generado.');
 }
 
-/* ---- WITHDRAWALS (kept minimal) ---- */
-function seedWithdrawalsIfEmpty(){
-  const w=jload(WITHDRAWALS_KEY,[]);
-  if(w.length) return;
-  jsave(WITHDRAWALS_KEY, [{ id: makeId('wd'), reason:'Rifa del huevo', amount:70000, createdAt:today(), createdBy:'tesorero', status:'voting', votes:{yes:[], no:[]} }]);
-}
-function renderWithdrawals(role){
-  const el=document.getElementById('sec-withdrawals'); if(!el) return;
-  el.innerHTML = `
-    <div class="row">
-      <div>
-        <h2 style="margin:0;">Retiros</h2>
-        <div class="muted">Votaciones del curso (demo)</div>
+/* ---- RECEIPT VIEW ---- */
+function openReceipt(paymentId){
+  const rec = getReceiptByPaymentId(paymentId);
+  if(!rec){ alert('No hay comprobante.'); return; }
+
+  const html = `
+    <html lang="es">
+    <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <title>Comprobante ${rec.id}</title>
+      <style>
+        body{ font-family: system-ui, -apple-system; background:#f5f7fb; margin:0; padding:16px; }
+        .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; max-width:560px; margin:0 auto; }
+        h1{ font-size:18px; margin:0 0 10px; }
+        .muted{ color:#6b7280; font-size:13px; }
+        .row{ display:flex; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap; }
+        .k{ color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:.04em; font-weight:800; }
+        .v{ font-weight:900; }
+        button{ border:none; padding:10px 12px; border-radius:12px; background:#4f46e5; color:#fff; font-weight:800; width:100%; margin-top:14px; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Comprobante de pago</h1>
+        <div class="muted">ID: ${rec.id}</div>
+
+        <div class="row"><div><div class="k">Curso</div><div class="v">${escapeHtml(getActiveCourse().name)}</div></div><div><div class="k">Monto</div><div class="v">${formatCLP(rec.amount)}</div></div></div>
+        <div class="row"><div><div class="k">Alumno</div><div class="v">${escapeHtml(rec.alumno)}</div></div><div><div class="k">Apoderado</div><div class="v">${escapeHtml(rec.apoderado)}</div></div></div>
+        <div class="row"><div><div class="k">Concepto</div><div class="v">${escapeHtml(rec.concept)}</div></div><div><div class="k">Método</div><div class="v">${escapeHtml(rec.method)}</div></div></div>
+        <div class="row"><div><div class="k">Referencia</div><div class="v">${escapeHtml(rec.ref||'-')}</div></div><div><div class="k">Fecha</div><div class="v">${escapeHtml(new Date(rec.paidAt).toLocaleString('es-CL'))}</div></div></div>
+        <div class="row"><div><div class="k">Nota</div><div class="v">${escapeHtml(rec.note||'-')}</div></div><div></div></div>
+
+        <button onclick="window.print()">Imprimir / Guardar PDF</button>
       </div>
-    </div>
-    <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;">Votaciones activas</div>
-      <div class="muted">Demo</div>
-    </div>
+    </body>
+    </html>
   `;
+
+  const w = window.open('', '_blank');
+  if(!w){ alert('Bloqueado por el navegador.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
 }
 
 /* ---- INIT ---- */
@@ -745,7 +693,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   ensureStudents();
   seedPaymentsIfEmpty();
   syncTasks();
-  seedWithdrawalsIfEmpty();
 
   const u=jload('cursapp_demo_user',null);
   const w=document.getElementById('whoLine');
@@ -755,9 +702,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 
   const role = (u?.role || '').toLowerCase() || 'apoderado';
-  // default mode for directiva = admin, apoderado = payer
-  if(isDirectiva(role) && !window.__cursapp_pay_mode) window.__cursapp_pay_mode = 'admin';
-  if(!isDirectiva(role)) window.__cursapp_pay_mode = 'payer';
+  // default filter
+  window.__cursapp_payment_filter = window.__cursapp_payment_filter || 'all';
 
   renderUI(role);
 });
