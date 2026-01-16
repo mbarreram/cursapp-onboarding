@@ -153,3 +153,7 @@ function goTab(tab) {
     return;
   }
 }
+function logout() {
+  localStorage.removeItem("cursapp_demo_user");
+  window.location.href = "login.html";
+}
