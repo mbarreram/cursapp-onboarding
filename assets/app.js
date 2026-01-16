@@ -29,6 +29,14 @@
   const role = () => (user()?.role || "apoderado").toLowerCase();
   const isDirectiva = (r) => r === "tesorero" || r === "presidente";
 
+   function formatCLP(value) {
+  const n = Number(value) || 0;
+  return n.toLocaleString("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0
+  });
+}
   // ---------- Course ----------
   function ensureCourse(){
     let courses = jload(COURSES_KEY, []);
