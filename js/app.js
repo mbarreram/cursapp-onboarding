@@ -1,4 +1,4 @@
-/* ========= Cursapp – app.js BASE ESTABLE ========= */
+/* ========= Cursapp – app.js BASE ESTABLE (gráfico visible iOS) ========= */
 
 /* helpers */
 function jload(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d } catch(e){ return d } }
@@ -35,38 +35,57 @@ function renderHome(){
     <div class="muted">2°B 2026 · Colegio X</div>
 
     <div class="grid3">
-      <div class="card"><div class="kpiLabel">Total recaudado</div><div class="kpi">${formatCLP(collected)}</div></div>
-      <div class="card"><div class="kpiLabel">Total pendiente</div><div class="kpi">${formatCLP(pending)}</div></div>
-      <div class="card"><div class="kpiLabel">Tus alumnos</div><div class="kpi">${alumnos.length}</div></div>
+      <div class="card">
+        <div class="kpiLabel">Total recaudado</div>
+        <div class="kpi">${formatCLP(collected)}</div>
+      </div>
+      <div class="card">
+        <div class="kpiLabel">Total pendiente</div>
+        <div class="kpi">${formatCLP(pending)}</div>
+      </div>
+      <div class="card">
+        <div class="kpiLabel">Tus alumnos</div>
+        <div class="kpi">${alumnos.length}</div>
+      </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:14px;">
       <div class="kpiLabel">Cobrado vs pendiente</div>
-      <div id="chart"></div>
+      <div id="chart" style="margin-top:12px; min-height:90px;"></div>
     </div>
   `;
 
   renderChart(collected, pending);
 }
 
-/* simple chart */
+/* simple chart – mobile safe */
 function renderChart(collected, pending){
   const el = document.getElementById('chart');
   if(!el) return;
 
   const max = Math.max(collected, pending, 1);
-  const cw = Math.round((collected/max)*260);
-  const pw = Math.round((pending/max)*260);
+  const barMax = 260;
+  const cw = Math.max(10, Math.round((collected/max)*barMax));
+  const pw = Math.max(10, Math.round((pending/max)*barMax));
 
   el.innerHTML = `
-    <div style="margin-top:8px;">
-      <div>Cobrado ${formatCLP(collected)}</div>
-      <div style="height:10px;background:#e5e7eb;border-radius:6px;">
-        <div style="height:10px;width:${cw}px;background:#5b5ce2;border-radius:6px;"></div>
+    <div style="display:grid;gap:16px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:6px;">
+          <span>Cobrado</span><strong>${formatCLP(collected)}</strong>
+        </div>
+        <div style="height:16px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+          <div style="height:16px;width:${cw}px;background:#5b5ce2;border-radius:999px;"></div>
+        </div>
       </div>
-      <div style="margin-top:8px;">Pendiente ${formatCLP(pending)}</div>
-      <div style="height:10px;background:#e5e7eb;border-radius:6px;">
-        <div style="height:10px;width:${pw}px;background:#cbd5e1;border-radius:6px;"></div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-bottom:6px;">
+          <span>Pendiente</span><strong>${formatCLP(pending)}</strong>
+        </div>
+        <div style="height:16px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+          <div style="height:16px;width:${pw}px;background:#cbd5e1;border-radius:999px;"></div>
+        </div>
       </div>
     </div>
   `;
