@@ -1,4 +1,10 @@
 /* ========= Cursapp – app.js BASE ESTABLE (gráfico visible iOS) ========= */
+
+document.body.insertAdjacentHTML("afterbegin",
+  "<div style='padding:8px 12px;background:#fff3cd;border:1px solid #ffeeba;color:#856404;font-weight:800;'>DEBUG role: " +
+  (JSON.parse(localStorage.getItem('cursapp_demo_user')||'{}').role || 'NONE') +
+  "</div>"
+);
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("logoutBtn");
   if (btn) {
