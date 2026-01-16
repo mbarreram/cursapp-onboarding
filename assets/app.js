@@ -1,20 +1,20 @@
-/* Cursapp assets/app.js – v3.8 (Roles separados: Apoderado paga / Directiva administra)
-   Regla:
-   - Presidente/Tesorero: administración del curso (cobros, conciliación manual, ver comprobantes)
-   - Apoderado: paga por sus alumnos (pasarela demo, ver comprobantes)
-   - Si presidente/tesorero tiene hijos: debe entrar como APODERADO y registrarlos en onboarding (fuera de este archivo).
+/* Cursapp assets/app.js – v3.6 (Pagos por alumno + scope por curso)
+   Reglas clave:
+   - Cada curso tiene su propia directiva y su propia "caja".
+   - Un usuario (aunque sea presidente/tesorero) SOLO puede pagar por sus alumnos del curso activo.
+   - No se muestran otros cursos en esta demo (scope = 1 curso activo).
 
-   Scope demo:
-   - 1 curso activo (2°B 2026 · Colegio X)
+   Mantiene:
+   - Votaciones de retiros (apoderado vota / presidente cierra)
+   - Pasarela de pago demo + comprobantes
+   - Cobros: presidente para todos o alumno específico (en el curso activo)
 */
 
 function jload(k,d){ try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d} }
 function jsave(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function today(){ return new Date().toISOString().slice(0,10); }
 function formatCLP(n){ return Number(n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}); }
-function makeId(prefix){ return (prefix||'id')+'_'+Math.random().toString(16).slice(2)+'_'+Date.now().toString(16); }
 
-/* ---- KEYS ---- */
 const COURSE_KEY='cursapp_active_course_v1';
 const COURSES_KEY='cursapp_courses_v1';
 
@@ -22,7 +22,12 @@ const TASKS_KEY='cursapp_tasks_v1';
 const PAY_KEY='cursapp_course_payments_v1';
 const STUDENTS_KEY='cursapp_students_v1';
 
+const WITHDRAWALS_KEY='cursapp_withdrawals_v1';
 const RECEIPTS_KEY='cursapp_receipts_v1';
+
+function makeId(prefix){
+  return (prefix||'id')+'_'+Math.random().toString(16).slice(2)+'_'+Date.now().toString(16);
+}
 
 /* ---- LOGOUT ---- */
 function logout(){
@@ -39,61 +44,62 @@ function ensureCourse(){
     jsave(COURSES_KEY,courses);
   }
   let active=jload(COURSE_KEY,null);
-  if(!active){ active=courses[0].id; jsave(COURSE_KEY,active); }
+  if(!active) { active=courses[0].id; jsave(COURSE_KEY,active); }
   return {courses, active};
 }
 function getActiveCourseId(){ return ensureCourse().active; }
-function getActiveCourse(){ const {courses, active}=ensureCourse(); return courses.find(c=>c.id===active) || courses[0]; }
+function getActiveCourse(){
+  const {courses, active}=ensureCourse();
+  return courses.find(c=>c.id===active) || courses[0];
+}
 
-/* ---- STUDENTS (course-scoped) ---- */
+/* ---- STUDENTS (by course) ---- */
 function ensureStudents(){
   const courseId=getActiveCourseId();
   const u=jload('cursapp_demo_user',null);
   const myName=(u?.name||'Apoderado').trim();
 
   let students=jload(STUDENTS_KEY,[]);
+  // If no students for this course, seed demo roster + my 2 kids
   const hasThisCourse = students.some(s=>s.cursoId===courseId);
   if(!hasThisCourse){
     students = students.filter(s=>s.cursoId!==courseId);
-
-    // Demo: apoderados del curso
+    // demo students (otros apoderados)
     const others = [
       {id:makeId('alu'), cursoId:courseId, alumno:'Ana Soto (Hija)', apoderado:'Ana Soto'},
       {id:makeId('alu'), cursoId:courseId, alumno:'Carlos Díaz (Hijo)', apoderado:'Carlos Díaz'},
       {id:makeId('alu'), cursoId:courseId, alumno:'María Pérez (Hija)', apoderado:'María Pérez'},
     ];
-
-    // Si el usuario es apoderado, le damos 2 alumnos demo (hermanos) para pagar
+    // your two siblings (same apoderado)
     const mine = [
       {id:makeId('alu'), cursoId:courseId, alumno:'Hermano 1', apoderado: myName},
       {id:makeId('alu'), cursoId:courseId, alumno:'Hermano 2', apoderado: myName},
     ];
-
     students = [...mine, ...others, ...students];
     jsave(STUDENTS_KEY, students);
   }
   return students;
 }
 
-function getStudentsInCourse(){
-  const courseId=getActiveCourseId();
-  return ensureStudents().filter(s=>s.cursoId===courseId);
-}
-
 function getMyStudents(){
   const courseId=getActiveCourseId();
   const u=jload('cursapp_demo_user',null);
   const myName=(u?.name||'Apoderado').trim();
-  return ensureStudents().filter(s=>s.cursoId===courseId && s.apoderado===myName);
+  const students=ensureStudents();
+  return students.filter(s=>s.cursoId===courseId && s.apoderado===myName);
 }
 
-/* ---- PAYMENTS ---- */
+/* ---- PAYMENTS (by student + course) ---- */
 function seedPaymentsIfEmpty(){
   const courseId=getActiveCourseId();
   let pays=jload(PAY_KEY,[]);
+
+  // If already have payments for this course, keep
   if(pays.some(p=>p.cursoId===courseId)) return;
 
-  const students=getStudentsInCourse();
+  const students=ensureStudents().filter(s=>s.cursoId===courseId);
+
+  // Create a fee for each student
   const seeded = students.map((s,i)=>({
     id: makeId('pay'),
     cursoId: courseId,
@@ -110,21 +116,14 @@ function seedPaymentsIfEmpty(){
 
   pays = [...seeded, ...pays];
   jsave(PAY_KEY,pays);
-
-  // Seed receipts for paid
-  seeded.filter(p=>p.status==='paid').forEach(p=>{
-    if(!getReceiptByPaymentId(p.id)){
-      addReceiptForPayment(p, {method:'Conciliación inicial (Demo)', ref:'SEED', note:'Pago seed', at:new Date().toISOString()});
-    }
-  });
 }
 
-/* ---- TASKS -> PAYMENTS (cobros para todos o alumno) ---- */
+/* ---- TASKS -> PAYMENTS (shared within course) ---- */
 function syncTasks(){
   const courseId=getActiveCourseId();
   const tasks=jload(TASKS_KEY,[]).filter(t=>t.cursoId===courseId);
   let pays=jload(PAY_KEY,[]);
-  const students=getStudentsInCourse();
+  const students=ensureStudents().filter(s=>s.cursoId===courseId);
 
   tasks.forEach(t=>{
     students.forEach(s=>{
@@ -151,7 +150,7 @@ function syncTasks(){
 }
 
 /* ---- RECEIPTS ---- */
-function addReceiptForPayment(p, payload){
+function addReceiptForPayment(p, method){
   const receipts=jload(RECEIPTS_KEY,[]);
   const rec = {
     id: makeId('rc'),
@@ -162,14 +161,11 @@ function addReceiptForPayment(p, payload){
     apoderado: p.apoderado,
     concept: p.concept,
     amount: p.amount,
-    method: payload?.method || 'Webpay (Demo)',
-    ref: payload?.ref || '',
-    note: payload?.note || '',
-    paidAt: payload?.at || new Date().toISOString()
+    method,
+    paidAt: new Date().toISOString()
   };
-  const filtered = receipts.filter(r=>r.paymentId!==p.id);
-  filtered.unshift(rec);
-  jsave(RECEIPTS_KEY, filtered);
+  receipts.unshift(rec);
+  jsave(RECEIPTS_KEY, receipts);
   return rec;
 }
 function getReceiptByPaymentId(pid){
@@ -186,8 +182,10 @@ function goTo(id){
   const active=document.querySelector('[data-tab="'+id+'"]'); if(active) active.classList.add('active');
 
   if(id==='payments'){ syncTasks(); renderPaymentsTable(); }
+  if(id==='withdrawals'){ renderWithdrawalsBody(); }
   closeQuickMenu();
 }
+
 function toggleQuickMenu(){
   const qm=document.getElementById('quickMenu'); if(!qm) return;
   const open=qm.classList.toggle('open');
@@ -204,7 +202,6 @@ function roleTitle(role){
   if(role==='tesorero') return 'Tesorero';
   return 'Apoderado';
 }
-function isDirectiva(role){ return role==='presidente' || role==='tesorero'; }
 
 function renderUI(role){
   const container=document.querySelector('.container');
@@ -228,23 +225,27 @@ function renderUI(role){
       <div class="segmented">
         <button onclick="goTo('home')">Inicio</button>
         <button onclick="goTo('payments')">Pagos</button>
+        <button onclick="goTo('withdrawals')">Retiros</button>
       </div>
     </div>
 
     <section id="sec-home" class="section active"></section>
     <section id="sec-payments" class="section"></section>
+    <section id="sec-withdrawals" class="section"></section>
 
     <nav class="tabbar floating" style="z-index:9999;pointer-events:auto;">
       <button class="tab active" data-tab="home" onclick="goTo('home')"><span class="ico">🏠</span><span>Inicio</span></button>
       <button class="tab" data-tab="payments" onclick="goTo('payments')"><span class="ico">💳</span><span>Pagos</span></button>
+      <button class="tab" data-tab="withdrawals" onclick="goTo('withdrawals')"><span class="ico">🏦</span><span>Retiros</span></button>
     </nav>
   `;
 
   renderHome(role);
   renderPayments(role);
+  renderWithdrawals(role);
 }
 
-/* ---- HOME ---- */
+/* ---- HOME (keep simple KPIs) ---- */
 function renderHome(role){
   const el=document.getElementById('sec-home'); if(!el) return;
 
@@ -265,29 +266,28 @@ function renderHome(role){
         <div class="kpiValue">${formatCLP(pending)}</div>
       </div>
       <div class="card span4">
-        <div class="kpiLabel">${role==='apoderado' ? 'Tus alumnos' : 'Alumnos curso'}</div>
-        <div class="kpiValue">${role==='apoderado' ? getMyStudents().length : getStudentsInCourse().length}</div>
+        <div class="kpiLabel">Tus alumnos</div>
+        <div class="kpiValue">${getMyStudents().length}</div>
       </div>
     </div>
   `;
 }
 
-/* ---- PAYMENTS (role separated) ---- */
+/* ---- PAYMENTS (by alumno) ---- */
 function renderPayments(role){
   const el=document.getElementById('sec-payments'); if(!el) return;
 
-  const directiva = isDirectiva(role);
-  const studentsForSelector = directiva ? getStudentsInCourse() : getMyStudents();
+  const isAdmin = (role==='tesorero' || role==='presidente');
+  const myStudents=getMyStudents();
 
-  const opts = studentsForSelector.map(s=>`<option value="${s.id}">${escapeHtml(s.alumno)} · ${escapeHtml(s.apoderado)}</option>`).join('');
-  const fallbackId = studentsForSelector[0]?.id || '';
-  const selected = window.__cursapp_selected_student || fallbackId;
+  const studentOptions = myStudents.map(s=>`<option value="${s.id}">${escapeHtml(s.alumno)}</option>`).join('');
+  const selected = window.__cursapp_selected_student || (myStudents[0]?.id || '');
 
   el.innerHTML = `
     <div class="row">
       <div>
         <h2 style="margin:0;">Pagos</h2>
-        <div class="muted">${directiva ? 'Administración del curso (conciliación manual)' : 'Pago por tus alumnos (pasarela demo)'}</div>
+        <div class="muted">Solo pagos del curso activo · por alumno</div>
       </div>
       ${role==='presidente' ? `<button class="btn primary" onclick="openCreateTask()">Crear cobro</button>` : ``}
     </div>
@@ -297,24 +297,23 @@ function renderPayments(role){
         <div>
           <div class="kpiLabel">Alumno</div>
           <select id="studentSelect" style="margin-top:6px;" onchange="selectStudent(this.value)">
-            ${opts || `<option value="">Sin alumnos</option>`}
+            ${studentOptions || `<option value="">Sin alumnos</option>`}
           </select>
         </div>
-        <div class="muted">${directiva ? 'Ves todo el curso (no otros cursos).' : 'Solo ves tus alumnos del curso.'}</div>
+        <div class="muted">Como directiva, puedes gestionar el curso; para pagar, solo tus alumnos.</div>
       </div>
     </div>
 
-    ${directiva ? `
+    ${isAdmin ? `
       <div class="card" style="margin-top:12px;">
         <div class="row">
-          <div style="font-weight:950;">Filtros</div>
+          <div style="font-weight:950;">Filtros (curso)</div>
           <div class="segmented" style="margin-top:0;">
             <button id="fltAll" class="active" onclick="setPaymentFilter('all')">Todos</button>
             <button id="fltPending" onclick="setPaymentFilter('pending')">Pendientes</button>
             <button id="fltPaid" onclick="setPaymentFilter('paid')">Pagados</button>
           </div>
         </div>
-        <div class="muted" style="margin-top:8px;">Para pagos en efectivo/transferencia usa “Conciliar” e ingresa referencia.</div>
       </div>
     ` : ``}
 
@@ -348,9 +347,9 @@ function renderPayments(role){
     </div>
 
     <div id="payModalRoot"></div>
-    <div id="reconModalRoot"></div>
   `;
 
+  // init selections
   const sel=document.getElementById('studentSelect');
   if(sel && selected) sel.value = selected;
 
@@ -389,41 +388,33 @@ function renderPaymentsTable(){
 
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
-  const directiva=isDirectiva(role);
+  const isAdmin = (role==='tesorero' || role==='presidente');
 
-  const studentsForSelector = directiva ? getStudentsInCourse() : getMyStudents();
-  const selected = window.__cursapp_selected_student || (studentsForSelector[0]?.id || '');
-  if(!window.__cursapp_selected_student) window.__cursapp_selected_student = selected;
+  // Only allow paying for my students
+  const myStudents = getMyStudents();
+  const myStudentIds = new Set(myStudents.map(s=>s.id));
 
-  let view = selected ? pays.filter(p=>p.alumnoId===selected) : [];
+  const selectedStudent = window.__cursapp_selected_student || (myStudents[0]?.id || '');
+  const view = selectedStudent ? pays.filter(p=>p.alumnoId===selectedStudent) : [];
 
-  if(directiva){
-    const f=window.__cursapp_payment_filter || 'all';
-    if(f==='pending') view = view.filter(p=>p.status==='pending');
-    if(f==='paid') view = view.filter(p=>p.status==='paid');
+  // Admin filters apply only to course management (still within selected student for simplicity)
+  let filtered=view;
+  const f=window.__cursapp_payment_filter || 'all';
+  if(isAdmin){
+    if(f==='pending') filtered = filtered.filter(p=>p.status==='pending');
+    if(f==='paid') filtered = filtered.filter(p=>p.status==='paid');
   }
 
-  const rows = view.slice(0,120).map(p=>{
+  const rows = filtered.slice(0,80).map(p=>{
     const tag = p.status==='paid' ? `<span class="tag ok">Pagado</span>` : `<span class="tag warn">Pendiente</span>`;
     const receipt = getReceiptByPaymentId(p.id);
 
-    let action = `<span class="muted">—</span>`;
-
-    if(!directiva){
-      // Apoderado: paga automático
-      if(p.status!=='paid'){
-        action = `<button class="btn primary" onclick="openPayModal('${p.id}')">Pagar</button>`;
-      } else if(receipt){
-        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
-      }
-    } else {
-      // Directiva: no paga, solo concilia manual o revisa comprobante
-      if(p.status!=='paid'){
-        action = `<button class="btn" onclick="openReconModal('${p.id}')">Conciliar</button>`;
-      } else if(receipt){
-        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
-      }
-    }
+    const canPay = myStudentIds.has(p.alumnoId) && p.status!=='paid';
+    const action = canPay
+      ? `<button class="btn primary" onclick="openPayModal('${p.id}')">Pagar</button>`
+      : (p.status==='paid' && receipt)
+          ? `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`
+          : `<span class="muted">—</span>`;
 
     return `<tr>
       <td>${escapeHtml(p.alumno||'-')}</td>
@@ -437,7 +428,7 @@ function renderPaymentsTable(){
   tbody.innerHTML = rows || `<tr><td colspan="5" class="muted">Sin datos para el alumno seleccionado</td></tr>`;
 }
 
-/* ---- Create Cobro (presidente only) ---- */
+/* ---- Create Cobro (course scope) ---- */
 function openCreateTask(){
   const c=document.getElementById('createTaskCard'); if(c) c.style.display='block';
   fillTaskTarget();
@@ -445,17 +436,20 @@ function openCreateTask(){
 function closeCreateTask(){
   const c=document.getElementById('createTaskCard'); if(c) c.style.display='none';
 }
+
 function fillTaskTarget(){
   const sel=document.getElementById('taskTarget');
   if(!sel) return;
   const current = sel.value || 'all';
-  const students=getStudentsInCourse();
+  const courseId=getActiveCourseId();
+  const students=ensureStudents().filter(s=>s.cursoId===courseId);
   sel.innerHTML = '<option value="all">Para todos</option>' + students.map(s=>(
     '<option value="'+s.id+'">'+escapeHtml(s.alumno)+' · '+escapeHtml(s.apoderado)+'</option>'
   )).join('');
   const opt = Array.from(sel.options).find(o=>o.value===current);
   if(opt) sel.value=current;
 }
+
 function createTask(){
   const nameEl=document.getElementById('taskName');
   const amountEl=document.getElementById('taskAmount');
@@ -474,10 +468,11 @@ function createTask(){
     jsave(TASKS_KEY,tasks);
     syncTasks();
   } else {
-    const student = getStudentsInCourse().find(s=>s.id===target);
+    // target is alumnoId
+    let pays=jload(PAY_KEY,[]);
+    const student = ensureStudents().find(s=>s.id===target);
     if(!student){ alert('Alumno no encontrado'); return; }
 
-    let pays=jload(PAY_KEY,[]);
     const exists = pays.some(p=>p.cursoId===courseId && p.type==='task' && p.alumnoId===target && p.concept===concept);
     if(!exists){
       pays.unshift({
@@ -500,11 +495,12 @@ function createTask(){
   if(nameEl) nameEl.value='';
   if(amountEl) amountEl.value='';
   closeCreateTask();
+
   renderPaymentsTable();
   alert('Cobro creado (demo).');
 }
 
-/* ---- AUTOMATIC PAYMENT (apoderado) ---- */
+/* ---- PAYMENT GATEWAY (DEMO) + RECEIPT ---- */
 function openPayModal(paymentId){
   const root=document.getElementById('payModalRoot');
   if(!root) return;
@@ -550,10 +546,12 @@ function openPayModal(paymentId){
     </div>
   `;
 }
+
 function closePayModal(){
   const root=document.getElementById('payModalRoot');
   if(root) root.innerHTML='';
 }
+
 function confirmPay(paymentId){
   const method = document.getElementById('payMethod')?.value || 'Webpay (Demo)';
   let pays=jload(PAY_KEY,[]);
@@ -564,88 +562,13 @@ function confirmPay(paymentId){
   pays[idx].date=today();
   jsave(PAY_KEY,pays);
 
-  addReceiptForPayment(pays[idx], {method, ref: makeId('trx'), note:'Pago automático (demo)', at:new Date().toISOString()});
+  addReceiptForPayment(pays[idx], method);
 
   closePayModal();
   renderPaymentsTable();
   alert('Pago aprobado (demo). Comprobante generado.');
 }
 
-/* ---- MANUAL RECONCILIATION (directiva) ---- */
-function openReconModal(paymentId){
-  const root=document.getElementById('reconModalRoot');
-  if(!root) return;
-
-  const pays=jload(PAY_KEY,[]);
-  const p=pays.find(x=>x.id===paymentId);
-  if(!p) return;
-
-  root.innerHTML = `
-    <div style="position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:10000; display:flex; align-items:flex-end; justify-content:center; padding:14px;">
-      <div class="card" style="width:min(560px, 100%); margin-bottom:12px;">
-        <div class="row">
-          <div>
-            <div style="font-weight:950; font-size:18px;">Conciliación manual</div>
-            <div class="muted">${escapeHtml(p.alumno)} · ${escapeHtml(p.concept)} · ${formatCLP(p.amount)}</div>
-          </div>
-          <button class="btn" onclick="closeReconModal()">Cerrar</button>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="kpiLabel">Forma de pago</div>
-          <select id="reconMethod" style="width:100%; margin-top:6px;">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-            <option value="Cheque">Cheque</option>
-            <option value="Otro">Otro</option>
-          </select>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="kpiLabel">Referencia / folio (obligatorio)</div>
-          <input id="reconRef" placeholder="Ej: BOLETA-123 / TRANSF-987" style="width:100%; margin-top:6px;">
-          <div class="muted" style="margin-top:8px;">Se registra en comprobante junto a método y fecha.</div>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="kpiLabel">Nota</div>
-          <input id="reconNote" placeholder="Ej: pagó en reunión apoderados" style="width:100%; margin-top:6px;">
-        </div>
-
-        <div class="actions" style="justify-content:flex-end;">
-          <button class="btn ghost" onclick="closeReconModal()">Cancelar</button>
-          <button class="btn primary" onclick="confirmRecon('${p.id}')">Marcar pagado</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-function closeReconModal(){
-  const root=document.getElementById('reconModalRoot');
-  if(root) root.innerHTML='';
-}
-function confirmRecon(paymentId){
-  const method = document.getElementById('reconMethod')?.value || 'Efectivo';
-  const ref = (document.getElementById('reconRef')?.value || '').trim();
-  const note = (document.getElementById('reconNote')?.value || '').trim();
-  if(!ref){ alert('Ingresa referencia/folio.'); return; }
-
-  let pays=jload(PAY_KEY,[]);
-  const idx=pays.findIndex(x=>x.id===paymentId);
-  if(idx<0) return;
-
-  pays[idx].status='paid';
-  pays[idx].date=today();
-  jsave(PAY_KEY,pays);
-
-  addReceiptForPayment(pays[idx], {method, ref, note: note||'Conciliación manual (demo)', at:new Date().toISOString()});
-
-  closeReconModal();
-  renderPaymentsTable();
-  alert('Conciliación registrada (demo). Comprobante generado.');
-}
-
-/* ---- RECEIPT VIEW ---- */
 function openReceipt(paymentId){
   const rec = getReceiptByPaymentId(paymentId);
   if(!rec){ alert('No hay comprobante.'); return; }
@@ -673,8 +596,7 @@ function openReceipt(paymentId){
         <div class="row"><div><div class="k">Curso</div><div class="v">${escapeHtml(getActiveCourse().name)}</div></div><div><div class="k">Monto</div><div class="v">${formatCLP(rec.amount)}</div></div></div>
         <div class="row"><div><div class="k">Alumno</div><div class="v">${escapeHtml(rec.alumno)}</div></div><div><div class="k">Apoderado</div><div class="v">${escapeHtml(rec.apoderado)}</div></div></div>
         <div class="row"><div><div class="k">Concepto</div><div class="v">${escapeHtml(rec.concept)}</div></div><div><div class="k">Método</div><div class="v">${escapeHtml(rec.method)}</div></div></div>
-        <div class="row"><div><div class="k">Referencia</div><div class="v">${escapeHtml(rec.ref||'-')}</div></div><div><div class="k">Fecha</div><div class="v">${escapeHtml(new Date(rec.paidAt).toLocaleString('es-CL'))}</div></div></div>
-        <div class="row"><div><div class="k">Nota</div><div class="v">${escapeHtml(rec.note||'-')}</div></div><div></div></div>
+        <div class="row"><div><div class="k">Fecha</div><div class="v">${escapeHtml(new Date(rec.paidAt).toLocaleString('es-CL'))}</div></div><div></div></div>
 
         <button onclick="window.print()">Imprimir / Guardar PDF</button>
       </div>
@@ -687,12 +609,51 @@ function openReceipt(paymentId){
   w.document.open(); w.document.write(html); w.document.close();
 }
 
+/* ---- WITHDRAWALS (kept minimal for demo continuity) ---- */
+function renderWithdrawals(role){
+  const el=document.getElementById('sec-withdrawals'); if(!el) return;
+  el.innerHTML = `
+    <div class="row">
+      <div>
+        <h2 style="margin:0;">Retiros</h2>
+        <div class="muted">Votaciones del curso (demo)</div>
+      </div>
+    </div>
+    <div id="withdrawalsBody" style="margin-top:12px;"></div>
+  `;
+  renderWithdrawalsBody();
+}
+function renderWithdrawalsBody(){
+  const body=document.getElementById('withdrawalsBody'); if(!body) return;
+  const u=jload('cursapp_demo_user',null);
+  const role=(u?.role||'').toLowerCase();
+  const withdrawals=jload(WITHDRAWALS_KEY,[]);
+  const active=withdrawals.filter(w=>w.status==='voting');
+
+  body.innerHTML = `
+    <div class="card">
+      <div style="font-weight:950;">Votaciones activas</div>
+      <div class="muted">${active.length ? 'Vota Sí/No (demo)' : 'No hay votaciones activas'}</div>
+      ${active.map(w=>`
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <div style="font-weight:900;">${escapeHtml(w.reason||'Retiro')}</div>
+            <div class="muted">Monto: ${formatCLP(w.amount||0)}</div>
+          </div>
+          <span class="tag warn">En votación</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 /* ---- INIT ---- */
 document.addEventListener('DOMContentLoaded', ()=>{
   ensureCourse();
   ensureStudents();
   seedPaymentsIfEmpty();
   syncTasks();
+  seedWithdrawalsIfEmpty();
 
   const u=jload('cursapp_demo_user',null);
   const w=document.getElementById('whoLine');
@@ -702,9 +663,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 
   const role = (u?.role || '').toLowerCase() || 'apoderado';
-  // default filter
-  window.__cursapp_payment_filter = window.__cursapp_payment_filter || 'all';
-
   renderUI(role);
 });
 
