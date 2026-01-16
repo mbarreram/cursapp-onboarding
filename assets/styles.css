@@ -1,1 +1,125 @@
-body{font-family:sans-serif}
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --primary: #5b5ce2;
+  --primary-soft: #eef0ff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+  --danger: #ef4444;
+  --radius: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---------- AUTH (LOGIN) ---------- */
+
+body.auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.brand h1 {
+  margin: 4px 0 2px;
+  font-size: 26px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.small {
+  font-size: 13px;
+}
+
+/* ---------- FORM ---------- */
+
+form label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 15px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.error {
+  margin-top: 10px;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  padding: 12px 18px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn.primary {
+  width: 100%;
+  margin-top: 18px;
+  background: var(--primary);
+  color: white;
+  font-size: 16px;
+}
+
+.btn.primary:active {
+  transform: scale(0.98);
+}
