@@ -25,12 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("cursapp_demo_user", JSON.stringify(user));
 
     // Redirección por rol (dashboards v3)
-    if (username === "apoderado") {
-      window.location.href = "dashboard-apoderado-v3.html";
-    } else if (username === "tesorero") {
-      window.location.href = "dashboard-tesorero-v3.html";
-    } else {
-      window.location.href = "dashboard-presidente-v3.html";
-    }
+    // Redirección única (dashboard central)
+window.location.href = "dashboard.html";
   });
 });
