@@ -7,6 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Si ya está logueado, salta directo
   const existing = window.CursappAuth.getUser();
   if (existing && existing.role) {
+    // Compatibilidad con dashboards v3 (assets/app.js)
+    localStorage.setItem("cursapp_demo_user", JSON.stringify({
+      name: existing.name,
+      role: existing.role
+    }));
     window.location.replace("dashboard.html");
     return;
   }
@@ -26,14 +31,21 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Demo user
     const user = {
       name: role.charAt(0).toUpperCase() + role.slice(1) + " (Demo)",
       role,
       lastLogin: new Date().toISOString()
     };
 
+    // Storage nuevo
     window.CursappAuth.setUser(user);
+
+    // Storage legacy (para assets/app.js)
+    localStorage.setItem("cursapp_demo_user", JSON.stringify({
+      name: user.name,
+      role: user.role
+    }));
+
     window.location.replace("dashboard.html");
   });
 });

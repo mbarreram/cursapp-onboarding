@@ -2,13 +2,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const user = window.CursappAuth.requireAuth();
   if (!user) return;
 
-  // Render topbar
   renderTopbar(user);
 
-  // Render dashboard root
   const root = document.getElementById("dashboard-root");
   if (!root) {
-    // Evita pantalla blanca silenciosa
     document.body.insertAdjacentHTML(
       "beforeend",
       "<p style='padding:12px;color:#ef4444'>Error: #dashboard-root no existe.</p>"
@@ -56,17 +53,15 @@ function renderTopbar(user) {
   if (btn) {
     btn.addEventListener("click", () => {
       window.CursappAuth.clearUser();
+      localStorage.removeItem("cursapp_demo_user"); // compatibilidad assets/app.js
       window.location.replace("login.html");
     });
   }
 }
 
-// ===== RENDERS POR ROL (DEMO) =====
-
 function renderApoderado() {
   return `
     <h1>Apoderado</h1>
-
     <div class="grid">
       <section class="card">
         <h2>Resumen</h2>
@@ -75,11 +70,8 @@ function renderApoderado() {
           <div class="pill">$ 40.000 <span class="muted" style="font-weight:600;">pagado</span></div>
           <div class="pill">2 <span class="muted" style="font-weight:600;">próximos cobros</span></div>
         </div>
-        <p class="hint" style="margin-top:10px;">
-          (Demo) Aquí van tus cuotas, comprobantes y notificaciones del curso.
-        </p>
+        <p class="hint" style="margin-top:10px;">(Demo) Aquí van tus cuotas, comprobantes y notificaciones del curso.</p>
       </section>
-
       <aside class="card">
         <h2>Acciones rápidas</h2>
         <div class="row"><span>Pagar cuota</span><span class="tag">Pronto</span></div>
@@ -87,31 +79,12 @@ function renderApoderado() {
         <div class="row"><span>Mensajes del curso</span><span class="tag">Pronto</span></div>
       </aside>
     </div>
-
-    <section class="card" style="margin-top:12px;">
-      <h2>Próximas cuotas</h2>
-      <div class="row">
-        <div>
-          <div style="font-weight:700;">Cuota Marzo</div>
-          <div class="muted" style="font-size:13px;">Vence: 10/03</div>
-        </div>
-        <div style="font-weight:800;">$ 15.000</div>
-      </div>
-      <div class="row">
-        <div>
-          <div style="font-weight:700;">Cuota Abril</div>
-          <div class="muted" style="font-size:13px;">Vence: 10/04</div>
-        </div>
-        <div style="font-weight:800;">$ 10.000</div>
-      </div>
-    </section>
   `;
 }
 
 function renderTesorero() {
   return `
     <h1>Tesorero</h1>
-
     <div class="grid">
       <section class="card">
         <h2>Recaudación</h2>
@@ -122,7 +95,6 @@ function renderTesorero() {
         </div>
         <p class="hint" style="margin-top:10px;">(Demo) Aquí iría el detalle de pagos y conciliación.</p>
       </section>
-
       <aside class="card">
         <h2>Acciones</h2>
         <div class="row"><span>Crear cobro</span><span class="tag">Pronto</span></div>
@@ -136,7 +108,6 @@ function renderTesorero() {
 function renderPresidente() {
   return `
     <h1>Presidente</h1>
-
     <div class="grid">
       <section class="card">
         <h2>Gestión del curso</h2>
@@ -145,11 +116,8 @@ function renderPresidente() {
           <li>Gestionar roles (presidente, tesorero, apoderado)</li>
           <li>Configuración de cuenta bancaria</li>
         </ul>
-        <p class="hint" style="margin-top:10px;">
-          (Demo) Este panel corresponde al presidente del curso (no a un admin de plataforma).
-        </p>
+        <p class="hint" style="margin-top:10px;">(Demo) Este panel corresponde al presidente del curso (no a un admin de plataforma).</p>
       </section>
-
       <aside class="card">
         <h2>Estado</h2>
         <div class="row"><span>Usuarios</span><strong>26</strong></div>
@@ -160,7 +128,6 @@ function renderPresidente() {
   `;
 }
 
-// Simple escape to avoid breaking HTML
 function escapeHtml(str) {
   return String(str)
     .replaceAll("&", "&amp;")
