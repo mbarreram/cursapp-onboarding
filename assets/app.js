@@ -37,6 +37,7 @@ function renderApoderado() {
 
     <button class="btn primary">Ir a pagos</button>
   `;
+      ${tabbar("home")}
 }
 
 function renderTesorero() {
@@ -50,6 +51,7 @@ function renderTesorero() {
     <button class="btn primary">Conciliar pagos</button>
     <button class="btn ghost">Ver retiros</button>
   `;
+      ${tabbar("home")}
 }
 
 function renderPresidente() {
@@ -63,6 +65,7 @@ function renderPresidente() {
     <button class="btn primary">Crear cobro</button>
     <button class="btn ghost">Gestionar retiros</button>
   `;
+      ${tabbar("home")}
 }
 
 /* ========= COMPONENTES ========= */
@@ -104,4 +107,49 @@ function formatCLP(n) {
 
 function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function tabbar(active) {
+  return `
+    <nav class="tabbar">
+      <button class="tab ${active==="home" ? "active":""}" onclick="goTab('home')">
+        <span class="ico">🏠</span><span>Inicio</span>
+      </button>
+      <button class="tab ${active==="payments" ? "active":""}" onclick="goTab('payments')">
+        <span class="ico">💳</span><span>Pagos</span>
+      </button>
+      <button class="tab ${active==="withdrawals" ? "active":""}" onclick="goTab('withdrawals')">
+        <span class="ico">🏦</span><span>Retiros</span>
+      </button>
+    </nav>
+  `;
+}
+
+function goTab(tab) {
+  // Por ahora: navegación simple por rol
+  const role = JSON.parse(localStorage.getItem("cursapp_demo_user") || "{}").role;
+
+  if (tab === "home") {
+    renderByRole(role);
+    return;
+  }
+
+  if (tab === "payments") {
+    document.getElementById("app").innerHTML = `
+      <h1>${capitalize(role)}</h1>
+      <p class="muted">Pagos (demo)</p>
+      <div class="card">Aquí irá la vista de pagos.</div>
+      ${tabbar("payments")}
+    `;
+    return;
+  }
+
+  if (tab === "withdrawals") {
+    document.getElementById("app").innerHTML = `
+      <h1>${capitalize(role)}</h1>
+      <p class="muted">Retiros (demo)</p>
+      <div class="card">Aquí irá la vista de retiros.</div>
+      ${tabbar("withdrawals")}
+    `;
+    return;
+  }
 }
