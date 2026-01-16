@@ -1,14 +1,15 @@
-/* Cursapp assets/app.js – v3.2 (UI rica + roles + gráficos + retiros con motivo)
+/* Cursapp assets/app.js – v3.3 (Votaciones de retiros)
    - Sin librerías externas (charts en SVG)
    - Roles:
-     * apoderado: ve gráficos generales + retiros solo lectura
-     * tesorero: puede solicitar retiro
-     * presidente: puede solicitar retiro + crear cobros (tareas)
+     * apoderado: ve gráficos generales + puede VOTAR retiros (sí/no) / no puede solicitar
+     * tesorero: puede solicitar retiro / ve resultados
+     * presidente: puede solicitar retiro / ve resultados / puede CERRAR votación
 */
 
 function jload(k,d){ try{return JSON.parse(localStorage.getItem(k)) ?? d}catch(e){return d} }
 function jsave(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function today(){ return new Date().toISOString().slice(0,10); }
+function nowIso(){ return new Date().toISOString(); }
 function formatCLP(n){ return Number(n||0).toLocaleString('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}); }
 
 /* ---- KEYS ---- */
@@ -66,6 +67,25 @@ function syncTasks(){
   jsave(PAY_KEY,pays);
 }
 
+function seedWithdrawalsIfEmpty(){
+  const w=jload(WITHDRAWALS_KEY,[]);
+  if(w.length) return;
+  const sample = [{
+    id: makeId(),
+    reason: 'Rifa del huevo',
+    amount: 70000,
+    createdAt: today(),
+    createdBy: 'tesorero',
+    status: 'voting',
+    votes: { yes: [], no: [] }
+  }];
+  jsave(WITHDRAWALS_KEY, sample);
+}
+
+function makeId(){
+  return 'wd_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16);
+}
+
 /* ---- NAV ---- */
 function goTo(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -74,7 +94,6 @@ function goTo(id){
   document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
   const active=document.querySelector('[data-tab="'+id+'"]'); if(active) active.classList.add('active');
 
-  // refresh content on enter
   if(id==='payments'){ syncTasks(); renderPaymentsTable(); }
   if(id==='withdrawals'){ renderWithdrawalsBody(); }
   closeQuickMenu();
@@ -179,7 +198,6 @@ function renderHome(role){
         <div style="margin-top:12px;" id="chartArea"></div>
       </div>
 
-      <!-- Gráfico general adicional (todos los roles): presupuesto vs gasto total -->
       <div class="card span12" style="${enableCharts ? '' : 'display:none;'}">
         <div class="row">
           <div>
@@ -191,7 +209,6 @@ function renderHome(role){
         <div style="margin-top:12px;" id="chartBudgetArea"></div>
       </div>
 
-      <!-- Pendientes por apoderado: solo tesorero/presidente -->
       <div class="card span12" style="${(enableCharts && role!=='apoderado') ? '' : 'display:none;'}">
         <div class="row">
           <div>
@@ -262,10 +279,7 @@ function renderChartBudgetGlobal(){
   const area=document.getElementById('chartBudgetArea');
   if(!area || !budget.length) return;
 
-  const planned = budget.map(b=>Number(b.planned||0));
-  const spent = budget.map(b=>Number(b.spent||0));
-  const maxV = Math.max(...planned, ...spent, 1);
-
+  const maxV = Math.max(...budget.map(b=>Math.max(b.planned||0,b.spent||0)), 1);
   const w=900, h=220, pad=20;
   const n=budget.length;
   const colW = Math.floor((w-pad*2)/n) - 10;
@@ -295,12 +309,8 @@ function renderChartBudgetGlobal(){
 function renderChartPendingByPerson(){
   const pays = jload(PAY_KEY, []);
   const map = {};
-  pays.forEach(p=>{
-    if(p.status==='pending'){ map[p.name]=(map[p.name]||0)+Number(p.amount||0); }
-  });
-  if(Object.keys(map).length===0){
-    ensureRoster().forEach((n,i)=> map[n]=(6-i)*7000 );
-  }
+  pays.forEach(p=>{ if(p.status==='pending'){ map[p.name]=(map[p.name]||0)+Number(p.amount||0); } });
+  if(Object.keys(map).length===0){ ensureRoster().forEach((n,i)=> map[n]=(6-i)*7000 ); }
   const data = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const area=document.getElementById('chartPendingArea');
   if(!area || !data.length) return;
@@ -363,6 +373,7 @@ function renderPayments(role){
       </div>
     </div>
   `;
+  renderPaymentsTable();
 }
 
 function renderPaymentsTable(){
@@ -416,14 +427,14 @@ function createTask(){
   alert('Cobro creado (demo).');
 }
 
-/* ---- WITHDRAWALS ---- */
+/* ---- WITHDRAWALS + VOTING ---- */
 function renderWithdrawals(role){
   const el=document.getElementById('sec-withdrawals'); if(!el) return;
   el.innerHTML = `
     <div class="row">
       <div>
         <h2 style="margin:0;">Retiros</h2>
-        <div class="muted">${(role==='apoderado') ? 'Solo lectura: votaciones del curso (demo)' : 'Solicitudes y votaciones (demo)'}</div>
+        <div class="muted">${(role==='apoderado') ? 'Vota solicitudes del curso (demo)' : 'Solicitudes y votaciones (demo)'}</div>
       </div>
     </div>
     <div id="withdrawalsBody" style="margin-top:12px;"></div>
@@ -438,9 +449,11 @@ function renderWithdrawalsBody(){
   const u=jload('cursapp_demo_user',null);
   const role=(u?.role||'').toLowerCase();
   const canRequest = (role==='presidente' || role==='tesorero');
+  const canClose = (role==='presidente'); // cierre de votación
 
   const withdrawals=jload(WITHDRAWALS_KEY,[]);
   const active = withdrawals.filter(w=>w.status==='voting');
+  const closed = withdrawals.filter(w=>w.status==='approved' || w.status==='rejected').slice(0,5);
 
   body.innerHTML = `
     ${canRequest ? `
@@ -457,22 +470,75 @@ function renderWithdrawalsBody(){
       <div class="card">
         <div style="font-weight:950;">Solicitar retiro</div>
         <div class="muted">No disponible para apoderado.</div>
-        <div class="actions"><button class="btn" disabled style="opacity:.6;cursor:not-allowed;">Solo Tesorero/Presidente</button></div>
       </div>
     `}
 
     <div class="card" style="margin-top:12px;">
       <div style="font-weight:950;">Votaciones activas</div>
-      <div class="muted">${active.length ? 'Pendientes de aprobación (demo)' : 'No hay votaciones activas'}</div>
-      ${active.length ? active.slice(0,5).map((w,i)=>`
-        <div class="row" style="margin-top:10px;">
-          <div>
-            <div style="font-weight:900;">${escapeHtml(w.reason || 'Retiro')}</div>
-            <div class="muted">Monto: ${formatCLP(w.amount || 0)}</div>
-          </div>
-          <span class="tag warn">En votación</span>
+      <div class="muted">${active.length ? 'Vota Sí/No. Se muestra conteo (demo)' : 'No hay votaciones activas'}</div>
+      ${active.length ? active.map(w=>withdrawalCard(w, u, role, canClose)).join('') : ``}
+    </div>
+
+    <div class="card" style="margin-top:12px; ${closed.length ? '' : 'display:none;'}">
+      <div style="font-weight:950;">Votaciones cerradas</div>
+      <div class="muted">Últimos resultados (demo)</div>
+      ${closed.map(w=>closedCard(w)).join('')}
+    </div>
+  `;
+}
+
+function withdrawalCard(w, u, role, canClose){
+  const yes = (w.votes?.yes || []).length;
+  const no = (w.votes?.no || []).length;
+
+  const voter = (u?.name || '').trim();
+  const votedYes = voter && (w.votes?.yes || []).includes(voter);
+  const votedNo = voter && (w.votes?.no || []).includes(voter);
+
+  const voteBtns = (role==='apoderado') ? `
+    <div class="actions" style="margin-top:10px; justify-content:flex-end;">
+      <button class="btn ${votedYes ? 'primary' : ''}" onclick="voteWithdrawal('${w.id}','yes')">👍 Sí (${yes})</button>
+      <button class="btn ${votedNo ? 'danger' : ''}" onclick="voteWithdrawal('${w.id}','no')">👎 No (${no})</button>
+    </div>
+  ` : `
+    <div class="row" style="margin-top:10px;">
+      <span class="pill">👍 Sí: ${yes}</span>
+      <span class="pill">👎 No: ${no}</span>
+    </div>
+  `;
+
+  const closeBtn = canClose ? `
+    <div class="actions" style="margin-top:10px; justify-content:flex-end;">
+      <button class="btn ghost" onclick="closeVoting('${w.id}')">Cerrar votación</button>
+    </div>
+  ` : '';
+
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div class="row">
+        <div>
+          <div style="font-weight:900;">${escapeHtml(w.reason || 'Retiro')}</div>
+          <div class="muted">Monto: ${formatCLP(w.amount || 0)} · Creado: ${escapeHtml(w.createdAt||'-')}</div>
         </div>
-      `).join('') : ``}
+        <span class="tag warn">En votación</span>
+      </div>
+      ${voteBtns}
+      ${closeBtn}
+    </div>
+  `;
+}
+
+function closedCard(w){
+  const yes = (w.votes?.yes || []).length;
+  const no = (w.votes?.no || []).length;
+  const tag = w.status==='approved' ? `<span class="tag ok">Aprobado</span>` : `<span class="tag bad">Rechazado</span>`;
+  return `
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <div style="font-weight:900;">${escapeHtml(w.reason || 'Retiro')}</div>
+        <div class="muted">Monto: ${formatCLP(w.amount || 0)} · 👍 ${yes} / 👎 ${no}</div>
+      </div>
+      ${tag}
     </div>
   `;
 }
@@ -492,11 +558,13 @@ function submitWithdrawal(){
   const u=jload('cursapp_demo_user',null);
   const withdrawals=jload(WITHDRAWALS_KEY,[]);
   withdrawals.unshift({
+    id: makeId(),
     reason,
     amount,
     createdAt: today(),
     createdBy: (u?.role||'').toLowerCase(),
-    status: 'voting'
+    status: 'voting',
+    votes: { yes: [], no: [] }
   });
   jsave(WITHDRAWALS_KEY,withdrawals);
 
@@ -507,15 +575,54 @@ function submitWithdrawal(){
   renderWithdrawalsBody();
 }
 
+function voteWithdrawal(id, side){
+  const u=jload('cursapp_demo_user',null);
+  const voter=(u?.name||'').trim();
+  if(!voter){ alert('Falta usuario'); return; }
+
+  const withdrawals=jload(WITHDRAWALS_KEY,[]);
+  const w = withdrawals.find(x=>x.id===id);
+  if(!w || w.status!=='voting') return;
+
+  w.votes = w.votes || {yes:[], no:[]};
+  // remove from both
+  w.votes.yes = (w.votes.yes||[]).filter(n=>n!==voter);
+  w.votes.no  = (w.votes.no ||[]).filter(n=>n!==voter);
+
+  if(side==='yes') w.votes.yes.unshift(voter);
+  else w.votes.no.unshift(voter);
+
+  jsave(WITHDRAWALS_KEY,withdrawals);
+  renderWithdrawalsBody();
+}
+
+function closeVoting(id){
+  const withdrawals=jload(WITHDRAWALS_KEY,[]);
+  const w = withdrawals.find(x=>x.id===id);
+  if(!w || w.status!=='voting') return;
+
+  const yes=(w.votes?.yes||[]).length;
+  const no=(w.votes?.no||[]).length;
+
+  w.status = (yes>=no) ? 'approved' : 'rejected';
+  jsave(WITHDRAWALS_KEY,withdrawals);
+  renderWithdrawalsBody();
+}
+
 function countActiveWithdrawals(){
   const withdrawals=jload(WITHDRAWALS_KEY,[]);
-  return withdrawals.filter(w=>w.status==='voting').length || 1;
+  return withdrawals.filter(w=>w.status==='voting').length || 0;
+}
+
+function makeId(){
+  return 'wd_' + Math.random().toString(16).slice(2) + '_' + Date.now().toString(16);
 }
 
 /* ---- INIT ---- */
 document.addEventListener('DOMContentLoaded', ()=>{
   seedPaymentsIfEmpty();
   syncTasks();
+  seedWithdrawalsIfEmpty();
 
   const u=jload('cursapp_demo_user',null);
   const w=document.getElementById('whoLine');
@@ -526,8 +633,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   const role = (u?.role || '').toLowerCase() || 'apoderado';
   renderUI(role);
-
-  // initial table render if on payments via quick menu later
 });
 
 /* ---- helpers ---- */
