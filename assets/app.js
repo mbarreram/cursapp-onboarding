@@ -29,9 +29,12 @@ function daysTo(dueDate){
 function dueBadge(dueDate){
   const d = daysTo(dueDate);
   if(d === null) return "";
-  if(d < 0) return `<span class="tag danger">Vencida</span>`;
-  if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
-  return `<span class="tag">${d} días restantes</span>`;
+  if(d < 0) return `<span class="tag danger">🔴 Vencida</span>`;
+  if(d === 0) return `<span class="tag warn">🟡 Vence hoy</span>`;
+
+  const daysText = (d === 1) ? "Queda 1 día" : `Quedan ${d} días`;
+  if(d <= 3) return `<span class="tag warn">🟡 ${daysText}</span>`;
+  return `<span class="tag">🟢 ${daysText}</span>`;
 }
 
 
@@ -49,6 +52,18 @@ function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p));
 function loadReceipts(){ return JSON.parse(localStorage.getItem(KEY_RECEIPTS) || "[]"); }
 function saveReceipts(r){ localStorage.setItem(KEY_RECEIPTS, JSON.stringify(r)); }
 
+
+function findTaskById(id){
+  return loadTasks().find(t => t.id === id) || null;
+}
+function taskTypeLabel(task){
+  if(!task) return "";
+  return task.type === "monthly" ? "Mensual" : "Único";
+}
+function cleanConcept(concept){
+  // Remove suffix like " (YYYY-MM)" for mensual display
+  return String(concept||"").replace(/\s\(\d{4}-\d{2}\)\s*$/,"");
+}
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
 function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
 
@@ -198,7 +213,15 @@ function taskProgressItems(limit=3){
     return { ...t, recaudado, meta, pct };
   });
 
-  items.sort((a,b)=> String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  items.sort((a,b)=>{
+    const da = a.dueDate ? daysTo(a.dueDate) : null;
+    const db = b.dueDate ? daysTo(b.dueDate) : null;
+    const ra = (da===null)?3:(da<0?0:(da===0?1:2));
+    const rb = (db===null)?3:(db<0?0:(db===0?1:2));
+    if(ra!==rb) return ra-rb;
+    if(da!==null && db!==null && da!==db) return da-db;
+    return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+  });
   return items.slice(0, limit);
 }
 function renderTaskProgressCards(){
@@ -212,12 +235,12 @@ function renderTaskProgressCards(){
     return `
       <div class="card" style="margin-top:12px;">
         <div style="font-weight:950;">${title}</div>
-        <div class="muted">${pct}% recaudado · ${formatCLP(t.recaudado)} / ${formatCLP(t.meta)}</div>
+        <div class="muted">${pct}% recaudado · ${formatCLP(t.recaudado)} de ${formatCLP(t.meta)}</div>
         <div class="bar" style="margin-top:10px;">
           <div class="barFill primary" style="width:${pct}%"></div>
         </div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          ${t.dueDate ? `<span class="tag">Vence: ${t.dueDate}</span>` : ``}
+          ${t.dueDate ? dueBadge(t.dueDate) : ``}
           <span class="tag">${t.type==="monthly" ? "Mensual" : "Único"}</span>
         </div>
       </div>
@@ -225,11 +248,35 @@ function renderTaskProgressCards(){
   }).join("");
 }
 /* ---------- payments list ---------- */
+
+function paymentUrgencyRank(p){
+  // lower = higher priority
+  if(p.status === "paid") return 4;
+  const d = p.dueDate ? daysTo(p.dueDate) : null;
+  if(d === null) return 3;       // no due date
+  if(d < 0) return 0;            // vencida
+  if(d === 0) return 1;          // hoy
+  return 2;                      // por vencer / futuro
+}
+function comparePayments(a,b){
+  const ra = paymentUrgencyRank(a);
+  const rb = paymentUrgencyRank(b);
+  if(ra !== rb) return ra - rb;
+  // if both have due dates, sort by closest first
+  const da = a.dueDate ? daysTo(a.dueDate) : 99999;
+  const db = b.dueDate ? daysTo(b.dueDate) : 99999;
+  if(da !== db) return da - db;
+  // stable fallback
+  return String(a.concept||"").localeCompare(String(b.concept||""));
+}
+
 function renderPaymentsList(role){
   const payments = loadPayments();
   const visible = isDirectiva(role)
     ? payments
     : payments.filter(p => p.apoderadoRole === "apoderado");
+
+  visible.sort(comparePayments);
 
   const groups = {};
   visible.forEach(p => {
@@ -277,18 +324,19 @@ function paymentRow(role, p){
     }
   }
 
-  const meta = (p.startDate || p.dueDate)
-    ? `<div class="muted" style="font-size:12px;margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+  const task = p.fromTaskId ? findTaskById(p.fromTaskId) : null;
+  const typeTag = task ? `<span class="tag">${taskTypeLabel(task)}</span>` : ``;
+  const meta = (p.dueDate || task)
+    ? `<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         ${p.dueDate ? dueBadge(p.dueDate) : ``}
-        ${p.startDate ? `<span class="tag">Inicio: ${p.startDate}</span>` : ``}
-        ${p.dueDate ? `<span class="tag">Vence: ${p.dueDate}</span>` : ``}
+        ${typeTag}
        </div>`
     : ``;
 
   return `
     <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
       <div style="min-width:0;">
-        <div style="font-weight:800;">${p.concept}</div>
+        <div style="font-weight:800;">${cleanConcept(p.concept)}</div>
         <div class="muted">${formatCLP(p.amount)}</div>
         ${meta}
       </div>
