@@ -1,4 +1,4 @@
-/* ========= Cursapp · app.js (ESTABLE + INICIO APODERADO NUEVO + PAGOS) ========= */
+/* ========= Cursapp · app.js (ESTABLE + INICIO APODERADO + HOME DIRECTIVA) ========= */
 
 const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
@@ -6,7 +6,7 @@ const KEY_RECEIPTS = "cursapp_receipts_v1";
 
 /* ---------- helpers ---------- */
 function formatCLP(v){ return '$' + Number(v||0).toLocaleString('es-CL'); }
-function formatCLPNoSign(v){ return Number(v||0).toLocaleString('es-CL'); }
+function formatCLPNoSign(v){ return Number(v||0).toLocaleString("es-CL"); }
 function uid(prefix="id"){ return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
@@ -145,16 +145,31 @@ function computeSummary(role){
   return { collected, pending, alumnos };
 }
 
-function listMyStudents(){
-  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
-  return [...new Set(mine.map(p=>p.alumno))];
-}
-
 function pendingMy(){
   const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
   const pending = mine.filter(p => p.status !== "paid");
   const total = pending.reduce((a,b)=>a+Number(b.amount||0),0);
   return { count: pending.length, amount: total };
+}
+
+function listMyStudents(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  return [...new Set(mine.map(p=>p.alumno))];
+}
+
+function coursePending(){
+  const all = loadPayments();
+  const pending = all.filter(p=>p.status!=="paid");
+  return {
+    count: pending.length,
+    amount: pending.reduce((a,b)=>a+Number(b.amount||0),0)
+  };
+}
+
+/* Top pendientes para directiva (lista) */
+function topPendingList(limit=5){
+  const pending = loadPayments().filter(p=>p.status!=="paid");
+  return pending.slice(0,limit);
 }
 
 /* ---------- payments list ---------- */
@@ -346,56 +361,103 @@ function renderApoderado(tab){
 }
 
 function renderTesorero(tab){
-  const {collected,pending,alumnos} = computeSummary("tesorero");
+  if(tab === "home"){
+    const sum = computeSummary("tesorero");
+    const pend = coursePending();
+    const top = topPendingList(4);
+
+    const body = `
+      ${kpiCard("⏳","Pagos por conciliar", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ir a conciliación</button>
+
+      <div style="margin-top:12px;">
+        ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kpiHead">
+          <span class="kpiIcon">📌</span>
+          <span class="kpiLabel">Pendientes recientes</span>
+        </div>
+        ${top.length ? top.map(p=>`
+          <div style="padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
+            <div style="font-weight:800;">${p.alumno} · ${p.concept}</div>
+            <div class="muted">${formatCLP(p.amount)}</div>
+          </div>
+        `).join("") : `<div class="muted" style="margin-top:10px;">Sin pendientes</div>`}
+      </div>
+    `;
+
+    viewShell("Tesorero","Administración del curso", body, tab);
+    return;
+  }
 
   const body =
-    tab==="home"
-      ? `${kpiCards(collected,pending,alumnos)}${chart(collected,pending)}`
-      : tab==="payments"
-        ? `${renderPaymentsList("tesorero")}`
-        : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
+    tab==="payments"
+      ? `${renderPaymentsList("tesorero")}`
+      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
 
   viewShell("Tesorero","Administración del curso", body, tab);
 }
 
 function renderPresidente(tab){
-  const {collected,pending,alumnos} = computeSummary("presidente");
+  if(tab === "home"){
+    const sum = computeSummary("presidente");
+    const pend = coursePending();
+
+    const body = `
+      ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+      <button class="btn primary" style="width:100%; margin-top:10px;">Crear cobro</button>
+
+      <div style="margin-top:12px;">
+        ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kpiHead">
+          <span class="kpiIcon">🧭</span>
+          <span class="kpiLabel">Acciones</span>
+        </div>
+        <button class="btn ghost" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ver pagos del curso</button>
+        <button class="btn ghost" style="width:100%; margin-top:10px;" onclick="goTab('withdraws')">Gestionar retiros</button>
+      </div>
+    `;
+
+    viewShell("Presidente","Administración del curso", body, tab);
+    return;
+  }
 
   const body =
-    tab==="home"
-      ? `${kpiCards(collected,pending,alumnos)}${chart(collected,pending)}
-         <button class="btn primary" style="width:100%;margin-top:12px;">Crear cobro</button>`
-      : tab==="payments"
-        ? `${renderPaymentsList("presidente")}`
-        : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
+    tab==="payments"
+      ? `${renderPaymentsList("presidente")}`
+      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
   viewShell("Presidente","Administración del curso", body, tab);
 }
 
-/* ---------- boot ---------- */
-function goTab(tab){
-  const user = getUser();
-  if(!user) return logout();
-  renderByRole(user.role, tab);
-}
+/* ---------- router ---------- */
 function renderByRole(role, tab){
   if(role === "apoderado") renderApoderado(tab);
   else if(role === "tesorero") renderTesorero(tab);
   else if(role === "presidente") renderPresidente(tab);
   else renderApoderado(tab);
 }
+function goTab(tab){
+  const user = getUser();
+  if(!user) return logout();
+  renderByRole(user.role, tab);
+}
 
+/* ---------- boot ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
   if(!user){
     window.location.href = "login.html";
     return;
   }
-
   ensureSeedPayments();
-
   const whoLine = document.getElementById("whoLine");
   if(whoLine) whoLine.textContent = `${user.name} · ${user.role}`;
-
   renderByRole(user.role, "home");
 });
+ 
