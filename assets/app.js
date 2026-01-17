@@ -29,7 +29,7 @@ function dueBadge(dueDate){
   if(d < 0) return `<span class="tag danger">🔴 Vencido</span>`;
   if(d === 0) return `<span class="tag warn">🟡 Vence hoy</span>`;
   const daysText = (d === 1) ? "Queda 1 día" : `Quedan ${d} días`;
-  if(d <= 5) return `<span class="tag warn">🟡 Por vencer · ${daysText}</span>`;
+  if(d <= 3) return `<span class="tag warn">🟡 Por vencer · ${daysText}</span>`;
   return `<span class="tag">🟢 ${daysText}</span>`;
 }
 
@@ -44,6 +44,37 @@ function logout(){
 /* ---------- storage ---------- */
 function loadPayments(){ return JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]"); }
 function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p)); }
+
+
+function normalizePaymentIds(){
+  const pays = loadPayments();
+  const seen = new Set();
+  let changed = false;
+
+  for(let i=0;i<pays.length;i++){
+    const p = pays[i];
+    // If no id or duplicate id, fix it (prefer fixing pending items first)
+    const missing = !p.id;
+    const dup = p.id && seen.has(p.id);
+
+    if(missing || dup){
+      // To avoid breaking existing receipts, don't change id for paid items.
+      if(p.status === "paid" && p.id){
+        // keep as-is
+        seen.add(p.id);
+        continue;
+      }
+      const newId = uid("pay");
+      pays[i] = { ...p, id: newId };
+      changed = true;
+      seen.add(newId);
+      continue;
+    }
+    seen.add(p.id);
+  }
+
+  if(changed) savePayments(pays);
+}
 
 function loadReceipts(){ return JSON.parse(localStorage.getItem(KEY_RECEIPTS) || "[]"); }
 function saveReceipts(r){ localStorage.setItem(KEY_RECEIPTS, JSON.stringify(r)); }
@@ -959,6 +990,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   ensureSeedPayments();
+  normalizePaymentIds();
 
   const whoLine = document.getElementById("whoLine");
   if(whoLine) whoLine.textContent = `${user.name} · ${user.role}`;
