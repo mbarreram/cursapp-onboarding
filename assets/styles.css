@@ -354,3 +354,33 @@ input:focus {
 #app{
   padding-bottom: 110px;
 }
+/* ===== THEMES POR ROL ===== */
+
+/* Apoderado */
+.role-apoderado .accent {
+  background: linear-gradient(135deg,#16a34a,#22c55e);
+}
+.role-apoderado .tab.active {
+  color: #16a34a;
+}
+
+/* Tesorero */
+.role-tesorero .accent {
+  background: linear-gradient(135deg,#2563eb,#3b82f6);
+}
+.role-tesorero .tab.active {
+  color: #2563eb;
+}
+
+/* Presidente */
+.role-presidente .accent {
+  background: linear-gradient(135deg,#7c3aed,#9333ea);
+}
+.role-presidente .tab.active {
+  color: #7c3aed;
+}
+
+/* Aplica color a botones primarios */
+.role-apoderado .btn.primary { background:#22c55e; }
+.role-tesorero .btn.primary { background:#3b82f6; }
+.role-presidente .btn.primary { background:#7c3aed; }
