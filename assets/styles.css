@@ -336,3 +336,33 @@ p{ margin:0; }
   border-radius: 14px;
   font-weight: 700;
 }
+/* ===== TABBAR PRO ===== */
+.tabbar{
+  backdrop-filter: blur(12px);
+  background: rgba(255,255,255,.92);
+}
+
+.tab{
+  transition: all .18s ease;
+}
+
+.tab .ico{
+  font-size: 20px;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+/* Estado activo */
+.tab.active{
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 700;
+}
+
+.tab.active .ico{
+  transform: translateY(-2px);
+}
+
+/* Feedback táctil */
+.tab:active{
+  transform: scale(.96);
+}
