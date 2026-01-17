@@ -266,3 +266,46 @@ p{ margin:0; }
   .grid3{ grid-template-columns:repeat(3,1fr); }
   h1{ font-size:52px; }
 }
+/* ===== KPI FORMAL + ICONOS ===== */
+
+.kpiHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.kpiIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.kpiLabel {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7b8190;
+  font-weight: 600;
+}
+
+.kpi {
+  font-size: 22px;        /* ⬅️ antes era muy grande */
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Cards más sobrias */
+.card {
+  border-radius: 18px;
+  padding: 16px;
+}
+
+/* Ajuste mobile */
+@media (max-width: 420px) {
+  .kpi {
+    font-size: 20px;
+  }
+  .kpiIcon {
+    font-size: 16px;
+  }
+}
