@@ -1,11 +1,4 @@
-/* ========= Cursapp · app.js (ESTABLE + PAGOS) =========
-  - Un solo dashboard (dashboard.html)
-  - Roles: apoderado / tesorero / presidente
-  - Tabs: Inicio / Pagos / Retiros
-  - Pagos:
-      * Apoderado: ve sus alumnos, paga (demo) -> marca pagado + genera comprobante
-      * Tesorero/Presidente: ve todo, concilia manual (folio obligatorio) -> marca pagado + comprobante
-*/
+/* ========= Cursapp · app.js (ESTABLE + PAGOS + HOME APODERADO AJUSTADO) ========= */
 
 const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
@@ -16,7 +9,6 @@ function capitalize(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1
 function uid(prefix="id"){ return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
-function setUser(u){ localStorage.setItem(KEY_USER, JSON.stringify(u)); }
 
 function logout(){
   localStorage.removeItem(KEY_USER);
@@ -48,7 +40,7 @@ function ensureSeedPayments(){
   if(existing && existing.length) return;
 
   const seed = [
-    // Apoderado (Demo) tendrá 2 alumnos
+    // Apoderado (Demo) tendrá 2 estudiantes
     { id: uid("pay"), alumno:"Hermano 1", apoderadoRole:"apoderado", concept:"Cuota Marzo", amount:20000, status:"paid" },
     { id: uid("pay"), alumno:"Hermano 1", apoderadoRole:"apoderado", concept:"Cuota Abril", amount:30000, status:"pending" },
     { id: uid("pay"), alumno:"Hermano 2", apoderadoRole:"apoderado", concept:"Cuota Marzo", amount:20000, status:"pending" },
@@ -140,16 +132,6 @@ function kpiCard(icon, label, value){
   `;
 }
 
-function kpiCards(collected, pending, alumnos){
-  return `
-    <div class="grid3">
-      ${kpiCard("💰", "Total recaudado", formatCLP(collected))}
-      ${kpiCard("⏳", "Total pendiente", formatCLP(pending))}
-      ${kpiCard("👥", "Alumnos", String(alumnos))}
-    </div>
-  `;
-}
-
 function chart(collected, pending){
   const max = Math.max(collected, pending, 1);
   const cw = Math.max(10, Math.round((collected/max)*260));
@@ -183,22 +165,34 @@ function viewShell(title, subtitle, body, tab){
   `;
 }
 
-/* ---------- Payments logic ---------- */
-function computeSummaryForRole(role){
+/* ---------- Payments summaries ---------- */
+function getVisiblePayments(role){
   const payments = loadPayments();
   const directiva = isDirectiva(role);
+  return directiva ? payments : payments.filter(p => p.apoderadoRole === "apoderado");
+}
 
-  const visible = directiva
-    ? payments
-    : payments.filter(p => p.apoderadoRole === "apoderado");
-
+function computeSummary(role){
+  const visible = getVisiblePayments(role);
   const collected = visible.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
   const pending = visible.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
-
   const alumnos = new Set(visible.map(p=>p.alumno)).size;
   return { collected, pending, alumnos };
 }
 
+function listMyStudents(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  return [...new Set(mine.map(p=>p.alumno))];
+}
+
+function countPendingMy(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  const pending = mine.filter(p => p.status !== "paid");
+  const totalAmount = pending.reduce((a,b)=>a+Number(b.amount||0),0);
+  return { count: pending.length, amount: totalAmount };
+}
+
+/* ---------- Payments list ---------- */
 function renderPaymentsList(role){
   const directiva = isDirectiva(role);
   const payments = loadPayments();
@@ -207,7 +201,6 @@ function renderPaymentsList(role){
     ? payments
     : payments.filter(p => p.apoderadoRole === "apoderado");
 
-  // group by alumno (apoderado)
   const groups = {};
   visible.forEach(p => {
     groups[p.alumno] = groups[p.alumno] || [];
@@ -215,12 +208,11 @@ function renderPaymentsList(role){
   });
 
   const alumnoNames = Object.keys(groups);
-
   if(!alumnoNames.length){
     return `<div class="card"><div class="muted">Sin pagos.</div></div>`;
   }
 
-  const sections = alumnoNames.map(al => {
+  return alumnoNames.map(al => {
     const rows = groups[al].map(p => paymentRow(role, p)).join("");
     return `
       <div class="card" style="margin-top:12px;">
@@ -229,8 +221,6 @@ function renderPaymentsList(role){
       </div>
     `;
   }).join("");
-
-  return sections;
 }
 
 function paymentRow(role, p){
@@ -244,14 +234,12 @@ function paymentRow(role, p){
   let action = `<span class="muted">—</span>`;
 
   if(isDirectiva(role)){
-    // Directiva: conciliar manual si pendiente, ver comprobante si pagado
     if(!paid){
       action = `<button class="btn ghost" onclick="openRecon('${p.id}')">Conciliar</button>`;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
   } else {
-    // Apoderado: pagar si pendiente, ver comprobante si pagado
     if(!paid){
       action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
     } else if(receipt){
@@ -278,7 +266,6 @@ function openPay(paymentId){
   const p = loadPayments().find(x => x.id === paymentId);
   if(!p) return;
 
-  // Demo payment: mark paid + create receipt
   p.status = "paid";
   savePayments(loadPayments().map(x => x.id===p.id ? p : x));
 
@@ -367,20 +354,43 @@ function openReceipt(paymentId){
 
 /* ---------- Views ---------- */
 function renderApoderado(tab){
-  const {collected,pending,alumnos} = computeSummaryForRole("apoderado");
+  // HOME apoderado con nueva estructura
+  if(tab === "home"){
+    const { count, amount } = countPendingMy();
+    const recaudadoCurso = loadPayments().filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+    const students = listMyStudents();
+
+    const body = `
+      ${kpiCard("⏳","Cuotas pendientes", `${formatCLP(amount)} · ${count} cuotas`)}
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ver pagos</button>
+
+      <div style="margin-top:12px;">
+        ${kpiCard("💰","Recaudación del curso", formatCLP(recaudadoCurso))}
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kpiHead">
+          <span class="kpiIcon">🎓</span>
+          <span class="kpiLabel">Mis estudiantes</span>
+        </div>
+        ${students.map(n=>`<div style="font-weight:800; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">${n}</div>`).join("")}
+      </div>
+    `;
+
+    viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
+    return;
+  }
 
   const body =
-    tab==="home"
-      ? `${kpiCards(collected,pending,alumnos)}${chart(collected,pending)}`
-      : tab==="payments"
-        ? `${renderPaymentsList("apoderado")}`
-        : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
+    tab==="payments"
+      ? `${renderPaymentsList("apoderado")}`
+      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
 }
 
 function renderTesorero(tab){
-  const {collected,pending,alumnos} = computeSummaryForRole("tesorero");
+  const {collected,pending,alumnos} = computeSummary("tesorero");
 
   const body =
     tab==="home"
@@ -393,7 +403,7 @@ function renderTesorero(tab){
 }
 
 function renderPresidente(tab){
-  const {collected,pending,alumnos} = computeSummaryForRole("presidente");
+  const {collected,pending,alumnos} = computeSummary("presidente");
 
   const body =
     tab==="home"
