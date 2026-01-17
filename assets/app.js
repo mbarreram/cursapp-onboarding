@@ -16,6 +16,25 @@ function monthKey(dateStr){
   return dateStr.slice(0,7);
 }
 
+function todayISO(){
+  return new Date().toISOString().slice(0,10);
+}
+function daysTo(dueDate){
+  // dueDate in YYYY-MM-DD
+  if(!dueDate) return null;
+  const a = new Date(todayISO() + "T00:00:00");
+  const b = new Date(dueDate + "T00:00:00");
+  return Math.round((b - a) / (1000*60*60*24));
+}
+function dueBadge(dueDate){
+  const d = daysTo(dueDate);
+  if(d === null) return "";
+  if(d < 0) return `<span class="tag danger">Vencida</span>`;
+  if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
+  return `<span class="tag">${d} días restantes</span>`;
+}
+
+
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
 function isDirectiva(role){ return role === "tesorero" || role === "presidente"; }
 function logout(){
@@ -158,6 +177,53 @@ function topPendingList(limit=5){
   return loadPayments().filter(p=>p.status!=="paid").slice(0,limit);
 }
 
+
+
+/* ---------- task progress (Directiva) ----------
+   Meta por tarea = monto * número de estudiantes del curso
+*/
+function studentsCount(){
+  return new Set(loadPayments().map(p=>p.alumno)).size || 1;
+}
+function taskProgressItems(limit=3){
+  const tasks = loadTasks();
+  const pays = loadPayments();
+  const nStudents = studentsCount();
+
+  const items = tasks.map(t=>{
+    const related = pays.filter(p=>p.fromTaskId===t.id);
+    const recaudado = related.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+    const meta = Number(t.amount||0) * nStudents;
+    const pct = meta ? Math.round((recaudado/meta)*100) : 0;
+    return { ...t, recaudado, meta, pct };
+  });
+
+  items.sort((a,b)=> String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  return items.slice(0, limit);
+}
+function renderTaskProgressCards(){
+  const items = taskProgressItems(3);
+  if(!items.length){
+    return `<div class="card"><div class="muted">Aún no hay cobros creados.</div></div>`;
+  }
+  return items.map(t=>{
+    const pct = Math.max(0, Math.min(100, t.pct||0));
+    const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:950;">${title}</div>
+        <div class="muted">${pct}% recaudado · ${formatCLP(t.recaudado)} / ${formatCLP(t.meta)}</div>
+        <div class="bar" style="margin-top:10px;">
+          <div class="barFill primary" style="width:${pct}%"></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${t.dueDate ? `<span class="tag">Vence: ${t.dueDate}</span>` : ``}
+          <span class="tag">${t.type==="monthly" ? "Mensual" : "Único"}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
 /* ---------- payments list ---------- */
 function renderPaymentsList(role){
   const payments = loadPayments();
@@ -212,10 +278,10 @@ function paymentRow(role, p){
   }
 
   const meta = (p.startDate || p.dueDate)
-    ? `<div class="muted" style="font-size:12px;margin-top:2px;">
-        ${p.startDate ? `Inicio: ${p.startDate}` : ``}
-        ${p.startDate && p.dueDate ? ` · ` : ``}
-        ${p.dueDate ? `Vence: ${p.dueDate}` : ``}
+    ? `<div class="muted" style="font-size:12px;margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${p.dueDate ? dueBadge(p.dueDate) : ``}
+        ${p.startDate ? `<span class="tag">Inicio: ${p.startDate}</span>` : ``}
+        ${p.dueDate ? `<span class="tag">Vence: ${p.dueDate}</span>` : ``}
        </div>`
     : ``;
 
@@ -495,33 +561,21 @@ function renderApoderado(tab){
 
 function renderTesorero(tab){
   if(tab === "home"){
-    const sum = computeSummary("tesorero");
     const pend = coursePending();
-    const top = topPendingList(4);
 
     const body = `
-      ${kpiCard("⏳","Pagos por conciliar", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ir a conciliación</button>
+      ${kpiCard("🎯","Metas por tarea", "Avance de recaudación")}
+      ${renderTaskProgressCards()}
 
       <div style="margin-top:12px;">
-        ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+        ${kpiCard("⏳","Pagos por conciliar", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
       </div>
 
-      <div class="card" style="margin-top:12px;">
-        <div class="kpiHead">
-          <span class="kpiIcon">📌</span>
-          <span class="kpiLabel">Pendientes recientes</span>
-        </div>
-        ${top.length ? top.map(p=>`
-          <div style="padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
-            <div style="font-weight:800;">${p.alumno} · ${p.concept}</div>
-            <div class="muted">${formatCLP(p.amount)}</div>
-          </div>
-        `).join("") : `<div class="muted" style="margin-top:10px;">Sin pendientes</div>`}
-      </div>
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ir a conciliación</button>
     `;
 
     viewShell("Tesorero","Administración del curso", body, tab);
+
     return;
   }
 
@@ -535,16 +589,17 @@ function renderTesorero(tab){
 
 function renderPresidente(tab){
   if(tab === "home"){
-    const sum = computeSummary("presidente");
     const pend = coursePending();
 
     const body = `
-      ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
+      ${kpiCard("🎯","Metas por tarea", "Avance de recaudación")}
+      ${renderTaskProgressCards()}
 
       <div style="margin-top:12px;">
-        ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+        ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
       </div>
+
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
 
       <div class="card" style="margin-top:12px;">
         <div class="kpiHead">
@@ -557,6 +612,7 @@ function renderPresidente(tab){
     `;
 
     viewShell("Presidente","Administración del curso", body, tab);
+
     return;
   }
 
