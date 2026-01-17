@@ -1,225 +1,107 @@
-:root {
-  --bg: #f5f7fb;
-  --card: #ffffff;
-  --primary: #5b5ce2;
-  --primary-soft: #eef0ff;
-  --text: #0f172a;
-  --muted: #64748b;
-  --border: #e5e7eb;
-  --danger: #ef4444;
-  --radius: 16px;
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+
+  --primary:#5b5ce2;
+  --primary2:#7c3aed;
+
+  --shadow:0 10px 26px rgba(0,0,0,.07);
+  --shadowStrong:0 22px 46px rgba(0,0,0,.16);
+  --r16:16px;
+  --r18:18px;
+  --r22:22px;
 }
 
-* {
-  box-sizing: border-box;
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
+/* ========== LOGIN ========== */
+body.auth{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  padding:18px;
+}
+.auth-card{
+  width:100%;
+  max-width:380px;
+  background:var(--card);
+  border:1px solid rgba(229,231,235,.9);
+  border-radius:var(--r18);
+  padding:28px 22px;
+  box-shadow:var(--shadowStrong);
+}
+.brandCenter{ text-align:center; margin-bottom:22px; }
+.brandCenter h1{ margin:8px 0 2px; font-size:26px; letter-spacing:-.02em; }
+.small{ font-size:13px; }
+
+label{
+  display:block;
+  margin:14px 0 6px;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text);
+}
+input, select{
+  width:100%;
+  padding:12px 14px;
+  border:1px solid rgba(229,231,235,.95);
+  border-radius:14px;
+  font-size:15px;
+  background:#fff;
+}
+input:focus, select:focus{
+  outline:none;
+  border-color:rgba(91,92,226,.55);
+  box-shadow:0 0 0 4px rgba(91,92,226,.12);
+}
+.error{
+  margin-top:10px;
+  color:#b91c1c;
+  font-weight:800;
 }
 
-/* ---------- AUTH (LOGIN) ---------- */
-
-body.auth {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 380px;
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 28px 24px;
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
-}
-
-.brand {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
-.logo {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--primary);
-  color: white;
-  font-weight: 800;
-  font-size: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-.brand h1 {
-  margin: 4px 0 2px;
-  font-size: 26px;
-}
-
-.muted {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.small {
-  font-size: 13px;
-}
-
-/* ---------- FORM ---------- */
-
-form label {
-  display: block;
-  margin: 14px 0 6px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-input {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  font-size: 15px;
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-.error {
-  margin-top: 10px;
-  color: var(--danger);
-  font-size: 14px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  padding: 12px 18px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.btn.primary {
-  width: 100%;
-  margin-top: 18px;
-  background: var(--primary);
-  color: white;
-  font-size: 16px;
-}
-
-.btn.primary:active {
-  transform: scale(0.98);
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.card {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-}
-
-.span4 {
-  grid-column: span 4;
-}
-
-.kpiLabel {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-}
-
-.kpiValue {
-  font-size: 26px;
-  font-weight: 700;
-  color: #111827;
-}
-/* ===== Tabbar inferior flotante ===== */
-.tabbar {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 9999;
-  display: flex;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.88);
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.14);
-  backdrop-filter: blur(14px);
-}
-
-.tabbar .tab {
-  flex: 1;
-  border: none;
-  background: transparent;
-  border-radius: 14px;
-  padding: 10px 10px;
-  font-weight: 800;
-  color: #64748b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.tabbar .tab.active {
-  background: #eef2ff;
-  color: #3730a3;
-  box-shadow: inset 0 0 0 1px #c7d2fe;
-}
-
-.tabbar .ico {
-  font-size: 16px;
-  line-height: 1;
-}
-
-/* Para que el contenido no quede debajo del tabbar */
-#app {
-  padding-bottom: 120px;
-}
-/* ===== Dashboard polish ===== */
-
-/* Header compacto */
+/* ========== HEADER (PASO 1) ========== */
 .topbar{
-  position: sticky;
-  top: 0;
-  z-index: 999;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid #e5e7eb;
+  position:sticky;
+  top:0;
+  z-index:999;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+
+  padding:10px 14px;
+  background:rgba(255,255,255,.90);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(229,231,235,.9);
 }
 
-/* Avatar/logo más pro */
+.brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+/* Avatar/logo */
 .logo{
-  width: 44px;
-  height: 44px;
-  border-radius: 16px;
-  background: linear-gradient(135deg,#5b5ce2,#7c3aed);
-  box-shadow: 0 10px 22px rgba(91,92,226,.25);
+  width:44px;
+  height:44px;
+  border-radius:16px;
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  box-shadow:0 10px 22px rgba(91,92,226,.22);
   display:flex;
   align-items:center;
   justify-content:center;
@@ -228,186 +110,146 @@ input:focus {
   font-size:20px;
 }
 
-/* Texto del usuario */
+/* Línea superior (nombre + rol) */
 .who{
-  font-weight:800;
-  color:#0f172a;
   font-size:14px;
+  font-weight:800;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:62vw;
 }
 
-/* Espaciado del contenido */
-#app{ padding-top: 8px; }
+/* ========== BOTONES ========== */
+.btn{
+  border:none;
+  border-radius:16px;
+  padding:11px 14px;
+  font-weight:850;
+  cursor:pointer;
+  background:#e5e7eb;
+  color:var(--text);
+}
+.btn:active{ transform:scale(.99); }
+.btn.ghost{
+  background:#fff;
+  border:1px solid rgba(229,231,235,.95);
+}
+.btn.primary{
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  color:#fff;
+  box-shadow:0 12px 28px rgba(91,92,226,.18);
+}
 
-/* Cards más premium */
+/* ========== LAYOUT APP ========== */
+.container{
+  padding:14px 14px 120px; /* espacio para tabbar */
+}
+
+h1{
+  margin:8px 0 6px;
+  font-size:46px;
+  letter-spacing:-.03em;
+}
+p{ margin:0; }
+.muted{ color:var(--muted); }
+
+/* ========== CARDS KPI (PASO 2) ========== */
+.grid3{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+  margin-top:14px;
+}
+
 .card{
-  border-radius: 18px;
-  border: 1px solid rgba(229,231,235,.9);
-  box-shadow: 0 14px 32px rgba(0,0,0,.06);
+  background:var(--card);
+  border:1px solid rgba(229,231,235,.9);
+  border-radius:22px;
+  padding:18px 18px;
+  box-shadow:var(--shadow);
 }
 
-/* KPI */
 .kpiLabel{
-  font-size: 11px;
-  letter-spacing: .08em;
-  font-weight: 900;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.10em;
+  color:#6b7280;
+  text-transform:uppercase;
+  margin-bottom:8px;
 }
 
 .kpi{
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: -0.02em;
+  font-size:34px;
+  font-weight:950;
+  letter-spacing:-.02em;
+  color:var(--text);
 }
 
-/* Suaviza cambio de tab */
-#app{
-  animation: fadeIn .18s ease both;
+/* ========== BARRAS (cobrado vs pendiente) ========== */
+.bar{
+  height:16px;
+  background:#e5e7eb;
+  border-radius:999px;
+  overflow:hidden;
+  margin-top:8px;
 }
-@keyframes fadeIn{
-  from{ opacity:0; transform: translateY(6px); }
-  to{ opacity:1; transform: translateY(0); }
+.barFill{
+  height:16px;
+  border-radius:999px;
 }
+.barFill.primary{ background:var(--primary); }
+.barFill.gray{ background:#cbd5e1; }
 
-/* Tabbar flotante más iOS-like */
+/* ========== TABBAR FLOTA (ya lo tienes, pero lo afinamos) ========== */
 .tabbar{
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  padding: 10px;
-  border-radius: 20px;
-  background: rgba(255,255,255,.90);
-  border: 1px solid rgba(229,231,235,.95);
-  box-shadow: 0 22px 46px rgba(0,0,0,.16);
+  position:fixed;
+  left:14px;
+  right:14px;
+  bottom:14px;
+  z-index:9999;
+
+  display:flex;
+  gap:10px;
+  padding:10px;
+
+  border-radius:22px;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(16px);
+  border:1px solid rgba(229,231,235,.9);
+  box-shadow:var(--shadowStrong);
 }
 
 .tabbar .tab{
-  border-radius: 16px;
-  padding: 12px 10px;
-  font-size: 14px;
+  flex:1;
+  border:none;
+  background:transparent;
+  border-radius:18px;
+  padding:12px 10px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+
+  color:#64748b;
+  font-weight:850;
+  font-size:12px;
 }
+
+.tabbar .ico{ font-size:18px; line-height:1; }
 
 .tabbar .tab.active{
-  background: linear-gradient(135deg,#eef2ff,#faf5ff);
+  background:linear-gradient(135deg,#eef2ff,#faf5ff);
+  color:#3730a3;
+  box-shadow:inset 0 0 0 1px rgba(199,210,254,.95);
 }
 
-/* Botones más consistentes */
-.btn{
-  border-radius: 16px;
+/* Desktop */
+@media (min-width: 860px){
+  .container{ max-width:900px; margin:0 auto; }
+  .grid3{ grid-template-columns:repeat(3,1fr); }
+  h1{ font-size:52px; }
 }
-.btn.primary{
-  background: linear-gradient(135deg,#5b5ce2,#7c3aed);
-  box-shadow: 0 12px 28px rgba(91,92,226,.22);
-}
-/* ===== TABBAR FLOANTE PRO ===== */
-
-.tabbar{
-  position: fixed;
-  left: 14px;
-  right: 14px;
-  bottom: 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 22px;
-
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(229,231,235,.9);
-  box-shadow: 0 24px 48px rgba(0,0,0,.18);
-
-  z-index: 1000;
-}
-
-/* Cada tab */
-.tabbar .tab{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-
-  padding: 10px 6px;
-  border-radius: 16px;
-
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-
-  transition: all .18s ease;
-}
-
-/* Icono */
-.tabbar .tab span{
-  font-size: 18px;
-  line-height: 1;
-}
-
-/* Activo */
-.tabbar .tab.active{
-  color: #4f46e5;
-  background: linear-gradient(135deg,#eef2ff,#faf5ff);
-  box-shadow: inset 0 0 0 1px rgba(99,102,241,.25);
-}
-
-/* Empuja el contenido para que no lo tape */
-#app{
-  padding-bottom: 110px;
-}
-/* ===== THEMES POR ROL ===== */
-
-/* Apoderado */
-.role-apoderado .accent {
-  background: linear-gradient(135deg,#16a34a,#22c55e);
-}
-.role-apoderado .tab.active {
-  color: #16a34a;
-}
-
-/* Tesorero */
-.role-tesorero .accent {
-  background: linear-gradient(135deg,#2563eb,#3b82f6);
-}
-.role-tesorero .tab.active {
-  color: #2563eb;
-}
-
-/* Presidente */
-.role-presidente .accent {
-  background: linear-gradient(135deg,#7c3aed,#9333ea);
-}
-.role-presidente .tab.active {
-  color: #7c3aed;
-}
-
-/* Aplica color a botones primarios */
-.role-apoderado .btn.primary { background:#22c55e; }
-.role-tesorero .btn.primary { background:#3b82f6; }
-.role-presidente .btn.primary { background:#7c3aed; }
-/* ===== Dashboard layout ===== */
-.grid3{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
-@media(min-width:860px){.grid3{grid-template-columns:repeat(3,1fr)}}
-
-.card{background:#fff;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-.kpiLabel{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;font-weight:800}
-.kpi{font-size:26px;font-weight:800}
-
-.bar{height:16px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-.barFill{height:16px;border-radius:999px}
-.barFill.primary{background:#5b5ce2}
-.barFill.gray{background:#cbd5e1}
-
-/* ===== Tabbar flotante con iconos ===== */
-.tabbar{
-  position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;
-  display:flex;gap:10px;padding:10px;border-radius:18px;
-  background:rgba(255,255,255,.88);border:1px solid #e5e7eb;
-  box-shadow:0 18px 40px rgba(0,0,0,.14);backdrop-filter:blur(14px)
-}
-.tabbar .tab{
-  flex:1;border:none;background:transparent;border-radius:14px;padding:10px;
-  font-weight:800;color:#64748b;display:flex;align-items:center;justify-content:center;gap:8px
-}
-.tabbar .tab.active{background:#eef2ff;color:#3730a3;box-shadow:inset 0 0 0 1px #c7d2fe}
-.tabbar .ico{font-size:16px;line-height:1}
-.container{padding-bottom:120px}
