@@ -1,4 +1,4 @@
-/* ========= Cursapp · app.js (CANÓNICO ESTABLE - NO BLANCOS) ========= */
+/* ========= Cursapp · app.js (ESTABLE + INICIO APODERADO NUEVO + PAGOS) ========= */
 
 const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
@@ -6,7 +6,7 @@ const KEY_RECEIPTS = "cursapp_receipts_v1";
 
 /* ---------- helpers ---------- */
 function formatCLP(v){ return '$' + Number(v||0).toLocaleString('es-CL'); }
-function capitalize(s){ return (s||'').charAt(0).toUpperCase() + (s||'').slice(1); }
+function formatCLPNoSign(v){ return Number(v||0).toLocaleString('es-CL'); }
 function uid(prefix="id"){ return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
@@ -96,16 +96,6 @@ function kpiCard(icon, label, value){
   `;
 }
 
-function kpiCards(collected, pending, alumnos){
-  return `
-    <div class="grid3">
-      ${kpiCard("💰","Total recaudado", formatCLP(collected))}
-      ${kpiCard("⏳","Total pendiente", formatCLP(pending))}
-      ${kpiCard("👥","Alumnos", String(alumnos))}
-    </div>
-  `;
-}
-
 function chart(collected, pending){
   const max = Math.max(collected, pending, 1);
   const cw = Math.max(10, Math.round((collected/max)*260));
@@ -139,18 +129,32 @@ function viewShell(title, subtitle, body, tab){
   `;
 }
 
-/* ---------- summaries ---------- */
-function computeSummary(role){
+/* ---------- payments summaries ---------- */
+function getVisiblePayments(role){
   const payments = loadPayments();
-  const visible = isDirectiva(role)
+  return isDirectiva(role)
     ? payments
     : payments.filter(p => p.apoderadoRole === "apoderado");
+}
 
+function computeSummary(role){
+  const visible = getVisiblePayments(role);
   const collected = visible.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
   const pending = visible.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
   const alumnos = new Set(visible.map(p=>p.alumno)).size;
-
   return { collected, pending, alumnos };
+}
+
+function listMyStudents(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  return [...new Set(mine.map(p=>p.alumno))];
+}
+
+function pendingMy(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  const pending = mine.filter(p => p.status !== "paid");
+  const total = pending.reduce((a,b)=>a+Number(b.amount||0),0);
+  return { count: pending.length, amount: total };
 }
 
 /* ---------- payments list ---------- */
@@ -307,20 +311,42 @@ function openReceipt(paymentId){
 
 /* ---------- views ---------- */
 function renderApoderado(tab){
-  const { collected, pending, alumnos } = computeSummary("apoderado");
+  if(tab === "home"){
+    const { count, amount } = pendingMy();
+    const recaudadoCurso = loadPayments().filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+    const students = listMyStudents();
+
+    const body = `
+      ${kpiCard("⏳","Cuotas pendientes", `${formatCLPNoSign(amount)} · ${count} cuotas pendientes`)}
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ver pagos</button>
+
+      <div style="margin-top:12px;">
+        ${kpiCard("💰","Recaudación del curso", formatCLP(recaudadoCurso))}
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kpiHead">
+          <span class="kpiIcon">🎓</span>
+          <span class="kpiLabel">Mis estudiantes</span>
+        </div>
+        ${students.map(n=>`<div style="font-weight:800; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">${n}</div>`).join("")}
+      </div>
+    `;
+
+    viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
+    return;
+  }
 
   const body =
-    tab==="home"
-      ? `${kpiCards(collected,pending,alumnos)}${chart(collected,pending)}`
-      : tab==="payments"
-        ? `${renderPaymentsList("apoderado")}`
-        : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
+    tab==="payments"
+      ? `${renderPaymentsList("apoderado")}`
+      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
 }
 
 function renderTesorero(tab){
-  const { collected, pending, alumnos } = computeSummary("tesorero");
+  const {collected,pending,alumnos} = computeSummary("tesorero");
 
   const body =
     tab==="home"
@@ -333,7 +359,7 @@ function renderTesorero(tab){
 }
 
 function renderPresidente(tab){
-  const { collected, pending, alumnos } = computeSummary("presidente");
+  const {collected,pending,alumnos} = computeSummary("presidente");
 
   const body =
     tab==="home"
@@ -347,6 +373,11 @@ function renderPresidente(tab){
 }
 
 /* ---------- boot ---------- */
+function goTab(tab){
+  const user = getUser();
+  if(!user) return logout();
+  renderByRole(user.role, tab);
+}
 function renderByRole(role, tab){
   if(role === "apoderado") renderApoderado(tab);
   else if(role === "tesorero") renderTesorero(tab);
@@ -360,6 +391,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "login.html";
     return;
   }
+
   ensureSeedPayments();
 
   const whoLine = document.getElementById("whoLine");
