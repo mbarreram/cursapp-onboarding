@@ -14,6 +14,8 @@ function logout(){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+
+  document.body.classList.add(`role-${user.role}`);
   const user = getUser();
   if(!user){
     window.location.href = "login.html";
