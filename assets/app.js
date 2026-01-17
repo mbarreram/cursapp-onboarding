@@ -16,11 +16,8 @@ function monthKey(dateStr){
   return dateStr.slice(0,7);
 }
 
-function todayISO(){
-  return new Date().toISOString().slice(0,10);
-}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
 function daysTo(dueDate){
-  // dueDate in YYYY-MM-DD
   if(!dueDate) return null;
   const a = new Date(todayISO() + "T00:00:00");
   const b = new Date(dueDate + "T00:00:00");
@@ -31,7 +28,6 @@ function dueBadge(dueDate){
   if(d === null) return "";
   if(d < 0) return `<span class="tag danger">🔴 Vencido</span>`;
   if(d === 0) return `<span class="tag warn">🟡 Vence hoy</span>`;
-
   const daysText = (d === 1) ? "Queda 1 día" : `Quedan ${d} días`;
   if(d <= 5) return `<span class="tag warn">🟡 Por vencer · ${daysText}</span>`;
   return `<span class="tag">🟢 ${daysText}</span>`;
@@ -61,9 +57,66 @@ function taskTypeLabel(task){
   return task.type === "monthly" ? "Pago mensual" : "Pago único";
 }
 function cleanConcept(concept){
-  // Remove suffix like " (YYYY-MM)" for mensual display
   return String(concept||"").replace(/\s\(\d{4}-\d{2}\)\s*$/,"");
 }
+function paymentUrgencyRank(p){
+  if(p.status === "paid") return 4;
+  const d = p.dueDate ? daysTo(p.dueDate) : null;
+  if(d === null) return 3;
+  if(d < 0) return 0;
+  if(d === 0) return 1;
+  return 2;
+}
+function comparePayments(a,b){
+  const ra = paymentUrgencyRank(a), rb = paymentUrgencyRank(b);
+  if(ra !== rb) return ra - rb;
+  const da = a.dueDate ? daysTo(a.dueDate) : 99999;
+  const db = b.dueDate ? daysTo(b.dueDate) : 99999;
+  if(da !== db) return da - db;
+  return String(a.concept||"").localeCompare(String(b.concept||""));
+}
+function studentsCount(){
+  return new Set(loadPayments().map(p=>p.alumno)).size || 1;
+}
+function taskStats(taskId){
+  const pays = loadPayments().filter(p=>p.fromTaskId===taskId);
+  const paid = pays.filter(p=>p.status==="paid");
+  const pend = pays.filter(p=>p.status!=="paid");
+  const overdue = pend.filter(p=>p.dueDate && daysTo(p.dueDate) < 0);
+  const dueSoon = pend.filter(p=>p.dueDate && daysTo(p.dueDate) >= 0 && daysTo(p.dueDate) <= 5);
+  return {
+    paidCount: paid.length,
+    pendingCount: pend.length,
+    overdueCount: overdue.length,
+    dueSoonCount: dueSoon.length,
+    recaudado: paid.reduce((a,b)=>a+Number(b.amount||0),0),
+  };
+}
+function taskMeta(task){
+  return Number(task.amount||0) * studentsCount();
+}
+function taskProgress(task){
+  const stats = taskStats(task.id);
+  const meta = taskMeta(task);
+  const pct = meta ? Math.round((stats.recaudado/meta)*100) : 0;
+  return { stats, meta, pct };
+}
+function listTasksSorted(limit=3){
+  const tasks = loadTasks().slice();
+  tasks.sort((a,b)=>{
+    const da = a.dueDate ? daysTo(a.dueDate) : null;
+    const db = b.dueDate ? daysTo(b.dueDate) : null;
+    const ra = (da===null)?3:(da<0?0:(da===0?1:2));
+    const rb = (db===null)?3:(db<0?0:(db===0?1:2));
+    if(ra!==rb) return ra-rb;
+    if(da!==null && db!==null && da!==db) return da-db;
+    return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+  });
+  return tasks.slice(0,limit);
+}
+function setSelectedTask(id){ localStorage.setItem("cursapp_selected_task", id||""); }
+function getSelectedTask(){ return localStorage.getItem("cursapp_selected_task") || ""; }
+function clearSelectedTask(){ localStorage.removeItem("cursapp_selected_task"); }
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
 function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
 
@@ -192,90 +245,12 @@ function topPendingList(limit=5){
   return loadPayments().filter(p=>p.status!=="paid").slice(0,limit);
 }
 
-
-
-/* ---------- task progress (Directiva) ----------
-   Meta por tarea = monto * número de estudiantes del curso
-*/
-function studentsCount(){
-  return new Set(loadPayments().map(p=>p.alumno)).size || 1;
-}
-function taskProgressItems(limit=3){
-  const tasks = loadTasks();
-  const pays = loadPayments();
-  const nStudents = studentsCount();
-
-  const items = tasks.map(t=>{
-    const related = pays.filter(p=>p.fromTaskId===t.id);
-    const recaudado = related.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
-    const meta = Number(t.amount||0) * nStudents;
-    const pct = meta ? Math.round((recaudado/meta)*100) : 0;
-    return { ...t, recaudado, meta, pct };
-  });
-
-  items.sort((a,b)=>{
-    const da = a.dueDate ? daysTo(a.dueDate) : null;
-    const db = b.dueDate ? daysTo(b.dueDate) : null;
-    const ra = (da===null)?3:(da<0?0:(da===0?1:2));
-    const rb = (db===null)?3:(db<0?0:(db===0?1:2));
-    if(ra!==rb) return ra-rb;
-    if(da!==null && db!==null && da!==db) return da-db;
-    return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
-  });
-  return items.slice(0, limit);
-}
-function renderTaskProgressCards(){
-  const items = taskProgressItems(3);
-  if(!items.length){
-    return `<div class="card"><div class="muted">Aún no hay cobros creados.</div></div>`;
-  }
-  return items.map(t=>{
-    const pct = Math.max(0, Math.min(100, t.pct||0));
-    const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
-    return `
-      <div class="card" style="margin-top:12px;">
-        <div style="font-weight:950;">${title}</div>
-        <div class="muted">${pct}% recaudado · ${formatCLP(t.recaudado)} de ${formatCLP(t.meta)}</div>
-        <div class="bar" style="margin-top:10px;">
-          <div class="barFill primary" style="width:${pct}%"></div>
-        </div>
-        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          ${t.dueDate ? dueBadge(t.dueDate) : ``}
-          <span class="tag">${t.type==="monthly" ? "Mensual" : "Único"}</span>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
 /* ---------- payments list ---------- */
-
-function paymentUrgencyRank(p){
-  // lower = higher priority
-  if(p.status === "paid") return 4;
-  const d = p.dueDate ? daysTo(p.dueDate) : null;
-  if(d === null) return 3;       // no due date
-  if(d < 0) return 0;            // vencida
-  if(d === 0) return 1;          // hoy
-  return 2;                      // por vencer / futuro
-}
-function comparePayments(a,b){
-  const ra = paymentUrgencyRank(a);
-  const rb = paymentUrgencyRank(b);
-  if(ra !== rb) return ra - rb;
-  // if both have due dates, sort by closest first
-  const da = a.dueDate ? daysTo(a.dueDate) : 99999;
-  const db = b.dueDate ? daysTo(b.dueDate) : 99999;
-  if(da !== db) return da - db;
-  // stable fallback
-  return String(a.concept||"").localeCompare(String(b.concept||""));
-}
-
 function renderPaymentsList(role){
   const payments = loadPayments();
   const visible = isDirectiva(role)
     ? payments
     : payments.filter(p => p.apoderadoRole === "apoderado");
-
   visible.sort(comparePayments);
 
   const groups = {};
@@ -329,13 +304,13 @@ function paymentRow(role, p){
   const meta = (p.dueDate || task)
     ? `<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         ${p.dueDate ? dueBadge(p.dueDate) : ``}
-        </div>`
+       </div>`
     : ``;
 
   return `
     <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
       <div style="min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div style="font-weight:800;">${cleanConcept(p.concept)}</div></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">${typeTag}<div style="font-weight:800;">${cleanConcept(p.concept)}</div></div>
         <div class="muted">${formatCLP(p.amount)}</div>
         ${meta}
       </div>
@@ -608,17 +583,45 @@ function renderApoderado(tab){
 
 function renderTesorero(tab){
   if(tab === "home"){
+    const sum = computeSummary("tesorero");
     const pend = coursePending();
+    const tasks = listTasksSorted(3);
+
+    const tasksHtml = tasks.map(t=>{
+      const pr = taskProgress(t);
+      const pct = Math.max(0, Math.min(100, pr.pct));
+      const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
+      return `
+        <div class="card" style="margin-top:12px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="font-weight:950;">${title}</div>
+              <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
+              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                ${t.dueDate ? dueBadge(t.dueDate) : ``}
+                <span class="tag">${taskTypeLabel(t)}</span>
+              </div>
+            </div>
+            <button class="btn ghost" onclick="setSelectedTask('${t.id}');goTab('payments')">Ver detalle</button>
+          </div>
+
+          <div class="bar" style="margin-top:10px;">
+            <div class="barFill primary" style="width:${pct}%"></div>
+          </div>
+
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <span class="tag ok">🟢 ${pr.stats.paidCount} pagadas</span>
+            <span class="tag warn">🟡 ${pr.stats.dueSoonCount} por vencer</span>
+            <span class="tag danger">🔴 ${pr.stats.overdueCount} vencidas</span>
+          </div>
+        </div>
+      `;
+    }).join("");
 
     const body = `
-      ${kpiCard("🎯","Metas por tarea", "Avance de recaudación")}
-      ${renderTaskProgressCards()}
-
-      <div style="margin-top:12px;">
-        ${kpiCard("⏳","Pagos por conciliar", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      </div>
-
-      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ir a conciliación</button>
+      ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+      ${kpiCard("⏳","Cuotas pendientes", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+      ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
     `;
 
     viewShell("Tesorero","Administración del curso", body, tab);
@@ -628,7 +631,7 @@ function renderTesorero(tab){
 
   const body =
     tab==="payments"
-      ? `${renderPaymentsList("tesorero")}`
+      ? `${renderTesoreroPayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
 
   viewShell("Tesorero","Administración del curso", body, tab);
@@ -636,26 +639,32 @@ function renderTesorero(tab){
 
 function renderPresidente(tab){
   if(tab === "home"){
+    const sum = computeSummary("presidente");
     const pend = coursePending();
+    const tasks = listTasksSorted(3);
+
+    const tasksHtml = tasks.map(t=>{
+      const pr = taskProgress(t);
+      const pct = Math.max(0, Math.min(100, pr.pct));
+      const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
+      return `
+        <div class="card" style="margin-top:12px;">
+          <div style="font-weight:950;">${title}</div>
+          <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
+          <div class="bar" style="margin-top:10px;"><div class="barFill primary" style="width:${pct}%"></div></div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            ${t.dueDate ? dueBadge(t.dueDate) : ``}
+            <span class="tag">${taskTypeLabel(t)}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
 
     const body = `
-      ${kpiCard("🎯","Metas por tarea", "Avance de recaudación")}
-      ${renderTaskProgressCards()}
-
-      <div style="margin-top:12px;">
-        ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      </div>
-
+      ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
+      ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+      ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
       <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="kpiHead">
-          <span class="kpiIcon">🧭</span>
-          <span class="kpiLabel">Acciones</span>
-        </div>
-        <button class="btn ghost" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ver pagos del curso</button>
-        <button class="btn ghost" style="width:100%; margin-top:10px;" onclick="goTab('withdraws')">Gestionar retiros</button>
-      </div>
     `;
 
     viewShell("Presidente","Administración del curso", body, tab);
@@ -669,6 +678,36 @@ function renderPresidente(tab){
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
   viewShell("Presidente","Administración del curso", body, tab);
+}
+
+
+function renderTesoreroPayments(){
+  const taskId = getSelectedTask();
+  if(!taskId) return renderPaymentsList("tesorero");
+  const task = findTaskById(taskId);
+  const pays = loadPayments().filter(p=>p.fromTaskId===taskId).slice().sort(comparePayments);
+  const groups = {};
+  pays.forEach(p=>{ groups[p.alumno]=groups[p.alumno]||[]; groups[p.alumno].push(p); });
+  const names = Object.keys(groups);
+
+  const header = `
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:950;">${task ? task.title : "Detalle de tarea"}</div>
+          <div class="muted">Pagos por alumno / cuota</div>
+        </div>
+        <button class="btn ghost" onclick="clearSelectedTask();goTab('payments')">Volver</button>
+      </div>
+    </div>
+  `;
+
+  const blocks = names.map(n=>{
+    const rows = groups[n].map(p=>paymentRow("tesorero", p)).join("");
+    return `<div class="card" style="margin-top:12px;"><div style="font-weight:900;margin-bottom:8px;">${n}</div>${rows}</div>`;
+  }).join("");
+
+  return header + blocks;
 }
 
 /* ---------- router ---------- */
