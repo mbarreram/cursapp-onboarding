@@ -29,11 +29,11 @@ function daysTo(dueDate){
 function dueBadge(dueDate){
   const d = daysTo(dueDate);
   if(d === null) return "";
-  if(d < 0) return `<span class="tag danger">🔴 Vencida</span>`;
+  if(d < 0) return `<span class="tag danger">🔴 Vencido</span>`;
   if(d === 0) return `<span class="tag warn">🟡 Vence hoy</span>`;
 
   const daysText = (d === 1) ? "Queda 1 día" : `Quedan ${d} días`;
-  if(d <= 3) return `<span class="tag warn">🟡 ${daysText}</span>`;
+  if(d <= 5) return `<span class="tag warn">🟡 Por vencer · ${daysText}</span>`;
   return `<span class="tag">🟢 ${daysText}</span>`;
 }
 
@@ -58,7 +58,7 @@ function findTaskById(id){
 }
 function taskTypeLabel(task){
   if(!task) return "";
-  return task.type === "monthly" ? "Mensual" : "Único";
+  return task.type === "monthly" ? "Pago mensual" : "Pago único";
 }
 function cleanConcept(concept){
   // Remove suffix like " (YYYY-MM)" for mensual display
@@ -329,14 +329,13 @@ function paymentRow(role, p){
   const meta = (p.dueDate || task)
     ? `<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         ${p.dueDate ? dueBadge(p.dueDate) : ``}
-        ${typeTag}
-       </div>`
+        </div>`
     : ``;
 
   return `
     <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
       <div style="min-width:0;">
-        <div style="font-weight:800;">${cleanConcept(p.concept)}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;"><div style="font-weight:800;">${cleanConcept(p.concept)}</div></div>
         <div class="muted">${formatCLP(p.amount)}</div>
         ${meta}
       </div>
