@@ -10,6 +10,7 @@
 
   --shadow:0 10px 26px rgba(0,0,0,.07);
   --shadowStrong:0 22px 46px rgba(0,0,0,.16);
+
   --r16:16px;
   --r18:18px;
   --r22:22px;
@@ -72,7 +73,7 @@ input:focus, select:focus{
   font-weight:800;
 }
 
-/* ========== HEADER (PASO 1) ========== */
+/* ========== HEADER ========== */
 .topbar{
   position:sticky;
   top:0;
@@ -87,15 +88,12 @@ input:focus, select:focus{
   backdrop-filter:blur(14px);
   border-bottom:1px solid rgba(229,231,235,.9);
 }
-
 .brand{
   display:flex;
   align-items:center;
   gap:10px;
   min-width:0;
 }
-
-/* Avatar/logo */
 .logo{
   width:44px;
   height:44px;
@@ -109,8 +107,6 @@ input:focus, select:focus{
   font-weight:900;
   font-size:20px;
 }
-
-/* Línea superior (nombre + rol) */
 .who{
   font-size:14px;
   font-weight:800;
@@ -144,9 +140,8 @@ input:focus, select:focus{
 
 /* ========== LAYOUT APP ========== */
 .container{
-  padding:14px 14px 120px; /* espacio para tabbar */
+  padding:14px 14px 120px;
 }
-
 h1{
   margin:8px 0 6px;
   font-size:46px;
@@ -155,7 +150,7 @@ h1{
 p{ margin:0; }
 .muted{ color:var(--muted); }
 
-/* ========== CARDS KPI (PASO 2) ========== */
+/* ========== KPI CARDS (más formal + iconos) ========== */
 .grid3{
   display:grid;
   grid-template-columns:1fr;
@@ -171,38 +166,59 @@ p{ margin:0; }
   box-shadow:var(--shadow);
 }
 
+/* Header de KPI (icono + label) */
+.kpiHead{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.kpiIcon{
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f3f4f6;
+  border:1px solid rgba(229,231,235,.9);
+  font-size:15px;
+  opacity:.9;
+}
+
 .kpiLabel{
-  font-size:12px;
+  font-size:11px;
   font-weight:900;
   letter-spacing:.10em;
   color:#6b7280;
   text-transform:uppercase;
-  margin-bottom:8px;
+  margin:0;
 }
 
+/* Monto más formal (más pequeño que antes) */
 .kpi{
-  font-size:34px;
-  font-weight:950;
-  letter-spacing:-.02em;
+  font-size:28px;        /* antes 34 */
+  font-weight:900;       /* formal */
+  letter-spacing:-.01em;
   color:var(--text);
 }
 
-/* ========== BARRAS (cobrado vs pendiente) ========== */
+/* ========== BARRAS ========== */
 .bar{
-  height:16px;
+  height:14px;
   background:#e5e7eb;
   border-radius:999px;
   overflow:hidden;
   margin-top:8px;
 }
 .barFill{
-  height:16px;
+  height:14px;
   border-radius:999px;
 }
 .barFill.primary{ background:var(--primary); }
 .barFill.gray{ background:#cbd5e1; }
 
-/* ========== TABBAR FLOTA (ya lo tienes, pero lo afinamos) ========== */
+/* ========== TABBAR FLOTA ========== */
 .tabbar{
   position:fixed;
   left:14px;
@@ -220,7 +236,6 @@ p{ margin:0; }
   border:1px solid rgba(229,231,235,.9);
   box-shadow:var(--shadowStrong);
 }
-
 .tabbar .tab{
   flex:1;
   border:none;
@@ -238,9 +253,7 @@ p{ margin:0; }
   font-weight:850;
   font-size:12px;
 }
-
 .tabbar .ico{ font-size:18px; line-height:1; }
-
 .tabbar .tab.active{
   background:linear-gradient(135deg,#eef2ff,#faf5ff);
   color:#3730a3;
