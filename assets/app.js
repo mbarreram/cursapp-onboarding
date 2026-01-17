@@ -1,4 +1,4 @@
-/* ========= Cursapp · app.js (CANÓNICO ESTABLE) ========= */
+/* ========= Cursapp · app.js (ESTABLE + KPI FORMAL + ÍCONOS) ========= */
 
 function formatCLP(v){
   return '$' + Number(v||0).toLocaleString('es-CL');
@@ -26,7 +26,6 @@ document.addEventListener("DOMContentLoaded", () => {
     whoLine.textContent = `${user.name} · ${user.role}`;
   }
 
-  // Render inicial (SIEMPRE)
   renderByRole(user.role, "home");
 });
 
@@ -58,25 +57,29 @@ function tabbar(active){
   `;
 }
 
+/* ===== KPI Cards (FORMAL + ÍCONOS) ===== */
 function kpiCards(collected, pending, alumnos){
   return `
     <div class="grid3">
-      <div class="card">
-        <div class="kpiLabel">Total recaudado</div>
-        <div class="kpi">${formatCLP(collected)}</div>
+      ${kpiCard("💰", "Total recaudado", formatCLP(collected))}
+      ${kpiCard("⏳", "Total pendiente", formatCLP(pending))}
+      ${kpiCard("👥", "Alumnos", String(alumnos))}
+    </div>
+  `;
+}
+function kpiCard(icon, label, value){
+  return `
+    <div class="card">
+      <div class="kpiHead">
+        <span class="kpiIcon">${icon}</span>
+        <span class="kpiLabel">${label}</span>
       </div>
-      <div class="card">
-        <div class="kpiLabel">Total pendiente</div>
-        <div class="kpi">${formatCLP(pending)}</div>
-      </div>
-      <div class="card">
-        <div class="kpiLabel">Alumnos</div>
-        <div class="kpi">${alumnos}</div>
-      </div>
+      <div class="kpi">${value}</div>
     </div>
   `;
 }
 
+/* ===== Chart ===== */
 function chart(collected, pending){
   const max = Math.max(collected, pending, 1);
   const cw = Math.max(10, Math.round((collected/max)*260));
