@@ -1,17 +1,23 @@
-/* ========= Cursapp · app.js (ESTABLE + INICIO APODERADO + HOME DIRECTIVA) ========= */
+/* ========= Cursapp · app.js (ESTABLE + PAGOS + CREAR COBRO) ========= */
 
 const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
 const KEY_RECEIPTS = "cursapp_receipts_v1";
+const KEY_TASKS = "cursapp_tasks_v1";
 
 /* ---------- helpers ---------- */
 function formatCLP(v){ return '$' + Number(v||0).toLocaleString('es-CL'); }
 function formatCLPNoSign(v){ return Number(v||0).toLocaleString("es-CL"); }
 function uid(prefix="id"){ return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
+function isoDate(){ return new Date().toISOString(); }
+function monthKey(dateStr){
+  // YYYY-MM from YYYY-MM-DD
+  if(!dateStr || dateStr.length < 7) return "";
+  return dateStr.slice(0,7);
+}
 
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
 function isDirectiva(role){ return role === "tesorero" || role === "presidente"; }
-
 function logout(){
   localStorage.removeItem(KEY_USER);
   window.location.href = "login.html";
@@ -24,6 +30,9 @@ function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p));
 function loadReceipts(){ return JSON.parse(localStorage.getItem(KEY_RECEIPTS) || "[]"); }
 function saveReceipts(r){ localStorage.setItem(KEY_RECEIPTS, JSON.stringify(r)); }
 
+function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
+function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
+
 function getReceiptByPaymentId(pid){
   return loadReceipts().find(r => r.paymentId === pid) || null;
 }
@@ -33,7 +42,7 @@ function upsertReceipt(receipt){
   saveReceipts(list);
 }
 
-/* ---------- seed ---------- */
+/* ---------- seed demo payments ---------- */
 function ensureSeedPayments(){
   const existing = loadPayments();
   if(existing && existing.length) return;
@@ -61,7 +70,7 @@ function ensureSeedPayments(){
         method: "Conciliación inicial (Demo)",
         ref: "SEED",
         note: "Pago seed",
-        paidAt: new Date().toISOString()
+        paidAt: isoDate()
       });
     }
   });
@@ -96,28 +105,6 @@ function kpiCard(icon, label, value){
   `;
 }
 
-function chart(collected, pending){
-  const max = Math.max(collected, pending, 1);
-  const cw = Math.max(10, Math.round((collected/max)*260));
-  const pw = Math.max(10, Math.round((pending/max)*260));
-
-  return `
-    <div class="card" style="margin-top:12px;">
-      <div class="kpiLabel">Cobrado vs Pendiente</div>
-
-      <div style="margin-top:10px;">
-        <div class="muted">Cobrado ${formatCLP(collected)}</div>
-        <div class="bar"><div class="barFill primary" style="width:${cw}px"></div></div>
-      </div>
-
-      <div style="margin-top:10px;">
-        <div class="muted">Pendiente ${formatCLP(pending)}</div>
-        <div class="bar"><div class="barFill gray" style="width:${pw}px"></div></div>
-      </div>
-    </div>
-  `;
-}
-
 function viewShell(title, subtitle, body, tab){
   const app = document.getElementById("app");
   if(!app) return;
@@ -126,10 +113,11 @@ function viewShell(title, subtitle, body, tab){
     <p class="muted">${subtitle}</p>
     ${body}
     ${tabbar(tab)}
+    <div id="modalRoot"></div>
   `;
 }
 
-/* ---------- payments summaries ---------- */
+/* ---------- summaries ---------- */
 function getVisiblePayments(role){
   const payments = loadPayments();
   return isDirectiva(role)
@@ -166,10 +154,8 @@ function coursePending(){
   };
 }
 
-/* Top pendientes para directiva (lista) */
 function topPendingList(limit=5){
-  const pending = loadPayments().filter(p=>p.status!=="paid");
-  return pending.slice(0,limit);
+  return loadPayments().filter(p=>p.status!=="paid").slice(0,limit);
 }
 
 /* ---------- payments list ---------- */
@@ -225,11 +211,20 @@ function paymentRow(role, p){
     }
   }
 
+  const meta = (p.startDate || p.dueDate)
+    ? `<div class="muted" style="font-size:12px;margin-top:2px;">
+        ${p.startDate ? `Inicio: ${p.startDate}` : ``}
+        ${p.startDate && p.dueDate ? ` · ` : ``}
+        ${p.dueDate ? `Vence: ${p.dueDate}` : ``}
+       </div>`
+    : ``;
+
   return `
     <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
       <div style="min-width:0;">
         <div style="font-weight:800;">${p.concept}</div>
         <div class="muted">${formatCLP(p.amount)}</div>
+        ${meta}
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
         ${tag}
@@ -239,7 +234,7 @@ function paymentRow(role, p){
   `;
 }
 
-/* ---------- actions ---------- */
+/* ---------- actions: pay / recon / receipt ---------- */
 function openPay(paymentId){
   const p = loadPayments().find(x => x.id === paymentId);
   if(!p) return;
@@ -256,7 +251,7 @@ function openPay(paymentId){
     method: "Webpay (Demo)",
     ref: uid("trx"),
     note: "Pago automático (demo)",
-    paidAt: new Date().toISOString()
+    paidAt: isoDate()
   });
 
   alert("Pago aprobado (demo). Comprobante generado.");
@@ -282,7 +277,7 @@ function openRecon(paymentId){
     method: "Conciliación manual",
     ref,
     note: "Conciliación (demo)",
-    paidAt: new Date().toISOString()
+    paidAt: isoDate()
   });
 
   alert("Conciliado (demo). Comprobante generado.");
@@ -322,6 +317,144 @@ function openReceipt(paymentId){
   const w = window.open("", "_blank");
   if(!w){ alert("Popup bloqueado"); return; }
   w.document.open(); w.document.write(html); w.document.close();
+}
+
+/* ---------- Crear cobro (Presidente) ---------- */
+function openCreateCobro(){
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(620px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Crear cobro (para todos)</div>
+            <div class="muted">Se creará para todos los apoderados del curso.</div>
+          </div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Título</label>
+          <input id="tTitle" placeholder="Ej: Cuota Mayo / Fondo emergencia" />
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Fecha inicio</label>
+            <input id="tStart" type="date" />
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Fecha límite</label>
+            <input id="tDue" type="date" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Monto</label>
+            <input id="tAmount" inputmode="numeric" placeholder="Ej: 12000" />
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Tipo</label>
+            <select id="tType">
+              <option value="once">Único</option>
+              <option value="monthly">Mensual</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions" style="justify-content:flex-end;margin-top:14px;">
+          <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+          <button class="btn primary" onclick="createCobro()">Crear cobro</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function closeModal(){
+  const root = document.getElementById("modalRoot");
+  if(root) root.innerHTML = "";
+}
+
+function createCobro(){
+  const title = (document.getElementById("tTitle")?.value || "").trim();
+  const startDate = document.getElementById("tStart")?.value || "";
+  const dueDate = document.getElementById("tDue")?.value || "";
+  const amount = Number((document.getElementById("tAmount")?.value || "").trim());
+  const type = document.getElementById("tType")?.value || "once";
+
+  if(!title || !startDate || !dueDate || !amount || amount <= 0){
+    alert("Completa título, fechas y monto.");
+    return;
+  }
+
+  // Guardar tarea
+  const tasks = loadTasks();
+  const task = {
+    id: uid("task"),
+    title,
+    startDate,
+    dueDate,
+    amount,
+    type,
+    createdAt: isoDate(),
+    target: "all"
+  };
+  tasks.unshift(task);
+  saveTasks(tasks);
+
+  // Generar cobros para TODOS los alumnos (todos los apoderados)
+  generatePaymentsForTask(task);
+
+  closeModal();
+  alert("Cobro creado para todos (demo).");
+  goTab("payments");
+}
+
+function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
+function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
+
+function generatePaymentsForTask(task){
+  let payments = loadPayments();
+
+  // Lista de alumnos existentes (esto representa a todos los apoderados del curso)
+  const alumnos = [...new Set(payments.map(p => `${p.alumno}|||${p.apoderadoRole}`))].map(s=>{
+    const [alumno, apoderadoRole] = s.split("|||");
+    return { alumno, apoderadoRole };
+  });
+
+  // Mensual: añadimos un sufijo para distinguir el periodo
+  const concept =
+    task.type === "monthly"
+      ? `${task.title} (${monthKey(task.dueDate)})`
+      : task.title;
+
+  alumnos.forEach(a=>{
+    const exists = payments.some(p =>
+      p.alumno === a.alumno &&
+      p.concept === concept &&
+      p.dueDate === task.dueDate
+    );
+    if(exists) return;
+
+    payments.unshift({
+      id: uid("pay"),
+      alumno: a.alumno,
+      apoderadoRole: a.apoderadoRole,
+      concept,
+      amount: task.amount,
+      status: "pending",
+      startDate: task.startDate,
+      dueDate: task.dueDate,
+      createdAt: isoDate(),
+      fromTaskId: task.id
+    });
+  });
+
+  savePayments(payments);
 }
 
 /* ---------- views ---------- */
@@ -407,7 +540,7 @@ function renderPresidente(tab){
 
     const body = `
       ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      <button class="btn primary" style="width:100%; margin-top:10px;">Crear cobro</button>
+      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
 
       <div style="margin-top:12px;">
         ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
@@ -455,9 +588,11 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "login.html";
     return;
   }
+
   ensureSeedPayments();
+
   const whoLine = document.getElementById("whoLine");
   if(whoLine) whoLine.textContent = `${user.name} · ${user.role}`;
+
   renderByRole(user.role, "home");
 });
- 
