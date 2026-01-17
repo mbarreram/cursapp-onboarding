@@ -101,6 +101,39 @@ function taskProgress(task){
   const pct = meta ? Math.round((stats.recaudado/meta)*100) : 0;
   return { stats, meta, pct };
 }
+
+function isTaskClosed(task){
+  return !!(task && (task.status === "closed" || task.closedAt));
+}
+function markTaskClosed(taskId, closedBy, closeReason){
+  const tasks = loadTasks();
+  const idx = tasks.findIndex(t=>t.id===taskId);
+  if(idx<0) return;
+  tasks[idx].status = "closed";
+  tasks[idx].closedAt = isoDate();
+  tasks[idx].closedBy = closedBy;        // "auto" | "manual"
+  tasks[idx].closeReason = closeReason;  // "completed_100" | "expired"
+  saveTasks(tasks);
+}
+function taskIsExpired(task){
+  if(!task || !task.dueDate) return false;
+  const d = daysTo(task.dueDate);
+  return d !== null && d < 0;
+}
+function ensureAutoClose(task){
+  if(!task || isTaskClosed(task)) return;
+  const pr = taskProgress(task);
+  if(pr.pct >= 100){
+    markTaskClosed(task.id, "auto", "completed_100");
+  }
+}
+function activeTasks(){
+  return loadTasks().filter(t=>!isTaskClosed(t));
+}
+function closedTasks(limit=3){
+  return loadTasks().filter(t=>isTaskClosed(t)).slice(0,limit);
+}
+
 function listTasksSorted(limit=3){
   const tasks = loadTasks().slice();
   tasks.sort((a,b)=>{
@@ -641,40 +674,31 @@ function renderPresidente(tab){
   if(tab === "home"){
     const sum = computeSummary("presidente");
     const pend = coursePending();
-    const tasks = listTasksSorted(3);
-
-    const tasksHtml = tasks.map(t=>{
-      const pr = taskProgress(t);
-      const pct = Math.max(0, Math.min(100, pr.pct));
-      const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
-      return `
-        <div class="card" style="margin-top:12px;">
-          <div style="font-weight:950;">${title}</div>
-          <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
-          <div class="bar" style="margin-top:10px;"><div class="barFill primary" style="width:${pct}%"></div></div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            ${t.dueDate ? dueBadge(t.dueDate) : ``}
-            <span class="tag">${taskTypeLabel(t)}</span>
-          </div>
-        </div>
-      `;
-    }).join("");
 
     const body = `
       ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
       ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
+
       <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kpiHead">
+          <span class="kpiIcon">🎯</span>
+          <span class="kpiLabel">Campañas</span>
+        </div>
+        ${renderPresidenteCampaigns()}
+      </div>
     `;
 
     viewShell("Presidente","Administración del curso", body, tab);
+
 
     return;
   }
 
   const body =
     tab==="payments"
-      ? `${renderPaymentsList("presidente")}`
+      ? `${renderPresidentePayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
   viewShell("Presidente","Administración del curso", body, tab);
@@ -708,6 +732,209 @@ function renderTesoreroPayments(){
   }).join("");
 
   return header + blocks;
+}
+
+
+function closeCampaign(taskId){
+  const task = findTaskById(taskId);
+  if(!task) return;
+
+  ensureAutoClose(task);
+  if(isTaskClosed(task)){
+    alert("Esta campaña ya está cerrada.");
+    return;
+  }
+
+  const pr = taskProgress(task);
+  if(pr.pct >= 100){
+    markTaskClosed(taskId, "auto", "completed_100");
+    alert("Campaña cerrada automáticamente (100%).");
+    goTab('home');
+    return;
+  }
+
+  if(!taskIsExpired(task)){
+    alert("Solo puedes cerrar manualmente cuando la campaña está expirada.");
+    return;
+  }
+
+  if(!confirm("¿Cerrar campaña por expiración? (no alcanzó 100%)")) return;
+  markTaskClosed(taskId, "manual", "expired");
+  alert("Campaña cerrada (expirada).");
+  goTab('home');
+}
+
+function renderPresidenteCampaigns(){
+  const tasks = loadTasks().slice();
+  tasks.forEach(t=>ensureAutoClose(t));
+
+  tasks.sort((a,b)=>{
+    const da = a.dueDate ? daysTo(a.dueDate) : null;
+    const db = b.dueDate ? daysTo(b.dueDate) : null;
+    const ra = (da===null)?3:(da<0?0:(da===0?1:2));
+    const rb = (db===null)?3:(db<0?0:(db===0?1:2));
+    if(ra!==rb) return ra-rb;
+    if(da!==null && db!==null && da!==db) return da-db;
+    return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+  });
+
+  const top = tasks.slice(0,3);
+  if(!top.length){
+    return `<div class="muted" style="margin-top:10px;">Aún no hay campañas.</div>`;
+  }
+
+  return top.map(t=>{
+    const pr = taskProgress(t);
+    const pct = Math.max(0, Math.min(100, pr.pct));
+    const closed = isTaskClosed(t);
+    const canManualClose = (!closed && taskIsExpired(t) && pct < 100);
+
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;">${cleanConcept(t.title)}</div>
+            <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
+            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              ${t.dueDate ? dueBadge(t.dueDate) : ``}
+              <span class="tag">${taskTypeLabel(t)}</span>
+              ${closed ? `<span class="tag">Cerrada</span>` : `<span class="tag ok">Activa</span>`}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn ghost" onclick="setSelectedTask('${t.id}');goTab('payments')">Ver detalle</button>
+            ${canManualClose ? `<button class="btn ghost" onclick="closeCampaign('${t.id}')">Cerrar</button>` : ``}
+          </div>
+        </div>
+
+        <div class="bar" style="margin-top:10px;">
+          <div class="barFill primary" style="width:${pct}%"></div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="tag ok">🟢 ${pr.stats.paidCount} pagadas</span>
+          <span class="tag warn">🟡 ${pr.stats.dueSoonCount} por vencer</span>
+          <span class="tag danger">🔴 ${pr.stats.overdueCount} vencidas</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+
+function paymentBucket(p){
+  if(p.status === "paid") return "paid";
+  const d = p.dueDate ? daysTo(p.dueDate) : null;
+  if(d === null) return "nodue";
+  if(d < 0) return "overdue";
+  if(d === 0) return "today";
+  if(d <= 5) return "soon";
+  return "ok";
+}
+function bucketLabel(key){
+  if(key==="overdue") return "🔴 Morosos (vencidos)";
+  if(key==="today") return "🟡 Vence hoy";
+  if(key==="soon") return "🟡 Por vencer";
+  if(key==="ok") return "🟢 Al día";
+  if(key==="nodue") return "🟦 Sin fecha";
+  if(key==="paid") return "✅ Pagados";
+  return key;
+}
+
+function renderPresidentePayments(){
+  const taskId = getSelectedTask();
+  if(!taskId) return renderPaymentsList("presidente");
+
+  const task = findTaskById(taskId);
+  if(!task){
+    clearSelectedTask();
+    return renderPaymentsList("presidente");
+  }
+
+  ensureAutoClose(task);
+  const pr = taskProgress(task);
+  const pct = Math.max(0, Math.min(100, pr.pct));
+  const closed = isTaskClosed(task);
+  const canManualClose = (!closed && taskIsExpired(task) && pct < 100);
+
+  const header = `
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:950;">${task.title}</div>
+          <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            ${task.dueDate ? dueBadge(task.dueDate) : ``}
+            <span class="tag">${taskTypeLabel(task)}</span>
+            ${closed ? `<span class="tag">Cerrada</span>` : `<span class="tag ok">Activa</span>`}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${canManualClose ? `<button class="btn ghost" onclick="closeCampaign('${task.id}')">Cerrar campaña</button>` : ``}
+          <button class="btn ghost" onclick="clearSelectedTask();goTab('home')">Volver</button>
+        </div>
+      </div>
+      <div class="bar" style="margin-top:10px;">
+        <div class="barFill primary" style="width:${pct}%"></div>
+      </div>
+    </div>
+  `;
+
+  const pays = loadPayments().filter(p=>p.fromTaskId===taskId);
+
+  // Flatten with alumno label
+  const rows = pays.map(p=>({ ...p, _bucket: paymentBucket(p) }));
+
+  const order = ["overdue","today","soon","ok","nodue","paid"];
+  const sections = order.map(k=>{
+    const items = rows.filter(r=>r._bucket===k);
+    if(!items.length) return "";
+    // Sort within section: closest due first, then alumno/concept
+    items.sort((a,b)=>{
+      const da = a.dueDate ? daysTo(a.dueDate) : 99999;
+      const db = b.dueDate ? daysTo(b.dueDate) : 99999;
+      if(da!==db) return da-db;
+      const na = String(a.alumno||"");
+      const nb = String(b.alumno||"");
+      if(na!==nb) return na.localeCompare(nb);
+      return String(a.concept||"").localeCompare(String(b.concept||""));
+    });
+
+    const list = items.map(p=>{
+      const statusTag = (p.status==="paid") ? `<span class="tag ok">Pagado</span>` : `<span class="tag warn">Pendiente</span>`;
+      const receipt = getReceiptByPaymentId(p.id);
+      const action = (p.status==="paid" && receipt)
+        ? `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`
+        : (p.status!=="paid" ? `<button class="btn ghost" onclick="goTab('payments')">Ver en pagos</button>` : `<span class="muted">—</span>`);
+
+      return `
+        <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+          <div style="min-width:0;">
+            <div style="font-weight:900;">${p.alumno}</div>
+            <div style="font-weight:800;">${cleanConcept(p.concept)}</div>
+            <div class="muted">${formatCLP(p.amount)}</div>
+            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              ${p.dueDate ? dueBadge(p.dueDate) : ``}
+              <span class="tag">${taskTypeLabel(task)}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            ${statusTag}
+            ${action}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:950;">${bucketLabel(k)}</div>
+        ${list}
+      </div>
+    `;
+  }).join("");
+
+  return header + sections;
 }
 
 /* ---------- router ---------- */
