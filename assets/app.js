@@ -5,6 +5,19 @@ const KEY_PAYMENTS = "cursapp_payments_v1";
 const KEY_RECEIPTS = "cursapp_receipts_v1";
 const KEY_TASKS = "cursapp_tasks_v1";
 
+function resetDatosPrueba() {
+  if (!confirm("⚠️ Esto eliminará TODOS los datos de prueba. ¿Continuar?")) return;
+
+  localStorage.removeItem("campanas");
+  localStorage.removeItem("cobros");
+  localStorage.removeItem("pagos");
+  localStorage.removeItem("usuarios");
+  localStorage.removeItem("dashboardData");
+
+  console.log("Datos de prueba eliminados");
+  alert("Datos de prueba reseteados. Recarga la página.");
+}
+
 /* ---------- helpers ---------- */
 function formatCLP(v){ return '$' + Number(v||0).toLocaleString('es-CL'); }
 function formatCLPNoSign(v){ return Number(v||0).toLocaleString("es-CL"); }
