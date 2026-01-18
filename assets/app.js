@@ -376,7 +376,7 @@ function paymentRow(role, p){
 
   if(isDirectiva(role)){
     if(!paid){
-      action = `<button class="btn ghost" onclick="openRecon('${p.id}')">Conciliar</button>`;
+      action = `<button class="btn ghost" onclick="openReconModal('${p.id}')">Conciliar</button>`;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
@@ -432,6 +432,101 @@ function openPay(paymentId){
   });
 
   alert("Pago aprobado (demo). Comprobante generado.");
+  goTab("payments");
+}
+
+
+function openReconModal(paymentId){
+  const p = loadPayments().find(x => x.id === paymentId);
+  if(!p) return;
+
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+
+  const today = new Date().toISOString().slice(0,10);
+
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(640px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Conciliar pago</div>
+            <div class="muted">${p.alumno} · ${cleanConcept(p.concept)} · ${formatCLP(p.amount)}</div>
+          </div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Método</label>
+            <select id="reconMethod">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Fecha</label>
+            <input id="reconDate" type="date" value="${today}" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Folio / referencia (auto)</label>
+          <input id="reconRef" value="${uid('FOL')}" placeholder="Ej: TRANSF-12345 / BOLETA-22" />
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Nota (opcional)</label>
+          <input id="reconNote" placeholder="Ej: Pago en efectivo en reunión" />
+        </div>
+
+        <div class="actions" style="justify-content:flex-end;margin-top:14px;">
+          <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+          <button class="btn primary" onclick="confirmReconModal('${p.id}')">Marcar pagado</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function closeModal(){
+  const root = document.getElementById("modalRoot");
+  if(root) root.innerHTML = "";
+}
+
+function confirmReconModal(paymentId){
+  const ref = (document.getElementById("reconRef")?.value || "").trim();
+  if(!ref){
+    alert("Debes ingresar folio / referencia.");
+    return;
+  }
+  const method = document.getElementById("reconMethod")?.value || "Transferencia";
+  const date = document.getElementById("reconDate")?.value || new Date().toISOString().slice(0,10);
+  const note = (document.getElementById("reconNote")?.value || "").trim();
+
+  let paysAll = loadPayments();
+  const idx = paysAll.findIndex(x=>x.id===paymentId);
+  if(idx<0) return;
+
+  paysAll[idx].status = "paid";
+  paysAll[idx].paidDate = date;
+  savePayments(paysAll);
+
+  upsertReceipt({
+    id: uid("rc"),
+    paymentId,
+    alumno: paysAll[idx].alumno,
+    concept: paysAll[idx].concept,
+    amount: paysAll[idx].amount,
+    method,
+    ref,
+    note: note || "Conciliación manual",
+    paidAt: new Date(date + "T12:00:00").toISOString()
+  });
+
+  closeModal();
+  alert("Conciliado (demo). Comprobante generado.");
   goTab("payments");
 }
 
