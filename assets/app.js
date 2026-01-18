@@ -294,6 +294,73 @@ function kpiCard(icon, label, value){
   `;
 }
 
+
+
+/* ---------- charts (sin librerías) ---------- */
+function clamp01(x){ return Math.max(0, Math.min(1, Number(x)||0)); }
+
+function pieCSS(segments){
+  // segments: [{value, colorVar}] where colorVar is CSS var string like '--pie1'
+  const total = segments.reduce((a,s)=>a+Number(s.value||0),0) || 1;
+  let acc = 0;
+  const stops = segments.map(s=>{
+    const v = Number(s.value||0);
+    const from = acc/total*100;
+    acc += v;
+    const to = acc/total*100;
+    return `var(${s.colorVar}) ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+  });
+  return `conic-gradient(${stops.join(",")})`;
+}
+
+function chartCard(title, subtitle, segments, legend){
+  const bg = pieCSS(segments);
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="min-width:220px;">
+          <div style="font-weight:950;">${title}</div>
+          ${subtitle ? `<div class="muted" style="margin-top:2px;">${subtitle}</div>` : ``}
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+            ${legend.map(l=>`
+              <div style="display:flex;gap:10px;align-items:center;">
+                <span style="width:10px;height:10px;border-radius:999px;background:var(${l.colorVar});display:inline-block;"></span>
+                <span class="muted" style="font-weight:800;">${l.label}</span>
+                <span style="margin-left:auto;font-weight:950;">${l.valueText}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+        <div style="width:140px;height:140px;border-radius:999px;background:${bg};border:10px solid rgba(229,231,235,.55);"></div>
+      </div>
+    </div>
+  `;
+}
+
+function paymentsUrgencyStats(role){
+  const visible = getVisiblePayments(role);
+  const pending = visible.filter(p=>p.status!=="paid");
+  const overdue = pending.filter(p=>p.dueDate && daysTo(p.dueDate) < 0).length;
+  const soon = pending.filter(p=>p.dueDate && daysTo(p.dueDate) >= 0 && daysTo(p.dueDate) <= 5).length;
+  const ok = pending.length - overdue - soon;
+  return { pendingCount: pending.length, overdue, soon, ok };
+}
+
+function paymentsAmountStats(role){
+  const visible = getVisiblePayments(role);
+  const paidAmt = visible.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+  const pendAmt = visible.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+  return { paidAmt, pendAmt, total: paidAmt + pendAmt };
+}
+
+function campaignsStatusStats(){
+  const tasks = loadTasks().slice();
+  tasks.forEach(t=>{ try{ ensureAutoClose(t); }catch(e){} });
+  const closed = tasks.filter(t=>isTaskClosed(t)).length;
+  const active = tasks.length - closed;
+  return { total: tasks.length, active, closed };
+}
+
 function viewShell(title, subtitle, body, tab){
   const app = document.getElementById("app");
   if(!app) return;
@@ -925,6 +992,35 @@ function renderTesorero(tab){
     const body = `
       ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
       ${kpiCard("⏳","Cuotas pendientes", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+      
+      ${chartCard(
+        "Recaudación vs pendiente",
+        "Distribución por monto",
+        [
+          { value: paymentsAmountStats("tesorero").paidAmt, colorVar: "--pie1" },
+          { value: paymentsAmountStats("tesorero").pendAmt, colorVar: "--pie2" }
+        ],
+        [
+          { label: "Recaudado", colorVar: "--pie1", valueText: formatCLP(paymentsAmountStats("tesorero").paidAmt) },
+          { label: "Pendiente", colorVar: "--pie2", valueText: formatCLP(paymentsAmountStats("tesorero").pendAmt) }
+        ]
+      )}
+
+      ${chartCard(
+        "Pendientes por urgencia",
+        "Cantidad de cuotas pendientes",
+        [
+          { value: paymentsUrgencyStats("tesorero").ok, colorVar: "--pie1" },
+          { value: paymentsUrgencyStats("tesorero").soon, colorVar: "--pie2" },
+          { value: paymentsUrgencyStats("tesorero").overdue, colorVar: "--pie3" }
+        ],
+        [
+          { label: "Al día", colorVar: "--pie1", valueText: String(paymentsUrgencyStats("tesorero").ok) },
+          { label: "Por vencer", colorVar: "--pie2", valueText: String(paymentsUrgencyStats("tesorero").soon) },
+          { label: "Vencidas", colorVar: "--pie3", valueText: String(paymentsUrgencyStats("tesorero").overdue) }
+        ]
+      )}
+
       ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
     `;
 
@@ -949,6 +1045,33 @@ function renderPresidente(tab){
     const body = `
       ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
       ${kpiCard("⏳","Pendiente del curso", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
+
+      
+      ${chartCard(
+        "Recaudación vs pendiente",
+        "Distribución por monto",
+        [
+          { value: paymentsAmountStats("presidente").paidAmt, colorVar: "--pie1" },
+          { value: paymentsAmountStats("presidente").pendAmt, colorVar: "--pie2" }
+        ],
+        [
+          { label: "Recaudado", colorVar: "--pie1", valueText: formatCLP(paymentsAmountStats("presidente").paidAmt) },
+          { label: "Pendiente", colorVar: "--pie2", valueText: formatCLP(paymentsAmountStats("presidente").pendAmt) }
+        ]
+      )}
+
+      ${chartCard(
+        "Estado de campañas",
+        "Activas vs cerradas",
+        [
+          { value: campaignsStatusStats().active, colorVar: "--pie1" },
+          { value: campaignsStatusStats().closed, colorVar: "--pie4" }
+        ],
+        [
+          { label: "Activas", colorVar: "--pie1", valueText: String(campaignsStatusStats().active) },
+          { label: "Cerradas", colorVar: "--pie4", valueText: String(campaignsStatusStats().closed) }
+        ]
+      )}
 
       <button class="btn primary" style="width:100%; margin-top:10px;" onclick="openCreateCobro()">Crear cobro</button>
 
