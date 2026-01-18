@@ -545,61 +545,75 @@ function optOutPayment(paymentId){
   alert("Marcado como No participó. No se cobrará esta cuota.");
   goTab("payments");
 }
+
 function paymentRow(role, p){
   const paid = p.status === "paid";
-  const tag = (p.status === "paid")
-    ? `<span class="tag ok">Pagado</span>`
-    : (p.status === "opted_out")
-      ? `<span class="tag">No participó</span>`
-      : `<span class="tag warn">Pendiente</span>`;
+  const optedOut = p.status === "opted_out";
 
+  const task = p.fromTaskId ? findTaskById(p.fromTaskId) : null;
+  const typeLabel = task ? taskTypeLabel(task) : "Pago";
+
+  // Title/description by role
+  const title = isDirectiva(role) ? (p.alumno || "Alumno") : cleanConcept(p.concept);
+  const desc = isDirectiva(role) ? cleanConcept(p.concept) : (task ? taskTypeLabel(task) : "Pago único");
+
+  // Status label
+  const statusText = paid ? "Pagado" : (optedOut ? "No participó" : "Pendiente");
+
+  // Right action (single primary)
   const receipt = getReceiptByPaymentId(p.id);
-
-  let action = `<span class="muted">—</span>`;
+  let primaryAction = `<span class="muted">—</span>`;
 
   if(isDirectiva(role)){
-    if(!paid && p.status !== "opted_out"){
-      action = `<button class="btn ghost" onclick="openReconModal('${p.id}')">Conciliar</button>`;
-    } else if(receipt){
-      action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+    if(!paid && !optedOut){
+      primaryAction = `<button class="btn ghost" onclick="openReconModal('${p.id}')">Conciliar</button>`;
+    } else if(paid && receipt){
+      primaryAction = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
   } else {
-    if(p.status === "opted_out"){
-      action = `<span class="muted">—</span>`;
-    } else if(!paid){
-      const optBtn = canOptOut(role, p)
-        ? `<button class="btn ghost" style="padding:10px 12px; border-radius:14px;" onclick="optOutPayment('${p.id}')">No participé</button>`
-        : ``;
-
-      action = `
-        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
-          ${optBtn}
-          <button class="btn primary" style="padding:10px 14px; border-radius:14px;" onclick="openPay('${p.id}')">Pagar</button>
-        </div>
-      `;
-    } else if(receipt){
-      action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+    if(!paid && !optedOut){
+      primaryAction = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
+    } else if(paid && receipt){
+      primaryAction = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
   }
 
-  const task = p.fromTaskId ? findTaskById(p.fromTaskId) : null;
-  const typeTag = task ? `<span class="tag">${taskTypeLabel(task)}</span>` : ``;
-  const meta = (p.dueDate || task)
-    ? `<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        ${p.dueDate ? dueBadge(p.dueDate) : ``}
-       </div>`
+  // Optional secondary action (only apoderado + eligible)
+  const optOutLink = (typeof canOptOut === "function" && canOptOut(role, p))
+    ? `<button class="btn ghost" style="padding:8px 10px;border-radius:12px;" onclick="optOutPayment('${p.id}')">No participé</button>`
     : ``;
 
+  // Due label
+  let dueText = "";
+  if(p.dueDate){
+    const d = daysTo(p.dueDate);
+    if(d < 0) dueText = "Vencida";
+    else if(d === 0) dueText = "Vence hoy";
+    else if(d === 1) dueText = "Queda 1 día";
+    else dueText = `Quedan ${d} días`;
+  }
+
   return `
-    <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">
-      <div style="min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">${typeTag}<div style="font-weight:800;">${cleanConcept(p.concept)}</div></div>
-        <div class="muted">${formatCLP(p.amount)}</div>
-        ${meta}
+    <div style="padding:12px 0; border-top:1px solid rgba(229,231,235,.6);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div style="min-width:0;">
+          <div style="font-weight:950;font-size:16px;line-height:1.15;">${title}</div>
+          <div class="muted" style="margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${desc}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;min-width:140px;">
+          <div class="muted" style="font-weight:900;">Estado: ${statusText}</div>
+          <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            ${(!paid && !optedOut) ? optOutLink : ``}
+            ${primaryAction}
+          </div>
+        </div>
       </div>
-      <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        ${tag}
-        ${action}
+
+      <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);"></div>
+
+      <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+        <div class="muted" style="font-weight:900;">${typeLabel}</div>
+        <div class="muted" style="font-weight:900;">${dueText}</div>
       </div>
     </div>
   `;
