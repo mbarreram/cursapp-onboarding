@@ -138,10 +138,9 @@ function closeReasonLabel(task){
   if(!task) return "";
   const by = task.closedBy || "";
   const reason = task.closeReason || "";
-
   if(by === "auto" && reason === "completed_100") return "Campaña cerrada por meta cumplida";
   if(by === "manual" && reason === "expired") return "Campaña cerrada por fecha (fuera de plazo)";
-  if(by === "manual" && reason === "manual") {
+  if(by === "manual" && reason === "manual"){
     const note = task.closeNote ? `: ${task.closeNote}` : "";
     return "Campaña cerrada manualmente" + note;
   }
@@ -159,8 +158,8 @@ function markTaskClosed(taskId, closedBy, closeReason, closeNote){
   tasks[idx].status = "closed";
   tasks[idx].closedAt = isoDate();
   tasks[idx].closedBy = closedBy;        // "auto" | "manual"
-  tasks[idx].closeReason = closeReason;  // "completed_100" | "expired" | "manual"
-  if(closeNote) tasks[idx].closeNote = closeNote;
+  tasks[idx].closeReason = closeReason;
+  if(closeNote) tasks[idx].closeNote = closeNote;  // "completed_100" | "expired"
   saveTasks(tasks);
 }
 function taskIsExpired(task){
@@ -792,6 +791,7 @@ function closeCampaign(taskId){
   const task = findTaskById(taskId);
   if(!task) return;
 
+  // auto-close if reached 100%
   ensureAutoClose(task);
   if(isTaskClosed(task)){
     alert("Esta campaña ya está cerrada.");
