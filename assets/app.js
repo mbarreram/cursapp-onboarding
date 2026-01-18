@@ -1136,7 +1136,7 @@ function renderPresidenteCampaigns(){
     const pr = taskProgress(t);
     const pct = Math.max(0, Math.min(100, pr.pct));
     const closed = isTaskClosed(t);
-    const canManualClose = (!closed && taskIsExpired(t) && pct < 100);
+    const canManualClose = (!closed && pct < 100);
 
     return `
       <div class="card" style="margin-top:12px;">
@@ -1204,7 +1204,7 @@ function renderPresidentePayments(){
   const pr = taskProgress(task);
   const pct = Math.max(0, Math.min(100, pr.pct));
   const closed = isTaskClosed(task);
-  const canManualClose = (!closed && taskIsExpired(task) && pct < 100);
+  const canManualClose = (!closed && pct < 100);
 
   const header = `
     <div class="card" style="margin-top:12px;">
