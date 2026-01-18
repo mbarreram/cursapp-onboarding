@@ -927,7 +927,7 @@ function renderPresidentePayments(){
           <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             ${task.dueDate ? dueBadge(task.dueDate) : ``}
             <span class="tag">${taskTypeLabel(task)}</span>
-            ${closed ? `<span class="tag danger">${closeReasonLabel(t)}</span>` : `<span class="tag ok">Activa</span>`}
+            ${closed ? `<span class="tag danger">${closeReasonLabel(task)}</span>` : `<span class="tag ok">Activa</span>`}
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
