@@ -752,19 +752,34 @@ function generatePaymentsForTask(task){
 }
 
 
+
+function getOpenTasks(){
+  try { return JSON.parse(localStorage.getItem("cursapp_open_tasks") || "[]"); } catch(e){ return []; }
+}
+function setOpenTasks(arr){
+  localStorage.setItem("cursapp_open_tasks", JSON.stringify(arr));
+}
+function isTaskOpen(taskId){
+  return getOpenTasks().includes(taskId);
+}
+function toggleTaskOpen(taskId){
+  const arr = getOpenTasks();
+  const i = arr.indexOf(taskId);
+  if(i>=0) arr.splice(i,1); else arr.unshift(taskId);
+  setOpenTasks(arr.slice(0,10));
+  goTab("payments");
+}
+
 function renderPayFilters(){
   const f = getPayFilter();
   const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px; border-radius:14px; ${f===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="setPayFilter('${id}')">${label}</button>`;
   return `
-    <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;margin-bottom:8px;">Filtros</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${btn('all','Todos')}
         ${btn('pending','Pendientes')}
         ${btn('overdue','Vencidos')}
         ${btn('paid','Pagados')}
       </div>
-    </div>
   `;
 }
 
@@ -894,6 +909,100 @@ function renderPresidente(tab){
   viewShell("Presidente","Administración del curso", body, tab);
 }
 
+
+
+function renderDirectivaPaymentsGrouped(role){
+  const f = getPayFilter ? getPayFilter() : "all";
+  const tasks = loadTasks ? loadTasks().slice() : [];
+  // sort tasks by urgency (reuse listTasksSorted if present)
+  let sorted = tasks;
+  try { if(typeof listTasksSorted === "function") sorted = listTasksSorted(50); } catch(e){}
+
+  // Group payments by task
+  const allPays = loadPayments().slice();
+  // Keep only payments that belong to a task; if none, show empty
+  const byTask = {};
+  allPays.forEach(p=>{
+    const tid = p.fromTaskId || "no_task";
+    byTask[tid] = byTask[tid] || [];
+    byTask[tid].push(p);
+  });
+
+  // Filter tasks list to ones with payments, plus "no_task" if any
+  const taskRows = [];
+
+  sorted.forEach(t=>{
+    const tid = t.id;
+    const pays = (byTask[tid] || []).filter(p=>matchesFilter(p, f));
+    const allForTask = (byTask[tid] || []);
+    if(allForTask.length === 0) return;
+
+    // Stats for header (use unfiltered for %)
+    let pr = null;
+    try { pr = (typeof taskProgress === "function") ? taskProgress(t) : null; } catch(e){}
+    const pct = pr ? Math.max(0, Math.min(100, pr.pct||0)) : 0;
+    const meta = pr ? pr.meta : 0;
+    const rec = pr ? pr.stats.recaudado : 0;
+
+    const open = isTaskOpen(tid);
+    const typeTag = (typeof taskTypeLabel === "function") ? taskTypeLabel(t) : (t.type==="monthly"?"Pago mensual":"Pago único");
+    const statusTag = (typeof dueBadge === "function" && t.dueDate) ? dueBadge(t.dueDate) : "";
+
+    // Body list: show payments for task filtered
+    const body = open ? (
+      pays.length ? pays.slice().sort(comparePayments).map(p=>paymentRow(role, p)).join("") :
+      `<div class="muted" style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">Sin elementos para este filtro.</div>`
+    ) : "";
+
+    taskRows.push(`
+      <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="min-width:0;">
+            <div style="font-weight:950;">${cleanConcept ? cleanConcept(t.title) : t.title}</div>
+            <div class="muted">${pct}% · ${formatCLP(rec)} de ${formatCLP(meta)}</div>
+            <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              ${statusTag}
+              <span class="tag">${typeTag}</span>
+              ${open ? `<span class="tag ok">Abierta</span>` : `<span class="tag">Cerrada</span>`}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn ghost" onclick="toggleTaskOpen('${tid}')">${open ? "Ocultar" : "Ver pagos"}</button>
+          </div>
+        </div>
+        ${open ? `<div style="margin-top:8px;">${body}</div>` : ``}
+      </div>
+    `);
+  });
+
+  // no_task bucket
+  if(byTask["no_task"] && byTask["no_task"].length){
+    const pays = byTask["no_task"].filter(p=>matchesFilter(p, f)).slice().sort(comparePayments);
+    const open = isTaskOpen("no_task");
+    const body = open ? (pays.length ? pays.map(p=>paymentRow(role,p)).join("") :
+      `<div class="muted" style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">Sin elementos para este filtro.</div>`) : "";
+    taskRows.push(`
+      <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;">Otros (sin campaña)</div>
+            <div class="muted">Pagos no asociados a una campaña</div>
+          </div>
+          <button class="btn ghost" onclick="toggleTaskOpen('no_task')">${open ? "Ocultar" : "Ver pagos"}</button>
+        </div>
+        ${open ? `<div style="margin-top:8px;">${body}</div>` : ``}
+      </div>
+    `);
+  }
+
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;margin-bottom:8px;">Pagos por campaña</div>
+      ${renderPayFilters ? renderPayFilters() : ""}
+      ${taskRows.length ? taskRows.join("") : `<div class="muted" style="padding-top:6px;">Sin campañas/pagos.</div>`}
+    </div>
+  `;
+}
 
 function renderTesoreroPayments(){
   const taskId = getSelectedTask();
@@ -1038,7 +1147,7 @@ function bucketLabel(key){
 
 function renderPresidentePayments(){
   const taskId = getSelectedTask();
-  if(!taskId) return renderPaymentsList("presidente");
+  if(!taskId) return renderDirectivaPaymentsGrouped("presidente");
 
   const task = findTaskById(taskId);
   if(!task){
