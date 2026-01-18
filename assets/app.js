@@ -266,21 +266,37 @@ function ensureSeedPayments(){
 }
 
 /* ---------- UI components ---------- */
-function tabbar(active){
+
+function tabbar(active, role){
+  const mid = (role === "presidente")
+    ? `<button class="tab ${active==="create"?"active":""}" onclick="openCreateCobro()" style="transform:translateY(-8px);">
+         <span class="ico">➕</span><span>Crear</span>
+       </button>`
+    : ``;
+
   return `
     <nav class="tabbar">
       <button class="tab ${active==="home"?"active":""}" onclick="goTab('home')">
         <span class="ico">🏠</span><span>Inicio</span>
       </button>
+
+      ${mid || `
       <button class="tab ${active==="payments"?"active":""}" onclick="goTab('payments')">
         <span class="ico">💳</span><span>Pagos</span>
-      </button>
+      </button>`}
+
+      ${mid ? `
+      <button class="tab ${active==="payments"?"active":""}" onclick="goTab('payments')">
+        <span class="ico">💳</span><span>Pagos</span>
+      </button>` : ``}
+
       <button class="tab ${active==="withdraws"?"active":""}" onclick="goTab('withdraws')">
         <span class="ico">🏦</span><span>Retiros</span>
       </button>
     </nav>
   `;
 }
+
 
 function kpiCard(icon, label, value){
   return `
@@ -313,6 +329,7 @@ function pieCSS(segments){
   return `conic-gradient(${stops.join(",")})`;
 }
 
+
 function chartCard(title, subtitle, segments, legend){
   const bg = pieCSS(segments);
   return `
@@ -323,11 +340,13 @@ function chartCard(title, subtitle, segments, legend){
           ${subtitle ? `<div class="muted" style="margin-top:2px;">${subtitle}</div>` : ``}
           <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
             ${legend.map(l=>`
-              <div style="display:flex;gap:10px;align-items:center;">
+              <button class="btn ghost" type="button"
+                style="width:100%;padding:8px 10px;border-radius:14px;display:flex;gap:10px;align-items:center;"
+                onclick="${l.action || ''}">
                 <span style="width:10px;height:10px;border-radius:999px;background:var(${l.colorVar});display:inline-block;"></span>
                 <span class="muted" style="font-weight:800;">${l.label}</span>
                 <span style="margin-left:auto;font-weight:950;">${l.valueText}</span>
-              </div>
+              </button>
             `).join("")}
           </div>
         </div>
@@ -336,6 +355,7 @@ function chartCard(title, subtitle, segments, legend){
     </div>
   `;
 }
+
 
 function paymentsUrgencyStats(role){
   const visible = getVisiblePayments(role);
@@ -361,14 +381,14 @@ function campaignsStatusStats(){
   return { total: tasks.length, active, closed };
 }
 
-function viewShell(title, subtitle, body, tab){
+function viewShell(title, subtitle, body, tab, role){
   const app = document.getElementById("app");
   if(!app) return;
   app.innerHTML = `
     <h1>${title}</h1>
     <p class="muted">${subtitle}</p>
     ${body}
-    ${tabbar(tab)}
+    ${tabbar(tab, role)}
     <div id="modalRoot"></div>
   `;
 }
@@ -940,7 +960,7 @@ function renderApoderado(tab){
       </div>
     `;
 
-    viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
+    viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
     return;
   }
 
@@ -949,7 +969,7 @@ function renderApoderado(tab){
       ? `${renderPaymentsList("apoderado")}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
 
-  viewShell("Apoderado","2°B 2026 · Colegio X", body, tab);
+  viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
 }
 
 function renderTesorero(tab){
@@ -1024,7 +1044,7 @@ function renderTesorero(tab){
       ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
     `;
 
-    viewShell("Tesorero","Administración del curso", body, tab);
+    viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
 
     return;
   }
@@ -1034,7 +1054,7 @@ function renderTesorero(tab){
       ? `${renderTesoreroPayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
 
-  viewShell("Tesorero","Administración del curso", body, tab);
+  viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
 }
 
 function renderPresidente(tab){
@@ -1084,7 +1104,7 @@ function renderPresidente(tab){
       </div>
     `;
 
-    viewShell("Presidente","Administración del curso", body, tab);
+    viewShell("Presidente","Administración del curso", body, tab, "presidente");
 
 
     return;
@@ -1095,7 +1115,7 @@ function renderPresidente(tab){
       ? `${renderPresidentePayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
-  viewShell("Presidente","Administración del curso", body, tab);
+  viewShell("Presidente","Administración del curso", body, tab, "presidente");
 }
 
 
