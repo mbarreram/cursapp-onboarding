@@ -335,15 +335,37 @@ function topPendingList(limit=5){
 }
 
 /* ---------- payments list ---------- */
+
+function setPayFilter(val){
+  localStorage.setItem("cursapp_pay_filter", val);
+  goTab("payments");
+}
+function getPayFilter(){
+  return localStorage.getItem("cursapp_pay_filter") || "all";
+}
+function matchesFilter(p, filter){
+  if(filter === "all") return true;
+  if(filter === "pending") return p.status !== "paid";
+  if(filter === "paid") return p.status === "paid";
+  if(filter === "overdue"){
+    if(p.status === "paid") return false;
+    const d = p.dueDate ? daysTo(p.dueDate) : null;
+    return d !== null && d < 0;
+  }
+  return true;
+}
+
 function renderPaymentsList(role){
   const payments = loadPayments();
   const visible = isDirectiva(role)
     ? payments
     : payments.filter(p => p.apoderadoRole === "apoderado");
-  visible.sort(comparePayments);
+  const filter = isDirectiva(role) ? getPayFilter() : 'all';
+  const visible2 = visible.filter(p=>matchesFilter(p, filter));
+  visible2.sort(comparePayments);
 
   const groups = {};
-  visible.forEach(p => {
+  visible2.forEach(p => {
     groups[p.alumno] = groups[p.alumno] || [];
     groups[p.alumno].push(p);
   });
@@ -729,6 +751,23 @@ function generatePaymentsForTask(task){
   savePayments(payments);
 }
 
+
+function renderPayFilters(){
+  const f = getPayFilter();
+  const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px; border-radius:14px; ${f===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="setPayFilter('${id}')">${label}</button>`;
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;margin-bottom:8px;">Filtros</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${btn('all','Todos')}
+        ${btn('pending','Pendientes')}
+        ${btn('overdue','Vencidos')}
+        ${btn('paid','Pagados')}
+      </div>
+    </div>
+  `;
+}
+
 /* ---------- views ---------- */
 function renderApoderado(tab){
   if(tab === "home"){
@@ -815,7 +854,7 @@ function renderTesorero(tab){
 
   const body =
     tab==="payments"
-      ? `${renderTesoreroPayments()}`
+      ? `${renderPayFilters()}${renderTesoreroPayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
 
   viewShell("Tesorero","Administración del curso", body, tab);
@@ -849,7 +888,7 @@ function renderPresidente(tab){
 
   const body =
     tab==="payments"
-      ? `${renderPresidentePayments()}`
+      ? `${renderPayFilters()}${renderPresidentePayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
   viewShell("Presidente","Administración del curso", body, tab);
