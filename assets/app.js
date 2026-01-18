@@ -1051,7 +1051,7 @@ function renderDirectivaPaymentsGrouped(role){
 
 function renderTesoreroPayments(){
   const taskId = getSelectedTask();
-  if(!taskId) return renderPaymentsList("tesorero");
+  if(!taskId) return renderDirectivaPaymentsGrouped("tesorero");
   const task = findTaskById(taskId);
   const pays = loadPayments().filter(p=>p.fromTaskId===taskId).slice().sort(comparePayments);
   const groups = {};
