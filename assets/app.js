@@ -1044,7 +1044,6 @@ function renderDirectivaPaymentsGrouped(role){
   return `
     <div class="card" style="margin-top:12px;">
       <div style="font-weight:950;margin-bottom:8px;">Pagos por campaña</div>
-      ${renderPayFilters()}
       ${rows.length ? rows.join("") : `<div class="muted" style="padding-top:10px;">No hay campañas para este filtro.</div>`}
     </div>
   `;
