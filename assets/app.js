@@ -357,7 +357,12 @@ function paymentRow(role, p){
     }
   } else {
     if(!paid){
-      action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
+      // If campaign/task is closed, apoderado cannot pay (demo)
+      if(task && isTaskClosed(task)) {
+        action = `<span class="tag danger">Campaña cerrada</span>`;
+      } else {
+        action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
+      }
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
@@ -770,6 +775,7 @@ function closeCampaign(taskId){
   const task = findTaskById(taskId);
   if(!task) return;
 
+  // auto-close if reached 100%
   ensureAutoClose(task);
   if(isTaskClosed(task)){
     alert("Esta campaña ya está cerrada.");
@@ -777,21 +783,20 @@ function closeCampaign(taskId){
   }
 
   const pr = taskProgress(task);
-  if(pr.pct >= 100){
+  const pct = Math.max(0, Math.min(100, pr.pct));
+
+  if(pct >= 100){
     markTaskClosed(taskId, "auto", "completed_100");
     alert("Campaña cerrada automáticamente (100%).");
     goTab('home');
     return;
   }
 
-  if(!taskIsExpired(task)){
-    alert("Solo puedes cerrar manualmente cuando la campaña está expirada.");
-    return;
-  }
-
-  if(!confirm("¿Cerrar campaña por expiración? (no alcanzó 100%)")) return;
-  markTaskClosed(taskId, "manual", "expired");
-  alert("Campaña cerrada (expirada).");
+  // Manual close allowed anytime for Presidente
+  if(!confirm("¿Cerrar esta campaña manualmente? Esto detiene el cobro (demo).")) return;
+  markTaskClosed(taskId, "manual", "manual");
+  alert("Campaña cerrada manualmente.");
+  // return to home to reflect status
   goTab('home');
 }
 
@@ -818,7 +823,7 @@ function renderPresidenteCampaigns(){
     const pr = taskProgress(t);
     const pct = Math.max(0, Math.min(100, pr.pct));
     const closed = isTaskClosed(t);
-    const canManualClose = (!closed && taskIsExpired(t) && pct < 100);
+    const canManualClose = (!closed && pct < 100);
 
     return `
       <div class="card" style="margin-top:12px;">
@@ -886,7 +891,7 @@ function renderPresidentePayments(){
   const pr = taskProgress(task);
   const pct = Math.max(0, Math.min(100, pr.pct));
   const closed = isTaskClosed(task);
-  const canManualClose = (!closed && taskIsExpired(task) && pct < 100);
+  const canManualClose = (!closed && pct < 100);
 
   const header = `
     <div class="card" style="margin-top:12px;">
