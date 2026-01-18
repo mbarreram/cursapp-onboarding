@@ -1069,7 +1069,6 @@ function renderDirectivaPaymentsGrouped(role){
   `;
 }
 
-
 function renderTesoreroPayments(){
   const taskId = getSelectedTask();
   if(!taskId) return renderDirectivaPaymentsGrouped("tesorero");
@@ -1082,19 +1081,15 @@ function renderTesoreroPayments(){
 
   const pays = loadPayments().filter(p=>p.fromTaskId===taskId).slice().sort(comparePayments);
 
-  // agrupar por alumno
   const groups = {};
-  pays.forEach(p=>{
-    groups[p.alumno] = groups[p.alumno] || [];
-    groups[p.alumno].push(p);
-  });
+  pays.forEach(p=>{ groups[p.alumno]=groups[p.alumno]||[]; groups[p.alumno].push(p); });
   const names = Object.keys(groups);
 
   const header = `
     <div class="card" style="margin-top:12px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
         <div>
-          <div style="font-weight:950;">${task ? task.title : "Detalle de campaña"}</div>
+          <div style="font-weight:950;">${task.title}</div>
           <div class="muted">Pagos por alumno / cuota</div>
         </div>
         <button class="btn ghost" onclick="clearSelectedTask();goTab('payments')">Volver</button>
@@ -1109,7 +1104,7 @@ function renderTesoreroPayments(){
     return `
       <div class="card" style="margin-top:12px;">
         <button class="btn ghost" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleSectionOpen('${openKey}')">
-          <span style="font-weight:900;margin:0;">${n}</span>
+          <span style="font-weight:900;">${n}</span>
           <span class="tag">${open ? "▲" : "▼"}</span>
         </button>
         ${open ? rows : `<div class="muted" style="padding-top:10px;">Toca para ver cuotas.</div>`}
@@ -1119,8 +1114,6 @@ function renderTesoreroPayments(){
 
   return header + blocks;
 }
-
-
 
 function closeCampaign(taskId){
   const task = findTaskById(taskId);
@@ -1328,15 +1321,6 @@ function renderPresidentePayments(){
           <span class="tag">${open ? "▲" : "▼"}</span>
         </button>
         ${open ? list : `<div class="muted" style="padding:10px 2px 2px;">Toca para ver detalle.</div>`}
-      </div>
-    `;
-  }).join("");
-
-
-    return `
-      <div class="card" style="margin-top:12px;">
-        <div style="font-weight:950;">${bucketLabel(k)}</div>
-        ${list}
       </div>
     `;
   }).join("");
