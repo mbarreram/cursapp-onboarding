@@ -815,6 +815,24 @@ function toggleTaskOpen(taskId){
   goTab("payments");
 }
 
+
+// ---- open sections (detalle campaña) ----
+function getOpenSections(){
+  try { return JSON.parse(localStorage.getItem("cursapp_open_sections") || "[]"); } catch(e){ return []; }
+}
+function setOpenSections(arr){
+  localStorage.setItem("cursapp_open_sections", JSON.stringify(arr));
+}
+function isSectionOpen(key){
+  return getOpenSections().includes(key);
+}
+function toggleSectionOpen(key){
+  const arr = getOpenSections();
+  const i = arr.indexOf(key);
+  if(i>=0) arr.splice(i,1); else arr.unshift(key);
+  setOpenSections(arr.slice(0,30));
+  goTab("payments");
+}
 function renderPayFilters(){
   const f = getCampaignFilter();
   const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px; border-radius:14px; ${f===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="setCampaignFilter('${id}')">${label}</button>`;
@@ -916,7 +934,7 @@ function renderTesorero(tab){
 
   const body =
     tab==="payments"
-      ? `${renderPayFilters()}${renderTesoreroPayments()}`
+      ? `${renderTesoreroPayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
 
   viewShell("Tesorero","Administración del curso", body, tab);
@@ -950,7 +968,7 @@ function renderPresidente(tab){
 
   const body =
     tab==="payments"
-      ? `${renderPayFilters()}${renderPresidentePayments()}`
+      ? `${renderPresidentePayments()}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
 
   viewShell("Presidente","Administración del curso", body, tab);
@@ -1071,9 +1089,20 @@ function renderTesoreroPayments(){
   `;
 
   const blocks = names.map(n=>{
-    const rows = groups[n].map(p=>paymentRow("tesorero", p)).join("");
-    return `<div class="card" style="margin-top:12px;"><div style="font-weight:900;margin-bottom:8px;">${n}</div>${rows}</div>`;
+    const openKey = `sec_${taskId}_${n}`;
+    const open = isSectionOpen(openKey);
+    const rows = open ? groups[n].map(p=>paymentRow("tesorero", p)).join("") : "";
+    return `
+      <div class="card" style="margin-top:12px;">
+        <button class="btn ghost" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleSectionOpen('${openKey}')">
+          <span style="font-weight:900;">${n}</span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </button>
+        ${open ? rows : `<div class="muted" style="padding-top:10px;">Toca para ver cuotas.</div>`}
+      </div>
+    `;
   }).join("");
+
 
   return header + blocks;
 }
@@ -1238,6 +1267,7 @@ function renderPresidentePayments(){
   const sections = order.map(k=>{
     const items = rows.filter(r=>r._bucket===k);
     if(!items.length) return "";
+
     // Sort within section: closest due first, then alumno/concept
     items.sort((a,b)=>{
       const da = a.dueDate ? daysTo(a.dueDate) : 99999;
@@ -1249,7 +1279,10 @@ function renderPresidentePayments(){
       return String(a.concept||"").localeCompare(String(b.concept||""));
     });
 
-    const list = items.map(p=>{
+    const openKey = `sec_${taskId}_${k}`;
+    const open = isSectionOpen(openKey);
+
+    const list = open ? items.map(p=>{
       const statusTag = (p.status==="paid") ? `<span class="tag ok">Pagado</span>` : `<span class="tag warn">Pendiente</span>`;
       const receipt = getReceiptByPaymentId(p.id);
       const action = (p.status==="paid" && receipt)
@@ -1273,15 +1306,19 @@ function renderPresidentePayments(){
           </div>
         </div>
       `;
-    }).join("");
+    }).join("") : "";
 
     return `
       <div class="card" style="margin-top:12px;">
-        <div style="font-weight:950;">${bucketLabel(k)}</div>
-        ${list}
+        <button class="btn ghost" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleSectionOpen('${openKey}')">
+          <span style="font-weight:950;">${bucketLabel(k)} <span class="tag" style="margin-left:8px;">${items.length}</span></span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </button>
+        ${open ? list : `<div class="muted" style="padding:10px 2px 2px;">Toca para ver detalle.</div>`}
       </div>
     `;
   }).join("");
+
 
   return header + sections;
 }
