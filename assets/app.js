@@ -114,6 +114,7 @@ function cleanConcept(concept){
 }
 function paymentUrgencyRank(p){
   if(p.status === "paid") return 4;
+  if(p.status === "opted_out") return 5;
   const d = p.dueDate ? daysTo(p.dueDate) : null;
   if(d === null) return 3;
   if(d < 0) return 0;
@@ -134,7 +135,7 @@ function studentsCount(){
 function taskStats(taskId){
   const pays = loadPayments().filter(p=>p.fromTaskId===taskId);
   const paid = pays.filter(p=>p.status==="paid");
-  const pend = pays.filter(p=>p.status!=="paid");
+  const pend = pays.filter(p=>p.status!=="paid" && p.status!=="opted_out");
   const overdue = pend.filter(p=>p.dueDate && daysTo(p.dueDate) < 0);
   const dueSoon = pend.filter(p=>p.dueDate && daysTo(p.dueDate) >= 0 && daysTo(p.dueDate) <= 5);
   return {
@@ -315,8 +316,8 @@ function kpiCard(icon, label, value){
 /* ---------- charts (sin librerías) ---------- */
 function clamp01(x){ return Math.max(0, Math.min(1, Number(x)||0)); }
 
+
 function pieCSS(segments){
-  // segments: [{value, colorVar}] where colorVar is CSS var string like '--pie1'
   const total = segments.reduce((a,s)=>a+Number(s.value||0),0) || 1;
   let acc = 0;
   const stops = segments.map(s=>{
@@ -324,10 +325,13 @@ function pieCSS(segments){
     const from = acc/total*100;
     acc += v;
     const to = acc/total*100;
-    return `var(${s.colorVar}) ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+    const col = s.color || "#94a3b8";
+    return `${col} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
   });
   return `conic-gradient(${stops.join(",")})`;
 }
+
+
 
 
 function chartCard(title, subtitle, segments, legend){
@@ -343,7 +347,7 @@ function chartCard(title, subtitle, segments, legend){
               <button class="btn ghost" type="button"
                 style="width:100%;padding:8px 10px;border-radius:14px;display:flex;gap:10px;align-items:center;"
                 onclick="${l.action || ''}">
-                <span style="width:10px;height:10px;border-radius:999px;background:var(${l.colorVar});display:inline-block;"></span>
+                <span style="width:10px;height:10px;border-radius:999px;background:${l.color || '#94a3b8'};display:inline-block;"></span>
                 <span class="muted" style="font-weight:800;">${l.label}</span>
                 <span style="margin-left:auto;font-weight:950;">${l.valueText}</span>
               </button>
@@ -357,9 +361,10 @@ function chartCard(title, subtitle, segments, legend){
 }
 
 
+
 function paymentsUrgencyStats(role){
   const visible = getVisiblePayments(role);
-  const pending = visible.filter(p=>p.status!=="paid");
+  const pending = visible.filter(p=>p.status!=="paid" && p.status!=="opted_out");
   const overdue = pending.filter(p=>p.dueDate && daysTo(p.dueDate) < 0).length;
   const soon = pending.filter(p=>p.dueDate && daysTo(p.dueDate) >= 0 && daysTo(p.dueDate) <= 5).length;
   const ok = pending.length - overdue - soon;
@@ -369,7 +374,7 @@ function paymentsUrgencyStats(role){
 function paymentsAmountStats(role){
   const visible = getVisiblePayments(role);
   const paidAmt = visible.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
-  const pendAmt = visible.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+  const pendAmt = visible.filter(p=>p.status!=="paid" && p.status!=="opted_out").reduce((a,b)=>a+Number(b.amount||0),0);
   return { paidAmt, pendAmt, total: paidAmt + pendAmt };
 }
 
@@ -404,7 +409,7 @@ function getVisiblePayments(role){
 function computeSummary(role){
   const visible = getVisiblePayments(role);
   const collected = visible.filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
-  const pending = visible.filter(p=>p.status!=="paid").reduce((a,b)=>a+Number(b.amount||0),0);
+  const pending = visible.filter(p=>p.status!=="paid" && p.status!=="opted_out").reduce((a,b)=>a+Number(b.amount||0),0);
   const alumnos = new Set(visible.map(p=>p.alumno)).size;
   return { collected, pending, alumnos };
 }
@@ -423,7 +428,7 @@ function listMyStudents(){
 
 function coursePending(){
   const all = loadPayments();
-  const pending = all.filter(p=>p.status!=="paid");
+  const pending = all.filter(p=>p.status!=="paid" && p.status!=="opted_out");
   return {
     count: pending.length,
     amount: pending.reduce((a,b)=>a+Number(b.amount||0),0)
@@ -431,7 +436,7 @@ function coursePending(){
 }
 
 function topPendingList(limit=5){
-  return loadPayments().filter(p=>p.status!=="paid").slice(0,limit);
+  return loadPayments().filter(p=>p.status!=="paid" && p.status!=="opted_out").slice(0,limit);
 }
 
 /* ---------- payments list ---------- */
@@ -477,7 +482,7 @@ function getPayFilter(){
 }
 function matchesFilter(p, filter){
   if(filter === "all") return true;
-  if(filter === "pending") return p.status !== "paid";
+  if(filter === "pending") return p.status !== "paid" && p.status !== "opted_out";
   if(filter === "paid") return p.status === "paid";
   if(filter === "overdue"){
     if(p.status === "paid") return false;
@@ -518,25 +523,46 @@ function renderPaymentsList(role){
   }).join("");
 }
 
+
+function taskForPayment(p){
+  return p && p.fromTaskId ? findTaskById(p.fromTaskId) : null;
+}
+function canOptOut(role, p){
+  if(role !== "apoderado") return false;
+  if(!p || p.status === "paid" || p.status === "opted_out") return false;
+  const t = taskForPayment(p);
+  if(!t) return false;
+  return t.mandatoryParticipation === false;
+}
+function optOutPayment(paymentId){
+  const pays = loadPayments();
+  const idx = pays.findIndex(x=>x.id === paymentId);
+  if(idx < 0) return;
+  if(pays[idx].status === "paid") return;
+  pays[idx].status = "opted_out";
+  pays[idx].optedOutAt = isoDate();
+  savePayments(pays);
+  alert("Marcado como No participó. No se cobrará esta cuota.");
+  goTab("payments");
+}
 function paymentRow(role, p){
   const paid = p.status === "paid";
-  const tag = paid
-    ? `<span class="tag ok">Pagado</span>`
-    : `<span class="tag warn">Pendiente</span>`;
+  const tag = (p.status === "paid") ? `<span class="tag ok">Pagado</span>` : (p.status === "opted_out") ? `<span class="tag">No participó</span>` : `<span class="tag warn">Pendiente</span>`;
 
   const receipt = getReceiptByPaymentId(p.id);
 
   let action = `<span class="muted">—</span>`;
 
   if(isDirectiva(role)){
-    if(!paid){
+    if(!paid && p.status !== "opted_out"){
       action = `<button class="btn ghost" onclick="openReconModal('${p.id}')">Conciliar</button>`;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
   } else {
     if(!paid){
-      action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
+      const optBtn = canOptOut(role, p) ? `<button class="btn ghost" onclick="optOutPayment(\'${p.id}\')">No participé</button>` : ``;
+      action = `<div style="display:flex;gap:8px;align-items:center;">${optBtn}<button class="btn primary" onclick="openPay(\'${p.id}\')">Pagar</button></div>`;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
@@ -783,6 +809,14 @@ function openCreateCobro(){
             <input id="tAmount" inputmode="numeric" placeholder="Ej: 12000" />
           </div>
           <div style="flex:1;min-width:180px;">
+            <label style="font-weight:800;">Participación</label>
+            <div class="muted" style="margin-top:4px;">Si no es obligatoria, el apoderado podrá marcar “No participó” y no se le cobrará.</div>
+            <label style="display:flex;gap:10px;align-items:center;margin-top:8px;">
+              <input id="tMandatory" type="checkbox" checked />
+              <span style="font-weight:900;">Obligatoria (se cobra a todo el curso)</span>
+            </label>
+          </div>
+          <div style="flex:1;min-width:180px;">
             <label style="font-weight:800;">Tipo</label>
             <select id="tType">
               <option value="once">Único</option>
@@ -811,6 +845,7 @@ function createCobro(){
   const dueDate = document.getElementById("tDue")?.value || "";
   const amount = Number((document.getElementById("tAmount")?.value || "").trim());
   const type = document.getElementById("tType")?.value || "once";
+  const mandatoryParticipation = !!document.getElementById("tMandatory")?.checked;
 
   if(!title || !startDate || !dueDate || !amount || amount <= 0){
     alert("Completa título, fechas y monto.");
@@ -826,6 +861,7 @@ function createCobro(){
     dueDate,
     amount,
     type,
+    mandatoryParticipation,
     createdAt: isoDate(),
     target: "all"
   };
@@ -1017,12 +1053,12 @@ function renderTesorero(tab){
         "Recaudación vs pendiente",
         "Distribución por monto",
         [
-          { value: paymentsAmountStats("tesorero").paidAmt, colorVar: "--pie1" },
-          { value: paymentsAmountStats("tesorero").pendAmt, colorVar: "--pie2" }
+          { value: paymentsAmountStats("tesorero").paidAmt, color: "#22c55e" },
+          { value: paymentsAmountStats("tesorero").pendAmt, color: "#f59e0b" }
         ],
         [
-          { label: "Recaudado", colorVar: "--pie1", valueText: formatCLP(paymentsAmountStats("tesorero").paidAmt) },
-          { label: "Pendiente", colorVar: "--pie2", valueText: formatCLP(paymentsAmountStats("tesorero").pendAmt) }
+          { label: "Recaudado", color: "#22c55e", valueText: formatCLP(paymentsAmountStats("tesorero").paidAmt) },
+          { label: "Pendiente", color: "#f59e0b", valueText: formatCLP(paymentsAmountStats("tesorero").pendAmt) }
         ]
       )}
 
@@ -1030,14 +1066,14 @@ function renderTesorero(tab){
         "Pendientes por urgencia",
         "Cantidad de cuotas pendientes",
         [
-          { value: paymentsUrgencyStats("tesorero").ok, colorVar: "--pie1" },
-          { value: paymentsUrgencyStats("tesorero").soon, colorVar: "--pie2" },
-          { value: paymentsUrgencyStats("tesorero").overdue, colorVar: "--pie3" }
+          { value: paymentsUrgencyStats("tesorero").ok, color: "#22c55e" },
+          { value: paymentsUrgencyStats("tesorero").soon, color: "#f59e0b" },
+          { value: paymentsUrgencyStats("tesorero").overdue, color: "#ef4444" }
         ],
         [
-          { label: "Al día", colorVar: "--pie1", valueText: String(paymentsUrgencyStats("tesorero").ok) },
-          { label: "Por vencer", colorVar: "--pie2", valueText: String(paymentsUrgencyStats("tesorero").soon) },
-          { label: "Vencidas", colorVar: "--pie3", valueText: String(paymentsUrgencyStats("tesorero").overdue) }
+          { label: "Al día", color: "#22c55e", valueText: String(paymentsUrgencyStats("tesorero").ok) },
+          { label: "Por vencer", color: "#f59e0b", valueText: String(paymentsUrgencyStats("tesorero").soon) },
+          { label: "Vencidas", color: "#ef4444", valueText: String(paymentsUrgencyStats("tesorero").overdue) }
         ]
       )}
 
@@ -1071,12 +1107,12 @@ function renderPresidente(tab){
         "Recaudación vs pendiente",
         "Distribución por monto",
         [
-          { value: paymentsAmountStats("presidente").paidAmt, colorVar: "--pie1" },
-          { value: paymentsAmountStats("presidente").pendAmt, colorVar: "--pie2" }
+          { value: paymentsAmountStats("presidente").paidAmt, color: "#22c55e" },
+          { value: paymentsAmountStats("presidente").pendAmt, color: "#f59e0b" }
         ],
         [
-          { label: "Recaudado", colorVar: "--pie1", valueText: formatCLP(paymentsAmountStats("presidente").paidAmt) },
-          { label: "Pendiente", colorVar: "--pie2", valueText: formatCLP(paymentsAmountStats("presidente").pendAmt) }
+          { label: "Recaudado", color: "#22c55e", valueText: formatCLP(paymentsAmountStats("presidente").paidAmt) },
+          { label: "Pendiente", color: "#f59e0b", valueText: formatCLP(paymentsAmountStats("presidente").pendAmt) }
         ]
       )}
 
@@ -1084,12 +1120,12 @@ function renderPresidente(tab){
         "Estado de campañas",
         "Activas vs cerradas",
         [
-          { value: campaignsStatusStats().active, colorVar: "--pie1" },
-          { value: campaignsStatusStats().closed, colorVar: "--pie4" }
+          { value: campaignsStatusStats().active, color: "#22c55e" },
+          { value: campaignsStatusStats().closed, color: "#64748b" }
         ],
         [
-          { label: "Activas", colorVar: "--pie1", valueText: String(campaignsStatusStats().active) },
-          { label: "Cerradas", colorVar: "--pie4", valueText: String(campaignsStatusStats().closed) }
+          { label: "Activas", color: "#22c55e", valueText: String(campaignsStatusStats().active) },
+          { label: "Cerradas", color: "#64748b", valueText: String(campaignsStatusStats().closed) }
         ]
       )}
 
