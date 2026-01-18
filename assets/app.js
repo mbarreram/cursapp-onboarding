@@ -34,6 +34,15 @@ function dueBadge(dueDate){
 }
 
 
+
+window.addEventListener('error', function(e){
+  try{
+    var msg = (e && (e.message || (e.error && e.error.message))) || 'Error JS';
+    document.body.insertAdjacentHTML('beforeend',
+      '<div style="position:fixed;left:12px;right:12px;bottom:90px;z-index:20000;background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:12px;font-weight:900;">JS error: '+String(msg).replace(/</g,'&lt;')+'</div>');
+  }catch(_){}
+});
+
 function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null"); }
 function isDirectiva(role){ return role === "tesorero" || role === "presidente"; }
 function logout(){
@@ -373,12 +382,7 @@ function paymentRow(role, p){
     }
   } else {
     if(!paid){
-      // If campaign/task is closed, apoderado cannot pay (demo)
-      if(task && isTaskClosed(task)) {
-        action = `<span class="tag danger">Campaña cerrada</span>`;
-      } else {
-        action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
-      }
+      action = `<button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>`;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
@@ -791,7 +795,6 @@ function closeCampaign(taskId){
   const task = findTaskById(taskId);
   if(!task) return;
 
-  // auto-close if reached 100%
   ensureAutoClose(task);
   if(isTaskClosed(task)){
     alert("Esta campaña ya está cerrada.");
@@ -845,7 +848,7 @@ function renderPresidenteCampaigns(){
     const pr = taskProgress(t);
     const pct = Math.max(0, Math.min(100, pr.pct));
     const closed = isTaskClosed(t);
-    const canManualClose = (!closed && pct < 100);
+    const canManualClose = (!closed && taskIsExpired(t) && pct < 100);
 
     return `
       <div class="card" style="margin-top:12px;">
@@ -913,7 +916,7 @@ function renderPresidentePayments(){
   const pr = taskProgress(task);
   const pct = Math.max(0, Math.min(100, pr.pct));
   const closed = isTaskClosed(task);
-  const canManualClose = (!closed && pct < 100);
+  const canManualClose = (!closed && taskIsExpired(task) && pct < 100);
 
   const header = `
     <div class="card" style="margin-top:12px;">
