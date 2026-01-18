@@ -547,7 +547,11 @@ function optOutPayment(paymentId){
 }
 function paymentRow(role, p){
   const paid = p.status === "paid";
-  const tag = (p.status === "paid") ? `<span class="tag ok">Pagado</span>` : (p.status === "opted_out") ? `<span class="tag">No participó</span>` : `<span class="tag warn">Pendiente</span>`;
+  const tag = (p.status === "paid")
+    ? `<span class="tag ok">Pagado</span>`
+    : (p.status === "opted_out")
+      ? `<span class="tag">No participó</span>`
+      : `<span class="tag warn">Pendiente</span>`;
 
   const receipt = getReceiptByPaymentId(p.id);
 
@@ -560,9 +564,19 @@ function paymentRow(role, p){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
   } else {
-    if(!paid){
-      const optBtn = canOptOut(role, p) ? `<button class="btn ghost" onclick="optOutPayment(\'${p.id}\')">No participé</button>` : ``;
-      action = `<div style="display:flex;gap:8px;align-items:center;">${optBtn}<button class="btn primary" onclick="openPay(\'${p.id}\')">Pagar</button></div>`;
+    if(p.status === "opted_out"){
+      action = `<span class="muted">—</span>`;
+    } else if(!paid){
+      const optBtn = canOptOut(role, p)
+        ? `<button class="btn ghost" style="padding:10px 12px; border-radius:14px;" onclick="optOutPayment('${p.id}')">No participé</button>`
+        : ``;
+
+      action = `
+        <div style="display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+          ${optBtn}
+          <button class="btn primary" style="padding:10px 14px; border-radius:14px;" onclick="openPay('${p.id}')">Pagar</button>
+        </div>
+      `;
     } else if(receipt){
       action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
     }
@@ -1157,7 +1171,7 @@ function renderPresidente(tab){
 
 
 function renderDirectivaPaymentsGrouped(role){
-  const filter = getCampaignFilter();
+  const filter = 'all'; // filtros globales desactivados
 
   let sorted = [];
   try{
