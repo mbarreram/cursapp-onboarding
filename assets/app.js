@@ -133,17 +133,34 @@ function taskProgress(task){
   return { stats, meta, pct };
 }
 
+
+function closeReasonLabel(task){
+  if(!task) return "";
+  const by = task.closedBy || "";
+  const reason = task.closeReason || "";
+
+  if(by === "auto" && reason === "completed_100") return "Campaña cerrada por meta cumplida";
+  if(by === "manual" && reason === "expired") return "Campaña cerrada por fecha (fuera de plazo)";
+  if(by === "manual" && reason === "manual") {
+    const note = task.closeNote ? `: ${task.closeNote}` : "";
+    return "Campaña cerrada manualmente" + note;
+  }
+  if(by === "manual") return "Campaña cerrada manualmente";
+  return "Campaña cerrada";
+}
+
 function isTaskClosed(task){
   return !!(task && (task.status === "closed" || task.closedAt));
 }
-function markTaskClosed(taskId, closedBy, closeReason){
+function markTaskClosed(taskId, closedBy, closeReason, closeNote){
   const tasks = loadTasks();
   const idx = tasks.findIndex(t=>t.id===taskId);
   if(idx<0) return;
   tasks[idx].status = "closed";
   tasks[idx].closedAt = isoDate();
   tasks[idx].closedBy = closedBy;        // "auto" | "manual"
-  tasks[idx].closeReason = closeReason;  // "completed_100" | "expired"
+  tasks[idx].closeReason = closeReason;  // "completed_100" | "expired" | "manual"
+  if(closeNote) tasks[idx].closeNote = closeNote;
   saveTasks(tasks);
 }
 function taskIsExpired(task){
@@ -775,7 +792,6 @@ function closeCampaign(taskId){
   const task = findTaskById(taskId);
   if(!task) return;
 
-  // auto-close if reached 100%
   ensureAutoClose(task);
   if(isTaskClosed(task)){
     alert("Esta campaña ya está cerrada.");
@@ -787,16 +803,22 @@ function closeCampaign(taskId){
 
   if(pct >= 100){
     markTaskClosed(taskId, "auto", "completed_100");
-    alert("Campaña cerrada automáticamente (100%).");
+    alert("Campaña cerrada por meta cumplida (100%).");
     goTab('home');
     return;
   }
 
-  // Manual close allowed anytime for Presidente
-  if(!confirm("¿Cerrar esta campaña manualmente? Esto detiene el cobro (demo).")) return;
-  markTaskClosed(taskId, "manual", "manual");
-  alert("Campaña cerrada manualmente.");
-  // return to home to reflect status
+  const note = prompt("Motivo de cierre (obligatorio):", "No se alcanzó la meta");
+  if(!note || !note.trim()){
+    alert("Debes ingresar un motivo de cierre.");
+    return;
+  }
+
+  const expired = taskIsExpired(task);
+  const reason = expired ? "expired" : "manual";
+
+  markTaskClosed(taskId, "manual", reason, note.trim());
+  alert(expired ? "Campaña cerrada por fecha (fuera de plazo)." : "Campaña cerrada manualmente.");
   goTab('home');
 }
 
@@ -834,7 +856,7 @@ function renderPresidenteCampaigns(){
             <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
               ${t.dueDate ? dueBadge(t.dueDate) : ``}
               <span class="tag">${taskTypeLabel(t)}</span>
-              ${closed ? `<span class="tag">Cerrada</span>` : `<span class="tag ok">Activa</span>`}
+              ${closed ? `<span class="tag danger">${closeReasonLabel(t)}</span>` : `<span class="tag ok">Activa</span>`}
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -902,7 +924,7 @@ function renderPresidentePayments(){
           <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             ${task.dueDate ? dueBadge(task.dueDate) : ``}
             <span class="tag">${taskTypeLabel(task)}</span>
-            ${closed ? `<span class="tag">Cerrada</span>` : `<span class="tag ok">Activa</span>`}
+            ${closed ? `<span class="tag danger">${closeReasonLabel(t)}</span>` : `<span class="tag ok">Activa</span>`}
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
