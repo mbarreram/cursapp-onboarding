@@ -336,6 +336,38 @@ function topPendingList(limit=5){
 
 /* ---------- payments list ---------- */
 
+
+function setCampaignFilter(val){
+  localStorage.setItem("cursapp_campaign_filter", val);
+  goTab("payments");
+}
+function getCampaignFilter(){
+  return localStorage.getItem("cursapp_campaign_filter") || "all";
+}
+function campaignStatus(task){
+  try{ if(typeof ensureAutoClose === "function") ensureAutoClose(task); }catch(e){}
+  const closed = (typeof isTaskClosed === "function") ? isTaskClosed(task) : false;
+  if(closed) return "closed";
+  try{
+    const pr = (typeof taskProgress === "function") ? taskProgress(task) : null;
+    if(pr && pr.pct >= 100) return "complete";
+  }catch(e){}
+  const d = task.dueDate ? daysTo(task.dueDate) : null;
+  if(d !== null && d < 0) return "overdue";
+  if(d !== null && d <= 3) return "soon";
+  return "active";
+}
+function matchCampaign(task, filter){
+  if(filter==="all") return true;
+  const st = campaignStatus(task);
+  if(filter==="active") return st==="active" || st==="soon";
+  if(filter==="soon") return st==="soon";
+  if(filter==="overdue") return st==="overdue";
+  if(filter==="closed") return st==="closed";
+  if(filter==="complete") return st==="complete";
+  return true;
+}
+
 function setPayFilter(val){
   localStorage.setItem("cursapp_pay_filter", val);
   goTab("payments");
@@ -771,14 +803,16 @@ function toggleTaskOpen(taskId){
 }
 
 function renderPayFilters(){
-  const f = getPayFilter();
-  const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px; border-radius:14px; ${f===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="setPayFilter('${id}')">${label}</button>`;
+  const f = getCampaignFilter();
+  const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px; border-radius:14px; ${f===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="setCampaignFilter('${id}')">${label}</button>`;
   return `
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${btn('all','Todos')}
-        ${btn('pending','Pendientes')}
-        ${btn('overdue','Vencidos')}
-        ${btn('paid','Pagados')}
+        ${btn('all','Todas')}
+        ${btn('active','Activas')}
+        ${btn('soon','Por vencer')}
+        ${btn('overdue','Vencidas')}
+        ${btn('complete','100%')}
+        ${btn('closed','Cerradas')}
       </div>
   `;
 }
@@ -912,15 +946,17 @@ function renderPresidente(tab){
 
 
 function renderDirectivaPaymentsGrouped(role){
-  const f = getPayFilter ? getPayFilter() : "all";
-  const tasks = loadTasks ? loadTasks().slice() : [];
-  // sort tasks by urgency (reuse listTasksSorted if present)
-  let sorted = tasks;
-  try { if(typeof listTasksSorted === "function") sorted = listTasksSorted(50); } catch(e){}
+  const filter = getCampaignFilter();
 
-  // Group payments by task
+  let sorted = [];
+  try{
+    if(typeof listTasksSorted === "function") sorted = listTasksSorted(200);
+    else sorted = (loadTasks ? loadTasks().slice() : []);
+  }catch(e){
+    sorted = (loadTasks ? loadTasks().slice() : []);
+  }
+
   const allPays = loadPayments().slice();
-  // Keep only payments that belong to a task; if none, show empty
   const byTask = {};
   allPays.forEach(p=>{
     const tid = p.fromTaskId || "no_task";
@@ -928,18 +964,16 @@ function renderDirectivaPaymentsGrouped(role){
     byTask[tid].push(p);
   });
 
-  // Filter tasks list to ones with payments, plus "no_task" if any
-  const taskRows = [];
+  const rows = [];
 
   sorted.forEach(t=>{
     const tid = t.id;
-    const pays = (byTask[tid] || []).filter(p=>matchesFilter(p, f));
-    const allForTask = (byTask[tid] || []);
-    if(allForTask.length === 0) return;
+    const allForTask = byTask[tid] || [];
+    if(!allForTask.length) return;
+    if(!matchCampaign(t, filter)) return;
 
-    // Stats for header (use unfiltered for %)
     let pr = null;
-    try { pr = (typeof taskProgress === "function") ? taskProgress(t) : null; } catch(e){}
+    try{ pr = (typeof taskProgress === "function") ? taskProgress(t) : null; }catch(e){}
     const pct = pr ? Math.max(0, Math.min(100, pr.pct||0)) : 0;
     const meta = pr ? pr.meta : 0;
     const rec = pr ? pr.stats.recaudado : 0;
@@ -947,50 +981,49 @@ function renderDirectivaPaymentsGrouped(role){
     const open = isTaskOpen(tid);
     const typeTag = (typeof taskTypeLabel === "function") ? taskTypeLabel(t) : (t.type==="monthly"?"Pago mensual":"Pago único");
     const statusTag = (typeof dueBadge === "function" && t.dueDate) ? dueBadge(t.dueDate) : "";
+    const st = campaignStatus(t);
+    const stTag = (st==="closed") ? "Cerrada" : (st==="overdue" ? "Vencida" : (st==="soon" ? "Por vencer" : (st==="complete" ? "100%" : "Activa")));
 
-    // Body list: show payments for task filtered
-    const body = open ? (
-      pays.length ? pays.slice().sort(comparePayments).map(p=>paymentRow(role, p)).join("") :
-      `<div class="muted" style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">Sin elementos para este filtro.</div>`
-    ) : "";
+    const paysSorted = allForTask.slice().sort(comparePayments);
+    const body = open ? paysSorted.map(p=>paymentRow(role, p)).join("") : "";
 
-    taskRows.push(`
+    rows.push(`
       <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-          <div style="min-width:0;">
+        <button class="btn ghost" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleTaskOpen('${tid}')">
+          <span style="text-align:left;">
             <div style="font-weight:950;">${cleanConcept ? cleanConcept(t.title) : t.title}</div>
-            <div class="muted">${pct}% · ${formatCLP(rec)} de ${formatCLP(meta)}</div>
+            <div class="muted" style="margin-top:2px;">${pct}% · ${formatCLP(rec)} de ${formatCLP(meta)}</div>
             <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
               ${statusTag}
               <span class="tag">${typeTag}</span>
-              ${open ? `<span class="tag ok">Abierta</span>` : `<span class="tag">Cerrada</span>`}
+              <span class="tag">${stTag}</span>
             </div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="btn ghost" onclick="toggleTaskOpen('${tid}')">${open ? "Ocultar" : "Ver pagos"}</button>
-          </div>
+          </span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </button>
+
+        <div style="margin-top:10px;">
+          <div class="bar"><div class="barFill primary" style="width:${pct}%"></div></div>
         </div>
-        ${open ? `<div style="margin-top:8px;">${body}</div>` : ``}
+
+        ${open ? `<div style="margin-top:10px;">${body}</div>` : ``}
       </div>
     `);
   });
 
-  // no_task bucket
-  if(byTask["no_task"] && byTask["no_task"].length){
-    const pays = byTask["no_task"].filter(p=>matchesFilter(p, f)).slice().sort(comparePayments);
+  if(byTask["no_task"] && byTask["no_task"].length && filter==="all"){
     const open = isTaskOpen("no_task");
-    const body = open ? (pays.length ? pays.map(p=>paymentRow(role,p)).join("") :
-      `<div class="muted" style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">Sin elementos para este filtro.</div>`) : "";
-    taskRows.push(`
+    const body = open ? byTask["no_task"].slice().sort(comparePayments).map(p=>paymentRow(role,p)).join("") : "";
+    rows.push(`
       <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-          <div>
+        <button class="btn ghost" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleTaskOpen('no_task')">
+          <span style="text-align:left;">
             <div style="font-weight:950;">Otros (sin campaña)</div>
             <div class="muted">Pagos no asociados a una campaña</div>
-          </div>
-          <button class="btn ghost" onclick="toggleTaskOpen('no_task')">${open ? "Ocultar" : "Ver pagos"}</button>
-        </div>
-        ${open ? `<div style="margin-top:8px;">${body}</div>` : ``}
+          </span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </button>
+        ${open ? `<div style="margin-top:10px;">${body}</div>` : ``}
       </div>
     `);
   }
@@ -998,8 +1031,8 @@ function renderDirectivaPaymentsGrouped(role){
   return `
     <div class="card" style="margin-top:12px;">
       <div style="font-weight:950;margin-bottom:8px;">Pagos por campaña</div>
-      ${renderPayFilters ? renderPayFilters() : ""}
-      ${taskRows.length ? taskRows.join("") : `<div class="muted" style="padding-top:6px;">Sin campañas/pagos.</div>`}
+      ${renderPayFilters()}
+      ${rows.length ? rows.join("") : `<div class="muted" style="padding-top:10px;">No hay campañas para este filtro.</div>`}
     </div>
   `;
 }
