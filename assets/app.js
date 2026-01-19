@@ -1089,6 +1089,53 @@ function renderPayFilters(){
 /* ---------- views ---------- */
 
 
+
+
+function campaignIcon(task, fallbackTitle){
+  const t = (task && task.title) ? String(task.title).toLowerCase() : String(fallbackTitle||"").toLowerCase();
+  if(t.includes("paseo")) return "🎒";
+  if(t.includes("cuota")) return "🧾";
+  if(t.includes("fondo") || t.includes("financ")) return "💰";
+  if(t.includes("rifa") || t.includes("sorteo")) return "🎟️";
+  if(t.includes("bingo")) return "🎲";
+  if(t.includes("uniform")) return "👕";
+  if(t.includes("libro") || t.includes("texto")) return "📚";
+  return "📌";
+}
+function campaignAccent(task){
+  // Stable accent by taskId hashing
+  const id = (task && task.id) ? String(task.id) : "no_task";
+  let h = 0;
+  for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+  const palette = ["#2563eb","#7c3aed","#06b6d4","#22c55e","#f59e0b","#ef4444","#64748b"];
+  return palette[h % palette.length];
+}
+function fmtDM(dateStr){
+  if(!dateStr) return "";
+  try{
+    const d = new Date(dateStr);
+    if(isNaN(d.getTime())){
+      // maybe YYYY-MM-DD already
+      if(String(dateStr).length>=10) return String(dateStr).slice(8,10)+"/"+String(dateStr).slice(5,7);
+      return "";
+    }
+    const dd = String(d.getDate()).padStart(2,"0");
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    return dd + "/" + mm;
+  }catch(e){ return ""; }
+}
+function campaignForPayment(p){
+  return p && p.fromTaskId ? findTaskById(p.fromTaskId) : null;
+}
+function campaignStatusForAp(task){
+  if(!task) return {label:"", color:"#64748b"};
+  try{ ensureAutoClose(task); }catch(e){}
+  if(isTaskClosed(task)) return {label:"Cerrada", color:"#64748b"};
+  const d = task.dueDate ? daysTo(task.dueDate) : null;
+  if(d !== null && d < 0) return {label:"Vencida", color:"#ef4444"};
+  if(d !== null && d <= 3) return {label:"Por vencer", color:"#f59e0b"};
+  return {label:"Activa", color:"#22c55e"};
+}
 // ---------- Apoderado dashboard helpers ----------
 const KEY_AP_DASH_TAB = "cursapp_ap_dash_tab";
 const KEY_AP_HISTORY_OPEN = "cursapp_ap_history_open";
@@ -1127,11 +1174,12 @@ function apUpcoming(p){
 function apGroupByCampaign(list){
   const groups = {};
   list.forEach(p=>{
-    const k = cleanConcept(p.concept);
-    groups[k] = groups[k] || [];
-    groups[k].push(p);
+    const t = campaignForPayment(p);
+    const key = t ? t.id : ("no_task::" + cleanConcept(p.concept));
+    groups[key] = groups[key] || { task: t, concept: cleanConcept(p.concept), items: [] };
+    groups[key].items.push(p);
   });
-  Object.keys(groups).forEach(k=>groups[k].sort(comparePayments));
+  Object.keys(groups).forEach(k=>groups[k].items.sort(comparePayments));
   return groups;
 }
 
@@ -1153,13 +1201,102 @@ function apTabs(){
 function apRenderListGrouped(list){
   if(!list.length) return `<div class="muted">Sin elementos.</div>`;
   const groups = apGroupByCampaign(list);
-  const keys = Object.keys(groups).sort((a,b)=>String(a).localeCompare(String(b)));
+  const keys = Object.keys(groups).sort((a,b)=>{
+    const ga = groups[a], gb = groups[b];
+    const na = (ga.task ? ga.task.title : ga.concept) || "";
+    const nb = (gb.task ? gb.task.title : gb.concept) || "";
+    return String(na).localeCompare(String(nb));
+  });
+
   return keys.map(k=>{
-    const rows = groups[k].map(p=>paymentRow("apoderado", p)).join("");
+    const g = groups[k];
+    const t = g.task;
+    const title = t ? cleanConcept(t.title) : g.concept;
+
+    const status = campaignStatusForAp(t);
+    const start = t ? fmtDM(t.startDate) : "";
+    const end = t ? fmtDM(t.dueDate) : "";
+
+    // progress counts (per alumno)
+    const paid = g.items.filter(p=>p.status==="paid").length;
+    const total = g.items.length;
+
+    const metaLeft = (start && end) ? `${start} → ${end}` : "";
+    const metaRight = `${paid}/${total} pagados`;
+
+    // action rows per alumno
+    const rows = g.items.map(p=>{
+      const alumnoLine = p.alumno ? `<div class="muted" style="margin-top:2px;font-weight:800;">Alumno: ${p.alumno}</div>` : ``;
+      const card = paymentRow("apoderado", p);
+      // paymentRow already includes title as campaign; we want it as alumno row, so we will inject alumno under header and remove duplicate title in row.
+      // Simpler: for apoderado, paymentRow title is campaign; we now want it to be alumno. We'll render a slim row here instead.
+      const paid = p.status === "paid";
+      const opted = p.status === "opted_out";
+      const statusText = paid ? "Pagado" : (opted ? "No participó" : "Pendiente");
+
+      let action = `<span class="muted">—</span>`;
+      const receipt = getReceiptByPaymentId(p.id);
+      if(!paid && !opted){
+        const optBtn = (typeof canOptOut === "function" && canOptOut("apoderado", p))
+          ? `<button class="btn ghost" style="padding:8px 10px;border-radius:12px;" onclick="optOutPayment('${p.id}')">No participé</button>`
+          : ``;
+        action = `
+          <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            ${optBtn}
+            <button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>
+          </div>
+        `;
+      } else if(paid && receipt){
+        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+      }
+
+      // due semaforo
+      let dueText = "";
+      let dueColor = "#22c55e";
+      if(p.dueDate){
+        const d = daysTo(p.dueDate);
+        if(d < 0){ dueText="Vencida"; dueColor="#ef4444"; }
+        else if(d === 0){ dueText="Vence hoy"; dueColor="#f59e0b"; }
+        else if(d <= 3){ dueText=`Quedan ${d} días`; dueColor="#f59e0b"; }
+        else { dueText=`Quedan ${d} días`; dueColor="#22c55e"; }
+      }
+
+      return `
+        <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div style="min-width:0;">
+              <div style="font-weight:900;">${p.alumno || "Alumno"}</div>
+              <div class="muted" style="margin-top:2px;">Estado: ${statusText}</div>
+            </div>
+            <div style="text-align:right;min-width:150px;">
+              ${action}
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+            <div class="muted" style="font-weight:700;font-size:13px;">${t ? taskTypeLabel(t) : "Pago"}</div>
+            <div style="font-weight:900;font-size:13px;color:${dueColor};">${dueText}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
     return `
-      <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);">
-        <div style="font-weight:900;margin-bottom:6px;">${k}</div>
-        ${rows}
+      <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${campaignAccent(t)};"></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;padding-left:8px;">
+          <div style="min-width:0;">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <div style="font-size:20px;">${campaignIcon(t, title)}</div>
+              <div style="font-weight:950;font-size:17px;">${title}</div>
+            </div>
+            <div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+              ${metaLeft ? `<span>${metaLeft}</span>` : ``}
+              <span style="font-weight:900;color:${status.color};">${status.label}</span>
+              <span class="tag">${metaRight}</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:6px;">${rows}</div>
       </div>
     `;
   }).join("");
