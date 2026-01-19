@@ -2249,6 +2249,10 @@ function renderPresidentePayments(){
 
 
 
+
+function expensesMissingBoleta(list){
+  return (list||[]).filter(e=>!(e.attachments && e.attachments.length)).length;
+}
 function renderExpensesTree(list, role){
   const parents = (list||[]).filter(x=>!x.parentId);
   const children = (list||[]).filter(x=>x.parentId);
@@ -2327,7 +2331,7 @@ function renderRendiciones(role){
   const generalHtml = `
     <div class="card" style="margin-top:12px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div style="font-weight:950;">Gastos generales del curso</div>
+        <div style="font-weight:950;">Rendición general del curso</div>
         ${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar</button>` : ``}
       </div>
       ${general.length ? renderExpensesTree(general, role) : `<div class="muted" style="padding-top:10px;">Sin gastos generales.</div>`}
@@ -2389,7 +2393,7 @@ function renderRendicionesVertical(role){
       <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${genOpenKey}')">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="font-size:20px;">🧾</div>
-          <div style="font-weight:950;font-size:17px;">Gastos generales del curso</div>
+          <div style="font-weight:950;font-size:17px;">Rendición general del curso</div>
         </div>
         <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <span class="tag">${formatCLP(sumExpenses(general))}</span>
@@ -2419,6 +2423,11 @@ function renderRendicionesVertical(role){
 
     const desc = `${t.type === "monthly" ? "Pago mensual" : "Pago único"}${(t.mandatoryParticipation === false) ? " · No obligatoria" : " · Obligatoria"}`;
 
+    const nGastos = exp.filter(e=>!e.parentId).length;
+    const missing = expensesMissingBoleta(exp);
+
+    const resumenRend = `Rendición: ${formatCLP(spentC)} · ${nGastos} gasto(s)${missing ? ` · ${missing} sin boleta` : ``}`;
+
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
         <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
@@ -2429,7 +2438,9 @@ function renderRendicionesVertical(role){
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div style="font-size:20px;">${icon}</div>
                 <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
+                <span class="tag" style="background:rgba(91,92,226,.10);border:1px solid rgba(91,92,226,.22);color:#3b3cc7;">Campaña</span>
               </div>
+
               <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
                 ${range ? `<span>${range}</span>` : ``}
                 <span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>
@@ -2441,6 +2452,10 @@ function renderRendicionesVertical(role){
                 <div class="tag ok">Recaudado ${formatCLP(colC)}</div>
                 <div class="tag warn">Gastado ${formatCLP(spentC)}</div>
                 <div class="tag ${availC<0?'danger':''}">Disponible ${formatCLP(availC)}</div>
+              </div>
+
+              <div class="muted" style="margin-top:10px;font-weight:900;">
+                🧾 ${resumenRend}
               </div>
             </div>
 
@@ -2454,6 +2469,10 @@ function renderRendicionesVertical(role){
 
         ${open ? `
           <div style="margin:12px 12px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);">
+            <div style="padding:10px 12px;border-bottom:1px solid rgba(229,231,235,.7);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+              <div style="font-weight:950;">🧾 Rendición</div>
+              <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
+            </div>
             <div style="padding:10px 12px;">
               ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
             </div>
