@@ -1463,6 +1463,109 @@ function renderPayFilters(){
   `;
 }
 
+
+/* ---------- Informes mensuales (Apoderado) ---------- */
+const KEY_SEEN_MONTHLY_REPORTS = "cursapp_seen_monthly_reports_v1";
+
+function loadSeenMonthlyReports(){
+  try { return JSON.parse(localStorage.getItem(KEY_SEEN_MONTHLY_REPORTS) || "[]"); } catch(e){ return []; }
+}
+function saveSeenMonthlyReports(arr){
+  localStorage.setItem(KEY_SEEN_MONTHLY_REPORTS, JSON.stringify(arr || []));
+}
+function markMonthlyReportSeen(period){
+  const seen = loadSeenMonthlyReports();
+  if(!seen.includes(period)) seen.unshift(period);
+  saveSeenMonthlyReports(seen.slice(0,50));
+}
+function findLatestUnseenMonthlyReport(){
+  const seen = new Set(loadSeenMonthlyReports());
+  const reps = loadMonthlyReports().slice();
+  reps.sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
+  return reps.find(r=>r.period && !seen.has(r.period)) || null;
+}
+function countUnseenMonthlyReports(){
+  const seen = new Set(loadSeenMonthlyReports());
+  return loadMonthlyReports().filter(r=>r.period && !seen.has(r.period)).length;
+}
+
+function openMonthlyReport(period){
+  const rep = loadMonthlyReports().find(r=>r.period===period);
+  if(!rep) return;
+
+  markMonthlyReportSeen(period);
+
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+
+  const rows = (rep.perCampaign || []).map(c=>`
+    <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);">
+      <div style="font-weight:900;">${cleanConcept(c.title)}</div>
+      <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="tag ok">Recaudado ${formatCLP(c.recaudado)}</span>
+        <span class="tag warn">Adeudado ${formatCLP(c.adeudado)}</span>
+        <span class="tag warn">Gastado ${formatCLP(c.gastado)}</span>
+        <span class="tag ${c.disponible<0?'danger':''}">Disponible ${formatCLP(c.disponible)}</span>
+      </div>
+    </div>
+  `).join("") || `<div class="muted" style="margin-top:10px;">Sin campañas cerradas en el período.</div>`;
+
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(760px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Informe mensual · ${rep.period}</div>
+            <div class="muted">Snapshot acumulado al cierre del mes</div>
+          </div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="tag">Campañas cerradas ${rep.closedCampaignsCount || 0}</div>
+          <div class="tag ok">Recaudado ${formatCLP(rep.recaudadoCurso || 0)}</div>
+          <div class="tag warn">Adeudado ${formatCLP(rep.adeudadoCurso || 0)}</div>
+          <div class="tag warn">Gastado ${formatCLP(rep.gastadoCurso || 0)}</div>
+          <div class="tag ${(rep.disponibleCurso||0)<0?'danger':''}">Disponible ${formatCLP(rep.disponibleCurso || 0)}</div>
+          <div class="tag">Deudores ${rep.deudoresTotales || 0}</div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div style="font-weight:950;">Resumen por campaña (cerradas)</div>
+          <div style="margin-top:8px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);padding:10px 12px;">
+            ${rows}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderApoderadoMonthlyReportBanner(){
+  const rep = findLatestUnseenMonthlyReport();
+  const count = countUnseenMonthlyReports();
+  if(!rep || !count) return "";
+
+  return `
+    <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.08);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="min-width:240px;">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div style="font-size:18px;">📄</div>
+            <div style="font-weight:950;">${count} informe${count>1?'s':''} nuevo${count>1?'s':''}</div>
+          </div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">
+            Último: ${rep.period} · Campañas cerradas ${rep.closedCampaignsCount || 0} · Adeudado ${formatCLP(rep.adeudadoCurso || 0)}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn ghost" onclick="goTab('rendiciones')">Ver rendiciones</button>
+          <button class="btn primary" onclick="openMonthlyReport('${rep.period}')">Ver informe</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 /* ---------- views ---------- */
 
 
