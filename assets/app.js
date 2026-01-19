@@ -1478,6 +1478,32 @@ function markMonthlyReportSeen(period){
   if(!seen.includes(period)) seen.unshift(period);
   saveSeenMonthlyReports(seen.slice(0,50));
 }
+
+function findLatestMonthlyReport(){
+  const reps = loadMonthlyReports().slice();
+  reps.sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
+  return reps[0] || null;
+}
+function renderApoderadoMonthlyReportsCard(){
+  const latest = findLatestMonthlyReport();
+  if(!latest) return "";
+  return `
+    <div class="card" style="margin-top:12px;border:1px solid rgba(100,116,139,.18);background:rgba(100,116,139,.06);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="min-width:240px;">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div style="font-size:18px;">📁</div>
+            <div style="font-weight:950;">Informes del curso</div>
+          </div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">
+            Último publicado: ${latest.period} (montos generales del curso)
+          </div>
+        </div>
+        <button class="btn ghost" onclick="openMonthlyReport('${latest.period}')">Ver último</button>
+      </div>
+    </div>
+  `;
+}
 function findLatestUnseenMonthlyReport(){
   const seen = new Set(loadSeenMonthlyReports());
   const reps = loadMonthlyReports().slice();
@@ -1835,6 +1861,7 @@ if(tab === "home"){
 
     let body = `
       ${renderApoderadoMonthlyReportBanner()}
+      ${renderApoderadoMonthlyReportsCard()}
 
       ${summary}
       ${urgent}
@@ -1890,7 +1917,10 @@ function renderTesorero(tab){
       `;
     }).join("");
 
-    const body = `
+    let body = `
+      ${renderApoderadoMonthlyReportBanner()}
+      ${renderApoderadoMonthlyReportsCard()}
+
       ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
       ${kpiCard("⏳","Cuotas pendientes", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
       
@@ -2476,6 +2506,7 @@ function generateMonthlyReport(){
   const filtered = list.filter(r=>r.period !== ym);
   filtered.unshift(snap);
   saveMonthlyReports(filtered);
+  try{ clearMonthlyReportSeen(ym); }catch(e){}
   closeModal();
   alert("Informe mensual generado ✅ (demo)");
   goTab("rendiciones");
