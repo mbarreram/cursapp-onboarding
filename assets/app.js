@@ -95,14 +95,13 @@ function renderHeader(){
   if(!who) return;
 
   who.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:2px;line-height:1.15;">
-      <div style="font-weight:950;">${meta.name} · ${meta.role}</div>
-      <div class="muted" style="font-weight:800;">${meta.alumno}</div>
-      <div class="muted" style="font-weight:800;">${meta.colegioCurso}</div>
+    <div style="display:flex;flex-direction:column;gap:2px;line-height:1.1;">
+      <div style="font-weight:950;font-size:14px;">${meta.name} · ${meta.role}</div>
+      <div class="muted" style="font-weight:800;font-size:12px;">${meta.alumno}</div>
+      <div class="muted" style="font-weight:700;font-size:11px;opacity:.9;">${meta.colegioCurso}</div>
     </div>
   `;
-
-  const menuBtn = document.getElementById("menuBtn");
+const menuBtn = document.getElementById("menuBtn");
   const menu = document.getElementById("menuDropdown");
   if(!menuBtn || !menu) return;
 
@@ -672,14 +671,14 @@ function renderCampaignCard(task, payments, role){
   return `
     <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
       <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
-      <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleTaskOpen('${tid}')">
+      <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleTaskOpen('${tid}')">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="font-size:20px;">${icon}</div>
           <div style="font-weight:950;font-size:17px;min-width:0;">${title}</div>
         </div>
         <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           ${range ? `<span>${range}</span>` : ``}
-          ${task ? `<span style="font-weight:900;color:${status.color};">${status.label}</span>` : ``}
+          ${task ? `<span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>` : ``}
           <span class="tag">${paidCount}/${totalCount} pagados</span>
           <span class="tag">${open ? "▲" : "▼"}</span>
         </div>
@@ -1663,7 +1662,7 @@ function apRenderListGrouped(list){
             </div>
             <div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
               ${metaLeft ? `<span>${metaLeft}</span>` : ``}
-              <span style="font-weight:900;color:${status.color};">${status.label}</span>
+              <span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>
               <span class="tag">${metaRight}</span>
             </div>
           </div>
@@ -2253,7 +2252,7 @@ function rendicionRow(e){
     <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
       <div style="min-width:0;">
         <div style="font-weight:900;">${e.title} ${scopeTag}</div>
-        <div class="muted">${e.category}${vendor} · ${fmtDM(e.date)} · ${formatCLP(e.amount)}</div>
+        <div class="muted">${e.category}${vendor} · <span style="font-weight:900;">${fmtDM(e.date)}</span> · <span style="font-weight:900;">${formatCLP(e.amount)}</span></div>
         ${e.note ? `<div class="muted" style="margin-top:6px;">${e.note}</div>` : ``}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
@@ -2304,7 +2303,7 @@ function renderRendiciones(role){
   return `
     <div class="card">
       <div style="font-weight:950;font-size:18px;">Rendiciones</div>
-      <div class="muted" style="margin-top:6px;">Recaudado ${formatCLP(collected)} · Gastado ${formatCLP(spent)} · Disponible ${formatCLP(avail)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"><div class="tag ok">Recaudado ${formatCLP(collected)}</div><div class="tag warn">Gastado ${formatCLP(spent)}</div><div class="tag">Disponible ${formatCLP(avail)}</div></div>
     </div>
     ${generalHtml}
     ${campaignsHtml}
@@ -2323,7 +2322,7 @@ function renderRendicionesVertical(role){
   const summary = `
     <div class="card">
       <div style="font-weight:950;font-size:18px;">Rendiciones</div>
-      <div class="muted" style="margin-top:6px;">Recaudado ${formatCLP(collected)} · Gastado ${formatCLP(spent)} · Disponible ${formatCLP(avail)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"><div class="tag ok">Recaudado ${formatCLP(collected)}</div><div class="tag warn">Gastado ${formatCLP(spent)}</div><div class="tag">Disponible ${formatCLP(avail)}</div></div>
     </div>
   `;
 
@@ -2333,7 +2332,7 @@ function renderRendicionesVertical(role){
   const generalCard = `
     <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
       <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:#64748b;"></div>
-      <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleSectionOpen('${genOpenKey}')">
+      <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${genOpenKey}')">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="font-size:20px;">🧾</div>
           <div style="font-weight:950;font-size:17px;">Gastos generales</div>
@@ -2367,14 +2366,14 @@ function renderRendicionesVertical(role){
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
         <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
-        <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleSectionOpen('${key}')">
+        <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${key}')">
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="font-size:20px;">${icon}</div>
             <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
           </div>
           <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             ${range ? `<span>${range}</span>` : ``}
-            <span style="font-weight:900;color:${status.color};">${status.label}</span>
+            <span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>
             <span class="tag">Rec ${formatCLP(colC)}</span>
             <span class="tag">Gas ${formatCLP(spentC)}</span>
             <span class="tag">Disp ${formatCLP(availC)}</span>
