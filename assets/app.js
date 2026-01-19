@@ -1515,6 +1515,7 @@ function countUnseenMonthlyReports(){
   return loadMonthlyReports().filter(r=>r.period && !seen.has(r.period)).length;
 }
 
+
 function openMonthlyReport(period){
   const rep = loadMonthlyReports().find(r=>r.period===period);
   if(!rep) return;
@@ -1525,40 +1526,48 @@ function openMonthlyReport(period){
   if(!root) return;
 
   const rows = (rep.perCampaign || []).map(c=>`
-    <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);">
-      <div style="font-weight:900;">${cleanConcept(c.title)}</div>
-      <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
+    <div style="padding:12px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;background:#fff;margin-top:10px;">
+      <div style="font-weight:950;font-size:16px;">${cleanConcept(c.title)}</div>
+      <div class="muted" style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
         <span class="tag ok">Recaudado ${formatCLP(c.recaudado)}</span>
         <span class="tag warn">Adeudado ${formatCLP(c.adeudado)}</span>
         <span class="tag warn">Gastado ${formatCLP(c.gastado)}</span>
-        <span class="tag ${c.disponible<0?'danger':''}">Disponible ${formatCLP(c.disponible)}</span>
+        <span class="tag ${c.disponible<0?'danger':''}">Saldo ${formatCLP(c.disponible)}</span>
       </div>
     </div>
   `).join("") || `<div class="muted" style="margin-top:10px;">Sin campañas cerradas en el período.</div>`;
 
   root.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-      <div class="card" style="width:min(760px,100%);margin-bottom:12px;">
+      <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div>
-            <div style="font-weight:950;font-size:18px;">Informe mensual · ${rep.period}</div>
-            <div class="muted">Snapshot acumulado al cierre del mes</div>
+            <div style="font-weight:950;font-size:18px;">Informe financiero del curso · ${rep.period}</div>
+            <div class="muted" style="margin-top:4px;">Publicado por la directiva · Snapshot acumulado al cierre del mes</div>
           </div>
           <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;padding:10px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;background:rgba(248,250,252,1);">
+          <div style="font-weight:950;">ℹ️ Importante</div>
+          <div class="muted" style="margin-top:6px;">
+            Los montos de este informe corresponden al <b>total del curso</b> y <b>no representan deudas personales</b>.
+            Para ver tus pagos individuales, revisa la sección <b>Pagos</b>.
+          </div>
         </div>
 
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
           <div class="tag">Campañas cerradas ${rep.closedCampaignsCount || 0}</div>
           <div class="tag ok">Recaudado ${formatCLP(rep.recaudadoCurso || 0)}</div>
-          <div class="tag warn">Adeudado ${formatCLP(rep.adeudadoCurso || 0)}</div>
+          <div class="tag warn">Adeudado curso ${formatCLP(rep.adeudadoCurso || 0)}</div>
           <div class="tag warn">Gastado ${formatCLP(rep.gastadoCurso || 0)}</div>
-          <div class="tag ${(rep.disponibleCurso||0)<0?'danger':''}">Disponible ${formatCLP(rep.disponibleCurso || 0)}</div>
+          <div class="tag ${(rep.disponibleCurso||0)<0?'danger':''}">Saldo ${formatCLP(rep.disponibleCurso || 0)}</div>
           <div class="tag">Deudores ${rep.deudoresTotales || 0}</div>
         </div>
 
         <div style="margin-top:14px;">
           <div style="font-weight:950;">Resumen por campaña (cerradas)</div>
-          <div style="margin-top:8px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);padding:10px 12px;">
+          <div style="margin-top:8px;background:rgba(248,250,252,1);border:1px solid rgba(229,231,235,.7);border-radius:16px;padding:10px 12px;">
             ${rows}
           </div>
         </div>
@@ -1567,31 +1576,43 @@ function openMonthlyReport(period){
   `;
 }
 
+
+
 function renderApoderadoMonthlyReportBanner(){
-  const rep = findLatestUnseenMonthlyReport();
-  const count = countUnseenMonthlyReports();
-  if(!rep || !count) return "";
+  const latest = findLatestMonthlyReport ? findLatestMonthlyReport() : (loadMonthlyReports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")))[0] || null);
+  if(!latest) return "";
+
+  const unseen = !!findLatestUnseenMonthlyReport && !!findLatestUnseenMonthlyReport();
+  const seenSet = new Set(loadSeenMonthlyReports());
+  const isUnseen = !seenSet.has(latest.period);
+
+  const title = isUnseen ? "Informe financiero del curso disponible" : "Último informe financiero del curso";
+  const subtitle = "Publicado por la directiva · Montos generales del curso (no personales)";
+
+  const badge = isUnseen
+    ? `<span class="tag" style="background:rgba(34,197,94,.12);color:#166534;border:1px solid rgba(34,197,94,.18);">Nuevo</span>`
+    : `<span class="tag" style="background:rgba(100,116,139,.10);color:#111827;border:1px solid rgba(100,116,139,.18);">Publicado</span>`;
 
   return `
     <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.08);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
         <div style="min-width:240px;">
-          <div style="display:flex;gap:10px;align-items:center;">
-            <div style="font-size:18px;">📄</div>
-            <div style="font-weight:950;">${count} informe${count>1?'s':''} nuevo${count>1?'s':''}</div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="font-size:18px;">📊</div>
+            <div style="font-weight:950;">${title}</div>
+            ${badge}
           </div>
-          <div class="muted" style="margin-top:6px;font-weight:800;">
-            Último: ${rep.period} · Campañas cerradas ${rep.closedCampaignsCount || 0} · Adeudado ${formatCLP(rep.adeudadoCurso || 0)}
+          <div class="muted" style="margin-top:6px;font-weight:800;">${subtitle}</div>
+          <div class="muted" style="margin-top:6px;">
+            Periodo ${latest.period} · Campañas cerradas ${latest.closedCampaignsCount || 0} · Adeudado curso ${formatCLP(latest.adeudadoCurso || 0)}
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button class="btn ghost" onclick="goTab('rendiciones')">Ver rendiciones</button>
-          <button class="btn primary" onclick="openMonthlyReport('${rep.period}')">Ver informe</button>
-        </div>
+        <button class="btn primary" onclick="openMonthlyReport('${latest.period}')">Ver informe</button>
       </div>
     </div>
   `;
 }
+
 /* ---------- views ---------- */
 
 
