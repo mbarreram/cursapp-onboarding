@@ -2442,7 +2442,7 @@ function openGenerateMonthlyReportModal(){
 
         <div style="margin-top:12px;">
           <label style="font-weight:900;">Mes (YYYY-MM)</label>
-          <input id="repMonth" value="${ym}" placeholder="2026-01" />
+          <input id="repMonth" type="month" value="${ym}" />
           <div class="muted" style="margin-top:6px;">Ej: 2026-01 genera snapshot acumulado hasta 31/01/2026.</div>
         </div>
 
@@ -2455,9 +2455,19 @@ function openGenerateMonthlyReportModal(){
   `;
 }
 
+
 function generateMonthlyReport(){
-  const ym = (document.getElementById("repMonth")?.value || "").trim();
-  if(!/^\\d{4}-\\d{2}$/.test(ym)){
+  let ym = (document.getElementById("repMonth")?.value || "").toString();
+  // Normalize: trim and convert any unicode dashes to '-'
+  ym = ym.trim()
+         .replace(/[–—−]/g, "-")
+         .replace(/\s+/g, "");
+  // Accept YYYY-MM-DD by slicing
+  if(/^\d{4}-\d{2}-\d{2}$/.test(ym)) ym = ym.slice(0,7);
+  // Accept YYYY/MM by converting
+  if(/^\d{4}\/\d{2}$/.test(ym)) ym = ym.replace("/", "-");
+
+  if(!/^\d{4}-\d{2}$/.test(ym)){
     alert("Formato inválido. Usa YYYY-MM (ej: 2026-01).");
     return;
   }
@@ -2470,6 +2480,7 @@ function generateMonthlyReport(){
   alert("Informe mensual generado ✅ (demo)");
   goTab("rendiciones");
 }
+
 
 /* ---------- Rendiciones UI ---------- */
 
