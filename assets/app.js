@@ -629,7 +629,29 @@ function renderCampaignPaymentsRows(payments, role, task){
     }).join("");
   }
 
-  return payments.map(p=>`<div style="padding:0 12px;">${paymentRow(role, p)}</div>`).join("");
+  // Directiva: agrupar por alumno (más limpio)
+  const groups = {};
+  payments.forEach(p=>{
+    const k = p.alumno || "Alumno";
+    groups[k] = groups[k] || [];
+    groups[k].push(p);
+  });
+  const names = Object.keys(groups).sort((a,b)=>String(a).localeCompare(String(b)));
+
+  return names.map(name=>{
+    const key = `sec_${(task && task.id) ? task.id : "no_task"}_${name}`;
+    const open = isSectionOpen(key);
+    const rows = open ? groups[name].map(p=>`<div style="padding:0 12px;">${paymentRow(role, p)}</div>`).join("") : "";
+    return `
+      <div style="padding:10px 12px;border-top:1px solid rgba(229,231,235,.6);">
+        <button class="btn ghost" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="toggleSectionOpen('${key}')">
+          <span style="font-weight:950;">${name}</span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </button>
+        ${open ? `<div style="margin-top:10px;">${rows}</div>` : `<div class="muted" style="margin-top:8px;">Toca para ver pagos.</div>`}
+      </div>
+    `;
+  }).join("");
 }
 
 function renderCampaignCard(task, payments, role){
@@ -1716,7 +1738,7 @@ if(tab === "home"){
 const body =
     tab==="payments"
       ? `${renderPaymentsByCampaign("apoderado")}`
-      : `${renderRendiciones("apoderado")}`;
+      : `${renderRendicionesVertical("apoderado")}`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
 }
@@ -1801,7 +1823,7 @@ function renderTesorero(tab){
   const body =
     tab==="payments"
       ? `${renderPaymentsByCampaign("tesorero")}`
-      : `${renderRendiciones("tesorero")}`;
+      : `${renderRendicionesVertical("tesorero")}`;
 
   viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
 }
@@ -1862,7 +1884,7 @@ function renderPresidente(tab){
   const body =
     tab==="payments"
       ? `${renderPaymentsByCampaign("presidente")}`
-      : `${renderRendiciones("presidente")}`;
+      : `${renderRendicionesVertical("presidente")}`;
 
   viewShell("Presidente","Administración del curso", body, tab, "presidente");
 }
@@ -2288,6 +2310,86 @@ function renderRendiciones(role){
     ${campaignsHtml}
   `;
 }
+
+
+function renderRendicionesVertical(role){
+  const collected = courseCollected();
+  const spent = courseSpent();
+  const avail = courseAvailable();
+
+  const general = expensesByScope("general");
+  const tasks = loadTasks().slice();
+
+  const summary = `
+    <div class="card">
+      <div style="font-weight:950;font-size:18px;">Rendiciones</div>
+      <div class="muted" style="margin-top:6px;">Recaudado ${formatCLP(collected)} · Gastado ${formatCLP(spent)} · Disponible ${formatCLP(avail)}</div>
+    </div>
+  `;
+
+  // General card
+  const genOpenKey = "rend_general";
+  const genOpen = isSectionOpen(genOpenKey);
+  const generalCard = `
+    <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:#64748b;"></div>
+      <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleSectionOpen('${genOpenKey}')">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="font-size:20px;">🧾</div>
+          <div style="font-weight:950;font-size:17px;">Gastos generales</div>
+        </div>
+        <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <span class="tag">${formatCLP(sumExpenses(general))}</span>
+          <span class="tag">${genOpen ? "▲" : "▼"}</span>
+        </div>
+      </button>
+      ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
+      ${genOpen ? `<div style="padding:0 12px 12px;">${general.length ? general.map(rendicionRow).join("") : `<div class="muted">Sin gastos generales.</div>`}</div>` : ``}
+    </div>
+  `;
+
+  // Campaign cards
+  const campCards = tasks.map(t=>{
+    const exp = expensesForCampaign(t.id);
+    const spentC = sumExpenses(exp);
+    const colC = loadPayments().filter(p=>p.status==="paid" && p.fromTaskId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    const availC = colC - spentC;
+
+    const accent = campaignAccent(t);
+    const icon = campaignIcon(t, t.title);
+    const status = campaignStatusForAp(t);
+    const start = fmtDM(t.startDate), end = fmtDM(t.dueDate);
+    const range = (start && end) ? `${start} → ${end}` : "";
+
+    const key = `rend_${t.id}`;
+    const open = isSectionOpen(key);
+
+    return `
+      <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
+        <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleSectionOpen('${key}')">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="font-size:20px;">${icon}</div>
+            <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
+          </div>
+          <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            ${range ? `<span>${range}</span>` : ``}
+            <span style="font-weight:900;color:${status.color};">${status.label}</span>
+            <span class="tag">Rec ${formatCLP(colC)}</span>
+            <span class="tag">Gas ${formatCLP(spentC)}</span>
+            <span class="tag">Disp ${formatCLP(availC)}</span>
+            <span class="tag">${open ? "▲" : "▼"}</span>
+          </div>
+        </button>
+        ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
+        ${open ? `<div style="padding:0 12px 12px;">${exp.length ? exp.map(rendicionRow).join("") : `<div class="muted">Sin gastos asociados.</div>`}</div>` : ``}
+      </div>
+    `;
+  }).join("");
+
+  return summary + generalCard + campCards;
+}
+
 /* ---------- router ---------- */
 function renderByRole(role, tab){
   if(role === "apoderado") renderApoderado(tab);
