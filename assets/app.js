@@ -712,7 +712,7 @@ function renderPaymentsByCampaign(role){
 
 function setCampaignFilter(val){
   localStorage.setItem("cursapp_campaign_filter", val);
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 function getCampaignFilter(){
   return localStorage.getItem("cursapp_campaign_filter") || "all";
@@ -743,7 +743,7 @@ function matchCampaign(task, filter){
 
 function setPayFilter(val){
   localStorage.setItem("cursapp_pay_filter", val);
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 function getPayFilter(){
   return localStorage.getItem("cursapp_pay_filter") || "all";
@@ -811,7 +811,7 @@ function optOutPayment(paymentId){
   pays[idx].optedOutAt = isoDate();
   savePayments(pays);
   alert("Marcado como No participó. No se cobrará esta cuota.");
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 
@@ -925,7 +925,7 @@ function openPay(paymentId){
   });
 
   alert("Pago aprobado (demo). Comprobante generado.");
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 
@@ -1038,7 +1038,7 @@ function confirmReconModal(paymentId){
 
   closeModal();
   alert("Conciliado (demo). Comprobante generado.");
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 function openRecon(paymentId){
@@ -1064,7 +1064,7 @@ function openRecon(paymentId){
   });
 
   alert("Conciliado (demo). Comprobante generado.");
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 function openReceipt(paymentId){
@@ -1104,7 +1104,7 @@ function openReceipt(paymentId){
 
 
 /* ---------- Rendiciones (Gastos) ---------- */
-function openCreateExpense(scope, campaignId){
+function openCreateExpense(scope, campaignId, parentId){
   const user = getUser();
   if(!user) return;
   if(!(user.role === "tesorero" || user.role === "presidente")){
@@ -1176,14 +1176,14 @@ function openCreateExpense(scope, campaignId){
 
         <div class="actions" style="justify-content:flex-end;margin-top:14px;">
           <button class="btn ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn primary" onclick="createExpense('${scope}','${campaignId || ""}')">Guardar gasto</button>
+          <button class="btn primary" onclick="createExpense('${scope}','${campaignId || ""}','${parentId || ""}')">Guardar gasto</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function createExpense(scope, campaignId){
+function createExpense(scope, campaignId, parentId){
   const title = (document.getElementById("exTitle")?.value || "").trim();
   const category = document.getElementById("exCat")?.value || "Otros";
   const vendor = (document.getElementById("exVendor")?.value || "").trim();
@@ -1205,6 +1205,7 @@ function createExpense(scope, campaignId){
     list.unshift({
       id: uid("exp"),
       scope,
+      parentId: parentId || null,
       campaignId: (scope === "campaign") ? (campaignId || null) : null,
       title,
       category,
@@ -1350,7 +1351,7 @@ function createCobro(){
 
   closeModal();
   alert("Cobro creado para todos (demo).");
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
@@ -1420,7 +1421,7 @@ function toggleTaskOpen(taskId){
   const i = arr.indexOf(taskId);
   if(i>=0) arr.splice(i,1); else arr.unshift(taskId);
   setOpenTasks(arr.slice(0,10));
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 
 
@@ -1440,7 +1441,7 @@ function toggleSectionOpen(key){
   const i = arr.indexOf(key);
   if(i>=0) arr.splice(i,1); else arr.unshift(key);
   setOpenSections(arr.slice(0,50));
-  goTab("payments");
+  goTab(getCurrentTab());
 }
 function renderPayFilters(){
   const f = getCampaignFilter();
@@ -2243,24 +2244,52 @@ function renderPresidentePayments(){
 
 
 /* ---------- Rendiciones UI ---------- */
-function rendicionRow(e){
+
+
+function renderExpensesTree(list, role){
+  const parents = (list||[]).filter(x=>!x.parentId);
+  const children = (list||[]).filter(x=>x.parentId);
+  const byParent = {};
+  children.forEach(c=>{
+    byParent[c.parentId] = byParent[c.parentId] || [];
+    byParent[c.parentId].push(c);
+  });
+  parents.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+
+  return parents.map(p=>{
+    const kids = (byParent[p.id]||[]).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));
+    const kidsHtml = kids.length
+      ? `<div style="margin-left:12px;border-left:3px solid rgba(100,116,139,.2);padding-left:10px;">${kids.map(k=>rendicionRow(k, role)).join("")}</div>`
+      : ``;
+    return rendicionRow(p, role) + kidsHtml;
+  }).join("");
+}
+function rendicionRow(e, role){
   const hasAtt = e.attachments && e.attachments.length;
   const attBtn = hasAtt ? `<button class="btn ghost" onclick="openAttachment('${e.attachments[0].dataUrl}')">Ver boleta</button>` : `<span class="muted">Sin boleta</span>`;
-  const scopeTag = e.scope === "general" ? `<span class="tag">General</span>` : `<span class="tag">Campaña</span>`;
   const vendor = e.vendor ? ` · ${e.vendor}` : ``;
+
+  const subBtn = (role==="tesorero"||role==="presidente")
+    ? `<button class="btn ghost" onclick="openCreateExpense('${e.scope}','${e.campaignId||""}','${e.id}')">+ Sub ítem</button>`
+    : ``;
+
   return `
     <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
       <div style="min-width:0;">
-        <div style="font-weight:900;">${e.title} ${scopeTag}</div>
-        <div class="muted">${e.category}${vendor} · <span style="font-weight:900;">${fmtDM(e.date)}</span> · <span style="font-weight:900;">${formatCLP(e.amount)}</span></div>
+        <div style="font-weight:900;">${e.title}</div>
+        <div class="muted" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${e.category}${vendor} · <span style="font-weight:900;">${fmtDM(e.date)}</span> · <span style="font-weight:900;">${formatCLP(e.amount)}</span>
+        </div>
         ${e.note ? `<div class="muted" style="margin-top:6px;">${e.note}</div>` : ``}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
         ${attBtn}
+        ${subBtn}
       </div>
     </div>
   `;
 }
+
 
 function renderRendiciones(role){
   const collected = courseCollected();
@@ -2276,7 +2305,7 @@ function renderRendiciones(role){
         <div style="font-weight:950;">Gastos generales</div>
         ${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar</button>` : ``}
       </div>
-      ${general.length ? general.map(rendicionRow).join("") : `<div class="muted" style="padding-top:10px;">Sin gastos generales.</div>`}
+      ${general.length ? renderExpensesTree(general, role) : `<div class="muted" style="padding-top:10px;">Sin gastos generales.</div>`}
     </div>
   `;
 
@@ -2293,9 +2322,9 @@ function renderRendiciones(role){
             <div style="font-weight:950;">${t.title}</div>
             <div class="muted">Recaudado ${formatCLP(colC)} · Gastado ${formatCLP(spentC)} · Disponible ${formatCLP(availC)}</div>
           </div>
-          ${(role==="tesorero"||role==="presidente") ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Gasto</button>` : ``}
+          ${(role==="tesorero"||role==="presidente") ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Agregar gasto</button>` : ``}
         </div>
-        ${exp.length ? exp.map(rendicionRow).join("") : `<div class="muted" style="padding-top:10px;">Sin gastos asociados.</div>`}
+        ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted" style="padding-top:10px;">Sin gastos asociados.</div>`}
       </div>
     `;
   }).join("");
@@ -2343,7 +2372,7 @@ function renderRendicionesVertical(role){
         </div>
       </button>
       ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
-      ${genOpen ? `<div style="padding:0 12px 12px;">${general.length ? general.map(rendicionRow).join("") : `<div class="muted">Sin gastos generales.</div>`}</div>` : ``}
+      ${genOpen ? `<div style="padding:0 12px 12px;">${general.length ? renderExpensesTree(general, role) : `<div class="muted">Sin gastos generales.</div>`}</div>` : ``}
     </div>
   `;
 
@@ -2380,8 +2409,8 @@ function renderRendicionesVertical(role){
             <span class="tag">${open ? "▲" : "▼"}</span>
           </div>
         </button>
-        ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
-        ${open ? `<div style="padding:0 12px 12px;">${exp.length ? exp.map(rendicionRow).join("") : `<div class="muted">Sin gastos asociados.</div>`}</div>` : ``}
+        ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Agregar gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
+        ${open ? `<div style="padding:0 12px 12px;">${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}</div>` : ``}
       </div>
     `;
   }).join("");
@@ -2396,7 +2425,11 @@ function renderByRole(role, tab){
   else if(role === "presidente") renderPresidente(tab);
   else renderApoderado(tab);
 }
+function getCurrentTab(){ return localStorage.getItem("cursapp_current_tab") || "home"; }
+
 function goTab(tab){
+  localStorage.setItem("cursapp_current_tab", tab);
+
   const user = getUser();
   if(!user) return logout();
   renderByRole(user.role, tab);
