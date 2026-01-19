@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard · Cursapp</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="topbar" style="position:relative;">
+      <div class="brand">
+        <div class="logo">C</div>
+        <div id="whoLine"></div>
+      </div>
+
+      <!-- Menú (siempre visible) -->
+      <button class="btn ghost" id="menuBtn" type="button" aria-expanded="false"
+        style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
+
+      <div id="menuDropdown"
+        style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
+        border-radius:14px;padding:8px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
+        <button class="btn ghost" id="logoutMenuItem" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container" id="app"></div>
+
+  <script src="assets/app.js?v=1021"></script>
+</body>
+</html>
