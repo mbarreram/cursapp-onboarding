@@ -547,6 +547,8 @@ function optOutPayment(paymentId){
 }
 
 
+
+
 function paymentRow(role, p){
   const paid = p.status === "paid";
   const optedOut = p.status === "opted_out";
@@ -554,14 +556,11 @@ function paymentRow(role, p){
   const task = p.fromTaskId ? findTaskById(p.fromTaskId) : null;
   const typeLabel = task ? taskTypeLabel(task) : "Pago";
 
-  // Title/description by role
   const title = isDirectiva(role) ? (p.alumno || "Alumno") : cleanConcept(p.concept);
-  const desc = isDirectiva(role) ? cleanConcept(p.concept) : (task ? taskTypeLabel(task) : "Pago único");
+  const desc = cleanConcept(p.concept);
 
-  // Status label
   const statusText = paid ? "Pagado" : (optedOut ? "No participó" : "Pendiente");
 
-  // Right action (single primary)
   const receipt = getReceiptByPaymentId(p.id);
   let primaryAction = `<span class="muted">—</span>`;
 
@@ -579,14 +578,12 @@ function paymentRow(role, p){
     }
   }
 
-  // Optional secondary action (only apoderado + eligible)
   const optOutLink = (typeof canOptOut === "function" && canOptOut(role, p))
     ? `<button class="btn ghost" style="padding:8px 10px;border-radius:12px;" onclick="optOutPayment('${p.id}')">No participé</button>`
     : ``;
 
-  // Due label + semáforo
   let dueText = "";
-  let dueColor = "#22c55e"; // green
+  let dueColor = "#22c55e";
   if(p.dueDate){
     const d = daysTo(p.dueDate);
     if(d < 0){ dueText = "Vencida"; dueColor = "#ef4444"; }
@@ -595,33 +592,27 @@ function paymentRow(role, p){
     else { dueText = `Quedan ${d} días`; dueColor = "#22c55e"; }
   }
 
-  // Created date (best effort)
-  const createdRaw = p.createdAt || p.startDate || null;
   let createdText = "";
-  try{
-    if(createdRaw){
-      const dt = new Date(createdRaw);
-      if(!isNaN(dt.getTime())){
-        createdText = dt.toLocaleDateString("es-CL");
-      }
-    }
-  }catch(e){}
-  const createdLine = createdText ? `<div class="muted" style="margin-top:6px;font-size:12px;">Creado: ${createdText}</div>` : ``;
+  if(p.createdAt){
+    try{
+      const dt = new Date(p.createdAt);
+      if(!isNaN(dt.getTime())) createdText = dt.toLocaleDateString("es-CL");
+    }catch(e){}
+  }
 
-  // Highlight color for campaign strip (based on status)
   const stripBg = paid ? "rgba(34,197,94,.10)" : (optedOut ? "rgba(100,116,139,.10)" : "rgba(245,158,11,.10)");
   const stripBorder = paid ? "rgba(34,197,94,.25)" : (optedOut ? "rgba(100,116,139,.25)" : "rgba(245,158,11,.25)");
 
   return `
-    <div style="padding:12px 0; border-top:1px solid rgba(229,231,235,.6);">
+    <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
         <div style="min-width:0;">
           <div style="font-weight:950;font-size:16px;line-height:1.15;">${title}</div>
+          <div class="muted" style="margin-top:4px;">${desc}</div>
 
-          <div style="margin-top:8px;padding:10px 12px;border-radius:14px;background:${stripBg};border:1px solid ${stripBorder};">
-            <div class="muted" style="font-weight:900;">${desc}</div>
-            <div class="muted" style="margin-top:4px;font-weight:900;">Estado: ${statusText}</div>
-            ${createdLine}
+          <div style="margin-top:8px;padding:10px 12px;border-radius:14px;background:${stripBg};border:1px solid ${stripBorder};display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="muted" style="font-weight:900;">${typeLabel}</div>
+            <div class="muted" style="font-weight:900;">Estado: ${statusText}</div>
           </div>
         </div>
 
@@ -636,7 +627,9 @@ function paymentRow(role, p){
       <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);"></div>
 
       <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
-        <div class="muted" style="font-weight:700;font-size:13px;">${typeLabel}</div>
+        <div class="muted" style="font-weight:700;font-size:13px;">
+          ${createdText ? `Creado ${createdText}` : ``}
+        </div>
         <div style="font-weight:900;font-size:13px;color:${dueColor};">${dueText}</div>
       </div>
     </div>
