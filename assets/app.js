@@ -2468,16 +2468,16 @@ function renderRendicionesVertical(role){
         </button>
 
         ${open ? `
-          <div style="margin:12px 12px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);">
-            <div style="padding:10px 12px;border-bottom:1px solid rgba(229,231,235,.7);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-              <div style="font-weight:950;">🧾 Rendición</div>
-              <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
-            </div>
-            <div style="padding:10px 12px;">
-              ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
-            </div>
+        <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="font-weight:950;">🧾 Rendición</div>
+            <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
           </div>
-        ` : ``}
+          <div style="margin-top:10px;">
+            ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
+          </div>
+        </div>
+      ` : ``}
       </div>
     `;
   }).join("");
