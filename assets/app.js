@@ -1469,6 +1469,15 @@ function saveSeenReports(arr){
   localStorage.setItem(KEY_SEEN_REPORTS, JSON.stringify(arr || []));
 }
 
+function apCountNewReports(){
+  const seen = new Set(loadSeenReports());
+  return loadTasks().filter(t=>isTaskClosed(t))
+    .filter(t=>{
+      const exp = expensesForCampaign(t.id) || [];
+      return exp.length && !seen.has(t.id);
+    }).length;
+}
+
 function apFindNewReport(){
   // Definición MVP: hay informe cuando una campaña está cerrada y tiene al menos 1 gasto asociado
   const seen = new Set(loadSeenReports());
@@ -1545,9 +1554,11 @@ function openApoderadoReport(taskId){
   `;
 }
 
+
 function renderApoderadoReportBanner(){
   const task = apFindNewReport();
-  if(!task) return "";
+  const count = apCountNewReports();
+  if(!task || !count) return "";
 
   const sub = apReportSubtitle(task);
   const title = cleanConcept(task.title);
@@ -1558,11 +1569,16 @@ function renderApoderadoReportBanner(){
         <div style="min-width:240px;">
           <div style="display:flex;gap:10px;align-items:center;">
             <div style="font-size:18px;">📄</div>
-            <div style="font-weight:950;">Informe de rendición disponible</div>
+            <div style="font-weight:950;">${count} informe${count>1?'s':''} nuevo${count>1?'s':''}</div>
           </div>
-          <div class="muted" style="margin-top:6px;font-weight:800;">Campaña: ${title}${sub ? ` · ${sub}` : ``}</div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">
+            Último: ${title}${sub ? ` · ${sub}` : ``}
+          </div>
         </div>
-        <button class="btn primary" onclick="openApoderadoReport('${task.id}')">Ver informe</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn ghost" onclick="goTab('rendiciones')">Ver todos</button>
+          <button class="btn primary" onclick="openApoderadoReport('${task.id}')">Ver informe</button>
+        </div>
       </div>
     </div>
   `;
@@ -2521,7 +2537,7 @@ function renderRendicionesVertical(role){
             <button class="btn ghost" style="flex:1;min-width:240px;text-align:left;padding:0;border:none;background:transparent;" onclick="toggleSectionOpen('${key}')">
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div style="font-size:20px;">${icon}</div>
-                <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div><span class="tag" style="background:rgba(100,116,139,.10);border:1px solid rgba(100,116,139,.20);color:#111827;">Campaña</span></div>
                 <span class="tag" style="background:rgba(100,116,139,.10);border:1px solid rgba(100,116,139,.20);color:#111827;">Campaña</span>
               </div>
 
