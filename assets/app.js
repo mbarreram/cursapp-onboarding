@@ -1833,7 +1833,7 @@ if(tab === "home"){
       `;
     }
 
-    const body = `
+    let body = `
       ${summary}
       ${urgent}
       ${tabs}
