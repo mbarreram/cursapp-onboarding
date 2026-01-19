@@ -2453,8 +2453,12 @@ function renderRendicionesVertical(role){
         </button>
 
         ${open ? `
-          <div style="border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;background:#fff;">
+          <div style="margin:10px 12px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);">
+            <div style="padding:10px 12px;">
+              
             ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
+          
+            </div>
           </div>
         ` : ``}
       </div>
