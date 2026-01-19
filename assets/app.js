@@ -2427,29 +2427,13 @@ function renderRendicionesVertical(role){
     const missing = (typeof expensesMissingBoleta === "function") ? expensesMissingBoleta(exp) : 0;
     const resumenRend = `Rendición: ${formatCLP(spentC)} · ${nGastos} gasto(s)${missing ? ` · ${missing} sin boleta` : ``}`;
 
-    const addBtn = (role==="tesorero"||role==="presidente")
-      ? `<button class="btn ghost" onclick="event.stopPropagation();openCreateExpense('campaign','${t.id}','')">+ Agregar gasto</button>`
-      : ``;
-
-    const detail = open ? `
-      <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-          <div style="font-weight:950;">🧾 Rendición</div>
-          <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
-        </div>
-        <div style="margin-top:10px;">
-          ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
-        </div>
-      </div>
-    ` : ``;
-
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
         <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
 
-        <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${key}')">
+        <div style="padding:12px 12px 12px 12px;">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
-            <div style="min-width:0;">
+            <button class="btn ghost" style="flex:1;min-width:240px;text-align:left;padding:0;border:none;background:transparent;" onclick="toggleSectionOpen('${key}')">
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div style="font-size:20px;">${icon}</div>
                 <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
@@ -2472,15 +2456,27 @@ function renderRendicionesVertical(role){
               <div class="muted" style="margin-top:10px;font-weight:900;">
                 🧾 ${resumenRend}
               </div>
-            </div>
+            </button>
 
             <div style="flex-shrink:0;display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
-              ${addBtn}
+              ${(role==="tesorero"||role==="presidente")
+                ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}','')">+ Agregar gasto</button>`
+                : ``}
             </div>
           </div>
-        </button>
 
-        ${detail}
+          ${open ? `
+            <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding-top:12px;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div style="font-weight:950;">🧾 Rendición</div>
+                <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
+              </div>
+              <div style="margin-top:10px;">
+                ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
+              </div>
+            </div>
+          ` : ``}
+        </div>
       </div>
     `;
   }).join("");
