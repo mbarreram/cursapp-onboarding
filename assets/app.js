@@ -2248,6 +2248,7 @@ function renderPresidentePayments(){
 
 
 
+
 function renderExpensesTree(list, role){
   const parents = (list||[]).filter(x=>!x.parentId);
   const children = (list||[]).filter(x=>x.parentId);
@@ -2258,33 +2259,35 @@ function renderExpensesTree(list, role){
   });
   parents.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
 
-  return parents.map(p=>{
+  let html = "";
+  parents.forEach(p=>{
     const kids = (byParent[p.id]||[]).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));
-
     const kidsSum = kids.reduce((a,b)=>a+Number(b.amount||0),0);
     const base = Number(p.amount||0);
     const total = base + kidsSum;
 
-    // Render parent row, but with total amount shown, and a breakdown hint if has kids
     const p2 = { ...p, amount: total };
+
     const breakdown = kids.length
-      ? `<div class="muted" style="margin-top:6px;font-size:12px;">Total incluye ${kids.length} sub ítem(s) · Base ${formatCLP(base)} + Sub ${formatCLP(kidsSum)}</div>`
+      ? `<div class="muted" style="margin:6px 0 10px;font-size:12px;">Total: ${formatCLP(total)} · Base ${formatCLP(base)} + Sub ${formatCLP(kidsSum)} (${kids.length})</div>`
       : ``;
 
-    const kidsHtml = kids.length
-      ? `<div style="margin-left:12px;border-left:3px solid rgba(100,116,139,.2);padding-left:10px;">${kids.map(k=>rendicionRow(k, role)).join("")}</div>`
-      : ``;
+    html += `<div style="padding:0 0 6px;">`;
+    html += rendicionRow(p2, role);
+    html += breakdown;
 
-    // Inject breakdown right after parent row content by appending inside same container
-    return `
-      <div>
-        ${rendicionRow(p2, role)}
-        ${breakdown}
-        ${kidsHtml}
-      </div>
-    `;
-  }).join("");
+    if(kids.length){
+      html += `<div style="margin-left:12px;border-left:3px solid rgba(100,116,139,.2);padding-left:10px;">`;
+      kids.forEach(k=>{ html += rendicionRow(k, role); });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  return html || `<div class="muted">Sin gastos asociados.</div>`;
 }
+
 
 function rendicionRow(e, role){
   const hasAtt = e.attachments && e.attachments.length;
@@ -2450,7 +2453,7 @@ function renderRendicionesVertical(role){
         </button>
 
         ${open ? `
-          <div style="padding:0 12px 12px;">
+          <div style="border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;background:#fff;">
             ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
           </div>
         ` : ``}
