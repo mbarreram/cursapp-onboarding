@@ -625,7 +625,7 @@ function paymentRow(role, p){
   const task = p.fromTaskId ? findTaskById(p.fromTaskId) : null;
   const typeLabel = task ? taskTypeLabel(task) : "Pago";
 
-  const title = isDirectiva(role) ? (p.alumno || "Alumno") : cleanConcept(p.concept);
+  const title = cleanConcept(p.concept);
   const desc = cleanConcept(p.concept);
 
   const statusText = paid ? "Pagado" : (optedOut ? "No participó" : "Pendiente");
