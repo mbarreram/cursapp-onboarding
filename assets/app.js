@@ -2421,7 +2421,7 @@ function renderRendicionesVertical(role){
         <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
 
         <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${key}')">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
             <div style="min-width:0;">
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div style="font-size:20px;">${icon}</div>
@@ -2441,20 +2441,19 @@ function renderRendicionesVertical(role){
               </div>
             </div>
 
-            
-
-<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
-  ${(role==="tesorero"||role==="presidente")
-    ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}', '')">+ Agregar gasto</button>`
-    : ``}
-</div>
-
-</div>
+            <div style="flex-shrink:0;display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
+              ${(role==="tesorero"||role==="presidente")
+                ? `<button class="btn ghost" onclick="event.stopPropagation();openCreateExpense('campaign','${t.id}','')">+ Agregar gasto</button>`
+                : ``}
+            </div>
+          </div>
         </button>
 
-        
-
-        ${open ? `<div style="padding:0 12px 12px;">${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}</div>` : ``}
+        ${open ? `
+          <div style="padding:0 12px 12px;">
+            ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
+          </div>
+        ` : ``}
       </div>
     `;
   }).join("");
