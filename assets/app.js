@@ -2243,7 +2243,39 @@ function renderPresidentePayments(){
 }
 
 
+
+function miniBars(rec, gas, disp){
+  // returns 3 vertical bars (Rec/Gas/Disp) normalized by max abs
+  const r = Number(rec||0), g = Number(gas||0), d = Number(disp||0);
+  const mx = Math.max(1, Math.abs(r), Math.abs(g), Math.abs(d));
+  const hr = Math.round((Math.abs(r)/mx)*44)+6;
+  const hg = Math.round((Math.abs(g)/mx)*44)+6;
+  const hd = Math.round((Math.abs(d)/mx)*44)+6;
+
+  const colR = "#22c55e";
+  const colG = "#f59e0b";
+  const colD = (d>=0) ? "#64748b" : "#ef4444";
+
+  return `
+    <div style="display:flex;gap:6px;align-items:flex-end;height:60px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:10px;height:${hr}px;border-radius:6px;background:${colR};"></div>
+        <div class="muted" style="font-size:10px;font-weight:900;">Rec</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:10px;height:${hg}px;border-radius:6px;background:${colG};"></div>
+        <div class="muted" style="font-size:10px;font-weight:900;">Gas</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <div style="width:10px;height:${hd}px;border-radius:6px;background:${colD};"></div>
+        <div class="muted" style="font-size:10px;font-weight:900;">Disp</div>
+      </div>
+    </div>
+  `;
+}
+
 /* ---------- Rendiciones UI ---------- */
+
 
 
 function renderExpensesTree(list, role){
@@ -2258,12 +2290,32 @@ function renderExpensesTree(list, role){
 
   return parents.map(p=>{
     const kids = (byParent[p.id]||[]).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));
+
+    const kidsSum = kids.reduce((a,b)=>a+Number(b.amount||0),0);
+    const base = Number(p.amount||0);
+    const total = base + kidsSum;
+
+    // Render parent row, but with total amount shown, and a breakdown hint if has kids
+    const p2 = { ...p, amount: total };
+    const breakdown = kids.length
+      ? `<div class="muted" style="margin-top:6px;font-size:12px;">Total incluye ${kids.length} sub ítem(s) · Base ${formatCLP(base)} + Sub ${formatCLP(kidsSum)}</div>`
+      : ``;
+
     const kidsHtml = kids.length
       ? `<div style="margin-left:12px;border-left:3px solid rgba(100,116,139,.2);padding-left:10px;">${kids.map(k=>rendicionRow(k, role)).join("")}</div>`
       : ``;
-    return rendicionRow(p, role) + kidsHtml;
+
+    // Inject breakdown right after parent row content by appending inside same container
+    return `
+      <div>
+        ${rendicionRow(p2, role)}
+        ${breakdown}
+        ${kidsHtml}
+      </div>
+    `;
   }).join("");
 }
+
 function rendicionRow(e, role){
   const hasAtt = e.attachments && e.attachments.length;
   const attBtn = hasAtt ? `<button class="btn ghost" onclick="openAttachment('${e.attachments[0].dataUrl}')">Ver boleta</button>` : `<span class="muted">Sin boleta</span>`;
@@ -2302,7 +2354,7 @@ function renderRendiciones(role){
   const generalHtml = `
     <div class="card" style="margin-top:12px;">
       <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div style="font-weight:950;">Gastos generales</div>
+        <div style="font-weight:950;">Gastos generales del curso</div>
         ${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar</button>` : ``}
       </div>
       ${general.length ? renderExpensesTree(general, role) : `<div class="muted" style="padding-top:10px;">Sin gastos generales.</div>`}
@@ -2364,7 +2416,7 @@ function renderRendicionesVertical(role){
       <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${genOpenKey}')">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="font-size:20px;">🧾</div>
-          <div style="font-weight:950;font-size:17px;">Gastos generales</div>
+          <div style="font-weight:950;font-size:17px;">Gastos generales del curso</div>
         </div>
         <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <span class="tag">${formatCLP(sumExpenses(general))}</span>
@@ -2392,28 +2444,50 @@ function renderRendicionesVertical(role){
     const key = `rend_${t.id}`;
     const open = isSectionOpen(key);
 
+    const desc = `${t.type === "monthly" ? "Pago mensual" : "Pago único"}${(t.mandatoryParticipation === false) ? " · No obligatoria" : " · Obligatoria"}`;
+
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
         <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
+
         <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleSectionOpen('${key}')">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-size:20px;">${icon}</div>
-            <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
-          </div>
-          <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            ${range ? `<span>${range}</span>` : ``}
-            <span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>
-            <span class="tag">Rec ${formatCLP(colC)}</span>
-            <span class="tag">Gas ${formatCLP(spentC)}</span>
-            <span class="tag">Disp ${formatCLP(availC)}</span>
-            <span class="tag">${open ? "▲" : "▼"}</span>
-          </div>
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div style="min-width:0;">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div style="font-size:20px;">${icon}</div>
+                <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
+              </div>
+              <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                ${range ? `<span>${range}</span>` : ``}
+                <span class="tag" style="background:rgba(0,0,0,.04);color:${status.color};border:1px solid rgba(0,0,0,.06);">${status.label}</span>
+                <span class="muted" style="font-weight:800;">${desc}</span>
+                <span class="tag">${open ? "▲" : "▼"}</span>
+              </div>
+
+              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+                <div class="tag ok">Recaudado ${formatCLP(colC)}</div>
+                <div class="tag warn">Gastado ${formatCLP(spentC)}</div>
+                <div class="tag ${availC<0?'danger':''}">Disponible ${formatCLP(availC)}</div>
+              </div>
+            </div>
+
+            
+<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+  ${miniBars(colC, spentC, availC)}
+  ${(role==="tesorero"||role==="presidente")
+    ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}', '')">+ Agregar gasto</button>`
+    : ``}
+</div>
+</div>
         </button>
-        ${(role==="tesorero"||role==="presidente") ? `<div style="padding:0 12px 12px;"><button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Agregar gasto</button></div>` : `<div style="padding:0 12px 12px;"></div>`}
+
+        
+
         ${open ? `<div style="padding:0 12px 12px;">${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}</div>` : ``}
       </div>
     `;
   }).join("");
+
 
   return summary + generalCard + campCards;
 }
