@@ -1458,6 +1458,116 @@ function renderPayFilters(){
   `;
 }
 
+
+/* ---------- Informes (Apoderado) ---------- */
+const KEY_SEEN_REPORTS = "cursapp_seen_reports_v1";
+
+function loadSeenReports(){
+  try { return JSON.parse(localStorage.getItem(KEY_SEEN_REPORTS) || "[]"); } catch(e){ return []; }
+}
+function saveSeenReports(arr){
+  localStorage.setItem(KEY_SEEN_REPORTS, JSON.stringify(arr || []));
+}
+
+function apFindNewReport(){
+  // Definición MVP: hay informe cuando una campaña está cerrada y tiene al menos 1 gasto asociado
+  const seen = new Set(loadSeenReports());
+  const tasks = loadTasks().slice();
+  // ordenar por más reciente
+  tasks.sort((a,b)=>String(b.closedAt||b.createdAt||"").localeCompare(String(a.closedAt||a.createdAt||"")));
+  for(const t of tasks){
+    if(!isTaskClosed(t)) continue;
+    const exp = (typeof expensesForCampaign === "function") ? expensesForCampaign(t.id) : [];
+    if(!exp || !exp.length) continue;
+    if(seen.has(t.id)) continue;
+    return t;
+  }
+  return null;
+}
+
+function apMarkReportSeen(taskId){
+  const seen = loadSeenReports();
+  if(!seen.includes(taskId)) seen.unshift(taskId);
+  saveSeenReports(seen.slice(0,50));
+}
+
+function apReportSubtitle(task){
+  if(!task || !task.dueDate) return "";
+  try{
+    const d = new Date(task.dueDate);
+    if(isNaN(d.getTime())) return "";
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const yyyy = d.getFullYear();
+    return `${mm}/${yyyy}`;
+  }catch(e){ return ""; }
+}
+
+function openApoderadoReport(taskId){
+  const t = findTaskById(taskId);
+  if(!t) return;
+
+  apMarkReportSeen(taskId);
+
+  const exp = expensesForCampaign(taskId) || [];
+  const spent = sumExpenses(exp);
+  const collected = loadPayments().filter(p=>p.status==="paid" && p.fromTaskId===taskId).reduce((a,b)=>a+Number(b.amount||0),0);
+  const avail = collected - spent;
+
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Informe de rendición</div>
+            <div class="muted">${cleanConcept(t.title)} · ${apReportSubtitle(t)}</div>
+          </div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="tag ok">Recaudado ${formatCLP(collected)}</div>
+          <div class="tag warn">Gastado ${formatCLP(spent)}</div>
+          <div class="tag ${avail<0?'danger':''}">Disponible ${formatCLP(avail)}</div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="muted" style="font-weight:900;">Gastos</div>
+          <div class="muted" style="margin-top:6px;">Resumen visible (MVP). PDF/Excel se habilitará desde directiva.</div>
+          <div style="margin-top:8px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);padding:10px 12px;">
+            ${renderExpensesTree(exp, "apoderado")}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderApoderadoReportBanner(){
+  const task = apFindNewReport();
+  if(!task) return "";
+
+  const sub = apReportSubtitle(task);
+  const title = cleanConcept(task.title);
+
+  return `
+    <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.08);">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div style="min-width:240px;">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <div style="font-size:18px;">📄</div>
+            <div style="font-weight:950;">Informe de rendición disponible</div>
+          </div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">Campaña: ${title}${sub ? ` · ${sub}` : ``}</div>
+        </div>
+        <button class="btn primary" onclick="openApoderadoReport('${task.id}')">Ver informe</button>
+      </div>
+    </div>
+  `;
+}
+
 /* ---------- views ---------- */
 
 
@@ -1725,7 +1835,8 @@ if(tab === "home"){
       `;
     }
 
-    const body = `
+    const body = `${renderApoderadoReportBanner()}
+      
       ${summary}
       ${urgent}
       ${tabs}
