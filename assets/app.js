@@ -566,6 +566,129 @@ function topPendingList(limit=5){
 /* ---------- payments list ---------- */
 
 
+// ---------- Unified campaign list (vertical) ----------
+function groupPaymentsByTask(payments){
+  const groups = {};
+  payments.forEach(p=>{
+    const tid = p.fromTaskId || "no_task";
+    groups[tid] = groups[tid] || [];
+    groups[tid].push(p);
+  });
+  Object.keys(groups).forEach(k=>groups[k].sort(comparePayments));
+  return groups;
+}
+
+function renderCampaignPaymentsRows(payments, role, task){
+  if(role === "apoderado"){
+    return payments.map(p=>{
+      const paid = p.status === "paid";
+      const opted = p.status === "opted_out";
+      const statusText = paid ? "Pagado" : (opted ? "No participó" : "Pendiente");
+
+      let action = `<span class="muted">—</span>`;
+      const receipt = getReceiptByPaymentId(p.id);
+      if(!paid && !opted){
+        const optBtn = (typeof canOptOut === "function" && canOptOut("apoderado", p))
+          ? `<button class="btn ghost" style="padding:8px 10px;border-radius:12px;" onclick="optOutPayment('${p.id}')">No participé</button>`
+          : ``;
+        action = `
+          <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            ${optBtn}
+            <button class="btn primary" onclick="openPay('${p.id}')">Pagar</button>
+          </div>
+        `;
+      } else if(paid && receipt){
+        action = `<button class="btn ghost" onclick="openReceipt('${p.id}')">Comprobante</button>`;
+      }
+
+      let dueText = "";
+      let dueColor = "#22c55e";
+      if(p.dueDate){
+        const d = daysTo(p.dueDate);
+        if(d < 0){ dueText="Vencida"; dueColor="#ef4444"; }
+        else if(d === 0){ dueText="Vence hoy"; dueColor="#f59e0b"; }
+        else if(d <= 3){ dueText=`Quedan ${d} días`; dueColor="#f59e0b"; }
+        else { dueText=`Quedan ${d} días`; dueColor="#22c55e"; }
+      }
+
+      return `
+        <div style="padding:10px 12px;border-top:1px solid rgba(229,231,235,.6);">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+            <div style="min-width:0;">
+              <div style="font-weight:900;">${p.alumno || "Alumno"}</div>
+              <div class="muted" style="margin-top:2px;">Estado: ${statusText}</div>
+            </div>
+            <div style="text-align:right;min-width:150px;">${action}</div>
+          </div>
+          <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;">
+            <div class="muted" style="font-weight:700;font-size:13px;">${task ? taskTypeLabel(task) : "Pago"}</div>
+            <div style="font-weight:900;font-size:13px;color:${dueColor};">${dueText}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  return payments.map(p=>`<div style="padding:0 12px;">${paymentRow(role, p)}</div>`).join("");
+}
+
+function renderCampaignCard(task, payments, role){
+  const title = task ? cleanConcept(task.title) : "Otros (sin campaña)";
+  const icon = campaignIcon(task, title);
+  const accent = campaignAccent(task);
+  const status = task ? campaignStatusForAp(task) : {label:"", color:"#64748b"};
+  const start = task ? fmtDM(task.startDate) : "";
+  const end = task ? fmtDM(task.dueDate) : "";
+  const range = (start && end) ? `${start} → ${end}` : "";
+
+  const paidCount = payments.filter(p=>p.status==="paid").length;
+  const totalCount = payments.length;
+
+  const tid = task ? task.id : "no_task";
+  const open = isTaskOpen(tid);
+
+  return `
+    <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:${accent};"></div>
+      <button class="btn ghost" style="width:100%;text-align:left;padding-left:12px;display:block;" onclick="toggleTaskOpen('${tid}')">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="font-size:20px;">${icon}</div>
+          <div style="font-weight:950;font-size:17px;min-width:0;">${title}</div>
+        </div>
+        <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          ${range ? `<span>${range}</span>` : ``}
+          ${task ? `<span style="font-weight:900;color:${status.color};">${status.label}</span>` : ``}
+          <span class="tag">${paidCount}/${totalCount} pagados</span>
+          <span class="tag">${open ? "▲" : "▼"}</span>
+        </div>
+      </button>
+      ${open ? `<div style="margin-top:6px;">${renderCampaignPaymentsRows(payments, role, task)}</div>` : ``}
+    </div>
+  `;
+}
+
+function renderPaymentsByCampaign(role){
+  const all = loadPayments();
+  const visible = isDirectiva(role) ? all : all.filter(p=>p.apoderadoRole === "apoderado");
+  const groups = groupPaymentsByTask(visible);
+  const tasks = loadTasks().slice();
+
+  let html = "";
+  tasks.forEach(t=>{
+    if(groups[t.id] && groups[t.id].length){
+      html += renderCampaignCard(t, groups[t.id], role);
+    }
+  });
+
+  if(groups["no_task"] && groups["no_task"].length){
+    html += renderCampaignCard(null, groups["no_task"], role);
+  }
+
+  return html || `<div class="card"><div class="muted">Sin pagos.</div></div>`;
+}
+
+
+
 function setCampaignFilter(val){
   localStorage.setItem("cursapp_campaign_filter", val);
   goTab("payments");
@@ -1592,7 +1715,7 @@ if(tab === "home"){
 }
 const body =
     tab==="payments"
-      ? `${renderPaymentsList("apoderado")}`
+      ? `${renderPaymentsByCampaign("apoderado")}`
       : `${renderRendiciones("apoderado")}`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
@@ -1677,7 +1800,7 @@ function renderTesorero(tab){
 
   const body =
     tab==="payments"
-      ? `${renderTesoreroPayments()}`
+      ? `${renderPaymentsByCampaign("tesorero")}`
       : `${renderRendiciones("tesorero")}`;
 
   viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
@@ -1738,7 +1861,7 @@ function renderPresidente(tab){
 
   const body =
     tab==="payments"
-      ? `${renderPresidentePayments()}`
+      ? `${renderPaymentsByCampaign("presidente")}`
       : `${renderRendiciones("presidente")}`;
 
   viewShell("Presidente","Administración del curso", body, tab, "presidente");
