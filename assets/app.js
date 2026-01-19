@@ -1834,16 +1834,15 @@ if(tab === "home"){
     }
 
     let body = `
+      ${renderApoderadoMonthlyReportBanner()}
+
       ${summary}
       ${urgent}
       ${tabs}
       ${tabBody}
     `;
 
-    
-    // Banner informe mensual (apoderado)
-    body = `${renderApoderadoMonthlyReportBanner()}` + body;
-viewShell("Apoderado","", body, tab, "apoderado");
+    viewShell("Apoderado","", body, tab, "apoderado");
     return;
 }
 const body =
