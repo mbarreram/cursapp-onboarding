@@ -1516,6 +1516,7 @@ function countUnseenMonthlyReports(){
 }
 
 
+
 function openMonthlyReport(period){
   const rep = loadMonthlyReports().find(r=>r.period===period);
   if(!rep) return;
@@ -1525,56 +1526,113 @@ function openMonthlyReport(period){
   const root = document.getElementById("modalRoot");
   if(!root) return;
 
-  const rows = (rep.perCampaign || []).map(c=>`
-    <div style="padding:12px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;background:#fff;margin-top:10px;">
-      <div style="font-weight:950;font-size:16px;">${cleanConcept(c.title)}</div>
-      <div class="muted" style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
-        <span class="tag ok">Recaudado ${formatCLP(c.recaudado)}</span>
-        <span class="tag warn">Adeudado ${formatCLP(c.adeudado)}</span>
-        <span class="tag warn">Gastado ${formatCLP(c.gastado)}</span>
-        <span class="tag ${c.disponible<0?'danger':''}">Saldo ${formatCLP(c.disponible)}</span>
+  const campaigns = (rep.perCampaign || []);
+  const rows = campaigns.map(c=>`
+    <div style="padding:12px 12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;background:#fff;margin-top:10px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+        <div style="font-weight:950;font-size:16px;">📌 ${cleanConcept(c.title)}</div>
+        <div class="tag" style="background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.06);">Cerrada</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="tag ok">💰 Recaudado ${formatCLP(c.recaudado)}</span>
+        <span class="tag warn">⏳ Adeudado ${formatCLP(c.adeudado)}</span>
+        <span class="tag warn">🧾 Gastado ${formatCLP(c.gastado)}</span>
+        <span class="tag ${c.disponible<0?'danger':''}">🏁 Saldo ${formatCLP(c.disponible)}</span>
+      </div>
+      <div class="muted" style="margin-top:8px;">
+        ${c.adeudado>0 ? "Aún existen aportes pendientes del curso para esta campaña." : "Sin aportes pendientes."}
       </div>
     </div>
   `).join("") || `<div class="muted" style="margin-top:10px;">Sin campañas cerradas en el período.</div>`;
 
+  const header = `
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="font-size:20px;">📊</div>
+          <div style="font-weight:950;font-size:18px;">Informe financiero del curso</div>
+          <span class="tag" style="background:rgba(91,92,226,.10);border:1px solid rgba(91,92,226,.22);color:#3b3cc7;">${rep.period}</span>
+        </div>
+        <div class="muted" style="margin-top:6px;">Publicado por la directiva · Snapshot acumulado al cierre del mes</div>
+      </div>
+      <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+    </div>
+  `;
+
+  const important = `
+    <div style="margin-top:12px;padding:12px 12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;background:rgba(248,250,252,1);">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="font-size:18px;">ℹ️</div>
+        <div style="font-weight:950;">Importante</div>
+      </div>
+      <div class="muted" style="margin-top:6px;">
+        Los montos de este informe corresponden al <b>total del curso</b> y <b>no representan deudas personales</b>.
+        Para ver tus pagos individuales, revisa la sección <b>Pagos</b>.
+      </div>
+    </div>
+  `;
+
+  const kpisFinancial = `
+    <div style="margin-top:14px;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="font-size:18px;">💼</div>
+        <div style="font-weight:950;">Resumen financiero del curso</div>
+      </div>
+      <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="card" style="padding:12px;">
+          <div class="muted" style="font-weight:900;">💰 Recaudado</div>
+          <div style="font-weight:950;font-size:18px;margin-top:6px;">${formatCLP(rep.recaudadoCurso || 0)}</div>
+        </div>
+        <div class="card" style="padding:12px;">
+          <div class="muted" style="font-weight:900;">⏳ Adeudado (curso)</div>
+          <div style="font-weight:950;font-size:18px;margin-top:6px;">${formatCLP(rep.adeudadoCurso || 0)}</div>
+        </div>
+        <div class="card" style="padding:12px;">
+          <div class="muted" style="font-weight:900;">🧾 Gastado / rendido</div>
+          <div style="font-weight:950;font-size:18px;margin-top:6px;">${formatCLP(rep.gastadoCurso || 0)}</div>
+        </div>
+        <div class="card" style="padding:12px;">
+          <div class="muted" style="font-weight:900;">🏁 Saldo del curso</div>
+          <div style="font-weight:950;font-size:18px;margin-top:6px;">${formatCLP(rep.disponibleCurso || 0)}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="tag">📌 Campañas cerradas ${rep.closedCampaignsCount || 0}</span>
+        <span class="tag">👥 Deudores (sin nombres) ${rep.deudoresTotales || 0}</span>
+      </div>
+    </div>
+  `;
+
+  const campaignsSection = `
+    <div style="margin-top:16px;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="font-size:18px;">📌</div>
+        <div style="font-weight:950;">Campañas cerradas incluidas</div>
+      </div>
+      <div class="muted" style="margin-top:6px;">Recaudación, gastos rendidos y saldo por campaña (acumulado).</div>
+      <div style="margin-top:8px;">${rows}</div>
+    </div>
+  `;
+
+  const footer = `
+    <div class="muted" style="margin-top:14px;font-size:12px;">
+      Emitido: ${new Date(rep.generatedAt || Date.now()).toLocaleString("es-CL")} · Cursapp (demo)
+    </div>
+  `;
+
   root.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-      <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:950;font-size:18px;">Informe financiero del curso · ${rep.period}</div>
-            <div class="muted" style="margin-top:4px;">Publicado por la directiva · Snapshot acumulado al cierre del mes</div>
-          </div>
-          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
-        </div>
-
-        <div style="margin-top:12px;padding:10px 12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;background:rgba(248,250,252,1);">
-          <div style="font-weight:950;">ℹ️ Importante</div>
-          <div class="muted" style="margin-top:6px;">
-            Los montos de este informe corresponden al <b>total del curso</b> y <b>no representan deudas personales</b>.
-            Para ver tus pagos individuales, revisa la sección <b>Pagos</b>.
-          </div>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div class="tag">Campañas cerradas ${rep.closedCampaignsCount || 0}</div>
-          <div class="tag ok">Recaudado ${formatCLP(rep.recaudadoCurso || 0)}</div>
-          <div class="tag warn">Adeudado curso ${formatCLP(rep.adeudadoCurso || 0)}</div>
-          <div class="tag warn">Gastado ${formatCLP(rep.gastadoCurso || 0)}</div>
-          <div class="tag ${(rep.disponibleCurso||0)<0?'danger':''}">Saldo ${formatCLP(rep.disponibleCurso || 0)}</div>
-          <div class="tag">Deudores ${rep.deudoresTotales || 0}</div>
-        </div>
-
-        <div style="margin-top:14px;">
-          <div style="font-weight:950;">Resumen por campaña (cerradas)</div>
-          <div style="margin-top:8px;background:rgba(248,250,252,1);border:1px solid rgba(229,231,235,.7);border-radius:16px;padding:10px 12px;">
-            ${rows}
-          </div>
-        </div>
+      <div class="card" style="width:min(860px,100%);margin-bottom:12px;">
+        ${header}
+        ${important}
+        ${kpisFinancial}
+        ${campaignsSection}
+        ${footer}
       </div>
     </div>
   `;
 }
+
 
 
 
