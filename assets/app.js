@@ -416,7 +416,7 @@ function tabbar(active, role){
       </button>` : ``}
 
       <button class="tab ${active==="withdraws"?"active":""}" onclick="goTab('withdraws')">
-        <span class="ico">🏦</span><span>Retiros</span>
+        <span class="ico">🧾</span><span>Rendiciones</span>
       </button>
     </nav>
   `;
