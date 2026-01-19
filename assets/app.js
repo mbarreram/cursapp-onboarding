@@ -1087,34 +1087,146 @@ function renderPayFilters(){
 }
 
 /* ---------- views ---------- */
-function renderApoderado(tab){
-  if(tab === "home"){
-    const { count, amount } = pendingMy();
-    const recaudadoCurso = loadPayments().filter(p=>p.status==="paid").reduce((a,b)=>a+Number(b.amount||0),0);
-    const students = listMyStudents();
 
-    const body = `
-      ${kpiCard("⏳","Cuotas pendientes", `${formatCLPNoSign(amount)} · ${count} cuotas pendientes`)}
-      <button class="btn primary" style="width:100%; margin-top:10px;" onclick="goTab('payments')">Ver pagos</button>
 
-      <div style="margin-top:12px;">
-        ${kpiCard("💰","Recaudación del curso", formatCLP(recaudadoCurso))}
+// ---------- Apoderado dashboard helpers ----------
+const KEY_AP_DASH_TAB = "cursapp_ap_dash_tab";
+const KEY_AP_HISTORY_OPEN = "cursapp_ap_history_open";
+
+function apDashTabGet(){ return localStorage.getItem(KEY_AP_DASH_TAB) || "pending"; }
+function apDashTabSet(v){ localStorage.setItem(KEY_AP_DASH_TAB, v); goTab("home"); }
+
+function apHistoryOpen(){ return (localStorage.getItem(KEY_AP_HISTORY_OPEN) || "0") === "1"; }
+function apHistoryToggle(){
+  localStorage.setItem(KEY_AP_HISTORY_OPEN, apHistoryOpen() ? "0" : "1");
+  goTab("home");
+}
+
+function apMyVisiblePayments(){
+  return loadPayments().filter(p => p.apoderadoRole === "apoderado");
+}
+
+function apIsPending(p){
+  return p.status !== "paid" && p.status !== "opted_out";
+}
+
+function apUrgent(p){
+  if(!apIsPending(p)) return false;
+  if(!p.dueDate) return false;
+  const d = daysTo(p.dueDate);
+  return d <= 0; // vencidos o vence hoy
+}
+
+function apUpcoming(p){
+  if(!apIsPending(p)) return false;
+  if(!p.dueDate) return true; // sin fecha => próximo/informativo
+  const d = daysTo(p.dueDate);
+  return d >= 1 && d <= 3; // “Próximo” = 3 días para vencer
+}
+
+function apGroupByCampaign(list){
+  const groups = {};
+  list.forEach(p=>{
+    const k = cleanConcept(p.concept);
+    groups[k] = groups[k] || [];
+    groups[k].push(p);
+  });
+  Object.keys(groups).forEach(k=>groups[k].sort(comparePayments));
+  return groups;
+}
+
+function apSection(title, inner){
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;margin-bottom:8px;">${title}</div>
+      ${inner}
+    </div>
+  `;
+}
+
+function apTabs(){
+  const t = apDashTabGet();
+  const btn = (id,label) => `<button class="btn ghost" style="padding:10px 12px;border-radius:14px; ${t===id?'border:2px solid rgba(91,92,226,.45);':''}" onclick="apDashTabSet('${id}')">${label}</button>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">${btn("pending","Pendientes")}${btn("upcoming","Próximos")}${btn("history","Historial")}</div>`;
+}
+
+function apRenderListGrouped(list){
+  if(!list.length) return `<div class="muted">Sin elementos.</div>`;
+  const groups = apGroupByCampaign(list);
+  const keys = Object.keys(groups).sort((a,b)=>String(a).localeCompare(String(b)));
+  return keys.map(k=>{
+    const rows = groups[k].map(p=>paymentRow("apoderado", p)).join("");
+    return `
+      <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);">
+        <div style="font-weight:900;margin-bottom:6px;">${k}</div>
+        ${rows}
       </div>
+    `;
+  }).join("");
+}
 
-      <div class="card" style="margin-top:12px;">
-        <div class="kpiHead">
-          <span class="kpiIcon">🎓</span>
-          <span class="kpiLabel">Mis estudiantes</span>
-        </div>
-        ${students.map(n=>`<div style="font-weight:800; padding:10px 0; border-top:1px solid rgba(229,231,235,.6);">${n}</div>`).join("")}
+function renderApoderado(tab){
+  
+if(tab === "home"){
+    const mine = apMyVisiblePayments();
+    const pendingList = mine.filter(apIsPending).slice().sort(comparePayments);
+    const pendingAmt = pendingList.reduce((a,b)=>a+Number(b.amount||0),0);
+
+    const urgentList = mine.filter(apUrgent).slice().sort(comparePayments);
+    const urgentTop = urgentList.slice(0,3);
+
+    const upcomingList = mine.filter(apUpcoming).slice().sort(comparePayments);
+    const historyList = mine.filter(p => p.status === "paid" || p.status === "opted_out").slice().sort(comparePayments);
+
+    const summaryText = pendingList.length
+      ? `Tienes ${pendingList.length} pagos pendientes · Total ${formatCLP(pendingAmt)}`
+      : `No tienes pagos pendientes 🎉`;
+
+    const summary = `
+      <div class="card">
+        <div style="font-weight:950;font-size:18px;">${summaryText}</div>
+        <div class="muted" style="margin-top:6px;">Próximo = pagos que vencen en 1 a 3 días.</div>
       </div>
     `;
 
-    viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
-    return;
-  }
+    const urgent = urgentTop.length ? apSection("Urgente", urgentTop.map(p=>paymentRow("apoderado", p)).join("")) : ``;
 
-  const body =
+    const tabs = apTabs();
+
+    let tabBody = "";
+    const t = apDashTabGet();
+
+    if(t === "pending"){
+      tabBody = apSection("Pendientes", apRenderListGrouped(pendingList));
+    } else if(t === "upcoming"){
+      tabBody = apSection("Próximos", apRenderListGrouped(upcomingList));
+    } else {
+      const open = apHistoryOpen();
+      const head = `
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <div class="muted" style="font-weight:950;">Historial (${historyList.length})</div>
+          <button class="btn ghost" onclick="apHistoryToggle()">${open ? "Ocultar" : "Ver"}</button>
+        </div>
+      `;
+      tabBody = `
+        <div class="card" style="margin-top:12px;">
+          ${head}
+          ${open ? `<div style="margin-top:10px;">${apRenderListGrouped(historyList)}</div>` : `<div class="muted" style="margin-top:10px;">Colapsado</div>`}
+        </div>
+      `;
+    }
+
+    const body = `
+      ${summary}
+      ${urgent}
+      ${tabs}
+      ${tabBody}
+    `;
+
+    viewShell("Apoderado","", body, tab, "apoderado");
+    return;
+}
+const body =
     tab==="payments"
       ? `${renderPaymentsList("apoderado")}`
       : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
