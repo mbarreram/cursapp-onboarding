@@ -4,6 +4,7 @@ const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
 const KEY_RECEIPTS = "cursapp_receipts_v1";
 const KEY_TASKS = "cursapp_tasks_v1";
+const KEY_EXPENSES = "cursapp_expenses_v1";
 
 function resetDatosPrueba() {
   if (!confirm("⚠️ Esto eliminará TODOS los datos de prueba. ¿Continuar?")) return;
@@ -133,6 +134,52 @@ function renderHeader(){
 }
 
 /* ---------- storage ---------- */
+
+function loadExpenses(){ return JSON.parse(localStorage.getItem(KEY_EXPENSES) || "[]"); }
+function saveExpenses(e){ localStorage.setItem(KEY_EXPENSES, JSON.stringify(e)); }
+
+function ensureSeedExpenses(){
+  const existing = loadExpenses();
+  if(existing && existing.length) return;
+
+  const tasks = loadTasks();
+  const any = tasks && tasks.length ? tasks[0] : null;
+
+  const seed = [
+    {
+      id: uid("exp"),
+      scope: "general",
+      campaignId: null,
+      title: "Compra de materiales urgentes",
+      category: "Materiales",
+      vendor: "Librería (Demo)",
+      date: todayISO(),
+      amount: 8500,
+      note: "Gasto general del curso (demo)",
+      attachments: [],
+      createdBy: "tesorero",
+      createdAt: isoDate()
+    }
+  ];
+  if(any){
+    seed.push({
+      id: uid("exp"),
+      scope: "campaign",
+      campaignId: any.id,
+      title: "Pago transporte",
+      category: "Transporte",
+      vendor: "Bus (Demo)",
+      date: todayISO(),
+      amount: 30000,
+      note: "Asociado a campaña (demo)",
+      attachments: [],
+      createdBy: "tesorero",
+      createdAt: isoDate()
+    });
+  }
+  saveExpenses(seed);
+}
+
 function loadPayments(){ return JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]"); }
 function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p)); }
 
@@ -291,6 +338,14 @@ function getSelectedTask(){ return localStorage.getItem("cursapp_selected_task")
 function clearSelectedTask(){ localStorage.removeItem("cursapp_selected_task"); }
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
 function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
+
+function sumExpenses(list){ return (list||[]).reduce((a,b)=>a+Number(b.amount||0),0); }
+function expensesByScope(scope){ return loadExpenses().filter(e=>e.scope===scope); }
+function expensesForCampaign(taskId){ return loadExpenses().filter(e=>e.scope==='campaign' && e.campaignId===taskId); }
+function courseCollected(){ return loadPayments().filter(p=>p.status==='paid').reduce((a,b)=>a+Number(b.amount||0),0); }
+function courseSpent(){ return sumExpenses(loadExpenses()); }
+function courseAvailable(){ return courseCollected() - courseSpent(); }
+
 
 function getReceiptByPaymentId(pid){
   return loadReceipts().find(r => r.paymentId === pid) || null;
@@ -784,6 +839,24 @@ function openReconModal(paymentId){
   `;
 }
 
+function openAttachment(dataUrl){
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+          <div style="font-weight:950;font-size:18px;">Boleta / Recibo</div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+        <div style="margin-top:12px;">
+          <img src="${dataUrl}" style="width:100%;height:auto;border-radius:14px;border:1px solid rgba(229,231,235,.9);" />
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function closeModal(){
   const root = document.getElementById("modalRoot");
   if(root) root.innerHTML = "";
@@ -885,6 +958,134 @@ function openReceipt(paymentId){
   w.document.open(); w.document.write(html); w.document.close();
 }
 
+
+/* ---------- Rendiciones (Gastos) ---------- */
+function openCreateExpense(scope, campaignId){
+  const user = getUser();
+  if(!user) return;
+  if(!(user.role === "tesorero" || user.role === "presidente")){
+    alert("Solo directiva puede agregar gastos.");
+    return;
+  }
+
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+
+  const titleScope = scope === "general" ? "Gasto general" : "Gasto por campaña";
+  const t = (scope === "campaign" && campaignId) ? findTaskById(campaignId) : null;
+  const campName = t ? ` · ${t.title}` : "";
+
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Agregar ${titleScope}${campName}</div>
+            <div class="muted">Adjunta boleta/recibo para respaldar el gasto.</div>
+          </div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Concepto</label>
+          <input id="exTitle" placeholder="Ej: Compra materiales / Transporte" />
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:800;">Categoría</label>
+            <select id="exCat">
+              <option value="Transporte">Transporte</option>
+              <option value="Materiales">Materiales</option>
+              <option value="Alimentación">Alimentación</option>
+              <option value="Regalos">Regalos</option>
+              <option value="Otros">Otros</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:800;">Proveedor</label>
+            <input id="exVendor" placeholder="Ej: Librería / Bus" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:800;">Fecha</label>
+            <input id="exDate" type="date" value="${todayISO()}" />
+          </div>
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:800;">Monto</label>
+            <input id="exAmount" inputmode="numeric" placeholder="Ej: 12000" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Nota (opcional)</label>
+          <input id="exNote" placeholder="Ej: Se compró para actividad" />
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:800;">Adjuntar boleta (imagen)</label>
+          <input id="exFile" type="file" accept="image/*" />
+          <div class="muted" style="margin-top:6px;">En el MVP se guarda en el navegador (demo).</div>
+        </div>
+
+        <div class="actions" style="justify-content:flex-end;margin-top:14px;">
+          <button class="btn ghost" onclick="closeModal()">Cancelar</button>
+          <button class="btn primary" onclick="createExpense('${scope}','${campaignId || ""}')">Guardar gasto</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function createExpense(scope, campaignId){
+  const title = (document.getElementById("exTitle")?.value || "").trim();
+  const category = document.getElementById("exCat")?.value || "Otros";
+  const vendor = (document.getElementById("exVendor")?.value || "").trim();
+  const date = document.getElementById("exDate")?.value || todayISO();
+  const amount = Number((document.getElementById("exAmount")?.value || "").trim());
+  const note = (document.getElementById("exNote")?.value || "").trim();
+  const file = document.getElementById("exFile")?.files?.[0] || null;
+
+  if(!title || !amount || amount <= 0){
+    alert("Completa concepto y monto.");
+    return;
+  }
+
+  const user = getUser();
+  const createdBy = user ? user.role : "directiva";
+
+  function finalize(att){
+    const list = loadExpenses();
+    list.unshift({
+      id: uid("exp"),
+      scope,
+      campaignId: (scope === "campaign") ? (campaignId || null) : null,
+      title,
+      category,
+      vendor,
+      date,
+      amount,
+      note,
+      attachments: att ? [att] : [],
+      createdBy,
+      createdAt: isoDate()
+    });
+    saveExpenses(list);
+    closeModal();
+    alert("Gasto guardado ✅");
+    goTab("withdraws");
+  }
+
+  if(file){
+    const reader = new FileReader();
+    reader.onload = () => finalize({ id: uid("att"), type: file.type || "image/*", filename: file.name || "boleta.jpg", dataUrl: reader.result });
+    reader.readAsDataURL(file);
+  } else {
+    finalize(null);
+  }
+}
 /* ---------- Crear cobro (Presidente) ---------- */
 function openCreateCobro(){
   const root = document.getElementById("modalRoot");
@@ -948,6 +1149,24 @@ function openCreateCobro(){
   `;
 }
 
+function openAttachment(dataUrl){
+  const root = document.getElementById("modalRoot");
+  if(!root) return;
+  root.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+          <div style="font-weight:950;font-size:18px;">Boleta / Recibo</div>
+          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
+        </div>
+        <div style="margin-top:12px;">
+          <img src="${dataUrl}" style="width:100%;height:auto;border-radius:14px;border:1px solid rgba(229,231,235,.9);" />
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function closeModal(){
   const root = document.getElementById("modalRoot");
   if(root) root.innerHTML = "";
@@ -992,6 +1211,14 @@ function createCobro(){
 
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
 function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
+
+function sumExpenses(list){ return (list||[]).reduce((a,b)=>a+Number(b.amount||0),0); }
+function expensesByScope(scope){ return loadExpenses().filter(e=>e.scope===scope); }
+function expensesForCampaign(taskId){ return loadExpenses().filter(e=>e.scope==='campaign' && e.campaignId===taskId); }
+function courseCollected(){ return loadPayments().filter(p=>p.status==='paid').reduce((a,b)=>a+Number(b.amount||0),0); }
+function courseSpent(){ return sumExpenses(loadExpenses()); }
+function courseAvailable(){ return courseCollected() - courseSpent(); }
+
 
 function generatePaymentsForTask(task){
   let payments = loadPayments();
@@ -1366,7 +1593,7 @@ if(tab === "home"){
 const body =
     tab==="payments"
       ? `${renderPaymentsList("apoderado")}`
-      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Apoderado: lectura/votación (demo).</div></div>`;
+      : `${renderRendiciones("apoderado")}`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
 }
@@ -1451,7 +1678,7 @@ function renderTesorero(tab){
   const body =
     tab==="payments"
       ? `${renderTesoreroPayments()}`
-      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Tesorero: gestiona retiros (demo).</div></div>`;
+      : `${renderRendiciones("tesorero")}`;
 
   viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
 }
@@ -1512,7 +1739,7 @@ function renderPresidente(tab){
   const body =
     tab==="payments"
       ? `${renderPresidentePayments()}`
-      : `<div class="card"><div class="kpiLabel">Retiros</div><div class="muted">Presidente: cierra votación (demo).</div></div>`;
+      : `${renderRendiciones("presidente")}`;
 
   viewShell("Presidente","Administración del curso", body, tab, "presidente");
 }
@@ -1870,6 +2097,74 @@ function renderPresidentePayments(){
   return header + sections;
 }
 
+
+/* ---------- Rendiciones UI ---------- */
+function rendicionRow(e){
+  const hasAtt = e.attachments && e.attachments.length;
+  const attBtn = hasAtt ? `<button class="btn ghost" onclick="openAttachment('${e.attachments[0].dataUrl}')">Ver boleta</button>` : `<span class="muted">Sin boleta</span>`;
+  const scopeTag = e.scope === "general" ? `<span class="tag">General</span>` : `<span class="tag">Campaña</span>`;
+  const vendor = e.vendor ? ` · ${e.vendor}` : ``;
+  return `
+    <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+      <div style="min-width:0;">
+        <div style="font-weight:900;">${e.title} ${scopeTag}</div>
+        <div class="muted">${e.category}${vendor} · ${fmtDM(e.date)} · ${formatCLP(e.amount)}</div>
+        ${e.note ? `<div class="muted" style="margin-top:6px;">${e.note}</div>` : ``}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
+        ${attBtn}
+      </div>
+    </div>
+  `;
+}
+
+function renderRendiciones(role){
+  const collected = courseCollected();
+  const spent = courseSpent();
+  const avail = courseAvailable();
+
+  const general = expensesByScope("general");
+  const tasks = loadTasks().slice();
+
+  const generalHtml = `
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="font-weight:950;">Gastos generales</div>
+        ${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openCreateExpense('general','')">+ Agregar</button>` : ``}
+      </div>
+      ${general.length ? general.map(rendicionRow).join("") : `<div class="muted" style="padding-top:10px;">Sin gastos generales.</div>`}
+    </div>
+  `;
+
+  const campaignsHtml = tasks.map(t=>{
+    const exp = expensesForCampaign(t.id);
+    const spentC = sumExpenses(exp);
+    const colC = loadPayments().filter(p=>p.status==="paid" && p.fromTaskId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    const availC = colC - spentC;
+
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;">${t.title}</div>
+            <div class="muted">Recaudado ${formatCLP(colC)} · Gastado ${formatCLP(spentC)} · Disponible ${formatCLP(availC)}</div>
+          </div>
+          ${(role==="tesorero"||role==="presidente") ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}')">+ Gasto</button>` : ``}
+        </div>
+        ${exp.length ? exp.map(rendicionRow).join("") : `<div class="muted" style="padding-top:10px;">Sin gastos asociados.</div>`}
+      </div>
+    `;
+  }).join("");
+
+  return `
+    <div class="card">
+      <div style="font-weight:950;font-size:18px;">Rendiciones</div>
+      <div class="muted" style="margin-top:6px;">Recaudado ${formatCLP(collected)} · Gastado ${formatCLP(spent)} · Disponible ${formatCLP(avail)}</div>
+    </div>
+    ${generalHtml}
+    ${campaignsHtml}
+  `;
+}
 /* ---------- router ---------- */
 function renderByRole(role, tab){
   if(role === "apoderado") renderApoderado(tab);
@@ -1892,6 +2187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   ensureSeedPayments();
+  ensureSeedExpenses();
   normalizePaymentIds();
 
   renderHeader();
