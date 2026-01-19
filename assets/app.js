@@ -2244,36 +2244,6 @@ function renderPresidentePayments(){
 
 
 
-function miniBars(rec, gas, disp){
-  // returns 3 vertical bars (Rec/Gas/Disp) normalized by max abs
-  const r = Number(rec||0), g = Number(gas||0), d = Number(disp||0);
-  const mx = Math.max(1, Math.abs(r), Math.abs(g), Math.abs(d));
-  const hr = Math.round((Math.abs(r)/mx)*44)+6;
-  const hg = Math.round((Math.abs(g)/mx)*44)+6;
-  const hd = Math.round((Math.abs(d)/mx)*44)+6;
-
-  const colR = "#22c55e";
-  const colG = "#f59e0b";
-  const colD = (d>=0) ? "#64748b" : "#ef4444";
-
-  return `
-    <div style="display:flex;gap:6px;align-items:flex-end;height:60px;">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <div style="width:10px;height:${hr}px;border-radius:6px;background:${colR};"></div>
-        <div class="muted" style="font-size:10px;font-weight:900;">Rec</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <div style="width:10px;height:${hg}px;border-radius:6px;background:${colG};"></div>
-        <div class="muted" style="font-size:10px;font-weight:900;">Gas</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-        <div style="width:10px;height:${hd}px;border-radius:6px;background:${colD};"></div>
-        <div class="muted" style="font-size:10px;font-weight:900;">Disp</div>
-      </div>
-    </div>
-  `;
-}
-
 /* ---------- Rendiciones UI ---------- */
 
 
@@ -2464,7 +2434,7 @@ function renderRendicionesVertical(role){
                 <span class="tag">${open ? "▲" : "▼"}</span>
               </div>
 
-              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+              <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
                 <div class="tag ok">Recaudado ${formatCLP(colC)}</div>
                 <div class="tag warn">Gastado ${formatCLP(spentC)}</div>
                 <div class="tag ${availC<0?'danger':''}">Disponible ${formatCLP(availC)}</div>
@@ -2472,12 +2442,13 @@ function renderRendicionesVertical(role){
             </div>
 
             
+
 <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
-  ${miniBars(colC, spentC, availC)}
   ${(role==="tesorero"||role==="presidente")
     ? `<button class="btn ghost" onclick="openCreateExpense('campaign','${t.id}', '')">+ Agregar gasto</button>`
     : ``}
 </div>
+
 </div>
         </button>
 
