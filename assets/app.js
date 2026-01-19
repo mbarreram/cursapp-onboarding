@@ -2253,71 +2253,45 @@ function renderPresidentePayments(){
 function expensesMissingBoleta(list){
   return (list||[]).filter(e=>!(e.attachments && e.attachments.length)).length;
 }
+
 function renderExpensesTree(list, role){
-  const parents = (list||[]).filter(x=>!x.parentId);
-  const children = (list||[]).filter(x=>x.parentId);
-  const byParent = {};
-  children.forEach(c=>{
-    byParent[c.parentId] = byParent[c.parentId] || [];
-    byParent[c.parentId].push(c);
+  const items = (list||[]).slice();
+  // Flatten: include parents and children as independent rows
+  items.sort((a,b)=>{
+    const da = String(a.date||"");
+    const db = String(b.date||"");
+    if(da !== db) return db.localeCompare(da); // recent first
+    return String(a.title||"").localeCompare(String(b.title||""));
   });
-  parents.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
-
-  let html = "";
-  parents.forEach(p=>{
-    const kids = (byParent[p.id]||[]).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));
-    const kidsSum = kids.reduce((a,b)=>a+Number(b.amount||0),0);
-    const base = Number(p.amount||0);
-    const total = base + kidsSum;
-
-    const p2 = { ...p, amount: total };
-
-    const breakdown = kids.length
-      ? `<div class="muted" style="margin:6px 0 10px;font-size:12px;">Total: ${formatCLP(total)} · Base ${formatCLP(base)} + Sub ${formatCLP(kidsSum)} (${kids.length})</div>`
-      : ``;
-
-    html += `<div style="padding:0 0 6px;">`;
-    html += rendicionRow(p2, role);
-    html += breakdown;
-
-    if(kids.length){
-      html += `<div style="margin-left:12px;border-left:3px solid rgba(100,116,139,.2);padding-left:10px;">`;
-      kids.forEach(k=>{ html += rendicionRow(k, role); });
-      html += `</div>`;
-    }
-
-    html += `</div>`;
-  });
-
-  return html || `<div class="muted">Sin gastos asociados.</div>`;
+  return items.length ? items.map(e=>rendicionRow(e, role)).join("") : `<div class="muted">Sin rendiciones registradas.</div>`;
 }
+
+
 
 
 function rendicionRow(e, role){
   const hasAtt = e.attachments && e.attachments.length;
   const attBtn = hasAtt ? `<button class="btn ghost" onclick="openAttachment('${e.attachments[0].dataUrl}')">Ver boleta</button>` : `<span class="muted">Sin boleta</span>`;
   const vendor = e.vendor ? ` · ${e.vendor}` : ``;
-
-  const subBtn = (role==="tesorero"||role==="presidente")
-    ? `<button class="btn ghost" onclick="openCreateExpense('${e.scope}','${e.campaignId||""}','${e.id}')">+ Sub ítem</button>`
-    : ``;
+  const note = e.note ? `<div class="muted" style="margin-top:6px;">${e.note}</div>` : ``;
 
   return `
-    <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+    <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
       <div style="min-width:0;">
-        <div style="font-weight:900;">${e.title}</div>
-        <div class="muted" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          ${e.category}${vendor} · <span style="font-weight:900;">${fmtDM(e.date)}</span> · <span style="font-weight:900;">${formatCLP(e.amount)}</span>
+        <div style="font-weight:950;">${e.title}</div>
+        <div class="muted" style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${e.category}${vendor} · <span style="font-weight:900;">${fmtDM(e.date)}</span>
         </div>
-        ${e.note ? `<div class="muted" style="margin-top:6px;">${e.note}</div>` : ``}
+        <div style="margin-top:6px;font-weight:950;">${formatCLP(e.amount)}</div>
+        ${note}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;flex-shrink:0;">
         ${attBtn}
-        ${subBtn}
       </div>
     </div>
   `;
 }
+
 
 
 function renderRendiciones(role){
@@ -2425,7 +2399,7 @@ function renderRendicionesVertical(role){
 
     const nGastos = exp.filter(e=>!e.parentId).length;
     const missing = (typeof expensesMissingBoleta === "function") ? expensesMissingBoleta(exp) : 0;
-    const resumenRend = `Rendición: ${formatCLP(spentC)} · ${nGastos} gasto(s)${missing ? ` · ${missing} sin boleta` : ``}`;
+    const resumenRend = `Rendición: ${formatCLP(spentC)} · ${nGastos} gastos${missing ? ` · ${missing} sin boleta` : ``}`;
 
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
@@ -2437,7 +2411,7 @@ function renderRendicionesVertical(role){
               <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div style="font-size:20px;">${icon}</div>
                 <div style="font-weight:950;font-size:17px;">${cleanConcept(t.title)}</div>
-                <span class="tag" style="background:rgba(91,92,226,.10);border:1px solid rgba(91,92,226,.22);color:#3b3cc7;">Campaña</span>
+                <span class="tag" style="background:rgba(100,116,139,.10);border:1px solid rgba(100,116,139,.20);color:#111827;">Campaña</span>
               </div>
 
               <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -2454,7 +2428,7 @@ function renderRendicionesVertical(role){
               </div>
 
               <div class="muted" style="margin-top:10px;font-weight:900;">
-                🧾 ${resumenRend}
+                ${resumenRend}
               </div>
             </button>
 
@@ -2468,8 +2442,8 @@ function renderRendicionesVertical(role){
           ${open ? `
             <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-                <div style="font-weight:950;">🧾 Rendición</div>
-                <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
+                <div style="font-weight:950;">Rendición</div>
+                <div class="muted" style="font-weight:900;">${nGastos} gastos · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
               </div>
               <div style="margin-top:10px;">
                 ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
