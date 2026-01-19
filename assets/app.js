@@ -4,7 +4,7 @@ const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
 const KEY_RECEIPTS = "cursapp_receipts_v1";
 const KEY_TASKS = "cursapp_tasks_v1";
-const KEY_REPORTS = "cursapp_reports_v1";
+const KEY_MONTHLY_REPORTS = "cursapp_monthly_reports_v1";
 const KEY_EXPENSES = "cursapp_expenses_v1";
 
 function resetDatosPrueba() {
@@ -135,8 +135,8 @@ const menuBtn = document.getElementById("menuBtn");
 
 /* ---------- storage ---------- */
 
-function loadReports(){ return JSON.parse(localStorage.getItem(KEY_REPORTS) || "[]"); }
-function saveReports(r){ localStorage.setItem(KEY_REPORTS, JSON.stringify(r)); }
+function loadMonthlyReports(){ return JSON.parse(localStorage.getItem(KEY_MONTHLY_REPORTS) || "[]"); }
+function saveMonthlyReports(r){ localStorage.setItem(KEY_MONTHLY_REPORTS, JSON.stringify(r)); }
 
 
 function loadExpenses(){ return JSON.parse(localStorage.getItem(KEY_EXPENSES) || "[]"); }
@@ -607,7 +607,7 @@ function renderCampaignPaymentsRows(payments, role, task){
 
       let dueText = "";
       let dueColor = "#22c55e";
-      if(!paid && p.dueDate){
+      if(p.dueDate){
         const d = daysTo(p.dueDate);
         if(d < 0){ dueText="Vencida"; dueColor="#ef4444"; }
         else if(d === 0){ dueText="Vence hoy"; dueColor="#f59e0b"; }
@@ -679,7 +679,7 @@ function renderCampaignCard(task, payments, role){
       <button class="btn ghost" style="width:100%;text-align:left;padding:12px 12px 10px 12px;display:block;" onclick="toggleTaskOpen('${tid}')">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="font-size:20px;">${icon}</div>
-          <div style="font-weight:950;font-size:17px;min-width:0;">${title}</div><span class="tag" style="background:rgba(100,116,139,.10);border:1px solid rgba(100,116,139,.20);color:#111827;">Campaña</span>
+          <div style="font-weight:950;font-size:17px;min-width:0;">${title}</div>
         </div>
         <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           ${range ? `<span>${range}</span>` : ``}
@@ -1463,208 +1463,6 @@ function renderPayFilters(){
   `;
 }
 
-
-/* ---------- Informes (Apoderado) ---------- */
-const KEY_SEEN_REPORTS = "cursapp_seen_reports_v1";
-
-function loadSeenReports(){
-  try { return JSON.parse(localStorage.getItem(KEY_SEEN_REPORTS) || "[]"); } catch(e){ return []; }
-}
-function saveSeenReports(arr){
-  localStorage.setItem(KEY_SEEN_REPORTS, JSON.stringify(arr || []));
-}
-
-function apCountNewReports(){
-  const seen = new Set(loadSeenReports());
-  const reps = loadReports().slice();
-  reps.sort((a,b)=>String(b.generatedAt||"").localeCompare(String(a.generatedAt||"")));
-  return reps.filter(r=>r.taskId && !seen.has(r.taskId)).length;
-}
-function apFindNewReport(){
-  const seen = new Set(loadSeenReports());
-  const reps = loadReports().slice();
-  reps.sort((a,b)=>String(b.generatedAt||"").localeCompare(String(a.generatedAt||"")));
-  return reps.find(r=>r.taskId && !seen.has(r.taskId)) || null;
-}
-function apMarkReportSeen(taskId){
-  const seen = loadSeenReports();
-  if(!seen.includes(taskId)) seen.unshift(taskId);
-  saveSeenReports(seen.slice(0,50));
-}
-function apReportSubtitle(task){
-  if(!task || !task.dueDate) return "";
-  try{
-    const d = new Date(task.dueDate);
-    if(isNaN(d.getTime())) return "";
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const yyyy = d.getFullYear();
-    return `${mm}/${yyyy}`;
-  }catch(e){ return ""; }
-}
-function openApoderadoReport(taskId){
-  const t = findTaskById(taskId);
-  if(!t) return;
-  apMarkReportSeen(taskId);
-
-  const exp = expensesForCampaign(taskId) || [];
-  const spent = sumExpenses(exp);
-  const collected = loadPayments().filter(p=>p.status==="paid" && p.fromTaskId===taskId).reduce((a,b)=>a+Number(b.amount||0),0);
-  const avail = collected - spent;
-
-  const root = document.getElementById("modalRoot");
-  if(!root) return;
-
-  root.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:950;font-size:18px;">Informe de rendición</div>
-            <div class="muted">${cleanConcept(t.title)} · ${apReportSubtitle(t)}</div>
-          </div>
-          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div class="tag ok">Recaudado ${formatCLP(collected)}</div>
-          <div class="tag warn">Gastado ${formatCLP(spent)}</div>
-          <div class="tag ${avail<0?'danger':''}">Disponible ${formatCLP(avail)}</div>
-        </div>
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-weight:900;">Gastos</div>
-          <div style="margin-top:8px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);padding:10px 12px;">
-            ${renderExpensesTree(exp, "apoderado")}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-function renderApoderadoReportBanner(){
-  const rep = apFindNewReport();
-  const count = apCountNewReports();
-  if(!rep || !count) return "";
-  const t = findTaskById(rep.taskId);
-  const sub = apReportSubtitle(t);
-  const title = t ? cleanConcept(t.title) : "Campaña";
-  return `
-    <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.08);">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-        <div style="min-width:240px;">
-          <div style="display:flex;gap:10px;align-items:center;">
-            <div style="font-size:18px;">📄</div>
-            <div style="font-weight:950;">${count} informe${count>1?'s':''} nuevo${count>1?'s':''}</div>
-          </div>
-          <div class="muted" style="margin-top:6px;font-weight:800;">Último: ${title}${sub ? ` · ${sub}` : ``}</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <button class="btn ghost" onclick="goTab('rendiciones')">Ver todos</button>
-          <button class="btn primary" onclick="openApoderadoReport('${rep.taskId}')">Ver informe</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-
-function apFindNewReport(){
-  // Definición MVP: hay informe cuando una campaña está cerrada y tiene al menos 1 gasto asociado
-  const seen = new Set(loadSeenReports());
-  const tasks = loadTasks().slice();
-  // ordenar por más reciente
-  tasks.sort((a,b)=>String(b.closedAt||b.createdAt||"").localeCompare(String(a.closedAt||a.createdAt||"")));
-  for(const t of tasks){
-    if(!isTaskClosed(t)) continue;
-    const exp = (typeof expensesForCampaign === "function") ? expensesForCampaign(t.id) : [];
-    if(!exp || !exp.length) continue;
-    if(seen.has(t.id)) continue;
-    return t;
-  }
-  return null;
-}
-
-function apMarkReportSeen(taskId){
-  const seen = loadSeenReports();
-  if(!seen.includes(taskId)) seen.unshift(taskId);
-  saveSeenReports(seen.slice(0,50));
-}
-
-function apReportSubtitle(task){
-  if(!task || !task.dueDate) return "";
-  try{
-    const d = new Date(task.dueDate);
-    if(isNaN(d.getTime())) return "";
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const yyyy = d.getFullYear();
-    return `${mm}/${yyyy}`;
-  }catch(e){ return ""; }
-}
-
-function openApoderadoReport(taskId){
-  const t = findTaskById(taskId);
-  if(!t) return;
-
-  apMarkReportSeen(taskId);
-
-  const exp = expensesForCampaign(taskId) || [];
-  const spent = sumExpenses(exp);
-  const collected = loadPayments().filter(p=>p.status==="paid" && p.fromTaskId===taskId).reduce((a,b)=>a+Number(b.amount||0),0);
-  const avail = collected - spent;
-
-  const root = document.getElementById("modalRoot");
-  if(!root) return;
-
-  root.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-      <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:950;font-size:18px;">Informe de rendición</div>
-            <div class="muted">${cleanConcept(t.title)} · ${apReportSubtitle(t)}</div>
-          </div>
-          <button class="btn ghost" onclick="closeModal()">Cerrar</button>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div class="tag ok">Recaudado ${formatCLP(collected)}</div>
-          <div class="tag warn">Gastado ${formatCLP(spent)}</div>
-          <div class="tag ${avail<0?'danger':''}">Disponible ${formatCLP(avail)}</div>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-weight:900;">Gastos</div>
-          <div class="muted" style="margin-top:6px;">Resumen visible (MVP). PDF/Excel se habilitará desde directiva.</div>
-          <div style="margin-top:8px;border:1px solid rgba(229,231,235,.7);border-radius:16px;overflow:hidden;background:rgba(248,250,252,1);padding:10px 12px;">
-            ${renderExpensesTree(exp, "apoderado")}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderApoderadoReportBanner(){
-  const task = apFindNewReport();
-  if(!task) return "";
-
-  const sub = apReportSubtitle(task);
-  const title = cleanConcept(task.title);
-
-  return `
-    <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.08);">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-        <div style="min-width:240px;">
-          <div style="display:flex;gap:10px;align-items:center;">
-            <div style="font-size:18px;">📄</div>
-            <div style="font-weight:950;">Informe de rendición disponible</div>
-          </div>
-          <div class="muted" style="margin-top:6px;font-weight:800;">Campaña: ${title}${sub ? ` · ${sub}` : ``}</div>
-        </div>
-        <button class="btn primary" onclick="openApoderadoReport('${task.id}')">Ver informe</button>
-      </div>
-    </div>
-  `;
-}
-
 /* ---------- views ---------- */
 
 
@@ -1832,7 +1630,7 @@ function apRenderListGrouped(list){
       // due semaforo
       let dueText = "";
       let dueColor = "#22c55e";
-      if(!paid && p.dueDate){
+      if(p.dueDate){
         const d = daysTo(p.dueDate);
         if(d < 0){ dueText="Vencida"; dueColor="#ef4444"; }
         else if(d === 0){ dueText="Vence hoy"; dueColor="#f59e0b"; }
@@ -1932,8 +1730,7 @@ if(tab === "home"){
       `;
     }
 
-    const body = `${renderApoderadoReportBanner()}
-      
+    const body = `
       ${summary}
       ${urgent}
       ${tabs}
@@ -2453,53 +2250,120 @@ function renderPresidentePayments(){
 
 
 
-function openGenerateReportModal(taskId){
-  const t = findTaskById(taskId);
-  if(!t) return;
+function endOfMonthYYYYMM(ym){
+  const parts = ym.split("-");
+  const y = parseInt(parts[0],10);
+  const m = parseInt(parts[1],10);
+  const d = new Date(y, m, 0);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+function currentYYYYMM(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function computeMonthlySnapshot(ym){
+  const cutoff = endOfMonthYYYYMM(ym);
+  const cutoffDate = new Date(cutoff + "T23:59:59");
+
+  const tasks = loadTasks().slice();
+  const expenses = loadExpenses().slice();
+  const payments = loadPayments().slice();
+
+  function leq(val){
+    if(!val) return false;
+    const dt = new Date(String(val));
+    if(isNaN(dt.getTime())) return false;
+    return dt.getTime() <= cutoffDate.getTime();
+  }
+
+  const paidPays = payments.filter(p=>p.status==="paid");
+  const pendingPays = payments.filter(p=>p.status!=="paid" && p.status!=="opted_out");
+
+  const recaudadoCurso = paidPays.reduce((a,b)=>a+Number(b.amount||0),0);
+  const adeudadoCurso = pendingPays.reduce((a,b)=>a+Number(b.amount||0),0);
+
+  const gastosHasta = expenses.filter(e=>true); // MVP: todos los gastos registrados
+  const gastadoCurso = gastosHasta.reduce((a,b)=>a+Number(b.amount||0),0);
+
+  const deudoresTotales = new Set(pendingPays.map(p=>p.apoderadoRole||"apoderado")).size;
+
+  const cerradas = tasks.filter(t=>isTaskClosed(t) && leq(t.closedAt || t.createdAt || t.dueDate || ""));
+
+  const perCampaign = cerradas.map(t=>{
+    const rec = paidPays.filter(p=>p.fromTaskId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    const adeu = pendingPays.filter(p=>p.fromTaskId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    const gas = gastosHasta.filter(e=>e.scope==="campaign" && e.campaignId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+    return { taskId: t.id, title: t.title, recaudado: rec, adeudado: adeu, gastado: gas, disponible: rec-gas };
+  });
+
+  return {
+    id: uid("repM"),
+    period: ym,
+    cutoff,
+    generatedAt: isoDate(),
+    closedCampaignsCount: cerradas.length,
+    recaudadoCurso,
+    adeudadoCurso,
+    gastadoCurso,
+    disponibleCurso: recaudadoCurso - gastadoCurso,
+    deudoresTotales,
+    perCampaign
+  };
+}
+
+function openGenerateMonthlyReportModal(){
+  const user = getUser();
+  if(!user || !(user.role==="tesorero" || user.role==="presidente")){
+    alert("Solo directiva puede generar informes.");
+    return;
+  }
   const root = document.getElementById("modalRoot");
   if(!root) return;
+
+  const ym = currentYYYYMM();
   root.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
       <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div>
-            <div style="font-weight:950;font-size:18px;">Generar informe</div>
-            <div class="muted">${cleanConcept(t.title)}</div>
+            <div style="font-weight:950;font-size:18px;">Generar informe mensual</div>
+            <div class="muted">Snapshot acumulado al cierre del mes</div>
           </div>
           <button class="btn ghost" onclick="closeModal()">Cerrar</button>
         </div>
 
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <label class="tag" style="cursor:pointer;"><input id="repAp" type="checkbox" checked /> Apoderados</label>
-          <label class="tag" style="cursor:pointer;"><input id="repDir" type="checkbox" checked /> Directiva</label>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <label class="tag" style="cursor:pointer;"><input id="repPdf" type="checkbox" checked /> PDF</label>
-          <label class="tag" style="cursor:pointer;"><input id="repXls" type="checkbox" /> Excel</label>
+        <div style="margin-top:12px;">
+          <label style="font-weight:900;">Mes (YYYY-MM)</label>
+          <input id="repMonth" value="${ym}" placeholder="2026-01" />
+          <div class="muted" style="margin-top:6px;">Ej: 2026-01 genera snapshot acumulado hasta 31/01/2026.</div>
         </div>
 
         <div class="actions" style="justify-content:flex-end;margin-top:14px;">
           <button class="btn ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn primary" onclick="generateReport('${taskId}')">Generar</button>
+          <button class="btn primary" onclick="generateMonthlyReport()">Generar</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function generateReport(taskId){
-  const ap = !!document.getElementById("repAp")?.checked;
-  const dir = !!document.getElementById("repDir")?.checked;
-  const pdf = !!document.getElementById("repPdf")?.checked;
-  const xls = !!document.getElementById("repXls")?.checked;
-
-  const list = loadReports();
-  list.unshift({ id: uid("rep"), taskId, forApoderados: ap, forDirectiva: dir, pdf, xls, generatedAt: isoDate() });
-  saveReports(list);
+function generateMonthlyReport(){
+  const ym = (document.getElementById("repMonth")?.value || "").trim();
+  if(!/^\\d{4}-\\d{2}$/.test(ym)){
+    alert("Formato inválido. Usa YYYY-MM (ej: 2026-01).");
+    return;
+  }
+  const snap = computeMonthlySnapshot(ym);
+  const list = loadMonthlyReports();
+  const filtered = list.filter(r=>r.period !== ym);
+  filtered.unshift(snap);
+  saveMonthlyReports(filtered);
   closeModal();
-  alert("Informe generado ✅ (demo)");
-  goTab(getCurrentTab());
+  alert("Informe mensual generado ✅ (demo)");
+  goTab("rendiciones");
 }
 
 /* ---------- Rendiciones UI ---------- */
@@ -2592,7 +2456,7 @@ function renderRendiciones(role){
 
   return `
     <div class="card">
-      <div style="font-weight:950;font-size:18px;">Rendiciones</div>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div style="font-weight:950;font-size:18px;">Rendiciones</div>${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openGenerateMonthlyReportModal()">Generar informe mensual</button>` : ``}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"><div class="tag ok">Recaudado ${formatCLP(collected)}</div><div class="tag warn">Gastado ${formatCLP(spent)}</div><div class="tag">Disponible ${formatCLP(avail)}</div></div>
     </div>
     ${generalHtml}
@@ -2611,7 +2475,7 @@ function renderRendicionesVertical(role){
 
   const summary = `
     <div class="card">
-      <div style="font-weight:950;font-size:18px;">Rendiciones</div>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;"><div style="font-weight:950;font-size:18px;">Rendiciones</div>${(role==="tesorero"||role==="presidente") ? `<button class="btn primary" onclick="openGenerateMonthlyReportModal()">Generar informe mensual</button>` : ``}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"><div class="tag ok">Recaudado ${formatCLP(collected)}</div><div class="tag warn">Gastado ${formatCLP(spent)}</div><div class="tag">Disponible ${formatCLP(avail)}</div></div>
     </div>
   `;
