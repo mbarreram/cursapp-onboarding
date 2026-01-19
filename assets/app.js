@@ -1840,7 +1840,10 @@ if(tab === "home"){
       ${tabBody}
     `;
 
-    viewShell("Apoderado","", body, tab, "apoderado");
+    
+    // Banner informe mensual (apoderado)
+    body = `${renderApoderadoMonthlyReportBanner()}` + body;
+viewShell("Apoderado","", body, tab, "apoderado");
     return;
 }
 const body =
