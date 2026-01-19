@@ -2424,9 +2424,24 @@ function renderRendicionesVertical(role){
     const desc = `${t.type === "monthly" ? "Pago mensual" : "Pago único"}${(t.mandatoryParticipation === false) ? " · No obligatoria" : " · Obligatoria"}`;
 
     const nGastos = exp.filter(e=>!e.parentId).length;
-    const missing = expensesMissingBoleta(exp);
-
+    const missing = (typeof expensesMissingBoleta === "function") ? expensesMissingBoleta(exp) : 0;
     const resumenRend = `Rendición: ${formatCLP(spentC)} · ${nGastos} gasto(s)${missing ? ` · ${missing} sin boleta` : ``}`;
+
+    const addBtn = (role==="tesorero"||role==="presidente")
+      ? `<button class="btn ghost" onclick="event.stopPropagation();openCreateExpense('campaign','${t.id}','')">+ Agregar gasto</button>`
+      : ``;
+
+    const detail = open ? `
+      <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="font-weight:950;">🧾 Rendición</div>
+          <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
+        </div>
+        <div style="margin-top:10px;">
+          ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
+        </div>
+      </div>
+    ` : ``;
 
     return `
       <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
@@ -2460,24 +2475,12 @@ function renderRendicionesVertical(role){
             </div>
 
             <div style="flex-shrink:0;display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
-              ${(role==="tesorero"||role==="presidente")
-                ? `<button class="btn ghost" onclick="event.stopPropagation();openCreateExpense('campaign','${t.id}','')">+ Agregar gasto</button>`
-                : ``}
+              ${addBtn}
             </div>
           </div>
         </button>
 
-        ${open ? `
-        <div style="margin-top:12px;border-top:1px solid rgba(229,231,235,.6);padding:12px 12px 12px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-weight:950;">🧾 Rendición</div>
-            <div class="muted" style="font-weight:900;">${nGastos} gasto(s) · ${missing ? `${missing} sin boleta` : `0 sin boleta`}</div>
-          </div>
-          <div style="margin-top:10px;">
-            ${exp.length ? renderExpensesTree(exp, role) : `<div class="muted">Sin gastos asociados.</div>`}
-          </div>
-        </div>
-      ` : ``}
+        ${detail}
       </div>
     `;
   }).join("");
