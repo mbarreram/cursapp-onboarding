@@ -63,6 +63,75 @@ function logout(){
   window.location.href = "login.html";
 }
 
+
+// ---------- profile meta (demo) ----------
+function getProfileMeta(){
+  const user = getUser();
+  // En futuro: esto vendrá del onboarding
+  if(!user) return {
+    name: "—", role: "—",
+    alumno: "Nombre alumno(a)",
+    colegioCurso: "Colegio X · 2°B 2026 · Mañana"
+  };
+
+  const roleLabel = (user.role || "").toLowerCase();
+  const name = user.name || user.role || "Usuario";
+  const alumno = user.alumno || "Nombre alumno(a)";
+  const colegio = user.colegio || "Colegio X";
+  const curso = user.curso || "2°B 2026";
+  const jornada = user.jornada || "Mañana";
+  return {
+    name,
+    role: roleLabel.charAt(0).toUpperCase()+roleLabel.slice(1),
+    alumno,
+    colegioCurso: `${colegio} · ${curso} · ${jornada}`
+  };
+}
+
+function renderHeader(){
+  const meta = getProfileMeta();
+  const who = document.getElementById("whoLine");
+  if(!who) return;
+
+  who.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:2px;line-height:1.15;">
+      <div style="font-weight:950;">${meta.name} · ${meta.role}</div>
+      <div class="muted" style="font-weight:800;">${meta.alumno}</div>
+      <div class="muted" style="font-weight:800;">${meta.colegioCurso}</div>
+    </div>
+  `;
+
+  const menuBtn = document.getElementById("menuBtn");
+  const menu = document.getElementById("menuDropdown");
+  if(!menuBtn || !menu) return;
+
+  function closeMenu(){
+    menu.style.display = "none";
+    menuBtn.setAttribute("aria-expanded","false");
+  }
+  function openMenu(){
+    menu.style.display = "block";
+    menuBtn.setAttribute("aria-expanded","true");
+  }
+
+  menuBtn.onclick = (e) => {
+    e.stopPropagation();
+    const open = menu.style.display === "block";
+    if(open) closeMenu(); else openMenu();
+  };
+
+  document.addEventListener("click", (e)=>{
+    if(menu.style.display === "block"){
+      const t = e.target;
+      if(t === menuBtn || menu.contains(t)) return;
+      closeMenu();
+    }
+  });
+
+  const logoutItem = document.getElementById("logoutMenuItem");
+  if(logoutItem) logoutItem.onclick = () => logout();
+}
+
 /* ---------- storage ---------- */
 function loadPayments(){ return JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]"); }
 function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p)); }
@@ -386,17 +455,17 @@ function campaignsStatusStats(){
   return { total: tasks.length, active, closed };
 }
 
+
 function viewShell(title, subtitle, body, tab, role){
   const app = document.getElementById("app");
   if(!app) return;
   app.innerHTML = `
-    <h1>${title}</h1>
-    <p class="muted">${subtitle}</p>
     ${body}
     ${tabbar(tab, role)}
     <div id="modalRoot"></div>
   `;
 }
+
 
 /* ---------- summaries ---------- */
 function getVisiblePayments(role){
@@ -1576,8 +1645,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureSeedPayments();
   normalizePaymentIds();
 
-  const whoLine = document.getElementById("whoLine");
-  if(whoLine) whoLine.textContent = `${user.name} · ${user.role}`;
+  renderHeader();
 
   renderByRole(user.role, "home");
 });
