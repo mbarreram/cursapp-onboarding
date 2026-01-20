@@ -568,9 +568,24 @@ function topPendingList(limit=5){
 }
 
 
+
 function renderApoderadoPaymentsFiltered(){
   const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
   const tab = apPagosTabGet ? apPagosTabGet() : "pending";
+
+  const chip = (id, label) => {
+    const active = tab === id;
+    const style = active ? "background:rgba(91,92,226,.10);border:1px solid rgba(91,92,226,.25);" : "background:transparent;border:1px solid rgba(229,231,235,.9);";
+    return `<button class="btn ghost" style="padding:10px 12px;border-radius:14px;${style}font-weight:900;" onclick="localStorage.setItem('${KEY_AP_PAGOS_TAB}','${id}');goTab('payments')">${label}</button>`;
+  };
+
+  const tabsBar = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+      ${chip("pending","Pendientes")}
+      ${chip("upcoming","Próximas")}
+      ${chip("history","Pagadas")}
+    </div>
+  `;
 
   let list = [];
   if(tab === "history"){
@@ -584,9 +599,18 @@ function renderApoderadoPaymentsFiltered(){
 
   list.sort(comparePayments);
 
+  const label = tab==="history" ? "Pagadas" : (tab==="upcoming" ? "Próximas (1 a 3 días)" : "Pendientes");
+  const header = `
+    <div class="card">
+      <div style="font-weight:950;font-size:18px;">Pagos · ${label}</div>
+      <div class="muted" style="margin-top:6px;">Gestiona tus cuotas en esta sección.</div>
+      ${tabsBar}
+    </div>
+  `;
+
   if(!list.length){
-    const label = tab==="history" ? "Sin pagos pagados." : (tab==="upcoming" ? "Sin cuotas próximas (1 a 3 días)." : "Sin cuotas pendientes.");
-    return `<div class="card"><div class="muted">${label}</div></div>`;
+    const empty = tab==="history" ? "Aún no registras pagos pagados." : (tab==="upcoming" ? "No tienes cuotas próximas (1 a 3 días)." : "No tienes cuotas pendientes.");
+    return header + `<div class="card" style="margin-top:12px;"><div class="muted">${empty}</div></div>`;
   }
 
   const grouped = {};
@@ -596,7 +620,7 @@ function renderApoderadoPaymentsFiltered(){
     grouped[k].push(p);
   });
   const keys = Object.keys(grouped).sort((a,b)=>String(a).localeCompare(String(b)));
-  return keys.map(k=>{
+  const body = keys.map(k=>{
     const rows = grouped[k].map(p=>paymentRow("apoderado", p)).join("");
     return `
       <div class="card" style="margin-top:12px;">
@@ -605,7 +629,10 @@ function renderApoderadoPaymentsFiltered(){
       </div>
     `;
   }).join("");
+
+  return header + body;
 }
+
 /* ---------- payments list ---------- */
 
 
@@ -1523,26 +1550,29 @@ function findLatestMonthlyReport(){
   reps.sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
   return reps[0] || null;
 }
+
 function renderApoderadoMonthlyReportsCard(){
-  const latest = findLatestMonthlyReport();
-  if(!latest) return "";
+  const reps = loadMonthlyReports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
+  if(!reps.length) return "";
+  const chosen = reps[1] || reps[0];
   return `
     <div class="card" style="margin-top:12px;border:1px solid rgba(100,116,139,.18);background:rgba(100,116,139,.06);">
       <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
         <div style="min-width:240px;">
           <div style="display:flex;gap:10px;align-items:center;">
             <div style="font-size:18px;">📁</div>
-            <div style="font-weight:950;">Informes del curso</div>
+            <div style="font-weight:950;">Informe del curso</div>
           </div>
           <div class="muted" style="margin-top:6px;font-weight:800;">
-            Último publicado: ${latest.period} (montos generales del curso)
+            Publicado: ${chosen.period} · Montos generales del curso (no personales)
           </div>
         </div>
-        <button class="btn ghost" onclick="openMonthlyReport('${latest.period}')">Ver último</button>
+        <button class="btn ghost" onclick="openMonthlyReport('${chosen.period}')">Ver</button>
       </div>
     </div>
   `;
 }
+
 function findLatestUnseenMonthlyReport(){
   const seen = new Set(loadSeenMonthlyReports());
   const reps = loadMonthlyReports().slice();
