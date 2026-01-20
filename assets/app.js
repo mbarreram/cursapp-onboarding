@@ -567,6 +567,45 @@ function topPendingList(limit=5){
   return loadPayments().filter(p=>p.status!=="paid" && p.status!=="opted_out").slice(0,limit);
 }
 
+
+function renderApoderadoPaymentsFiltered(){
+  const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+  const tab = apPagosTabGet ? apPagosTabGet() : "pending";
+
+  let list = [];
+  if(tab === "history"){
+    list = mine.filter(p=>p.status==="paid");
+  } else if(tab === "upcoming"){
+    list = mine.filter(p=>p.status!=="paid" && p.status!=="opted_out")
+               .filter(p=>p.dueDate && (daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 3));
+  } else {
+    list = mine.filter(p=>p.status!=="paid" && p.status!=="opted_out");
+  }
+
+  list.sort(comparePayments);
+
+  if(!list.length){
+    const label = tab==="history" ? "Sin pagos pagados." : (tab==="upcoming" ? "Sin cuotas próximas (1 a 3 días)." : "Sin cuotas pendientes.");
+    return `<div class="card"><div class="muted">${label}</div></div>`;
+  }
+
+  const grouped = {};
+  list.forEach(p=>{
+    const k = cleanConcept(p.concept);
+    grouped[k] = grouped[k] || [];
+    grouped[k].push(p);
+  });
+  const keys = Object.keys(grouped).sort((a,b)=>String(a).localeCompare(String(b)));
+  return keys.map(k=>{
+    const rows = grouped[k].map(p=>paymentRow("apoderado", p)).join("");
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:950;">${k}</div>
+        ${rows}
+      </div>
+    `;
+  }).join("");
+}
 /* ---------- payments list ---------- */
 
 
@@ -1729,6 +1768,24 @@ function campaignStatusForAp(task){
   return {label:"Activa", color:"#22c55e"};
 }
 
+
+function renderActiveCampaignNotices(){
+  const tasks = loadTasks().filter(t=>!isTaskClosed(t));
+  if(!tasks.length) return "";
+  const top = tasks.slice(0,3);
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="font-size:18px;">📢</div>
+        <div style="font-weight:950;">Avisos de campañas activas</div>
+      </div>
+      <div class="muted" style="margin-top:6px;">Campañas actualmente en curso</div>
+      <div style="margin-top:10px;">
+        ${top.map(t=>`<div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);font-weight:900;">${cleanConcept(t.title)}</div>`).join("")}
+      </div>
+    </div>
+  `;
+}
 const KEY_AP_PAGOS_TAB = "cursapp_ap_pagos_tab";
 function apPagosTabGet(){ return localStorage.getItem(KEY_AP_PAGOS_TAB) || "pending"; }
 function apPagosTabSet(v){ localStorage.setItem(KEY_AP_PAGOS_TAB, v); goTab("payments"); }
@@ -1910,6 +1967,8 @@ if(tab === "home"){
     const pendingAmt = pending.reduce((a,b)=>a+Number(b.amount||0),0);
     const paidAmt = paid.reduce((a,b)=>a+Number(b.amount||0),0);
 
+    const notices = renderActiveCampaignNotices();
+
     const quick = `
       <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="card" style="padding:12px;cursor:pointer;" onclick="apPagosTabSet('pending')">
@@ -1937,34 +1996,12 @@ if(tab === "home"){
       </div>
     `;
 
-    const alertCard = pending.length ? `
-      <div class="card" style="margin-top:12px;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.08);">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
-          <div style="min-width:240px;">
-            <div style="display:flex;gap:10px;align-items:center;">
-              <div style="font-size:18px;">🔔</div>
-              <div style="font-weight:950;">Tienes pagos pendientes</div>
-            </div>
-            <div class="muted" style="margin-top:6px;font-weight:800;">${pending.length} cuotas · Total ${formatCLP(pendingAmt)}</div>
-          </div>
-          <button class="btn primary" onclick="apPagosTabSet('pending')">Ir a pagos</button>
-        </div>
-      </div>
-    ` : `
-      <div class="card" style="margin-top:12px;border:1px solid rgba(34,197,94,.18);background:rgba(34,197,94,.08);">
-        <div style="display:flex;gap:10px;align-items:center;">
-          <div style="font-size:18px;">✅</div>
-          <div style="font-weight:950;">Todo al día</div>
-        </div>
-        <div class="muted" style="margin-top:6px;">No tienes cuotas pendientes en este momento.</div>
-      </div>
-    `;
-
     const body = `
       ${renderApoderadoMonthlyReportBanner()}
-      ${renderApoderadoMonthlyReportsCard()}
+      ${notices}
       ${quick}
-      ${alertCard}
+      <div style="margin-top:12px;"></div>
+      ${renderApoderadoMonthlyReportsCard()}
     `;
 
     viewShell("Apoderado","", body, tab, "apoderado");
@@ -1973,7 +2010,7 @@ if(tab === "home"){
 
 const body =
     tab==="payments"
-      ? `${renderPaymentsByCampaign("apoderado")}`
+      ? `${renderApoderadoPaymentsFiltered()}`
       : `${renderRendicionesVertical("apoderado")}`;
 
   viewShell("Apoderado","2°B 2026 · Colegio X", body, tab, "apoderado");
