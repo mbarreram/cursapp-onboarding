@@ -1728,6 +1728,10 @@ function campaignStatusForAp(task){
   if(d !== null && d <= 3) return {label:"Por vencer", color:"#f59e0b"};
   return {label:"Activa", color:"#22c55e"};
 }
+
+const KEY_AP_PAGOS_TAB = "cursapp_ap_pagos_tab";
+function apPagosTabGet(){ return localStorage.getItem(KEY_AP_PAGOS_TAB) || "pending"; }
+function apPagosTabSet(v){ localStorage.setItem(KEY_AP_PAGOS_TAB, v); goTab("payments"); }
 // ---------- Apoderado dashboard helpers ----------
 const KEY_AP_DASH_TAB = "cursapp_ap_dash_tab";
 const KEY_AP_HISTORY_OPEN = "cursapp_ap_history_open";
@@ -1896,68 +1900,77 @@ function apRenderListGrouped(list){
 
 function renderApoderado(tab){
   
+
 if(tab === "home"){
-    const mine = apMyVisiblePayments();
-    const pendingList = mine.filter(apIsPending).slice().sort(comparePayments);
-    const pendingAmt = pendingList.reduce((a,b)=>a+Number(b.amount||0),0);
+    const mine = loadPayments().filter(p => p.apoderadoRole === "apoderado");
+    const pending = mine.filter(p => p.status !== "paid" && p.status !== "opted_out");
+    const paid = mine.filter(p => p.status === "paid");
+    const upcoming = pending.filter(p => p.dueDate && (daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 3));
 
-    const urgentList = mine.filter(apUrgent).slice().sort(comparePayments);
-    const urgentTop = urgentList.slice(0,3);
+    const pendingAmt = pending.reduce((a,b)=>a+Number(b.amount||0),0);
+    const paidAmt = paid.reduce((a,b)=>a+Number(b.amount||0),0);
 
-    const upcomingList = mine.filter(apUpcoming).slice().sort(comparePayments);
-    const historyList = mine.filter(p => p.status === "paid" || p.status === "opted_out").slice().sort(comparePayments);
+    const quick = `
+      <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="apPagosTabSet('pending')">
+          <div class="muted" style="font-weight:900;">⏳ Mis cuotas pendientes</div>
+          <div style="font-weight:950;font-size:18px;margin-top:8px;">${pending.length} cuotas</div>
+          <div class="muted" style="margin-top:6px;">Total ${formatCLP(pendingAmt)}</div>
+          <div style="margin-top:10px;"><span class="tag warn">Ver pendientes</span></div>
+        </div>
 
-    const summaryText = pendingList.length
-      ? `Tienes ${pendingList.length} pagos pendientes · Total ${formatCLP(pendingAmt)}`
-      : `No tienes pagos pendientes 🎉`;
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="apPagosTabSet('history')">
+          <div class="muted" style="font-weight:900;">✅ Historial de pagos</div>
+          <div style="font-weight:950;font-size:18px;margin-top:8px;">${paid.length} pagos</div>
+          <div class="muted" style="margin-top:6px;">Pagado ${formatCLP(paidAmt)}</div>
+          <div style="margin-top:10px;"><span class="tag ok">Ver historial</span></div>
+        </div>
+      </div>
 
-    const summary = `
-      <div class="card">
-        <div style="font-weight:950;font-size:18px;">${summaryText}</div>
-        <div class="muted" style="margin-top:6px;">Próximo = pagos que vencen en 1 a 3 días.</div>
+      <div style="margin-top:10px;">
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="apPagosTabSet('upcoming')">
+          <div class="muted" style="font-weight:900;">📅 Próximas cuotas</div>
+          <div style="font-weight:950;font-size:18px;margin-top:8px;">${upcoming.length} cuotas</div>
+          <div class="muted" style="margin-top:6px;">Vencen en 1 a 3 días</div>
+          <div style="margin-top:10px;"><span class="tag">Ver próximas</span></div>
+        </div>
       </div>
     `;
 
-    const urgent = urgentTop.length ? apSection("Urgente", urgentTop.map(p=>paymentRow("apoderado", p)).join("")) : ``;
-
-    const tabs = apTabs();
-
-    let tabBody = "";
-    const t = apDashTabGet();
-
-    if(t === "pending"){
-      tabBody = apSection("Pendientes", apRenderListGrouped(pendingList));
-    } else if(t === "upcoming"){
-      tabBody = apSection("Próximos", apRenderListGrouped(upcomingList));
-    } else {
-      const open = apHistoryOpen();
-      const head = `
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-          <div class="muted" style="font-weight:950;">Historial (${historyList.length})</div>
-          <button class="btn ghost" onclick="apHistoryToggle()">${open ? "Ocultar" : "Ver"}</button>
+    const alertCard = pending.length ? `
+      <div class="card" style="margin-top:12px;border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.08);">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div style="min-width:240px;">
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="font-size:18px;">🔔</div>
+              <div style="font-weight:950;">Tienes pagos pendientes</div>
+            </div>
+            <div class="muted" style="margin-top:6px;font-weight:800;">${pending.length} cuotas · Total ${formatCLP(pendingAmt)}</div>
+          </div>
+          <button class="btn primary" onclick="apPagosTabSet('pending')">Ir a pagos</button>
         </div>
-      `;
-      tabBody = `
-        <div class="card" style="margin-top:12px;">
-          ${head}
-          ${open ? `<div style="margin-top:10px;">${apRenderListGrouped(historyList)}</div>` : `<div class="muted" style="margin-top:10px;">Colapsado</div>`}
+      </div>
+    ` : `
+      <div class="card" style="margin-top:12px;border:1px solid rgba(34,197,94,.18);background:rgba(34,197,94,.08);">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="font-size:18px;">✅</div>
+          <div style="font-weight:950;">Todo al día</div>
         </div>
-      `;
-    }
+        <div class="muted" style="margin-top:6px;">No tienes cuotas pendientes en este momento.</div>
+      </div>
+    `;
 
-    let body = `
+    const body = `
       ${renderApoderadoMonthlyReportBanner()}
       ${renderApoderadoMonthlyReportsCard()}
-
-      ${summary}
-      ${urgent}
-      ${tabs}
-      ${tabBody}
+      ${quick}
+      ${alertCard}
     `;
 
     viewShell("Apoderado","", body, tab, "apoderado");
     return;
 }
+
 const body =
     tab==="payments"
       ? `${renderPaymentsByCampaign("apoderado")}`
