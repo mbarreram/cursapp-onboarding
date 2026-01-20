@@ -2047,84 +2047,89 @@ const body =
 }
 
 function renderTesorero(tab){
-  if(tab === "home"){
-    const sum = computeSummary("tesorero");
-    const pend = coursePending();
-    const tasks = listTasksSorted(3);
+  
+if(tab === "home"){
+    const collected = courseCollected();
+    const spent = sumExpenses(loadExpenses());
+    const available = collected - spent;
 
-    const tasksHtml = tasks.map(t=>{
-      const pr = taskProgress(t);
-      const pct = Math.max(0, Math.min(100, pr.pct));
-      const title = t.type==="monthly" ? `${t.title} (${monthKey(t.dueDate)})` : t.title;
-      return `
-        <div class="card" style="margin-top:12px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-            <div>
-              <div style="font-weight:950;">${title}</div>
-              <div class="muted">${pct}% recaudado · ${formatCLP(pr.stats.recaudado)} de ${formatCLP(pr.meta)}</div>
-              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                ${t.dueDate ? dueBadge(t.dueDate) : ``}
-                <span class="tag">${taskTypeLabel(t)}</span>
-              </div>
-            </div>
-            <button class="btn ghost" onclick="setSelectedTask('${t.id}');goTab('payments')">Ver detalle</button>
-          </div>
+    const allExp = loadExpenses();
+    const pendingBoletas = expensesMissingBoleta(allExp);
+    const pendienteRendir = allExp.filter(e=>!(e.attachments && e.attachments.length)).reduce((a,b)=>a+Number(b.amount||0),0);
 
-          <div class="bar" style="margin-top:10px;">
-            <div class="barFill primary" style="width:${pct}%"></div>
-          </div>
+    const tasks = loadTasks().filter(t=>!isTaskClosed(t));
+    const list = tasks.map(t=>{
+      const rec = loadPayments().filter(p=>p.status==='paid' && p.fromTaskId===t.id).reduce((a,b)=>a+Number(b.amount||0),0);
+      const exp = expensesForCampaign(t.id);
+      const gas = sumExpenses(exp);
+      const disp = rec - gas;
+      const miss = expensesMissingBoleta(exp);
+      return { t, rec, gas, disp, miss };
+    });
 
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <span class="tag ok">🟢 ${pr.stats.paidCount} pagadas</span>
-            <span class="tag warn">🟡 ${pr.stats.dueSoonCount} por vencer</span>
-            <span class="tag danger">🔴 ${pr.stats.overdueCount} vencidas</span>
-          </div>
+    const alerts = [];
+    if(pendingBoletas>0) alerts.push(`⚠️ ${pendingBoletas} gasto(s) sin boleta`);
+    const neg = list.filter(x=>x.disp<0);
+    if(neg.length) alerts.push(`⚠️ ${neg.length} campaña(s) con saldo negativo`);
+
+    const resumen = `
+      <div class="card">
+        <div style="font-weight:950;font-size:18px;">Estado financiero del curso</div>
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="tag ok">💰 Recaudado ${formatCLP(collected)}</div>
+          <div class="tag warn">🧾 Gastado ${formatCLP(spent)}</div>
+          <div class="tag ${available<0?'danger':''}">⚖️ Saldo ${formatCLP(available)}</div>
         </div>
-      `;
-    }).join("");
-
-    let body = `
-      ${renderApoderadoMonthlyReportBanner()}
-      ${renderApoderadoMonthlyReportsCard()}
-
-      ${kpiCard("💰","Recaudación del curso", formatCLP(sum.collected))}
-      ${kpiCard("⏳","Cuotas pendientes", `${formatCLP(pend.amount)} · ${pend.count} pendientes`)}
-      
-      ${chartCard(
-        "Recaudación vs pendiente",
-        "Distribución por monto",
-        [
-          { value: paymentsAmountStats("tesorero").paidAmt, color: "#22c55e" },
-          { value: paymentsAmountStats("tesorero").pendAmt, color: "#f59e0b" }
-        ],
-        [
-          { label: "Recaudado", color: "#22c55e", valueText: formatCLP(paymentsAmountStats("tesorero").paidAmt) },
-          { label: "Pendiente", color: "#f59e0b", valueText: formatCLP(paymentsAmountStats("tesorero").pendAmt) }
-        ]
-      )}
-
-      ${chartCard(
-        "Pendientes por urgencia",
-        "Cantidad de cuotas pendientes",
-        [
-          { value: paymentsUrgencyStats("tesorero").ok, color: "#22c55e" },
-          { value: paymentsUrgencyStats("tesorero").soon, color: "#f59e0b" },
-          { value: paymentsUrgencyStats("tesorero").overdue, color: "#ef4444" }
-        ],
-        [
-          { label: "Al día", color: "#22c55e", valueText: String(paymentsUrgencyStats("tesorero").ok) },
-          { label: "Por vencer", color: "#f59e0b", valueText: String(paymentsUrgencyStats("tesorero").soon) },
-          { label: "Vencidas", color: "#ef4444", valueText: String(paymentsUrgencyStats("tesorero").overdue) }
-        ]
-      )}
-
-      ${tasksHtml || `<div class="card" style="margin-top:12px;"><div class="muted">Aún no hay cobros creados.</div></div>`}
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="tag warn">⏳ Pendiente de rendir ${formatCLP(pendienteRendir)}</div>
+          ${pendingBoletas ? `<div class="tag danger">⚠️ Sin boleta ${pendingBoletas}</div>` : `<div class="tag ok">✅ Boletas al día</div>`}
+        </div>
+        ${alerts.length ? `<div class="muted" style="margin-top:10px;">${alerts.join(" · ")}</div>` : ``}
+      </div>
     `;
 
-    viewShell("Tesorero","Administración del curso", body, tab, "tesorero");
+    const quick = `
+      <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="goTab('rendiciones')">
+          <div class="muted" style="font-weight:900;">➕ Agregar gasto</div>
+          <div class="muted" style="margin-top:6px;">Registrar un gasto con boleta</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="goTab('rendiciones')">
+          <div class="muted" style="font-weight:900;">🧾 Rendiciones</div>
+          <div class="muted" style="margin-top:6px;">Ver gastos y boletas</div>
+        </div>
+        <div class="card" style="padding:12px;cursor:pointer;" onclick="goTab('rendiciones')">
+          <div class="muted" style="font-weight:900;">📊 Informes</div>
+          <div class="muted" style="margin-top:6px;">Generar informe mensual</div>
+        </div>
+      </div>
+    `;
 
+    const campaigns = `
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+          <div style="font-weight:950;">📌 Campañas activas</div>
+          <div class="muted">${tasks.length} activas</div>
+        </div>
+        ${list.length ? list.map(x=>`
+          <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.6);cursor:pointer;" onclick="setSelectedTask('${x.t.id}');goTab('rendiciones')">
+            <div style="font-weight:900;">${cleanConcept(x.t.title)}</div>
+            <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
+              <span class="tag ok">Rec ${formatCLP(x.rec)}</span>
+              <span class="tag warn">Gas ${formatCLP(x.gas)}</span>
+              <span class="tag ${x.disp<0?'danger':''}">Saldo ${formatCLP(x.disp)}</span>
+              ${x.miss ? `<span class="tag danger">⚠️ sin boleta ${x.miss}</span>` : ``}
+            </div>
+          </div>
+        `).join("") : `<div class="muted" style="margin-top:10px;">No hay campañas activas.</div>`}
+      </div>
+    `;
+
+    const body = `${resumen}${quick}${campaigns}`;
+    viewShell("Tesorero","", body, tab, "tesorero");
     return;
-  }
+}
+
 
   const body =
     tab==="payments"
@@ -2904,6 +2909,8 @@ function renderByRole(role, tab){
 function getCurrentTab(){ return localStorage.getItem("cursapp_current_tab") || "home"; }
 
 function goTab(tab){
+  if(tab==="rendiciones") tab="withdraws";
+
   localStorage.setItem("cursapp_current_tab", tab);
 
   const user = getUser();
