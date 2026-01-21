@@ -4,7 +4,10 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Onboarding</title>
-  <link rel="stylesheet" href="./assets/styles.css?v=73">
+  <link rel="stylesheet" href="../assets/styles.css?v=400">
+  <style>
+    .debugCard{border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);border-radius:16px;padding:12px;margin-top:12px}
+  </style>
 </head>
 <body>
   <header>
@@ -13,33 +16,34 @@
         <div class="logo">C</div>
         <div id="whoLine"></div>
       </div>
-      <button class="btn ghost" id="menuBtn" type="button" aria-expanded="false"
-        style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
-      <div id="menuDropdown"
-        style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
-        border-radius:14px;padding:8px;min-width:200px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
-        <button class="btn ghost" id="backLogin" type="button" style="width:100%;text-align:left;">Volver al login</button>
+      <button class="btn ghost" id="menuBtn" style="position:absolute;right:16px;top:10px;">☰</button>
+      <div id="menuDropdown" style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;">
+        <button class="btn ghost" id="backLogin">Volver al login</button>
+        <button class="btn ghost" id="debugOn">Activar debug</button>
       </div>
     </div>
   </header>
 
   <div class="container" id="app"></div>
-  <div id="modalRoot"></div>
 
   <script>
-    window.FORCE_ONBOARDING_PAGE = true;
     (function(){
       const btn=document.getElementById('menuBtn');
       const dd=document.getElementById('menuDropdown');
       const back=document.getElementById('backLogin');
-      if(btn && dd){
-        btn.onclick=(e)=>{e.stopPropagation(); dd.style.display = (dd.style.display==='block'?'none':'block');};
-        document.addEventListener('click',()=>{dd.style.display='none';});
-      }
-      if(back){ back.onclick=()=>{ window.location.href = '../login.html'; }; }
+      const dbg=document.getElementById('debugOn');
+      btn.onclick=(e)=>{e.stopPropagation();dd.style.display=dd.style.display==='block'?'none':'block';};
+      document.addEventListener('click',()=>dd.style.display='none');
+      back.onclick=()=>location.href='../login.html';
+      dbg.onclick=()=>{localStorage.setItem('cursapp_onb_debug','1');alert('Debug activado');};
     })();
+
+    window.onerror=function(msg,src,line){
+      document.getElementById('app').innerHTML=
+        `<div class="card"><b>Error JS:</b><div class="debugCard">${msg}<br>${src}:${line}</div></div>`;
+    };
   </script>
 
-  <script src="./assets/app.js?v=73"></script>
+  <script src="assets/onboarding.js?v=74"></script>
 </body>
 </html>
