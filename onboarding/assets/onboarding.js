@@ -1,0 +1,1 @@
+console.log('Onboarding JS cargado correctamente');
