@@ -4,8 +4,6 @@ const KEY_USER = "cursapp_demo_user";
 const KEY_PAYMENTS = "cursapp_payments_v1";
 const KEY_RECEIPTS = "cursapp_receipts_v1";
 const KEY_TASKS = "cursapp_tasks_v1";
-const KEY_PROFILES = "cursapp_profiles_v1";
-const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
 const KEY_MONTHLY_REPORTS = "cursapp_monthly_reports_v1";
 const KEY_EXPENSES = "cursapp_expenses_v1";
 
@@ -70,18 +68,25 @@ function logout(){
 
 // ---------- profile meta (demo) ----------
 function getProfileMeta(){
-  const profile = getActiveProfile();
-  if(!profile){
-    return { name:"—", role:"—", alumno:"Nombre alumno(a)", colegioCurso:"Selecciona un curso" };
-  }
-  const u = profile.user || {};
-  const c = profile.course || {};
-  const roleLabel = (u.role||"").toLowerCase();
+  const user = getUser();
+  // En futuro: esto vendrá del onboarding
+  if(!user) return {
+    name: "—", role: "—",
+    alumno: "Nombre alumno(a)",
+    colegioCurso: "Colegio X · 2°B 2026 · Mañana"
+  };
+
+  const roleLabel = (user.role || "").toLowerCase();
+  const name = user.name || user.role || "Usuario";
+  const alumno = user.alumno || "Nombre alumno(a)";
+  const colegio = user.colegio || "Colegio X";
+  const curso = user.curso || "2°B 2026";
+  const jornada = user.jornada || "Mañana";
   return {
-    name: u.name || "Usuario",
+    name,
     role: roleLabel.charAt(0).toUpperCase()+roleLabel.slice(1),
-    alumno: u.alumno || (u.role==="apoderado" ? "Alumno/a" : ""),
-    colegioCurso: `${c.schoolName} · ${c.level}${c.letter} ${c.year} · ${c.jornada}`
+    alumno,
+    colegioCurso: `${colegio} · ${curso} · ${jornada}`
   };
 }
 
@@ -124,30 +129,11 @@ const menuBtn = document.getElementById("menuBtn");
     }
   });
 
-  const onbItem = document.getElementById("onboardingMenuItem");
-  if(onbItem) onbItem.onclick = () => { saveOnbDraft({step:1}); showOnboarding(); };
-
   const logoutItem = document.getElementById("logoutMenuItem");
   if(logoutItem) logoutItem.onclick = () => logout();
 }
 
 /* ---------- storage ---------- */
-
-function loadProfiles(){ return JSON.parse(localStorage.getItem(KEY_PROFILES) || "[]"); }
-function saveProfiles(p){ localStorage.setItem(KEY_PROFILES, JSON.stringify(p||[])); }
-function getActiveCourseKey(){ return localStorage.getItem(KEY_ACTIVE_COURSE) || ""; }
-function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
-function findProfileByKey(k){ return loadProfiles().find(p=>p.courseKey===k) || null; }
-function getActiveProfile(){
-  const profiles = loadProfiles();
-  if(!profiles.length) return null;
-  const k = getActiveCourseKey();
-  return findProfileByKey(k) || profiles[0];
-}
-function makeCourseKey(schoolId, level, letter, jornada, year){
-  return [schoolId, level, letter, jornada, year].join("|");
-}
-
 
 function loadMonthlyReports(){ return JSON.parse(localStorage.getItem(KEY_MONTHLY_REPORTS) || "[]"); }
 function saveMonthlyReports(r){ localStorage.setItem(KEY_MONTHLY_REPORTS, JSON.stringify(r)); }
@@ -536,7 +522,6 @@ function viewShell(title, subtitle, body, tab, role){
     ${body}
     ${tabbar(tab, role)}
     <div id="modalRoot"></div>
-    ${role==='apoderado' ? apoderadoActivationGate(getActiveProfile()) : ''}
   `;
 }
 
@@ -1762,372 +1747,6 @@ function renderApoderadoMonthlyReportBanner(){
   `;
 }
 
-
-const DEMO_REGIONS = [
-  { id:"r
-
-/* ---------- Onboarding Wizard ---------- */
-const KEY_ONB_DRAFT = "cursapp_onb_draft_v1";
-function loadOnbDraft(){ return JSON.parse(localStorage.getItem(KEY_ONB_DRAFT) || "{}"); }
-function saveOnbDraft(d){ localStorage.setItem(KEY_ONB_DRAFT, JSON.stringify(d||{})); }
-function clearOnbDraft(){ localStorage.removeItem(KEY_ONB_DRAFT); }
-function validateEmailFormat(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim()); }
-
-function renderOnboardingWizard(){
-  const d = loadOnbDraft();
-  const step = Number(d.step || 1);
-  const year = d.year || new Date().getFullYear();
-  const role = d.role || "apoderado";
-
-  const regionId = d.regionId || DEMO_REGIONS[0].id;
-  const comunas = DEMO_COMUNAS.filter(c=>c.regionId===regionId);
-  const comunaId = d.comunaId || comunas[0].id;
-  const schools = DEMO_SCHOOLS.filter(s=>s.comunaId===comunaId);
-  const schoolId = d.schoolId || schools[0].id;
-
-  const jornada = d.jornada || DEMO_JORNADAS[0];
-  const level = d.level || "2°";
-  const letter = d.letter || "B";
-
-  return `
-    <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;font-size:18px;">Onboarding</div>
-      <div class="muted" style="margin-top:6px;">Paso ${step} de 4</div>
-
-      ${step===1 ? `
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Región</label>
-          <select id="onbRegion">
-            ${DEMO_REGIONS.map(r=>`<option value="${r.id}">${r.name}</option>`).join("")}
-          </select>
-        </div>
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Comuna</label>
-          <select id="onbComuna">
-            ${comunas.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}
-          </select>
-        </div>
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Colegio</label>
-          <select id="onbSchool">
-            ${schools.map(s=>`<option value="${s.id}">${s.name}</option>`).join("")}
-          </select>
-        </div>
-      `:``}
-
-      ${step===2 ? `
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Jornada</label>
-            <select id="onbJornada">${DEMO_JORNADAS.map(x=>`<option value="${x}">${x}</option>`).join("")}</select>
-          </div>
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Año</label>
-            <input id="onbYear" inputmode="numeric" value="${year}" />
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Nivel</label>
-            <select id="onbLevel">${DEMO_LEVELS.map(x=>`<option value="${x}">${x}</option>`).join("")}</select>
-          </div>
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Letra</label>
-            <select id="onbLetter">${DEMO_LETTERS.map(x=>`<option value="${x}">${x}</option>`).join("")}</select>
-          </div>
-        </div>
-      `:``}
-
-      ${step===3 ? `
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Rol</label>
-          <select id="onbRole">
-            <option value="apoderado">Apoderado</option>
-            <option value="tesorero">Tesorero</option>
-            <option value="presidente">Presidente</option>
-          </select>
-        </div>
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Nombre</label>
-          <input id="onbName" placeholder="Nombre y apellido" value="${d.name||""}" />
-        </div>
-        ${role==="apoderado" ? `
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Alumno/a</label>
-            <input id="onbAlumno" placeholder="Nombre alumno/a" value="${d.alumno||""}" />
-          </div>
-        `:``}
-      `:``}
-
-      ${step===4 ? `
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Correo</label>
-          <input id="onbEmail" placeholder="correo@dominio.com" value="${d.email||""}" />
-        </div>
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Confirmar correo</label>
-          <input id="onbEmail2" placeholder="correo@dominio.com" value="${d.email2||""}" />
-        </div>
-
-        ${role==="apoderado" ? `
-          <div style="margin-top:12px;border:1px solid rgba(229,231,235,.7);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-            <div style="font-weight:950;">Activación</div>
-            <div class="muted" style="margin-top:6px;">Setup único: <b>$990</b> por apoderado por curso.</div>
-            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-              <label class="tag" style="cursor:pointer;"><input type="radio" name="pay" value="now" ${d.payChoice!=="later"?"checked":""}/> Pagar ahora</label>
-              <label class="tag" style="cursor:pointer;"><input type="radio" name="pay" value="later" ${d.payChoice==="later"?"checked":""}/> Pagar después</label>
-            </div>
-          </div>
-        `:``}
-      `:``}
-
-      <div style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;">
-        <button class="btn ghost" onclick="onbPrev()">Atrás</button>
-        <button class="btn primary" onclick="onbNext()">Continuar</button>
-      </div>
-    </div>
-  `;
-}
-
-function showOnboarding(){
-  let root = document.getElementById("app");
-  if(!root){
-    root = document.querySelector(".container") || document.querySelector("main");
-  }
-  if(!root){
-    root = document.createElement("div");
-    root.id = "app";
-    root.className = "container";
-    document.body.appendChild(root);
-  }
-  root.innerHTML = renderOnboardingWizard();
-  hydrateOnboarding();
-}
-
-function hydrateOnboarding(){
-  const d = loadOnbDraft();
-  const step = Number(d.step||1);
-
-  if(step===1){
-    const r = document.getElementById("onbRegion");
-    const c = document.getElementById("onbComuna");
-    const s = document.getElementById("onbSchool");
-    r.value = d.regionId || DEMO_REGIONS[0].id;
-    const comunas = DEMO_COMUNAS.filter(x=>x.regionId===r.value);
-    c.innerHTML = comunas.map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
-    c.value = d.comunaId || comunas[0].id;
-    const schools = DEMO_SCHOOLS.filter(x=>x.comunaId===c.value);
-    s.innerHTML = schools.map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
-    s.value = d.schoolId || schools[0].id;
-
-    r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveOnbDraft(d); showOnboarding(); };
-    c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveOnbDraft(d); showOnboarding(); };
-    s.onchange = ()=>{ d.schoolId=s.value; saveOnbDraft(d); };
-  }
-
-  if(step===2){
-    const j = document.getElementById("onbJornada");
-    const y = document.getElementById("onbYear");
-    const lv = document.getElementById("onbLevel");
-    const lt = document.getElementById("onbLetter");
-    j.value = d.jornada || DEMO_JORNADAS[0];
-    y.value = d.year || new Date().getFullYear();
-    lv.value = d.level || "2°";
-    lt.value = d.letter || "B";
-    j.onchange=()=>{ d.jornada=j.value; saveOnbDraft(d); };
-    y.oninput=()=>{ d.year=y.value; saveOnbDraft(d); };
-    lv.onchange=()=>{ d.level=lv.value; saveOnbDraft(d); };
-    lt.onchange=()=>{ d.letter=lt.value; saveOnbDraft(d); };
-  }
-
-  if(step===3){
-    const role = document.getElementById("onbRole");
-    const name = document.getElementById("onbName");
-    role.value = d.role || "apoderado";
-    role.onchange=()=>{ d.role=role.value; saveOnbDraft(d); showOnboarding(); };
-    name.value = d.name||"";
-    name.oninput=()=>{ d.name=name.value; saveOnbDraft(d); };
-    const alumno = document.getElementById("onbAlumno");
-    if(alumno){
-      alumno.value = d.alumno||"";
-      alumno.oninput=()=>{ d.alumno=alumno.value; saveOnbDraft(d); };
-    }
-  }
-
-  if(step===4){
-    const e1 = document.getElementById("onbEmail");
-    const e2 = document.getElementById("onbEmail2");
-    e1.value = d.email||"";
-    e2.value = d.email2||"";
-    e1.oninput=()=>{ d.email=e1.value; saveOnbDraft(d); };
-    e2.oninput=()=>{ d.email2=e2.value; saveOnbDraft(d); };
-    document.querySelectorAll("input[name=pay]").forEach(r=>{
-      r.onchange=()=>{ d.payChoice=r.value; saveOnbDraft(d); };
-    });
-  }
-}
-
-function onbPrev(){
-  const d = loadOnbDraft();
-  d.step = Math.max(1, Number(d.step||1)-1);
-  saveOnbDraft(d);
-  showOnboarding();
-}
-
-function onbNext(){
-  const d = loadOnbDraft();
-  const step = Number(d.step||1);
-
-  if(step===1){
-    d.regionId = document.getElementById("onbRegion").value;
-    d.comunaId = document.getElementById("onbComuna").value;
-    d.schoolId = document.getElementById("onbSchool").value;
-    saveOnbDraft(d);
-    d.step = 2; saveOnbDraft(d); showOnboarding(); return;
-  }
-  if(step===2){
-    d.jornada = document.getElementById("onbJornada").value;
-    d.year = document.getElementById("onbYear").value;
-    d.level = document.getElementById("onbLevel").value;
-    d.letter = document.getElementById("onbLetter").value;
-    saveOnbDraft(d);
-    d.step = 3; saveOnbDraft(d); showOnboarding(); return;
-  }
-  if(step===3){
-    d.role = document.getElementById("onbRole").value;
-    d.name = (document.getElementById("onbName").value||"").trim();
-    const al = document.getElementById("onbAlumno");
-    if(d.role==="apoderado") d.alumno = (al.value||"").trim();
-    saveOnbDraft(d);
-    if(!d.name || (d.role==="apoderado" && !d.alumno)){
-      alert("Completa nombre y alumno/a.");
-      return;
-    }
-    d.step = 4; saveOnbDraft(d); showOnboarding(); return;
-  }
-  if(step===4){
-    d.email = (document.getElementById("onbEmail").value||"").trim();
-    d.email2 = (document.getElementById("onbEmail2").value||"").trim();
-    const pay = document.querySelector("input[name=pay]:checked");
-    d.payChoice = pay ? pay.value : "now";
-    saveOnbDraft(d);
-
-    if(!validateEmailFormat(d.email) || d.email!==d.email2){
-      alert("Correo inválido o no coincide.");
-      return;
-    }
-
-    const region = DEMO_REGIONS.find(r=>r.id===d.regionId);
-    const comuna = DEMO_COMUNAS.find(c=>c.id===d.comunaId);
-    const school = DEMO_SCHOOLS.find(s=>s.id===d.schoolId);
-    const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
-
-    const profiles = loadProfiles();
-
-    const activation = (d.role==="apoderado") ? {
-      required:true, amount:990,
-      status: (d.payChoice==="later") ? "pending" : "paid",
-      createdAt: isoDate(),
-      paidAt: (d.payChoice==="later") ? null : isoDate()
-    } : { required:false, status:"not_required" };
-
-    profiles.unshift({
-      courseKey,
-      course:{
-        regionId:d.regionId, regionName:region?region.name:"",
-        comunaId:d.comunaId, comunaName:comuna?comuna.name:"",
-        schoolId:d.schoolId, schoolName:school?school.name:"",
-        jornada:d.jornada, level:d.level, letter:d.letter, year:d.year
-      },
-      user:{ role:d.role, name:d.name, alumno:d.alumno||"", email:d.email },
-      activation
-    });
-
-    saveProfiles(profiles);
-    setActiveCourseKey(courseKey);
-    clearOnbDraft();
-    location.reload();
-  }
-}
-
-function renderCourseSelector(){
-  const profiles = loadProfiles();
-  const items = profiles.map(p=>{
-    const label = `${p.course.schoolName} · ${p.course.level}${p.course.letter} ${p.course.year} · ${p.course.jornada}`;
-    const st = p.activation?.required ? (p.activation.status==="paid" ? "✅ Activo" : "⏳ Pendiente ($990)") : "✅ Activo";
-    return `
-      <div style="padding:10px 0;border-top:1px solid rgba(229,231,235,.7);display:flex;justify-content:space-between;gap:12px;align-items:center;">
-        <div style="min-width:0;">
-          <div style="font-weight:950;">${label}</div>
-          <div class="muted" style="margin-top:4px;font-weight:800;">${st}</div>
-        </div>
-        <button class="btn ghost" onclick="setActiveCourseKey('${p.courseKey}');location.reload()">Elegir</button>
-      </div>
-    `;
-  }).join("");
-
-  return `
-    <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;font-size:18px;">Elegir curso</div>
-      <div class="muted" style="margin-top:6px;">Selecciona el curso con el que operarás.</div>
-      ${items || `<div class="muted" style="margin-top:10px;">Sin cursos registrados.</div>`}
-      <div style="margin-top:12px;display:flex;justify-content:flex-end;">
-        <button class="btn primary" onclick="saveOnbDraft({step:1});showOnboarding()">+ Agregar otro curso</button>
-      </div>
-    </div>
-  `;
-}
-
-function apoderadoActivationGate(profile){
-  if(!profile || profile.user?.role!=="apoderado") return "";
-  if(profile.activation?.required && profile.activation.status!=="paid"){
-    return `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(720px,100%);margin-bottom:12px;">
-          <div style="font-weight:950;font-size:18px;">Activación pendiente</div>
-          <div class="muted" style="margin-top:6px;">Para operar en este curso debes completar la activación de <b>$990</b>.</div>
-          <div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-            <button class="btn ghost" onclick="setActiveCourseKey('');location.reload()">Volver a elegir curso</button>
-            <button class="btn primary" onclick="profilePayNow()">Pagar $990</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  return "";
-}
-
-function profilePayNow(){
-  const p = getActiveProfile();
-  if(!p) return;
-  const profiles = loadProfiles();
-  const idx = profiles.findIndex(x=>x.courseKey===p.courseKey);
-  if(idx>=0){
-    profiles[idx].activation.status="paid";
-    profiles[idx].activation.paidAt=isoDate();
-    saveProfiles(profiles);
-    location.reload();
-  }
-}
-1", name:"Región Metropolitana" },
-  { id:"r2", name:"Valparaíso" }
-];
-const DEMO_COMUNAS = [
-  { id:"c1", regionId:"r1", name:"Santiago" },
-  { id:"c2", regionId:"r1", name:"Providencia" },
-  { id:"c3", regionId:"r2", name:"Valparaíso" },
-  { id:"c4", regionId:"r2", name:"Viña del Mar" }
-];
-const DEMO_SCHOOLS = [
-  { id:"sch1", comunaId:"c1", name:"Colegio X (Demo)" },
-  { id:"sch2", comunaId:"c1", name:"Liceo Central (Demo)" },
-  { id:"sch3", comunaId:"c2", name:"Colegio Providencia (Demo)" },
-  { id:"sch4", comunaId:"c3", name:"Colegio Puerto (Demo)" },
-  { id:"sch5", comunaId:"c4", name:"Colegio Viña (Demo)" }
-];
-const DEMO_LEVELS = ["1°","2°","3°","4°","5°","6°","7°","8°","I°","II°","III°","IV°"];
-const DEMO_LETTERS = ["A","B","C","D","E","F"];
-const DEMO_JORNADAS = ["Mañana","Tarde"];
 /* ---------- views ---------- */
 
 
@@ -3300,30 +2919,6 @@ function goTab(tab){
 }
 
 /* ---------- boot ---------- */
-
-function shouldForceOnboarding(){
-  try{
-    const q = new URLSearchParams(window.location.search);
-    return q.get("onboarding") === "1";
-  }catch(e){ return false; }
-}
-function ensureAppEntry(){
-  const profiles = loadProfiles();
-  if(!profiles.length || shouldForceOnboarding()){
-    saveOnbDraft({step:1});
-    showOnboarding();
-    return false;
-  }
-  if(!getActiveCourseKey()) setActiveCourseKey(profiles[0].courseKey);
-  const apProfiles = profiles.filter(p=>p.user?.role==='apoderado');
-  if(apProfiles.length>1 && getActiveProfile()?.user?.role==='apoderado'){
-    const root = document.getElementById('app');
-    if(root){ root.innerHTML = renderCourseSelector(); }
-    return false;
-  }
-  return true;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
   if(!user){
@@ -3336,22 +2931,6 @@ document.addEventListener("DOMContentLoaded", () => {
   normalizePaymentIds();
 
   renderHeader();
-  if(!ensureAppEntry()) return;
 
   renderByRole(user.role, "home");
 });
-
-window.onerror = function(message, source, lineno, colno, error){
-  try{
-    const root = document.getElementById("app");
-    if(root){
-      const msg = String(message||"Error");
-      root.innerHTML = `<div class="card" style="margin-top:12px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);">
-        <div style="font-weight:950;">JS error</div>
-        <div class="muted" style="margin-top:6px;">${msg}</div>
-        <div class="muted" style="margin-top:6px;font-size:12px;">${source||""}:${lineno||""}</div>
-      </div>`;
-    }
-  }catch(e){}
-  return false;
-};
