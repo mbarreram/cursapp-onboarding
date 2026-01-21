@@ -124,9 +124,6 @@ const menuBtn = document.getElementById("menuBtn");
     }
   });
 
-  const onbItem = document.getElementById("onboardingMenuItem");
-  if(onbItem) onbItem.onclick = () => { saveOnbDraft({step:1}); showOnboarding(); };
-
   const logoutItem = document.getElementById("logoutMenuItem");
   if(logoutItem) logoutItem.onclick = () => logout();
 }
@@ -1890,16 +1887,8 @@ function renderOnboardingWizard(){
 }
 
 function showOnboarding(){
-  let root = document.getElementById("app");
-  if(!root){
-    root = document.querySelector(".container") || document.querySelector("main");
-  }
-  if(!root){
-    root = document.createElement("div");
-    root.id = "app";
-    root.className = "container";
-    document.body.appendChild(root);
-  }
+  const root = document.getElementById("app");
+  if(!root) return;
   root.innerHTML = renderOnboardingWizard();
   hydrateOnboarding();
 }
@@ -3300,18 +3289,9 @@ function goTab(tab){
 }
 
 /* ---------- boot ---------- */
-
-function shouldForceOnboarding(){
-  try{
-    if(window.FORCE_ONBOARDING_PAGE) return true;
-    const q = new URLSearchParams(window.location.search);
-    return q.get("onboarding") === "1";
-  }catch(e){ return false; }
-}catch(e){ return false; }
-}
 function ensureAppEntry(){
   const profiles = loadProfiles();
-  if(!profiles.length || shouldForceOnboarding()){
+  if(!profiles.length){
     saveOnbDraft({step:1});
     showOnboarding();
     return false;
@@ -3342,18 +3322,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   renderByRole(user.role, "home");
 });
-
-window.onerror = function(message, source, lineno, colno, error){
-  try{
-    const root = document.getElementById("app");
-    if(root){
-      const msg = String(message||"Error");
-      root.innerHTML = `<div class="card" style="margin-top:12px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);">
-        <div style="font-weight:950;">JS error</div>
-        <div class="muted" style="margin-top:6px;">${msg}</div>
-        <div class="muted" style="margin-top:6px;font-size:12px;">${source||""}:${lineno||""}</div>
-      </div>`;
-    }
-  }catch(e){}
-  return false;
-};
