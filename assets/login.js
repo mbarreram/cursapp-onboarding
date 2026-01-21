@@ -1,13 +1,17 @@
-alert("login.js cargado");
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
-  alert("submit OK");
 document.addEventListener("DOMContentLoaded", () => {
+  alert("login.js cargado");
+
   const form = document.getElementById("loginForm");
   const errorEl = document.getElementById("loginError");
 
+  if (!form) {
+    alert("No encuentro #loginForm");
+    return;
+  }
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
+    alert("submit OK");
 
     const username = document.getElementById("username").value.trim().toLowerCase();
 
@@ -25,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     localStorage.setItem("cursapp_demo_user", JSON.stringify(user));
 
-    // redirect seguro
+    alert("redirigiendo a /dashboard/");
     window.location.assign("/dashboard/");
   });
 });
