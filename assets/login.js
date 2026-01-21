@@ -1,5 +1,7 @@
 alert("login.js cargado");
-
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  alert("submit OK");
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("loginForm");
   const errorEl = document.getElementById("loginError");
