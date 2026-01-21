@@ -3,11 +3,35 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Cursapp</title>
-  <meta http-equiv="refresh" content="0; url=login.html"/>
+  <title>Cursapp · Login</title>
+  <link rel="stylesheet" href="/assets/styles.css?v=500">
 </head>
-<body>
-  <p>Redirigiendo a login…</p>
-  <script>window.location.replace("login.html");</script>
+<body class="auth">
+
+  <div class="auth-card">
+    <div class="brandCenter">
+      <div class="logo big">C</div>
+      <h1>Cursapp</h1>
+      <p class="muted">Acceso demo</p>
+    </div>
+
+    <form id="loginForm">
+      <label>Usuario</label>
+      <input id="username" placeholder="apoderado | tesorero | presidente" required>
+
+      <label>Contraseña</label>
+      <input id="password" type="password" placeholder="demo" required>
+
+      <div id="loginError" class="error" style="display:none;"></div>
+
+      <button class="btn primary" type="submit">Ingresar</button>
+    </form>
+
+    <p class="muted small" style="margin-top:14px;">
+      Demo: usa <b>apoderado</b>, <b>tesorero</b> o <b>presidente</b>
+    </p>
+  </div>
+
+  <script defer src="/assets/login.js?v=500"></script>
 </body>
 </html>
