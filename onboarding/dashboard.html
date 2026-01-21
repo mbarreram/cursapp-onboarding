@@ -23,11 +23,15 @@
     </div>
   </header>
 
+  <!-- ✅ DOM skeleton required by app.js -->
   <div class="container" id="app"></div>
+  <div id="modalRoot"></div>
 
   <script>
+    // Force onboarding for this page
     window.FORCE_ONBOARDING_PAGE = true;
 
+    // Small menu
     (function(){
       const btn=document.getElementById('menuBtn');
       const dd=document.getElementById('menuDropdown');
@@ -38,25 +42,8 @@
       }
       if(back){ back.onclick=()=>{ window.location.href = '../login.html'; }; }
     })();
-
-    window.addEventListener('load', ()=>{
-      setTimeout(()=>{
-        const root=document.getElementById('app');
-        if(root && root.innerHTML.trim().length<10){
-          root.innerHTML = `
-            <div class="card" style="margin-top:12px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);">
-              <div style="font-weight:950;">Onboarding no cargó</div>
-              <div class="muted" style="margin-top:6px;">No se ejecutó el JS del onboarding. Verifica que exista el archivo:</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;"><b>/onboarding/assets/app.js</b></div>
-              <div class="muted" style="margin-top:6px;">Luego recarga con:</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;"><b>/onboarding/dashboard.html?v=70</b></div>
-            </div>
-          `;
-        }
-      }, 900);
-    });
   </script>
 
-  <script src="assets/app.js?v=1083"></script>
+  <script src="assets/app.js?v=1084"></script>
 </body>
 </html>
