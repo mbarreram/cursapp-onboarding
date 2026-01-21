@@ -3303,9 +3303,11 @@ function goTab(tab){
 
 function shouldForceOnboarding(){
   try{
+    if(window.FORCE_ONBOARDING_PAGE) return true;
     const q = new URLSearchParams(window.location.search);
     return q.get("onboarding") === "1";
   }catch(e){ return false; }
+}catch(e){ return false; }
 }
 function ensureAppEntry(){
   const profiles = loadProfiles();
