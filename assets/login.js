@@ -5,8 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const username = (document.getElementById("username").value || "").trim().toLowerCase();
-    const password = (document.getElementById("password").value || "").trim();
+    const username = document.getElementById("username").value.trim().toLowerCase();
 
     const allowed = ["apoderado", "tesorero", "presidente"];
     if (!allowed.includes(username)) {
@@ -16,13 +15,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const user = {
-      name: username.charAt(0).toUpperCase() + username.slice(1) + " (Demo)",
+      name: username[0].toUpperCase() + username.slice(1) + " (Demo)",
       role: username
     };
 
     localStorage.setItem("cursapp_demo_user", JSON.stringify(user));
 
-    // Dashboard único
-    window.location.href = "dashboard.html";
+    // redirect seguro
+    window.location.assign("/dashboard/");
   });
 });
