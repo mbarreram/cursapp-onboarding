@@ -1,27 +1,62 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Presidente · Cursapp</title>
-  <link rel="stylesheet" href="assets/styles.css" />
-</head>
-<body>
-  <header>
-    <div class="topbar" style="position:relative;">
-      <div class="brand">
-        <div class="logo">C</div>
-        <div id="whoLine"></div>
-      </div>
-      <button class="btn ghost" id="menuBtn" type="button" aria-expanded="false">☰</button>
-      <div id="menuDropdown" style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);border-radius:14px;padding:8px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:9999;">
-        <button class="btn ghost" id="logoutMenuItem" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
-      </div>
-    </div>
-  </header>
+(function(){
+  const app = document.getElementById("app");
+  const nav = document.querySelectorAll(".navItem");
 
-  <div class="container" id="app"></div>
+  function renderHome(){
+    app.innerHTML = `
+      <div class="card">
+        <div class="kTitle">Estado financiero del curso</div>
+        <p class="muted">Vista general de recaudación y gastos.</p>
+      </div>
 
-  <script src="assets/app.js?v=1008"></script>
-</body>
-</html>
+      <div class="card">
+        <div class="kTitle">Campañas activas</div>
+        <ul>
+          <li>Rifa del curso</li>
+          <li>Paseo de curso</li>
+        </ul>
+      </div>
+    `;
+  }
+
+  function renderRendiciones(){
+    app.innerHTML = `
+      <div class="card">
+        <div class="kTitle">Rendiciones</div>
+        <p class="muted">Registrar gastos del curso.</p>
+
+        <div class="card" style="margin-top:10px">
+          <strong>Gasto general</strong>
+          <p class="muted">
+            Gasto sin campaña, uso rápido del fondo del curso.
+          </p>
+          <button>Agregar gasto</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderInformes(){
+    app.innerHTML = `
+      <div class="card">
+        <div class="kTitle">Informes</div>
+        <p class="muted">
+          Generar informe mensual para apoderados y directiva.
+        </p>
+        <button>Generar informe</button>
+      </div>
+    `;
+  }
+
+  function go(tab){
+    nav.forEach(b=>b.classList.remove("active"));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add("active");
+
+    if(tab==="home") renderHome();
+    if(tab==="rendiciones") renderRendiciones();
+    if(tab==="informes") renderInformes();
+  }
+
+  nav.forEach(b=>b.onclick=()=>go(b.dataset.tab));
+  renderHome();
+})();
