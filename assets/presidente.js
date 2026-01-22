@@ -1,9 +1,10 @@
 /* =========================================================
-   Cursapp · Presidente (vista aislada) — COMPLETO
+   Cursapp · Presidente (vista aislada) — COMPLETO FINAL
    - Alertas fuertes
+   - Acciones clave (Crear campaña / Cerrar campaña / Generar informe)
    - Campañas (editar + eliminar con reglas)
    - Informes (generar/actualizar + historial)
-   - “Requiere nuevo informe” si hay cambios
+   - Marca "requiere nuevo informe" ante cambios
    ========================================================= */
 
 (function () {
@@ -177,6 +178,18 @@
           ${isDirty() ? `<span class="pill warn">📄 Requiere nuevo informe</span>` : ""}
         </div>
       </div>
+
+      <div class="card">
+        <div class="kTitle">Acciones clave</div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          <button class="btnx" onclick="confirmCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx primary" onclick="confirmGenerateReport()">📊 Generar informe</button>
+        </div>
+        <div class="muted" style="margin-top:10px;">
+          Cambios en campañas/rendiciones marcarán el informe como desactualizado.
+        </div>
+      </div>
     `;
   }
 
@@ -216,8 +229,16 @@
 
     app.innerHTML = `
       <div class="card">
-        <div class="kTitle">📌 Campañas activas</div>
-        <div class="muted" style="margin-top:6px;">Se pueden eliminar solo campañas activas. Las caducadas o cerradas no se eliminan.</div>
+        <div class="row">
+          <div>
+            <div class="kTitle">📌 Campañas activas</div>
+            <div class="muted" style="margin-top:6px;">Se puede eliminar solo campañas activas. Caducadas/cerradas no.</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
+        </div>
+
         <div class="listLines" style="margin-top:12px;">
           ${list || `<div class="muted">Sin campañas activas.</div>`}
         </div>
@@ -259,6 +280,84 @@
     `;
   }
 
+  /* ------------------ Crear campaña ------------------ */
+  window.openCreateCampaign = function(){
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Crear campaña</div>
+          <div class="muted" style="margin-top:6px;">Esto marcará “Requiere nuevo informe”.</div>
+        </div>
+        <button class="btnx" onclick="closeModal()">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Nombre campaña</label>
+        <input id="cc_title" placeholder="Ej: Rifa del curso" />
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Inicio</label>
+          <input id="cc_start" type="date" />
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Fin</label>
+          <input id="cc_due" type="date" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Tipo</label>
+          <select id="cc_type">
+            <option value="single">Pago único</option>
+            <option value="monthly">Mensual</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Participación</label>
+          <select id="cc_mandatory">
+            <option value="true">Obligatoria</option>
+            <option value="false">No obligatoria</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+        <button class="btnx" onclick="closeModal()">Cancelar</button>
+        <button class="btnx primary" onclick="saveCreateCampaign()">Crear</button>
+      </div>
+    `);
+  };
+
+  window.saveCreateCampaign = function(){
+    const title = (document.getElementById("cc_title").value||"").trim();
+    if(!title){ alert("Debes ingresar un nombre."); return; }
+
+    const startDate = document.getElementById("cc_start").value || "";
+    const dueDate = document.getElementById("cc_due").value || "";
+    const type = document.getElementById("cc_type").value || "single";
+    const mandatoryParticipation = document.getElementById("cc_mandatory").value === "true";
+
+    const ts = tasks();
+    ts.unshift({
+      id: uid("t"),
+      title,
+      startDate,
+      dueDate,
+      closed:false,
+      type,
+      mandatoryParticipation
+    });
+
+    save(KEY_TASKS, ts);
+    markDirty();
+    closeModal();
+    alert("Campaña creada ✅");
+    renderCampanas();
+  };
+
   /* ------------------ Editar campaña ------------------ */
   window.openEditCampaign = function(taskId){
     const ts = tasks();
@@ -295,7 +394,7 @@
         <button class="btnx primary" onclick="saveEditCampaign('${taskId}')">Guardar</button>
       </div>
     `);
-  }
+  };
 
   window.saveEditCampaign = function(taskId){
     const ts = tasks();
@@ -310,7 +409,7 @@
     markDirty();
     closeModal();
     renderCampanas();
-  }
+  };
 
   /* ------------------ Eliminar campaña (reglas) ------------------ */
   window.deleteCampaign = function(taskId){
@@ -323,7 +422,7 @@
       return;
     }
 
-    // ❌ no caducadas (vencidas)
+    // ❌ no caducadas
     if(t.dueDate){
       const due = new Date(t.dueDate + "T23:59:59");
       if(!isNaN(due.getTime()) && due.getTime() < Date.now()){
@@ -345,12 +444,12 @@
     // 1) eliminar campaña
     save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
 
-    // 2) eliminar gastos asociados a esa campaña
+    // 2) eliminar gastos asociados
     save(KEY_EXPENSES,
       expenses().filter(e => !(e.scope==="campaign" && e.campaignId===taskId))
     );
 
-    // 3) pagos pagados -> saldo a favor (NO se borran)
+    // 3) pagos -> saldo a favor
     const ps = payments().map(p=>{
       if(p.fromTaskId === taskId && p.status === "paid"){
         return {
@@ -367,13 +466,13 @@
     markDirty();
     alert("Campaña eliminada ✅. Pagos convertidos a saldo a favor.");
     renderCampanas();
-  }
+  };
 
   /* ------------------ Generar informe ------------------ */
   window.confirmGenerateReport = function(){
     if(!confirm("¿Generar / actualizar informe mensual?")) return;
     generateMonthly();
-  }
+  };
 
   function generateMonthly(){
     const period = prompt("Mes (YYYY-MM)", "2026-01");
@@ -394,10 +493,14 @@
     reps.unshift(rep);
     save(KEY_MONTHLY_REPORTS, reps);
     clearDirty();
-
     alert("Informe generado ✅");
     renderInformes();
   }
+
+  /* ------------------ Cerrar campaña (placeholder) ------------------ */
+  window.confirmCloseCampaign = function(){
+    alert("Cerrar campaña (flujo siguiente).");
+  };
 
   /* ------------------ Menu + Nav ------------------ */
   function initMenu(){
