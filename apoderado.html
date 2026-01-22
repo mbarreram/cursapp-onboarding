@@ -1,27 +1,59 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apoderado · Cursapp</title>
-  <link rel="stylesheet" href="assets/styles.css" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Cursapp · Apoderado</title>
+  <link rel="stylesheet" href="assets/styles.css?v=500">
 </head>
 <body>
-  <header>
-    <div class="topbar" style="position:relative;">
-      <div class="brand">
-        <div class="logo">C</div>
-        <div id="whoLine"></div>
-      </div>
-      <button class="btn ghost" id="menuBtn" type="button" aria-expanded="false">☰</button>
-      <div id="menuDropdown" style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);border-radius:14px;padding:8px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:9999;">
-        <button class="btn ghost" id="logoutMenuItem" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <strong>Apoderado</strong><br>
+        <span class="muted">Curso Demo · Colegio Demo</span>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
-  <div class="container" id="app"></div>
+<main class="container">
 
-  <script src="assets/app.js?v=1008"></script>
+  <div class="card">
+    <h3>📣 Campañas activas</h3>
+    <ul class="list">
+      <li>Rifa del curso</li>
+      <li>Paseo de curso</li>
+    </ul>
+  </div>
+
+  <div class="grid-2">
+    <div class="card clickable">
+      <h3>💰 Mis cuotas pendientes</h3>
+      <p class="muted">Ver pagos pendientes</p>
+    </div>
+
+    <div class="card clickable">
+      <h3>📄 Historial de pagos</h3>
+      <p class="muted">Pagos realizados</p>
+    </div>
+
+    <div class="card clickable">
+      <h3>⏰ Próximas cuotas</h3>
+      <p class="muted">Pagos por vencer</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📊 Último informe del curso</h3>
+    <p class="muted">Resumen financiero mensual generado por la directiva.</p>
+    <button class="btn primary">Ver informe</button>
+  </div>
+
+</main>
+
 </body>
 </html>
