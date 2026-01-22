@@ -4,7 +4,10 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Apoderado</title>
-  <link rel="stylesheet" href="assets/styles.css?v=500">
+  <!-- Keep global CSS intact -->
+  <link rel="stylesheet" href="assets/styles.css?v=400">
+  <!-- Apoderado-only CSS -->
+  <link rel="stylesheet" href="assets/apoderado.css?v=77">
 </head>
 <body>
 
@@ -17,40 +20,43 @@
         <span class="muted">Curso Demo · Colegio Demo</span>
       </div>
     </div>
+    <button class="btn ghost" type="button">☰</button>
   </div>
 </header>
 
 <main class="container">
 
   <div class="card">
-    <h3>📣 Campañas activas</h3>
-    <ul class="list">
-      <li>Rifa del curso</li>
-      <li>Paseo de curso</li>
-    </ul>
-  </div>
-
-  <div class="grid-2">
-    <div class="card clickable">
-      <h3>💰 Mis cuotas pendientes</h3>
-      <p class="muted">Ver pagos pendientes</p>
-    </div>
-
-    <div class="card clickable">
-      <h3>📄 Historial de pagos</h3>
-      <p class="muted">Pagos realizados</p>
-    </div>
-
-    <div class="card clickable">
-      <h3>⏰ Próximas cuotas</h3>
-      <p class="muted">Pagos por vencer</p>
+    <h3>📣 Avisos de campañas activas</h3>
+    <div class="muted" style="margin-top:6px;">Campañas actualmente en curso</div>
+    <div class="listLines" style="margin-top:10px;">
+      <div class="lineItem">Rifa del curso</div>
+      <div class="lineItem">Paseo de curso</div>
+      <div class="lineItem">Cuota mensual</div>
     </div>
   </div>
 
-  <div class="card">
-    <h3>📊 Último informe del curso</h3>
-    <p class="muted">Resumen financiero mensual generado por la directiva.</p>
-    <button class="btn primary">Ver informe</button>
+  <div class="grid2">
+    <div class="card clickable" onclick="location.href='pagos.html?f=pendientes'">
+      <div class="kTitle">⏳ Mis cuotas pendientes</div>
+      <div class="muted" style="margin-top:6px;">Ver pagos pendientes</div>
+    </div>
+
+    <div class="card clickable" onclick="location.href='pagos.html?f=pagadas'">
+      <div class="kTitle">✅ Historial de pagos</div>
+      <div class="muted" style="margin-top:6px;">Pagos realizados</div>
+    </div>
+  </div>
+
+  <div class="card clickable" onclick="location.href='pagos.html?f=proximas'">
+    <div class="kTitle">📅 Próximas cuotas</div>
+    <div class="muted" style="margin-top:6px;">Pagos por vencer (1 a 3 días)</div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div class="kTitle">📊 Informe del curso</div>
+    <div class="muted" style="margin-top:6px;">Montos generales del curso (no personales). Publicado por la directiva.</div>
+    <button class="btn primary" style="margin-top:12px;">Ver informe</button>
   </div>
 
 </main>
