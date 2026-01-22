@@ -1,4 +1,4 @@
-/* ===== Tesorero – Optimización A ===== */
+/* ===== Tesorero optimizado ===== */
 .container{padding:16px;max-width:980px;margin:auto;padding-bottom:90px;}
 .kTitle{font-weight:900;font-size:16px;}
 .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;
@@ -7,7 +7,13 @@ box-shadow:0 10px 25px rgba(0,0,0,.05);}
 .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .muted{color:#6b7280;font-size:14px}
 
-/* Badges */
+.kpiGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+@media(min-width:720px){.kpiGrid{grid-template-columns:1fr 1fr 1fr 1fr}}
+
+.kpi{border:1px solid rgba(229,231,235,.9);border-radius:16px;padding:12px;background:#fff}
+.kpi .lbl{color:#64748b;font-weight:900}
+.kpi .val{font-weight:950;font-size:18px;margin-top:6px}
+
 .pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;
 font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);
 background:rgba(100,116,139,.10)}
@@ -15,29 +21,19 @@ background:rgba(100,116,139,.10)}
 .pill.warn{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.20);color:#92400e}
 .pill.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.18);color:#991b1b}
 
-/* Botones */
-.btn{border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:10px 12px;
-font-weight:900;cursor:pointer}
-.btn.primary{background:#111827;color:#fff;border-color:#111827}
-.btn.ghost{background:#fff}
+.btnPrimaryMini{border:1px solid #111827;background:#111827;color:#fff;border-radius:12px;
+padding:10px 12px;font-weight:900;cursor:pointer}
+.btnMini{border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:10px 12px;font-weight:900;cursor:pointer}
 
-/* Líneas */
 .listLines .lineItem{padding:12px 0;border-top:1px solid rgba(229,231,235,.7)}
 .lineTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
 
-/* Identidad gasto */
-.exp-general{background:rgba(248,250,252,1);border:1px dashed rgba(148,163,184,.6)}
-.exp-campaign{background:#fff}
-
-/* Avisos */
-.alertBox{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);
-border-radius:14px;padding:12px;margin-bottom:12px;font-weight:900}
 .noteBox{border:1px solid rgba(229,231,235,.8);background:rgba(248,250,252,1);
 border-radius:14px;padding:12px;margin-top:10px}
+.alertBox{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);
+border-radius:14px;padding:12px;margin-bottom:12px;font-weight:900}
 
-/* Navegación inferior (igual que antes) */
-.bottomNav{position:fixed;left:0;right:0;bottom:0;background:#fff;
-border-top:1px solid #e5e7eb;display:flex;justify-content:space-around;padding:10px 8px}
-.navItem{background:none;border:none;font-weight:900;display:flex;flex-direction:column;
-align-items:center;color:#6b7280}
+.bottomNav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e5e7eb;
+display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
+.navItem{background:none;border:none;font-weight:900;display:flex;flex-direction:column;align-items:center;color:#6b7280}
 .navItem.active{color:#111827}
