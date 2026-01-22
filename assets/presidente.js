@@ -43,8 +43,9 @@
   const expenses = () => load(KEY_EXPENSES, []);
   const monthlyReports = () => load(KEY_MONTHLY_REPORTS, []);
 
-  const activeTasks = () => tasks().filter(t => !t.closed);
+  const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
   const closedTasks = () => tasks().filter(t => t.closed);
+  const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
 
   const collectedCourse = () => sum(payments().filter(p => p.status === "paid"), p => p.amount);
   const spentCourse = () => sum(expenses(), e => e.amount);
@@ -53,17 +54,30 @@
   const collectedTask = (id) => sum(payments().filter(p => p.status === "paid" && p.fromTaskId === id), p => p.amount);
   const spentTask = (id) => sum(expenses().filter(e => e.scope === "campaign" && e.campaignId === id), e => e.amount);
   const expensesTask = (id) => expenses().filter(e => e.scope === "campaign" && e.campaignId === id);
+  const deudoresCountForTask = (id) => payments().filter(p => p.fromTaskId === id && p.status === "pending").length;
 
   const noBoletaCount = () => expenses().filter(e => !hasBoleta(e)).length;
   const negativeCampaignsCount = () => activeTasks().filter(t => (collectedTask(t.id) - spentTask(t.id)) < 0).length;
-  const deudoresCountForTask = (id) => payments().filter(p => p.fromTaskId === id && p.status === "pending").length;
+
+  function isExpired(t){
+    if(!t.dueDate) return false;
+    const due = new Date(t.dueDate + "T23:59:59");
+    if(isNaN(due.getTime())) return false;
+    return due.getTime() < Date.now();
+  }
+
+  function statusChip(t){
+    if(t.closed) return `<span class="pill">Cerrada</span>`;
+    if(isExpired(t)) return `<span class="pill danger">Caducada</span>`;
+    return `<span class="pill ok">Activa</span>`;
+  }
 
   function ensureDemo() {
     if (tasks().length) return;
 
     save(KEY_TASKS, [
-      { id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single", amount:10000, goalTotal:80000, months:1 },
-      { id:"t2", title:"Paseo de curso", description:"", startDate:"2026-01-01", dueDate:"2026-03-31", closed:false, mandatoryParticipation:false, type:"monthly", amount:20000, goalTotal:200000, months:3 },
+      { id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeReason:"", mandatoryParticipation:true, type:"single", amount:10000, goalTotal:80000, months:1 },
+      { id:"t2", title:"Paseo de curso", description:"", startDate:"2026-01-01", dueDate:"2026-03-31", closed:false, closeReason:"", mandatoryParticipation:false, type:"monthly", amount:20000, goalTotal:200000, months:3 },
     ]);
 
     save(KEY_PAYMENTS, [
@@ -134,8 +148,9 @@
         </div>
 
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="pill">📌 Activas ${activeTasks().length}</span>
-          <span class="pill">✅ Cerradas ${closedTasks().length}</span>
+          <span class="pill ok">Activas ${activeTasks().length}</span>
+          <span class="pill">Cerradas ${closedTasks().length}</span>
+          <span class="pill danger">Caducadas ${expiredTasks().length}</span>
           ${isDirty() ? `<span class="pill warn">📄 Requiere nuevo informe</span>` : ""}
         </div>
       </div>
@@ -144,29 +159,28 @@
         <div class="kTitle">Acciones clave</div>
         <div class="actions" style="margin-top:10px;">
           <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
-          <button class="btnx" onclick="confirmCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
           <button class="btnx primary" onclick="confirmGenerateReport()">📊 Generar informe</button>
-        </div>
-        <div class="muted" style="margin-top:10px;">
-          Cambios en campañas/rendiciones marcarán el informe como desactualizado.
         </div>
       </div>
     `;
   }
 
   function renderCampanas() {
-    const list = activeTasks().map(t => {
+    const renderLine = (t) => {
       const rec = collectedTask(t.id);
       const gas = spentTask(t.id);
       const saldo = rec - gas;
       const deudores = deudoresCountForTask(t.id);
       const miss = expensesTask(t.id).filter(e=>!hasBoleta(e)).length;
 
+      const canDelete = (!t.closed && !isExpired(t));
+
       return `
         <div class="lineItem">
           <div class="row">
             <div>
-              <div style="font-weight:950;">${esc(t.title)}</div>
+              <div style="font-weight:950;">${esc(t.title)} ${statusChip(t)}</div>
               ${t.description ? `<div class="muted" style="margin-top:4px;">${esc(t.description)}</div>` : ``}
               <div class="muted" style="margin-top:6px;font-size:12px;">${t.startDate||""} → ${t.dueDate||""}</div>
 
@@ -181,19 +195,19 @@
 
             <div class="actions">
               <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-              <button class="btnx" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>
+              ${canDelete ? `<button class="btnx" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ``}
             </div>
           </div>
         </div>
       `;
-    }).join("");
+    };
 
     app.innerHTML = `
       <div class="card">
         <div class="row">
           <div>
-            <div class="kTitle">📌 Campañas activas</div>
-            <div class="muted" style="margin-top:6px;">Se puede eliminar solo campañas activas. Caducadas/cerradas no.</div>
+            <div class="kTitle">📌 Campañas</div>
+            <div class="muted" style="margin-top:6px;">Se puede eliminar solo campañas activas. Cerradas o caducadas no.</div>
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
@@ -201,7 +215,11 @@
         </div>
 
         <div class="listLines" style="margin-top:12px;">
-          ${list || `<div class="muted">Sin campañas activas.</div>`}
+          ${activeTasks().map(renderLine).join("")}
+          ${expiredTasks().length ? `<div class="muted" style="margin-top:14px;font-weight:900;">Caducadas</div>` : ``}
+          ${expiredTasks().map(renderLine).join("")}
+          ${closedTasks().length ? `<div class="muted" style="margin-top:14px;font-weight:900;">Cerradas</div>` : ``}
+          ${closedTasks().map(renderLine).join("")}
         </div>
       </div>
     `;
@@ -240,7 +258,7 @@
     `;
   }
 
-  /* ---------- Crear campaña (COMPLETO) ---------- */
+  /* ---------- Crear campaña (completo) ---------- */
   window.openCreateCampaign = function(){
     openModal(`
       <div class="row">
@@ -258,7 +276,7 @@
 
       <div style="margin-top:12px;">
         <label style="font-weight:900;">Descripción (opcional)</label>
-        <input id="cc_desc" placeholder="Ej: Compra de premios / actividad del curso" />
+        <input id="cc_desc" placeholder="Ej: Actividad del curso" />
       </div>
 
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -300,12 +318,10 @@
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Meses (solo mensual)</label>
-          <input id="cc_months" inputmode="numeric" placeholder="Ej: 3" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">Déjalo vacío si es pago único.</div>
-        </div>
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Meses (solo mensual)</label>
+        <input id="cc_months" inputmode="numeric" placeholder="Ej: 3" />
+        <div class="muted" style="margin-top:6px;font-size:12px;">Déjalo vacío si es pago único.</div>
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
@@ -322,7 +338,6 @@
     const dueDate   = document.getElementById("cc_due").value || "";
     const type = document.getElementById("cc_type").value || "single";
     const mandatoryParticipation = document.getElementById("cc_mandatory").value === "true";
-
     const amount = Number(document.getElementById("cc_amount").value||0);
     const goalTotal = Number(document.getElementById("cc_goal").value||0);
     const months = Number(document.getElementById("cc_months").value||0);
@@ -339,6 +354,7 @@
       startDate,
       dueDate,
       closed:false,
+      closeReason:"",
       type,
       mandatoryParticipation,
       amount,
@@ -353,140 +369,59 @@
     renderCampanas();
   };
 
-  /* ---------- Editar campaña ---------- */
-  window.openEditCampaign = function(taskId){
-    const ts = tasks();
-    const t = ts.find(x=>x.id===taskId);
-    if(!t) return;
+  /* ---------- Cerrar campaña con motivo ---------- */
+  window.openCloseCampaign = function(){
+    const list = activeTasks();
+    if(!list.length){ alert("No hay campañas activas para cerrar."); return; }
 
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Editar campaña</div>
-          <div class="muted" style="margin-top:6px;">Este cambio marcará “Requiere nuevo informe”.</div>
+          <div style="font-weight:950;font-size:18px;">Cerrar campaña</div>
+          <div class="muted" style="margin-top:6px;">Debes indicar un motivo de cierre (obligatorio).</div>
         </div>
         <button class="btnx" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Nombre</label>
-        <input id="ec_title" value="${esc(t.title)}" />
+        <label style="font-weight:900;">Campaña</label>
+        <select id="cc_task">
+          ${list.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("")}
+        </select>
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Descripción</label>
-        <input id="ec_desc" value="${esc(t.description||"")}" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Inicio</label>
-          <input id="ec_start" type="date" value="${t.startDate||""}" />
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Fin</label>
-          <input id="ec_due" type="date" value="${t.dueDate||""}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Monto</label>
-          <input id="ec_amount" inputmode="numeric" value="${Number(t.amount||0)}" />
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Meta total</label>
-          <input id="ec_goal" inputmode="numeric" value="${Number(t.goalTotal||0)}" />
-        </div>
+        <label style="font-weight:900;">Motivo de cierre (obligatorio)</label>
+        <input id="cc_reason" placeholder="Ej: No se alcanzó la meta / Cambio de plan / Actividad cancelada" />
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
         <button class="btnx" onclick="closeModal()">Cancelar</button>
-        <button class="btnx primary" onclick="saveEditCampaign('${taskId}')">Guardar</button>
+        <button class="btnx primary" onclick="saveCloseCampaign()">Cerrar campaña</button>
       </div>
     `);
   };
 
-  window.saveEditCampaign = function(taskId){
+  window.saveCloseCampaign = function(){
+    const taskId = document.getElementById("cc_task").value;
+    const reason = (document.getElementById("cc_reason").value||"").trim();
+    if(!reason){ alert("Debes ingresar el motivo de cierre."); return; }
+
     const ts = tasks();
     const i = ts.findIndex(x=>x.id===taskId);
     if(i<0) return;
 
-    ts[i].title = (document.getElementById("ec_title").value||"").trim() || ts[i].title;
-    ts[i].description = (document.getElementById("ec_desc").value||"").trim();
-    ts[i].startDate = document.getElementById("ec_start").value || ts[i].startDate;
-    ts[i].dueDate = document.getElementById("ec_due").value || ts[i].dueDate;
-
-    const amount = Number(document.getElementById("ec_amount").value||ts[i].amount||0);
-    const goal = Number(document.getElementById("ec_goal").value||0);
-
-    if(!amount || amount<=0){ alert("Monto inválido."); return; }
-
-    ts[i].amount = amount;
-    ts[i].goalTotal = goal>0?goal:null;
+    // no permitir cerrar caducada aquí? se permite, pero queda cerrada manualmente
+    ts[i].closed = true;
+    ts[i].closeReason = reason;
 
     save(KEY_TASKS, ts);
     markDirty();
     closeModal();
+    alert("Campaña cerrada ✅");
     renderCampanas();
   };
 
-  /* ---------- Eliminar campaña (reglas) ---------- */
-  window.deleteCampaign = function(taskId){
-    const t = tasks().find(x=>x.id===taskId);
-    if(!t) return;
-
-    if(t.closed){
-      alert("No se puede eliminar una campaña cerrada.");
-      return;
-    }
-
-    if(t.dueDate){
-      const due = new Date(t.dueDate + "T23:59:59");
-      if(!isNaN(due.getTime()) && due.getTime() < Date.now()){
-        alert("No se puede eliminar una campaña caducada (vencida).");
-        return;
-      }
-    }
-
-    const msg =
-`¿Eliminar la campaña "${t.title}"?
-
-• La campaña se elimina del sistema.
-• Los pagos NO se borran: quedarán como saldo a favor de apoderados que pagaron.
-• Se eliminarán las rendiciones asociadas.
-• Esto marcará "Requiere nuevo informe".`;
-
-    if(!confirm(msg)) return;
-
-    // 1) eliminar campaña
-    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
-
-    // 2) eliminar gastos asociados
-    save(KEY_EXPENSES,
-      expenses().filter(e => !(e.scope==="campaign" && e.campaignId===taskId))
-    );
-
-    // 3) pagos pagados -> saldo a favor (NO borrar)
-    const ps = payments().map(p=>{
-      if(p.fromTaskId === taskId && p.status === "paid"){
-        return {
-          ...p,
-          status: "credit",
-          creditFromTaskId: taskId,
-          note: "Saldo a favor por campaña eliminada"
-        };
-      }
-      return p;
-    });
-    save(KEY_PAYMENTS, ps);
-
-    markDirty();
-    alert("Campaña eliminada ✅. Pagos convertidos a saldo a favor.");
-    renderCampanas();
-  };
-
-  /* ---------- Generar informe ---------- */
   window.confirmGenerateReport = function(){
     if(!confirm("¿Generar / actualizar informe mensual?")) return;
     generateMonthly();
@@ -515,9 +450,52 @@
     renderInformes();
   }
 
-  window.confirmCloseCampaign = function(){
-    alert("Cerrar campaña: lo definimos en el siguiente ajuste.");
+  /* ---------- Eliminar campaña (reglas) ---------- */
+  window.deleteCampaign = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+
+    if(t.closed){
+      alert("No se puede eliminar una campaña cerrada.");
+      return;
+    }
+    if(isExpired(t)){
+      alert("No se puede eliminar una campaña caducada (vencida).");
+      return;
+    }
+
+    const msg =
+`¿Eliminar la campaña "${t.title}"?
+
+• La campaña se elimina del sistema.
+• Los pagos NO se borran: quedarán como saldo a favor.
+• Se eliminarán rendiciones asociadas.
+• Requiere nuevo informe.`;
+
+    if(!confirm(msg)) return;
+
+    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
+    save(KEY_EXPENSES, expenses().filter(e => !(e.scope==="campaign" && e.campaignId===taskId)));
+
+    const ps = payments().map(p=>{
+      if(p.fromTaskId === taskId && p.status === "paid"){
+        return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+      }
+      return p;
+    });
+    save(KEY_PAYMENTS, ps);
+
+    markDirty();
+    alert("Campaña eliminada ✅. Pagos convertidos a saldo a favor.");
+    renderCampanas();
   };
+
+  function isExpired(t){
+    if(!t.dueDate) return false;
+    const due = new Date(t.dueDate + "T23:59:59");
+    if(isNaN(due.getTime())) return false;
+    return due.getTime() < Date.now();
+  }
 
   /* ---------- Menu + Nav ---------- */
   function initMenu(){
@@ -546,14 +524,12 @@
   function setActive(tab){
     navItems.forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
   }
-
   function go(tab){
     setActive(tab);
     if(tab==="home") renderHome();
     if(tab==="campanas") renderCampanas();
     if(tab==="informes") renderInformes();
   }
-
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   /* ---------- Boot ---------- */
