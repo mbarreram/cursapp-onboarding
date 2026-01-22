@@ -1,8 +1,8 @@
 /* =========================
-   Presidente · Pulido visual FINAL
+   Presidente · Estilos (v3)
    - Acciones clave alineadas
-   - Filtro chips (Activas/Caducadas/Cerradas/Todas)
-   - Campañas con card separada + franja
+   - Chips filtro
+   - Cards campañas con franja
 ========================= */
 
 .container{padding:16px;max-width:980px;margin:auto;padding-bottom:90px;}
@@ -45,7 +45,7 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
 .btnx.primary{background:#111827;border-color:#111827;color:#fff;}
 .btnx.danger{border-color:rgba(239,68,68,.30);background:rgba(239,68,68,.08);color:#991b1b;}
 
-/* ✅ Acciones clave alineadas (grid) */
+/* ✅ Acciones clave alineadas */
 .actions.actionsKey{
   display:grid;
   grid-template-columns:1fr;
@@ -63,7 +63,7 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
   .actions.actionsKey{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
 }
 
-/* ✅ Chips filtro */
+/* Chips filtro */
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 .chip{
   border:1px solid rgba(229,231,235,.95);
@@ -80,7 +80,7 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
   color:#111827;
 }
 
-/* ✅ Campañas: tarjeta separada + franja */
+/* Campañas: tarjeta + franja */
 .listLines{margin-top:12px;}
 .listLines .lineItem{
   position:relative;
