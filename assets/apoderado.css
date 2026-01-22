@@ -1,0 +1,9 @@
+
+/* Apoderado-only styles (does not touch login) */
+.container{padding:16px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:520px){.grid2{grid-template-columns:1fr;}}
+.kTitle{font-weight:950;font-size:16px;}
+.clickable{cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;}
+.clickable:active{transform:scale(.99);}
+.listLines .lineItem{padding:10px 0;border-top:1px solid rgba(229,231,235,.7);font-weight:900;}
