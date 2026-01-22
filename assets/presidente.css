@@ -1,12 +1,14 @@
 /* =========================
-   Presidente · Pulido visual v3
-   - Botones alineados
-   - Campañas con franja vertical + separación
+   Presidente · Pulido visual FINAL
+   - Acciones clave alineadas
+   - Filtro chips (Activas/Caducadas/Cerradas/Todas)
+   - Campañas con card separada + franja
 ========================= */
 
 .container{padding:16px;max-width:980px;margin:auto;padding-bottom:90px;}
 .card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 10px 25px rgba(0,0,0,.05);}
 .row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;}
 .muted{color:#6b7280;font-size:14px;}
 .kTitle{font-weight:950;font-size:16px;}
 
@@ -25,20 +27,8 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
 .pill.danger{background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.18);color:#991b1b}
 
 /* Alerts */
-.alertBox{
-  border:1px solid rgba(239,68,68,.25);
-  background:rgba(239,68,68,.08);
-  border-radius:16px;
-  padding:12px;
-  margin-bottom:12px;
-}
-.warnBox{
-  border:1px solid rgba(245,158,11,.25);
-  background:rgba(245,158,11,.10);
-  border-radius:16px;
-  padding:12px;
-  margin-bottom:12px;
-}
+.alertBox{border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);border-radius:16px;padding:12px;margin-bottom:12px}
+.warnBox{border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.10);border-radius:16px;padding:12px;margin-bottom:12px}
 
 /* Buttons */
 .btnx{
@@ -52,64 +42,70 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
   white-space:nowrap;
 }
 .btnx:active{transform:scale(.99)}
-.btnx.primary{
-  background:#111827;
-  border-color:#111827;
-  color:#fff;
-}
-.btnx.danger{
-  border-color:rgba(239,68,68,.30);
-  background:rgba(239,68,68,.08);
-  color:#991b1b;
-}
+.btnx.primary{background:#111827;border-color:#111827;color:#fff;}
+.btnx.danger{border-color:rgba(239,68,68,.30);background:rgba(239,68,68,.08);color:#991b1b;}
 
-/* ✅ BOTONES ALINEADOS */
-.actions{
+/* ✅ Acciones clave alineadas (grid) */
+.actions.actionsKey{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  width:100%;
+}
+.actions.actionsKey .btnx{
+  width:100%;
+  height:44px;
   display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
   align-items:center;
+  justify-content:center;
 }
-.actions .btnx{height:40px; display:inline-flex; align-items:center;}
+@media(min-width:720px){
+  .actions.actionsKey{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
+}
 
-/* ✅ LISTA DE CAMPAÑAS: separación + franja */
+/* ✅ Chips filtro */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.chip{
+  border:1px solid rgba(229,231,235,.95);
+  background:#fff;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:950;
+  cursor:pointer;
+  color:#6b7280;
+}
+.chip.active{
+  border-color:rgba(91,92,226,.35);
+  background:rgba(91,92,226,.10);
+  color:#111827;
+}
+
+/* ✅ Campañas: tarjeta separada + franja */
 .listLines{margin-top:12px;}
 .listLines .lineItem{
   position:relative;
   padding:14px 14px 14px 16px;
   border:1px solid rgba(229,231,235,.9);
   border-radius:16px;
-  margin-top:10px;              /* separación entre campañas */
+  margin-top:10px;
   background:#fff;
 }
 .listLines .lineItem:first-child{margin-top:0;}
 .listLines .lineItem::before{
   content:"";
   position:absolute;
-  left:0;
-  top:0;
-  bottom:0;
+  left:0;top:0;bottom:0;
   width:6px;
   border-radius:16px 0 0 16px;
-  background:rgba(91,92,226,.85); /* franja default */
+  background:rgba(91,92,226,.85);
 }
-
-/* Si quieres variar color por estado (sin tocar JS):
-   dejamos clases opcionales por si después las agregas */
-.listLines .lineItem.isDanger::before{background:rgba(239,68,68,.85);}
-.listLines .lineItem.isWarn::before{background:rgba(245,158,11,.90);}
 .listLines .lineItem.isOk::before{background:rgba(34,197,94,.85);}
+.listLines .lineItem.isWarn::before{background:rgba(245,158,11,.90);}
+.listLines .lineItem.isDanger::before{background:rgba(239,68,68,.85);}
 
 /* Bottom nav */
-.bottomNav{
-  position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid rgba(229,231,235,.9);
-  display:flex;justify-content:space-around;padding:10px 8px;z-index:50
-}
-.navItem{
-  background:none;border:none;font-weight:950;
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  color:#6b7280
-}
+.bottomNav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid rgba(229,231,235,.9);
+display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
+.navItem{background:none;border:none;font-weight:950;display:flex;flex-direction:column;align-items:center;gap:4px;color:#6b7280}
 .navItem span{font-size:11px;font-weight:900}
 .navItem.active{color:#111827}
