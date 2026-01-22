@@ -4,62 +4,45 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Apoderado</title>
-  <!-- Keep global CSS intact -->
+
+  <!-- CSS global -->
   <link rel="stylesheet" href="assets/styles.css?v=400">
-  <!-- Apoderado-only CSS -->
-  <link rel="stylesheet" href="assets/apoderado.css?v=77">
+  <!-- CSS apoderado -->
+  <link rel="stylesheet" href="assets/apoderado.css?v=10">
 </head>
 <body>
 
 <header>
-  <div class="topbar">
+  <div class="topbar" style="position:relative;">
     <div class="brand">
       <div class="logo">C</div>
       <div>
-        <strong>Apoderado</strong><br>
-        <span class="muted">Curso Demo · Colegio Demo</span>
+        <div style="font-weight:950;">Apoderado</div>
+        <div class="muted" style="font-weight:800;font-size:12px;" id="whoCourseLine">Curso Demo · Colegio Demo</div>
       </div>
     </div>
-    <button class="btn ghost" type="button">☰</button>
+
+    <button class="btn ghost" id="menuBtn" type="button"
+      style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
+
+    <div id="menuDropdown"
+      style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
+      border-radius:14px;padding:8px;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
+      <button class="btn ghost" id="goOnboarding" type="button" style="width:100%;text-align:left;">Configurar curso</button>
+      <button class="btn ghost" id="logoutBtn" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
+    </div>
   </div>
 </header>
 
-<main class="container">
+<main class="container" id="app"></main>
+<div id="modalRoot"></div>
 
-  <div class="card">
-    <h3>📣 Avisos de campañas activas</h3>
-    <div class="muted" style="margin-top:6px;">Campañas actualmente en curso</div>
-    <div class="listLines" style="margin-top:10px;">
-      <div class="lineItem">Rifa del curso</div>
-      <div class="lineItem">Paseo de curso</div>
-      <div class="lineItem">Cuota mensual</div>
-    </div>
-  </div>
+<nav class="bottomNav">
+  <button class="navItem active" data-tab="home">🏠<span>Inicio</span></button>
+  <button class="navItem" data-tab="payments">💳<span>Pagos</span></button>
+  <button class="navItem" data-tab="informes">📄<span>Informes</span></button>
+</nav>
 
-  <div class="grid2">
-    <div class="card clickable" onclick="location.href='pagos.html?f=pendientes'">
-      <div class="kTitle">⏳ Mis cuotas pendientes</div>
-      <div class="muted" style="margin-top:6px;">Ver pagos pendientes</div>
-    </div>
-
-    <div class="card clickable" onclick="location.href='pagos.html?f=pagadas'">
-      <div class="kTitle">✅ Historial de pagos</div>
-      <div class="muted" style="margin-top:6px;">Pagos realizados</div>
-    </div>
-  </div>
-
-  <div class="card clickable" onclick="location.href='pagos.html?f=proximas'">
-    <div class="kTitle">📅 Próximas cuotas</div>
-    <div class="muted" style="margin-top:6px;">Pagos por vencer (1 a 3 días)</div>
-  </div>
-
-  <div class="card" style="margin-top:12px;">
-    <div class="kTitle">📊 Informe del curso</div>
-    <div class="muted" style="margin-top:6px;">Montos generales del curso (no personales). Publicado por la directiva.</div>
-    <button class="btn primary" style="margin-top:12px;">Ver informe</button>
-  </div>
-
-</main>
-
+<script src="assets/apoderado.js?v=10"></script>
 </body>
 </html>
