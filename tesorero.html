@@ -5,23 +5,34 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Tesorero</title>
   <link rel="stylesheet" href="assets/styles.css?v=400">
-  <link rel="stylesheet" href="assets/tesorero.css?v=1">
+  <link rel="stylesheet" href="assets/tesorero.css?v=2">
 </head>
 <body>
 
 <header>
-  <div class="topbar">
+  <div class="topbar" style="position:relative;">
     <div class="brand">
       <div class="logo">C</div>
       <div>
-        <strong>Tesorero</strong><br>
-        <span class="muted">Curso Demo · Colegio Demo</span>
+        <div style="font-weight:950;">Tesorero</div>
+        <div class="muted" style="font-weight:800;font-size:12px;">Curso Demo · Colegio Demo</div>
       </div>
+    </div>
+
+    <button class="btn ghost" id="menuBtn" type="button"
+      style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
+
+    <div id="menuDropdown"
+      style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
+      border-radius:14px;padding:8px;min-width:220px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
+      <button class="btn ghost" id="resetBtn" type="button" style="width:100%;text-align:left;">Reset datos (demo)</button>
+      <button class="btn ghost" id="logoutBtn" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
     </div>
   </div>
 </header>
 
 <main class="container" id="app"></main>
+<div id="modalRoot"></div>
 
 <nav class="bottomNav">
   <button class="navItem active" data-tab="home">🏠<span>Inicio</span></button>
@@ -29,6 +40,6 @@
   <button class="navItem" data-tab="informes">📊<span>Informes</span></button>
 </nav>
 
-<script src="assets/tesorero.js?v=1"></script>
+<script src="assets/tesorero.js?v=2"></script>
 </body>
 </html>
