@@ -1,11 +1,19 @@
-/* Cursapp · Onboarding (wizard) v76 */
+/* =========================================================
+   Cursapp · Onboarding (Wizard) — con cuenta Apoderado
+   - Crea usuario (correo + password)
+   - Guarda users[] en localStorage (demo)
+   - Guarda profiles[] por curso (activación por curso)
+   ========================================================= */
+
 (function(){
-  const KEY_DRAFT = "cursapp_onb_draft_v1";
+  const KEY_ONB_DRAFT = "cursapp_onb_draft_v1";
+  const KEY_USERS = "cursapp_users_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
-  const KEY_ACTIVE = "cursapp_active_course_v1";
+  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+
   const DEBUG = localStorage.getItem("cursapp_onb_debug")==="1";
 
-  // Demo data (se reemplazará por data real)
+  // Demo data (reemplazable por JSON real en el futuro)
   const REGIONS = [
     { id:"r1", name:"Región Metropolitana" },
     { id:"r2", name:"Valparaíso" }
@@ -28,25 +36,60 @@
   const JORNADAS = ["Mañana","Tarde"];
 
   function $(id){ return document.getElementById(id); }
-  function iso(){ return new Date().toISOString(); }
+  function nowISO(){ return new Date().toISOString(); }
   function nowYear(){ return new Date().getFullYear(); }
-
-  function loadDraft(){ try{return JSON.parse(localStorage.getItem(KEY_DRAFT)||"{}");}catch(e){return {}} }
-  function saveDraft(d){ localStorage.setItem(KEY_DRAFT, JSON.stringify(d||{})); }
-  function clearDraft(){ localStorage.removeItem(KEY_DRAFT); }
-
-  function loadProfiles(){ try{return JSON.parse(localStorage.getItem(KEY_PROFILES)||"[]");}catch(e){return []} }
-  function saveProfiles(p){ localStorage.setItem(KEY_PROFILES, JSON.stringify(p||[])); }
-  function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE, k); }
-
-  function validateEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim()); }
-  function makeCourseKey(schoolId, level, letter, jornada, year){ return [schoolId,level,letter,jornada,year].join("|"); }
-
-  function option(list, valueKey, labelKey, selected){
-    return list.map(x=>`<option value="${x[valueKey]}" ${x[valueKey]===selected?"selected":""}>${x[labelKey]}</option>`).join("");
+  function todayISO(){
+    const d=new Date();
+    const yyyy=d.getFullYear();
+    const mm=String(d.getMonth()+1).padStart(2,"0");
+    const dd=String(d.getDate()).padStart(2,"0");
+    return `${yyyy}-${mm}-${dd}`;
   }
-  function optionVals(list, selected){
-    return list.map(x=>`<option value="${x}" ${x===selected?"selected":""}>${x}</option>`).join("");
+
+  function escapeHtml(str){
+    return String(str||"").replace(/[&<>'"]/g, s=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[s]));
+  }
+
+  function loadJSON(key, fallback){
+    try{
+      const v = localStorage.getItem(key);
+      if(v==null) return fallback;
+      return JSON.parse(v);
+    }catch(e){
+      return fallback;
+    }
+  }
+  function saveJSON(key, val){
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+
+  function loadDraft(){ return loadJSON(KEY_ONB_DRAFT, {}); }
+  function saveDraft(d){ saveJSON(KEY_ONB_DRAFT, d||{}); }
+  function clearDraft(){ localStorage.removeItem(KEY_ONB_DRAFT); }
+
+  function loadUsers(){ return loadJSON(KEY_USERS, []); }
+  function saveUsers(u){ saveJSON(KEY_USERS, u||[]); }
+
+  function loadProfiles(){ return loadJSON(KEY_PROFILES, []); }
+  function saveProfiles(p){ saveJSON(KEY_PROFILES, p||[]); }
+
+  function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
+
+  function validateEmail(e){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
+  }
+
+  // Hash demo (NO seguro, solo demo local)
+  function hashDemo(str){
+    // DJB2
+    let h=5381;
+    const s = String(str||"");
+    for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
+    return "h_"+(h>>>0).toString(16);
+  }
+
+  function makeCourseKey(schoolId, level, letter, jornada, year){
+    return [schoolId, level, letter, jornada, year].join("|");
   }
 
   function render(){
@@ -59,7 +102,7 @@
     const step = Number(d.step||1);
     const progressPct = Math.round((step/4)*100);
 
-    // defaults
+    // defaults cascade
     const regionId = d.regionId || REGIONS[0].id;
     const comunas = COMUNAS.filter(c=>c.regionId===regionId);
     const comunaId = d.comunaId || (comunas[0]?.id||"");
@@ -76,16 +119,29 @@
     const email = d.email || "";
     const email2 = d.email2 || "";
     const phone = d.phone || "";
+    const pass = d.pass || "";
+    const pass2 = d.pass2 || "";
 
     const payChoice = d.payChoice || "now"; // now|later
 
-    const debugLine = DEBUG ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · step=${step} region=${regionId} comuna=${comunaId} school=${schoolId}</div>` : "";
+    const debugLine = DEBUG
+      ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · step=${step} region=${regionId} comuna=${comunaId} school=${schoolId}</div>`
+      : "";
+
+    function option(list, valueKey, labelKey, selected){
+      return list.map(x=>`<option value="${x[valueKey]}" ${x[valueKey]===selected?"selected":""}>${x[labelKey]}</option>`).join("");
+    }
+    function optionVals(list, selected){
+      return list.map(x=>`<option value="${x}" ${x===selected?"selected":""}>${x}</option>`).join("");
+    }
 
     root.innerHTML = `
       <div class="card" style="margin-top:12px;">
-        <div class="onbStep">Onboarding</div>
+        <div style="font-weight:950;font-size:18px;">Onboarding</div>
         <div class="muted" style="margin-top:6px;">Paso ${step} de 4</div>
-        <div class="onbProg"><div style="width:${progressPct}%;"></div></div>
+        <div style="margin-top:8px;height:10px;background:rgba(229,231,235,.9);border-radius:999px;overflow:hidden;">
+          <div style="height:100%;width:${progressPct}%;background:rgba(91,92,226,.85)"></div>
+        </div>
         ${debugLine}
 
         ${step===1 ? `
@@ -101,10 +157,6 @@
             <label style="font-weight:900;">Colegio</label>
             <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
           </div>
-          <div class="helpBox">
-            <div style="font-weight:950;">ℹ️ Selección guiada</div>
-            <div class="muted" style="margin-top:6px;">Usamos combos para evitar datos incorrectos. (Demo con colegios de ejemplo)</div>
-          </div>
         `:""}
 
         ${step===2 ? `
@@ -118,6 +170,7 @@
               <input id="onbYear" inputmode="numeric" value="${year}" />
             </div>
           </div>
+
           <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
             <div style="flex:1;min-width:160px;">
               <label style="font-weight:900;">Nivel</label>
@@ -135,47 +188,63 @@
             <label style="font-weight:900;">Nombre apoderado</label>
             <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
           </div>
+
           <div style="margin-top:12px;">
             <label style="font-weight:900;">Alumno/a</label>
             <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
           </div>
+
           <div style="margin-top:12px;">
             <label style="font-weight:900;">Correo (obligatorio)</label>
             <input id="onbEmail" placeholder="correo@dominio.com" value="${escapeHtml(email)}" />
           </div>
+
           <div style="margin-top:12px;">
             <label style="font-weight:900;">Confirmar correo</label>
             <input id="onbEmail2" placeholder="correo@dominio.com" value="${escapeHtml(email2)}" />
           </div>
+
           <div style="margin-top:12px;">
             <label style="font-weight:900;">Teléfono (opcional)</label>
             <input id="onbPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(phone)}" />
           </div>
-          <div class="helpBox">
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Password</label>
+            <input id="onbPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(pass)}" />
+          </div>
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Confirmar password</label>
+            <input id="onbPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(pass2)}" />
+          </div>
+
+          <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
             <div style="font-weight:950;">📧 Comprobantes</div>
-            <div class="muted" style="margin-top:6px;">El correo se utilizará para enviar comprobantes de pago y comunicaciones.</div>
+            <div class="muted" style="margin-top:6px;">
+              El correo se usará para comprobantes de pago e informes del curso.
+            </div>
           </div>
         `:""}
 
         ${step===4 ? `
-          <div class="helpBox">
+          <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
             <div style="font-weight:950;">Activación por curso</div>
-            <div class="muted" style="margin-top:6px;">Setup único: <b>$990</b> por apoderado por curso.</div>
-            <div class="muted" style="margin-top:6px;">Si eliges “pagar después”, al entrar al rol se bloqueará el uso hasta pagar.</div>
-          </div>
+            <div class="muted" style="margin-top:6px;">
+              Setup único: <b>$990</b> por apoderado por curso.
+            </div>
+            <div class="muted" style="margin-top:6px;">
+              Si eliges pagar después, se bloqueará el uso al ingresar.
+            </div>
 
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-            <label class="tag" style="cursor:pointer;">
-              <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> Pagar ahora
-            </label>
-            <label class="tag" style="cursor:pointer;">
-              <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> Pagar después
-            </label>
-          </div>
-
-          <div class="warnBox">
-            <div style="font-weight:950;">⚠️ Montos del curso</div>
-            <div class="muted" style="margin-top:6px;">La activación es del sistema (Cursapp), no es una cuota del curso.</div>
+            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+              <label class="tag" style="cursor:pointer;">
+                <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> Pagar ahora
+              </label>
+              <label class="tag" style="cursor:pointer;">
+                <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> Pagar después
+              </label>
+            </div>
           </div>
         `:""}
 
@@ -186,12 +255,8 @@
       </div>
     `;
 
-    wire(step, d, {regionId, comunaId, schoolId});
+    wire(step, d, { regionId, comunaId, schoolId });
     saveDraft(d);
-  }
-
-  function escapeHtml(str){
-    return String(str||"").replace(/[&<>'"]/g, s=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[s]));
   }
 
   function wire(step, d, ctx){
@@ -199,118 +264,157 @@
     const btnNext = $("btnNext");
 
     if(step===1){
-      const r = $("onbRegion"); const c = $("onbComuna"); const s = $("onbSchool");
-      r.onchange=()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); };
-      c.onchange=()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); };
-      s.onchange=()=>{ d.schoolId=s.value; saveDraft(d); };
+      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool");
+      r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); };
+      c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); };
+      s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); };
       d.regionId = ctx.regionId; d.comunaId = ctx.comunaId; d.schoolId = ctx.schoolId;
     }
 
     if(step===2){
-      $("onbJornada").onchange=()=>{ d.jornada=$("onbJornada").value; saveDraft(d); };
-      $("onbYear").oninput=()=>{ d.year=$("onbYear").value; saveDraft(d); };
-      $("onbLevel").onchange=()=>{ d.level=$("onbLevel").value; saveDraft(d); };
-      $("onbLetter").onchange=()=>{ d.letter=$("onbLetter").value; saveDraft(d); };
+      $("onbJornada").onchange = ()=>{ d.jornada=$("onbJornada").value; saveDraft(d); };
+      $("onbYear").oninput = ()=>{ d.year=$("onbYear").value; saveDraft(d); };
+      $("onbLevel").onchange = ()=>{ d.level=$("onbLevel").value; saveDraft(d); };
+      $("onbLetter").onchange = ()=>{ d.letter=$("onbLetter").value; saveDraft(d); };
     }
 
     if(step===3){
-      $("onbName").oninput=()=>{ d.name=$("onbName").value; saveDraft(d); };
-      $("onbAlumno").oninput=()=>{ d.alumno=$("onbAlumno").value; saveDraft(d); };
-      $("onbEmail").oninput=()=>{ d.email=$("onbEmail").value; saveDraft(d); };
-      $("onbEmail2").oninput=()=>{ d.email2=$("onbEmail2").value; saveDraft(d); };
-      $("onbPhone").oninput=()=>{ d.phone=$("onbPhone").value; saveDraft(d); };
+      $("onbName").oninput = ()=>{ d.name=$("onbName").value; saveDraft(d); };
+      $("onbAlumno").oninput = ()=>{ d.alumno=$("onbAlumno").value; saveDraft(d); };
+      $("onbEmail").oninput = ()=>{ d.email=$("onbEmail").value; saveDraft(d); };
+      $("onbEmail2").oninput = ()=>{ d.email2=$("onbEmail2").value; saveDraft(d); };
+      $("onbPhone").oninput = ()=>{ d.phone=$("onbPhone").value; saveDraft(d); };
+      $("onbPass").oninput = ()=>{ d.pass=$("onbPass").value; saveDraft(d); };
+      $("onbPass2").oninput = ()=>{ d.pass2=$("onbPass2").value; saveDraft(d); };
     }
 
     if(step===4){
       document.querySelectorAll("input[name=pay]").forEach(r=>{
-        r.onchange=()=>{ d.payChoice=r.value; saveDraft(d); };
+        r.onchange = ()=>{ d.payChoice=r.value; saveDraft(d); };
       });
     }
 
-    btnPrev && (btnPrev.onclick=()=>{
+    btnPrev && (btnPrev.onclick = ()=>{
       d.step = Math.max(1, Number(d.step||1)-1);
       saveDraft(d); render();
     });
 
-    btnNext && (btnNext.onclick=()=>{
+    btnNext && (btnNext.onclick = ()=>{
       if(step===1){
         if(!d.regionId || !d.comunaId || !d.schoolId){
           alert("Selecciona región, comuna y colegio.");
           return;
         }
-        d.step = 2; saveDraft(d); render(); return;
+        d.step=2; saveDraft(d); render(); return;
       }
+
       if(step===2){
         d.jornada = $("onbJornada").value;
         d.year = String($("onbYear").value||"").trim();
         d.level = $("onbLevel").value;
         d.letter = $("onbLetter").value;
+
         if(!/^\d{4}$/.test(d.year)){ alert("Año inválido."); return; }
-        d.step = 3; saveDraft(d); render(); return;
+        d.step=3; saveDraft(d); render(); return;
       }
+
       if(step===3){
         d.name = String($("onbName").value||"").trim();
         d.alumno = String($("onbAlumno").value||"").trim();
-        d.email = String($("onbEmail").value||"").trim();
-        d.email2 = String($("onbEmail2").value||"").trim();
+        d.email = String($("onbEmail").value||"").trim().toLowerCase();
+        d.email2 = String($("onbEmail2").value||"").trim().toLowerCase();
         d.phone = String($("onbPhone").value||"").trim();
+        d.pass = String($("onbPass").value||"");
+        d.pass2 = String($("onbPass2").value||"");
 
         if(!d.name){ alert("Completa tu nombre."); return; }
-        if(!d.alumno){ alert("Completa el alumno/a."); return; }
+        if(!d.alumno){ alert("Completa alumno/a."); return; }
         if(!validateEmail(d.email) || d.email!==d.email2){ alert("Correo inválido o no coincide."); return; }
+        if(d.pass.length < 6){ alert("Password mínimo 6 caracteres."); return; }
+        if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
 
-        d.step = 4; saveDraft(d); render(); return;
+        d.step=4; saveDraft(d); render(); return;
       }
-      if(step===4){
-        const pay = document.querySelector("input[name=pay]:checked");
-        d.payChoice = pay ? pay.value : (d.payChoice||"now");
 
+      if(step===4){
+        // --- build courseKey ---
         const region = REGIONS.find(r=>r.id===d.regionId);
         const comuna = COMUNAS.find(c=>c.id===d.comunaId);
         const school = SCHOOLS.find(s=>s.id===d.schoolId);
 
         const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
 
+        // --- upsert user ---
+        let users = loadUsers();
+        const existing = users.find(u=>u.email===d.email);
+        let userId = existing ? existing.userId : ("u_"+uid("usr"));
+        const passHash = hashDemo(d.pass);
+
+        if(existing){
+          // update password if re-register
+          existing.passwordHashDemo = passHash;
+          existing.updatedAt = nowISO();
+        }else{
+          users.unshift({
+            userId,
+            email: d.email,
+            passwordHashDemo: passHash,
+            createdAt: nowISO()
+          });
+        }
+        saveUsers(users);
+
+        // --- create profile for this course + user ---
+        let profiles = loadProfiles();
+
         const activation = {
           required:true,
           amount:990,
           status: (d.payChoice==="later") ? "pending" : "paid",
-          createdAt: iso(),
-          paidAt: (d.payChoice==="later") ? null : iso()
+          createdAt: nowISO(),
+          paidAt: (d.payChoice==="later") ? null : nowISO()
         };
 
-        const profiles = loadProfiles();
-        // overwrite if same courseKey+email exists
-        const filtered = profiles.filter(p=>!(p.courseKey===courseKey && p.user?.email===d.email));
-        filtered.unshift({
+        // overwrite if same userId + courseKey exists
+        profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey));
+
+        profiles.unshift({
+          profileId: "pr_"+uid("p"),
+          userId,
+          role: "apoderado",
           courseKey,
-          course:{
-            regionId:d.regionId, regionName:region?region.name:"",
-            comunaId:d.comunaId, comunaName:comuna?comuna.name:"",
-            schoolId:d.schoolId, schoolName:school?school.name:"",
-            jornada:d.jornada, level:d.level, letter:d.letter, year:d.year
+          course: {
+            regionId: d.regionId, regionName: region?region.name:"",
+            comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+            schoolId: d.schoolId, schoolName: school?school.name:"",
+            jornada: d.jornada,
+            level: d.level,
+            letter: d.letter,
+            year: d.year
           },
-          user:{
-            role:"apoderado",
-            name:d.name,
-            alumno:d.alumno,
-            email:d.email,
-            phone:d.phone || ""
+          apoderado: {
+            name: d.name,
+            alumno: d.alumno,
+            phone: d.phone
           },
-          activation
+          activation,
+          createdAt: nowISO()
         });
-        saveProfiles(filtered);
+
+        saveProfiles(profiles);
         setActiveCourseKey(courseKey);
+
         clearDraft();
 
-        // volver al login para ingresar al rol
-        window.location.href = "../login.html";
+        // to login
+        window.location.href = "../login.html?registered=1";
       }
     });
   }
 
-  // init
+  // Init
   const d = loadDraft();
-  if(!d.step){ d.step = 1; saveDraft(d); }
+  if(!d.step){ d.step=1; saveDraft(d); }
   render();
+
 })();
