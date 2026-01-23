@@ -12,36 +12,35 @@
     <div class="brandCenter">
       <div class="logo big">C</div>
       <h1>Cursapp</h1>
-      <p class="muted">Acceso demo</p>
+      <p class="muted">Acceso</p>
     </div>
 
     <form id="loginForm">
-      <label>Usuario</label>
-      <input id="username" placeholder="apoderado | tesorero | presidente" required>
+      <label>Correo</label>
+      <input id="username" placeholder="correo@dominio.com" autocomplete="email" required>
 
       <label>Contraseña</label>
-      <input id="password" type="password" placeholder="demo" required>
+      <input id="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" required>
 
       <div id="loginError" class="error" style="display:none;"></div>
 
       <button class="btn primary" type="submit">Ingresar</button>
     </form>
 
-    <div style="margin-top:12px;text-align:center;">
-      <a href="onboarding/dashboard.html?onboarding=1"
-         style="font-weight:900;color:#5b5ce2;text-decoration:none;">
-        ¿No estás registrado? Ingresa acá
+    <div style="margin-top:14px;">
+      <a href="onboarding/dashboard.html" style="font-weight:950;text-decoration:none;">
+        ¿No estás registrado? Configura tu curso
       </a>
-      <div style="margin-top:6px;font-size:12px;color:#64748b;font-weight:800;">
-        Configura tu curso y activa tu cuenta.
+      <div class="muted small" style="margin-top:6px;">
+        Completa el onboarding para crear tu cuenta y activar el acceso.
       </div>
     </div>
 
     <p class="muted small" style="margin-top:14px;">
-      Demo: usa <b>apoderado</b>, <b>tesorero</b> o <b>presidente</b>
+      Demo: también puedes usar <b>tesorero</b> o <b>presidente</b> con contraseña <b>demo</b>.
     </p>
   </div>
 
-  <script src="assets/login.js?v=100"></script>
+  <script src="assets/login.js?v=200"></script>
 </body>
 </html>
