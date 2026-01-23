@@ -4,7 +4,16 @@
    - Guarda users[] en localStorage (demo)
    - Guarda profiles[] por curso (activación por curso)
    ========================================================= */
-
+// UID simple (demo, estable)
+function uid(prefix = "id") {
+  return (
+    prefix +
+    "_" +
+    Date.now().toString(36) +
+    "_" +
+    Math.random().toString(36).slice(2, 8)
+  );
+}
 (function(){
   const KEY_ONB_DRAFT = "cursapp_onb_draft_v1";
   const KEY_USERS = "cursapp_users_v1";
