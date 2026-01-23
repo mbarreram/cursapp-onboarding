@@ -24,6 +24,7 @@
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
+  function nowISO(){ return new Date().toISOString(); }
 
   function daysTo(iso){
     if(!iso) return null;
@@ -32,26 +33,30 @@
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
 
-  // ---- demo seed (solo si no hay data) ----
+  // Demo seed (solo si no hay data)
   function ensureDemo(){
-    if(load(KEY_TASKS,[]).length && load(KEY_PAYMENTS,[]).length) return;
+    const hasTasks = load(KEY_TASKS,[]).length;
+    const hasPays = load(KEY_PAYMENTS,[]).length;
+    if(hasTasks && hasPays) return;
 
     save(KEY_TASKS,[
       {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single", amount:10000},
       {id:"t2", title:"Paseo de curso", startDate:todayISO(), dueDate:"2026-04-10", closed:false, mandatoryParticipation:false, type:"monthly", amount:20000},
     ]);
 
+    // createdAt helps ordering credits (oldest first)
     save(KEY_PAYMENTS,[
-      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"pending", dueDate:"2026-01-31"},
-      {id:"p2", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"pending", dueDate:"2026-02-10"},
-      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid", dueDate:"2026-03-10"},
-      {id:"p4", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"credit", creditFromTaskId:"t1", note:"Saldo a favor por campaña eliminada"}
+      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"pending", dueDate:"2026-01-31", createdAt: nowISO()},
+      {id:"p2", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"pending", dueDate:"2026-02-10", createdAt: nowISO()},
+      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid", dueDate:"2026-03-10", createdAt: nowISO(), paidAt: nowISO()},
+      // saldo a favor ejemplo
+      {id:"c1", fromTaskId:"t1", concept:"Saldo a favor", amount:10000, status:"credit", createdAt: nowISO(), note:"Saldo a favor por campaña eliminada"}
     ]);
 
     save(KEY_REPORTS,[]);
   }
 
-  // ---- modal (alto z-index) ----
+  // ---- modal ----
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
@@ -63,7 +68,7 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---- active profile ----
+  // ---- profile / activation ----
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -80,7 +85,7 @@
     const c = p.course;
     const ap = p.apoderado || {};
     whoCourseLine.innerHTML = `
-      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado") + " · Apoderado")}</div>
+      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado")+" · Apoderado")}</div>
       <div class="muted" style="margin-top:2px;font-weight:900;">${esc(ap.alumno||"Alumno/a")}</div>
       <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">
         ${esc((c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||""))}
@@ -88,7 +93,6 @@
     `;
   }
 
-  // ---- activation gate (global) ----
   function isActivationPending(){
     const p = getActiveProfile();
     if(!p) return false;
@@ -97,7 +101,6 @@
   }
 
   function showActivation(){
-    // fallback content (never blank)
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Activación pendiente</div>
@@ -133,7 +136,7 @@
     const i = profiles.findIndex(p=>p.courseKey===activeKey && (p.role==="apoderado" || p.user?.role==="apoderado"));
     if(i>=0){
       profiles[i].activation.status="paid";
-      profiles[i].activation.paidAt=new Date().toISOString();
+      profiles[i].activation.paidAt=nowISO();
       save(KEY_PROFILES, profiles);
     }
     closeModal();
@@ -174,7 +177,6 @@
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
-
         <div class="listLines" style="margin-top:12px;">
           <div class="lineItem"><b>Periodo:</b> ${esc(r.period||"")}</div>
           <div class="lineItem"><b>Recaudado:</b> ${clp(r.recaudadoCurso||0)}</div>
@@ -186,7 +188,67 @@
     `);
   };
 
-  // ---- pages ----
+  // ---- Payments: apply credits automatically ----
+  function applyCreditsToPayment(pays, paymentIndex){
+    const pay = pays[paymentIndex];
+    if(!pay || pay.status!=="pending") return { changed:false };
+
+    let remaining = Number(pay.amountRemaining ?? pay.amount ?? 0);
+    if(remaining <= 0) return { changed:false };
+
+    // credits oldest first
+    const credits = pays
+      .map((x, idx)=>({x, idx}))
+      .filter(o=>o.x.status==="credit" && Number(o.x.amount||0)>0)
+      .sort((a,b)=>{
+        const da = a.x.createdAt ? new Date(a.x.createdAt).getTime() : 0;
+        const db = b.x.createdAt ? new Date(b.x.createdAt).getTime() : 0;
+        return da - db;
+      });
+
+    if(!credits.length) return { changed:false };
+
+    let usedTotal = 0;
+
+    for(const c of credits){
+      if(remaining<=0) break;
+      const cAmt = Number(c.x.amount||0);
+      if(cAmt<=0) continue;
+
+      const use = Math.min(cAmt, remaining);
+      remaining -= use;
+      usedTotal += use;
+
+      // reduce credit
+      pays[c.idx].amount = cAmt - use;
+
+      // if credit fully used, mark used
+      if(pays[c.idx].amount <= 0){
+        pays[c.idx].amount = 0;
+        pays[c.idx].status = "credit_used";
+        pays[c.idx].usedAt = nowISO();
+      }
+    }
+
+    // update payment
+    if(usedTotal>0){
+      pays[paymentIndex].amountRemaining = remaining;
+
+      if(remaining<=0){
+        pays[paymentIndex].status = "paid";
+        pays[paymentIndex].paidAt = nowISO();
+        pays[paymentIndex].paidWith = "credit";
+      }else{
+        pays[paymentIndex].status = "partial";
+        pays[paymentIndex].paidWith = "credit_partial";
+      }
+      return { changed:true, usedTotal, remaining };
+    }
+
+    return { changed:false };
+  }
+
+  // ---- Home ----
   function renderHome(){
     app.innerHTML = `
       ${reportBanner()}
@@ -197,7 +259,7 @@
       <div class="grid2">
         <div class="card" style="cursor:pointer" onclick="go('payments')">
           <div class="kTitle">💳 Ir a Pagos</div>
-          <div class="muted" style="margin-top:6px;">Pendientes / Próximas / Pagadas</div>
+          <div class="muted" style="margin-top:6px;">Pendientes / Próximas / Pagadas / Saldo a favor</div>
         </div>
         <div class="card" style="cursor:pointer" onclick="go('informes')">
           <div class="kTitle">📄 Ir a Informes</div>
@@ -207,6 +269,7 @@
     `;
   }
 
+  // ---- Payments view ----
   let payFilter="pending";
   window.setPayFilter = (f)=>{ payFilter=f; renderPayments(); };
 
@@ -225,17 +288,16 @@
     `;
 
     let list = [];
-    if(payFilter==="pending") list = pays.filter(p=>p.status==="pending");
+    if(payFilter==="pending") list = pays.filter(p=>p.status==="pending" || p.status==="partial");
     if(payFilter==="paid") list = pays.filter(p=>p.status==="paid");
     if(payFilter==="credit") list = pays.filter(p=>p.status==="credit");
     if(payFilter==="upcoming"){
-      list = pays.filter(p=>p.status==="pending").filter(p=>{
+      list = pays.filter(p=>p.status==="pending" || p.status==="partial").filter(p=>{
         const d = daysTo(p.dueDate);
         return d!=null && d>=1 && d<=3;
       });
     }
 
-    // group by task
     const grouped = {};
     list.forEach(p=>{
       const k = p.fromTaskId || "otros";
@@ -246,20 +308,32 @@
     const blocks = Object.keys(grouped).map(taskId=>{
       const t = map[taskId] || null;
       const title = t ? t.title : (grouped[taskId][0].concept||"Pago");
+
       const rows = grouped[taskId].map(p=>{
         const d = daysTo(p.dueDate);
-        const dueTxt = (p.status==="pending" && d!=null) ? `Quedan ${d} días` : "";
+        const dueTxt = ((p.status==="pending" || p.status==="partial") && d!=null) ? `Quedan ${d} días` : "";
+        const remaining = p.status==="partial" ? Number(p.amountRemaining||0) : 0;
+
+        let right = "";
+        if(p.status==="pending" || p.status==="partial"){
+          right = `<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`;
+        }else if(p.status==="paid"){
+          right = `<span class="pill ok">Pagado</span>`;
+        }else if(p.status==="credit"){
+          right = `<span class="pill ok">Saldo a favor</span>`;
+        }
+
+        const meta = p.status==="partial"
+          ? `${clp(p.amount||0)} · Restan ${clp(remaining)} ${dueTxt?`· ${esc(dueTxt)}`:""}`
+          : `${clp(p.amount||0)} ${dueTxt?`· ${esc(dueTxt)}`:""}`;
+
         return `
           <div class="payRow">
             <div class="payLeft">
               <div class="payName">${esc(p.concept||title)}</div>
-              <div class="payMeta">${clp(p.amount||0)} ${dueTxt?`· ${esc(dueTxt)}`:""}</div>
+              <div class="payMeta">${meta}</div>
             </div>
-            <div class="payRight">
-              ${p.status==="pending"?`<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`:""}
-              ${p.status==="paid"?`<span class="pill ok">Pagado</span>`:""}
-              ${p.status==="credit"?`<span class="pill ok">Saldo a favor</span>`:""}
-            </div>
+            <div class="payRight">${right}</div>
           </div>
         `;
       }).join("");
@@ -270,7 +344,7 @@
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Pagos</div>
-        <div class="muted" style="margin-top:6px;">Gestiona tus cuotas.</div>
+        <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
         ${chips}
       </div>
       ${blocks || `<div class="card"><div class="muted">Sin pagos para este filtro.</div></div>`}
@@ -281,11 +355,29 @@
     const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
-    pays[i].status="paid";
+
+    // Apply credits first
+    const r = applyCreditsToPayment(pays, i);
+
     save(KEY_PAYMENTS, pays);
+
+    if(r.changed){
+      const msg = r.remaining<=0
+        ? `✅ Pago cubierto con saldo a favor.\nSe aplicó: ${clp(r.usedTotal)}`
+        : `✅ Se aplicó saldo a favor: ${clp(r.usedTotal)}\nRestante por pagar: ${clp(r.remaining)} (demo)`;
+      alert(msg);
+    }else{
+      // no credit available: mark paid normally (demo)
+      pays[i].status="paid";
+      pays[i].paidAt=nowISO();
+      save(KEY_PAYMENTS, pays);
+      alert("Pago realizado ✅ (demo)");
+    }
+
     renderPayments();
   };
 
+  // ---- Informes ----
   function renderInformes(){
     const reps = load(KEY_REPORTS, []);
     app.innerHTML = `
@@ -307,7 +399,7 @@
     `;
   }
 
-  // ---- Router (GLOBAL gate) ----
+  // ---- Router (global gate) ----
   function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
     setHeader();
@@ -324,7 +416,7 @@
     if(tab==="informes") renderInformes();
   }
 
-  // menu actions
+  // menu
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
@@ -340,7 +432,7 @@
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // boot
+  // Boot
   ensureDemo();
   initMenu();
   go("home");
