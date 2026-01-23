@@ -1,5 +1,6 @@
 /* =========================
-   Apoderado · Completo (Pagos + Informes)
+   Apoderado · Completo (Pagos + Informes) v21
+   + franja vertical uniforme
 ========================= */
 
 .container{padding:16px;max-width:980px;margin:auto;padding-bottom:90px;}
@@ -48,6 +49,30 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
   color:#111827;
 }
 
+/* =========================
+   Franja vertical uniforme
+========================= */
+
+/* Aplica franja a cards que marcamos como "accentCard" */
+.accentCard{
+  position:relative;
+  overflow:hidden;
+}
+.accentCard::before{
+  content:"";
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:6px;
+  border-radius:16px 0 0 16px;
+  background:rgba(91,92,226,.85);
+}
+
+/* Variantes opcionales por estado */
+.accent-ok::before{background:rgba(34,197,94,.85);}
+.accent-warn::before{background:rgba(245,158,11,.90);}
+.accent-danger::before{background:rgba(239,68,68,.85);}
+
+/* Lista dentro de cards */
 .listLines{margin-top:12px;}
 .listLines .lineItem{
   position:relative;
@@ -65,6 +90,7 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
   background:rgba(91,92,226,.85);
 }
 
+/* Pagos */
 .payRow{
   display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;
   padding:10px 0;border-top:1px solid rgba(229,231,235,.7);
