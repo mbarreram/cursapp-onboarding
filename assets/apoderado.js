@@ -32,7 +32,38 @@
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
 
-  // ----- Active profile -----
+  // ---- demo seed (solo si no hay data) ----
+  function ensureDemo(){
+    if(load(KEY_TASKS,[]).length && load(KEY_PAYMENTS,[]).length) return;
+
+    save(KEY_TASKS,[
+      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single", amount:10000},
+      {id:"t2", title:"Paseo de curso", startDate:todayISO(), dueDate:"2026-04-10", closed:false, mandatoryParticipation:false, type:"monthly", amount:20000},
+    ]);
+
+    save(KEY_PAYMENTS,[
+      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"pending", dueDate:"2026-01-31"},
+      {id:"p2", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"pending", dueDate:"2026-02-10"},
+      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid", dueDate:"2026-03-10"},
+      {id:"p4", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"credit", creditFromTaskId:"t1", note:"Saldo a favor por campaña eliminada"}
+    ]);
+
+    save(KEY_REPORTS,[]);
+  }
+
+  // ---- modal (alto z-index) ----
+  function openModal(html){
+    modalRoot.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
+           z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+        <div style="width:min(820px,100%);margin-bottom:12px;">${html}</div>
+      </div>
+    `;
+  }
+  function closeModal(){ modalRoot.innerHTML=""; }
+  window.closeModal = closeModal;
+
+  // ---- active profile ----
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -42,80 +73,74 @@
 
   function setHeader(){
     const p = getActiveProfile();
-
-    // fallback si no hay perfil real aún
     if(!p || !p.course){
       whoCourseLine.textContent = "Curso Demo · Colegio Demo";
       return;
     }
-
-    const course = p.course;
+    const c = p.course;
     const ap = p.apoderado || {};
-
-    // Línea 1: Nombre apoderado · Rol
-    const line1 = `${ap.name || "Apoderado"} · Apoderado`;
-    // Línea 2: Alumno/a
-    const line2 = `${ap.alumno || "Alumno/a"}`;
-    // Línea 3: Colegio · Curso · Jornada
-    const line3 = `${course.schoolName || "Colegio"} · ${course.level || ""}${course.letter || ""} ${course.year || ""} · ${course.jornada || ""}`;
-
     whoCourseLine.innerHTML = `
-      <div style="font-weight:950;color:#111827;">${esc(line1)}</div>
-      <div class="muted" style="margin-top:2px;font-weight:900;">${esc(line2)}</div>
-      <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">${esc(line3)}</div>
+      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado") + " · Apoderado")}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;">${esc(ap.alumno||"Alumno/a")}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">
+        ${esc((c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||""))}
+      </div>
     `;
   }
 
-  // ----- Activation gate -----
-  function activationGate(){
+  // ---- activation gate (global) ----
+  function isActivationPending(){
     const p = getActiveProfile();
     if(!p) return false;
-    if(p.role !== "apoderado") return false;
+    if((p.role || p.user?.role) !== "apoderado") return false;
+    return !!(p.activation?.required && p.activation.status !== "paid");
+  }
 
-    if(p.activation?.required && p.activation.status !== "paid"){
-      openModal(`
-        <div class="card">
-          <div class="kTitle">Activación pendiente</div>
-          <div class="muted" style="margin-top:6px;">
-            Para operar en este curso debes completar la activación de <b>$990</b>.
-            <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
-          </div>
-          <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-            <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
-            <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
-          </div>
+  function showActivation(){
+    // fallback content (never blank)
+    app.innerHTML = `
+      <div class="card">
+        <div class="kTitle">Activación pendiente</div>
+        <div class="muted" style="margin-top:6px;">
+          Debes completar la activación de <b>$990</b> para operar en este curso.
+          <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
         </div>
-      `);
-      return true;
-    }
-    return false;
+        <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+          <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
+          <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
+        </div>
+      </div>
+    `;
+
+    openModal(`
+      <div class="card">
+        <div class="kTitle">Activación pendiente</div>
+        <div class="muted" style="margin-top:6px;">
+          Para operar en este curso debes completar la activación de <b>$990</b>.
+          <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
+        </div>
+        <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+          <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
+          <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
+        </div>
+      </div>
+    `);
   }
 
   window.payActivation = function(){
     const profiles = load(KEY_PROFILES, []);
     const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    const i = profiles.findIndex(p=>p.courseKey===activeKey && p.role==="apoderado");
+    const i = profiles.findIndex(p=>p.courseKey===activeKey && (p.role==="apoderado" || p.user?.role==="apoderado"));
     if(i>=0){
       profiles[i].activation.status="paid";
       profiles[i].activation.paidAt=new Date().toISOString();
       save(KEY_PROFILES, profiles);
     }
     closeModal();
-    renderHome();
+    go("home");
   };
 
-  // ----- Modal helpers -----
-  function openModal(html){
-    modalRoot.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div style="width:min(820px,100%);margin-bottom:12px;">${html}</div>
-      </div>
-    `;
-  }
-  function closeModal(){ modalRoot.innerHTML=""; }
-  window.closeModal = closeModal;
-
-  // ----- Reports -----
+  // ---- reports ----
   function latestReport(){
     const reps = load(KEY_REPORTS, []);
     return reps.length ? reps[0] : null;
@@ -127,9 +152,7 @@
     return `
       <div class="banner">
         <div style="font-weight:950;">📄 Informe disponible · ${esc(r.period || "Mes")}</div>
-        <div class="muted" style="margin-top:6px;">
-          Publicado por la directiva. Montos generales del curso (no personales).
-        </div>
+        <div class="muted" style="margin-top:6px;">Montos del curso (no personales). Publicado por la directiva.</div>
         <div class="actions" style="margin-top:10px;justify-content:flex-end;">
           <button class="btnx primary" onclick="openReport('${esc(r.period||"")}')">Ver informe</button>
         </div>
@@ -147,9 +170,7 @@
         <div class="row">
           <div>
             <div class="kTitle">Informe del curso</div>
-            <div class="muted" style="margin-top:6px;">
-              Publicado por la directiva · Montos del curso (no personales)
-            </div>
+            <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
@@ -165,91 +186,34 @@
     `);
   };
 
-  // ----- Home -----
+  // ---- pages ----
   function renderHome(){
-    setHeader();
-    if(activationGate()) return;
-
-    // Avisos campañas activas
-    const ts = load(KEY_TASKS, []).filter(t=>!t.closed).slice(0,3);
-    const notices = ts.length ? `
-      <div class="card">
-        <div class="kTitle">📣 Avisos de campañas activas</div>
-        <div class="muted" style="margin-top:6px;">Solo informativo</div>
-        <div class="listLines" style="margin-top:10px;">
-          ${ts.map(t=>`<div class="lineItem">${esc(t.title)}</div>`).join("")}
-        </div>
-      </div>
-    ` : "";
-
-    const pays = load(KEY_PAYMENTS, []);
-    const pending = pays.filter(p=>p.status==="pending");
-    const paid = pays.filter(p=>p.status==="paid");
-    const upcoming = pending.filter(p=>{
-      const d = daysTo(p.dueDate);
-      return d!=null && d>=1 && d<=3;
-    });
-
     app.innerHTML = `
       ${reportBanner()}
-      ${notices}
-
-      <div class="grid2">
-        <div class="card" style="cursor:pointer" onclick="go('payments','pending')">
-          <div class="kTitle">⏳ Mis cuotas pendientes</div>
-          <div class="muted" style="margin-top:6px;">${pending.length} cuotas</div>
-        </div>
-
-        <div class="card" style="cursor:pointer" onclick="go('payments','paid')">
-          <div class="kTitle">✅ Historial de pagos</div>
-          <div class="muted" style="margin-top:6px;">${paid.length} pagos</div>
-        </div>
-      </div>
-
-      <div class="card" style="cursor:pointer" onclick="go('payments','upcoming')">
-        <div class="kTitle">📅 Próximas cuotas</div>
-        <div class="muted" style="margin-top:6px;">${upcoming.length} cuotas (1 a 3 días)</div>
-      </div>
-
       <div class="card">
-        <div class="kTitle">📄 Informes del curso</div>
-        <div class="muted" style="margin-top:6px;">Revisa los informes publicados por la directiva.</div>
-        <div class="actions" style="margin-top:10px;justify-content:flex-end;">
-          <button class="btnx primary" onclick="go('informes')">Ver informes</button>
+        <div class="kTitle">Bienvenido</div>
+        <div class="muted" style="margin-top:6px;">Accesos directos a pagos e informes.</div>
+      </div>
+      <div class="grid2">
+        <div class="card" style="cursor:pointer" onclick="go('payments')">
+          <div class="kTitle">💳 Ir a Pagos</div>
+          <div class="muted" style="margin-top:6px;">Pendientes / Próximas / Pagadas</div>
+        </div>
+        <div class="card" style="cursor:pointer" onclick="go('informes')">
+          <div class="kTitle">📄 Ir a Informes</div>
+          <div class="muted" style="margin-top:6px;">Ver informes publicados</div>
         </div>
       </div>
     `;
   }
 
-  // ----- Payments -----
-  let payFilter = "pending"; // pending | upcoming | paid | credit | opted_out
-
-  function tasksMap(){
-    const ts = load(KEY_TASKS, []);
-    return Object.fromEntries(ts.map(t=>[t.id, t]));
-  }
-
-  function filteredPayments(){
-    const pays = load(KEY_PAYMENTS, []);
-    if(payFilter==="pending") return pays.filter(p=>p.status==="pending");
-    if(payFilter==="paid") return pays.filter(p=>p.status==="paid");
-    if(payFilter==="credit") return pays.filter(p=>p.status==="credit");
-    if(payFilter==="opted_out") return pays.filter(p=>p.status==="opted_out");
-    if(payFilter==="upcoming"){
-      return pays.filter(p=>p.status==="pending").filter(p=>{
-        const d = daysTo(p.dueDate);
-        return d!=null && d>=1 && d<=3;
-      });
-    }
-    return pays.filter(p=>p.status==="pending");
-  }
+  let payFilter="pending";
+  window.setPayFilter = (f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
-    setHeader();
-    if(activationGate()) return;
-
-    const tsMap = tasksMap();
-    const list = filteredPayments();
+    const pays = load(KEY_PAYMENTS, []);
+    const tasks = load(KEY_TASKS, []);
+    const map = Object.fromEntries(tasks.map(t=>[t.id,t]));
 
     const chips = `
       <div class="chips">
@@ -257,43 +221,34 @@
         <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
         <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
         <button class="chip ${payFilter==="credit"?"active":""}" onclick="setPayFilter('credit')">Saldo a favor</button>
-        <button class="chip ${payFilter==="opted_out"?"active":""}" onclick="setPayFilter('opted_out')">No participé</button>
       </div>
     `;
 
+    let list = [];
+    if(payFilter==="pending") list = pays.filter(p=>p.status==="pending");
+    if(payFilter==="paid") list = pays.filter(p=>p.status==="paid");
+    if(payFilter==="credit") list = pays.filter(p=>p.status==="credit");
+    if(payFilter==="upcoming"){
+      list = pays.filter(p=>p.status==="pending").filter(p=>{
+        const d = daysTo(p.dueDate);
+        return d!=null && d>=1 && d<=3;
+      });
+    }
+
+    // group by task
     const grouped = {};
     list.forEach(p=>{
-      const key = p.fromTaskId || "otros";
-      grouped[key] = grouped[key] || [];
-      grouped[key].push(p);
+      const k = p.fromTaskId || "otros";
+      grouped[k] = grouped[k] || [];
+      grouped[k].push(p);
     });
 
     const blocks = Object.keys(grouped).map(taskId=>{
-      const t = tsMap[taskId] || null;
-      const title = t ? t.title : (grouped[taskId][0].concept || "Pago");
-      const dateLine = t ? `${t.startDate||""} → ${t.dueDate||""}` : "";
-      const mandatory = t ? !!t.mandatoryParticipation : true;
-
+      const t = map[taskId] || null;
+      const title = t ? t.title : (grouped[taskId][0].concept||"Pago");
       const rows = grouped[taskId].map(p=>{
         const d = daysTo(p.dueDate);
-        const showDue = (p.status==="pending" && d!=null);
-        const dueTxt = showDue ? `Quedan ${d} días` : "";
-
-        let right = "";
-        if(p.status==="pending"){
-          right = `<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`;
-        }else if(p.status==="paid"){
-          right = `<span class="pill ok">Pagado</span>`;
-        }else if(p.status==="credit"){
-          right = `<span class="pill ok">Saldo a favor</span>`;
-        }else if(p.status==="opted_out"){
-          right = `<span class="pill warn">No participé</span>`;
-        }
-
-        const optOutBtn = (!mandatory && p.status==="pending")
-          ? `<button class="btnx" onclick="optOut('${p.id}')">No participé</button>`
-          : "";
-
+        const dueTxt = (p.status==="pending" && d!=null) ? `Quedan ${d} días` : "";
         return `
           <div class="payRow">
             <div class="payLeft">
@@ -301,79 +256,49 @@
               <div class="payMeta">${clp(p.amount||0)} ${dueTxt?`· ${esc(dueTxt)}`:""}</div>
             </div>
             <div class="payRight">
-              ${optOutBtn}
-              ${right}
+              ${p.status==="pending"?`<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`:""}
+              ${p.status==="paid"?`<span class="pill ok">Pagado</span>`:""}
+              ${p.status==="credit"?`<span class="pill ok">Saldo a favor</span>`:""}
             </div>
           </div>
         `;
       }).join("");
 
-      return `
-        <div class="card accentCard">
-          <div class="row">
-            <div>
-              <div class="kTitle">${esc(title)} <span class="pill">Campaña</span></div>
-              ${dateLine ? `<div class="muted" style="margin-top:6px;font-weight:800;font-size:12px;">${esc(dateLine)}</div>` : ``}
-              ${!mandatory ? `<div class="muted" style="margin-top:6px;">Participación: <b>No obligatoria</b></div>` : ``}
-            </div>
-          </div>
-          ${rows}
-        </div>
-      `;
+      return `<div class="card accentCard"><div class="kTitle">${esc(title)}</div>${rows}</div>`;
     }).join("");
 
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Pagos</div>
-        <div class="muted" style="margin-top:6px;">Filtra y gestiona tus cuotas.</div>
+        <div class="muted" style="margin-top:6px;">Gestiona tus cuotas.</div>
         ${chips}
       </div>
-
       ${blocks || `<div class="card"><div class="muted">Sin pagos para este filtro.</div></div>`}
     `;
   }
 
-  window.setPayFilter = function(f){
-    payFilter = f;
-    renderPayments();
-  };
-
-  window.payNow = function(paymentId){
+  window.payNow = function(id){
     const pays = load(KEY_PAYMENTS, []);
-    const i = pays.findIndex(p=>p.id===paymentId);
+    const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
-    pays[i].status = "paid";
+    pays[i].status="paid";
     save(KEY_PAYMENTS, pays);
     renderPayments();
   };
 
-  window.optOut = function(paymentId){
-    const pays = load(KEY_PAYMENTS, []);
-    const i = pays.findIndex(p=>p.id===paymentId);
-    if(i<0) return;
-    pays[i].status = "opted_out";
-    save(KEY_PAYMENTS, pays);
-    renderPayments();
-  };
-
-  // ---- Informes ----
   function renderInformes(){
-    setHeader();
-    if(activationGate()) return;
-
     const reps = load(KEY_REPORTS, []);
     app.innerHTML = `
       <div class="card">
-        <div class="kTitle">📄 Informes del curso</div>
-        <div class="muted" style="margin-top:6px;">Montos generales del curso (no personales).</div>
+        <div class="kTitle">Informes</div>
+        <div class="muted" style="margin-top:6px;">Montos del curso (no personales).</div>
       </div>
-
       ${reps.length ? reps.map(r=>`
         <div class="card accentCard">
           <div class="row">
             <div>
               <div class="kTitle">Informe ${esc(r.period||"")}</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;">Emitido: ${esc(r.generatedAt||"")}</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(r.generatedAt||"")}</div>
             </div>
             <button class="btnx primary" onclick="openReport('${esc(r.period||"")}')">Ver</button>
           </div>
@@ -382,16 +307,24 @@
     `;
   }
 
-  // ---- navigation + menu ----
-  function go(tab, sub){
+  // ---- Router (GLOBAL gate) ----
+  function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+    setHeader();
+
+    if(isActivationPending()){
+      showActivation();
+      return;
+    }else{
+      closeModal();
+    }
+
     if(tab==="home") renderHome();
-    if(tab==="payments"){ payFilter = sub || payFilter; renderPayments(); }
+    if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
   }
 
-  navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
-
+  // menu actions
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
@@ -405,7 +338,9 @@
     }
   }
 
-  // Boot
+  navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // boot
   ensureDemo();
   initMenu();
   go("home");
