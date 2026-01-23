@@ -9,7 +9,6 @@
   const logoutBtn = document.getElementById("logoutBtn");
   const whoCourseLine = document.getElementById("whoCourseLine");
 
-  // Storage keys (alineadas con tu ecosistema)
   const KEY_TASKS = "cursapp_tasks_v1";
   const KEY_PAYMENTS = "cursapp_payments_v1";
   const KEY_REPORTS = "cursapp_monthly_reports_v1";
@@ -33,27 +32,7 @@
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
 
-  // ---- Demo seed (si no hay data) ----
-  function ensureDemo(){
-    if(load(KEY_TASKS,[]).length && load(KEY_PAYMENTS,[]).length) return;
-
-    save(KEY_TASKS,[
-      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single", amount:10000},
-      {id:"t2", title:"Paseo de curso", startDate:todayISO(), dueDate:"2026-04-10", closed:false, mandatoryParticipation:false, type:"monthly", amount:20000},
-    ]);
-
-    save(KEY_PAYMENTS,[
-      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"pending", dueDate:"2026-01-31"},
-      {id:"p2", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"pending", dueDate:"2026-02-10"},
-      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid", dueDate:"2026-03-10"},
-      // ejemplo de saldo a favor
-      {id:"p4", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"credit", creditFromTaskId:"t1", note:"Saldo a favor por campaña eliminada"}
-    ]);
-
-    save(KEY_REPORTS,[]);
-  }
-
-  // ---- Profiles / activation gate ----
+  // ----- Active profile -----
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -61,17 +40,45 @@
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
 
+  function setHeader(){
+    const p = getActiveProfile();
+
+    // fallback si no hay perfil real aún
+    if(!p || !p.course){
+      whoCourseLine.textContent = "Curso Demo · Colegio Demo";
+      return;
+    }
+
+    const course = p.course;
+    const ap = p.apoderado || {};
+
+    // Línea 1: Nombre apoderado · Rol
+    const line1 = `${ap.name || "Apoderado"} · Apoderado`;
+    // Línea 2: Alumno/a
+    const line2 = `${ap.alumno || "Alumno/a"}`;
+    // Línea 3: Colegio · Curso · Jornada
+    const line3 = `${course.schoolName || "Colegio"} · ${course.level || ""}${course.letter || ""} ${course.year || ""} · ${course.jornada || ""}`;
+
+    whoCourseLine.innerHTML = `
+      <div style="font-weight:950;color:#111827;">${esc(line1)}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;">${esc(line2)}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">${esc(line3)}</div>
+    `;
+  }
+
+  // ----- Activation gate -----
   function activationGate(){
     const p = getActiveProfile();
     if(!p) return false;
-    if(p.user?.role !== "apoderado") return false;
+    if(p.role !== "apoderado") return false;
+
     if(p.activation?.required && p.activation.status !== "paid"){
       openModal(`
         <div class="card">
           <div class="kTitle">Activación pendiente</div>
           <div class="muted" style="margin-top:6px;">
             Para operar en este curso debes completar la activación de <b>$990</b>.
-            <br><span style="font-weight:900">Este monto es del sistema, no del curso.</span>
+            <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
           </div>
           <div class="actions" style="margin-top:14px;justify-content:flex-end;">
             <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
@@ -86,8 +93,8 @@
 
   window.payActivation = function(){
     const profiles = load(KEY_PROFILES, []);
-    const active = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    const i = profiles.findIndex(p=>p.courseKey===active);
+    const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    const i = profiles.findIndex(p=>p.courseKey===activeKey && p.role==="apoderado");
     if(i>=0){
       profiles[i].activation.status="paid";
       profiles[i].activation.paidAt=new Date().toISOString();
@@ -97,7 +104,7 @@
     renderHome();
   };
 
-  // ---- modal ----
+  // ----- Modal helpers -----
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
@@ -108,15 +115,7 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---- header ----
-  function setHeaderCourse(){
-    const prof = getActiveProfile();
-    if(prof?.course){
-      whoCourseLine.textContent = `${prof.course.schoolName} · ${prof.course.level}${prof.course.letter} ${prof.course.year} · ${prof.course.jornada}`;
-    }
-  }
-
-  // ---- report banner + report list ----
+  // ----- Reports -----
   function latestReport(){
     const reps = load(KEY_REPORTS, []);
     return reps.length ? reps[0] : null;
@@ -166,23 +165,19 @@
     `);
   };
 
-  // ---- Home ----
-  function activeTasks(){
-    const ts = load(KEY_TASKS, []);
-    return ts.filter(t=>!t.closed).slice(0,3);
-  }
-
+  // ----- Home -----
   function renderHome(){
-    setHeaderCourse();
+    setHeader();
     if(activationGate()) return;
 
-    const tasks = activeTasks();
-    const notices = tasks.length ? `
+    // Avisos campañas activas
+    const ts = load(KEY_TASKS, []).filter(t=>!t.closed).slice(0,3);
+    const notices = ts.length ? `
       <div class="card">
         <div class="kTitle">📣 Avisos de campañas activas</div>
         <div class="muted" style="margin-top:6px;">Solo informativo</div>
         <div class="listLines" style="margin-top:10px;">
-          ${tasks.map(t=>`<div class="lineItem">${esc(t.title)}</div>`).join("")}
+          ${ts.map(t=>`<div class="lineItem">${esc(t.title)}</div>`).join("")}
         </div>
       </div>
     ` : "";
@@ -226,7 +221,7 @@
     `;
   }
 
-  // ---- Pagos ----
+  // ----- Payments -----
   let payFilter = "pending"; // pending | upcoming | paid | credit | opted_out
 
   function tasksMap(){
@@ -234,7 +229,7 @@
     return Object.fromEntries(ts.map(t=>[t.id, t]));
   }
 
-  function filterPayments(){
+  function filteredPayments(){
     const pays = load(KEY_PAYMENTS, []);
     if(payFilter==="pending") return pays.filter(p=>p.status==="pending");
     if(payFilter==="paid") return pays.filter(p=>p.status==="paid");
@@ -250,11 +245,11 @@
   }
 
   function renderPayments(){
-    setHeaderCourse();
+    setHeader();
     if(activationGate()) return;
 
     const tsMap = tasksMap();
-    const list = filterPayments();
+    const list = filteredPayments();
 
     const chips = `
       <div class="chips">
@@ -266,7 +261,6 @@
       </div>
     `;
 
-    // group by campaign id
     const grouped = {};
     list.forEach(p=>{
       const key = p.fromTaskId || "otros";
@@ -285,7 +279,6 @@
         const showDue = (p.status==="pending" && d!=null);
         const dueTxt = showDue ? `Quedan ${d} días` : "";
 
-        // Right side
         let right = "";
         if(p.status==="pending"){
           right = `<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`;
@@ -297,7 +290,6 @@
           right = `<span class="pill warn">No participé</span>`;
         }
 
-        // Opt-out only if not mandatory & pending
         const optOutBtn = (!mandatory && p.status==="pending")
           ? `<button class="btnx" onclick="optOut('${p.id}')">No participé</button>`
           : "";
@@ -317,7 +309,7 @@
       }).join("");
 
       return `
-        <div class="card">
+        <div class="card accentCard">
           <div class="row">
             <div>
               <div class="kTitle">${esc(title)} <span class="pill">Campaña</span></div>
@@ -366,7 +358,7 @@
 
   // ---- Informes ----
   function renderInformes(){
-    setHeaderCourse();
+    setHeader();
     if(activationGate()) return;
 
     const reps = load(KEY_REPORTS, []);
@@ -377,7 +369,7 @@
       </div>
 
       ${reps.length ? reps.map(r=>`
-        <div class="card">
+        <div class="card accentCard">
           <div class="row">
             <div>
               <div class="kTitle">Informe ${esc(r.period||"")}</div>
