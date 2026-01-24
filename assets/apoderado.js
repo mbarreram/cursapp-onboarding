@@ -20,21 +20,33 @@
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
 
+  function nowISO(){ return new Date().toISOString(); }
   function todayISO(){
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
-  function nowISO(){ return new Date().toISOString(); }
-
   function daysTo(iso){
     if(!iso) return null;
     const d = new Date(iso+"T23:59:59");
     const now = new Date();
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
+  function dueLabelFromDays(d){
+    if(d==null) return "";
+    if(d<0) return "Vencida";
+    if(d===0) return "Vence hoy";
+    return `Quedan ${d} días`;
+  }
+  function monthNameFromISO(iso){
+    if(!iso) return "";
+    const d = new Date(iso+"T12:00:00");
+    if(isNaN(d.getTime())) return "";
+    const months = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    return months[d.getMonth()];
+  }
 
-  // ---- Error visible ----
-  window.onerror = function(msg,src,line){
+  // Nunca más pantalla en blanco: muestra error arriba
+  window.onerror = function(msg, src, line){
     if(app){
       app.innerHTML = `
         <div class="card">
@@ -46,23 +58,30 @@
     }
   };
 
-  // ---- Demo seed (solo si no hay data) ----
+  // -------- Demo seed (si no hay data) --------
   function ensureDemo(){
     const hasTasks = load(KEY_TASKS,[]).length;
     const hasPays = load(KEY_PAYMENTS,[]).length;
     if(hasTasks && hasPays) return;
 
     save(KEY_TASKS,[
-      {id:"t1", title:"Prueba apoderado", startDate:"2026-01-10", dueDate:"2026-01-20", closed:false, mandatoryParticipation:true, type:"monthly", amount:20000},
-      {id:"t2", title:"Regalo profe", startDate:"2026-01-10", dueDate:"2026-01-21", closed:false, mandatoryParticipation:false, type:"single", amount:1500},
+      {id:"t1", title:"Prueba apoderado", startDate:"2026-01-10", dueDate:"2026-01-20", closed:false, mandatoryParticipation:true, type:"single", amount:20000},
+      {id:"t2", title:"Cuota paseo", startDate:"2026-04-01", dueDate:"2026-05-31", closed:false, mandatoryParticipation:true, type:"monthly", amount:20000},
+      {id:"t3", title:"Regalo profe", startDate:"2026-01-10", dueDate:"2026-01-21", closed:false, mandatoryParticipation:false, type:"single", amount:1500},
     ]);
 
-    // 3 cuotas pendientes vencidas para demo
     save(KEY_PAYMENTS,[
-      {id:"p1", fromTaskId:"t1", concept:"Cuota 1", amount:20000, status:"pending", dueDate:"2026-01-18", createdAt: nowISO()},
-      {id:"p2", fromTaskId:"t1", concept:"Cuota 2", amount:20000, status:"pending", dueDate:"2026-01-19", createdAt: nowISO()},
-      {id:"p3", fromTaskId:"t1", concept:"Cuota 3", amount:20000, status:"pending", dueDate:"2026-01-20", createdAt: nowISO()},
-      {id:"p4", fromTaskId:"t2", concept:"Pago único", amount:1500, status:"pending", dueDate:"2026-01-21", createdAt: nowISO()},
+      // pago único (pero el data puede venir duplicado desde antes: lo manejamos igual)
+      {id:"p1", fromTaskId:"t1", concept:"Pago único", amount:20000, status:"pending", dueDate:"2026-01-20", createdAt: nowISO()},
+
+      // mensual (2 cuotas)
+      {id:"p2", fromTaskId:"t2", concept:"Cuota mes Abril", amount:20000, status:"pending", dueDate:"2026-04-30", createdAt: nowISO()},
+      {id:"p3", fromTaskId:"t2", concept:"Cuota mes Mayo", amount:20000, status:"pending", dueDate:"2026-05-31", createdAt: nowISO()},
+
+      // otro pago único
+      {id:"p4", fromTaskId:"t3", concept:"Pago único", amount:1500, status:"pending", dueDate:"2026-01-21", createdAt: nowISO()},
+
+      // saldo a favor
       {id:"c1", fromTaskId:"tX", concept:"Saldo a favor", amount:10000, status:"credit", createdAt: nowISO(), note:"Saldo a favor"}
     ]);
 
@@ -78,7 +97,7 @@
     }
   }
 
-  // ---- Modal ----
+  // -------- Modal --------
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
@@ -90,7 +109,7 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---- Profile / Header ----
+  // -------- Profile / Header --------
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -116,7 +135,7 @@
     `;
   }
 
-  // ---- Activation gate ----
+  // -------- Activation gate --------
   function isActivationPending(){
     const p = getActiveProfile();
     if(!p) return false;
@@ -167,18 +186,32 @@
     go("home");
   };
 
-  // ---- Reports ----
+  // -------- Reports --------
   function reports(){ return load(KEY_REPORTS, []); }
   function latestReport(){ const r = reports(); return r.length ? r[0] : null; }
 
-  function reportBanner(){
+  function reportSummaryCard(){
     const r = latestReport();
-    if(!r) return "";
+    if(!r){
+      return `
+        <div class="card">
+          <div class="kTitle">Resumen del curso</div>
+          <div class="muted" style="margin-top:6px;">Aún no hay informes publicados.</div>
+        </div>
+      `;
+    }
     return `
-      <div class="banner">
-        <div style="font-weight:950;">📄 Informe disponible · ${esc(r.period || "Mes")}</div>
-        <div class="muted" style="margin-top:6px;">Montos del curso (no personales). Publicado por la directiva.</div>
-        <div class="actions" style="margin-top:10px;justify-content:flex-end;">
+      <div class="card">
+        <div class="kTitle">Resumen del curso · ${esc(r.period||"")}</div>
+        <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
+
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="pill ok">Recaudado ${clp(r.recaudadoCurso||0)}</span>
+          <span class="pill warn">Rendido ${clp(r.gastadoCurso||0)}</span>
+          <span class="pill">Saldo ${clp(r.disponibleCurso||0)}</span>
+        </div>
+
+        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
           <button class="btnx primary" onclick="openReport('${esc(r.period||"")}')">Ver informe</button>
         </div>
       </div>
@@ -210,7 +243,7 @@
     `);
   };
 
-  // ---- Credits apply ----
+  // -------- Credits apply --------
   function applyCreditsToPayment(pays, paymentIndex){
     const pay = pays[paymentIndex];
     if(!pay || (pay.status!=="pending" && pay.status!=="partial")) return {changed:false};
@@ -263,23 +296,19 @@
     return {changed:false};
   }
 
-  // ---- Pages ----
+  // -------- Pages --------
   function renderHome(){
     app.innerHTML = `
-      ${reportBanner()}
-      <div class="card">
-        <div class="kTitle">Inicio</div>
-        <div class="muted" style="margin-top:6px;">Accesos directos a pagos e informes.</div>
-      </div>
+      ${reportSummaryCard()}
 
       <div class="grid2">
         <div class="card" style="cursor:pointer" onclick="go('payments')">
           <div class="kTitle">💳 Pagos</div>
-          <div class="muted" style="margin-top:6px;">Pendientes / Próximas / Pagadas / Saldo a favor</div>
+          <div class="muted" style="margin-top:6px;">Ver pendientes, próximas, pagadas y saldo a favor</div>
         </div>
         <div class="card" style="cursor:pointer" onclick="go('informes')">
           <div class="kTitle">📄 Informes</div>
-          <div class="muted" style="margin-top:6px;">Ver informes publicados</div>
+          <div class="muted" style="margin-top:6px;">Ver informes publicados por la directiva</div>
         </div>
       </div>
     `;
@@ -288,18 +317,10 @@
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
-  function dueLabel(p){
-    const d = daysTo(p.dueDate);
-    if(d==null) return "";
-    if(d<0) return "Vencida";
-    if(d===0) return "Vence hoy";
-    return `Quedan ${d} días`;
-  }
-
   function renderPayments(){
     const pays = load(KEY_PAYMENTS, []);
     const tasks = load(KEY_TASKS, []);
-    const map = Object.fromEntries(tasks.map(t=>[t.id,t]));
+    const tMap = Object.fromEntries(tasks.map(t=>[t.id,t]));
 
     const chips = `
       <div class="chips">
@@ -320,7 +341,6 @@
       });
     }
 
-    // group by taskId
     const grouped={};
     list.forEach(p=>{
       const k=p.fromTaskId||"otros";
@@ -328,42 +348,71 @@
       grouped[k].push(p);
     });
 
-    // Render one card per campaign
     const cards = Object.keys(grouped).map(taskId=>{
-      const t = map[taskId] || null;
-      const title = t ? t.title : "Pago";
-      const rows = grouped[taskId];
+      const t = tMap[taskId] || { title: grouped[taskId][0].concept || "Pago", type:"single" };
+      const rows = grouped[taskId].slice().sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")));
 
-      // sort rows by due date
-      rows.sort((a,b)=> String(a.dueDate||"").localeCompare(String(b.dueDate||"")));
+      // --- UX rule: if campaign is single, show only ONE row (aggregate if multiple exist) ---
+      if(t.type==="single"){
+        const pend = rows.filter(r=>r.status==="pending" || r.status==="partial");
+        const paid = rows.filter(r=>r.status==="paid");
+        const status = pend.length ? "Pendiente" : "Pagada";
+        const pill = pend.length ? `<span class="pill warn">Pendiente</span>` : `<span class="pill ok">Pagada</span>`;
 
-      const anyPending = rows.some(r=>r.status==="pending" || r.status==="partial");
-      const isVencida = anyPending && rows.some(r=>{
-        const d=daysTo(r.dueDate);
-        return d!=null && d<0;
-      });
+        const totalAmount = pend.length
+          ? pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0)
+          : paid.reduce((a,r)=>a+Number(r.amount||0),0);
 
-      const status = anyPending ? (isVencida ? "Vencida" : "Pendiente") : "Pagada";
+        const d = pend.length ? daysTo(pend[0].dueDate) : null;
+        const dueLabel = (d!=null) ? dueLabelFromDays(d) : "";
 
-      const statusPill =
-        status==="Pagada" ? `<span class="pill ok">Pagada</span>` :
-        status==="Vencida" ? `<span class="pill danger">Vencida</span>` :
-        `<span class="pill warn">Pendiente</span>`;
+        return `
+          <div class="card accentCard" style="margin-bottom:18px;">
+            <div class="row">
+              <div>
+                <div class="kTitle">${esc(t.title)}</div>
+                <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  ${pill}
+                  <span class="pill">Pago único</span>
+                </div>
+              </div>
+            </div>
 
-      const subtitle = t
-        ? (t.type==="monthly" ? `${rows.length} cuotas · ${rows.filter(r=>r.status!=="paid").length} pendiente(s)` : `Pago único`)
-        : "";
+            <div class="payRow">
+              <div class="payLeft">
+                <div class="payName">Pago único</div>
+                <div class="payMeta">${clp(totalAmount)} ${dueLabel?`· ${esc(dueLabel)}`:""}</div>
+              </div>
+              <div class="payRight">
+                ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${taskId}')">Pagar</button>` : `<span class="pill ok">Pagado</span>`}
+              </div>
+            </div>
+          </div>
+        `;
+      }
 
-      const bodyRows = rows.map(r=>{
-        const label = r.status==="paid"
-          ? `<span class="pill ok">Pagado</span>`
-          : (r.status==="partial"
-              ? `<span class="pill warn">Parcial</span>`
-              : `<span class="pill warn">${esc(dueLabel(r) || "Pendiente")}</span>`);
+      // --- Monthly campaign: show rows with good labels (Cuota mes / Cuota i de n) ---
+      const pendingCount = rows.filter(r=>r.status!=="paid").length;
+      const subtitle = `${rows.length} cuotas · ${pendingCount} pendiente(s)`;
 
-        const amtLine = r.status==="partial"
-          ? `${clp(r.amount||0)} · Restan ${clp(r.amountRemaining||0)}`
-          : `${clp(r.amount||0)}`;
+      const bodyRows = rows.map((r, idx)=>{
+        const total = rows.length;
+        const monthName = monthNameFromISO(r.dueDate);
+        const cuotaLabel =
+          r.concept && r.concept.toLowerCase().includes("cuota")
+            ? r.concept
+            : (monthName ? `Cuota mes ${monthName}` : `Cuota ${idx+1} de ${total}`);
+
+        const d = (r.status==="pending" || r.status==="partial") ? daysTo(r.dueDate) : null;
+        const dueLabel = d!=null ? dueLabelFromDays(d) : "";
+
+        const statusPill =
+          r.status==="paid" ? `<span class="pill ok">Pagado</span>` :
+          r.status==="partial" ? `<span class="pill warn">Parcial</span>` :
+          `<span class="pill warn">${esc(dueLabel || "Pendiente")}</span>`;
+
+        const amountLine =
+          r.status==="partial" ? `${clp(r.amount||0)} · Restan ${clp(r.amountRemaining||0)}` : `${clp(r.amount||0)}`;
 
         const btn = (r.status==="pending" || r.status==="partial")
           ? `<button class="btnx primary" onclick="payNow('${r.id}')">Pagar</button>`
@@ -372,11 +421,11 @@
         return `
           <div class="payRow">
             <div class="payLeft">
-              <div class="payName">${esc(r.concept || "Cuota")}</div>
-              <div class="payMeta">${amtLine}</div>
+              <div class="payName">${esc(cuotaLabel)}</div>
+              <div class="payMeta">${amountLine}</div>
             </div>
             <div class="payRight">
-              ${label}
+              ${statusPill}
               ${btn}
             </div>
           </div>
@@ -387,10 +436,10 @@
         <div class="card accentCard" style="margin-bottom:18px;">
           <div class="row">
             <div>
-              <div class="kTitle">${esc(title)}</div>
+              <div class="kTitle">${esc(t.title)}</div>
               <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                ${statusPill}
-                ${subtitle?`<span class="pill">${esc(subtitle)}</span>`:""}
+                <span class="pill">Mensual</span>
+                <span class="pill">${esc(subtitle)}</span>
               </div>
             </div>
           </div>
@@ -408,6 +457,44 @@
       ${cards || `<div class="card"><div class="muted">Sin pagos para este filtro.</div></div>`}
     `;
   }
+
+  // Pagar campaña single: paga todas las filas pendientes de ese taskId
+  window.paySingleCampaign = function(taskId){
+    const pays = load(KEY_PAYMENTS, []);
+    const ids = pays
+      .map((p,idx)=>({p,idx}))
+      .filter(o=>o.p.fromTaskId===taskId && (o.p.status==="pending" || o.p.status==="partial"))
+      .sort((a,b)=>String(a.p.dueDate||"").localeCompare(String(b.p.dueDate||"")));
+
+    if(!ids.length) return;
+
+    let usedCreditTotal = 0;
+    let remainingTotal = 0;
+
+    // apply credits/payment for each row
+    for(const o of ids){
+      const r = applyCreditsToPayment(pays, o.idx);
+      if(r.changed){
+        usedCreditTotal += Number(r.usedTotal||0);
+        remainingTotal += Number(r.remaining||0);
+      }else{
+        // no credit -> mark paid demo
+        pays[o.idx].status="paid";
+        pays[o.idx].paidAt=nowISO();
+      }
+    }
+
+    save(KEY_PAYMENTS, pays);
+
+    if(usedCreditTotal>0){
+      if(remainingTotal<=0) alert(`✅ Pago cubierto con saldo a favor.\nAplicado: ${clp(usedCreditTotal)}`);
+      else alert(`✅ Se aplicó saldo a favor: ${clp(usedCreditTotal)}\nRestante por pagar: ${clp(remainingTotal)} (demo)`);
+    }else{
+      alert("Pago realizado ✅ (demo)");
+    }
+
+    renderPayments();
+  };
 
   window.payNow = function(id){
     const pays = load(KEY_PAYMENTS, []);
@@ -451,7 +538,7 @@
     `;
   }
 
-  // ---- Router ----
+  // ✅ Router GLOBAL (y expuesto para que onclick del Home no rompa)
   function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
     setHeader();
@@ -467,8 +554,9 @@
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
   }
+  window.go = go; // <-- esto elimina el error "Can't find variable: go"
 
-  // ---- Menu ----
+  // Menu
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
@@ -482,10 +570,11 @@
     }
   }
 
+  // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   // Boot
   ensureDemo();
   initMenu();
-  go("payments"); // start in payments for review
+  go("payments"); // para revisión rápida
 })();
