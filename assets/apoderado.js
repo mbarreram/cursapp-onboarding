@@ -9,14 +9,12 @@
   const logoutBtn = document.getElementById("logoutBtn");
   const whoCourseLine = document.getElementById("whoCourseLine");
 
-  // ---- Storage keys ----
   const KEY_TASKS = "cursapp_tasks_v1";
   const KEY_PAYMENTS = "cursapp_payments_v1";
   const KEY_REPORTS = "cursapp_monthly_reports_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
 
-  // ---- Helpers ----
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
@@ -35,8 +33,8 @@
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
 
-  // ---- Visible error fallback (no más pantalla en blanco) ----
-  window.onerror = function(msg, src, line){
+  // ---- Error visible ----
+  window.onerror = function(msg,src,line){
     if(app){
       app.innerHTML = `
         <div class="card">
@@ -55,15 +53,17 @@
     if(hasTasks && hasPays) return;
 
     save(KEY_TASKS,[
-      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single", amount:10000},
-      {id:"t2", title:"Paseo de curso", startDate:todayISO(), dueDate:"2026-04-10", closed:false, mandatoryParticipation:false, type:"monthly", amount:20000},
+      {id:"t1", title:"Prueba apoderado", startDate:"2026-01-10", dueDate:"2026-01-20", closed:false, mandatoryParticipation:true, type:"monthly", amount:20000},
+      {id:"t2", title:"Regalo profe", startDate:"2026-01-10", dueDate:"2026-01-21", closed:false, mandatoryParticipation:false, type:"single", amount:1500},
     ]);
 
+    // 3 cuotas pendientes vencidas para demo
     save(KEY_PAYMENTS,[
-      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"pending", dueDate:"2026-01-31", createdAt: nowISO()},
-      {id:"p2", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"pending", dueDate:"2026-02-10", createdAt: nowISO()},
-      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid", dueDate:"2026-03-10", createdAt: nowISO(), paidAt: nowISO()},
-      {id:"c1", fromTaskId:"t1", concept:"Saldo a favor", amount:10000, status:"credit", createdAt: nowISO(), note:"Saldo a favor por campaña eliminada"}
+      {id:"p1", fromTaskId:"t1", concept:"Cuota 1", amount:20000, status:"pending", dueDate:"2026-01-18", createdAt: nowISO()},
+      {id:"p2", fromTaskId:"t1", concept:"Cuota 2", amount:20000, status:"pending", dueDate:"2026-01-19", createdAt: nowISO()},
+      {id:"p3", fromTaskId:"t1", concept:"Cuota 3", amount:20000, status:"pending", dueDate:"2026-01-20", createdAt: nowISO()},
+      {id:"p4", fromTaskId:"t2", concept:"Pago único", amount:1500, status:"pending", dueDate:"2026-01-21", createdAt: nowISO()},
+      {id:"c1", fromTaskId:"tX", concept:"Saldo a favor", amount:10000, status:"credit", createdAt: nowISO(), note:"Saldo a favor"}
     ]);
 
     if(!load(KEY_REPORTS,[]).length){
@@ -78,7 +78,7 @@
     }
   }
 
-  // ---- Modal (alto z-index) ----
+  // ---- Modal ----
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
@@ -90,7 +90,7 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---- Active profile / header ----
+  // ---- Profile / Header ----
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -101,17 +101,14 @@
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
-
-    // fallback si no hay perfil real
     if(!p || !p.course){
       whoCourseLine.textContent = "Curso Demo · Colegio Demo";
       return;
     }
-
     const c = p.course;
     const ap = p.apoderado || {};
     whoCourseLine.innerHTML = `
-      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado") + " · Apoderado")}</div>
+      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado")+" · Apoderado")}</div>
       <div class="muted" style="margin-top:2px;font-weight:900;">${esc(ap.alumno||"Alumno/a")}</div>
       <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">
         ${esc((c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||""))}
@@ -119,7 +116,7 @@
     `;
   }
 
-  // ---- Activation gate (global) ----
+  // ---- Activation gate ----
   function isActivationPending(){
     const p = getActiveProfile();
     if(!p) return false;
@@ -213,7 +210,7 @@
     `);
   };
 
-  // ---- Credits application ----
+  // ---- Credits apply ----
   function applyCreditsToPayment(pays, paymentIndex){
     const pay = pays[paymentIndex];
     if(!pay || (pay.status!=="pending" && pay.status!=="partial")) return {changed:false};
@@ -238,7 +235,6 @@
       if(remaining<=0) break;
       const cAmt = Number(c.x.amount||0);
       if(cAmt<=0) continue;
-
       const use = Math.min(cAmt, remaining);
       remaining -= use;
       usedTotal += use;
@@ -292,6 +288,14 @@
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
+  function dueLabel(p){
+    const d = daysTo(p.dueDate);
+    if(d==null) return "";
+    if(d<0) return "Vencida";
+    if(d===0) return "Vence hoy";
+    return `Quedan ${d} días`;
+  }
+
   function renderPayments(){
     const pays = load(KEY_PAYMENTS, []);
     const tasks = load(KEY_TASKS, []);
@@ -316,6 +320,7 @@
       });
     }
 
+    // group by taskId
     const grouped={};
     list.forEach(p=>{
       const k=p.fromTaskId||"otros";
@@ -323,49 +328,84 @@
       grouped[k].push(p);
     });
 
-    const blocks = Object.keys(grouped).map(taskId=>{
-      const t=map[taskId]||null;
-      const title=t?t.title:(grouped[taskId][0].concept||"Pago");
-      const rows = grouped[taskId].map(p=>{
-        const d=daysTo(p.dueDate);
-        let dueLabel="";
-        if((p.status==="pending"||p.status==="partial") && d!=null){
-          if(d<0) dueLabel="Vencida";
-          else if(d===0) dueLabel="Vence hoy";
-          else dueLabel=`Quedan ${d} días`;
-        }
+    // Render one card per campaign
+    const cards = Object.keys(grouped).map(taskId=>{
+      const t = map[taskId] || null;
+      const title = t ? t.title : "Pago";
+      const rows = grouped[taskId];
 
-        const remaining = p.status==="partial" ? Number(p.amountRemaining||0) : null;
+      // sort rows by due date
+      rows.sort((a,b)=> String(a.dueDate||"").localeCompare(String(b.dueDate||"")));
+
+      const anyPending = rows.some(r=>r.status==="pending" || r.status==="partial");
+      const isVencida = anyPending && rows.some(r=>{
+        const d=daysTo(r.dueDate);
+        return d!=null && d<0;
+      });
+
+      const status = anyPending ? (isVencida ? "Vencida" : "Pendiente") : "Pagada";
+
+      const statusPill =
+        status==="Pagada" ? `<span class="pill ok">Pagada</span>` :
+        status==="Vencida" ? `<span class="pill danger">Vencida</span>` :
+        `<span class="pill warn">Pendiente</span>`;
+
+      const subtitle = t
+        ? (t.type==="monthly" ? `${rows.length} cuotas · ${rows.filter(r=>r.status!=="paid").length} pendiente(s)` : `Pago único`)
+        : "";
+
+      const bodyRows = rows.map(r=>{
+        const label = r.status==="paid"
+          ? `<span class="pill ok">Pagado</span>`
+          : (r.status==="partial"
+              ? `<span class="pill warn">Parcial</span>`
+              : `<span class="pill warn">${esc(dueLabel(r) || "Pendiente")}</span>`);
+
+        const amtLine = r.status==="partial"
+          ? `${clp(r.amount||0)} · Restan ${clp(r.amountRemaining||0)}`
+          : `${clp(r.amount||0)}`;
+
+        const btn = (r.status==="pending" || r.status==="partial")
+          ? `<button class="btnx primary" onclick="payNow('${r.id}')">Pagar</button>`
+          : ``;
 
         return `
           <div class="payRow">
             <div class="payLeft">
-              <div class="payName">${esc(p.concept||title)}</div>
-              <div class="payMeta">
-                ${clp(p.amount||0)}
-                ${remaining!=null?`· Restan ${clp(remaining)}`:""}
-                ${dueLabel?`· ${esc(dueLabel)}`:""}
-              </div>
+              <div class="payName">${esc(r.concept || "Cuota")}</div>
+              <div class="payMeta">${amtLine}</div>
             </div>
             <div class="payRight">
-              ${(p.status==="pending"||p.status==="partial")?`<button class="btnx primary" onclick="payNow('${p.id}')">Pagar</button>`:""}
-              ${(p.status==="paid")?`<span class="pill ok">Pagado</span>`:""}
-              ${(p.status==="credit")?`<span class="pill ok">Saldo a favor</span>`:""}
+              ${label}
+              ${btn}
             </div>
           </div>
         `;
       }).join("");
 
-      return `<div class="card accentCard"><div class="kTitle">${esc(title)}</div>${rows}</div>`;
+      return `
+        <div class="card accentCard" style="margin-bottom:18px;">
+          <div class="row">
+            <div>
+              <div class="kTitle">${esc(title)}</div>
+              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                ${statusPill}
+                ${subtitle?`<span class="pill">${esc(subtitle)}</span>`:""}
+              </div>
+            </div>
+          </div>
+          ${bodyRows}
+        </div>
+      `;
     }).join("");
 
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Pagos</div>
-        <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente.</div>
+        <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
         ${chips}
       </div>
-      ${blocks || `<div class="card"><div class="muted">Sin pagos para este filtro.</div></div>`}
+      ${cards || `<div class="card"><div class="muted">Sin pagos para este filtro.</div></div>`}
     `;
   }
 
@@ -381,7 +421,6 @@
       if(r.remaining<=0) alert(`✅ Pago cubierto con saldo a favor.\nAplicado: ${clp(r.usedTotal)}`);
       else alert(`✅ Se aplicó saldo a favor: ${clp(r.usedTotal)}\nRestante por pagar: ${clp(r.remaining)} (demo)`);
     }else{
-      // no credit: pay normally (demo)
       pays[i].status="paid";
       pays[i].paidAt=nowISO();
       save(KEY_PAYMENTS, pays);
@@ -398,7 +437,6 @@
         <div class="kTitle">Informes</div>
         <div class="muted" style="margin-top:6px;">Montos del curso (no personales).</div>
       </div>
-
       ${reps.length ? reps.map(r=>`
         <div class="card accentCard">
           <div class="row">
@@ -430,7 +468,7 @@
     if(tab==="informes") renderInformes();
   }
 
-  // menu
+  // ---- Menu ----
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
@@ -446,9 +484,8 @@
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // boot
+  // Boot
   ensureDemo();
   initMenu();
-  go("home");
-
+  go("payments"); // start in payments for review
 })();
