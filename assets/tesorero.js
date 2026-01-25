@@ -1,4 +1,4 @@
-/* Cursapp · Tesorero (Rendiciones) — FULL (auto-keys) */
+/* Cursapp · Tesorero (Rendiciones) — FULL FINAL (auto-keys + no-loss) */
 (function () {
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -17,9 +17,7 @@
   const uid = (p="id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
   const todayISO = () => new Date().toISOString().slice(0,10);
 
-  function sum(arr, fn) {
-    return (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0);
-  }
+  function sum(arr, fn) { return (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0); }
 
   function hasBoleta(exp) {
     if (Array.isArray(exp.attachments) && exp.attachments.length) return true;
@@ -27,10 +25,7 @@
     if (exp.boleta === true) return true;
     return false;
   }
-
-  function missingBoletaCount(arr){
-    return (arr || []).filter(e => !hasBoleta(e)).length;
-  }
+  function missingBoletaCount(arr){ return (arr || []).filter(e => !hasBoleta(e)).length; }
 
   // ---------- key auto-detect ----------
   const KEY_TASKS = detectKey(["cursapp_tasks_v1","cursapp_tasks","tasks","campanas","cursapp_campaigns_v1"]) || "cursapp_tasks_v1";
@@ -55,22 +50,13 @@
       return fallback;
     }
   }
+  function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
-  function save(key, val){
-    localStorage.setItem(key, JSON.stringify(val));
-  }
+  function markDirty(){ localStorage.setItem(KEY_REPORTS_DIRTY, "1"); }
+  function clearDirty(){ localStorage.removeItem(KEY_REPORTS_DIRTY); }
+  function isDirty(){ return localStorage.getItem(KEY_REPORTS_DIRTY)==="1"; }
 
-  function markDirty(){
-    localStorage.setItem(KEY_REPORTS_DIRTY, "1");
-  }
-  function clearDirty(){
-    localStorage.removeItem(KEY_REPORTS_DIRTY);
-  }
-  function isDirty(){
-    return localStorage.getItem(KEY_REPORTS_DIRTY)==="1";
-  }
-
-  // ---------- demo seed (si no hay nada) ----------
+  // ---------- demo seed ----------
   function ensureDemo(){
     const tasks = load(KEY_TASKS, []);
     if (Array.isArray(tasks) && tasks.length) return;
@@ -78,19 +64,24 @@
     save(KEY_TASKS, [
       {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single"},
       {id:"t2", title:"Paseo de curso", startDate:"2026-01-01", dueDate:"2026-03-31", closed:false, mandatoryParticipation:false, type:"monthly"},
+      {id:"t3", title:"Prueba filtrooooooo", startDate:"2026-01-19", dueDate:"2026-01-28", closed:false, mandatoryParticipation:true, type:"single"},
     ]);
 
     save(KEY_PAYMENTS, [
       {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
       {id:"p2", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
       {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid"},
+      {id:"p4", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
+      {id:"p5", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
     ]);
 
     save(KEY_EXPENSES, [
-      {id:"e1", scope:"general", title:"Compra materiales urgentes", category:"Materiales", vendor:"Librería", date:"2026-01-18", amount:8500, note:"", attachments:[]},
+      {id:"e1", scope:"general", title:"Compra materiales urgentes", category:"Materiales", vendor:"Librería", date:"2026-01-18", amount:8500, note:"Gasto general del curso (demo)", attachments:[]},
       {id:"e2", scope:"campaign", campaignId:"t1", title:"Flores", category:"Regalos", vendor:"Florería", date:"2026-01-18", amount:25000, note:"", attachments:[{name:"boleta.jpg"}]},
       {id:"e3", scope:"campaign", campaignId:"t1", title:"Transporte", category:"Transporte", vendor:"Bus", date:"2026-01-18", amount:30000, note:"", attachments:[]},
       {id:"e4", scope:"campaign", campaignId:"t2", title:"Reserva", category:"Otros", vendor:"", date:"2026-01-18", amount:60000, note:"", attachments:[]},
+      {id:"e5", scope:"campaign", campaignId:"t3", title:"Ccccc", category:"Gg", vendor:"Vvv", date:"2026-01-25", amount:2000, note:"", attachments:[]},
+      {id:"e6", scope:"campaign", campaignId:"t3", title:"Qqqqqq", category:"F", vendor:"H", date:"2026-01-25", amount:200, note:"", attachments:[]},
     ]);
 
     save(KEY_MONTHLY_REPORTS, []);
@@ -105,12 +96,8 @@
   function expensesGeneral(){ return expensesAll().filter(e => e.scope==="general"); }
   function expensesForTask(taskId){ return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId); }
 
-  function collectedCourse(){
-    return sum(paymentsAll().filter(p => p.status==="paid"), p=>p.amount);
-  }
-  function collectedForTask(taskId){
-    return sum(paymentsAll().filter(p => p.status==="paid" && p.fromTaskId===taskId), p=>p.amount);
-  }
+  function collectedCourse(){ return sum(paymentsAll().filter(p => p.status==="paid"), p=>p.amount); }
+  function collectedForTask(taskId){ return sum(paymentsAll().filter(p => p.status==="paid" && p.fromTaskId===taskId), p=>p.amount); }
 
   // ---------- modal ----------
   function openModal(html){
@@ -125,7 +112,7 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---------- UI: menu ----------
+  // ---------- menu ----------
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick = (e)=>{ e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block"); };
@@ -165,7 +152,6 @@
     if(tab==="informes") renderInformes();
   }
   window.go = go;
-
   navItems.forEach(b=> b.onclick = ()=> go(b.dataset.tab));
 
   // ---------- Render: Home ----------
@@ -178,7 +164,6 @@
     const pendienteRendir = sum(exp.filter(e=>!hasBoleta(e)), e=>e.amount);
 
     const t = tasksActive();
-
     const cards = t.map(x=>{
       const rec = collectedForTask(x.id);
       const gas = sum(expensesForTask(x.id), e=>e.amount);
@@ -207,10 +192,6 @@
           <div class="kpi"><div class="lbl">🧾 Gastado / rendido</div><div class="val">${clp(spent)}</div></div>
           <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(saldo)}</div></div>
           <div class="kpi"><div class="lbl">⏳ Pendiente de rendir</div><div class="val">${clp(pendienteRendir)}</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          ${sinBoleta?`<span class="pill danger">⚠️ Sin boleta ${sinBoleta}</span>`:`<span class="pill ok">✅ Boletas al día</span>`}
-          ${isDirty()?`<span class="pill warn">📄 Requiere nuevo informe</span>`:""}
         </div>
       </div>
 
@@ -252,22 +233,16 @@
         </div>
       </div>
 
-      <div class="card exp-general">
+      <div class="card">
         <div class="kTitle">🏦 Fondo del curso (sin campaña)</div>
-        <div class="noteBox">
-          <div style="font-weight:950;">ℹ️ Gasto sin campaña</div>
-          <div class="muted" style="margin-top:6px;">
-            Uso rápido del fondo del curso (imprevistos/operativos). Se rinde igual que el resto.
-          </div>
+        <div class="muted" style="margin-top:6px;font-weight:900;">
+          Gasto general sin campaña y de uso rápido del fondo del curso.
         </div>
-        <div class="row" style="margin-top:12px;">
-          <div class="muted" style="font-weight:900;">${expGen.length} gasto(s)</div>
-          <div class="actions">
-            <button class="btnPrimaryMini" onclick="openCreateExpense('general','')">+ Agregar gasto general</button>
-          </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btnPrimaryMini" onclick="openCreateExpense('general','')">+ Agregar gasto general</button>
         </div>
-        <div class="listLines" style="margin-top:10px;">
-          ${expGen.length?expGen.map(renderExpenseRow).join(""):`<div class="muted">Sin gastos generales.</div>`}
+        <div style="margin-top:10px;">
+          ${expGen.length?expGen.map(renderExpenseCard).join(""):`<div class="muted">Sin gastos generales.</div>`}
         </div>
       </div>
 
@@ -301,7 +276,7 @@
     const miss = missingBoletaCount(exp);
 
     return `
-      <div class="card exp-campaign" style="margin-top:12px;">
+      <div class="card" style="margin-top:12px;">
         <div class="row">
           <div>
             <div style="font-weight:950;">${esc(task.title)} <span class="pill" style="margin-left:8px;">Campaña</span></div>
@@ -319,60 +294,49 @@
           </div>
         </div>
 
-        <div class="listLines" style="margin-top:10px;">
-          ${exp.length?exp.map(renderExpenseRow).join(""):`<div class="muted">Sin gastos asociados.</div>`}
+        <div style="margin-top:10px;">
+          ${exp.length?exp.map(renderExpenseCard).join(""):`<div class="muted">Sin rendiciones asociadas.</div>`}
         </div>
       </div>
     `;
   }
 
-  function renderExpenseRow(e){
+  function scopeLabel(e){ return e.scope==="general" ? "🏦 Fondo del curso" : "🎯 Campaña"; }
+
+  function renderExpenseCard(e){
     const has = hasBoleta(e);
     const badge = has ? `<span class="pill ok">Con boleta</span>` : `<span class="pill danger">Sin boleta</span>`;
 
-    // si tiene boleta: reemplazar + ver. si no: subir
-    const boletaActions = has
-      ? `<button class="btnMini" onclick="replaceBoleta('${e.id}')">🔁 Reemplazar</button>
-         <button class="btnMini" onclick="viewBoleta('${e.id}')">👁 Ver boleta</button>`
+    const boletaButtons = has
+      ? `<button class="btnMini" onclick="viewBoleta('${e.id}')">👁 Ver boleta</button>
+         <button class="btnMini" onclick="replaceBoleta('${e.id}')">🔁 Reemplazar</button>`
       : `<button class="btnPrimaryMini" onclick="uploadBoleta('${e.id}')">📎 Subir boleta</button>`;
 
-    const scopeLabel = e.scope==="general" ? "🏦 Fondo del curso" : "🎯 Campaña";
-
     return `
-  <div class="lineItem">
-    <div class="rendTitle">🧾 Rendición</div>
-
-    <div class="lineTop">
-      <div>
-        <div style="font-weight:950;">${esc(e.title)}</div>
-        <div class="muted" style="margin-top:4px;font-weight:800;font-size:12px;">
-          ${scopeLabel} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
+      <div class="card" style="background:#f8fafc;margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+          <span class="pill">🧾 Rendición</span>
+          ${badge}
         </div>
-        <div style="font-weight:950;margin-top:6px;">${clp(e.amount)}</div>
-      </div>
-    </div>
 
-    <div class="actionsBlock">
-      <!-- FILA 1: BOLETA -->
-      <div class="actionsRow">
-        ${badge}
-        <div class="spacer"></div>
-        ${boletaActions}
-      </div>
+        <div style="margin-top:10px;font-weight:950;">${esc(e.title)}</div>
+        <div class="muted" style="margin-top:6px;font-weight:800;font-size:12px;">
+          ${scopeLabel(e)} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
+        </div>
+        <div style="margin-top:8px;font-weight:950;font-size:18px;">${clp(e.amount)}</div>
 
-      <!-- FILA 2: EDICIÓN -->
-      <div class="actionsRow">
-        <div class="spacer"></div>
-        <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
-        <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(229,231,235,.95);display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+          ${boletaButtons}
+          <span style="flex:1;min-width:10px;"></span>
+          <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
+          <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
+        </div>
       </div>
-    </div>
-  </div>
-`;
+    `;
   }
 
-  // ---------- Edit Campaign ----------
-  window.openEditCampaign = function(taskId){
+  // ---------- Campaign edit ----------
+  function openEditCampaign(taskId){
     const ts = tasksAll();
     const t = ts.find(x=>x.id===taskId);
     if(!t) return;
@@ -402,31 +366,14 @@
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Tipo</label>
-          <select id="ec_type">
-            <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
-            <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Participación</label>
-          <select id="ec_mandatory">
-            <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
-            <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
-          </select>
-        </div>
-      </div>
-
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
         <button class="btnMini" onclick="closeModal()">Cancelar</button>
         <button class="btnPrimaryMini" onclick="saveEditCampaign('${taskId}')">Guardar</button>
       </div>
     `);
-  };
+  }
 
-  window.saveEditCampaign = function(taskId){
+  function saveEditCampaign(taskId){
     const ts = tasksAll();
     const i = ts.findIndex(x=>x.id===taskId);
     if(i<0) return;
@@ -434,20 +381,18 @@
     ts[i].title = ($("ec_title").value||"").trim() || ts[i].title;
     ts[i].startDate = $("ec_start").value || ts[i].startDate;
     ts[i].dueDate = $("ec_due").value || ts[i].dueDate;
-    ts[i].type = $("ec_type").value || ts[i].type;
-    ts[i].mandatoryParticipation = $("ec_mandatory").value === "true";
 
     save(KEY_TASKS, ts);
     markDirty();
     closeModal();
     renderRendiciones(taskId);
-  };
+  }
 
-  // ---------- Create / Edit Expense ----------
-  let _draftExpense = null;
+  // ---------- Expense create/edit/delete + boleta ----------
+  let draft = null;
 
-  window.openCreateExpense = function(scope, taskId){
-    _draftExpense = { scope, campaignId: scope==="campaign"?taskId:null, attached:false };
+  function openCreateExpense(scope, taskId){
+    draft = { scope, campaignId: (scope==="campaign"?taskId:null), attached:false };
 
     const taskOptions = tasksActive().map(t=>`<option value="${t.id}" ${t.id===taskId?"selected":""}>${esc(t.title)}</option>`).join("");
 
@@ -500,10 +445,10 @@
         </div>
       </div>
 
-      <div class="noteBox">
+      <div class="card" style="background:#f8fafc;">
         <div style="font-weight:950;">📎 Boleta</div>
-        <div class="muted" style="margin-top:6px;">Si no adjuntas boleta, quedará marcada como pendiente.</div>
-        <button class="btnMini" id="btn_attach">Adjuntar boleta (demo)</button>
+        <div class="muted" style="margin-top:6px;">Si no adjuntas, quedará como pendiente.</div>
+        <button class="btnMini" id="btn_attach" style="margin-top:10px;">Adjuntar boleta (demo)</button>
         <div id="attach_state" class="muted" style="margin-top:6px;font-size:12px;">Sin boleta</div>
       </div>
 
@@ -518,12 +463,12 @@
       $("ex_campaign_wrap").style.display = (v==="campaign")?"block":"none";
     };
     $("btn_attach").onclick = ()=>{
-      _draftExpense.attached = true;
+      draft.attached = true;
       $("attach_state").textContent = "Boleta adjunta (demo)";
     };
-  };
+  }
 
-  window.saveExpense = function(){
+  function saveExpense(){
     const scope = $("ex_scope").value;
     const title = ($("ex_title").value||"").trim();
     const amount = Number($("ex_amount").value||0);
@@ -537,19 +482,19 @@
       title,
       category: ($("ex_cat").value||"").trim(),
       vendor: ($("ex_vendor").value||"").trim(),
-      date: $("ex_date").value,
+      date: $("ex_date").value||todayISO(),
       amount,
       note: "",
-      attachments: _draftExpense && _draftExpense.attached ? [{name:"boleta.jpg"}] : []
+      attachments: draft && draft.attached ? [{name:"boleta.jpg"}] : []
     });
 
     save(KEY_EXPENSES, ex);
     markDirty();
     closeModal();
     renderRendiciones(scope==="campaign"?$("ex_campaign").value:"");
-  };
+  }
 
-  window.editExpense = function(expenseId){
+  function editExpense(expenseId){
     const ex = expensesAll();
     const e = ex.find(x=>x.id===expenseId);
     if(!e) return;
@@ -594,9 +539,9 @@
         <button class="btnPrimaryMini" onclick="saveEditExpense('${expenseId}')">Guardar</button>
       </div>
     `);
-  };
+  }
 
-  window.saveEditExpense = function(expenseId){
+  function saveEditExpense(expenseId){
     if(!confirm("Guardar cambios y marcar “Requiere nuevo informe”?")) return;
 
     const ex = expensesAll();
@@ -613,18 +558,18 @@
     markDirty();
     closeModal();
     renderRendiciones(ex[i].campaignId || "");
-  };
+  }
 
-  window.deleteExpense = function(expenseId){
+  function deleteExpense(expenseId){
     if(!confirm("¿Eliminar este gasto? Esto marcará “Requiere nuevo informe”."))
       return;
     const ex = expensesAll().filter(x=>x.id!==expenseId);
     save(KEY_EXPENSES, ex);
     markDirty();
     renderRendiciones("");
-  };
+  }
 
-  window.uploadBoleta = function(expenseId){
+  function uploadBoleta(expenseId){
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
@@ -632,9 +577,9 @@
     save(KEY_EXPENSES, ex);
     markDirty();
     renderRendiciones(ex[i].campaignId || "");
-  };
+  }
 
-  window.replaceBoleta = function(expenseId){
+  function replaceBoleta(expenseId){
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
@@ -643,11 +588,14 @@
     markDirty();
     alert("Boleta reemplazada ✅ (demo)");
     renderRendiciones(ex[i].campaignId || "");
-  };
+  }
 
-  window.viewBoleta = function(){
+  function viewBoleta(expenseId){
+    const ex = expensesAll();
+    const e = ex.find(x=>x.id===expenseId);
+    if(!e || !hasBoleta(e)){ alert("No hay boleta adjunta."); return; }
     alert("Ver boleta (demo). Aquí se abriría la imagen/PDF.");
-  };
+  }
 
   // ---------- Informes ----------
   function renderInformes(){
@@ -663,9 +611,9 @@
           <button class="btnMini" onclick="clearDirty();renderInformes()">Marcar como resuelto</button>
         </div>
 
-        <div class="listLines" style="margin-top:12px;">
+        <div style="margin-top:12px;">
           ${reps.length
-            ? reps.map(r=>`<div class="lineItem"><b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}</div>`).join("")
+            ? reps.map(r=>`<div class="card" style="margin-top:10px;"><b>${esc(r.period)}</b><div class="muted">Emitido ${esc(r.generatedAt)}</div></div>`).join("")
             : `<div class="muted">Sin informes generados.</div>`
           }
         </div>
@@ -673,7 +621,7 @@
     `;
   }
 
-  window.generateMonthly = function(){
+  function generateMonthly(){
     const period = prompt("Mes (YYYY-MM)", "2026-01");
     if(!period) return;
     if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
@@ -698,11 +646,24 @@
     clearDirty();
     alert("Informe generado ✅ (demo)");
     renderInformes();
-  };
+  }
+
+  // ---------- expose handlers ----------
+  window.openCreateExpense = openCreateExpense;
+  window.saveExpense = saveExpense;
+  window.editExpense = editExpense;
+  window.saveEditExpense = saveEditExpense;
+  window.deleteExpense = deleteExpense;
+  window.uploadBoleta = uploadBoleta;
+  window.replaceBoleta = replaceBoleta;
+  window.viewBoleta = viewBoleta;
+  window.openEditCampaign = openEditCampaign;
+  window.saveEditCampaign = saveEditCampaign;
+  window.generateMonthly = generateMonthly;
 
   // ---------- Boot ----------
   ensureDemo();
   initMenu();
-  go("home");
+  go("rendiciones");
 
 })();
