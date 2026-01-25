@@ -1,4 +1,3 @@
-/* Cursapp · Tesorero (Rendiciones) — FULL FINAL (auto-keys + no-loss) */
 (function () {
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -8,98 +7,87 @@
   const resetBtn = document.getElementById("resetBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // ---------- utils ----------
-  const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s ?? "").replace(/[&<>'"]/g, (c) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
-  }[c]));
+  // ---- helpers ----
+  const esc = (s) =>
+    String(s ?? "").replace(/[&<>'"]/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])
+    );
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
-  const uid = (p="id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
-  const todayISO = () => new Date().toISOString().slice(0,10);
+  const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
-  function sum(arr, fn) { return (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0); }
-
-  function hasBoleta(exp) {
-    if (Array.isArray(exp.attachments) && exp.attachments.length) return true;
-    if (exp.receipt) return true;
-    if (exp.boleta === true) return true;
-    return false;
-  }
-  function missingBoletaCount(arr){ return (arr || []).filter(e => !hasBoleta(e)).length; }
-
-  // ---------- key auto-detect ----------
-  const KEY_TASKS = detectKey(["cursapp_tasks_v1","cursapp_tasks","tasks","campanas","cursapp_campaigns_v1"]) || "cursapp_tasks_v1";
-  const KEY_PAYMENTS = detectKey(["cursapp_payments_v1","cursapp_payments","pagos","payments"]) || "cursapp_payments_v1";
-  const KEY_EXPENSES = detectKey(["cursapp_expenses_v1","cursapp_expenses","gastos","expenses","rendiciones"]) || "cursapp_expenses_v1";
-  const KEY_REPORTS_DIRTY = detectKey(["cursapp_reports_dirty_v1","cursapp_dirty_reports","reportsDirty"]) || "cursapp_reports_dirty_v1";
-  const KEY_MONTHLY_REPORTS = detectKey(["cursapp_monthly_reports_v1","monthly_reports","informesMensuales"]) || "cursapp_monthly_reports_v1";
-
-  function detectKey(candidates){
-    for (const k of candidates){
-      if (localStorage.getItem(k) != null) return k;
-    }
+  function detectKey(candidates) {
+    for (const k of candidates) if (localStorage.getItem(k) != null) return k;
     return "";
   }
 
-  function load(key, fallback){
-    try{
-      const v = localStorage.getItem(key);
-      if(v==null) return fallback;
-      return JSON.parse(v);
-    }catch(e){
-      return fallback;
-    }
-  }
-  function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+  // storage keys (auto to match your ecosystem)
+  const KEY_TASKS = detectKey(["cursapp_tasks_v1", "tasks", "campanas"]) || "cursapp_tasks_v1";
+  const KEY_PAYMENTS = detectKey(["cursapp_payments_v1", "payments", "pagos"]) || "cursapp_payments_v1";
+  const KEY_EXPENSES = detectKey(["cursapp_expenses_v1", "expenses", "gastos", "rendiciones"]) || "cursapp_expenses_v1";
+  const KEY_MONTHLY_REPORTS = detectKey(["cursapp_monthly_reports_v1", "monthly_reports", "informesMensuales"]) || "cursapp_monthly_reports_v1";
+  const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
-  function markDirty(){ localStorage.setItem(KEY_REPORTS_DIRTY, "1"); }
-  function clearDirty(){ localStorage.removeItem(KEY_REPORTS_DIRTY); }
-  function isDirty(){ return localStorage.getItem(KEY_REPORTS_DIRTY)==="1"; }
+  const load = (k, def) => {
+    try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }
+    catch { return def; }
+  };
+  const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  // ---------- demo seed ----------
-  function ensureDemo(){
-    const tasks = load(KEY_TASKS, []);
-    if (Array.isArray(tasks) && tasks.length) return;
+  const markDirty = () => localStorage.setItem(KEY_DIRTY, "1");
+  const clearDirty = () => localStorage.removeItem(KEY_DIRTY);
+  const isDirty = () => localStorage.getItem(KEY_DIRTY) === "1";
 
-    save(KEY_TASKS, [
-      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single"},
-      {id:"t2", title:"Paseo de curso", startDate:"2026-01-01", dueDate:"2026-03-31", closed:false, mandatoryParticipation:false, type:"monthly"},
-      {id:"t3", title:"Prueba filtro", startDate:"2026-01-19", dueDate:"2026-01-28", closed:false, mandatoryParticipation:true, type:"single"},
-    ]);
+  const sum = (arr, fn) => (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0);
 
-    save(KEY_PAYMENTS, [
-      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
-      {id:"p2", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
-      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid"},
-      {id:"p4", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
-      {id:"p5", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
-    ]);
-
-    save(KEY_EXPENSES, [
-      {id:"e1", scope:"general", title:"Compra materiales urgentes", category:"Materiales", vendor:"Librería", date:"2026-01-18", amount:8500, note:"Gasto general del curso (demo)", attachments:[]},
-      {id:"e2", scope:"campaign", campaignId:"t1", title:"Flores", category:"Regalos", vendor:"Florería", date:"2026-01-18", amount:25000, note:"", attachments:[{name:"boleta.jpg"}]},
-      {id:"e3", scope:"campaign", campaignId:"t1", title:"Transporte", category:"Transporte", vendor:"Bus", date:"2026-01-18", amount:30000, note:"", attachments:[]},
-      {id:"e4", scope:"campaign", campaignId:"t2", title:"Reserva", category:"Otros", vendor:"", date:"2026-01-18", amount:60000, note:"", attachments:[]},
-      {id:"e5", scope:"campaign", campaignId:"t3", title:"Compra prueba filtro materiales", category:"Otros", vendor:"Librería", date:"2026-01-16", amount:25000, note:"", attachments:[{name:"boleta.jpg"}]},
-      {id:"e6", scope:"campaign", campaignId:"t3", title:"Filtro agua repuesto", category:"Materiales", vendor:"Ferretería", date:"2026-01-19", amount:2000, note:"", attachments:[{name:"boleta.jpg"}]},
-    ]);
-
-    save(KEY_MONTHLY_REPORTS, []);
-    clearDirty();
+  function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
 
-  // ---------- computed ----------
-  function tasksAll(){ return load(KEY_TASKS, []); }
-  function tasksActive(){ return tasksAll().filter(t => !t.closed); }
-  function paymentsAll(){ return load(KEY_PAYMENTS, []); }
-  function expensesAll(){ return load(KEY_EXPENSES, []); }
-  function expensesGeneral(){ return expensesAll().filter(e => e.scope==="general"); }
-  function expensesForTask(taskId){ return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId); }
+  function isExpired(t){
+    if(!t.dueDate) return false;
+    const due = new Date(t.dueDate + "T23:59:59");
+    if(isNaN(due.getTime())) return false;
+    return due.getTime() < Date.now();
+  }
 
-  function collectedCourse(){ return sum(paymentsAll().filter(p => p.status==="paid"), p=>p.amount); }
-  function collectedForTask(taskId){ return sum(paymentsAll().filter(p => p.status==="paid" && p.fromTaskId===taskId), p=>p.amount); }
+  // payment status tolerance
+  const isPaid = (p) => p.status === "paid";
+  const isCredit = (p) => p.status === "credit";
+  const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
 
-  // ---------- modal ----------
+  // data access
+  const tasks = () => load(KEY_TASKS, []);
+  const payments = () => load(KEY_PAYMENTS, []);
+  const expenses = () => load(KEY_EXPENSES, []);
+  const reports = () => load(KEY_MONTHLY_REPORTS, []);
+
+  const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
+  const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
+  const closedTasks = () => tasks().filter(t => !!t.closed);
+
+  const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
+  const spentCourse = () => sum(expenses(), e => e.amount);
+  const saldoCourse = () => collectedCourse() - spentCourse();
+
+  const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
+  const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
+
+  const deudoresCount = () => payments().filter(isPendingLike).length;
+
+  function collectedTask(id){
+    return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
+  }
+  function pendingTask(id){
+    return sum(payments().filter(p=>p.fromTaskId===id && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+  }
+  function deudoresTask(id){
+    return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+  }
+  function spentTask(id){
+    return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
+  }
+
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
@@ -110,22 +98,21 @@
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
-  window.closeModal = closeModal;
 
-  // ---------- menu ----------
+  // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
-      menuBtn.onclick = (e)=>{ e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block"); };
+      menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
       document.addEventListener("click", ()=> menuDropdown.style.display="none");
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
-        if(!confirm("Esto eliminará datos demo. ¿Continuar?")) return;
+        if(!confirm("Reset demo presidente. ¿Continuar?")) return;
         localStorage.removeItem(KEY_TASKS);
         localStorage.removeItem(KEY_PAYMENTS);
         localStorage.removeItem(KEY_EXPENSES);
         localStorage.removeItem(KEY_MONTHLY_REPORTS);
-        localStorage.removeItem(KEY_REPORTS_DIRTY);
+        localStorage.removeItem(KEY_DIRTY);
         alert("Datos reseteados.");
         ensureDemo();
         go("home");
@@ -136,216 +123,312 @@
     }
   }
 
-  // ---------- Navigation ----------
-  let state = { tab:"home", taskId:"" };
+  // ----- demo seed (if empty) -----
+  function ensureDemo(){
+    if(tasks().length) return;
 
-  function setActiveTab(tab){
-    navItems.forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+    save(KEY_TASKS, [
+      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single"},
+      {id:"t2", title:"Paseo de curso", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly"},
+    ]);
+
+    save(KEY_PAYMENTS, [
+      {id:"p1", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
+      {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
+      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
+    ]);
+
+    save(KEY_EXPENSES, [
+      {id:"e1", scope:"campaign", campaignId:"t1", title:"Flores", date:"2026-01-18", amount:25000, attachments:[{name:"boleta.jpg"}]},
+      {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
+    ]);
+
+    save(KEY_MONTHLY_REPORTS, []);
+    clearDirty();
   }
 
-  function go(tab, taskId){
+  // ----- state -----
+  let state = { tab:"home" };
+  let campaignFilter = "active"; // active | expired | closed | all
+
+  function setActive(tab){
+    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+  }
+
+  function go(tab){
     state.tab = tab;
-    state.taskId = taskId || "";
-    setActiveTab(tab);
+    setActive(tab);
     if(tab==="home") renderHome();
-    if(tab==="rendiciones") renderRendiciones(state.taskId);
+    if(tab==="campanas") renderCampanas();
     if(tab==="informes") renderInformes();
   }
-  window.go = go;
-  navItems.forEach(b=> b.onclick = ()=> go(b.dataset.tab));
 
-  // ---------- Render: Home ----------
+  navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // ----- UI pieces -----
+  function statusPillForCampaign(t){
+    if(t.closed){
+      const pend = pendingTask(t.id);
+      if(pend > 0) return `<span class="pill warn">Cerrada · con pagos pendientes</span>`;
+      return `<span class="pill">Cerrada</span>`;
+    }
+    if(isExpired(t)) return `<span class="pill danger">Caducada</span>`;
+    return `<span class="pill ok">Activa</span>`;
+  }
+
+  function lineClassForCampaign(t){
+    const pend = pendingTask(t.id);
+    const saldo = collectedTask(t.id) - spentTask(t.id);
+    if(saldo < 0) return "isDanger";
+    if(pend > 0 && t.closed) return "isWarn";
+    if(isExpired(t)) return "isWarn";
+    return "isOk";
+  }
+
+  // ----- Home -----
   function renderHome(){
-    const exp = expensesAll();
-    const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
-    const saldo = collected - spent;
-    const sinBoleta = missingBoletaCount(exp);
-    const pendienteRendir = sum(exp.filter(e=>!hasBoleta(e)), e=>e.amount);
+    const rec = collectedCourse();
+    const gas = spentCourse();
+    const sal = saldoCourse();
 
-    const t = tasksActive();
-    const cards = t.map(x=>{
-      const rec = collectedForTask(x.id);
-      const gas = sum(expensesForTask(x.id), e=>e.amount);
-      const s = rec - gas;
-      const miss = missingBoletaCount(expensesForTask(x.id));
+    const pend = pendingTotal();
+    const debtors = deudoresCount();
+    const credit = creditTotal();
+
+    const alerts = [];
+    if(pend > 0) alerts.push(`⏳ Pendiente curso: ${clp(pend)}`);
+    if(debtors > 0) alerts.push(`👥 Deudores: ${debtors}`);
+    if(isDirty()) alerts.push(`📄 Informe desactualizado`);
+
+    app.innerHTML = `
+      ${alerts.length ? `
+        <div class="${isDirty() ? "warnBox" : "warnBox"}">
+          <div style="font-weight:950;">Resumen rápido</div>
+          <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
+        </div>
+      `:""}
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">Resumen ejecutivo del curso</div>
+            <div class="muted" style="margin-top:6px;">Montos globales (no personales)</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="confirmGenerateReport()">📄 Publicar informe</button>
+          </div>
+        </div>
+
+        <div class="kpiGrid">
+          <div class="kpi"><div class="lbl">💰 Recaudado</div><div class="val">${clp(rec)}</div></div>
+          <div class="kpi"><div class="lbl">🧾 Rendido</div><div class="val">${clp(gas)}</div></div>
+          <div class="kpi"><div class="lbl">⚖️ Saldo</div><div class="val">${clp(sal)}</div></div>
+          <div class="kpi"><div class="lbl">⏳ Pendiente (curso)</div><div class="val">${clp(pend)}</div></div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="pill">👥 Deudores ${debtors}</span>
+          <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
+          ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="kTitle">Acciones</div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // ----- Campaigns -----
+  function setFilter(f){
+    campaignFilter = f;
+    renderCampanas();
+  }
+  window.setFilter = setFilter;
+
+  function getFilteredCampaigns(){
+    if(campaignFilter==="active") return activeTasks();
+    if(campaignFilter==="expired") return expiredTasks();
+    if(campaignFilter==="closed") return closedTasks();
+    return tasks();
+  }
+
+  function renderCampanas(){
+    const filtered = getFilteredCampaigns();
+
+    const chips = `
+      <div class="chips">
+        <button class="chip ${campaignFilter==="active"?"active":""}" onclick="setFilter('active')">Activas</button>
+        <button class="chip ${campaignFilter==="expired"?"active":""}" onclick="setFilter('expired')">Caducadas</button>
+        <button class="chip ${campaignFilter==="closed"?"active":""}" onclick="setFilter('closed')">Cerradas</button>
+        <button class="chip ${campaignFilter==="all"?"active":""}" onclick="setFilter('all')">Todas</button>
+      </div>
+    `;
+
+    const list = filtered.map(t=>{
+      const rec = collectedTask(t.id);
+      const gas = spentTask(t.id);
+      const saldo = rec - gas;
+      const pend = pendingTask(t.id);
+      const debtors = deudoresTask(t.id);
+
       return `
-        <div class="lineItem clickable" style="cursor:pointer" onclick="go('rendiciones','${x.id}')">
-          <div style="font-weight:950;">${esc(x.title)}</div>
-          <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
-            <span class="pill ok">Rec ${clp(rec)}</span>
-            <span class="pill warn">Gas ${clp(gas)}</span>
-            <span class="pill ${s<0?'danger':''}">Saldo ${clp(s)}</span>
-            ${miss?`<span class="pill danger">⚠️ sin boleta ${miss}</span>`:""}
+        <div class="lineItem ${lineClassForCampaign(t)}">
+          <div class="row">
+            <div>
+              <div style="font-weight:950;">${esc(t.title)} ${statusPillForCampaign(t)}</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill ok">Rec ${clp(rec)}</span>
+                <span class="pill warn">Gas ${clp(gas)}</span>
+                <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
+                <span class="pill">Deudores ${debtors}</span>
+                <span class="pill warn">Pendiente ${clp(pend)}</span>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+              ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+            </div>
           </div>
         </div>
       `;
     }).join("");
 
     app.innerHTML = `
-      ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
-
-      <div class="card">
-        <div class="kTitle">Estado financiero del curso</div>
-        <div class="kpiGrid">
-          <div class="kpi"><div class="lbl">💰 Recaudado</div><div class="val">${clp(collected)}</div></div>
-          <div class="kpi"><div class="lbl">🧾 Gastado / rendido</div><div class="val">${clp(spent)}</div></div>
-          <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(saldo)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente de rendir</div><div class="val">${clp(pendienteRendir)}</div></div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          ${sinBoleta?`<span class="pill danger">⚠️ Sin boleta ${sinBoleta}</span>`:`<span class="pill ok">✅ Boletas al día</span>`}
-          ${isDirty()?`<span class="pill warn">📄 Requiere nuevo informe</span>`:""}
-        </div>
-      </div>
-
       <div class="card">
         <div class="row">
-          <div class="kTitle">📌 Campañas activas</div>
-          <div class="muted" style="font-weight:900;">${t.length} activas</div>
+          <div>
+            <div class="kTitle">Campañas</div>
+            <div class="muted" style="margin-top:6px;">Filtros por estado. Muestra pendientes sin nombres.</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
         </div>
-        <div class="listLines" style="margin-top:10px;">
-          ${cards || `<div class="muted">Sin campañas activas.</div>`}
+
+        ${chips}
+
+        <div class="listLines">
+          ${list || `<div class="muted">Sin campañas en este filtro.</div>`}
         </div>
       </div>
     `;
   }
 
-  // ---------- Rendiciones ----------
-  function renderRendiciones(selectedTaskId){
-    const t = tasksActive();
-    const expAll = expensesAll();
-    const collected = collectedCourse();
-    const spent = sum(expAll, e=>e.amount);
-    const saldo = collected - spent;
-
-    const sinBoleta = missingBoletaCount(expAll);
-    const expGen = expensesGeneral();
+  // ----- Informes -----
+  function renderInformes(){
+    const reps = reports();
 
     app.innerHTML = `
-      ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
+      ${isDirty()?`
+        <div class="warnBox">
+          <div style="font-weight:950;">Informe desactualizado</div>
+          <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al último informe. Publica uno nuevo.</div>
+          <div class="actions" style="margin-top:10px;">
+            <button class="btnx primary" onclick="confirmGenerateReport()">Actualizar y publicar</button>
+          </div>
+        </div>
+      `:""}
 
       <div class="card">
         <div class="row">
-          <div class="kTitle">Rendiciones del curso</div>
-          <div class="muted" style="font-weight:900;">${sinBoleta?`⚠️ Sin boleta ${sinBoleta}`:"✅ OK"}</div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="pill ok">💰 Recaudado ${clp(collected)}</span>
-          <span class="pill warn">🧾 Gastado ${clp(spent)}</span>
-          <span class="pill ${saldo<0?'danger':''}">⚖️ Saldo ${clp(saldo)}</span>
-        </div>
-      </div>
-
-      <div class="card exp-general">
-        <div class="kTitle">🏦 Fondo del curso (sin campaña)</div>
-        <div class="noteBox">
-          <div style="font-weight:950;">ℹ️ Gasto sin campaña</div>
-          <div class="muted" style="margin-top:6px;">
-            Uso rápido del fondo del curso (imprevistos/operativos). Se rinde igual que el resto.
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <div class="muted" style="font-weight:900;">${expGen.length} gasto(s)</div>
-          <div class="actions">
-            <button class="btnPrimaryMini" onclick="openCreateExpense('general','')">+ Agregar gasto general</button>
-          </div>
-        </div>
-        <div class="listLines" style="margin-top:10px;">
-          ${expGen.length?expGen.map(renderExpenseRow).join(""):`<div class="muted">Sin gastos generales.</div>`}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row">
-          <div class="kTitle">🎯 Rendiciones por campaña</div>
-          <div class="actions">
-            <select id="taskSel" class="btnMini">
-              <option value="">Ver todas</option>
-              ${t.map(x=>`<option value="${x.id}" ${selectedTaskId===x.id?"selected":""}>${esc(x.title)}</option>`).join("")}
-            </select>
-          </div>
-        </div>
-        <div id="campaignWrap" style="margin-top:10px;"></div>
-      </div>
-    `;
-
-    const sel = $("taskSel");
-    sel.onchange = ()=> renderRendiciones(sel.value||"");
-
-    const wrap = $("campaignWrap");
-    const show = selectedTaskId ? t.filter(x=>x.id===selectedTaskId) : t;
-    wrap.innerHTML = show.map(renderCampaignCard).join("");
-  }
-
-  function renderCampaignCard(task){
-    const exp = expensesForTask(task.id);
-    const rec = collectedForTask(task.id);
-    const gas = sum(exp, e=>e.amount);
-    const s = rec - gas;
-    const miss = missingBoletaCount(exp);
-
-    return `
-      <div class="card exp-campaign" style="margin-top:12px;">
-        <div class="row">
           <div>
-            <div style="font-weight:950;">${esc(task.title)} <span class="pill" style="margin-left:8px;">Campaña</span></div>
-            <div class="muted" style="margin-top:6px;font-weight:800;font-size:12px;">${task.startDate||""} → ${task.dueDate||""}</div>
-            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-              <span class="pill ok">Recaudado ${clp(rec)}</span>
-              <span class="pill warn">Gastado ${clp(gas)}</span>
-              <span class="pill ${s<0?'danger':''}">Saldo ${clp(s)}</span>
-              ${miss?`<span class="pill danger">⚠️ sin boleta ${miss}</span>`:""}
-            </div>
+            <div class="kTitle">Informes mensuales</div>
+            <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
           </div>
           <div class="actions">
-            <button class="btnMini" onclick="openEditCampaign('${task.id}')">✏️ Editar campaña</button>
-            <button class="btnPrimaryMini" onclick="openCreateExpense('campaign','${task.id}')">+ Agregar gasto</button>
+            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
         </div>
 
-        <div class="listLines" style="margin-top:10px;">
-          ${exp.length?exp.map(renderExpenseRow).join(""):`<div class="muted">Sin gastos asociados.</div>`}
+        <div class="listLines">
+          ${reps.length
+            ? reps.map(r=>`
+              <div class="lineItem">
+                <b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}
+                <div class="muted" style="margin-top:6px;">
+                  Recaudado ${clp(r.recaudadoCurso||0)} · Rendido ${clp(r.gastadoCurso||0)} · Saldo ${clp(r.disponibleCurso||0)}
+                </div>
+              </div>
+            `).join("")
+            : `<div class="muted">Sin informes publicados.</div>`
+          }
         </div>
       </div>
     `;
   }
 
-  function renderExpenseRow(e){
-    const has = hasBoleta(e);
-    const badge = has ? `<span class="pill ok">Con boleta</span>` : `<span class="pill danger">Sin boleta</span>`;
+  // ----- Create/Edit/Delete Campaign -----
+  window.openCreateCampaign = function(){
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Crear campaña</div>
+          <div class="muted" style="margin-top:6px;">Mínimo: nombre + fechas. (Monto se define en cobros/pack después)</div>
+        </div>
+        <button class="btnx" onclick="closeModal()">Cerrar</button>
+      </div>
 
-    const boletaActions = has
-      ? `<button class="btnMini" onclick="replaceBoleta('${e.id}')">🔁 Reemplazar</button>
-         <button class="btnMini" onclick="viewBoleta('${e.id}')">👁 Ver boleta</button>`
-      : `<button class="btnPrimaryMini" onclick="uploadBoleta('${e.id}')">📎 Subir boleta</button>`;
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Nombre</label>
+        <input id="cc_title" placeholder="Ej: Cuota paseo" />
+      </div>
 
-    const scopeLabel = e.scope==="general" ? "🏦 Fondo del curso" : "🎯 Campaña";
-
-    return `
-      <div class="lineItem">
-        <div class="lineTop">
-          <div>
-            <div style="font-weight:950;">${esc(e.title)}</div>
-            <div class="muted" style="margin-top:4px;font-weight:800;font-size:12px;">
-              ${scopeLabel} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
-            </div>
-            <div style="font-weight:950;margin-top:6px;">${clp(e.amount)}</div>
-          </div>
-          <div class="actions">
-            ${badge}
-            ${boletaActions}
-            <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
-            <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
-          </div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Inicio</label>
+          <input id="cc_start" type="date" value="${todayISO()}" />
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Fin</label>
+          <input id="cc_due" type="date" value="${todayISO()}" />
         </div>
       </div>
-    `;
-  }
 
-  // ---------- Campaign edit (FULL) ----------
-  function openEditCampaign(taskId){
-    const ts = tasksAll();
+      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+        <button class="btnx" onclick="closeModal()">Cancelar</button>
+        <button class="btnx primary" onclick="saveCreateCampaign()">Crear</button>
+      </div>
+    `);
+  };
+
+  window.saveCreateCampaign = function(){
+    const title = (document.getElementById("cc_title").value||"").trim();
+    const startDate = document.getElementById("cc_start").value || todayISO();
+    const dueDate = document.getElementById("cc_due").value || todayISO();
+    if(!title){ alert("Debes ingresar nombre."); return; }
+
+    const ts = tasks();
+    ts.unshift({
+      id: uid("t"),
+      title,
+      startDate,
+      dueDate,
+      closed:false,
+      closeType:"",
+      closeReason:"",
+      mandatoryParticipation:true,
+      type:"single"
+    });
+    save(KEY_TASKS, ts);
+    markDirty();
+    closeModal();
+    alert("Campaña creada ✅");
+    go("campanas");
+  };
+
+  window.openEditCampaign = function(taskId){
+    const ts = tasks();
     const t = ts.find(x=>x.id===taskId);
     if(!t) return;
 
@@ -353,9 +436,9 @@
       <div class="row">
         <div>
           <div style="font-weight:950;font-size:18px;">Editar campaña</div>
-          <div class="muted" style="margin-top:6px;">Los cambios marcarán “Requiere nuevo informe”.</div>
+          <div class="muted" style="margin-top:6px;">Esto marcará “requiere nuevo informe”.</div>
         </div>
-        <button class="btnMini" onclick="closeModal()">Cerrar</button>
+        <button class="btnx" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
@@ -366,332 +449,163 @@
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
         <div style="flex:1;min-width:140px;">
           <label style="font-weight:900;">Inicio</label>
-          <input id="ec_start" type="date" value="${t.startDate||""}" />
+          <input id="ec_start" type="date" value="${t.startDate||todayISO()}" />
         </div>
         <div style="flex:1;min-width:140px;">
           <label style="font-weight:900;">Fin</label>
-          <input id="ec_due" type="date" value="${t.dueDate||""}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Tipo</label>
-          <select id="ec_type">
-            <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
-            <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Participación</label>
-          <select id="ec_mandatory">
-            <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
-            <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
-          </select>
+          <input id="ec_due" type="date" value="${t.dueDate||todayISO()}" />
         </div>
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="closeModal()">Cancelar</button>
-        <button class="btnPrimaryMini" onclick="saveEditCampaign('${taskId}')">Guardar</button>
+        <button class="btnx" onclick="closeModal()">Cancelar</button>
+        <button class="btnx primary" onclick="saveEditCampaign('${taskId}')">Guardar</button>
       </div>
     `);
-  }
+  };
 
-  function saveEditCampaign(taskId){
-    const ts = tasksAll();
+  window.saveEditCampaign = function(taskId){
+    const ts = tasks();
     const i = ts.findIndex(x=>x.id===taskId);
     if(i<0) return;
 
-    ts[i].title = ($("ec_title").value||"").trim() || ts[i].title;
-    ts[i].startDate = $("ec_start").value || ts[i].startDate;
-    ts[i].dueDate = $("ec_due").value || ts[i].dueDate;
-    ts[i].type = $("ec_type").value || ts[i].type;
-    ts[i].mandatoryParticipation = $("ec_mandatory").value === "true";
+    ts[i].title = (document.getElementById("ec_title").value||"").trim() || ts[i].title;
+    ts[i].startDate = document.getElementById("ec_start").value || ts[i].startDate;
+    ts[i].dueDate = document.getElementById("ec_due").value || ts[i].dueDate;
 
     save(KEY_TASKS, ts);
     markDirty();
     closeModal();
-    renderRendiciones(taskId);
-  }
+    go("campanas");
+  };
 
-  // ---------- Expense: create + edit + delete (FULL) ----------
-  let _draftExpense = null;
+  window.deleteCampaign = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
 
-  function openCreateExpense(scope, taskId){
-    _draftExpense = { scope, campaignId: scope==="campaign"?taskId:null, attached:false };
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
 
-    const taskOptions = tasksActive().map(t=>`<option value="${t.id}" ${t.id===taskId?"selected":""}>${esc(t.title)}</option>`).join("");
+    if(!confirm(`¿Eliminar campaña "${t.title}"?\n\nPagos pagados quedarán como saldo a favor.`)) return;
+
+    // Remove campaign
+    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
+
+    // Remove expenses associated
+    save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
+
+    // Convert paid payments to credit
+    const ps = payments().map(p=>{
+      if(p.fromTaskId===taskId && isPaid(p)){
+        return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+      }
+      return p;
+    });
+    save(KEY_PAYMENTS, ps);
+
+    markDirty();
+    alert("Campaña eliminada ✅");
+    go("campanas");
+  };
+
+  // ----- Close Campaign -----
+  window.openCloseCampaign = function(){
+    const list = activeTasks();
+    if(!list.length){ alert("No hay campañas activas para cerrar."); return; }
 
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Agregar gasto</div>
-          <div class="muted" style="margin-top:6px;">Puedes adjuntar boleta ahora o después.</div>
+          <div style="font-weight:950;font-size:18px;">Cerrar campaña</div>
+          <div class="muted" style="margin-top:6px;">Indica tipo y motivo (obligatorio).</div>
         </div>
-        <button class="btnMini" onclick="closeModal()">Cerrar</button>
+        <button class="btnx" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Tipo</label>
-        <select id="ex_scope">
-          <option value="general" ${scope==="general"?"selected":""}>🏦 Fondo del curso (sin campaña)</option>
-          <option value="campaign" ${scope==="campaign"?"selected":""}>🎯 Asociado a campaña</option>
+        <label style="font-weight:900;">Campaña</label>
+        <select id="cl_task">
+          ${list.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("")}
         </select>
       </div>
 
-      <div id="ex_campaign_wrap" style="margin-top:12px;${scope==="campaign"?"":"display:none;"}">
-        <label style="font-weight:900;">Campaña</label>
-        <select id="ex_campaign">${taskOptions}</select>
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Tipo de cierre</label>
+        <select id="cl_type">
+          <option value="Meta cumplida">Meta cumplida</option>
+          <option value="Cancelada">Cancelada</option>
+          <option value="Manual">Manual</option>
+          <option value="Otro">Otro</option>
+        </select>
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Concepto</label>
-        <input id="ex_title" placeholder="Ej: Transporte" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Categoría</label>
-          <input id="ex_cat" placeholder="Ej: Transporte" />
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Proveedor</label>
-          <input id="ex_vendor" placeholder="Ej: Bus" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Fecha</label>
-          <input id="ex_date" type="date" value="${todayISO()}" />
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Monto</label>
-          <input id="ex_amount" inputmode="numeric" placeholder="5000" />
-        </div>
-      </div>
-
-      <div class="noteBox">
-        <div style="font-weight:950;">📎 Boleta</div>
-        <div class="muted" style="margin-top:6px;">Si no adjuntas boleta, quedará marcada como pendiente.</div>
-        <button class="btnMini" id="btn_attach">Adjuntar boleta (demo)</button>
-        <div id="attach_state" class="muted" style="margin-top:6px;font-size:12px;">Sin boleta</div>
+        <label style="font-weight:900;">Motivo (obligatorio)</label>
+        <input id="cl_reason" placeholder="Ej: Actividad cancelada / Cambio de plan" />
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="closeModal()">Cancelar</button>
-        <button class="btnPrimaryMini" onclick="saveExpense()">Guardar</button>
+        <button class="btnx" onclick="closeModal()">Cancelar</button>
+        <button class="btnx primary" onclick="saveCloseCampaign()">Cerrar campaña</button>
       </div>
     `);
+  };
 
-    $("ex_scope").onchange = ()=>{
-      const v = $("ex_scope").value;
-      $("ex_campaign_wrap").style.display = (v==="campaign")?"block":"none";
-    };
-    $("btn_attach").onclick = ()=>{
-      _draftExpense.attached = true;
-      $("attach_state").textContent = "Boleta adjunta (demo)";
-    };
-  }
+  window.saveCloseCampaign = function(){
+    const taskId = document.getElementById("cl_task").value;
+    const type = document.getElementById("cl_type").value;
+    const reason = (document.getElementById("cl_reason").value||"").trim();
+    if(!reason){ alert("Debes ingresar el motivo."); return; }
 
-  function saveExpense(){
-    const scope = $("ex_scope").value;
-    const title = ($("ex_title").value||"").trim();
-    const amount = Number($("ex_amount").value||0);
-    if(!title || !amount){ alert("Completa concepto y monto."); return; }
+    const ts = tasks();
+    const i = ts.findIndex(x=>x.id===taskId);
+    if(i<0) return;
 
-    const ex = expensesAll();
-    ex.unshift({
-      id: uid("e"),
-      scope,
-      campaignId: scope==="campaign" ? $("ex_campaign").value : null,
-      title,
-      category: ($("ex_cat").value||"").trim(),
-      vendor: ($("ex_vendor").value||"").trim(),
-      date: $("ex_date").value,
-      amount,
-      note: "",
-      attachments: _draftExpense && _draftExpense.attached ? [{name:"boleta.jpg"}] : []
-    });
+    ts[i].closed = true;
+    ts[i].closeType = type;
+    ts[i].closeReason = reason;
 
-    save(KEY_EXPENSES, ex);
+    save(KEY_TASKS, ts);
     markDirty();
     closeModal();
-    renderRendiciones(scope==="campaign"?$("ex_campaign").value:"");
-  }
+    alert("Campaña cerrada ✅");
+    go("campanas");
+  };
 
-  function editExpense(expenseId){
-    const ex = expensesAll();
-    const e = ex.find(x=>x.id===expenseId);
-    if(!e) return;
+  // ----- Publish report (monthly) -----
+  window.confirmGenerateReport = function(){
+    if(!confirm("¿Publicar informe mensual del curso?")) return;
+    publishMonthly();
+  };
 
-    openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Editar gasto</div>
-          <div class="muted" style="margin-top:6px;">Esto marcará “Requiere nuevo informe”.</div>
-        </div>
-        <button class="btnMini" onclick="closeModal()">Cerrar</button>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Concepto</label>
-        <input id="ee_title" value="${esc(e.title)}" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Fecha</label>
-          <input id="ee_date" type="date" value="${e.date||todayISO()}" />
-        </div>
-        <div style="flex:1;min-width:140px;">
-          <label style="font-weight:900;">Monto</label>
-          <input id="ee_amount" inputmode="numeric" value="${Number(e.amount||0)}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Categoría</label>
-        <input id="ee_cat" value="${esc(e.category||"")}" />
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Proveedor</label>
-        <input id="ee_vendor" value="${esc(e.vendor||"")}" />
-      </div>
-
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="closeModal()">Cancelar</button>
-        <button class="btnPrimaryMini" onclick="saveEditExpense('${expenseId}')">Guardar</button>
-      </div>
-    `);
-  }
-
-  function saveEditExpense(expenseId){
-    if(!confirm("Guardar cambios y marcar “Requiere nuevo informe”?")) return;
-
-    const ex = expensesAll();
-    const i = ex.findIndex(x=>x.id===expenseId);
-    if(i<0) return;
-
-    ex[i].title = ($("ee_title").value||"").trim() || ex[i].title;
-    ex[i].date = $("ee_date").value || ex[i].date;
-    ex[i].amount = Number($("ee_amount").value||ex[i].amount);
-    ex[i].category = ($("ee_cat").value||"").trim();
-    ex[i].vendor = ($("ee_vendor").value||"").trim();
-
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    closeModal();
-    renderRendiciones(ex[i].campaignId || "");
-  }
-
-  function deleteExpense(expenseId){
-    if(!confirm("¿Eliminar este gasto? Esto marcará “Requiere nuevo informe”."))
-      return;
-    const ex = expensesAll().filter(x=>x.id!==expenseId);
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    renderRendiciones("");
-  }
-
-  function uploadBoleta(expenseId){
-    const ex = expensesAll();
-    const i = ex.findIndex(x=>x.id===expenseId);
-    if(i<0) return;
-    ex[i].attachments = [{name:"boleta.jpg"}];
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    renderRendiciones(ex[i].campaignId || "");
-  }
-
-  function replaceBoleta(expenseId){
-    const ex = expensesAll();
-    const i = ex.findIndex(x=>x.id===expenseId);
-    if(i<0) return;
-    ex[i].attachments = [{name:"boleta_reemplazada.jpg"}];
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    alert("Boleta reemplazada ✅ (demo)");
-    renderRendiciones(ex[i].campaignId || "");
-  }
-
-  function viewBoleta(expenseId){
-    const ex = expensesAll();
-    const e = ex.find(x=>x.id===expenseId);
-    if(!e) return;
-    if(!hasBoleta(e)){ alert("No hay boleta adjunta."); return; }
-    alert("Ver boleta (demo). Aquí se abriría la imagen/PDF.");
-  }
-
-  // ---------- Informes ----------
-  function renderInformes(){
-    const reps = load(KEY_MONTHLY_REPORTS, []);
-    app.innerHTML = `
-      ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
-      <div class="card">
-        <div class="kTitle">📊 Informes</div>
-        <div class="muted" style="margin-top:6px;">Si editas o eliminas rendiciones, debes emitir un nuevo informe.</div>
-
-        <div class="actions" style="margin-top:12px;">
-          <button class="btnPrimaryMini" onclick="generateMonthly()">Generar informe mensual (demo)</button>
-          <button class="btnMini" onclick="clearDirty();renderInformes()">Marcar como resuelto</button>
-        </div>
-
-        <div class="listLines" style="margin-top:12px;">
-          ${reps.length
-            ? reps.map(r=>`<div class="lineItem"><b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}</div>`).join("")
-            : `<div class="muted">Sin informes generados.</div>`
-          }
-        </div>
-      </div>
-    `;
-  }
-
-  function generateMonthly(){
+  function publishMonthly(){
     const period = prompt("Mes (YYYY-MM)", "2026-01");
     if(!period) return;
     if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
-
-    const expAll = expensesAll();
-    const collected = collectedCourse();
-    const spent = sum(expAll, e=>e.amount);
 
     const rep = {
       id: uid("repM"),
       period,
       generatedAt: new Date().toLocaleString("es-CL"),
-      recaudadoCurso: collected,
-      gastadoCurso: spent,
-      disponibleCurso: collected - spent
+      recaudadoCurso: collectedCourse(),
+      gastadoCurso: spentCourse(),
+      disponibleCurso: saldoCourse(),
+      pendienteCurso: pendingTotal(),
+      deudores: deudoresCount(),
+      saldoFavor: creditTotal()
     };
 
-    const reps = load(KEY_MONTHLY_REPORTS, []);
+    const reps = reports();
     reps.unshift(rep);
     save(KEY_MONTHLY_REPORTS, reps);
 
     clearDirty();
-    alert("Informe generado ✅ (demo)");
-    renderInformes();
+    alert("Informe publicado ✅");
+    go("informes");
   }
 
-  // ✅ Exponer handlers globales (para que nunca vuelva a “no hace nada”)
-  window.openCreateExpense = openCreateExpense;
-  window.saveExpense = saveExpense;
-  window.editExpense = editExpense;
-  window.saveEditExpense = saveEditExpense;
-  window.deleteExpense = deleteExpense;
-  window.uploadBoleta = uploadBoleta;
-  window.replaceBoleta = replaceBoleta;
-  window.viewBoleta = viewBoleta;
-  window.openEditCampaign = openEditCampaign;
-  window.saveEditCampaign = saveEditCampaign;
-  window.generateMonthly = generateMonthly;
-
-  // ---------- Boot ----------
+  // ----- boot -----
   ensureDemo();
   initMenu();
   go("home");
-
 })();
