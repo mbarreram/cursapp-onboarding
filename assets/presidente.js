@@ -72,7 +72,6 @@
 
   const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
   const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
-
   const deudoresCount = () => payments().filter(isPendingLike).length;
 
   function collectedTask(id){
@@ -88,6 +87,11 @@
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
 
+  function latestReport(){
+    const r = reports();
+    return r.length ? r[0] : null;
+  }
+
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
@@ -98,6 +102,7 @@
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
+  window.closeModal = closeModal;
 
   // ----- menu -----
   function initMenu(){
@@ -128,8 +133,8 @@
     if(tasks().length) return;
 
     save(KEY_TASKS, [
-      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single"},
-      {id:"t2", title:"Paseo de curso", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly"},
+      {id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single", months:1, amount:10000, goalTotal:150000},
+      {id:"t2", title:"Paseo de curso", description:"", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly", months:3, amount:20000, goalTotal:null},
     ]);
 
     save(KEY_PAYMENTS, [
@@ -187,6 +192,15 @@
     return "isOk";
   }
 
+  function campaignTypeLabel(t){
+    const type = String(t.type||"single");
+    if(type==="monthly"){
+      const m = Number(t.months||1);
+      return `Mensual · ${m} cuota(s)`;
+    }
+    return "Pago único";
+  }
+
   // ----- Home -----
   function renderHome(){
     const rec = collectedCourse();
@@ -197,6 +211,8 @@
     const debtors = deudoresCount();
     const credit = creditTotal();
 
+    const last = latestReport();
+
     const alerts = [];
     if(pend > 0) alerts.push(`⏳ Pendiente curso: ${clp(pend)}`);
     if(debtors > 0) alerts.push(`👥 Deudores: ${debtors}`);
@@ -204,9 +220,23 @@
 
     app.innerHTML = `
       ${alerts.length ? `
-        <div class="${isDirty() ? "warnBox" : "warnBox"}">
+        <div class="warnBox">
           <div style="font-weight:950;">Resumen rápido</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
+        </div>
+      `:""}
+
+      ${last ? `
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="kTitle">Último informe publicado</div>
+              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAt||"")}</div>
+            </div>
+            <div class="actions">
+              <button class="btnx" onclick="go('informes')">Ver informes</button>
+            </div>
+          </div>
         </div>
       `:""}
 
@@ -217,7 +247,7 @@
             <div class="muted" style="margin-top:6px;">Montos globales (no personales)</div>
           </div>
           <div class="actions">
-            <button class="btnx primary" onclick="confirmGenerateReport()">📄 Publicar informe</button>
+            <button class="btnx primary" onclick="confirmGenerateReport()">${isDirty() ? "Actualizar y publicar" : "📄 Publicar informe"}</button>
           </div>
         </div>
 
@@ -279,6 +309,11 @@
       const pend = pendingTask(t.id);
       const debtors = deudoresTask(t.id);
 
+      const monto = Number(t.amount||0);
+      const tipo = campaignTypeLabel(t);
+      const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
+      const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
+
       return `
         <div class="lineItem ${lineClassForCampaign(t)}">
           <div class="row">
@@ -287,12 +322,23 @@
               <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
 
               <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill">💵 Monto ${clp(monto)}</span>
+                <span class="pill">${esc(tipo)}</span>
+                <span class="pill">${esc(part)}</span>
+                ${meta?`<span class="pill">🎯 Meta ${clp(meta)}</span>`:""}
+              </div>
+
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
                 <span class="pill ok">Rec ${clp(rec)}</span>
                 <span class="pill warn">Gas ${clp(gas)}</span>
                 <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
                 <span class="pill">Deudores ${debtors}</span>
                 <span class="pill warn">Pendiente ${clp(pend)}</span>
               </div>
+
+              ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
+                Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
+              </div>` : ``}
             </div>
 
             <div class="actions">
@@ -309,7 +355,7 @@
         <div class="row">
           <div>
             <div class="kTitle">Campañas</div>
-            <div class="muted" style="margin-top:6px;">Filtros por estado. Muestra pendientes sin nombres.</div>
+            <div class="muted" style="margin-top:6px;">Muestra deudores sin nombres y pendiente estimado.</div>
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
@@ -357,7 +403,11 @@
               <div class="lineItem">
                 <b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}
                 <div class="muted" style="margin-top:6px;">
-                  Recaudado ${clp(r.recaudadoCurso||0)} · Rendido ${clp(r.gastadoCurso||0)} · Saldo ${clp(r.disponibleCurso||0)}
+                  Recaudado ${clp(r.recaudadoCurso||0)}
+                  · Rendido ${clp(r.gastadoCurso||0)}
+                  · Saldo ${clp(r.disponibleCurso||0)}
+                  · Pendiente ${clp(r.pendienteCurso||0)}
+                  · Deudores ${Number(r.deudores||0)}
                 </div>
               </div>
             `).join("")
@@ -368,19 +418,47 @@
     `;
   }
 
-  // ----- Create/Edit/Delete Campaign -----
   // ----- Campaign actions (delegated to campaigns.js) -----
-window.openCreateCampaign = function () {
-  Campaigns.openCreate();
-};
+  window.openCreateCampaign = function () { Campaigns.openCreate(); };
+  window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
+  window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
 
-window.openEditCampaign = function (taskId) {
-  Campaigns.openEdit(taskId);
-};
+  // Mantener ELIMINAR campaña (activa) en Presidente
+  window.deleteCampaign = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
 
-window.openCloseCampaign = function () {
-  Campaigns.openClose(() => activeTasks());
-};
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
+
+    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
+      `Regla: pagos pagados pasan a saldo a favor.\n` +
+      `Los pendientes se eliminan del ciclo de cobro.\n\n` +
+      `Esto marcará “requiere nuevo informe”.`;
+
+    if(!confirm(msg)) return;
+
+    // eliminar campaña
+    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
+
+    // eliminar rendiciones asociadas
+    save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
+
+    // pagos: paid -> credit, pending-like -> remove
+    const ps = payments()
+      .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
+      .map(p=>{
+        if(p.fromTaskId===taskId && isPaid(p)){
+          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+        }
+        return p;
+      });
+    save(KEY_PAYMENTS, ps);
+
+    markDirty();
+    alert("Campaña eliminada ✅ (saldo a favor generado si aplica)");
+    go("campanas");
+  };
 
   // ----- Publish report (monthly) -----
   window.confirmGenerateReport = function(){
