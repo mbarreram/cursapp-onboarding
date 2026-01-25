@@ -339,26 +339,36 @@
     const scopeLabel = e.scope==="general" ? "🏦 Fondo del curso" : "🎯 Campaña";
 
     return `
-      <div class="lineItem">
-        <div class="lineTop">
-        
-          <div>
-          <div class="rendTitle">🧾 Rendición</div>
-            <div style="font-weight:950;">${esc(e.title)}</div>
-            <div class="muted" style="margin-top:4px;font-weight:800;font-size:12px;">
-              ${scopeLabel} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
-            </div>
-            <div style="font-weight:950;margin-top:6px;">${clp(e.amount)}</div>
-          </div>
-          <div class="actions">
-            ${badge}
-            ${boletaActions}
-            <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
-            <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
-          </div>
+  <div class="lineItem">
+    <div class="rendTitle">🧾 Rendición</div>
+
+    <div class="lineTop">
+      <div>
+        <div style="font-weight:950;">${esc(e.title)}</div>
+        <div class="muted" style="margin-top:4px;font-weight:800;font-size:12px;">
+          ${scopeLabel} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
         </div>
+        <div style="font-weight:950;margin-top:6px;">${clp(e.amount)}</div>
       </div>
-    `;
+    </div>
+
+    <div class="actionsBlock">
+      <!-- FILA 1: BOLETA -->
+      <div class="actionsRow">
+        ${badge}
+        <div class="spacer"></div>
+        ${boletaActions}
+      </div>
+
+      <!-- FILA 2: EDICIÓN -->
+      <div class="actionsRow">
+        <div class="spacer"></div>
+        <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
+        <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
+      </div>
+    </div>
+  </div>
+`;
   }
 
   // ---------- Edit Campaign ----------
