@@ -341,7 +341,9 @@
     return `
       <div class="lineItem">
         <div class="lineTop">
+        
           <div>
+          <div class="rendTitle">🧾 Rendición</div>
             <div style="font-weight:950;">${esc(e.title)}</div>
             <div class="muted" style="margin-top:4px;font-weight:800;font-size:12px;">
               ${scopeLabel} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
