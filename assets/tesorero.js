@@ -1,4 +1,4 @@
-/* Cursapp · Tesorero (Rendiciones) — Optimizado (auto-keys) */
+/* Cursapp · Tesorero (Rendiciones) — FULL (auto-keys) */
 (function () {
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -20,19 +20,19 @@
   function sum(arr, fn) {
     return (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0);
   }
+
   function hasBoleta(exp) {
-    // soporta: exp.attachments[], exp.receipt, exp.boleta boolean
     if (Array.isArray(exp.attachments) && exp.attachments.length) return true;
     if (exp.receipt) return true;
     if (exp.boleta === true) return true;
     return false;
   }
+
   function missingBoletaCount(arr){
     return (arr || []).filter(e => !hasBoleta(e)).length;
   }
 
   // ---------- key auto-detect ----------
-  // Buscamos keys existentes en localStorage (si no existen, usamos las estándar).
   const KEY_TASKS = detectKey(["cursapp_tasks_v1","cursapp_tasks","tasks","campanas","cursapp_campaigns_v1"]) || "cursapp_tasks_v1";
   const KEY_PAYMENTS = detectKey(["cursapp_payments_v1","cursapp_payments","pagos","payments"]) || "cursapp_payments_v1";
   const KEY_EXPENSES = detectKey(["cursapp_expenses_v1","cursapp_expenses","gastos","expenses","rendiciones"]) || "cursapp_expenses_v1";
@@ -55,6 +55,7 @@
       return fallback;
     }
   }
+
   function save(key, val){
     localStorage.setItem(key, JSON.stringify(val));
   }
@@ -97,24 +98,12 @@
   }
 
   // ---------- computed ----------
-  function tasksAll(){
-    return load(KEY_TASKS, []);
-  }
-  function tasksActive(){
-    return tasksAll().filter(t => !t.closed);
-  }
-  function paymentsAll(){
-    return load(KEY_PAYMENTS, []);
-  }
-  function expensesAll(){
-    return load(KEY_EXPENSES, []);
-  }
-  function expensesGeneral(){
-    return expensesAll().filter(e => e.scope==="general");
-  }
-  function expensesForTask(taskId){
-    return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId);
-  }
+  function tasksAll(){ return load(KEY_TASKS, []); }
+  function tasksActive(){ return tasksAll().filter(t => !t.closed); }
+  function paymentsAll(){ return load(KEY_PAYMENTS, []); }
+  function expensesAll(){ return load(KEY_EXPENSES, []); }
+  function expensesGeneral(){ return expensesAll().filter(e => e.scope==="general"); }
+  function expensesForTask(taskId){ return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId); }
 
   function collectedCourse(){
     return sum(paymentsAll().filter(p => p.status==="paid"), p=>p.amount);
@@ -134,6 +123,7 @@
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
+  window.closeModal = closeModal;
 
   // ---------- UI: menu ----------
   function initMenu(){
@@ -165,6 +155,7 @@
   function setActiveTab(tab){
     navItems.forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
   }
+
   function go(tab, taskId){
     state.tab = tab;
     state.taskId = taskId || "";
@@ -173,6 +164,7 @@
     if(tab==="rendiciones") renderRendiciones(state.taskId);
     if(tab==="informes") renderInformes();
   }
+  window.go = go;
 
   navItems.forEach(b=> b.onclick = ()=> go(b.dataset.tab));
 
@@ -186,13 +178,14 @@
     const pendienteRendir = sum(exp.filter(e=>!hasBoleta(e)), e=>e.amount);
 
     const t = tasksActive();
+
     const cards = t.map(x=>{
       const rec = collectedForTask(x.id);
       const gas = sum(expensesForTask(x.id), e=>e.amount);
       const s = rec - gas;
       const miss = missingBoletaCount(expensesForTask(x.id));
       return `
-        <div class="lineItem clickable" style="cursor:pointer" onclick="window.__goRend('${x.id}')">
+        <div class="lineItem clickable" style="cursor:pointer" onclick="go('rendiciones','${x.id}')">
           <div style="font-weight:950;">${esc(x.title)}</div>
           <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
             <span class="pill ok">Rec ${clp(rec)}</span>
@@ -217,6 +210,7 @@
         </div>
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
           ${sinBoleta?`<span class="pill danger">⚠️ Sin boleta ${sinBoleta}</span>`:`<span class="pill ok">✅ Boletas al día</span>`}
+          ${isDirty()?`<span class="pill warn">📄 Requiere nuevo informe</span>`:""}
         </div>
       </div>
 
@@ -230,11 +224,9 @@
         </div>
       </div>
     `;
-
-    window.__goRend = (id)=> go("rendiciones", id);
   }
 
-  // ---------- Render: Rendiciones ----------
+  // ---------- Rendiciones ----------
   function renderRendiciones(selectedTaskId){
     const t = tasksActive();
     const expAll = expensesAll();
@@ -243,7 +235,6 @@
     const saldo = collected - spent;
 
     const sinBoleta = missingBoletaCount(expAll);
-
     const expGen = expensesGeneral();
 
     app.innerHTML = `
@@ -264,9 +255,9 @@
       <div class="card exp-general">
         <div class="kTitle">🏦 Fondo del curso (sin campaña)</div>
         <div class="noteBox">
-          <div style="font-weight:950;">ℹ️ Gasto general</div>
+          <div style="font-weight:950;">ℹ️ Gasto sin campaña</div>
           <div class="muted" style="margin-top:6px;">
-            Gasto sin campaña y de uso rápido del fondo del curso (imprevistos/operativos).
+            Uso rápido del fondo del curso (imprevistos/operativos). Se rinde igual que el resto.
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
@@ -299,20 +290,7 @@
 
     const wrap = $("campaignWrap");
     const show = selectedTaskId ? t.filter(x=>x.id===selectedTaskId) : t;
-
     wrap.innerHTML = show.map(renderCampaignCard).join("");
-
-    // global handlers
-    window.openEditCampaign = openEditCampaign;
-    window.saveEditCampaign = saveEditCampaign;
-    window.openCreateExpense = openCreateExpense;
-    window.saveExpense = saveExpense;
-    window.editExpense = editExpense;
-    window.saveEditExpense = saveEditExpense;
-    window.deleteExpense = deleteExpense;
-    window.uploadBoleta = uploadBoleta;
-    window.replaceBoleta = replaceBoleta;
-    window.viewBoleta = viewBoleta;
   }
 
   function renderCampaignCard(task){
@@ -350,19 +328,15 @@
 
   function renderExpenseRow(e){
     const has = hasBoleta(e);
+    const badge = has ? `<span class="pill ok">Con boleta</span>` : `<span class="pill danger">Sin boleta</span>`;
 
-    const badge = has
-      ? `<span class="pill ok">Con boleta</span>`
-      : `<span class="pill danger">Sin boleta</span>`;
-
+    // si tiene boleta: reemplazar + ver. si no: subir
     const boletaActions = has
       ? `<button class="btnMini" onclick="replaceBoleta('${e.id}')">🔁 Reemplazar</button>
          <button class="btnMini" onclick="viewBoleta('${e.id}')">👁 Ver boleta</button>`
       : `<button class="btnPrimaryMini" onclick="uploadBoleta('${e.id}')">📎 Subir boleta</button>`;
 
-    const scopeLabel = e.scope==="general"
-      ? "🏦 Fondo del curso"
-      : "🎯 Campaña";
+    const scopeLabel = e.scope==="general" ? "🏦 Fondo del curso" : "🎯 Campaña";
 
     return `
       <div class="lineItem">
@@ -378,7 +352,7 @@
             ${badge}
             ${boletaActions}
             <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
-            <button class="btnMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
+            <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
           </div>
         </div>
       </div>
@@ -386,9 +360,9 @@
   }
 
   // ---------- Edit Campaign ----------
-  function openEditCampaign(taskId){
-    const tasks = tasksAll();
-    const t = tasks.find(x=>x.id===taskId);
+  window.openEditCampaign = function(taskId){
+    const ts = tasksAll();
+    const t = ts.find(x=>x.id===taskId);
     if(!t) return;
 
     openModal(`
@@ -397,7 +371,7 @@
           <div style="font-weight:950;font-size:18px;">Editar campaña</div>
           <div class="muted" style="margin-top:6px;">Los cambios marcarán “Requiere nuevo informe”.</div>
         </div>
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cerrar</button>
+        <button class="btnMini" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
@@ -434,33 +408,33 @@
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cancelar</button>
+        <button class="btnMini" onclick="closeModal()">Cancelar</button>
         <button class="btnPrimaryMini" onclick="saveEditCampaign('${taskId}')">Guardar</button>
       </div>
     `);
-  }
+  };
 
-  function saveEditCampaign(taskId){
-    const tasks = tasksAll();
-    const i = tasks.findIndex(x=>x.id===taskId);
+  window.saveEditCampaign = function(taskId){
+    const ts = tasksAll();
+    const i = ts.findIndex(x=>x.id===taskId);
     if(i<0) return;
 
-    tasks[i].title = ($("ec_title").value||"").trim() || tasks[i].title;
-    tasks[i].startDate = $("ec_start").value || tasks[i].startDate;
-    tasks[i].dueDate = $("ec_due").value || tasks[i].dueDate;
-    tasks[i].type = $("ec_type").value || tasks[i].type;
-    tasks[i].mandatoryParticipation = $("ec_mandatory").value === "true";
+    ts[i].title = ($("ec_title").value||"").trim() || ts[i].title;
+    ts[i].startDate = $("ec_start").value || ts[i].startDate;
+    ts[i].dueDate = $("ec_due").value || ts[i].dueDate;
+    ts[i].type = $("ec_type").value || ts[i].type;
+    ts[i].mandatoryParticipation = $("ec_mandatory").value === "true";
 
-    save(KEY_TASKS, tasks);
+    save(KEY_TASKS, ts);
     markDirty();
     closeModal();
     renderRendiciones(taskId);
-  }
+  };
 
   // ---------- Create / Edit Expense ----------
   let _draftExpense = null;
 
-  function openCreateExpense(scope, taskId){
+  window.openCreateExpense = function(scope, taskId){
     _draftExpense = { scope, campaignId: scope==="campaign"?taskId:null, attached:false };
 
     const taskOptions = tasksActive().map(t=>`<option value="${t.id}" ${t.id===taskId?"selected":""}>${esc(t.title)}</option>`).join("");
@@ -471,7 +445,7 @@
           <div style="font-weight:950;font-size:18px;">Agregar gasto</div>
           <div class="muted" style="margin-top:6px;">Puedes adjuntar boleta ahora o después.</div>
         </div>
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cerrar</button>
+        <button class="btnMini" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
@@ -522,7 +496,7 @@
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cancelar</button>
+        <button class="btnMini" onclick="closeModal()">Cancelar</button>
         <button class="btnPrimaryMini" onclick="saveExpense()">Guardar</button>
       </div>
     `);
@@ -531,21 +505,20 @@
       const v = $("ex_scope").value;
       $("ex_campaign_wrap").style.display = (v==="campaign")?"block":"none";
     };
-    const btnAttach = $("btn_attach");
-    btnAttach.onclick = ()=>{
+    $("btn_attach").onclick = ()=>{
       _draftExpense.attached = true;
       $("attach_state").textContent = "Boleta adjunta (demo)";
     };
-  }
+  };
 
-  function saveExpense(){
+  window.saveExpense = function(){
     const scope = $("ex_scope").value;
     const title = ($("ex_title").value||"").trim();
     const amount = Number($("ex_amount").value||0);
     if(!title || !amount){ alert("Completa concepto y monto."); return; }
 
     const ex = expensesAll();
-    const e = {
+    ex.unshift({
       id: uid("e"),
       scope,
       campaignId: scope==="campaign" ? $("ex_campaign").value : null,
@@ -556,15 +529,15 @@
       amount,
       note: "",
       attachments: _draftExpense && _draftExpense.attached ? [{name:"boleta.jpg"}] : []
-    };
-    ex.unshift(e);
+    });
+
     save(KEY_EXPENSES, ex);
     markDirty();
     closeModal();
-    renderRendiciones(e.campaignId || "");
-  }
+    renderRendiciones(scope==="campaign"?$("ex_campaign").value:"");
+  };
 
-  function editExpense(expenseId){
+  window.editExpense = function(expenseId){
     const ex = expensesAll();
     const e = ex.find(x=>x.id===expenseId);
     if(!e) return;
@@ -575,7 +548,7 @@
           <div style="font-weight:950;font-size:18px;">Editar gasto</div>
           <div class="muted" style="margin-top:6px;">Esto marcará “Requiere nuevo informe”.</div>
         </div>
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cerrar</button>
+        <button class="btnMini" onclick="closeModal()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
@@ -605,13 +578,15 @@
       </div>
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnMini" onclick="(${closeModal.toString()})()">Cancelar</button>
+        <button class="btnMini" onclick="closeModal()">Cancelar</button>
         <button class="btnPrimaryMini" onclick="saveEditExpense('${expenseId}')">Guardar</button>
       </div>
     `);
-  }
+  };
 
-  function saveEditExpense(expenseId){
+  window.saveEditExpense = function(expenseId){
+    if(!confirm("Guardar cambios y marcar “Requiere nuevo informe”?")) return;
+
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
@@ -626,18 +601,18 @@
     markDirty();
     closeModal();
     renderRendiciones(ex[i].campaignId || "");
-  }
+  };
 
-  function deleteExpense(expenseId){
+  window.deleteExpense = function(expenseId){
     if(!confirm("¿Eliminar este gasto? Esto marcará “Requiere nuevo informe”."))
       return;
     const ex = expensesAll().filter(x=>x.id!==expenseId);
     save(KEY_EXPENSES, ex);
     markDirty();
     renderRendiciones("");
-  }
+  };
 
-  function uploadBoleta(expenseId){
+  window.uploadBoleta = function(expenseId){
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
@@ -645,9 +620,9 @@
     save(KEY_EXPENSES, ex);
     markDirty();
     renderRendiciones(ex[i].campaignId || "");
-  }
+  };
 
-  function replaceBoleta(expenseId){
+  window.replaceBoleta = function(expenseId){
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
@@ -656,15 +631,15 @@
     markDirty();
     alert("Boleta reemplazada ✅ (demo)");
     renderRendiciones(ex[i].campaignId || "");
-  }
+  };
 
-  function viewBoleta(){
+  window.viewBoleta = function(){
     alert("Ver boleta (demo). Aquí se abriría la imagen/PDF.");
-  }
+  };
 
   // ---------- Informes ----------
   function renderInformes(){
-    const reports = load(KEY_MONTHLY_REPORTS, []);
+    const reps = load(KEY_MONTHLY_REPORTS, []);
     app.innerHTML = `
       ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
       <div class="card">
@@ -677,17 +652,16 @@
         </div>
 
         <div class="listLines" style="margin-top:12px;">
-          ${reports.length
-            ? reports.map(r=>`<div class="lineItem"><b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}</div>`).join("")
+          ${reps.length
+            ? reps.map(r=>`<div class="lineItem"><b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}</div>`).join("")
             : `<div class="muted">Sin informes generados.</div>`
           }
         </div>
       </div>
     `;
-    window.generateMonthly = generateMonthly;
   }
 
-  function generateMonthly(){
+  window.generateMonthly = function(){
     const period = prompt("Mes (YYYY-MM)", "2026-01");
     if(!period) return;
     if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
@@ -704,40 +678,19 @@
       gastadoCurso: spent,
       disponibleCurso: collected - spent
     };
+
     const reps = load(KEY_MONTHLY_REPORTS, []);
     reps.unshift(rep);
     save(KEY_MONTHLY_REPORTS, reps);
+
     clearDirty();
     alert("Informe generado ✅ (demo)");
     renderInformes();
-  }
+  };
 
   // ---------- Boot ----------
   ensureDemo();
   initMenu();
   go("home");
 
-  function initMenu(){
-    if(menuBtn && menuDropdown){
-      menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
-      document.addEventListener("click",()=> menuDropdown.style.display="none");
-    }
-    if(resetBtn){
-      resetBtn.onclick=()=>{
-        if(!confirm("Esto eliminará datos. ¿Continuar?")) return;
-        localStorage.removeItem(KEY_TASKS);
-        localStorage.removeItem(KEY_PAYMENTS);
-        localStorage.removeItem(KEY_EXPENSES);
-        localStorage.removeItem(KEY_MONTHLY_REPORTS);
-        localStorage.removeItem(KEY_REPORTS_DIRTY);
-        alert("Datos reseteados.");
-        ensureDemo();
-        go("home");
-      };
-    }
-    if(logoutBtn){
-      logoutBtn.onclick=()=> location.href="login.html";
-    }
-  }
-
-})(); 
+})();
