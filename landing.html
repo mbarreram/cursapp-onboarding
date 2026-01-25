@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Cursapp · Plataforma del curso</title>
+  <title>Cursapp · Finanzas del curso, sin caos</title>
 
   <link rel="stylesheet" href="assets/styles.css?v=400">
-  <link rel="stylesheet" href="assets/landing.css?v=1">
+  <link rel="stylesheet" href="assets/landing.css?v=10">
 </head>
 <body>
 
@@ -15,9 +15,16 @@
     <div class="logo big">C</div>
     <div>
       <div class="lpTitle">Cursapp</div>
-      <div class="muted">Gestión financiera del curso, simple y transparente</div>
+      <div class="muted">Campañas, pagos, rendiciones e informes del curso</div>
     </div>
   </div>
+
+  <nav class="lpNav">
+    <a href="#modulos">Módulos</a>
+    <a href="#capturas">Capturas</a>
+    <a href="#precios">Precios</a>
+    <a href="#faq">FAQ</a>
+  </nav>
 
   <div class="lpHeaderActions">
     <a class="btnx" href="login.html">Ingresar</a>
@@ -27,105 +34,332 @@
 
 <main class="lpWrap">
 
+  <!-- HERO -->
   <section class="lpHero card">
     <div class="lpHeroGrid">
       <div>
-        <h1>Finanzas del curso, sin caos.</h1>
+        <div class="lpBadge">✨ Transparencia real del curso</div>
+        <h1>Finanzas del curso, sin caos.<br/>Con rendiciones y boletas.</h1>
         <p class="muted">
-          Campañas, cobros, pagos, rendiciones y reportes mensuales.
-          Para apoderados y directiva, en un solo lugar.
+          Cursapp ordena campañas (pago único o mensual), pagos de apoderados, rendiciones del tesorero
+          y reportes mensuales publicados por la directiva.
         </p>
 
         <div class="lpCtas">
           <a class="btnx primary" href="onboarding/dashboard.html">Registrar apoderado</a>
-          <a class="btnx" href="login.html">Ingresar al demo</a>
+          <a class="btnx" href="login.html">Probar demo</a>
         </div>
 
         <div class="lpMini muted">
-          Demo: apoderado / tesorero / presidente (contraseña: demo)
+          Activación por curso: <b>$990</b> por apoderado (una vez por curso).<br/>
+          Demo: <b>presidente</b> / <b>tesorero</b> / <b>apoderado</b> (pass: <b>demo</b>)
+        </div>
+
+        <div class="lpTrustRow">
+          <div class="lpTrustItem">🧾 Boletas adjuntas</div>
+          <div class="lpTrustItem">📄 Informes mensuales</div>
+          <div class="lpTrustItem">💳 Pagos ordenados</div>
         </div>
       </div>
 
-      <div class="lpHeroBox">
-        <div class="lpStat">
-          <div class="muted">Transparencia</div>
-          <div class="lpStatVal">Informes mensuales</div>
+      <!-- Mockup visual (sin imágenes externas) -->
+      <div class="lpHeroMock">
+        <div class="browserFrame">
+          <div class="browserTop">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <div class="browserUrl">cursapp · panel del curso</div>
+          </div>
+          <div class="browserBody">
+            <div class="mockHeader">
+              <div class="mockLogo">C</div>
+              <div class="mockHeaderText">
+                <div class="mockTitle">Resumen del curso</div>
+                <div class="mockSub">Recaudado · Rendido · Saldo · Pendiente</div>
+              </div>
+            </div>
+
+            <div class="mockKpis">
+              <div class="mockKpi"><div class="k">Recaudado</div><div class="v">$ 1.250.000</div></div>
+              <div class="mockKpi"><div class="k">Rendido</div><div class="v">$ 730.000</div></div>
+              <div class="mockKpi"><div class="k">Saldo</div><div class="v">$ 520.000</div></div>
+              <div class="mockKpi"><div class="k">Pendiente</div><div class="v">$ 180.000</div></div>
+            </div>
+
+            <div class="mockList">
+              <div class="mockItem">
+                <div class="bar"></div>
+                <div>
+                  <div class="t">Paseo de curso</div>
+                  <div class="s">Mensual · 3 cuotas · 6 deudores</div>
+                </div>
+                <div class="pillX warn">Pendiente</div>
+              </div>
+              <div class="mockItem">
+                <div class="bar ok"></div>
+                <div>
+                  <div class="t">Rifa</div>
+                  <div class="s">Pago único · Boletas al día</div>
+                </div>
+                <div class="pillX ok">Ok</div>
+              </div>
+              <div class="mockItem">
+                <div class="bar danger"></div>
+                <div>
+                  <div class="t">Regalo profe</div>
+                  <div class="s">Gasto sin boleta · requiere rendición</div>
+                </div>
+                <div class="pillX danger">Alerta</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="lpStat">
-          <div class="muted">Control</div>
-          <div class="lpStatVal">Rendiciones + boletas</div>
-        </div>
-        <div class="lpStat">
-          <div class="muted">Orden</div>
-          <div class="lpStatVal">Campañas + cuotas</div>
+
+        <div class="lpHeroNote muted">
+          Capturas ilustrativas. Puedes reemplazarlas luego con screenshots reales en /assets.
         </div>
       </div>
     </div>
   </section>
 
-  <section class="card">
-    <div class="kTitle">¿Qué puedes hacer en Cursapp?</div>
+  <!-- MODULOS -->
+  <section class="card" id="modulos">
+    <div class="kTitle">Módulos</div>
+    <div class="muted" style="margin-top:6px;">Cada rol ve solo lo que necesita, con claridad.</div>
 
     <div class="lpModules">
       <div class="lpModule">
         <div class="lpModTitle">👨‍👩‍👧 Apoderados</div>
-        <div class="muted">Ver cuotas, pagar, historial, saldo a favor, informes del curso.</div>
+        <div class="muted">Ver cuotas, pagar, historial, saldo a favor e informes del curso.</div>
+        <div class="lpTagRow">
+          <span class="pill">Pagos</span><span class="pill">Informes</span><span class="pill">Saldo a favor</span>
+        </div>
       </div>
 
       <div class="lpModule">
         <div class="lpModTitle">📌 Campañas</div>
-        <div class="muted">Pago único o mensual, participación obligatoria o no, metas y estados.</div>
+        <div class="muted">Pago único o mensual, cuotas, metas, participación obligatoria/no.</div>
+        <div class="lpTagRow">
+          <span class="pill">Único / Mensual</span><span class="pill">Cuotas</span><span class="pill">Estados</span>
+        </div>
       </div>
 
       <div class="lpModule">
         <div class="lpModTitle">🧾 Rendiciones</div>
-        <div class="muted">Registrar gastos, subir/reemplazar boleta, editar y corregir errores.</div>
+        <div class="muted">Registrar gastos, editar y subir/reemplazar boletas, todo dentro de cada campaña.</div>
+        <div class="lpTagRow">
+          <span class="pill">Boletas</span><span class="pill">Edición</span><span class="pill">Gasto general</span>
+        </div>
       </div>
 
       <div class="lpModule">
-        <div class="lpModTitle">📄 Informes</div>
-        <div class="muted">Publicar informes mensuales (montos del curso, no personales).</div>
+        <div class="lpModTitle">📄 Informes mensuales</div>
+        <div class="muted">Publicación del resumen del curso (montos del curso, no personales).</div>
+        <div class="lpTagRow">
+          <span class="pill">Vigente</span><span class="pill warn">Desactualizado</span><span class="pill">Publicar</span>
+        </div>
       </div>
 
       <div class="lpModule">
-        <div class="lpModTitle">🏦 Gasto general</div>
-        <div class="muted">Gastos sin campaña (uso rápido del fondo) con rendición igual.</div>
+        <div class="lpModTitle">🏦 Fondo del curso</div>
+        <div class="muted">Gastos sin campaña (imprevistos) igualmente rendidos y descontados del saldo.</div>
+        <div class="lpTagRow">
+          <span class="pill">Imprevistos</span><span class="pill">Rendición</span><span class="pill">Saldo</span>
+        </div>
       </div>
 
       <div class="lpModule">
         <div class="lpModTitle">🔐 Roles</div>
-        <div class="muted">Apoderado / Tesorero / Presidente con vista y permisos diferenciados.</div>
+        <div class="muted">Presidente y tesorero por invitación. Apoderado por onboarding.</div>
+        <div class="lpTagRow">
+          <span class="pill">Invitación</span><span class="pill">Onboarding</span><span class="pill">Permisos</span>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="card">
-    <div class="kTitle">Cómo funciona</div>
-    <ol class="lpSteps">
-      <li>El apoderado se registra (onboarding) y selecciona colegio/curso.</li>
-      <li>La directiva crea campañas (única/mensual) y publica cobros.</li>
-      <li>Los apoderados pagan y el curso recauda.</li>
-      <li>El tesorero rinde gastos y sube boletas.</li>
-      <li>El presidente publica el informe mensual del curso.</li>
-    </ol>
-  </section>
+  <!-- CAPTURAS -->
+  <section class="card" id="capturas">
+    <div class="kTitle">Capturas</div>
+    <div class="muted" style="margin-top:6px;">Ejemplos del flujo real (puedes reemplazar con screenshots).</div>
 
-  <section class="lpAuthGrid">
-    <div class="card">
-      <div class="kTitle">Ingresar</div>
-      <div class="muted" style="margin-top:6px;">Accede con tu cuenta o usa demo.</div>
+    <div class="lpShots">
+      <div class="shotFrame">
+        <div class="shotTop">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <div class="shotLabel">Presidente · Campañas</div>
+        </div>
+        <div class="shotBody">
+          <div class="shotCard">
+            <div class="shotBar"></div>
+            <div class="shotText">
+              <div class="shotTitle">Cuota paseo</div>
+              <div class="shotMeta">Mensual · 3 cuotas · Pendiente $180.000</div>
+            </div>
+            <div class="pillX warn">Pendiente</div>
+          </div>
+          <div class="shotCard">
+            <div class="shotBar ok"></div>
+            <div class="shotText">
+              <div class="shotTitle">Rifa</div>
+              <div class="shotMeta">Pago único · Informe vigente</div>
+            </div>
+            <div class="pillX ok">Ok</div>
+          </div>
+        </div>
+      </div>
 
-      <div class="lpAuthActions">
-        <a class="btnx primary" href="login.html">Ir a Login</a>
+      <div class="shotFrame">
+        <div class="shotTop">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <div class="shotLabel">Tesorero · Rendiciones</div>
+        </div>
+        <div class="shotBody">
+          <div class="shotCard">
+            <div class="shotBar danger"></div>
+            <div class="shotText">
+              <div class="shotTitle">Filtro agua repuesto</div>
+              <div class="shotMeta">Sin boleta · $2.000</div>
+            </div>
+            <div class="pillX danger">Sin boleta</div>
+          </div>
+          <div class="shotCard">
+            <div class="shotBar ok"></div>
+            <div class="shotText">
+              <div class="shotTitle">Flores</div>
+              <div class="shotMeta">Boleta adjunta · $25.000</div>
+            </div>
+            <div class="pillX ok">Boleta</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shotFrame">
+        <div class="shotTop">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <div class="shotLabel">Apoderado · Pagos</div>
+        </div>
+        <div class="shotBody">
+          <div class="shotCard">
+            <div class="shotBar"></div>
+            <div class="shotText">
+              <div class="shotTitle">Cuota mes Abril</div>
+              <div class="shotMeta">$20.000 · Quedan 3 días</div>
+            </div>
+            <div class="pillX warn">Pagar</div>
+          </div>
+          <div class="shotCard">
+            <div class="shotBar ok"></div>
+            <div class="shotText">
+              <div class="shotTitle">Pago único</div>
+              <div class="shotMeta">$10.000 · Pagado</div>
+            </div>
+            <div class="pillX ok">Pagado</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="kTitle">Registro apoderados</div>
-      <div class="muted" style="margin-top:6px;">Configura tu curso y activa tu cuenta.</div>
+    <div class="lpReplace muted">
+      Para reemplazar capturas: guarda imágenes en <b>/assets/</b> y cambia estos frames por &lt;img&gt;.
+    </div>
+  </section>
 
-      <div class="lpAuthActions">
-        <a class="btnx primary" href="onboarding/dashboard.html">Ir a Onboarding</a>
+  <!-- PRECIOS -->
+  <section class="card" id="precios">
+    <div class="row">
+      <div>
+        <div class="kTitle">Precios</div>
+        <div class="muted" style="margin-top:6px;">Modelo simple. Activación por curso y plan para administración.</div>
+      </div>
+
+      <div class="lpToggle">
+        <span class="muted">Mensual</span>
+        <button class="toggleBtn" id="billingToggle" type="button" aria-pressed="false"></button>
+        <span class="muted">Anual <span class="pill ok">-20%</span></span>
+      </div>
+    </div>
+
+    <div class="lpPricing">
+      <div class="priceCard">
+        <div class="priceName">Apoderado</div>
+        <div class="priceVal" data-month="990" data-year="990">$990</div>
+        <div class="muted">Activación por curso (una sola vez).</div>
+        <ul class="priceList">
+          <li>Acceso a pagos e informes</li>
+          <li>Historial y saldo a favor</li>
+          <li>Comprobantes (correo)</li>
+        </ul>
+        <a class="btnx primary" href="onboarding/dashboard.html">Registrarme</a>
+      </div>
+
+      <div class="priceCard featured">
+        <div class="priceTag">Recomendado</div>
+        <div class="priceName">Curso</div>
+        <div class="priceVal" data-month="5990" data-year="5750">$5.990</div>
+        <div class="muted">Gestión mensual del curso (directiva + tesorero).</div>
+        <ul class="priceList">
+          <li>Campañas (único/mensual)</li>
+          <li>Rendiciones + boletas</li>
+          <li>Informes mensuales publicados</li>
+        </ul>
+        <a class="btnx primary" href="login.html">Ingresar</a>
+      </div>
+
+      <div class="priceCard">
+        <div class="priceName">Pro</div>
+        <div class="priceVal" data-month="9990" data-year="7990">$9.990</div>
+        <div class="muted">Para cursos con alta actividad y múltiples campañas.</div>
+        <ul class="priceList">
+          <li>Resumen ejecutivo avanzado</li>
+          <li>Soporte preferente (demo)</li>
+          <li>Más reportes y control</li>
+        </ul>
+        <a class="btnx" href="login.html">Probar demo</a>
+      </div>
+    </div>
+
+    <div class="lpFine muted">
+      Nota: montos referenciales en CLP (demo). El cobro real se definirá en producción.
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="card" id="faq">
+    <div class="kTitle">Preguntas frecuentes</div>
+
+    <div class="faq">
+      <details>
+        <summary>¿Los montos del informe son personales?</summary>
+        <div class="muted">No. Los informes son del curso (recaudación/gastos/saldo). No muestran deuda personal en el informe general.</div>
+      </details>
+
+      <details>
+        <summary>¿Qué pasa si se elimina una campaña activa?</summary>
+        <div class="muted">Los pagos realizados se convierten en saldo a favor. La campaña se elimina y el informe queda desactualizado.</div>
+      </details>
+
+      <details>
+        <summary>¿Qué significa “Informe desactualizado”?</summary>
+        <div class="muted">Hubo cambios en campañas o rendiciones después del último informe. Debe publicarse uno nuevo.</div>
+      </details>
+
+      <details>
+        <summary>¿Cómo se registra un apoderado?</summary>
+        <div class="muted">Se registra por onboarding con correo y password, seleccionando colegio/curso/jornada.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <section class="lpFinalCta card">
+    <div class="row">
+      <div>
+        <div class="kTitle">¿Listo para ordenar el curso?</div>
+        <div class="muted" style="margin-top:6px;">Registra apoderados y comienza a rendir gastos con transparencia.</div>
+      </div>
+      <div class="actions">
+        <a class="btnx primary" href="onboarding/dashboard.html">Registrar apoderado</a>
+        <a class="btnx" href="login.html">Ingresar</a>
       </div>
     </div>
   </section>
@@ -133,9 +367,9 @@
 </main>
 
 <footer class="lpFooter muted">
-  Cursapp · Demo (Netlify) · Montos de curso (no personales)
+  Cursapp · Demo (Netlify) · Montos del curso (no personales)
 </footer>
 
-<script src="assets/landing.js?v=1"></script>
+<script src="assets/landing.js?v=10"></script>
 </body>
 </html>
