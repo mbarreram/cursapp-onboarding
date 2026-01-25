@@ -1,12 +1,12 @@
- <!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Finanzas del curso, claras y humanas</title>
 
-  <!-- estilos globales -->
-  <link rel="stylesheet" href="/assets/styles.css?v=1000">
+  <!-- Global -->
+  <link rel="stylesheet" href="/assets/styles.css?v=1100">
 
   <style>
     :root{
@@ -15,7 +15,9 @@
     }
     body{background:var(--bg);color:var(--txt)}
     .wrap{max-width:1100px;margin:0 auto;padding:20px}
-    .nav{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
+
+    /* NAV */
+    .nav{display:flex;justify-content:space-between;align-items:center;padding:12px 0;flex-wrap:wrap;gap:10px}
     .brand{display:flex;align-items:center;gap:10px;font-weight:900}
     .logoSq{
       width:42px;height:42px;border-radius:14px;
@@ -23,31 +25,60 @@
       display:grid;place-items:center;
       box-shadow:0 12px 28px rgba(91,92,226,.3)
     }
+    .right{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
     .nav a{font-weight:800;text-decoration:none;color:var(--txt)}
+
+    /* Buttons */
     .btnx{border:1px solid var(--b);background:#fff;border-radius:14px;padding:10px 14px;font-weight:900}
     .btnp{background:var(--p);color:#fff;border-radius:14px;padding:10px 14px;font-weight:900;border:0}
-    .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;margin-top:10px}
-    .card{background:var(--card);border:1px solid var(--b);border-radius:20px;padding:18px;
-      box-shadow:0 20px 40px rgba(15,23,42,.08)}
-    h1{font-size:34px;line-height:1.15;margin:6px 0 10px}
+
+    /* Common */
+    .card{
+      background:var(--card);border:1px solid var(--b);border-radius:20px;padding:18px;
+      box-shadow:0 20px 40px rgba(15,23,42,.08)
+    }
     .lead{color:var(--mut);font-weight:700;line-height:1.55}
+    .mut{color:var(--mut)}
     .ctaRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
     .pill{border:1px solid var(--b);border-radius:999px;padding:8px 12px;font-weight:900;background:#fff}
     .sec{margin-top:26px}
     .sec h2{margin:0 0 12px}
-    .grid3,.roles,.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
     .tag{background:var(--p);color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:900}
+
+    /* HERO (más vida) */
+    .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:stretch;margin-top:10px}
+    .heroCard{padding:18px}
+    h1{font-size:34px;line-height:1.15;margin:6px 0 10px}
+    .heroKpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+    .kpi{border:1px solid var(--b);border-radius:16px;background:#fff;padding:10px}
+    .kpi b{font-size:14px}
+    .kpi .mut{font-size:12px}
+    .heroRight{padding:0;overflow:hidden;display:flex;flex-direction:column}
+    .imgBox{flex:1;min-height:240px}
+    .imgBox img{width:100%;height:100%;object-fit:cover;display:block}
+    .overlayBox{padding:14px;border-top:1px solid var(--b);background:linear-gradient(180deg,#fff,rgba(255,255,255,.92))}
+    .quote{border:1px solid rgba(91,92,226,.18);background:rgba(91,92,226,.06);border-radius:16px;padding:12px;font-weight:800;color:#111827}
+    .quote .mut{font-weight:800}
+
+    /* Sections */
+    .grid3,.roles,.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    ul{margin:10px 0 0;padding-left:18px;color:var(--mut);font-weight:700}
+
+    /* Pricing */
     .price{border:2px solid var(--b)}
     .price.main{border-color:rgba(91,92,226,.6);box-shadow:0 24px 55px rgba(91,92,226,.2)}
     .amt{font-size:30px;font-weight:1000;margin:8px 0}
-    ul{margin:10px 0 0;padding-left:18px;color:var(--mut);font-weight:700}
+
+    /* Secondary image block */
     .imgCard{padding:0;overflow:hidden}
-    .imgCard img{width:100%;height:100%;object-fit:cover;display:block}
+    .imgCard img{width:100%;height:280px;object-fit:cover;display:block}
+
     .foot{text-align:center;margin:30px 0 10px;color:var(--mut);font-size:12px;font-weight:800}
 
     @media(max-width:900px){
       .hero,.grid3,.roles,.prices{grid-template-columns:1fr}
       h1{font-size:30px}
+      .imgCard img{height:220px}
     }
   </style>
 </head>
@@ -61,7 +92,7 @@
         <div class="logoSq">C</div>
         <div>Cursapp</div>
       </div>
-      <div style="display:flex;gap:10px">
+      <div class="right">
         <a href="#precios">Precios</a>
         <a href="#roles">Roles</a>
         <a class="btnx" href="/index.html">Ingresar</a>
@@ -71,13 +102,12 @@
 
     <!-- HERO -->
     <section class="hero">
-      <div class="card">
+      <div class="card heroCard">
         <span class="tag">Gestión real para cursos reales</span>
         <h1>Finanzas del curso, claras y sin conflictos</h1>
         <p class="lead">
-          Cursapp ayuda a apoderados y directivas a organizar cobros,
-          gastos y rendiciones del curso de forma simple, transparente
-          y sin depender de planillas.
+          Cursapp ayuda a apoderados y directivas a organizar cobros, gastos y rendiciones del curso
+          de forma simple, transparente y sin depender de planillas.
         </p>
 
         <div class="ctaRow">
@@ -87,11 +117,40 @@
           <span class="pill">Comunidad</span>
           <span class="pill">Confianza</span>
         </div>
+
+        <div class="heroKpi">
+          <div class="kpi">
+            <b>Pagos ordenados</b>
+            <div class="mut">Cuotas y campañas por apoderado</div>
+          </div>
+          <div class="kpi">
+            <b>Rendición simple</b>
+            <div class="mut">Reportes semanales / mensuales</div>
+          </div>
+          <div class="kpi">
+            <b>Roles claros</b>
+            <div class="mut">Apoderado · Tesorero · Presidente</div>
+          </div>
+        </div>
       </div>
 
-      <!-- FOTO ESCOLAR 1 -->
-      <div class="card imgCard">
-        <img src="/assets/img/hero-escolar.jpg" alt="Reunión de apoderados en el colegio">
+      <div class="card heroRight">
+        <div class="imgBox">
+          <!-- REQUIERE: /assets/img/hero-escolar.jpg -->
+          <img src="/assets/img/hero-escolar.jpg"
+               alt="Reunión de apoderados en el colegio"
+               onerror="this.style.display='none'; document.getElementById('heroFallback').style.display='block';">
+          <div id="heroFallback" style="display:none;padding:16px" class="mut">
+            (Falta imagen: /assets/img/hero-escolar.jpg)
+          </div>
+        </div>
+
+        <div class="overlayBox">
+          <div class="quote">
+            “Por fin dejamos de pelearnos por la plata del curso. Ahora todo queda registrado y visible.”
+            <div class="mut" style="margin-top:6px">— Directiva de curso (demo)</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -99,24 +158,27 @@
     <section class="sec">
       <div class="grid3">
         <div class="card">
-          <h3>💰 Cobros ordenados</h3>
-          <p class="lead">Campañas, cuotas y estado de pago claros para todos.</p>
+          <h3 style="margin:0 0 6px">💰 Cobros ordenados</h3>
+          <p class="lead" style="margin:0">Campañas, cuotas y estado de pago claros para todos.</p>
         </div>
         <div class="card">
-          <h3>📊 Rendición simple</h3>
-          <p class="lead">Ingresos y egresos con respaldo, sin discusiones.</p>
+          <h3 style="margin:0 0 6px">📊 Rendición simple</h3>
+          <p class="lead" style="margin:0">Ingresos y egresos con respaldo, sin discusiones.</p>
         </div>
         <div class="card">
-          <h3>🤝 Trabajo en equipo</h3>
-          <p class="lead">Cada rol ve lo que necesita, sin enredos.</p>
+          <h3 style="margin:0 0 6px">🤝 Trabajo en equipo</h3>
+          <p class="lead" style="margin:0">Cada rol ve lo que necesita, sin enredos.</p>
         </div>
       </div>
     </section>
 
-    <!-- FOTO ESCOLAR 2 -->
+    <!-- FOTO 2 (opcional) -->
     <section class="sec">
       <div class="card imgCard">
-        <img src="/assets/img/apoderados-reunion.jpg" alt="Apoderados organizando actividades del curso">
+        <!-- REQUIERE: /assets/img/apoderados-reunion.jpg -->
+        <img src="/assets/img/apoderados-reunion.jpg"
+             alt="Apoderados organizando actividades del curso"
+             onerror="this.style.display='none'; this.parentElement.style.padding='16px'; this.parentElement.innerHTML='<div class=&quot;mut&quot; style=&quot;font-weight:800&quot;>(Falta imagen: /assets/img/apoderados-reunion.jpg)</div>';">
       </div>
     </section>
 
@@ -151,53 +213,94 @@
       </div>
     </section>
 
-    <!-- PRECIOS -->
+    <!-- PRECIOS (tus planes) -->
     <section class="sec" id="precios">
-      <h2>Precios</h2>
+      <h2>Planes y precios (pago único por apoderado)</h2>
+      <div class="mut" style="font-weight:800;margin:-6px 0 12px;">
+        Sin mensualidad. Pagas una vez por apoderado y activas el curso.
+      </div>
+
       <div class="prices">
+        <!-- Estándar -->
         <div class="card price">
-          <h3>Básico</h3>
-          <div class="amt">$0</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <h3 style="margin:0">Plan estándar</h3>
+            <span class="tag">Base</span>
+          </div>
+          <div class="amt">$4.900</div>
+          <div class="mut" style="font-weight:800">pago único / apoderado</div>
+
           <ul>
-            <li>Demo completa</li>
-            <li>Onboarding de prueba</li>
+            <li>Pago de cuotas</li>
+            <li>Informe básico mensual</li>
+            <li>Tesorería</li>
+            <li>Campañas (3 mensuales)</li>
+            <li>Perfiles: apoderado · tesorero · presidente</li>
+            <li>Soporte</li>
           </ul>
+
           <div class="ctaRow">
-            <a class="btnx" href="/index.html">Entrar demo</a>
+            <a class="btnx" href="/onboarding/dashboard.html?onboarding=1">Comenzar</a>
           </div>
         </div>
 
+        <!-- Avanzado -->
         <div class="card price main">
-          <h3>Curso</h3>
-          <div class="amt">$9.990</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <h3 style="margin:0">Avanzado</h3>
+            <span class="tag">Recomendado</span>
+          </div>
+          <div class="amt">$7.990</div>
+          <div class="mut" style="font-weight:800">pago único / apoderado</div>
+
           <ul>
-            <li>Cobros ilimitados</li>
-            <li>Rendición con respaldo</li>
-            <li>Soporte continuo</li>
+            <li>Pago de cuotas</li>
+            <li>Informe avanzado semanal o mensual</li>
+            <li>Tesorería</li>
+            <li>Campañas (5 mensuales)</li>
+            <li>Perfiles: apoderado · tesorero · presidente</li>
+            <li>Soporte</li>
           </ul>
+
           <div class="ctaRow">
-            <a class="btnp" href="/onboarding/dashboard.html?onboarding=1">Comenzar</a>
+            <a class="btnp" href="/onboarding/dashboard.html?onboarding=1">Elegir Avanzado</a>
+            <a class="btnx" href="#roles">Ver roles</a>
           </div>
         </div>
 
+        <!-- Pro -->
         <div class="card price">
-          <h3>Colegio</h3>
-          <div class="amt">A convenir</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <h3 style="margin:0">Pro</h3>
+            <span class="tag">Máximo</span>
+          </div>
+          <div class="amt">$9.990</div>
+          <div class="mut" style="font-weight:800">pago único / apoderado</div>
+
           <ul>
-            <li>Múltiples cursos</li>
-            <li>Reportes avanzados</li>
+            <li>Pago de cuotas</li>
+            <li>Informe avanzado semanal, mensual y anual</li>
+            <li>Tesorería</li>
+            <li>Campañas (ilimitadas)</li>
+            <li>Perfiles: apoderado · tesorero · presidente · secretario</li>
+            <li>Soporte</li>
           </ul>
+
           <div class="ctaRow">
-            <a class="btnx" href="/index.html">Contactar</a>
+            <a class="btnx" href="/onboarding/dashboard.html?onboarding=1">Elegir Pro</a>
           </div>
         </div>
+      </div>
+
+      <div class="mut" style="margin-top:10px;font-weight:800">
+        * Precios en CLP. Pago único por apoderado.
       </div>
     </section>
 
     <!-- CTA FINAL -->
     <section class="sec card" style="text-align:center">
-      <h2>Ordena el curso sin estrés</h2>
-      <p class="lead">Empieza hoy con el onboarding o entra a la demo.</p>
+      <h2 style="margin:0 0 6px">Ordena el curso sin estrés</h2>
+      <p class="lead" style="margin:0 0 12px">Empieza hoy con el onboarding o entra a la demo por rol.</p>
       <div class="ctaRow" style="justify-content:center">
         <a class="btnp" href="/onboarding/dashboard.html?onboarding=1">Crear curso</a>
         <a class="btnx" href="/index.html">Ingresar</a>
