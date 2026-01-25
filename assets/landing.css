@@ -1,0 +1,34 @@
+.lpTop{
+  display:flex;justify-content:space-between;gap:16px;align-items:center;
+  padding:14px 16px;border-bottom:1px solid rgba(229,231,235,.9);background:#fff;
+  position:sticky;top:0;z-index:20;
+}
+.lpBrand{display:flex;gap:12px;align-items:center;}
+.lpTitle{font-weight:950;font-size:18px;}
+.lpHeaderActions{display:flex;gap:10px;flex-wrap:wrap;}
+
+.lpWrap{max-width:980px;margin:auto;padding:16px;padding-bottom:40px;}
+.lpHero h1{font-size:28px;margin:0;}
+.lpHeroGrid{display:grid;gap:14px;}
+@media(min-width:860px){.lpHeroGrid{grid-template-columns:1.2fr .8fr;}}
+.lpCtas{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.lpMini{margin-top:10px;font-weight:800;font-size:12px;}
+
+.lpHeroBox{border:1px solid rgba(229,231,235,.9);border-radius:16px;padding:12px;background:rgba(248,250,252,1);}
+.lpStat{padding:10px;border-radius:14px;border:1px solid rgba(229,231,235,.9);background:#fff;margin-top:10px;}
+.lpStat:first-child{margin-top:0;}
+.lpStatVal{font-weight:950;margin-top:6px;}
+
+.lpModules{display:grid;gap:10px;margin-top:12px;}
+@media(min-width:860px){.lpModules{grid-template-columns:1fr 1fr;}}
+.lpModule{border:1px solid rgba(229,231,235,.9);border-radius:16px;padding:14px;background:#fff;}
+.lpModTitle{font-weight:950;margin-bottom:6px;}
+
+.lpSteps{margin-top:12px;padding-left:18px;}
+.lpSteps li{margin-top:8px;}
+
+.lpAuthGrid{display:grid;gap:12px;margin-top:12px;}
+@media(min-width:860px){.lpAuthGrid{grid-template-columns:1fr 1fr;}}
+.lpAuthActions{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start;}
+
+.lpFooter{padding:18px 16px;text-align:center;}
