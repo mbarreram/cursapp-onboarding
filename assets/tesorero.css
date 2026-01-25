@@ -89,3 +89,52 @@ font-weight:900;font-size:12px;border:1px solid rgba(100,116,139,.16);background
 /* Micro: clickable rows */
 .clickable{cursor:pointer}
 .clickable:active{transform:scale(.995)}
+/* =========================
+   Rendición: jerarquía + sección de acciones
+========================= */
+
+/* Cada gasto (rendición) */
+.lineItem {
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(248,250,252,1);
+}
+
+/* Título claro "Rendición" dentro de cada gasto */
+.lineItem .rendTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 950;
+  font-size: 12px;
+  color: #334155;
+  background: rgba(229,231,235,.7);
+  border: 1px solid rgba(229,231,235,.9);
+  padding: 6px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+
+/* Separador visual antes de botones */
+.lineItem .actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(229,231,235,.9);
+}
+
+/* Botones: más aire y consistentes */
+.lineItem .actions .btnMini,
+.lineItem .actions .btnPrimaryMini,
+.lineItem .actions .btnDangerMini {
+  margin: 0;
+}
+
+/* En mobile: que no se vea “apretado” */
+.lineItem .actions {
+  gap: 10px;
+}
+
+/* Que el badge (Con boleta / Sin boleta) quede visualmente como "estado" */
+.lineItem .actions .pill {
+  order: -1;
+}
