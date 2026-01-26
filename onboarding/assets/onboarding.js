@@ -1,8 +1,9 @@
 /* =========================================================
-   Cursapp · Onboarding (Wizard) — 2 modos + Código invitación (con validar)
-   - mode=directiva&role=presidente|tesorero => crea curso + inviteCode + login directiva
+   Cursapp · Onboarding (Wizard)
+   - mode=directiva&role=presidente|tesorero => crea curso + inviteCode
+     + opcional: “También soy apoderado” (auto-approved)
    - mode=apoderado (default) => valida inviteCode con botón, muestra resumen y salta a paso 3
-     luego crea user/profile y enrollment pending
+     luego crea user/profile y enrollment pending (requiere aprobación)
    ========================================================= */
 
 // UID simple (demo, estable)
@@ -22,6 +23,7 @@ function uid(prefix = "id") {
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
   const KEY_COURSE_V1 = "cursapp_course_v1";
+  const KEY_DIRECTIVA_AP = "cursapp_directiva_apoderado_v1";
 
   const DEBUG = localStorage.getItem("cursapp_onb_debug")==="1";
 
@@ -144,7 +146,7 @@ function uid(prefix = "id") {
     const d = loadDraft();
     if(!d.step) d.step = 1;
 
-    // Si apoderado ya validó código, forzamos step 3
+    // Apoderado con curso validado: forzar step 3
     if(MODE==="apoderado" && d.courseLocked && Number(d.step) < 3){
       d.step = 3;
       saveDraft(d);
@@ -154,7 +156,7 @@ function uid(prefix = "id") {
     const stepsTotal = 4;
     const progressPct = Math.round((step/stepsTotal)*100);
 
-    // defaults cascade (solo directiva o fallback)
+    // defaults
     const regionId = d.regionId || REGIONS[0].id;
     const comunas = COMUNAS.filter(c=>c.regionId===regionId);
     const comunaId = d.comunaId || (comunas[0]?.id||"");
@@ -168,16 +170,26 @@ function uid(prefix = "id") {
 
     const name = d.name || "";
     const alumno = d.alumno || "";
+
     const email = d.email || "";
     const email2 = d.email2 || "";
     const phone = d.phone || "";
     const pass = d.pass || "";
     const pass2 = d.pass2 || "";
+
+    // Directiva si también es apoderado (usamos campos separados para no mezclar)
+    const alsoAp = !!d.alsoApoderado;
+    const dEmail = d.dEmail || "";
+    const dEmail2 = d.dEmail2 || "";
+    const dPhone = d.dPhone || "";
+    const dPass = d.dPass || "";
+    const dPass2 = d.dPass2 || "";
+
     const inviteCode = (d.inviteCode || "").toUpperCase();
     const payChoice = d.payChoice || "now";
 
     const debugLine = DEBUG
-      ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"}</div>`
+      ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"} alsoAp=${alsoAp?"1":"0"}</div>`
       : "";
 
     function option(list, valueKey, labelKey, selected){
@@ -273,7 +285,7 @@ function uid(prefix = "id") {
         `:""}
 
         ${step===3 ? `
-          <div style="margin-top:0;">
+          <div>
             <label style="font-weight:900;">Nombre ${MODE==="directiva" ? "directiva" : "apoderado"}</label>
             <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
           </div>
@@ -282,6 +294,54 @@ function uid(prefix = "id") {
             <label style="font-weight:900;">Alumno/a ${MODE==="directiva" ? "(opcional)" : ""}</label>
             <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
           </div>
+
+          ${MODE==="directiva" ? `
+            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+              <label style="display:flex;gap:10px;align-items:center;cursor:pointer;">
+                <input id="alsoAp" type="checkbox" ${alsoAp ? "checked" : ""}/>
+                <span style="font-weight:950;">También soy apoderado de este curso</span>
+              </label>
+              <div class="muted" style="margin-top:6px;">
+                Si marcas esto, podrás elegir entrar como Directiva o como Apoderado.
+              </div>
+            </div>
+
+            ${alsoAp ? `
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Alumno/a (obligatorio)</label>
+                <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Correo apoderado</label>
+                <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Confirmar correo</label>
+                <input id="dEmail2" placeholder="correo@dominio.com" value="${escapeHtml(dEmail2)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Teléfono (opcional)</label>
+                <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Password</label>
+                <input id="dPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(dPass)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Confirmar password</label>
+                <input id="dPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(dPass2)}" />
+              </div>
+
+              <div class="muted" style="margin-top:10px;font-weight:800;">
+                Tu perfil apoderado quedará <b>aprobado automáticamente</b> por ser directiva.
+              </div>
+            ` : ``}
+          ` : ``}
 
           ${MODE==="apoderado" ? `
             <div style="margin-top:12px;">
@@ -376,7 +436,7 @@ function uid(prefix = "id") {
 
         const course = getCourseV1();
         if(!course || !course.inviteCode){
-          alert("Aún no existe un curso creado por la directiva. Pide el código a la directiva o crea el curso primero.");
+          alert("Aún no existe un curso creado por la directiva.");
           return;
         }
 
@@ -386,7 +446,6 @@ function uid(prefix = "id") {
           return;
         }
 
-        // Bloquear curso (copiar datos oficiales)
         const c = course.course || {};
         d.regionId = c.regionId || d.regionId;
         d.comunaId = c.comunaId || d.comunaId;
@@ -410,7 +469,6 @@ function uid(prefix = "id") {
       });
       btn && (btn.onclick = validateAndLock);
 
-      // Si ya estaba validado, saltar directo
       if(d.courseLocked && d.inviteCode){
         const course = getCourseV1();
         if(course && String(course.inviteCode||"").toUpperCase() === String(d.inviteCode||"").toUpperCase()){
@@ -443,6 +501,24 @@ function uid(prefix = "id") {
     if(step===3){
       $("onbName").oninput = ()=>{ d.name=$("onbName").value; saveDraft(d); };
       $("onbAlumno").oninput = ()=>{ d.alumno=$("onbAlumno").value; saveDraft(d); };
+
+      if(MODE==="directiva"){
+        const chk = $("alsoAp");
+        chk && (chk.onchange = ()=>{
+          d.alsoApoderado = !!chk.checked;
+          saveDraft(d);
+          render();
+        });
+
+        if(d.alsoApoderado){
+          $("dAlumno") && (($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); }));
+          $("dEmail") && (($("dEmail").oninput = ()=>{ d.dEmail = $("dEmail").value; saveDraft(d); }));
+          $("dEmail2") && (($("dEmail2").oninput = ()=>{ d.dEmail2 = $("dEmail2").value; saveDraft(d); }));
+          $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
+          $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
+          $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
+        }
+      }
 
       if(MODE==="apoderado"){
         $("onbEmail").oninput = ()=>{ d.email=$("onbEmail").value; saveDraft(d); };
@@ -498,8 +574,33 @@ function uid(prefix = "id") {
         d.alumno = String($("onbAlumno").value||"").trim();
 
         if(!d.name){ alert("Completa el nombre."); return; }
-        if(MODE==="apoderado" && !d.alumno){ alert("Completa alumno/a."); return; }
 
+        if(MODE==="directiva"){
+          if(d.alsoApoderado){
+            const dAl = String($("dAlumno")?.value || d.alumno || "").trim();
+            const e1 = String($("dEmail")?.value || "").trim().toLowerCase();
+            const e2 = String($("dEmail2")?.value || "").trim().toLowerCase();
+            const ph = String($("dPhone")?.value || "").trim();
+            const p1 = String($("dPass")?.value || "");
+            const p2 = String($("dPass2")?.value || "");
+
+            if(!dAl){ alert("Completa alumno/a."); return; }
+            if(!validateEmail(e1) || e1!==e2){ alert("Correo inválido o no coincide."); return; }
+            if(p1.length < 6){ alert("Password mínimo 6 caracteres."); return; }
+            if(p1 !== p2){ alert("Password no coincide."); return; }
+
+            d.alumno = dAl;
+            d.dEmail = e1;
+            d.dEmail2 = e2;
+            d.dPhone = ph;
+            d.dPass = p1;
+            d.dPass2 = p2;
+          }
+
+          d.step=4; saveDraft(d); render(); return;
+        }
+
+        // Apoderado
         if(MODE==="apoderado"){
           d.email = String($("onbEmail").value||"").trim().toLowerCase();
           d.email2 = String($("onbEmail2").value||"").trim().toLowerCase();
@@ -507,12 +608,13 @@ function uid(prefix = "id") {
           d.pass = String($("onbPass").value||"");
           d.pass2 = String($("onbPass2").value||"");
 
+          if(!d.alumno){ alert("Completa alumno/a."); return; }
           if(!validateEmail(d.email) || d.email!==d.email2){ alert("Correo inválido o no coincide."); return; }
           if(d.pass.length < 6){ alert("Password mínimo 6 caracteres."); return; }
           if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
-        }
 
-        d.step=4; saveDraft(d); render(); return;
+          d.step=4; saveDraft(d); render(); return;
+        }
       }
 
       if(step===4){
@@ -544,6 +646,68 @@ function uid(prefix = "id") {
           localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
           setActiveCourseKey(courseKey);
 
+          // Si directiva también es apoderado, crear user/profile + enrollment approved
+          if(d.alsoApoderado){
+            // upsert user
+            let users = loadUsers();
+            const existing = users.find(u=>u.email===d.dEmail);
+            let userId = existing ? existing.userId : ("u_"+uid("usr"));
+            const passHash = hashDemo(d.dPass);
+
+            if(existing){
+              existing.passwordHashDemo = passHash;
+              existing.updatedAt = nowISO();
+            }else{
+              users.unshift({
+                userId,
+                email: d.dEmail,
+                passwordHashDemo: passHash,
+                createdAt: nowISO()
+              });
+            }
+            saveUsers(users);
+
+            // upsert profile apoderado
+            let profiles = loadProfiles();
+            profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && p.role==="apoderado"));
+            profiles.unshift({
+              profileId: "pr_"+uid("p"),
+              userId,
+              role: "apoderado",
+              courseKey,
+              course: courseObj.course,
+              apoderado: { name: d.name, alumno: d.alumno, phone: d.dPhone || "" },
+              activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
+              createdAt: nowISO()
+            });
+            saveProfiles(profiles);
+
+            // enrollment approved
+            if(typeof createEnrollment === "function"){
+              const res = createEnrollment({
+                apoderadoName: d.name,
+                alumno: d.alumno,
+                email: d.dEmail,
+                phone: d.dPhone || "",
+                activationAmount: 7990,
+                activationStatus: "paid"
+              });
+              // si existe approveEnrollment, aprobar automáticamente
+              if(res && res.ok && typeof approveEnrollment === "function"){
+                approveEnrollment(res.enrollment.enrollmentId, DIRECTIVA_ROLE);
+              }
+            }
+
+            // guardar perfil rápido para “cambiar a apoderado” desde directiva
+            saveJSON(KEY_DIRECTIVA_AP, {
+              email: d.dEmail,
+              apoderadoName: d.name,
+              alumno: d.alumno,
+              courseKey
+            });
+          }
+
+          // sesión directiva demo
           localStorage.setItem("cursapp_demo_user", JSON.stringify({
             name: (d.name || "Directiva") + " (Demo)",
             role: DIRECTIVA_ROLE,
