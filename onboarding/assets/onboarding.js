@@ -416,7 +416,7 @@ function uid(prefix = "id") {
         clearDraft();
 
         // to login
-        window.location.href = "../login.html?registered=1";
+        window.location.href = "/index.html?registered=1";
       }
     });
   }
