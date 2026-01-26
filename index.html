@@ -13,6 +13,14 @@
       <div class="logo big">C</div>
       <h1>Cursapp</h1>
       <p class="muted">Acceso demo</p>
+
+      <!-- ✅ MENSAJE PENDING -->
+      <div id="pendingMsg"
+           class="muted"
+           style="display:none;margin-top:10px;font-weight:800;line-height:1.4;">
+        ✅ Solicitud enviada.<br>
+        La directiva debe aprobar tu registro para poder ingresar.
+      </div>
     </div>
 
     <form id="loginForm">
@@ -47,6 +55,17 @@
       Demo: usa <b>apoderado</b>, <b>tesorero</b> o <b>presidente</b>
     </p>
   </div>
+
+  <!-- ✅ SCRIPT PARA DETECTAR ?pending=1 -->
+  <script>
+    (function(){
+      const qs = new URLSearchParams(location.search);
+      if(qs.get("pending") === "1"){
+        const msg = document.getElementById("pendingMsg");
+        if(msg) msg.style.display = "block";
+      }
+    })();
+  </script>
 
   <script defer src="/assets/login.js?v=1500"></script>
 </body>
