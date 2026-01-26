@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Apoderados · Cursapp</title>
+  <link rel="stylesheet" href="/assets/styles.css?v=1700">
+  <style>
+    body{padding-bottom:24px;}
+    .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;background:rgba(100,116,139,.12);color:#0f172a;}
+    .tag.ok{background:rgba(34,197,94,.12);color:#166534;}
+    .tag.warn{background:rgba(245,158,11,.14);color:#92400e;}
+    .tag.danger{background:rgba(239,68,68,.12);color:#991b1b;}
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="topbar" style="position:relative;">
+      <div class="brand">
+        <div class="logo">C</div>
+        <div id="whoLine"></div>
+      </div>
+
+      <button class="btn ghost" type="button" onclick="location.href='/dashboard.html'"
+        style="position:absolute;right:16px;top:10px;">Volver</button>
+    </div>
+  </header>
+
+  <div class="container" id="app"></div>
+
+  <script defer src="/assets/core.js?v=1700"></script>
+  <script defer src="/assets/apoderados.js?v=1700"></script>
+</body>
+</html>
