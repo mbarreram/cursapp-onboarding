@@ -166,12 +166,15 @@
     const u = String(username.value||"").trim().toLowerCase();
     const p = String(password.value||"");
 
-    // Demo roles keep working
-    if((u==="tesorero" || u==="presidente") && p==="demo"){
-      window.location.href = u + ".html";
-      return;
-    }
-
+    // Demo roles keep working (pero dejando sesión para vistas protegidas)
+if((u==="tesorero" || u==="presidente") && p==="demo"){
+  localStorage.setItem("cursapp_demo_user", JSON.stringify({
+    name: (u === "presidente" ? "Presidente" : "Tesorero") + " (Demo)",
+    role: u
+  }));
+  window.location.href = u + ".html";
+  return;
+}
     // Backward-compat demo apoderado: ahora BLOQUEADO si no hay aprobación
     if(u==="apoderado" && p==="demo"){
       showErr("Para ingresar como apoderado debes estar aprobado por la directiva. Completa onboarding como apoderado.");
