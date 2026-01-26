@@ -1,17 +1,10 @@
-/* =========================================================
-   Cursapp · Apoderados (Directiva)
-   - Lista solicitudes (enrollments)
-   - Aceptar / Eliminar
-   - Filtra por curso activo (cursapp_active_course_v1)
-   ========================================================= */
-
 (function(){
-  const KEY_USER = "cursapp_demo_user";
+  const KEY_USER   = "cursapp_demo_user";
   const KEY_ENROLL = "cursapp_enrollments_v1";
   const KEY_ACTIVE = "cursapp_active_course_v1";
   const KEY_COURSE = "cursapp_course_v1";
 
-  function $(id){ return document.getElementById(id); }
+  const $ = (id) => document.getElementById(id);
 
   function loadJSON(k, def){
     try{
@@ -30,16 +23,11 @@
     try { return new Date(iso).toLocaleString("es-CL"); } catch { return iso; }
   }
 
-  function courseKey(){
-    return localStorage.getItem(KEY_ACTIVE) || "";
-  }
+  function activeCourseKey(){ return localStorage.getItem(KEY_ACTIVE) || ""; }
+  function courseObj(){ return loadJSON(KEY_COURSE, null); }
 
-  function loadEnrollments(){
-    return loadJSON(KEY_ENROLL, []);
-  }
-  function saveEnrollments(list){
-    saveJSON(KEY_ENROLL, list || []);
-  }
+  function loadEnrollments(){ return loadJSON(KEY_ENROLL, []); }
+  function saveEnrollments(list){ saveJSON(KEY_ENROLL, list || []); }
 
   function upsertEnrollment(id, patch){
     const list = loadEnrollments();
@@ -54,7 +42,8 @@
     const ok = upsertEnrollment(id, {
       status: "approved",
       reviewedAt: new Date().toISOString(),
-      reviewedBy: role || "directiva"
+      reviewedBy: role || "directiva",
+      reviewNote: ""
     });
     if(!ok) alert("No encontrado");
     render();
@@ -83,14 +72,11 @@
     `;
   }
 
-  function emptyCard(title, text, ctaLabel, ctaHref){
+  function emptyCard(title, text){
     return `
       <div class="card" style="margin-top:12px;">
         <div style="font-weight:950;font-size:18px;">${title}</div>
         <div class="muted" style="margin-top:8px;font-weight:800;line-height:1.45;">${text}</div>
-        ${ctaLabel ? `<div style="margin-top:12px;">
-          <a class="btn primary" href="${ctaHref}">${ctaLabel}</a>
-        </div>` : ``}
       </div>
     `;
   }
@@ -100,58 +86,39 @@
     if(!app) return;
 
     const user = getUser();
-    if(!user || !isDirectiva(user.role)){
-      app.innerHTML = emptyCard(
-        "Acceso restringido",
-        "Esta vista es solo para Presidente o Tesorero.",
-        "Ir al login",
-        "/index.html"
-      );
+    const role = String(user?.role||"").toLowerCase();
+
+    if(!user || !isDirectiva(role)){
+      app.innerHTML = emptyCard("Acceso restringido", "Esta vista es solo para Presidente o Tesorero.");
       return;
     }
 
     headerUserLine(user);
 
-    const ck = courseKey();
+    const ck = activeCourseKey();
     if(!ck){
-      app.innerHTML = emptyCard(
-        "No hay curso activo",
-        "Crea un curso como directiva para comenzar a recibir solicitudes de apoderados.",
-        "Crear curso (Directiva)",
-        "/onboarding/dashboard.html?mode=directiva&role=" + user.role
-      );
+      app.innerHTML = emptyCard("No hay curso activo", "Crea un curso como directiva para comenzar a recibir solicitudes.");
       return;
     }
 
-    const courseObj = loadJSON(KEY_COURSE, null);
+    const c = courseObj();
+    const invite = c?.inviteCode || "";
 
     const listAll = loadEnrollments();
-
-    // Filtrar por curso activo
     const list = listAll.filter(e => String(e.courseKey||"") === ck);
 
     const pend = list.filter(e => e.status === "pending");
     const appr = list.filter(e => e.status === "approved");
     const deld = list.filter(e => e.status === "deleted");
 
-    const courseLine = courseObj?.course?.schoolName
-      ? `${courseObj.course.schoolName} · ${courseObj.course.level}${courseObj.course.letter} ${courseObj.course.year} · ${courseObj.course.jornada}`
+    const courseLine = (c && c.course)
+      ? `${c.course.schoolName} · ${c.course.level}${c.course.letter} ${c.course.year} · ${c.course.jornada}`
       : `Curso activo: ${ck}`;
 
     const head = `
       <div class="card">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
-          <div>
-            <div style="font-weight:950;font-size:18px;">Apoderados</div>
-            <div class="muted" style="margin-top:6px;font-weight:800;">${courseLine}</div>
-            <div class="muted" style="margin-top:6px;">
-              Los apoderados quedan en <b>Pendiente</b> hasta que la directiva los apruebe.
-            </div>
-          </div>
-          <button class="btn ghost" type="button" onclick="window.CURSAPP && CURSAPP.resetAll ? CURSAPP.resetAll() : location.href='/index.html'">
-            Reset demo
-          </button>
-        </div>
+        <div style="font-weight:950;font-size:18px;">Apoderados</div>
+        <div class="muted" style="margin-top:6px;font-weight:800;">${courseLine}</div>
 
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="tag warn">Pendientes ${pend.length}</span>
@@ -161,12 +128,32 @@
       </div>
     `;
 
+    const inviteBlock = invite ? `
+      <div class="card codeBox">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;">Código de invitación</div>
+            <div class="muted" style="margin-top:6px;">Compártelo solo con apoderados del curso.</div>
+          </div>
+          <button class="btn ghost" type="button"
+            onclick="(navigator.clipboard && navigator.clipboard.writeText('${invite}').then(()=>alert('Copiado ✅')).catch(()=>alert('${invite}')))">
+            Copiar
+          </button>
+        </div>
+        <div class="code" style="margin-top:10px;">${invite}</div>
+      </div>
+    ` : `
+      <div class="card codeBox">
+        <div style="font-weight:950;">Código de invitación</div>
+        <div class="muted" style="margin-top:6px;">Aún no hay código. Crea el curso como directiva.</div>
+      </div>
+    `;
+
     function row(e){
       const pay = e.activation?.status === "paid" ? `<span class="tag ok">Pago OK</span>` : `<span class="tag warn">Pago pendiente</span>`;
-      const st =
-        e.status === "approved" ? `<span class="tag ok">Aprobado</span>` :
-        e.status === "deleted" ? `<span class="tag">Eliminado</span>` :
-        `<span class="tag warn">Pendiente</span>`;
+      const st = e.status === "approved"
+        ? `<span class="tag ok">Aprobado</span>`
+        : (e.status === "deleted" ? `<span class="tag">Eliminado</span>` : `<span class="tag warn">Pendiente</span>`);
 
       const actions = (e.status === "pending")
         ? `
@@ -207,11 +194,10 @@
       </div>
     `;
 
-    app.innerHTML = head + cards;
+    app.innerHTML = head + inviteBlock + cards;
 
-    // hooks globales para botones inline
-    window.__approve = (id) => approve(id, user.role);
-    window.__delete  = (id) => del(id, user.role);
+    window.__approve = (id) => approve(id, role);
+    window.__delete  = (id) => del(id, role);
   }
 
   document.addEventListener("DOMContentLoaded", render);
