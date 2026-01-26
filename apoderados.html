@@ -22,8 +22,8 @@
         <div id="whoLine"></div>
       </div>
 
-      <button class="btn ghost" type="button" onclick="location.href='/dashboard.html'"
-        style="position:absolute;right:16px;top:10px;">Volver</button>
+      <button class="btn ghost" type="button" onclick="window.__goBackHome()"
+  style="position:absolute;right:16px;top:10px;">Volver</button>
     </div>
   </header>
 
@@ -31,5 +31,19 @@
 
   <script defer src="/assets/core.js?v=1700"></script>
   <script defer src="/assets/apoderados.js?v=1700"></script>
+
+<script>
+  window.__goBackHome = function(){
+    try{
+      const u = JSON.parse(localStorage.getItem("cursapp_demo_user") || "null");
+      const role = (u && u.role) ? String(u.role).toLowerCase() : "";
+      if(role === "presidente") return location.assign("/presidente.html");
+      if(role === "tesorero") return location.assign("/tesorero.html");
+      return location.assign("/index.html");
+    }catch(e){
+      location.assign("/index.html");
+    }
+  };
+</script>
 </body>
 </html>
