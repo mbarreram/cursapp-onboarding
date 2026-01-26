@@ -2976,8 +2976,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // DEMO_SEED: false = prueba real “en cero”
+const DEMO_SEED = false;
+
+if (DEMO_SEED) {
   ensureSeedPayments();
   ensureSeedExpenses();
+}
   normalizePaymentIds();
 
   renderHeader();
