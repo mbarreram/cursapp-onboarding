@@ -1698,7 +1698,68 @@ function openMonthlyReport(period){
 }
 
 
+function hasCourseMovement(){
+  const hasPays = loadPayments().length > 0;
+  const hasExps = loadExpenses().length > 0;
+  const hasTasks = loadTasks().length > 0;
+  const hasReports = loadMonthlyReports().length > 0;
+  return hasPays || hasExps || hasTasks || hasReports;
+}
 
+function renderApoderadoCourseSummary(){
+  // Estado cero: mostrar resumen “vacío”, sin botón de informe.
+  if(!hasCourseMovement()){
+    return `
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:950;font-size:18px;">Resumen del curso · ${currentYYYYMM()}</div>
+        <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
+
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <span class="tag ok">Recaudado ${formatCLP(0)}</span>
+          <span class="tag warn">Rendido ${formatCLP(0)}</span>
+          <span class="tag">Saldo ${formatCLP(0)}</span>
+        </div>
+
+        <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
+          Aún no hay cobros ni gastos registrados en el curso.
+          Cuando la directiva cree una campaña, aquí verás los movimientos.
+        </div>
+
+        <button class="btn ghost" style="margin-top:12px;width:100%;" disabled>
+          Esperando a la directiva
+        </button>
+      </div>
+    `;
+  }
+
+  // Si ya hay movimiento, usa tu banner actual (si existe informe), si no, muestra cálculo “en vivo”
+  const latest = findLatestMonthlyReport ? findLatestMonthlyReport() : null;
+  if(latest){
+    return renderApoderadoMonthlyReportBanner();
+  }
+
+  // Sin informe mensual publicado, pero con movimientos: calculamos con pagos + gastos
+  const recaudado = courseCollected();
+  const rendido = courseSpent();
+  const saldo = courseAvailable();
+
+  return `
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;font-size:18px;">Resumen del curso · ${currentYYYYMM()}</div>
+      <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="tag ok">Recaudado ${formatCLP(recaudado)}</span>
+        <span class="tag warn">Rendido ${formatCLP(rendido)}</span>
+        <span class="tag ${saldo<0?'danger':''}">Saldo ${formatCLP(saldo)}</span>
+      </div>
+
+      <div class="muted" style="margin-top:10px;font-weight:800;">
+        Aún no hay informe publicado por la directiva.
+      </div>
+    </div>
+  `;
+}
 
 
 function renderApoderadoMonthlyReportBanner(){
