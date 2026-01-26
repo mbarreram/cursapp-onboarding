@@ -413,10 +413,27 @@ function uid(prefix = "id") {
         saveProfiles(profiles);
         setActiveCourseKey(courseKey);
 
-        clearDraft();
+         // ===== Crear solicitud de inscripción (requiere aprobación) =====
+const res = createEnrollment({
+  apoderadoName: d.name,
+  alumno: d.alumno,
+  email: d.email,
+  phone: d.phone,
+  activationAmount: 7990,
+  activationStatus: (d.payChoice === "later") ? "pending" : "paid"
+});
 
-        // to login
-        window.location.href = "/index.html?registered=1";
+if (!res.ok) {
+  alert(res.error || "No se pudo enviar la solicitud.");
+  return;
+}
+
+alert(
+  "Solicitud enviada ✅\n\n" +
+  "La directiva debe aprobar tu registro para poder ingresar."
+);
+        clearDraft();
+window.location.href = "/index.html?pending=1";
       }
     });
   }
