@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard · Cursapp</title>
-  <link rel="stylesheet" href="assets/styles.css" />
+
+  <!-- rutas absolutas -->
+  <link rel="stylesheet" href="/assets/styles.css?v=1400" />
 
   <style>
-    /* cursapp polish */
     header{border-bottom:1px solid rgba(229,231,235,.9);}
     .topbar{padding:10px 16px !important;}
     .logo{width:32px;height:32px;border-radius:10px;}
@@ -32,20 +33,30 @@
         <div id="whoLine"></div>
       </div>
 
-      <!-- Menú (siempre visible) -->
       <button class="btn ghost" id="menuBtn" type="button" aria-expanded="false"
         style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
 
       <div id="menuDropdown"
         style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
         border-radius:14px;padding:8px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
-        <button class="btn ghost" id="logoutMenuItem" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
+
+        <button class="btn ghost" id="resetMenuItem" type="button" style="width:100%;text-align:left;">
+          Reset demo
+        </button>
+
+        <button class="btn ghost" id="logoutMenuItem" type="button" style="width:100%;text-align:left;">
+          Cerrar sesión
+        </button>
       </div>
     </div>
   </header>
 
   <div class="container" id="app"></div>
 
-  <script src="assets/app.js?v=1071"></script>
+  <!-- core primero: reset -->
+  <script defer src="/assets/core.js?v=1400"></script>
+
+  <!-- tu app gigante después -->
+  <script defer src="/assets/app.js?v=1071"></script>
 </body>
 </html>
