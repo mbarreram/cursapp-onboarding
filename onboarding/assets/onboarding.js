@@ -1,7 +1,8 @@
 /* =========================================================
-   Cursapp · Onboarding (Wizard) — 2 modos + Código invitación
+   Cursapp · Onboarding (Wizard) — 2 modos + Código invitación (con validar)
    - mode=directiva&role=presidente|tesorero => crea curso + inviteCode + login directiva
-   - mode=apoderado (default) => requiere inviteCode, crea user/profile y solicitud enrollment pending
+   - mode=apoderado (default) => valida inviteCode con botón, muestra resumen y salta a paso 3
+     luego crea user/profile y enrollment pending
    ========================================================= */
 
 // UID simple (demo, estable)
@@ -24,12 +25,11 @@ function uid(prefix = "id") {
 
   const DEBUG = localStorage.getItem("cursapp_onb_debug")==="1";
 
-  // --- mode handling ---
   const QS = new URLSearchParams(location.search);
   const MODE = (QS.get("mode") || "apoderado").toLowerCase(); // "directiva" | "apoderado"
   const DIRECTIVA_ROLE = (QS.get("role") || "presidente").toLowerCase(); // presidente|tesorero
 
-  // Demo data (reemplazable por JSON real en el futuro)
+  // Demo data
   const REGIONS = [
     { id:"r1", name:"Región Metropolitana" },
     { id:"r2", name:"Valparaíso" }
@@ -88,9 +88,7 @@ function uid(prefix = "id") {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
   }
 
-  // Hash demo (NO seguro, solo demo local)
   function hashDemo(str){
-    // DJB2
     let h=5381;
     const s = String(str||"");
     for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
@@ -101,7 +99,6 @@ function uid(prefix = "id") {
     return [schoolId, level, letter, jornada, year].join("|");
   }
 
-  // --- Invite code ---
   function generateInviteCode(){
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code = "";
@@ -113,6 +110,33 @@ function uid(prefix = "id") {
     return loadJSON(KEY_COURSE_V1, null);
   }
 
+  function courseSummaryHTML(courseObj){
+    const c = courseObj?.course || {};
+    return `
+      <div class="card" style="padding:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
+        <div style="font-weight:950;">Curso encontrado ✅</div>
+        <div class="muted" style="margin-top:6px;font-weight:800;">
+          ${c.schoolName} · ${c.level}${c.letter} ${c.year} · ${c.jornada}
+        </div>
+        <div class="muted" style="margin-top:6px;">
+          Si esto no corresponde, pide el código correcto a la directiva.
+        </div>
+      </div>
+    `;
+  }
+
+  function courseBanner(courseObj){
+    const c = courseObj?.course || {};
+    return `
+      <div class="card" style="margin-top:12px;border:1px solid rgba(34,197,94,.20);background:rgba(34,197,94,.06);">
+        <div style="font-weight:950;">Te estás registrando en:</div>
+        <div class="muted" style="margin-top:6px;font-weight:900;">
+          ${c.schoolName} · ${c.level}${c.letter} ${c.year} · ${c.jornada}
+        </div>
+      </div>
+    `;
+  }
+
   function render(){
     const root = $("app");
     if(!root) return;
@@ -120,13 +144,17 @@ function uid(prefix = "id") {
     const d = loadDraft();
     if(!d.step) d.step = 1;
 
-    const step = Number(d.step||1);
+    // Si apoderado ya validó código, forzamos step 3
+    if(MODE==="apoderado" && d.courseLocked && Number(d.step) < 3){
+      d.step = 3;
+      saveDraft(d);
+    }
 
-    // directiva: 3 pasos útiles (pero dejamos 4 para mantener layout)
+    const step = Number(d.step||1);
     const stepsTotal = 4;
     const progressPct = Math.round((step/stepsTotal)*100);
 
-    // defaults cascade
+    // defaults cascade (solo directiva o fallback)
     const regionId = d.regionId || REGIONS[0].id;
     const comunas = COMUNAS.filter(c=>c.regionId===regionId);
     const comunaId = d.comunaId || (comunas[0]?.id||"");
@@ -145,12 +173,11 @@ function uid(prefix = "id") {
     const phone = d.phone || "";
     const pass = d.pass || "";
     const pass2 = d.pass2 || "";
-
     const inviteCode = (d.inviteCode || "").toUpperCase();
-    const payChoice = d.payChoice || "now"; // now|later (solo apoderado)
+    const payChoice = d.payChoice || "now";
 
     const debugLine = DEBUG
-      ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step}</div>`
+      ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"}</div>`
       : "";
 
     function option(list, valueKey, labelKey, selected){
@@ -159,6 +186,9 @@ function uid(prefix = "id") {
     function optionVals(list, selected){
       return list.map(x=>`<option value="${x}" ${x===selected?"selected":""}>${x}</option>`).join("");
     }
+
+    const courseObj = getCourseV1();
+    const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
 
     root.innerHTML = `
       <div class="card" style="margin-top:12px;">
@@ -170,63 +200,80 @@ function uid(prefix = "id") {
         </div>
 
         ${debugLine}
+      </div>
 
+      ${banner}
+
+      <div class="card" style="margin-top:12px;">
         ${step===1 ? `
           ${MODE==="apoderado" ? `
-            <div style="margin-top:12px;">
+            <div>
               <label style="font-weight:900;">Código de invitación</label>
               <input id="onbInviteCode" placeholder="Ej: ABC123" value="${escapeHtml(inviteCode)}" />
-              <div class="muted" style="margin-top:6px;">
+
+              <button class="btn primary" id="btnValidateCode" type="button" style="width:100%;margin-top:10px;">
+                Validar código
+              </button>
+
+              <div class="muted" style="margin-top:8px;">
                 Pídeselo a la directiva del curso. Esto evita registros en cursos equivocados.
               </div>
+
+              <div id="coursePreview" style="margin-top:12px;"></div>
             </div>
           ` : `
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
               <div style="font-weight:950;">Crear curso como ${DIRECTIVA_ROLE === "tesorero" ? "Tesorero" : "Presidente"}</div>
               <div class="muted" style="margin-top:6px;">Al finalizar se generará un código para invitar apoderados.</div>
             </div>
-          `}
 
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Región</label>
-            <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
-          </div>
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Comuna</label>
-            <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
-          </div>
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Colegio</label>
-            <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
-          </div>
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Región</label>
+              <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Comuna</label>
+              <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
+            </div>
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Colegio</label>
+              <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
+            </div>
+          `}
         `:""}
 
         ${step===2 ? `
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:160px;">
-              <label style="font-weight:900;">Jornada</label>
-              <select id="onbJornada">${optionVals(JORNADAS,jornada)}</select>
+          ${MODE==="directiva" ? `
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:160px;">
+                <label style="font-weight:900;">Jornada</label>
+                <select id="onbJornada">${optionVals(JORNADAS,jornada)}</select>
+              </div>
+              <div style="flex:1;min-width:160px;">
+                <label style="font-weight:900;">Año</label>
+                <input id="onbYear" inputmode="numeric" value="${year}" />
+              </div>
             </div>
-            <div style="flex:1;min-width:160px;">
-              <label style="font-weight:900;">Año</label>
-              <input id="onbYear" inputmode="numeric" value="${year}" />
-            </div>
-          </div>
 
-          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-            <div style="flex:1;min-width:160px;">
-              <label style="font-weight:900;">Nivel</label>
-              <select id="onbLevel">${optionVals(LEVELS,level)}</select>
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:160px;">
+                <label style="font-weight:900;">Nivel</label>
+                <select id="onbLevel">${optionVals(LEVELS,level)}</select>
+              </div>
+              <div style="flex:1;min-width:160px;">
+                <label style="font-weight:900;">Letra</label>
+                <select id="onbLetter">${optionVals(LETTERS,letter)}</select>
+              </div>
             </div>
-            <div style="flex:1;min-width:160px;">
-              <label style="font-weight:900;">Letra</label>
-              <select id="onbLetter">${optionVals(LETTERS,letter)}</select>
+          ` : `
+            <div class="muted" style="font-weight:900;">
+              Paso no usado (validación por código). Volviendo…
             </div>
-          </div>
+          `}
         `:""}
 
         ${step===3 ? `
-          <div style="margin-top:12px;">
+          <div style="margin-top:0;">
             <label style="font-weight:900;">Nombre ${MODE==="directiva" ? "directiva" : "apoderado"}</label>
             <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
           </div>
@@ -234,11 +281,6 @@ function uid(prefix = "id") {
           <div style="margin-top:12px;">
             <label style="font-weight:900;">Alumno/a ${MODE==="directiva" ? "(opcional)" : ""}</label>
             <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
-            <div class="muted" style="margin-top:6px;">
-              ${MODE==="directiva"
-                ? "Puedes crear el curso aunque aún no existan apoderados."
-                : "El apoderado debe escribir el nombre del alumno/a (privacidad)."}
-            </div>
           </div>
 
           ${MODE==="apoderado" ? `
@@ -266,27 +308,16 @@ function uid(prefix = "id") {
               <label style="font-weight:900;">Confirmar password</label>
               <input id="onbPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(pass2)}" />
             </div>
-
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <div style="font-weight:950;">📧 Comprobantes</div>
-              <div class="muted" style="margin-top:6px;">
-                El correo se usará para comprobantes de pago e informes del curso.
-              </div>
-            </div>
           ` : ``}
         `:""}
 
         ${step===4 ? `
           ${MODE==="apoderado" ? `
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
               <div style="font-weight:950;">Activación por curso</div>
               <div class="muted" style="margin-top:6px;">
                 Setup único: <b>$7.990</b> por apoderado por curso (demo).
               </div>
-              <div class="muted" style="margin-top:6px;">
-                Si eliges pagar después, el acceso quedará pendiente.
-              </div>
-
               <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
                 <label class="tag" style="cursor:pointer;">
                   <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> Pagar ahora
@@ -295,9 +326,12 @@ function uid(prefix = "id") {
                   <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> Pagar después
                 </label>
               </div>
+              <div class="muted" style="margin-top:8px;">
+                Aunque pagues, el ingreso quedará <b>pendiente de aprobación</b> por la directiva.
+              </div>
             </div>
           ` : `
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
               <div style="font-weight:950;">Confirmar creación del curso</div>
               <div class="muted" style="margin-top:6px;">
                 Al finalizar se generará un <b>código de invitación</b> para apoderados.
@@ -321,26 +355,85 @@ function uid(prefix = "id") {
     const btnPrev = $("btnPrev");
     const btnNext = $("btnNext");
 
-    if(step===1){
-      if(MODE==="apoderado"){
-        const inv = $("onbInviteCode");
-        if(inv){
-          inv.oninput = ()=>{
-            d.inviteCode = String(inv.value||"").trim().toUpperCase();
-            saveDraft(d);
-          };
-        }
+    if(step===1 && MODE==="apoderado"){
+      const inv = $("onbInviteCode");
+      const btn = $("btnValidateCode");
+      const preview = $("coursePreview");
+
+      function setPreview(html){
+        if(preview) preview.innerHTML = html || "";
       }
 
+      function validateAndLock(){
+        const code = String(inv?.value || "").trim().toUpperCase();
+        d.inviteCode = code;
+        saveDraft(d);
+
+        if(!code){
+          alert("Ingresa el código de invitación.");
+          return;
+        }
+
+        const course = getCourseV1();
+        if(!course || !course.inviteCode){
+          alert("Aún no existe un curso creado por la directiva. Pide el código a la directiva o crea el curso primero.");
+          return;
+        }
+
+        if(code !== String(course.inviteCode||"").toUpperCase()){
+          alert("Código de invitación incorrecto.");
+          setPreview("");
+          return;
+        }
+
+        // Bloquear curso (copiar datos oficiales)
+        const c = course.course || {};
+        d.regionId = c.regionId || d.regionId;
+        d.comunaId = c.comunaId || d.comunaId;
+        d.schoolId = c.schoolId || d.schoolId;
+        d.jornada = c.jornada || d.jornada;
+        d.level = c.level || d.level;
+        d.letter = c.letter || d.letter;
+        d.year = c.year || d.year;
+
+        d.courseLocked = true;
+        d.step = 3;
+        saveDraft(d);
+
+        setPreview(courseSummaryHTML(course));
+        render();
+      }
+
+      inv && (inv.oninput = ()=>{
+        d.inviteCode = String(inv.value||"").trim().toUpperCase();
+        saveDraft(d);
+      });
+      btn && (btn.onclick = validateAndLock);
+
+      // Si ya estaba validado, saltar directo
+      if(d.courseLocked && d.inviteCode){
+        const course = getCourseV1();
+        if(course && String(course.inviteCode||"").toUpperCase() === String(d.inviteCode||"").toUpperCase()){
+          d.step = 3;
+          saveDraft(d);
+          render();
+          return;
+        } else {
+          d.courseLocked = false;
+          saveDraft(d);
+        }
+      }
+    }
+
+    if(step===1 && MODE==="directiva"){
       const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool");
       r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); };
       c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); };
       s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); };
-
       d.regionId = ctx.regionId; d.comunaId = ctx.comunaId; d.schoolId = ctx.schoolId;
     }
 
-    if(step===2){
+    if(step===2 && MODE==="directiva"){
       $("onbJornada").onchange = ()=>{ d.jornada=$("onbJornada").value; saveDraft(d); };
       $("onbYear").oninput = ()=>{ d.year=$("onbYear").value; saveDraft(d); };
       $("onbLevel").onchange = ()=>{ d.level=$("onbLevel").value; saveDraft(d); };
@@ -368,38 +461,29 @@ function uid(prefix = "id") {
 
     btnPrev && (btnPrev.onclick = ()=>{
       d.step = Math.max(1, Number(d.step||1)-1);
-      saveDraft(d); render();
+      saveDraft(d);
+      render();
     });
 
     btnNext && (btnNext.onclick = ()=>{
-      if(step===1){
-        // Apoderado: validar invite code contra curso creado por directiva
-        if(MODE==="apoderado"){
-          const course = getCourseV1();
-          if(!course || !course.inviteCode){
-            alert("Aún no existe un curso creado por la directiva. Pide el código a la directiva o crea el curso primero.");
-            return;
-          }
-          const code = String(d.inviteCode||"").trim().toUpperCase();
-          if(!code){
-            alert("Ingresa el código de invitación.");
-            return;
-          }
-          if(code !== String(course.inviteCode||"").toUpperCase()){
-            alert("Código de invitación incorrecto.");
-            return;
-          }
-        }
+      if(step===1 && MODE==="apoderado"){
+        alert("Primero valida el código de invitación.");
+        return;
+      }
 
+      if(step===1 && MODE==="directiva"){
         if(!d.regionId || !d.comunaId || !d.schoolId){
           alert("Selecciona región, comuna y colegio.");
           return;
         }
-
         d.step=2; saveDraft(d); render(); return;
       }
 
       if(step===2){
+        if(MODE==="apoderado"){
+          d.step = 3; saveDraft(d); render(); return;
+        }
+
         d.jornada = $("onbJornada").value;
         d.year = String($("onbYear").value||"").trim();
         d.level = $("onbLevel").value;
@@ -432,16 +516,12 @@ function uid(prefix = "id") {
       }
 
       if(step===4){
-        // build courseKey
         const region = REGIONS.find(r=>r.id===d.regionId);
         const comuna = COMUNAS.find(c=>c.id===d.comunaId);
         const school = SCHOOLS.find(s=>s.id===d.schoolId);
 
         const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
 
-        // =========================
-        // DIRECTIVA: crea curso + inviteCode, login directiva
-        // =========================
         if(MODE==="directiva"){
           const inviteCode = generateInviteCode();
 
@@ -464,7 +544,6 @@ function uid(prefix = "id") {
           localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
           setActiveCourseKey(courseKey);
 
-          // demo session directiva
           localStorage.setItem("cursapp_demo_user", JSON.stringify({
             name: (d.name || "Directiva") + " (Demo)",
             role: DIRECTIVA_ROLE,
@@ -482,17 +561,13 @@ function uid(prefix = "id") {
             "Compártelo con los apoderados."
           );
 
-          // vuelve a vista por rol (no dashboard unificado)
           window.location.href = "/" + DIRECTIVA_ROLE + ".html";
           return;
         }
 
-        // =========================
-        // APODERADO: crea user/profile + enrollment pending (requiere aprobación)
-        // =========================
+        // APODERADO
         d.payChoice = d.payChoice || "now";
 
-        // upsert user
         let users = loadUsers();
         const existing = users.find(u=>u.email===d.email);
         let userId = existing ? existing.userId : ("u_"+uid("usr"));
@@ -511,7 +586,6 @@ function uid(prefix = "id") {
         }
         saveUsers(users);
 
-        // upsert profile
         let profiles = loadProfiles();
 
         const activation = {
@@ -549,7 +623,6 @@ function uid(prefix = "id") {
 
         setActiveCourseKey(courseKey);
 
-        // enrollment pending (requiere aprobación)
         if(typeof createEnrollment !== "function"){
           alert("Falta enrollments.js.\n\nAsegúrate de cargar /assets/enrollments.js antes de onboarding.js en onboarding/dashboard.html");
           return;
@@ -570,7 +643,6 @@ function uid(prefix = "id") {
         }
 
         clearDraft();
-
         alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
         window.location.href = "/index.html?pending=1";
         return;
