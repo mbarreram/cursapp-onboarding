@@ -1,6 +1,7 @@
 /* =========================================================
-   Cursapp · Login
+   Cursapp · Login (con aprobación obligatoria)
    - Apoderado real: email + password desde onboarding
+   - Bloqueo A: apoderado NO entra hasta que directiva apruebe enrollment
    - Tesorero/Presidente demo: usuario=tesorero/presidente, pass=demo
    - Selector de curso si apoderado tiene múltiples perfiles
    ========================================================= */
@@ -14,6 +15,7 @@
   const KEY_USERS = "cursapp_users_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_ENROLL = "cursapp_enrollments_v1";
 
   function loadJSON(k, def){
     try{
@@ -53,14 +55,51 @@
     return `${c.schoolName||"Colegio"} · ${c.level||""}${c.letter||""} ${c.year||""} · ${c.jornada||""}`;
   }
 
-  function showCourseChooser(profiles){
-    // Replace the login card content with chooser (safe & simple)
+  // ====== Aprobación obligatoria (A) ======
+  function enrollments(){
+    return loadJSON(KEY_ENROLL, []);
+  }
+
+  function findEnrollment(email, courseKey){
+    const e = String(email||"").trim().toLowerCase();
+    const ck = String(courseKey||"");
+    const list = enrollments();
+
+    // Tomamos el más reciente para ese email+curso
+    const matches = list
+      .filter(x => String(x.email||"").trim().toLowerCase() === e && String(x.courseKey||"") === ck)
+      .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+
+    return matches[0] || null;
+  }
+
+  function ensureApprovedOrBlock(email, courseKey){
+    const enr = findEnrollment(email, courseKey);
+
+    if(!enr){
+      showErr("No existe una solicitud para este curso. Completa onboarding como apoderado para enviar tu solicitud.");
+      return false;
+    }
+    if(enr.status !== "approved"){
+      showErr("Tu solicitud está pendiente de aprobación por la directiva.");
+      return false;
+    }
+
+    // Si quieres, acá podrías bloquear por pago:
+    // if(enr.activation?.status !== "paid") { showErr("Activación pendiente de pago."); return false; }
+
+    return true;
+  }
+  // ======================================
+
+  function showCourseChooser(userEmail, profiles){
     const card = document.querySelector(".auth-card");
     if(!card){
       // fallback prompt
       const chosen = prompt("Tienes más de un curso. Ingresa el índice (1..n):", "1");
       const idx = Number(chosen||1)-1;
       const p = profiles[idx] || profiles[0];
+      if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
       setActiveCourseKey(p.courseKey);
       window.location.href = "apoderado.html";
       return;
@@ -74,21 +113,36 @@
       </div>
 
       <div style="margin-top:12px;">
-        ${profiles.map((p,i)=>`
-          <div style="padding:12px;border:1px solid rgba(229,231,235,.9);border-radius:14px;margin-top:10px;">
-            <div style="font-weight:950;">${buildCourseLabel(p)}</div>
-            <div class="muted" style="margin-top:6px;font-weight:800;">
-              ${p.activation?.required ? (p.activation.status==="paid"?"✅ Activo":"⏳ Activación pendiente") : "✅ Activo"}
+        ${profiles.map((p,i)=>{
+          const label = buildCourseLabel(p);
+          const enr = findEnrollment(userEmail, p.courseKey);
+          const approved = enr && enr.status === "approved";
+          const statusTxt = !enr
+            ? "⏳ Sin solicitud (debes registrarte)"
+            : (approved ? "✅ Aprobado por directiva" : "⏳ Pendiente de aprobación");
+          const payTxt = enr?.activation?.status
+            ? (enr.activation.status === "paid" ? " · Pago OK" : " · Pago pendiente")
+            : "";
+
+          const disabledAttr = approved ? "" : "disabled";
+          const btnClass = approved ? "btn primary" : "btn ghost";
+
+          return `
+            <div style="padding:12px;border:1px solid rgba(229,231,235,.9);border-radius:14px;margin-top:10px;">
+              <div style="font-weight:950;">${label}</div>
+              <div class="muted" style="margin-top:6px;font-weight:800;">
+                ${statusTxt}${payTxt}
+              </div>
+              <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+                <button class="${btnClass}" type="button" data-pick="${i}" ${disabledAttr}>${approved ? "Elegir" : "Bloqueado"}</button>
+              </div>
             </div>
-            <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-              <button class="btn primary" type="button" data-pick="${i}">Elegir</button>
-            </div>
-          </div>
-        `).join("")}
+          `;
+        }).join("")}
       </div>
 
       <p class="muted small" style="margin-top:14px;">
-        Si eliges un curso con activación pendiente, se bloqueará el uso hasta pagar.
+        El apoderado no puede ingresar hasta que la directiva apruebe la solicitud.
       </p>
     `;
 
@@ -96,6 +150,9 @@
       btn.onclick = ()=>{
         const idx = Number(btn.getAttribute("data-pick"));
         const p = profiles[idx] || profiles[0];
+
+        if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
+
         setActiveCourseKey(p.courseKey);
         window.location.href = "apoderado.html";
       };
@@ -115,13 +172,13 @@
       return;
     }
 
-    // Backward-compat demo apoderado
+    // Backward-compat demo apoderado: ahora BLOQUEADO si no hay aprobación
     if(u==="apoderado" && p==="demo"){
-      window.location.href = "apoderado.html";
+      showErr("Para ingresar como apoderado debes estar aprobado por la directiva. Completa onboarding como apoderado.");
       return;
     }
 
-    // Real apoderado login
+    // Real apoderado login (email/password)
     const users = loadJSON(KEY_USERS, []);
     const user = users.find(x=>x.email===u);
     if(!user){
@@ -142,14 +199,19 @@
       return;
     }
 
+    // Si tiene 1 curso, validamos aprobación antes de entrar
     if(profiles.length===1){
-      setActiveCourseKey(profiles[0].courseKey);
+      const courseKey = profiles[0].courseKey;
+
+      if(!ensureApprovedOrBlock(u, courseKey)) return;
+
+      setActiveCourseKey(courseKey);
       window.location.href = "apoderado.html";
       return;
     }
 
-    // Multiple courses: show chooser
-    showCourseChooser(profiles);
+    // Multiple courses: show chooser con bloqueo si no está aprobado
+    showCourseChooser(u, profiles);
   });
 
 })();
