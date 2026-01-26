@@ -4,15 +4,21 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Onboarding</title>
-  <link rel="stylesheet" href="../assets/styles.css?v=400">
+
+  <!-- según tu estructura: onboarding tiene su propio styles -->
+  <link rel="stylesheet" href="/onboarding/assets/styles.css?v=1400">
+
   <style>
-    .onbStep{font-weight:950}
-    .onbProg{margin-top:8px;height:10px;background:rgba(229,231,235,.9);border-radius:999px;overflow:hidden}
-    .onbProg > div{height:100%;background:rgba(91,92,226,.85)}
-    .helpBox{border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);margin-top:12px}
-    .warnBox{border:1px solid rgba(245,158,11,.25);background:rgba(245,158,11,.08);border-radius:16px;padding:12px;margin-top:12px}
+    .debugCard{
+      border:1px solid rgba(239,68,68,.25);
+      background:rgba(239,68,68,.08);
+      border-radius:16px;
+      padding:12px;
+      margin-top:12px
+    }
   </style>
 </head>
+
 <body>
   <header>
     <div class="topbar" style="position:relative;">
@@ -20,14 +26,15 @@
         <div class="logo">C</div>
         <div id="whoLine"></div>
       </div>
-      <button class="btn ghost" id="menuBtn" type="button"
-        style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
+
+      <button class="btn ghost" id="menuBtn"
+        style="position:absolute;right:16px;top:10px;">☰</button>
+
       <div id="menuDropdown"
-        style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
-        border-radius:14px;padding:8px;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
-        <button class="btn ghost" id="backLogin" type="button" style="width:100%;text-align:left;">Volver al login</button>
-        <button class="btn ghost" id="toggleDebug" type="button" style="width:100%;text-align:left;">Activar modo debug</button>
-        <button class="btn ghost" id="resetDraft" type="button" style="width:100%;text-align:left;">Reiniciar onboarding</button>
+        style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;min-width:200px;box-shadow:0 10px 30px rgba(0,0,0,.12);">
+        <button class="btn ghost" id="backLogin" style="width:100%;text-align:left;">Volver al login</button>
+        <button class="btn ghost" id="resetMenuItem" style="width:100%;text-align:left;">Reset demo</button>
+        <button class="btn ghost" id="debugOn" style="width:100%;text-align:left;">Activar debug</button>
       </div>
     </div>
   </header>
@@ -38,41 +45,30 @@
     (function(){
       const btn=document.getElementById('menuBtn');
       const dd=document.getElementById('menuDropdown');
-      const back=document.getElementById('backLogin');
-      const dbg=document.getElementById('toggleDebug');
-      const rst=document.getElementById('resetDraft');
+      const dbg=document.getElementById('debugOn');
 
-      if(btn && dd){
-        btn.onclick=(e)=>{e.stopPropagation(); dd.style.display = (dd.style.display==='block'?'none':'block');};
-        document.addEventListener('click',()=>{dd.style.display='none';});
-      }
-      if(back){ back.onclick=()=>{ window.location.href = '../login.html'; }; }
-      if(dbg){ dbg.onclick=()=>{ 
-        const k='cursapp_onb_debug';
-        const v=localStorage.getItem(k)==='1'?'0':'1';
-        localStorage.setItem(k,v);
-        alert(v==='1'?'Debug activado.':'Debug desactivado.');
-        location.reload();
-      }; }
-      if(rst){ rst.onclick=()=>{
-        localStorage.removeItem('cursapp_onb_draft_v1');
-        alert('Onboarding reiniciado.');
-        location.reload();
-      }; }
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        dd.style.display = (dd.style.display==='block') ? 'none' : 'block';
+      };
+      document.addEventListener('click',()=> dd.style.display='none');
+
+      dbg.onclick=()=>{
+        localStorage.setItem('cursapp_onb_debug','1');
+        alert('Debug activado');
+      };
     })();
 
     window.onerror=function(msg,src,line){
-      const root=document.getElementById('app');
-      if(root){
-        root.innerHTML = `<div class="card" style="margin-top:12px;">
-          <div style="font-weight:950;">Error en Onboarding</div>
-          <div class="warnBox">${String(msg||'Error')}<div class="muted" style="margin-top:6px;font-size:12px;">${src||''}:${line||''}</div></div>
-        </div>`;
-      }
-      return false;
+      document.getElementById('app').innerHTML=
+        `<div class="card"><b>Error JS:</b><div class="debugCard">${msg}<br>${src}:${line}</div></div>`;
     };
   </script>
 
-  <script src="./assets/onboarding.js?v=76"></script>
+  <!-- core: conecta backLogin + resetMenuItem sin duplicar -->
+  <script defer src="/assets/core.js?v=1400"></script>
+
+  <!-- onboarding -->
+  <script defer src="/onboarding/assets/onboarding.js?v=1400"></script>
 </body>
 </html>
