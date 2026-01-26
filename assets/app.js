@@ -2922,7 +2922,7 @@ function goTab(tab){
 document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
   if(!user){
-    window.location.href = "login.html";
+    window.location.href = "/index.html";
     return;
   }
 
