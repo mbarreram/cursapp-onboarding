@@ -72,5 +72,12 @@
 <script defer src="/assets/switchRole.js?v=2000"></script>
 
 <script defer src="/assets/tesorero.js?v=1001"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    if (window.CURSAPP_SWITCH && CURSAPP_SWITCH.maybeShowRolePicker) {
+      CURSAPP_SWITCH.maybeShowRolePicker();
+    }
+  });
+</script>
 </body>
 </html>
