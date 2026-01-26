@@ -699,13 +699,15 @@ function uid(prefix = "id") {
             }
 
             // guardar perfil rápido para “cambiar a apoderado” desde directiva
-            saveJSON(KEY_DIRECTIVA_AP, {
-              email: d.dEmail,
-              apoderadoName: d.name,
-              alumno: d.alumno,
-              courseKey
-            });
-          }
+            const KEY_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
+const byRole = loadJSON(KEY_BY_ROLE, {});
+byRole[DIRECTIVA_ROLE] = {
+  email: d.dEmail,
+  apoderadoName: d.name,
+  alumno: d.alumno,
+  courseKey
+};
+saveJSON(KEY_BY_ROLE, byRole);
 
           // sesión directiva demo
           localStorage.setItem("cursapp_demo_user", JSON.stringify({
