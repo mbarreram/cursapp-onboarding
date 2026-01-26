@@ -61,5 +61,12 @@
 
 <script defer src="/assets/campaigns.js?v=1"></script>
 <script defer src="/assets/presidente.js?v=2001"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    if (window.CURSAPP_SWITCH && CURSAPP_SWITCH.maybeShowRolePicker) {
+      CURSAPP_SWITCH.maybeShowRolePicker();
+    }
+  });
+</script>
 </body>
 </html>
