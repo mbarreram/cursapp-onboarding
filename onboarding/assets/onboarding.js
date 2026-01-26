@@ -23,6 +23,21 @@ function uid(prefix = "id") {
   const QS = new URLSearchParams(location.search);
   const MODE = (QS.get("mode") || "apoderado").toLowerCase(); // directiva | apoderado
   const DIRECTIVA_ROLE = (QS.get("role") || "presidente").toLowerCase(); // presidente | tesorero
+   // ✅ Si cambiaste de rol/mode, resetea el draft para evitar que “quede pegado” en presidente
+(function(){
+  try{
+    const d = JSON.parse(localStorage.getItem("cursapp_onb_draft_v1") || "{}");
+    const last = (d._lastMode || "") + "|" + (d._lastRole || "");
+    const now  = MODE + "|" + DIRECTIVA_ROLE;
+    if(last && last !== now){
+      localStorage.removeItem("cursapp_onb_draft_v1");
+    }
+    const d2 = JSON.parse(localStorage.getItem("cursapp_onb_draft_v1") || "{}");
+    d2._lastMode = MODE;
+    d2._lastRole = DIRECTIVA_ROLE;
+    localStorage.setItem("cursapp_onb_draft_v1", JSON.stringify(d2));
+  }catch(e){}
+})();
 
   // Demo data
   const REGIONS = [
