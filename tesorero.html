@@ -6,9 +6,9 @@
   <title>Cursapp · Tesorero</title>
 
   <!-- CSS global -->
-  <link rel="stylesheet" href="assets/styles.css?v=400">
+  <link rel="stylesheet" href="/assets/styles.css?v=400">
   <!-- CSS tesorero -->
-  <link rel="stylesheet" href="assets/tesorero.css?v=1001">
+  <link rel="stylesheet" href="/assets/tesorero.css?v=1001">
 </head>
 <body>
 
@@ -18,7 +18,9 @@
       <div class="logo">C</div>
       <div>
         <div style="font-weight:950;">Tesorero</div>
-        <div class="muted" style="font-weight:800;font-size:12px;">Curso Demo · Colegio Demo</div>
+        <div class="muted" style="font-weight:800;font-size:12px;">
+          Curso Demo · Colegio Demo
+        </div>
       </div>
     </div>
 
@@ -26,13 +28,33 @@
       style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
 
     <div id="menuDropdown"
-      style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid rgba(229,231,235,.9);
-      border-radius:14px;padding:8px;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
-      <button class="btn ghost" id="resetBtn" type="button" style="width:100%;text-align:left;">Reset datos (demo)</button>
-      <button class="btn ghost" type="button" style="width:100%;text-align:left;" onclick="location.href='/apoderados.html'">
-  👥 Apoderados
-</button>
-      <button class="btn ghost" id="logoutBtn" type="button" style="width:100%;text-align:left;">Cerrar sesión</button>
+      style="display:none;position:absolute;right:16px;top:56px;background:#fff;
+      border:1px solid rgba(229,231,235,.9);
+      border-radius:14px;padding:8px;min-width:240px;
+      box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
+
+      <button class="btn ghost" id="resetBtn" type="button"
+        style="width:100%;text-align:left;">
+        Reset datos (demo)
+      </button>
+
+      <button class="btn ghost" type="button"
+        style="width:100%;text-align:left;"
+        onclick="location.href='/apoderados.html'">
+        👥 Apoderados
+      </button>
+
+      <!-- ✅ NUEVO: cambiar a apoderado -->
+      <button class="btn ghost" type="button"
+        style="width:100%;text-align:left;"
+        onclick="CURSAPP_SWITCH.toApoderado()">
+        👤 Entrar como apoderado
+      </button>
+
+      <button class="btn ghost" id="logoutBtn" type="button"
+        style="width:100%;text-align:left;">
+        Cerrar sesión
+      </button>
     </div>
   </div>
 </header>
@@ -46,6 +68,9 @@
   <button class="navItem" data-tab="informes">📊<span>Informes</span></button>
 </nav>
 
-<script src="assets/tesorero.js?v=1001"></script>
+<!-- ✅ switch de rol -->
+<script defer src="/assets/switchRole.js?v=2000"></script>
+
+<script defer src="/assets/tesorero.js?v=1001"></script>
 </body>
 </html>
