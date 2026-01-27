@@ -353,6 +353,10 @@
   else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>p.status==="credit");
   else paysFiltered = paysAll.slice();
 
+function formatCLP(n){
+  return "$" + Number(n || 0).toLocaleString("es-CL");
+}
+    
   // helpers
   const taskById = Object.fromEntries(tasksAll.map(t=>[t.id,t]));
   const taskTitle = (t)=> String(t?.title || "Campaña").trim();
