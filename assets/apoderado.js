@@ -20,6 +20,9 @@
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
 
+  // ✅ alias usado en copy (WhatsApp/UI)
+  function formatCLP(n){ return clp(n); }
+
   function nowISO(){ return new Date().toISOString(); }
   function todayISO(){
     const d=new Date();
@@ -95,20 +98,6 @@
         disponibleCurso:61800
       }]);
     }
-  }
-
-  // -------- Global demo mode (centralizado) --------
-  function demoModeEnabled(){
-    try{
-      // 1) Flag global (definido en core.js)
-      if(window.CURSAPP && window.CURSAPP.DEMO_MODE === true) return true;
-      // 2) URL override: ?demo=1
-      const qs = new URLSearchParams(location.search);
-      if(qs.get("demo") === "1") return true;
-      // 3) Local override (persistente): localStorage.cursapp_demo_mode = "1"
-      if(localStorage.getItem("cursapp_demo_mode") === "1") return true;
-    }catch(e){}
-    return false;
   }
 
   // -------- Modal --------
@@ -331,170 +320,190 @@
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
-
   function renderPayments(){
-  const paysAll = load(KEY_PAYMENTS, []);
-  const tasksAll = load(KEY_TASKS, []);
+    const paysAll = load(KEY_PAYMENTS, []);
+    const tasksAll = load(KEY_TASKS, []);
 
-  const chips = `
-    <div class="chips">
-      <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
-      <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
-      <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
-      <button class="chip ${payFilter==="credit"?"active":""}" onclick="setPayFilter('credit')">Saldo a favor</button>
-    </div>
-  `;
+    const chips = `
+      <div class="chips">
+        <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
+        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
+        <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
+        <button class="chip ${payFilter==="credit"?"active":""}" onclick="setPayFilter('credit')">Saldo a favor</button>
+      </div>
+    `;
 
-  // filtro de pagos (como antes)
-  let paysFiltered = [];
-  if(payFilter==="pending") paysFiltered = paysAll.filter(p=>p.status==="pending" || p.status==="partial");
-  else if(payFilter==="upcoming") paysFiltered = paysAll.filter(p=>p.status==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
-  else if(payFilter==="paid") paysFiltered = paysAll.filter(p=>p.status==="paid");
-  else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>p.status==="credit");
-  else paysFiltered = paysAll.slice();
+    function renderPaymentRow(r){
+      const st = String(r.status||"").toLowerCase();
+      const isPend = (st==="pending" || st==="partial");
+      const isPaidRow = (st==="paid");
+      const isCred = (st==="credit");
 
-function formatCLP(n){
-  return "$" + Number(n || 0).toLocaleString("es-CL");
-}
-    
-  // helpers
-  const taskById = Object.fromEntries(tasksAll.map(t=>[t.id,t]));
-  const taskTitle = (t)=> String(t?.title || "Campaña").trim();
-  const taskMeta = (t)=>{
-    const type = (t?.type==="monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
-    const part = (t?.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
-    const amt  = Number(t?.amount||0);
-    const range = (t?.startDate && t?.dueDate) ? `${t.startDate} → ${t.dueDate}` : "";
-    return { type, part, amt, range };
-  };
+      const badge = isPaidRow ? `<span class="tag ok">Pagada</span>`
+                  : isCred ? `<span class="tag">Saldo a favor</span>`
+                  : `<span class="tag warn">Pendiente</span>`;
 
-  function renderEmptyCampaign(t){
-    const m = taskMeta(t);
-    return `
-      <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:#cbd5e1;"></div>
-        <div style="padding:12px 12px 10px 12px;">
-          <div style="font-weight:950;font-size:17px;">${esc(taskTitle(t))}</div>
-          ${m.range ? `<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>` : ``}
+      const due = r.dueDate ? dueBadge(r.dueDate) : ``;
+      const dueTxt = r.dueDate ? `<div class="muted" style="margin-top:6px;">Vence ${esc(r.dueDate)} · ${due}</div>` : ``;
+
+      const amount = Number(r.amountRemaining ?? r.amount ?? 0);
+
+      return `
+        <div class="payRow">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="min-width:200px;">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${badge}${r.typeTag?`<span class="tag">${esc(r.typeTag)}</span>`:""}</div>
+              <div style="margin-top:8px;font-weight:950;font-size:18px;">${formatCLP(amount)}</div>
+              ${dueTxt}
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              ${isPend ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : `<span class="muted">—</span>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // filtro de pagos
+    let paysFiltered = [];
+    if(payFilter==="pending") paysFiltered = paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()));
+    else if(payFilter==="upcoming") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+    else if(payFilter==="paid") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid");
+    else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit");
+    else paysFiltered = paysAll.slice();
+
+    // próxima cuota destacada (solo si hay pendiente con fecha)
+    const nextDue = paysAll
+      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
+      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+
+    const nextCard = nextDue ? `
+      <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
+        <div style="font-weight:950;">Próxima cuota</div>
+        <div class="muted" style="margin-top:6px;font-weight:800;">
+          Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div style="font-weight:950;font-size:18px;">${formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0)}</div>
+          <button class="btnx primary" onclick="payNow('${esc(nextDue.id)}')">Pagar</button>
+        </div>
+      </div>
+    ` : ``;
+
+    // agrupar pagos por campaña
+    const paysByTask = {};
+    paysFiltered.forEach(p=>{
+      const tid = p.fromTaskId || "no_task";
+      paysByTask[tid] = paysByTask[tid] || [];
+      paysByTask[tid].push(p);
+    });
+
+    function campaignMeta(t){
+      const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
+      const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
+      return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"" };
+    }
+
+    function emptyCampaignCard(t){
+      const m = campaignMeta(t);
+      return `
+        <div class="card" style="margin-top:12px;">
+          <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+          ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <span class="tag">Monto ${formatCLP(m.amt)}</span>
+            <span class="tag">Monto ${formatCLP(m.amount)}</span>
             <span class="tag">${esc(m.type)}</span>
             <span class="tag">${esc(m.part)}</span>
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
-            Aún no hay cobros publicados para esta campaña.
-            Cuando la directiva publique los cobros, aparecerán aquí.
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  // -------- render por campaña (desde TASKS) --------
-  // Importante: mostramos campañas aunque no tengan pagos aún
-  const cards = tasksAll
-    .slice()
-    .sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")))
-    .map(t=>{
-      const rows = paysFiltered.filter(p=>p.fromTaskId===t.id);
-
-      // Si no hay pagos para este filtro…
-      if(!rows.length){
-        // …pero si tampoco hay pagos “de ningún tipo” para esa campaña, mostramos placeholder
-        const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
-        if(!hasAny) return renderEmptyCampaign(t);
-
-        // …si sí hay pagos pero no calzan con el filtro, mostramos card suave
-        return `
-          <div class="card" style="margin-top:12px;">
-            <div style="font-weight:950;">${esc(taskTitle(t))}</div>
-            <div class="muted" style="margin-top:6px;">
-              No hay pagos para este filtro en esta campaña.
-            </div>
-          </div>
-        `;
-      }
-
-      // Orden
-      rows.sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")));
-
-      // UX: si es single, agregamos un resumen
-      const isSingle = (t.type !== "monthly");
-      if(isSingle){
-        const total = rows.reduce((s,p)=>s+Number(p.amount||0),0);
-        const pend = rows.filter(p=>p.status==="pending" || p.status==="partial").reduce((s,p)=>s+Number(p.amount||0),0);
-        const paid = rows.filter(p=>p.status==="paid").reduce((s,p)=>s+Number(p.amount||0),0);
-
-        return `
-          <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:#5b5ce2;"></div>
-            <div style="padding:12px 12px 10px 12px;">
-              <div style="font-weight:950;font-size:17px;">${esc(taskTitle(t))}</div>
-              <div class="muted" style="margin-top:6px;">Pago único · ${rows.length} item(s)</div>
-              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                <span class="tag ok">Pagado ${formatCLP(paid)}</span>
-                <span class="tag warn">Pendiente ${formatCLP(pend)}</span>
-                <span class="tag">Total ${formatCLP(total)}</span>
-              </div>
-            </div>
-            <div style="padding:0 12px 12px;">
-              ${rows.map(p=>paymentRow("apoderado", p)).join("")}
-            </div>
-          </div>
-        `;
-      }
-
-      // mensual: mostramos todas las cuotas
-      return `
-        <div class="card" style="margin-top:12px;position:relative;overflow:hidden;">
-          <div style="position:absolute;left:0;top:0;bottom:0;width:6px;background:#5b5ce2;"></div>
-          <div style="padding:12px 12px 10px 12px;">
-            <div style="font-weight:950;font-size:17px;">${esc(taskTitle(t))}</div>
-            <div class="muted" style="margin-top:6px;">Mensual · ${rows.length} cuota(s)</div>
-          </div>
-          <div style="padding:0 12px 12px;">
-            ${rows.map(p=>paymentRow("apoderado", p)).join("")}
+            Aún no hay cobros publicados para esta campaña. Cuando la directiva publique los cobros, aparecerán aquí.
           </div>
         </div>
       `;
-    })
-    .join("");
-
-  // “otros pagos” sin campaña
-  const noTaskRows = paysFiltered.filter(p=>!p.fromTaskId);
-  const others = noTaskRows.length ? `
-    <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;">Otros (sin campaña)</div>
-      <div class="muted" style="margin-top:6px;">Cobros no asociados a una campaña</div>
-      ${noTaskRows.map(p=>paymentRow("apoderado", p)).join("")}
-    </div>
-  ` : ``;
-
-  // empty total
-  const emptyAll = (!tasksAll.length && !paysAll.length);
-
-  app.innerHTML = `
-    <div class="card">
-      <div class="kTitle">Pagos</div>
-      <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
-      ${chips}
-    </div>
-
-    ${
-      emptyAll
-        ? `<div class="card" style="margin-top:12px;">
-             <div class="muted" style="font-weight:800;line-height:1.45;">
-               Aún no hay campañas ni cobros publicados.
-               Cuando la directiva cree una campaña, aparecerá aquí.
-             </div>
-           </div>`
-        : (cards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
     }
 
-    ${others}
-  `;
-}
-  
+    const campaignCards = tasksAll
+      .slice()
+      .sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")))
+      .map(t=>{
+        const rows = paysByTask[t.id] || [];
+        if(!rows.length){
+          const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
+          return hasAny
+            ? `<div class="card" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
+            : emptyCampaignCard(t);
+        }
+
+        rows.sort((a,b)=>{
+          const da = a.dueDate ? daysTo(a.dueDate) : 99999;
+          const db = b.dueDate ? daysTo(b.dueDate) : 99999;
+          return da-db;
+        });
+
+        const m = campaignMeta(t);
+        const isMonthly = String(t.type||"") === "monthly";
+
+        // Resumen simple para single (paga todo)
+        if(!isMonthly){
+          const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
+          const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
+          return `
+            <div class="card" style="margin-top:12px;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div>
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                  <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+                </div>
+                ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${esc(t.id)}')">Pagar todo</button>` : ``}
+              </div>
+              <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
+              <div style="margin-top:10px;">
+                ${rows.map(r=>renderPaymentRow(r)).join("")}
+              </div>
+            </div>
+          `;
+        }
+
+        // Mensual
+        return `
+          <div class="card" style="margin-top:12px;">
+            <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+            <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+            <div style="margin-top:10px;">
+              ${rows.map(r=>renderPaymentRow(r)).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+    const others = (paysByTask["no_task"]||[]).length ? `
+      <div class="card" style="margin-top:12px;">
+        <div style="font-weight:950;">Otros (sin campaña)</div>
+        <div class="muted" style="margin-top:6px;">Cobros no asociados a una campaña</div>
+        ${(paysByTask["no_task"]||[]).map(r=>renderPaymentRow(r)).join("")}
+      </div>
+    ` : ``;
+
+    const emptyAll = (!tasksAll.length && !paysAll.length);
+
+    app.innerHTML = `
+      <div class="card">
+        <div class="kTitle">Pagos</div>
+        <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
+        ${chips}
+      </div>
+
+      ${nextCard}
+
+      ${
+        emptyAll
+          ? `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:800;line-height:1.45;">Aún no hay campañas ni cobros publicados. Cuando la directiva cree una campaña, aparecerá aquí.</div></div>`
+          : (campaignCards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
+      }
+
+      ${others}
+    `;
+  }
 
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
@@ -612,8 +621,7 @@ function formatCLP(n){
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   // Boot
-  // ✅ Solo sembrar data demo si el modo demo está activado globalmente
-  if(demoModeEnabled()) ensureDemo();
+  ensureDemo();
   initMenu();
   go("payments"); // para revisión rápida
 })();

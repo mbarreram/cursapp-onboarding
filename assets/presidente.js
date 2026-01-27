@@ -344,6 +344,7 @@
 
             <div class="actions">
               <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+              ${(!payments().some(p=>p.fromTaskId===t.id)) ? `<button class="btnx primary" onclick="publishCobros('${t.id}')">📣 Publicar cobros</button>` : ``}
               ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
             </div>
           </div>
@@ -425,7 +426,54 @@
   window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
 
   // Mantener ELIMINAR campaña (activa) en Presidente
-  window.deleteCampaign = function(taskId){
+  
+  // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
+  window.publishCobros = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return alert("Campaña no encontrada.");
+
+    // Evitar duplicados
+    const ps = payments().slice();
+
+    function addPayment(dueDate, concept){
+      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
+      if(exists) return;
+      ps.unshift({
+        id: uid("pay"),
+        fromTaskId: taskId,
+        concept,
+        amount: Number(t.amount||0),
+        status: "pending",
+        dueDate,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    function addMonths(dateStr, n){
+      const d = new Date(dateStr + "T12:00:00");
+      if(isNaN(d.getTime())) return dateStr;
+      d.setMonth(d.getMonth()+n);
+      return d.toISOString().slice(0,10);
+    }
+
+    const type = String(t.type||"single").toLowerCase();
+    if(type === "monthly"){
+      const months = Math.max(1, Number(t.months||1));
+      const base = t.startDate || todayISO();
+      for(let i=0;i<months;i++){
+        const due = addMonths(base, i);
+        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
+      }
+    }else{
+      addPayment(t.dueDate || todayISO(), t.title);
+    }
+
+    save(KEY_PAYMENTS, ps);
+    markDirty();
+    alert("Cobros publicados ✅");
+    go("campanas");
+  };
+window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
 
@@ -494,12 +542,8 @@
   }
 
   // ----- boot -----
-  // ✅ Seed demo SOLO si está activado globalmente (core.js) o por URL (?demo=1)
-  const DEMO_SEED = (
-    (window.CURSAPP && window.CURSAPP.DEMO_MODE === true) ||
-    (new URLSearchParams(location.search).get("demo") === "1") ||
-    (localStorage.getItem("cursapp_demo_mode") === "1")
-  );
+  // ✅ CAMBIO 1: no sembrar demo automáticamente
+  const DEMO_SEED = false;
   if (DEMO_SEED) ensureDemo();
 
   initMenu();
