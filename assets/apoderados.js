@@ -31,31 +31,114 @@
     return true;
   }
 
-  // ---------------- Aprobar / eliminar ----------------
-  function approve(id, role){
-    const ok = upsertEnrollment(id, {
-      status:"approved",
-      reviewedAt:new Date().toISOString(),
-      reviewedBy: role||"directiva",
-      reviewNote:""
-    });
-    if(!ok) alert("No encontrado");
-    render();
+  // ---------------- Clipboard helpers ----------------
+  async function copyText(text){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+        alert("Copiado ✅");
+        return;
+      }
+    }catch(e){}
+    alert("Copia manualmente:\n\n" + text);
   }
 
-  function del(id, role){
-    const note = prompt("Motivo (opcional):", "Registro incorrecto / curso equivocado") || "";
-    const ok = upsertEnrollment(id, {
-      status:"deleted",
-      reviewedAt:new Date().toISOString(),
-      reviewedBy: role||"directiva",
-      reviewNote: note
-    });
-    if(!ok) alert("No encontrado");
-    render();
+  // ---------------- WhatsApp text builders ----------------
+  function buildWhatsappInvite(courseObj){
+    const c = courseObj?.course || {};
+    const code = courseObj?.inviteCode || "";
+
+    const courseLabel = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
+    const school = c.schoolName || "Colegio";
+
+    const url = (location && location.origin)
+      ? (location.origin + "/onboarding/dashboard.html")
+      : "https://cursapp.netlify.app/onboarding/dashboard.html";
+
+    return (
+      "👋 Hola apoderados/as\n\n" +
+      "Ya está activo *Cursapp* para nuestro curso:\n\n" +
+      "🏫 *" + school + "*\n" +
+      "📘 *" + courseLabel + "*\n\n" +
+      "Para registrarte como apoderado/a sigue estos pasos:\n\n" +
+      "1️⃣ Ingresa aquí:\n" +
+      url + "\n\n" +
+      "2️⃣ Cuando te lo pida, pega este *CÓDIGO DE INVITACIÓN* 👇\n" +
+      "👉 *" + code + "*\n\n" +
+      "💳 *Activación única:* *$7.990 por apoderado*\n" +
+      "(Permite usar Cursapp durante todo el año)\n\n" +
+      "✨ ¿Para qué sirve Cursapp?\n" +
+      "• Facilita la tesorería del curso\n" +
+      "• Ordena pagos y campañas\n" +
+      "• Mejora la comunicación con la directiva\n" +
+      "• Da transparencia a los fondos del curso\n\n" +
+      "👉 Tu registro será revisado por la directiva antes de activarse.\n\n" +
+      "¡Gracias por apoyar la organización del curso! 🙌"
+    );
   }
 
-  // ---------------- Tesorero (asignación por presidente) ----------------
+  function buildWhatsappApproval(courseObj, enr){
+    const c = courseObj?.course || {};
+    const school = c.schoolName || "Colegio";
+    const courseLabel = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
+    const name = (enr?.apoderadoName || "Apoderado/a").trim();
+
+    return (
+      "✅ Hola " + name + "\n\n" +
+      "Tu registro en *Cursapp* ya fue aprobado para:\n" +
+      "🏫 *" + school + "*\n" +
+      "📘 *" + courseLabel + "*\n\n" +
+      "Ya puedes ingresar y ver tus cobros/pagos.\n\n" +
+      "Gracias por apoyar la organización del curso 🙌"
+    );
+  }
+
+  // ---------------- Modal helpers ----------------
+  function openModal(html){
+    const root = $("modalRoot");
+    if(!root) return;
+    root.innerHTML = html;
+  }
+  function closeModal(){
+    const root = $("modalRoot");
+    if(root) root.innerHTML = "";
+  }
+
+  function openApprovalModal(enr){
+    const msg = buildWhatsappApproval(courseObj(), enr);
+    openModal(`
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:20000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+        <div class="card" style="width:min(640px,100%);margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+            <div style="font-weight:950;font-size:18px;">Aprobado ✅</div>
+            <button class="btn ghost" type="button" onclick="window.__closeModal()">Cerrar</button>
+          </div>
+
+          <div class="muted" style="margin-top:10px;font-weight:800;">
+            Se aprobó a <b>${(enr.apoderadoName||"Apoderado/a")}</b>.
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="muted" style="font-weight:900;margin-bottom:6px;">Mensaje listo para WhatsApp</div>
+            <textarea id="waApprovalText" style="width:100%;min-height:160px;border:1px solid rgba(229,231,235,.9);border-radius:14px;padding:10px;font-weight:700;">${msg}</textarea>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+            <button class="btn ghost" type="button" onclick="window.__closeModal()">Cerrar</button>
+            <button class="btn primary" type="button" onclick="window.__copyApproval()">
+              📲 Copiar mensaje WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    window.__copyApproval = ()=> copyText(document.getElementById("waApprovalText").value);
+  }
+
+  window.__closeModal = closeModal;
+
+  // ---------------- Tesorero assignment ----------------
   function setTesorero(enrollmentId){
     const ck = activeCourseKey();
     if(!ck) return alert("No hay curso activo.");
@@ -77,10 +160,8 @@
       }
     });
 
-    // marcar nuevo tesorero
     target.directivaRole = "tesorero";
 
-    // guardar en curso
     course.directiva = course.directiva || {};
     course.directiva.tesorero = {
       enrollmentId: target.enrollmentId,
@@ -104,7 +185,9 @@
 
     const list = loadEnrollments();
     list.forEach(e=>{
-      if(e.courseKey === ck && e.directivaRole === "tesorero") e.directivaRole = null;
+      if(e.courseKey === ck && e.directivaRole === "tesorero"){
+        e.directivaRole = null;
+      }
     });
 
     course.directiva = course.directiva || {};
@@ -117,50 +200,42 @@
     render();
   }
 
-  // ---------------- WhatsApp invite ----------------
-  
-function buildWhatsappInvite(courseObj){
-  const c = courseObj?.course || {};
-  const code = courseObj?.inviteCode || "";
+  // ---------------- Approve / Delete ----------------
+  function approve(id, role){
+    const ck = activeCourseKey();
+    const listBefore = loadEnrollments();
+    const targetBefore = listBefore.find(e => e.enrollmentId === id);
 
-  const courseLabel = `${c.level || ""}${c.letter || ""} ${c.year || ""} · ${c.jornada || ""}`.trim();
-  const school = c.schoolName || "Colegio";
+    const ok = upsertEnrollment(id, {
+      status:"approved",
+      reviewedAt:new Date().toISOString(),
+      reviewedBy: role||"directiva",
+      reviewNote:""
+    });
 
-  const url = (location && location.origin)
-    ? (location.origin + "/onboarding/dashboard.html")
-    : "https://cursapp.netlify.app/onboarding/dashboard.html";
+    if(!ok){
+      alert("No encontrado");
+      return;
+    }
 
-  return (
-    "👋 Hola apoderados/as\n\n" +
-    "Ya está activo *Cursapp* para nuestro curso:\n\n" +
-    "🏫 *" + school + "*\n" +
-    "📘 *" + courseLabel + "*\n\n" +
-    "Para registrarte como apoderado/a sigue estos pasos:\n\n" +
-    "1️⃣ Ingresa aquí:\n" +
-    url + "\n\n" +
-    "2️⃣ Cuando te lo pida, pega este *CÓDIGO DE INVITACIÓN* 👇\n" +
-    "👉 *" + code + "*\n\n" +
-    "💳 *Activación única:* *$7.990 por apoderado*\n" +
-    "(Permite usar Cursapp durante todo el año)\n\n" +
-    "✨ ¿Para qué sirve Cursapp?\n" +
-    "• Facilita la tesorería del curso\n" +
-    "• Ordena pagos y campañas\n" +
-    "• Mejora la comunicación con la directiva\n" +
-    "• Da transparencia a los fondos del curso\n\n" +
-    "👉 Tu registro será revisado por la directiva antes de activarse.\n\n" +
-    "¡Gracias por apoyar la organización del curso! 🙌"
-  );
-}
-  async function copyText(text){
-    try{
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        await navigator.clipboard.writeText(text);
-        alert("Copiado ✅");
-        return;
-      }
-    }catch(e){}
-    // fallback
-    alert("Copia manualmente:\n\n" + text);
+    // Re-leer enrollments para obtener data actual
+    const listAfter = loadEnrollments();
+    const enr = listAfter.find(e => e.enrollmentId === id) || targetBefore || {};
+
+    render();
+    openApprovalModal(enr);
+  }
+
+  function del(id, role){
+    const note = prompt("Motivo (opcional):", "Registro incorrecto / curso equivocado") || "";
+    const ok = upsertEnrollment(id, {
+      status:"deleted",
+      reviewedAt:new Date().toISOString(),
+      reviewedBy: role||"directiva",
+      reviewNote: note
+    });
+    if(!ok) alert("No encontrado");
+    render();
   }
 
   // ---------------- UI helpers ----------------
@@ -245,15 +320,12 @@ function buildWhatsappInvite(courseObj){
       <div class="card codeBox" style="margin-top:12px;">
         <div style="font-weight:950;">Código de invitación (Apoderados)</div>
         <div class="code" style="margin-top:10px;">${invite}</div>
-        <div class="muted" style="margin-top:6px;">Para registro de apoderados.</div>
 
-        <button class="btn ghost" type="button" style="width:100%;margin-top:10px;"
-          onclick="window.__copyInviteCode()">
+        <button class="btn ghost" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyInviteCode()">
           📋 Copiar código
         </button>
 
-        <button class="btn primary" type="button" style="width:100%;margin-top:10px;"
-          onclick="window.__copyWhatsappInvite()">
+        <button class="btn primary" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyWhatsappInvite()">
           📲 Copiar invitación WhatsApp
         </button>
       </div>
@@ -319,11 +391,11 @@ function buildWhatsappInvite(courseObj){
     window.__approve = (id)=> approve(id, role);
     window.__delete  = (id)=> del(id, role);
 
-    // handlers nuevos
+    // handlers tesorero
     window.setTesorero = setTesorero;
     window.clearTesorero = clearTesorero;
 
-    // handlers de copiado
+    // copiado
     window.__copyInviteCode = ()=> copyText(invite);
     window.__copyWhatsappInvite = ()=> copyText(buildWhatsappInvite(c));
   }
