@@ -44,7 +44,7 @@
         👥 Apoderados
       </button>
 
-      <!-- ✅ NUEVO: cambiar a apoderado -->
+      <!-- ✅ Cambiar a apoderado (basado en enrollment/email) -->
       <button class="btn ghost" type="button"
         style="width:100%;text-align:left;"
         onclick="CURSAPP_SWITCH.toApoderado()">
@@ -68,16 +68,9 @@
   <button class="navItem" data-tab="informes">📊<span>Informes</span></button>
 </nav>
 
-<!-- ✅ switch de rol -->
-<script defer src="/assets/switchRole.js?v=2000"></script>
+<!-- ✅ nuevo switch por enrollment -->
+<script defer src="/assets/switchRoleEnrollment.js?v=2200"></script>
 
 <script defer src="/assets/tesorero.js?v=1001"></script>
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    if (window.CURSAPP_SWITCH && CURSAPP_SWITCH.maybeShowRolePicker) {
-      CURSAPP_SWITCH.maybeShowRolePicker();
-    }
-  });
-</script>
 </body>
 </html>
