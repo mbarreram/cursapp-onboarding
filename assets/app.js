@@ -1,12 +1,41 @@
 /* ========= Cursapp · app.js (ESTABLE + PAGOS + CREAR COBRO) ========= */
 
 const KEY_USER = "cursapp_demo_user";
-const KEY_PAYMENTS = "cursapp_payments_v1";
-const KEY_RECEIPTS = "cursapp_receipts_v1";
-const KEY_TASKS = "cursapp_tasks_v1";
-const KEY_MONTHLY_REPORTS = "cursapp_monthly_reports_v1";
-const KEY_EXPENSES = "cursapp_expenses_v1";
-const DEMO_SEED = false; // Parte 3: prueba real sin data
+const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+
+/** Scope all course data by active courseKey to avoid "phantom" data across resets/tests. */
+function __cursappCourseScope(){
+  const raw = localStorage.getItem(KEY_ACTIVE_COURSE) || "default_course";
+  return String(raw).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+const COURSE_SCOPE = __cursappCourseScope();
+const scopedKey = (name) => `cursapp_${COURSE_SCOPE}_${name}`;
+
+// Course-scoped stores (shared across roles for the same course)
+const KEY_PAYMENTS = scopedKey("payments_v1");
+const KEY_RECEIPTS = scopedKey("receipts_v1");
+const KEY_TASKS = scopedKey("tasks_v1");
+const KEY_MONTHLY_REPORTS = scopedKey("monthly_reports_v1");
+const KEY_EXPENSES = scopedKey("expenses_v1");
+
+// Demo seed flag (keep false for real tests)
+// ---- one-time migration from legacy unscoped keys ----
+(function __migrateLegacyKeys(){
+  function mv(oldKey, newKey){
+    try{
+      if(localStorage.getItem(newKey) == null && localStorage.getItem(oldKey) != null){
+        localStorage.setItem(newKey, localStorage.getItem(oldKey));
+        localStorage.removeItem(oldKey);
+      }
+    }catch(e){}
+  }
+  mv("cursapp_payments_v1", KEY_PAYMENTS);
+  mv("cursapp_receipts_v1", KEY_RECEIPTS);
+  mv("cursapp_tasks_v1", KEY_TASKS);
+  mv("cursapp_monthly_reports_v1", KEY_MONTHLY_REPORTS);
+  mv("cursapp_expenses_v1", KEY_EXPENSES);
+})();
+// Parte 3: prueba real sin data
 
 
 /* ---------- helpers ---------- */
@@ -51,7 +80,7 @@ function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null");
 function isDirectiva(role){ return role === "tesorero" || role === "presidente"; }
 function logout(){
   localStorage.removeItem(KEY_USER);
-  window.location.href = "login.html";
+  window.location.href = "/index.html";
 }
 
 
