@@ -127,12 +127,11 @@
         localStorage.removeItem(KEY_MONTHLY_REPORTS);
         localStorage.removeItem(KEY_REPORTS_DIRTY);
         alert("Datos reseteados.");
-        ensureDemo();
         go("home");
       };
     }
     if(logoutBtn){
-      logoutBtn.onclick = ()=> location.href="login.html";
+      logoutBtn.onclick = ()=> location.href="/index.html";
     }
   }
 
@@ -662,8 +661,11 @@
   window.generateMonthly = generateMonthly;
 
   // ---------- Boot ----------
-  ensureDemo();
-  initMenu();
-  go("rendiciones");
+  // ----- boot -----
+const DEMO_SEED = false; // ✅ pruebas limpias
+if (DEMO_SEED) ensureDemo();
+
+initMenu();
+go("home");
 
 })();
