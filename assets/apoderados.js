@@ -31,7 +31,7 @@
     return true;
   }
 
-  // -------- Aprobación / eliminación (ya lo tenías) --------
+  // ---------------- Aprobar / eliminar ----------------
   function approve(id, role){
     const ok = upsertEnrollment(id, {
       status:"approved",
@@ -55,7 +55,7 @@
     render();
   }
 
-  // -------- NUEVO: asignar / remover tesorero --------
+  // ---------------- Tesorero (asignación por presidente) ----------------
   function setTesorero(enrollmentId){
     const ck = activeCourseKey();
     if(!ck) return alert("No hay curso activo.");
@@ -70,7 +70,7 @@
     if(String(target.courseKey||"") !== ck) return alert("No pertenece al curso activo.");
     if(target.status !== "approved") return alert("Debe estar aprobado antes de asignar tesorero.");
 
-    // desmarcar tesorero anterior en enrollments
+    // desmarcar tesorero anterior
     list.forEach(e=>{
       if(e.courseKey === ck && e.directivaRole === "tesorero"){
         e.directivaRole = null;
@@ -104,9 +104,7 @@
 
     const list = loadEnrollments();
     list.forEach(e=>{
-      if(e.courseKey === ck && e.directivaRole === "tesorero"){
-        e.directivaRole = null;
-      }
+      if(e.courseKey === ck && e.directivaRole === "tesorero") e.directivaRole = null;
     });
 
     course.directiva = course.directiva || {};
@@ -119,7 +117,43 @@
     render();
   }
 
-  // -------- UI helpers --------
+  // ---------------- WhatsApp invite ----------------
+  function buildWhatsappInvite(courseObj){
+    const c = courseObj?.course || {};
+    const code = courseObj?.inviteCode || "";
+    const label = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
+    const school = c.schoolName || "Colegio";
+
+    // usa el dominio actual (Netlify u otro)
+    const url = (location && location.origin)
+      ? (location.origin + "/onboarding/dashboard.html")
+      : "https://cursapp.netlify.app/onboarding/dashboard.html";
+
+    return (
+      "Hola! 👋\n\n" +
+      "Ya está activo Cursapp para el curso:\n" +
+      `${school} · ${label}\n\n` +
+      "Para registrarte como apoderado:\n" +
+      `${url}\n\n` +
+      "Pega este código de invitación:\n" +
+      `${code}\n\n` +
+      "Luego la directiva aprueba tu ingreso ✅"
+    );
+  }
+
+  async function copyText(text){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+        alert("Copiado ✅");
+        return;
+      }
+    }catch(e){}
+    // fallback
+    alert("Copia manualmente:\n\n" + text);
+  }
+
+  // ---------------- UI helpers ----------------
   function headerUserLine(u){
     const who = $("whoLine");
     if(!who) return;
@@ -138,7 +172,7 @@
     </div>`;
   }
 
-  // -------- render --------
+  // ---------------- render ----------------
   function render(){
     const app = $("app");
     if(!app) return;
@@ -160,7 +194,7 @@
     }
 
     const c = courseObj();
-    const invite = c?.inviteCode || ""; // si lo usas, lo muestra
+    const invite = c?.inviteCode || "";
     const tes = c?.directiva?.tesorero || null;
 
     const listAll = loadEnrollments();
@@ -202,6 +236,16 @@
         <div style="font-weight:950;">Código de invitación (Apoderados)</div>
         <div class="code" style="margin-top:10px;">${invite}</div>
         <div class="muted" style="margin-top:6px;">Para registro de apoderados.</div>
+
+        <button class="btn ghost" type="button" style="width:100%;margin-top:10px;"
+          onclick="window.__copyInviteCode()">
+          📋 Copiar código
+        </button>
+
+        <button class="btn primary" type="button" style="width:100%;margin-top:10px;"
+          onclick="window.__copyWhatsappInvite()">
+          📲 Copiar invitación WhatsApp
+        </button>
       </div>
     ` : ``;
 
@@ -220,7 +264,6 @@
            </div>`
         : `<div class="muted">—</div>`;
 
-      // ✅ Asignar tesorero (solo presidente, solo aprobados, no si ya es tesorero)
       const assignTesBtn = (role === "presidente" && e.status === "approved" && e.directivaRole !== "tesorero")
         ? `<button class="btn ghost" type="button" onclick="setTesorero('${e.enrollmentId}')">Asignar como tesorero</button>`
         : ``;
@@ -269,6 +312,10 @@
     // handlers nuevos
     window.setTesorero = setTesorero;
     window.clearTesorero = clearTesorero;
+
+    // handlers de copiado
+    window.__copyInviteCode = ()=> copyText(invite);
+    window.__copyWhatsappInvite = ()=> copyText(buildWhatsappInvite(c));
   }
 
   document.addEventListener("DOMContentLoaded", render);
