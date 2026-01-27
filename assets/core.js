@@ -1,7 +1,7 @@
 /* ===========================
    Cursapp · core.js (Reset)
-   - Reset demo (cursapp* + legado)
-   - Reset total dev (borra TODO lo relacionado a Cursapp aunque tenga nombres antiguos)
+   - resetAll(): borra llaves de Cursapp + legacy
+   - hardReset(): BORRA TODO localStorage del sitio (DEV) => no más datos fantasma
    - Expone window.CURSAPP.resetAll() y window.CURSAPP.hardReset()
    =========================== */
 
@@ -21,53 +21,21 @@
       if (!k) continue;
       if (k.startsWith("cursapp") || LEGACY_KEYS.has(k)) toDelete.push(k);
     }
+
     toDelete.forEach((k) => localStorage.removeItem(k));
 
     alert("✅ Demo reseteada. Volviendo al login.");
     goLogin();
   }
 
-  // ✅ Reset TOTAL DEV: elimina todo lo que huela a Cursapp, incluso claves antiguas
+  // ✅ Reset TOTAL DEV: borra TODO el storage del sitio (la forma más robusta)
   function hardReset() {
-    if (!confirm("🧨 Reset TOTAL (DEV): borrará TODO lo relacionado a Cursapp (incluye datos antiguos). ¿Continuar?")) return;
+    if (!confirm("🧨 Reset TOTAL (DEV): borrará TODO el almacenamiento local de este sitio. ¿Continuar?")) return;
 
-    const toDelete = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
+    localStorage.clear();
 
-      const ks = k.toLowerCase();
-
-      // reglas amplias: cursapp* o legacy o nombres antiguos comunes
-      if (
-        ks.startsWith("cursapp") ||
-        LEGACY_KEYS.has(k) ||
-        ks.includes("camp") ||       // campañas/campanas
-        ks.includes("cobro") ||
-        ks.includes("pago") ||
-        ks.includes("recibo") ||
-        ks.includes("receipt") ||
-        ks.includes("tesor") ||
-        ks.includes("presid") ||
-        ks.includes("apoder") ||
-        ks.includes("onb") ||
-        ks.includes("curso") ||
-        ks.includes("report") ||
-        ks.includes("informe") ||
-        ks.includes("expense") ||
-        ks.includes("gasto") ||
-        ks.includes("rendicion") ||
-        ks.includes("task")
-      ) {
-        toDelete.push(k);
-      }
-    }
-
-    // eliminar duplicados
-    Array.from(new Set(toDelete)).forEach((k) => localStorage.removeItem(k));
-
-    alert("✅ Reset TOTAL aplicado. Se recargará el sitio.");
-    location.assign("/index.html");
+    alert("✅ Reset TOTAL aplicado. Volviendo al login.");
+    goLogin();
   }
 
   window.CURSAPP = window.CURSAPP || {};
@@ -76,13 +44,19 @@
   window.CURSAPP.goLogin = goLogin;
 
   function wire() {
+    // si existe botón Reset demo
     const resetBtn = document.getElementById("resetMenuItem");
     if (resetBtn) resetBtn.onclick = resetAll;
 
+    // si existe botón Reset total (dev)
+    const hardBtn = document.getElementById("hardResetMenuItem");
+    if (hardBtn) hardBtn.onclick = hardReset;
+
+    // volver al login (onboarding)
     const backLogin = document.getElementById("backLogin");
     if (backLogin) backLogin.onclick = goLogin;
 
-    // Atajo opcional: Ctrl/Cmd + Shift + R → hard reset (no refresh)
+    // Atajo opcional: Ctrl/Cmd + Shift + R → hard reset
     document.addEventListener("keydown", (e) => {
       const isCmd = e.metaKey && e.shiftKey && (e.key === "R" || e.key === "r");
       const isCtrl = e.ctrlKey && e.shiftKey && (e.key === "R" || e.key === "r");
