@@ -128,6 +128,12 @@ function dueBadge(iso){
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
 
+  
+function getActiveCourseKey(){
+  return localStorage.getItem(KEY_ACTIVE_COURSE) || null;
+}
+
+
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
@@ -329,9 +335,15 @@ function dueBadge(iso){
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
-    const paysAll = load(KEY_PAYMENTS, []);
-    const tasksAll = load(KEY_TASKS, []);
+    const courseKey = getActiveCourseKey();
 
+const paysAll = load(KEY_PAYMENTS, []).filter(p =>
+  !courseKey || p.courseKey === courseKey
+);
+
+const tasksAll = load(KEY_TASKS, []).filter(t =>
+  !courseKey || t.courseKey === courseKey
+);
     const chips = `
       <div class="chips">
         <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
