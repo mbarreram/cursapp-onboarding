@@ -654,9 +654,16 @@ if(menu && !document.getElementById("resetCourseBtn")){
 
   // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+// Boot
+// ✅ Solo sembrar demo si está activado explícitamente
+const DEMO_MODE = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
 
-  // Boot
+if (DEMO_MODE) {
   ensureDemo();
-  initMenu();
-  go("payments"); // para revisión rápida
+}
+
+initMenu();
+go("payments"); // para revisión rápida
+})();
+ 
 })();
