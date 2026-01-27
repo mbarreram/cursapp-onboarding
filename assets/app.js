@@ -1,54 +1,81 @@
 /* ========= Cursapp · app.js (ESTABLE + PAGOS + CREAR COBRO) ========= */
 
 const KEY_USER = "cursapp_demo_user";
-const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
 
-/** Scope all course data by active courseKey to avoid "phantom" data across resets/tests. */
-function __cursappCourseScope(){
-  // 1) Prefer the explicit active course key
-  const rawActive = localStorage.getItem(KEY_ACTIVE_COURSE);
-  if(rawActive) return String(rawActive).replace(/[^a-zA-Z0-9_-]/g, "_");
-
-  // 2) Fallback to the course created by President (single-course MVP)
+// ========= Storage scoping (por curso) =========
+// Evita “datos fantasma” entre cursos / pruebas.
+function getCourseScope(){
   try{
-    const c = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null");
-    if(c && c.courseKey) return String(c.courseKey).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const active = localStorage.getItem("cursapp_active_course_v1");
+    if(active && String(active).trim()) return String(active).trim();
   }catch(e){}
-
-  // 3) No course context available
-  return "no_course";
+  try{
+    const course = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null");
+    const ck = course && course.courseKey;
+    if(ck && String(ck).trim()) return String(ck).trim();
+  }catch(e){}
+  return "global";
 }
-const COURSE_SCOPE = __cursappCourseScope();
-const scopedKey = (name) => `cursapp_${COURSE_SCOPE}_${name}`;
+function sanitizeScope(s){
+  return String(s||"global").replace(/[^a-zA-Z0-9_\-]/g,"_").slice(0,64) || "global";
+}
+const COURSE_SCOPE = sanitizeScope(getCourseScope());
 
-// Course-scoped stores (shared across roles for the same course)
+function scopedKey(base){
+  return `cursapp_${COURSE_SCOPE}_${base}`;
+}
+
+// New scoped keys
 const KEY_PAYMENTS = scopedKey("payments_v1");
 const KEY_RECEIPTS = scopedKey("receipts_v1");
 const KEY_TASKS = scopedKey("tasks_v1");
 const KEY_MONTHLY_REPORTS = scopedKey("monthly_reports_v1");
 const KEY_EXPENSES = scopedKey("expenses_v1");
 
-// Demo seed flag (keep false for real tests)
-const DEMO_SEED = false;
-// ---- one-time migration from legacy unscoped keys ----
-(function __migrateLegacyKeys(){
-  // If we don't have a course context, don't migrate old global keys into a "no_course" bucket.
-  if(COURSE_SCOPE === "no_course") return;
-  function mv(oldKey, newKey){
-    try{
-      if(localStorage.getItem(newKey) == null && localStorage.getItem(oldKey) != null){
-        localStorage.setItem(newKey, localStorage.getItem(oldKey));
-        localStorage.removeItem(oldKey);
-      }
-    }catch(e){}
-  }
-  mv("cursapp_payments_v1", KEY_PAYMENTS);
-  mv("cursapp_receipts_v1", KEY_RECEIPTS);
-  mv("cursapp_tasks_v1", KEY_TASKS);
-  mv("cursapp_monthly_reports_v1", KEY_MONTHLY_REPORTS);
-  mv("cursapp_expenses_v1", KEY_EXPENSES);
+// Legacy (unscoped) keys (for migration)
+const LEGACY_KEYS = {
+  payments: "cursapp_payments_v1",
+  receipts: "cursapp_receipts_v1",
+  tasks: "cursapp_tasks_v1",
+  reports: "cursapp_monthly_reports_v1",
+  expenses: "cursapp_expenses_v1"
+};
+
+// One-time migration: if legacy exists and scoped empty, move it.
+(function migrateLegacyOnce(){
+  try{
+    const marker = `cursapp_migrated_${COURSE_SCOPE}_v1`;
+    if(localStorage.getItem(marker) === "1") return;
+
+    // Only migrate into an empty scoped store (avoid overwriting).
+    const scopedHasAny =
+      localStorage.getItem(KEY_TASKS) || localStorage.getItem(KEY_PAYMENTS) ||
+      localStorage.getItem(KEY_EXPENSES) || localStorage.getItem(KEY_MONTHLY_REPORTS) ||
+      localStorage.getItem(KEY_RECEIPTS);
+
+    if(!scopedHasAny){
+      const map = [
+        [LEGACY_KEYS.tasks, KEY_TASKS],
+        [LEGACY_KEYS.payments, KEY_PAYMENTS],
+        [LEGACY_KEYS.expenses, KEY_EXPENSES],
+        [LEGACY_KEYS.reports, KEY_MONTHLY_REPORTS],
+        [LEGACY_KEYS.receipts, KEY_RECEIPTS],
+      ];
+
+      map.forEach(([from,to])=>{
+        const v = localStorage.getItem(from);
+        if(v != null) localStorage.setItem(to, v);
+      });
+    }
+
+    // Always remove legacy keys to prevent “ghost” reads elsewhere.
+    Object.values(LEGACY_KEYS).forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+
+    localStorage.setItem(marker, "1");
+  }catch(e){}
 })();
-// Parte 3: prueba real sin data
+
+const DEMO_SEED = false; // Parte 3: prueba real sin data
 
 
 /* ---------- helpers ---------- */
@@ -93,7 +120,7 @@ function getUser(){ return JSON.parse(localStorage.getItem(KEY_USER) || "null");
 function isDirectiva(role){ return role === "tesorero" || role === "presidente"; }
 function logout(){
   localStorage.removeItem(KEY_USER);
-  window.location.href = "/index.html";
+  window.location.href = "login.html";
 }
 
 
@@ -3020,9 +3047,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ DEMO seed controlado desde el tope del archivo (NO redeclarar DEMO_SEED acá)
   if (typeof DEMO_SEED !== "undefined" && DEMO_SEED) {
-    ensureSeedPayments();
-    ensureSeedExpenses();
-  }
+    if (typeof DEMO_SEED !== "undefined" && DEMO_SEED) {
+
+      ensureSeedPayments();
+
+      ensureSeedExpenses();
+
+    }
+}
 
   normalizePaymentIds();
   renderHeader();
