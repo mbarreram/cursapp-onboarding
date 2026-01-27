@@ -34,6 +34,14 @@
     const now = new Date();
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
+  // 🔹 Badge de vencimiento (helper faltante)
+function dueBadge(iso){
+  const d = daysTo(iso);
+  if(d === null) return "";
+  if(d < 0) return `<span class="tag danger">Vencida</span>`;
+  if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
+  return `<span class="tag warn">Quedan ${d} días</span>`;
+}
   function dueLabelFromDays(d){
     if(d==null) return "";
     if(d<0) return "Vencida";
