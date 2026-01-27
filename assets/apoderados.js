@@ -31,19 +31,95 @@
     return true;
   }
 
+  // -------- Aprobación / eliminación (ya lo tenías) --------
   function approve(id, role){
-    const ok = upsertEnrollment(id, { status:"approved", reviewedAt:new Date().toISOString(), reviewedBy: role||"directiva", reviewNote:"" });
+    const ok = upsertEnrollment(id, {
+      status:"approved",
+      reviewedAt:new Date().toISOString(),
+      reviewedBy: role||"directiva",
+      reviewNote:""
+    });
     if(!ok) alert("No encontrado");
     render();
   }
 
   function del(id, role){
     const note = prompt("Motivo (opcional):", "Registro incorrecto / curso equivocado") || "";
-    const ok = upsertEnrollment(id, { status:"deleted", reviewedAt:new Date().toISOString(), reviewedBy: role||"directiva", reviewNote: note });
+    const ok = upsertEnrollment(id, {
+      status:"deleted",
+      reviewedAt:new Date().toISOString(),
+      reviewedBy: role||"directiva",
+      reviewNote: note
+    });
     if(!ok) alert("No encontrado");
     render();
   }
 
+  // -------- NUEVO: asignar / remover tesorero --------
+  function setTesorero(enrollmentId){
+    const ck = activeCourseKey();
+    if(!ck) return alert("No hay curso activo.");
+
+    const course = courseObj();
+    if(!course) return alert("No hay curso.");
+
+    const list = loadEnrollments();
+    const target = list.find(e => e.enrollmentId === enrollmentId);
+
+    if(!target) return alert("No encontrado.");
+    if(String(target.courseKey||"") !== ck) return alert("No pertenece al curso activo.");
+    if(target.status !== "approved") return alert("Debe estar aprobado antes de asignar tesorero.");
+
+    // desmarcar tesorero anterior en enrollments
+    list.forEach(e=>{
+      if(e.courseKey === ck && e.directivaRole === "tesorero"){
+        e.directivaRole = null;
+      }
+    });
+
+    // marcar nuevo tesorero
+    target.directivaRole = "tesorero";
+
+    // guardar en curso
+    course.directiva = course.directiva || {};
+    course.directiva.tesorero = {
+      enrollmentId: target.enrollmentId,
+      name: target.apoderadoName || "",
+      email: target.email || ""
+    };
+
+    saveEnrollments(list);
+    saveJSON(KEY_COURSE, course);
+
+    alert("Tesorero asignado ✅");
+    render();
+  }
+
+  function clearTesorero(){
+    const ck = activeCourseKey();
+    if(!ck) return;
+
+    const course = courseObj();
+    if(!course) return;
+
+    const list = loadEnrollments();
+    list.forEach(e=>{
+      if(e.courseKey === ck && e.directivaRole === "tesorero"){
+        e.directivaRole = null;
+      }
+    });
+
+    course.directiva = course.directiva || {};
+    course.directiva.tesorero = null;
+
+    saveEnrollments(list);
+    saveJSON(KEY_COURSE, course);
+
+    alert("Tesorero removido ✅");
+    render();
+  }
+
+  // -------- UI helpers --------
   function headerUserLine(u){
     const who = $("whoLine");
     if(!who) return;
@@ -62,6 +138,7 @@
     </div>`;
   }
 
+  // -------- render --------
   function render(){
     const app = $("app");
     if(!app) return;
@@ -78,13 +155,13 @@
 
     const ck = activeCourseKey();
     if(!ck){
-      app.innerHTML = emptyCard("No hay curso activo", "Crea el curso como Presidente o únete como Tesorero con tu código.");
+      app.innerHTML = emptyCard("No hay curso activo", "Crea el curso como Presidente para comenzar a recibir solicitudes.");
       return;
     }
 
     const c = courseObj();
-    const invite = c?.inviteCode || "";
-    const treas  = c?.treasurerCode || "";
+    const invite = c?.inviteCode || ""; // si lo usas, lo muestra
+    const tes = c?.directiva?.tesorero || null;
 
     const listAll = loadEnrollments();
     const list = listAll.filter(e => String(e.courseKey||"") === ck);
@@ -97,17 +174,21 @@
       ? `${c.course.schoolName} · ${c.course.level}${c.course.letter} ${c.course.year} · ${c.course.jornada}`
       : `Curso activo: ${ck}`;
 
-    const directivaLine = c?.directiva
-      ? `<div class="muted" style="margin-top:6px;">
-           <b>Presidente:</b> ${c.directiva.presidente?.name || "—"} · <b>Tesorero:</b> ${c.directiva.tesorero?.name || "—"}
-         </div>`
-      : "";
+    const tesLine = tes
+      ? `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> ${tes.name || tes.email}</div>`
+      : `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> —</div>`;
+
+    const tesActions = (role === "presidente" && tes)
+      ? `<button class="btn ghost" type="button" style="margin-top:10px;width:100%;" onclick="clearTesorero()">Remover tesorero</button>`
+      : ``;
 
     const head = `
       <div class="card">
         <div style="font-weight:950;font-size:18px;">Apoderados</div>
         <div class="muted" style="margin-top:6px;font-weight:800;">${courseLine}</div>
-        ${directivaLine}
+        ${tesLine}
+        ${tesActions}
+
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="tag warn">Pendientes ${pend.length}</span>
           <span class="tag ok">Aprobados ${appr.length}</span>
@@ -116,19 +197,13 @@
       </div>
     `;
 
-    const codes = `
+    const codes = invite ? `
       <div class="card codeBox" style="margin-top:12px;">
         <div style="font-weight:950;">Código de invitación (Apoderados)</div>
-        <div class="code" style="margin-top:10px;">${invite || "—"}</div>
+        <div class="code" style="margin-top:10px;">${invite}</div>
         <div class="muted" style="margin-top:6px;">Para registro de apoderados.</div>
       </div>
-
-      <div class="card codeBox" style="margin-top:12px;">
-        <div style="font-weight:950;">Código directiva (Tesorero)</div>
-        <div class="code" style="margin-top:10px;">${treas || "—"}</div>
-        <div class="muted" style="margin-top:6px;">Para que el tesorero se una al curso (sin duplicar).</div>
-      </div>
-    `;
+    ` : ``;
 
     function row(e){
       const pay = e.activation?.status === "paid" ? `<span class="tag ok">Pago OK</span>` : `<span class="tag warn">Pago pendiente</span>`;
@@ -136,12 +211,19 @@
                  e.status === "deleted" ? `<span class="tag">Eliminado</span>` :
                  `<span class="tag warn">Pendiente</span>`;
 
-      const actions = (e.status === "pending")
+      const tesTag = (e.directivaRole === "tesorero") ? `<span class="tag ok">Tesorero</span>` : ``;
+
+      const actionsPending = (e.status === "pending")
         ? `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
              <button class="btn primary" type="button" onclick="window.__approve('${e.enrollmentId}')">Aceptar</button>
              <button class="btn ghost" type="button" onclick="window.__delete('${e.enrollmentId}')">Eliminar</button>
            </div>`
         : `<div class="muted">—</div>`;
+
+      // ✅ Asignar tesorero (solo presidente, solo aprobados, no si ya es tesorero)
+      const assignTesBtn = (role === "presidente" && e.status === "approved" && e.directivaRole !== "tesorero")
+        ? `<button class="btn ghost" type="button" onclick="setTesorero('${e.enrollmentId}')">Asignar como tesorero</button>`
+        : ``;
 
       return `
         <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
@@ -150,12 +232,19 @@
               <div style="font-weight:950;">${e.apoderadoName || "Apoderado"} · ${e.alumno || "Alumno"}</div>
               <div class="muted" style="margin-top:6px;font-weight:800;">${e.email || ""}</div>
               <div class="muted" style="margin-top:6px;">Registrado: ${fmtDate(e.createdAt)}</div>
+
               <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                ${st} ${pay}
+                ${st} ${pay} ${tesTag}
               </div>
+
+              ${assignTesBtn ? `<div style="margin-top:10px;">${assignTesBtn}</div>` : ``}
+
               ${e.reviewNote ? `<div class="muted" style="margin-top:8px;">Nota: ${e.reviewNote}</div>` : ``}
             </div>
-            <div style="min-width:220px;text-align:right;">${actions}</div>
+
+            <div style="min-width:220px;text-align:right;">
+              ${e.status === "pending" ? actionsPending : `<div class="muted">—</div>`}
+            </div>
           </div>
         </div>
       `;
@@ -173,8 +262,13 @@
 
     app.innerHTML = head + codes + cards;
 
+    // handlers existentes
     window.__approve = (id)=> approve(id, role);
     window.__delete  = (id)=> del(id, role);
+
+    // handlers nuevos
+    window.setTesorero = setTesorero;
+    window.clearTesorero = clearTesorero;
   }
 
   document.addEventListener("DOMContentLoaded", render);
