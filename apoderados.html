@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Apoderados · Cursapp</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=1801">
+  <link rel="stylesheet" href="/assets/styles.css?v=2300">
   <style>
     body{padding-bottom:24px;}
     .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;background:rgba(100,116,139,.12);color:#0f172a;}
@@ -30,8 +30,10 @@
   </header>
 
   <div class="container" id="app"></div>
+  <div id="modalRoot"></div>
 
   <script>
+    // volver al home correcto según rol
     window.__goBackHome = function(){
       try{
         const u = JSON.parse(localStorage.getItem("cursapp_demo_user") || "null");
@@ -45,7 +47,7 @@
     };
   </script>
 
-  <script defer src="/assets/core.js?v=1801"></script>
-  <script defer src="/assets/apoderados.js?v=1801"></script>
+  <script defer src="/assets/core.js?v=2300"></script>
+  <script defer src="/assets/apoderados.js?v=2300"></script>
 </body>
 </html>
