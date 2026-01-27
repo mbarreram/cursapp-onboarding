@@ -20,12 +20,12 @@
     return "";
   }
 
-  // storage keys
+  // storage keys (auto to match your ecosystem)
   const KEY_TASKS = detectKey(["cursapp_tasks_v1", "tasks", "campanas"]) || "cursapp_tasks_v1";
   const KEY_PAYMENTS = detectKey(["cursapp_payments_v1", "payments", "pagos"]) || "cursapp_payments_v1";
   const KEY_EXPENSES = detectKey(["cursapp_expenses_v1", "expenses", "gastos", "rendiciones"]) || "cursapp_expenses_v1";
-  const KEY_MONTHLY_REPORTS = detectKey(["cursapp_monthly_reports_v1"]) || "cursapp_monthly_reports_v1";
-  const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1"]) || "cursapp_reports_dirty_v1";
+  const KEY_MONTHLY_REPORTS = detectKey(["cursapp_monthly_reports_v1", "monthly_reports", "informesMensuales"]) || "cursapp_monthly_reports_v1";
+  const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
   const load = (k, def) => {
     try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }
@@ -39,22 +39,32 @@
 
   const sum = (arr, fn) => (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0);
 
+  function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
   function isExpired(t){
     if(!t.dueDate) return false;
     const due = new Date(t.dueDate + "T23:59:59");
+    if(isNaN(due.getTime())) return false;
     return due.getTime() < Date.now();
   }
 
+  // payment status tolerance
   const isPaid = (p) => p.status === "paid";
   const isCredit = (p) => p.status === "credit";
-  const isPendingLike = (p) =>
-    ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
+  const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
 
   // data access
   const tasks = () => load(KEY_TASKS, []);
   const payments = () => load(KEY_PAYMENTS, []);
   const expenses = () => load(KEY_EXPENSES, []);
   const reports = () => load(KEY_MONTHLY_REPORTS, []);
+
+  const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
+  const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
+  const closedTasks = () => tasks().filter(t => !!t.closed);
 
   const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
   const spentCourse = () => sum(expenses(), e => e.amount);
@@ -64,46 +74,145 @@
   const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
   const deudoresCount = () => payments().filter(isPendingLike).length;
 
+  function collectedTask(id){
+    return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
+  }
+  function pendingTask(id){
+    return sum(payments().filter(p=>p.fromTaskId===id && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+  }
+  function deudoresTask(id){
+    return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+  }
+  function spentTask(id){
+    return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
+  }
+
+  function latestReport(){
+    const r = reports();
+    return r.length ? r[0] : null;
+  }
+
+  function openModal(html){
+    modalRoot.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
+        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
+          ${html}
+        </div>
+      </div>
+    `;
+  }
+  function closeModal(){ modalRoot.innerHTML=""; }
+  window.closeModal = closeModal;
+
   // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
-      menuBtn.onclick = (e)=>{
-        e.stopPropagation();
-        menuDropdown.style.display =
-          (menuDropdown.style.display==="block"?"none":"block");
-      };
+      menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
       document.addEventListener("click", ()=> menuDropdown.style.display="none");
     }
-
     if(resetBtn){
       resetBtn.onclick = ()=>{
-        if(!confirm("Reset total del curso (demo). ¿Continuar?")) return;
-
+        if(!confirm("Reset demo presidente. ¿Continuar?")) return;
         localStorage.removeItem(KEY_TASKS);
         localStorage.removeItem(KEY_PAYMENTS);
         localStorage.removeItem(KEY_EXPENSES);
         localStorage.removeItem(KEY_MONTHLY_REPORTS);
         localStorage.removeItem(KEY_DIRTY);
-
-        alert("Datos del curso eliminados.");
+        alert("Datos reseteados.");
+        // ✅ CAMBIO 2: NO re-sembrar demo automáticamente
         go("home");
       };
     }
-
-    // ✅ CAMBIO 3: logout siempre al login real
     if(logoutBtn){
+      // ✅ CAMBIO 3: logout al login real
       logoutBtn.onclick = ()=> location.href="/index.html";
     }
   }
 
-  // ----- UI -----
+  // ----- demo seed (if empty) -----
+  function ensureDemo(){
+    if(tasks().length) return;
+
+    save(KEY_TASKS, [
+      {id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single", months:1, amount:10000, goalTotal:150000},
+      {id:"t2", title:"Paseo de curso", description:"", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly", months:3, amount:20000, goalTotal:null},
+    ]);
+
+    save(KEY_PAYMENTS, [
+      {id:"p1", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
+      {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
+      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
+    ]);
+
+    save(KEY_EXPENSES, [
+      {id:"e1", scope:"campaign", campaignId:"t1", title:"Flores", date:"2026-01-18", amount:25000, attachments:[{name:"boleta.jpg"}]},
+      {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
+    ]);
+
+    save(KEY_MONTHLY_REPORTS, []);
+    clearDirty();
+  }
+
+  // ----- state -----
+  let state = { tab:"home" };
+  let campaignFilter = "active"; // active | expired | closed | all
+
+  function setActive(tab){
+    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+  }
+
+  function go(tab){
+    state.tab = tab;
+    setActive(tab);
+    if(tab==="home") renderHome();
+    if(tab==="campanas") renderCampanas();
+    if(tab==="informes") renderInformes();
+  }
+
+  navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // ----- UI pieces -----
+  function statusPillForCampaign(t){
+    if(t.closed){
+      const pend = pendingTask(t.id);
+      if(pend > 0) return `<span class="pill warn">Cerrada · con pagos pendientes</span>`;
+      return `<span class="pill">Cerrada</span>`;
+    }
+    if(isExpired(t)) return `<span class="pill danger">Caducada</span>`;
+    return `<span class="pill ok">Activa</span>`;
+  }
+
+  function lineClassForCampaign(t){
+    const pend = pendingTask(t.id);
+    const saldo = collectedTask(t.id) - spentTask(t.id);
+    if(saldo < 0) return "isDanger";
+    if(pend > 0 && t.closed) return "isWarn";
+    if(isExpired(t)) return "isWarn";
+    return "isOk";
+  }
+
+  function campaignTypeLabel(t){
+    const type = String(t.type||"single");
+    if(type==="monthly"){
+      const m = Number(t.months||1);
+      return `Mensual · ${m} cuota(s)`;
+    }
+    return "Pago único";
+  }
+
+  // ----- Home -----
   function renderHome(){
     const rec = collectedCourse();
     const gas = spentCourse();
     const sal = saldoCourse();
+
     const pend = pendingTotal();
     const debtors = deudoresCount();
     const credit = creditTotal();
+
+    const last = latestReport();
 
     const alerts = [];
     if(pend > 0) alerts.push(`⏳ Pendiente curso: ${clp(pend)}`);
@@ -115,37 +224,279 @@
         <div class="warnBox">
           <div style="font-weight:950;">Resumen rápido</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
-        </div>` : ``}
+        </div>
+      `:""}
+
+      ${last ? `
+        <div class="card">
+          <div class="row">
+            <div>
+              <div class="kTitle">Último informe publicado</div>
+              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAt||"")}</div>
+            </div>
+            <div class="actions">
+              <button class="btnx" onclick="go('informes')">Ver informes</button>
+            </div>
+          </div>
+        </div>
+      `:""}
 
       <div class="card">
-        <div class="kTitle">Resumen ejecutivo del curso</div>
+        <div class="row">
+          <div>
+            <div class="kTitle">Resumen ejecutivo del curso</div>
+            <div class="muted" style="margin-top:6px;">Montos globales (no personales)</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="confirmGenerateReport()">${isDirty() ? "Actualizar y publicar" : "📄 Publicar informe"}</button>
+          </div>
+        </div>
+
         <div class="kpiGrid">
           <div class="kpi"><div class="lbl">💰 Recaudado</div><div class="val">${clp(rec)}</div></div>
           <div class="kpi"><div class="lbl">🧾 Rendido</div><div class="val">${clp(gas)}</div></div>
           <div class="kpi"><div class="lbl">⚖️ Saldo</div><div class="val">${clp(sal)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente</div><div class="val">${clp(pend)}</div></div>
+          <div class="kpi"><div class="lbl">⏳ Pendiente (curso)</div><div class="val">${clp(pend)}</div></div>
         </div>
 
-        <div style="margin-top:10px;display:flex;gap:10px;">
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="pill">👥 Deudores ${debtors}</span>
           <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
+          ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="kTitle">Acciones</div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
         </div>
       </div>
     `;
   }
 
-  function go(tab){
-    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
-    if(tab==="home") renderHome();
+  // ----- Campaigns -----
+  function setFilter(f){
+    campaignFilter = f;
+    renderCampanas();
+  }
+  window.setFilter = setFilter;
+
+  function getFilteredCampaigns(){
+    if(campaignFilter==="active") return activeTasks();
+    if(campaignFilter==="expired") return expiredTasks();
+    if(campaignFilter==="closed") return closedTasks();
+    return tasks();
   }
 
-  navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+  function renderCampanas(){
+    const filtered = getFilteredCampaigns();
 
-  // ==============================
-  // 🚫 DEMO SEED DESACTIVADO
-  // ==============================
-  const DEMO_SEED = false; // ← deja SIEMPRE en false
-  // if (DEMO_SEED) ensureDemo(); ❌ eliminado
+    const chips = `
+      <div class="chips">
+        <button class="chip ${campaignFilter==="active"?"active":""}" onclick="setFilter('active')">Activas</button>
+        <button class="chip ${campaignFilter==="expired"?"active":""}" onclick="setFilter('expired')">Caducadas</button>
+        <button class="chip ${campaignFilter==="closed"?"active":""}" onclick="setFilter('closed')">Cerradas</button>
+        <button class="chip ${campaignFilter==="all"?"active":""}" onclick="setFilter('all')">Todas</button>
+      </div>
+    `;
+
+    const list = filtered.map(t=>{
+      const rec = collectedTask(t.id);
+      const gas = spentTask(t.id);
+      const saldo = rec - gas;
+      const pend = pendingTask(t.id);
+      const debtors = deudoresTask(t.id);
+
+      const monto = Number(t.amount||0);
+      const tipo = campaignTypeLabel(t);
+      const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
+      const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
+
+      return `
+        <div class="lineItem ${lineClassForCampaign(t)}">
+          <div class="row">
+            <div>
+              <div style="font-weight:950;">${esc(t.title)} ${statusPillForCampaign(t)}</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill">💵 Monto ${clp(monto)}</span>
+                <span class="pill">${esc(tipo)}</span>
+                <span class="pill">${esc(part)}</span>
+                ${meta?`<span class="pill">🎯 Meta ${clp(meta)}</span>`:""}
+              </div>
+
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill ok">Rec ${clp(rec)}</span>
+                <span class="pill warn">Gas ${clp(gas)}</span>
+                <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
+                <span class="pill">Deudores ${debtors}</span>
+                <span class="pill warn">Pendiente ${clp(pend)}</span>
+              </div>
+
+              ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
+                Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
+              </div>` : ``}
+            </div>
+
+            <div class="actions">
+              <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+              ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    app.innerHTML = `
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">Campañas</div>
+            <div class="muted" style="margin-top:6px;">Muestra deudores sin nombres y pendiente estimado.</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
+        </div>
+
+        ${chips}
+
+        <div class="listLines">
+          ${list || `<div class="muted">Sin campañas en este filtro.</div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  // ----- Informes -----
+  function renderInformes(){
+    const reps = reports();
+
+    app.innerHTML = `
+      ${isDirty()?`
+        <div class="warnBox">
+          <div style="font-weight:950;">Informe desactualizado</div>
+          <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al último informe. Publica uno nuevo.</div>
+          <div class="actions" style="margin-top:10px;">
+            <button class="btnx primary" onclick="confirmGenerateReport()">Actualizar y publicar</button>
+          </div>
+        </div>
+      `:""}
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">Informes mensuales</div>
+            <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
+          </div>
+          <div class="actions">
+            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
+          </div>
+        </div>
+
+        <div class="listLines">
+          ${reps.length
+            ? reps.map(r=>`
+              <div class="lineItem">
+                <b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}
+                <div class="muted" style="margin-top:6px;">
+                  Recaudado ${clp(r.recaudadoCurso||0)}
+                  · Rendido ${clp(r.gastadoCurso||0)}
+                  · Saldo ${clp(r.disponibleCurso||0)}
+                  · Pendiente ${clp(r.pendienteCurso||0)}
+                  · Deudores ${Number(r.deudores||0)}
+                </div>
+              </div>
+            `).join("")
+            : `<div class="muted">Sin informes publicados.</div>`
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  // ----- Campaign actions (delegated to campaigns.js) -----
+  window.openCreateCampaign = function () { Campaigns.openCreate(); };
+  window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
+  window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
+
+  // Mantener ELIMINAR campaña (activa) en Presidente
+  window.deleteCampaign = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
+
+    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
+      `Regla: pagos pagados pasan a saldo a favor.\n` +
+      `Los pendientes se eliminan del ciclo de cobro.\n\n` +
+      `Esto marcará “requiere nuevo informe”.`;
+
+    if(!confirm(msg)) return;
+
+    // eliminar campaña
+    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
+
+    // eliminar rendiciones asociadas
+    save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
+
+    // pagos: paid -> credit, pending-like -> remove
+    const ps = payments()
+      .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
+      .map(p=>{
+        if(p.fromTaskId===taskId && isPaid(p)){
+          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+        }
+        return p;
+      });
+    save(KEY_PAYMENTS, ps);
+
+    markDirty();
+    alert("Campaña eliminada ✅ (saldo a favor generado si aplica)");
+    go("campanas");
+  };
+
+  // ----- Publish report (monthly) -----
+  window.confirmGenerateReport = function(){
+    if(!confirm("¿Publicar informe mensual del curso?")) return;
+    publishMonthly();
+  };
+
+  function publishMonthly(){
+    const period = prompt("Mes (YYYY-MM)", "2026-01");
+    if(!period) return;
+    if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
+
+    const rep = {
+      id: uid("repM"),
+      period,
+      generatedAt: new Date().toLocaleString("es-CL"),
+      recaudadoCurso: collectedCourse(),
+      gastadoCurso: spentCourse(),
+      disponibleCurso: saldoCourse(),
+      pendienteCurso: pendingTotal(),
+      deudores: deudoresCount(),
+      saldoFavor: creditTotal()
+    };
+
+    const reps = reports();
+    reps.unshift(rep);
+    save(KEY_MONTHLY_REPORTS, reps);
+
+    clearDirty();
+    alert("Informe publicado ✅");
+    go("informes");
+  }
+
+  // ----- boot -----
+  // ✅ CAMBIO 1: no sembrar demo automáticamente
+  const DEMO_SEED = false;
+  if (DEMO_SEED) ensureDemo();
 
   initMenu();
   go("home");
