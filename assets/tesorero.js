@@ -662,7 +662,12 @@
 
   // ---------- Boot ----------
   // ----- boot -----
-const DEMO_SEED = false; // ✅ pruebas limpias
+// ✅ Seed demo SOLO si está activado globalmente (core.js) o por URL (?demo=1)
+const DEMO_SEED = (
+  (window.CURSAPP && window.CURSAPP.DEMO_MODE === true) ||
+  (new URLSearchParams(location.search).get("demo") === "1") ||
+  (localStorage.getItem("cursapp_demo_mode") === "1")
+);
 if (DEMO_SEED) ensureDemo();
 
 initMenu();

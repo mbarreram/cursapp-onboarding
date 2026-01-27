@@ -97,6 +97,20 @@
     }
   }
 
+  // -------- Global demo mode (centralizado) --------
+  function demoModeEnabled(){
+    try{
+      // 1) Flag global (definido en core.js)
+      if(window.CURSAPP && window.CURSAPP.DEMO_MODE === true) return true;
+      // 2) URL override: ?demo=1
+      const qs = new URLSearchParams(location.search);
+      if(qs.get("demo") === "1") return true;
+      // 3) Local override (persistente): localStorage.cursapp_demo_mode = "1"
+      if(localStorage.getItem("cursapp_demo_mode") === "1") return true;
+    }catch(e){}
+    return false;
+  }
+
   // -------- Modal --------
   function openModal(html){
     modalRoot.innerHTML = `
@@ -574,7 +588,8 @@
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   // Boot
-  ensureDemo();
+  // ✅ Solo sembrar data demo si el modo demo está activado globalmente
+  if(demoModeEnabled()) ensureDemo();
   initMenu();
   go("payments"); // para revisión rápida
 })();
