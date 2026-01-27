@@ -16,6 +16,7 @@
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
   const KEY_ENROLL = "cursapp_enrollments_v1";
+  const KEY_DEMO_USER = "cursapp_demo_user";
 
   function loadJSON(k, def){
     try{
@@ -65,7 +66,6 @@
     const ck = String(courseKey||"");
     const list = enrollments();
 
-    // Tomamos el más reciente para ese email+curso
     const matches = list
       .filter(x => String(x.email||"").trim().toLowerCase() === e && String(x.courseKey||"") === ck)
       .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
@@ -84,23 +84,31 @@
       showErr("Tu solicitud está pendiente de aprobación por la directiva.");
       return false;
     }
-
-    // Si quieres, acá podrías bloquear por pago:
-    // if(enr.activation?.status !== "paid") { showErr("Activación pendiente de pago."); return false; }
-
     return true;
   }
   // ======================================
 
+  // ✅ NUEVO: guardar sesión apoderado para banner/menú tesorero
+  function setApoderadoSession(userEmail, profile){
+    const ap = profile?.apoderado || {};
+    saveJSON(KEY_DEMO_USER, {
+      name: (ap.name || "Apoderado") + " (Demo)",
+      role: "apoderado",
+      alumno: ap.alumno || "Alumno",
+      email: userEmail
+    });
+  }
+
   function showCourseChooser(userEmail, profiles){
     const card = document.querySelector(".auth-card");
     if(!card){
-      // fallback prompt
       const chosen = prompt("Tienes más de un curso. Ingresa el índice (1..n):", "1");
       const idx = Number(chosen||1)-1;
       const p = profiles[idx] || profiles[0];
       if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
+
       setActiveCourseKey(p.courseKey);
+      setApoderadoSession(userEmail, p);  // ✅
       window.location.href = "apoderado.html";
       return;
     }
@@ -154,6 +162,7 @@
         if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
 
         setActiveCourseKey(p.courseKey);
+        setApoderadoSession(userEmail, p); // ✅
         window.location.href = "apoderado.html";
       };
     });
@@ -166,16 +175,17 @@
     const u = String(username.value||"").trim().toLowerCase();
     const p = String(password.value||"");
 
-    // Demo roles keep working (pero dejando sesión para vistas protegidas)
-if((u==="tesorero" || u==="presidente") && p==="demo"){
-  localStorage.setItem("cursapp_demo_user", JSON.stringify({
-    name: (u === "presidente" ? "Presidente" : "Tesorero") + " (Demo)",
-    role: u
-  }));
-  window.location.href = u + ".html";
-  return;
-}
-    // Backward-compat demo apoderado: ahora BLOQUEADO si no hay aprobación
+    // Demo roles (guardan sesión)
+    if((u==="tesorero" || u==="presidente") && p==="demo"){
+      saveJSON(KEY_DEMO_USER, {
+        name: (u === "presidente" ? "Presidente" : "Tesorero") + " (Demo)",
+        role: u
+      });
+      window.location.href = u + ".html";
+      return;
+    }
+
+    // Demo apoderado bloqueado
     if(u==="apoderado" && p==="demo"){
       showErr("Para ingresar como apoderado debes estar aprobado por la directiva. Completa onboarding como apoderado.");
       return;
@@ -202,18 +212,19 @@ if((u==="tesorero" || u==="presidente") && p==="demo"){
       return;
     }
 
-    // Si tiene 1 curso, validamos aprobación antes de entrar
+    // 1 curso: validar aprobación + guardar sesión apoderado
     if(profiles.length===1){
       const courseKey = profiles[0].courseKey;
 
       if(!ensureApprovedOrBlock(u, courseKey)) return;
 
       setActiveCourseKey(courseKey);
+      setApoderadoSession(u, profiles[0]); // ✅
       window.location.href = "apoderado.html";
       return;
     }
 
-    // Multiple courses: show chooser con bloqueo si no está aprobado
+    // Multiple courses
     showCourseChooser(u, profiles);
   });
 
