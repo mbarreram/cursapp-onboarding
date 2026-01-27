@@ -617,6 +617,33 @@ function dueBadge(iso){
       menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
       document.addEventListener("click",()=> menuDropdown.style.display="none");
     }
+
+    const menu = document.getElementById("menuDropdown");
+if(menu && !document.getElementById("resetCourseBtn")){
+  const b = document.createElement("button");
+  b.id = "resetCourseBtn";
+  b.className = "btn ghost";
+  b.type = "button";
+  b.style.width = "100%";
+  b.style.textAlign = "left";
+  b.textContent = "🧹 Reset curso (solo datos)";
+  b.onclick = ()=>{
+    if(!confirm("Esto borra campañas/pagos/gastos del curso. ¿Continuar?")) return;
+    localStorage.removeItem("cursapp_tasks_v1");
+    localStorage.removeItem("cursapp_payments_v1");
+    localStorage.removeItem("cursapp_expenses_v1");
+    localStorage.removeItem("cursapp_monthly_reports_v1");
+    localStorage.removeItem("cursapp_receipts_v1");
+    alert("Curso reseteado ✅");
+    location.reload();
+  };
+  // insertar antes de cerrar sesión si existe
+  const logout = document.getElementById("logoutBtn") || document.getElementById("logoutMenuItem");
+  if(logout && logout.parentElement===menu) menu.insertBefore(b, logout);
+  else menu.appendChild(b);
+}
+
+
     if(goOnboarding){
       goOnboarding.onclick = ()=> location.href="onboarding/dashboard.html?onboarding=1";
     }
