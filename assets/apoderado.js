@@ -128,12 +128,6 @@ function dueBadge(iso){
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
 
-  
-function getActiveCourseKey(){
-  return localStorage.getItem(KEY_ACTIVE_COURSE) || null;
-}
-
-
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
@@ -335,15 +329,9 @@ function getActiveCourseKey(){
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
-    const courseKey = getActiveCourseKey();
+    const paysAll = load(KEY_PAYMENTS, []);
+    const tasksAll = load(KEY_TASKS, []);
 
-const paysAll = load(KEY_PAYMENTS, []).filter(p =>
-  !courseKey || p.courseKey === courseKey
-);
-
-const tasksAll = load(KEY_TASKS, []).filter(t =>
-  !courseKey || t.courseKey === courseKey
-);
     const chips = `
       <div class="chips">
         <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
@@ -660,7 +648,7 @@ if(menu && !document.getElementById("resetCourseBtn")){
       goOnboarding.onclick = ()=> location.href="onboarding/dashboard.html?onboarding=1";
     }
     if(logoutBtn){
-      logoutBtn.onclick = ()=> location.href="login.html";
+      logoutBtn.onclick = ()=> location.href="/index.html";
     }
   }
 
@@ -678,4 +666,3 @@ initMenu();
 go("payments"); // para revisión rápida
 })();
  
-})();
