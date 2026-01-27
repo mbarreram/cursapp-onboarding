@@ -5,8 +5,18 @@ const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
 
 /** Scope all course data by active courseKey to avoid "phantom" data across resets/tests. */
 function __cursappCourseScope(){
-  const raw = localStorage.getItem(KEY_ACTIVE_COURSE) || "default_course";
-  return String(raw).replace(/[^a-zA-Z0-9_-]/g, "_");
+  // 1) Prefer the explicit active course key
+  const rawActive = localStorage.getItem(KEY_ACTIVE_COURSE);
+  if(rawActive) return String(rawActive).replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  // 2) Fallback to the course created by President (single-course MVP)
+  try{
+    const c = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null");
+    if(c && c.courseKey) return String(c.courseKey).replace(/[^a-zA-Z0-9_-]/g, "_");
+  }catch(e){}
+
+  // 3) No course context available
+  return "no_course";
 }
 const COURSE_SCOPE = __cursappCourseScope();
 const scopedKey = (name) => `cursapp_${COURSE_SCOPE}_${name}`;
@@ -19,8 +29,11 @@ const KEY_MONTHLY_REPORTS = scopedKey("monthly_reports_v1");
 const KEY_EXPENSES = scopedKey("expenses_v1");
 
 // Demo seed flag (keep false for real tests)
+const DEMO_SEED = false;
 // ---- one-time migration from legacy unscoped keys ----
 (function __migrateLegacyKeys(){
+  // If we don't have a course context, don't migrate old global keys into a "no_course" bucket.
+  if(COURSE_SCOPE === "no_course") return;
   function mv(oldKey, newKey){
     try{
       if(localStorage.getItem(newKey) == null && localStorage.getItem(oldKey) != null){
