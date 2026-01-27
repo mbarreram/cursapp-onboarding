@@ -118,29 +118,39 @@
   }
 
   // ---------------- WhatsApp invite ----------------
-  function buildWhatsappInvite(courseObj){
-    const c = courseObj?.course || {};
-    const code = courseObj?.inviteCode || "";
-    const label = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
-    const school = c.schoolName || "Colegio";
+  
+function buildWhatsappInvite(courseObj){
+  const c = courseObj?.course || {};
+  const code = courseObj?.inviteCode || "";
 
-    // usa el dominio actual (Netlify u otro)
-    const url = (location && location.origin)
-      ? (location.origin + "/onboarding/dashboard.html")
-      : "https://cursapp.netlify.app/onboarding/dashboard.html";
+  const courseLabel = `${c.level || ""}${c.letter || ""} ${c.year || ""} · ${c.jornada || ""}`.trim();
+  const school = c.schoolName || "Colegio";
 
-    return (
-      "Hola! 👋\n\n" +
-      "Ya está activo Cursapp para el curso:\n" +
-      `${school} · ${label}\n\n` +
-      "Para registrarte como apoderado:\n" +
-      `${url}\n\n` +
-      "Pega este código de invitación:\n" +
-      `${code}\n\n` +
-      "Luego la directiva aprueba tu ingreso ✅"
-    );
-  }
+  const url = (location && location.origin)
+    ? (location.origin + "/onboarding/dashboard.html")
+    : "https://cursapp.netlify.app/onboarding/dashboard.html";
 
+  return (
+    "👋 Hola apoderados/as\n\n" +
+    "Ya está activo *Cursapp* para nuestro curso:\n\n" +
+    "🏫 *" + school + "*\n" +
+    "📘 *" + courseLabel + "*\n\n" +
+    "Para registrarte como apoderado/a sigue estos pasos:\n\n" +
+    "1️⃣ Ingresa aquí:\n" +
+    url + "\n\n" +
+    "2️⃣ Cuando te lo pida, pega este *CÓDIGO DE INVITACIÓN* 👇\n" +
+    "👉 *" + code + "*\n\n" +
+    "💳 *Activación única:* *$7.990 por apoderado*\n" +
+    "(Permite usar Cursapp durante todo el año)\n\n" +
+    "✨ ¿Para qué sirve Cursapp?\n" +
+    "• Facilita la tesorería del curso\n" +
+    "• Ordena pagos y campañas\n" +
+    "• Mejora la comunicación con la directiva\n" +
+    "• Da transparencia a los fondos del curso\n\n" +
+    "👉 Tu registro será revisado por la directiva antes de activarse.\n\n" +
+    "¡Gracias por apoyar la organización del curso! 🙌"
+  );
+}
   async function copyText(text){
     try{
       if(navigator.clipboard && navigator.clipboard.writeText){
