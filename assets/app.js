@@ -2976,16 +2976,13 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // DEMO_SEED: false = prueba real “en cero”
-const DEMO_SEED = false;
+  // ✅ DEMO seed controlado desde el tope del archivo (NO redeclarar DEMO_SEED acá)
+  if (typeof DEMO_SEED !== "undefined" && DEMO_SEED) {
+    ensureSeedPayments();
+    ensureSeedExpenses();
+  }
 
-if (DEMO_SEED) {
-  ensureSeedPayments();
-  ensureSeedExpenses();
-}
   normalizePaymentIds();
-
   renderHeader();
-
   renderByRole(user.role, "home");
 });
