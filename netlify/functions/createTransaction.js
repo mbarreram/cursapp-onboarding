@@ -17,7 +17,6 @@ function getTx(){
     }
     return new WebpayPlus.Transaction(new Options(commerceCode, apiKey, Environment.Production));
   }
-  // Integración por defecto
   return new WebpayPlus.Transaction(new Options(
     IntegrationCommerceCodes.WEBPAY_PLUS,
     IntegrationApiKeys.WEBPAY,

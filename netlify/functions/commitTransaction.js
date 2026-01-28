@@ -36,60 +36,63 @@ function decodeBody(event){
   return event.body;
 }
 
+function redirect(url){
+  return { statusCode: 302, headers: { Location: url } };
+}
+
 exports.handler = async (event) => {
   const qs = event.queryStringParameters || {};
   const pid = qs.pid || "";
   const cid = qs.cid || "";
+
+  const fail = (reason, extra) => {
+    const msg = extra ? String(extra).slice(0, 180) : "";
+    const loc = `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}&reason=${encodeURIComponent(reason||"unknown")}&msg=${encodeURIComponent(msg)}`;
+    return redirect(loc);
+  };
 
   try{
     const headers = event.headers || {};
     const ct = (headers["content-type"] || headers["Content-Type"] || "").toLowerCase();
 
     const rawBody = decodeBody(event);
+    let token = (qs.token_ws || qs.token || "").trim();
 
-    let token = "";
+    if(!token){
+      if(ct.includes("application/json")){
+        const b = JSON.parse(rawBody || "{}");
+        token = (b.token_ws || b.token || "").trim();
+      }else{
+        const form = parseForm(rawBody || "");
 
-    if(ct.includes("application/json")){
-      const b = JSON.parse(rawBody || "{}");
-      token = b.token_ws || b.token || "";
-    }else{
-      const form = parseForm(rawBody);
+        if(form.TBK_TOKEN || form.TBK_ORDEN_COMPRA || form.TBK_ID_SESION){
+          return fail("cancelled", JSON.stringify({TBK_TOKEN: !!form.TBK_TOKEN, TBK_ORDEN_COMPRA: !!form.TBK_ORDEN_COMPRA}));
+        }
 
-      // Cancelación: Webpay manda TBK_TOKEN / TBK_ORDEN_COMPRA / TBK_ID_SESION
-      if(form.TBK_TOKEN || form.TBK_ORDEN_COMPRA || form.TBK_ID_SESION){
-        return {
-          statusCode: 302,
-          headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
-        };
+        token = (form.token_ws || "").trim();
       }
-
-      token = form.token_ws || "";
     }
 
     if(!token){
-      return {
-        statusCode: 302,
-        headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
-      };
+      return fail("no_token_ws", `ct=${ct} base64=${!!event.isBase64Encoded} bodyLen=${(rawBody||"").length}`);
     }
 
     const tx = getTx();
     const resp = await tx.commit(token);
 
     const ok = String(resp.response_code) === "0";
+
     const loc = `/pay_result.html?ok=${ok?1:0}`
       + `&pid=${encodeURIComponent(pid)}`
       + `&cid=${encodeURIComponent(cid)}`
       + `&amount=${encodeURIComponent(resp.amount||"")}`
       + `&auth=${encodeURIComponent(resp.authorization_code||"")}`
-      + `&resp=${encodeURIComponent(resp.response_code||"")}`;
+      + `&resp=${encodeURIComponent(resp.response_code||"")}`
+      + `&reason=${encodeURIComponent(ok?"approved":"rejected")}`;
 
-    return { statusCode: 302, headers: { Location: loc } };
+    return redirect(loc);
 
   }catch(e){
-    return {
-      statusCode: 302,
-      headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
-    };
+    return fail("commit_error", e && e.message ? e.message : String(e));
   }
 };
