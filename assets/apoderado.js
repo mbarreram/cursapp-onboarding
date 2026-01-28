@@ -806,20 +806,19 @@ function dueBadge(iso){
     renderPayments();
   };
 
-
-const KEY_CHECKOUTS = "cursapp_checkouts_v1";
-
 window.payNow = function(id){
-  const checkouts = load(KEY_CHECKOUTS, []);
-  const checkout = { id:"ck_"+Math.random().toString(16).slice(2), paymentId:id, createdAt: nowISO() };
-  checkouts.unshift(checkout);
-  save(KEY_CHECKOUTS, checkouts);
+    // Checkout Webpay (Transbank): ir a pantalla de pago
+    const pays = load(KEY_PAYMENTS, []);
+    const i = pays.findIndex(p=>p.id===id);
+    if(i<0) return;
 
-  location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
-};
-  
-
-
+    const checkouts = load(KEY_CHECKOUTS, []);
+    const checkout = {
+      id: "ck_" + Math.random().toString(16).slice(2),
+      paymentId: id,
+      createdAt: nowISO(),
+      status: "created"
+    };
     checkouts.unshift(checkout);
     save(KEY_CHECKOUTS, checkouts);
 
