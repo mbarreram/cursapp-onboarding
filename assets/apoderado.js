@@ -675,5 +675,3 @@ if (DEMO_MODE) {
 initMenu();
 go("home"); // default seguro post-reset
 })();
- 
-})();
