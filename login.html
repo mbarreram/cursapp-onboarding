@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Cursapp · Login</title>
+  <link rel="stylesheet" href="assets/styles.css?v=400">
+</head>
+<body class="auth">
+
+  <div class="auth-card">
+    <div class="brandCenter">
+      <div class="logo big">C</div>
+      <h1>Cursapp</h1>
+      <p class="muted">Acceso</p>
+    </div>
+
+    <form id="loginForm">
+      <label>Correo</label>
+      <input id="username" placeholder="correo@dominio.com" autocomplete="email" required>
+
+      <label>Contraseña</label>
+      <input id="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" required>
+
+      <div id="loginError" class="error" style="display:none;"></div>
+
+      <button class="btn primary" type="submit">Ingresar</button>
+    </form>
+
+    <div style="margin-top:14px;">
+      <a href="onboarding/dashboard.html" style="font-weight:950;text-decoration:none;">
+        ¿No estás registrado? Configura tu curso
+      </a>
+      <div class="muted small" style="margin-top:6px;">
+        Completa el onboarding para crear tu cuenta y activar el acceso.
+      </div>
+    </div>
+
+    <p class="muted small" style="margin-top:14px;">
+      Demo: también puedes usar <b>tesorero</b> o <b>presidente</b> con contraseña <b>demo</b>.
+    </p>
+  </div>
+
+  <script src="assets/login.js?v=200"></script>
+</body>
+</html>
