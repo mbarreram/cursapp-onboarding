@@ -87,6 +87,41 @@
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
 
+  
+  // ---- curso / apoderados (para estimaciones) ----
+  function getActiveCourseKey(){
+    const ck = localStorage.getItem("cursapp_active_course_v1") || "";
+    if(ck) return ck;
+    try{
+      const c = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null");
+      return (c && c.courseKey) ? c.courseKey : "";
+    }catch(e){ return ""; }
+  }
+  function approvedApoderadosCount(){
+    const ck = getActiveCourseKey();
+    try{
+      const list = JSON.parse(localStorage.getItem("cursapp_enrollments_v1") || "[]");
+      const n = list.filter(e => (!ck || e.courseKey === ck) && e.status === "approved").length;
+      return n || 0;
+    }catch(e){ return 0; }
+  }
+  function taskMonths(task){
+    return (task && String(task.type||"") === "monthly") ? Math.max(1, Number(task.months||1)) : 1;
+  }
+  function paymentsCountForTask(taskId){
+    return payments().filter(p=>p.fromTaskId===taskId).length;
+  }
+  function expectedTotalForTask(task){
+    const ap = Math.max(approvedApoderadosCount(), 1); // fallback 1 si no hay enrollments aún
+    const m = taskMonths(task);
+    return Number(task.amount||0) * m * ap;
+  }
+  function expectedPendingForTask(task){
+    const total = expectedTotalForTask(task);
+    const rec = collectedTask(task.id);
+    return Math.max(0, total - rec);
+  }
+
   function latestReport(){
     const r = reports();
     return r.length ? r[0] : null;
@@ -261,6 +296,7 @@
 
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="pill">👥 Deudores ${debtors}</span>
+          ${approvedApoderadosCount() ? `<span class="pill">👨‍👩‍👧‍👦 Apoderados ${approvedApoderadosCount()}</span>` : ``}
           <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
           ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
         </div>
@@ -307,8 +343,18 @@
       const rec = collectedTask(t.id);
       const gas = spentTask(t.id);
       const saldo = rec - gas;
-      const pend = pendingTask(t.id);
-      const debtors = deudoresTask(t.id);
+      const pendReal = pendingTask(t.id);
+      const ap = Math.max(approvedApoderadosCount(), 1);
+      const expectedItems = ap * taskMonths(t);
+      const actualItems = paymentsCountForTask(t.id);
+
+      const pendEst = expectedPendingForTask(t);
+      const pend = Math.max(pendReal, pendEst);
+
+      let debtors = deudoresTask(t.id);
+      // Si aún no se han generado cobros por apoderado, mostramos apoderados como deudores estimados
+      if(actualItems < expectedItems) debtors = ap;
+      else debtors = Math.min(debtors, ap);
 
       const monto = Number(t.amount||0);
       const tipo = campaignTypeLabel(t);
@@ -333,8 +379,10 @@
                 <span class="pill ok">Rec ${clp(rec)}</span>
                 <span class="pill warn">Gas ${clp(gas)}</span>
                 <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
+                <span class="pill">👨‍👩‍👧‍👦 Apoderados ${Math.max(approvedApoderadosCount(),1)}</span>
                 <span class="pill">Deudores ${debtors}</span>
                 <span class="pill warn">Pendiente ${clp(pend)}</span>
+                <span class="pill">Por apoderado ${clp(Number(t.amount||0) * taskMonths(t))}</span>
               </div>
 
               ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
