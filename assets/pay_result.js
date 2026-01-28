@@ -11,6 +11,7 @@
   const amount = Number(u.searchParams.get("amount")||0);
   const auth = u.searchParams.get("auth")||"";
   const resp = u.searchParams.get("resp")||"";
+  const buy = u.searchParams.get("buy")||"";
   const reason = u.searchParams.get("reason")||"";
   const msg = u.searchParams.get("msg")||"";
 
@@ -24,7 +25,8 @@
       pays[i].status="paid";
       pays[i].paidAt=new Date().toISOString();
       pays[i].paidWith="webpay";
-      pays[i].webpay = { authorizationCode: auth, responseCode: resp, amount };
+      pays[i].webpay = { authorizationCode: auth, responseCode: resp, amount, buyOrder: buy };
+      pays[i].transactionId = buy || pays[i].transactionId;
       save(KEY_PAYMENTS, pays);
     }
 
@@ -33,6 +35,7 @@
     el.innerHTML = `
       <div class="card">
         <div class="kTitle">✅ Pago aprobado</div>
+        <div class="muted" style="margin-top:6px;">Redirigiendo a Pagos…</div>
         <div class="muted" style="margin-top:6px;">Monto: <b>${clp(amount)}</b></div>
         <div class="muted" style="margin-top:6px;">Autorización: <b>${esc(auth||"—")}</b></div>
         <div class="muted" style="margin-top:6px;font-size:12px;">resp_code: <b>${esc(resp||"")}</b></div>
@@ -47,12 +50,16 @@
           <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
           <div class="lineItem"><b>Autorización:</b> ${esc(auth||"—")}</div>
           <div class="lineItem"><b>Fecha:</b> ${esc(new Date().toLocaleString("es-CL"))}</div>
+          <div class="lineItem"><b>Operación:</b> ${esc(buy||"—")}</div>
           <div class="lineItem"><b>ID pago:</b> ${esc(pid)}</div>
         </div>
       </div>
     `;
 
     document.getElementById("btnBack").onclick = backToPayments;
+
+    // Redirección automática a Pagos (éxito)
+    setTimeout(backToPayments, 1200);
 
   }else{
     el.innerHTML = `
@@ -68,5 +75,8 @@
       </div>
     `;
     document.getElementById("btnBack").onclick = backToPayments;
+
+    // Redirección automática a Pagos (éxito)
+    setTimeout(backToPayments, 1200);
   }
 })();
