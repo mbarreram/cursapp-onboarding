@@ -17,6 +17,16 @@
 
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
+
+  // ---- Safe init post-reset (no pisa datos reales) ----
+  function initSafeStorage(){
+    if(localStorage.getItem(KEY_TASKS)===null) save(KEY_TASKS, []);
+    if(localStorage.getItem(KEY_PAYMENTS)===null) save(KEY_PAYMENTS, []);
+    if(localStorage.getItem(KEY_REPORTS)===null) save(KEY_REPORTS, []);
+    if(localStorage.getItem(KEY_PROFILES)===null) save(KEY_PROFILES, []);
+  }
+  initSafeStorage();
+
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
 

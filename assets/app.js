@@ -1,12 +1,3 @@
-
-// ---- Safe init post-reset ----
-function initSafeStorage(){
-  if(!localStorage.getItem(KEY_TASKS)) save(KEY_TASKS, []);
-  if(!localStorage.getItem(KEY_PAYMENTS)) save(KEY_PAYMENTS, []);
-  if(!localStorage.getItem(KEY_REPORTS)) save(KEY_REPORTS, []);
-}
-initSafeStorage();
-
 /* ========= Cursapp · app.js (ESTABLE + PAGOS + CREAR COBRO) ========= */
 
 const KEY_USER = "cursapp_demo_user";
