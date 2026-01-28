@@ -319,21 +319,80 @@ function dueBadge(iso){
 
   // -------- Pages --------
   function renderHome(){
-    app.innerHTML = `
-      ${reportSummaryCard()}
+  app.innerHTML = `
+    <!-- HOME APODERADO -->
 
-      <div class="grid2">
-        <div class="card" style="cursor:pointer" onclick="go('payments')">
-          <div class="kTitle">💳 Pagos</div>
-          <div class="muted" style="margin-top:6px;">Ver pendientes, próximas, pagadas y saldo a favor</div>
+    <!-- CARD 1: PRÓXIMA CUOTA -->
+    <div class="card" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="kTitle">⏰ Próxima cuota</div>
+        <span class="tag warn">Vence pronto</span>
+      </div>
+
+      <div class="muted" style="margin-top:6px;">
+        Vence <b id="homeNextDueDate">—</b> · Quedan <b id="homeNextDueDays">—</b> días
+      </div>
+
+      <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
+        $0
+      </div>
+
+      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+        <button class="btnx primary" onclick="go('payments')">Pagar ahora</button>
+      </div>
+    </div>
+
+    <!-- CARD 2: PENDIENTES -->
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="kTitle">💳 Pagos pendientes</div>
+
+        <!-- Badge NUEVO (por ahora oculto) -->
+        <span class="tag" id="homeNewBadge" style="display:none;">Nuevo</span>
+      </div>
+
+      <div class="muted" style="margin-top:6px;">
+        Tienes <b id="homePendingCount">0</b> pagos pendientes
+      </div>
+
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="muted">Total pendiente</div>
+        <div style="font-weight:950;" id="homePendingTotal">$0</div>
+      </div>
+
+      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+        <button class="btnx" onclick="go('payments')">Ver todos</button>
+      </div>
+    </div>
+
+    <!-- RESUMEN DEL CURSO (más humano) -->
+    <div class="card" style="margin-top:12px;">
+      <div class="kTitle">📊 Estado del curso</div>
+      <div class="muted" style="margin-top:6px;line-height:1.45;">
+        Así va el fondo del curso. Estos montos son del curso completo, no personales.
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>💰 Recaudado</span>
+          <b id="homeRaised">$0</b>
         </div>
-        <div class="card" style="cursor:pointer" onclick="go('informes')">
-          <div class="kTitle">📄 Informes</div>
-          <div class="muted" style="margin-top:6px;">Ver informes publicados por la directiva</div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span>🧾 Gastado</span>
+          <b id="homeSpent">$0</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span>📦 Disponible</span>
+          <b id="homeAvailable">$0</b>
         </div>
       </div>
-    `;
-  }
+
+      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+        <button class="btnx" onclick="go('informes')">Ver informes</button>
+      </div>
+    </div>
+  `;
+}
 
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
