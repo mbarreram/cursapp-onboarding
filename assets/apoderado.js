@@ -15,11 +15,38 @@
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
   const KEY_LAST_SEEN_PAYMENTS = "cursapp_last_seen_payments_v1";
+  const KEY_OPTOUT = "cursapp_optout_tasks_v1";
+
 
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
 
-  // ---- Safe init post-reset (no pisa datos reales) ----
+  
+  // ---- Opt-out campañas no obligatorias (por curso) ----
+  function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
+  function isOptedOut(taskId){
+    const p = getActiveProfile();
+    const courseKey = (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
+    const m = getOptOutMap();
+    const arr = m[courseKey] || [];
+    return arr.includes(taskId);
+  }
+  function setOptedOut(taskId, value){
+    const p = getActiveProfile();
+    const courseKey = (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
+    const m = getOptOutMap();
+    const arr = new Set(m[courseKey] || []);
+    if(value) arr.add(taskId); else arr.delete(taskId);
+    m[courseKey] = Array.from(arr);
+    save(KEY_OPTOUT, m);
+  }
+  window.toggleOptOut = function(taskId){
+    const next = !isOptedOut(taskId);
+    setOptedOut(taskId, next);
+    renderPayments();
+  };
+
+// ---- Safe init post-reset (no pisa datos reales) ----
   function initSafeStorage(){
     if(localStorage.getItem(KEY_TASKS)===null) save(KEY_TASKS, []);
     if(localStorage.getItem(KEY_PAYMENTS)===null) save(KEY_PAYMENTS, []);
@@ -481,6 +508,7 @@ function dueBadge(iso){
       const isCred = (st==="credit");
       const task = tasksAll.find(t=>t.id===r.fromTaskId);
       const isMonthlyTask = String(task?.type||"") === "monthly";
+      const optedOut = task ? isOptedOut(task.id) : false;
 
       const mName = r.dueDate ? monthNameFromISO(r.dueDate) : "";
       const monthTag = (mName && !isCred && isMonthlyTask) ? `<span class="tag">${esc("Mes " + mName)}</span>` : "";
@@ -507,7 +535,7 @@ function dueBadge(iso){
               ${dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${isPend ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : `<span class="muted">—</span>`}
+              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
             </div>
           </div>
         </div>
@@ -617,7 +645,7 @@ function dueBadge(iso){
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
-                ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${esc(t.id)}')">Pagar todo</button>` : ``}
+                ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${esc(t.id)}')">Pagar</button>` : ``}
               </div>
               <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
@@ -647,7 +675,14 @@ function dueBadge(iso){
                 </div>
                 <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
               </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
               <div class="muted" style="font-weight:950;">${paidCount}/${total} pagadas</div>
+              ${t.mandatoryParticipation===false ? `
+                <button class="btnx" style="border:1px solid rgba(0,0,0,.14);" onclick="toggleOptOut(\'${esc(t.id)}\')">
+                  ${isOptedOut(t.id) ? "Participar" : "No participo"}
+                </button>
+              ` : ``}
+            </div>
             </div>
 
             <div style="margin-top:10px;">
