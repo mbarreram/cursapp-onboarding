@@ -14,6 +14,7 @@
   const KEY_REPORTS = "cursapp_monthly_reports_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_LAST_SEEN_PAYMENTS = "cursapp_last_seen_payments_v1";
 
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
@@ -319,133 +320,21 @@ function dueBadge(iso){
 
   // -------- Pages --------
   function renderHome(){
-  app.innerHTML = `
-    <!-- HOME APODERADO -->
+    app.innerHTML = `
+      ${reportSummaryCard()}
 
-    <!-- CARD 1: PRÓXIMA CUOTA -->
-    <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="kTitle">⏰ Próxima cuota</div>
-        <span class="tag warn">Vence pronto</span>
-      </div>
-
-      <div class="muted" style="margin-top:6px;">
-        Vence <b id="homeNextDueDate">—</b> · Quedan <b id="homeNextDueDays">—</b> días
-      </div>
-
-      <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
-        $0
-      </div>
-
-      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-        <button class="btnx primary" onclick="go('payments')">Pagar ahora</button>
-      </div>
-    </div>
-
-    <!-- CARD 2: PENDIENTES -->
-    <div class="card" id="cardPending" style="margin-top:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div class="kTitle">💳 Pagos pendientes</div>
-
-        <!-- Badge NUEVO (por ahora oculto) -->
-        <span class="tag" id="homeNewBadge" style="display:none;">Nuevo</span>
-      </div>
-
-      <div class="muted" style="margin-top:6px;">
-        Tienes <b id="homePendingCount">0</b> pagos pendientes
-      </div>
-
-      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
-        <div class="muted">Total pendiente</div>
-        <div style="font-weight:950;" id="homePendingTotal">$0</div>
-      </div>
-
-      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-        <button class="btnx" onclick="go('payments')">Ver todos</button>
-      </div>
-    </div>
-
-    <!-- RESUMEN DEL CURSO (más humano) -->
-    <div class="card" style="margin-top:12px;">
-      <div class="kTitle">📊 Estado del curso</div>
-      <div class="muted" style="margin-top:6px;line-height:1.45;">
-        Así va el fondo del curso. Estos montos son del curso completo, no personales.
-      </div>
-
-      <div style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;">
-          <span>💰 Recaudado</span>
-          <b id="homeRaised">$0</b>
+      <div class="grid2">
+        <div class="card" style="cursor:pointer" onclick="go('payments')">
+          <div class="kTitle">💳 Pagos</div>
+          <div class="muted" style="margin-top:6px;">Ver pendientes, próximas, pagadas y saldo a favor</div>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;">
-          <span>🧾 Gastado</span>
-          <b id="homeSpent">$0</b>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:6px;">
-          <span>📦 Disponible</span>
-          <b id="homeAvailable">$0</b>
+        <div class="card" style="cursor:pointer" onclick="go('informes')">
+          <div class="kTitle">📄 Informes</div>
+          <div class="muted" style="margin-top:6px;">Ver informes publicados por la directiva</div>
         </div>
       </div>
-
-      <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-        <button class="btnx" onclick="go('informes')">Ver informes</button>
-      </div>
-    </div>
-  `;
-    // ---- Home: estado amigable según pagos ----
-const paysAll = load(KEY_PAYMENTS, []);
-const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
-const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
-
-// Si no hay nada pendiente ni próxima: estás al día
-if(pending.length === 0 && upcoming.length === 0){
-  setHomeAllGood();
-}
+    `;
   }
-  
-function setHomeAllGood(){
-  const card = document.getElementById("cardNextDue");
-  if(!card) return;
-
-  // Título y pill
-  const title = card.querySelector(".kTitle");
-  if(title) title.innerHTML = "🥳 ¡Todo al día!";
-  const pill = card.querySelector(".tag");
-  if(pill){
-    pill.className = "tag ok";
-    pill.textContent = "🎉 Sin pagos pendientes";
-  }
-
-  // Meta
-  const meta = document.getElementById("homeNextDueDate");
-  const days = document.getElementById("homeNextDueDays");
-  if(meta) meta.textContent = "—";
-  if(days) days.textContent = "—";
-
-  // Monto -> mensaje alegre
-  const amt = document.getElementById("homeNextDueAmount");
-  if(amt){
-    amt.textContent = "No tienes pagos por ahora 😄";
-    amt.style.fontSize = "20px";
-  }
-
-  // Botón
-  const btn = card.querySelector(".btnx.primary");
-  if(btn){
-    btn.textContent = "Ver pagos";
-    btn.onclick = ()=> go("payments");
-  }
-
-  // Pendientes card
-  const pendingCard = document.getElementById("cardPending");
-  if(pendingCard){
-    const muted = pendingCard.querySelector(".muted");
-    if(muted) muted.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad 😄";
-    const total = pendingCard.querySelector("#homePendingTotal");
-    if(total) total.textContent = "$0";
-  }
-}
-
 
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
@@ -453,6 +342,10 @@ function setHomeAllGood(){
   function renderPayments(){
     const paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
+  const selectedTask = window.__apoTaskFilter || "all";
+    const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
+    const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
+
 
     const chips = `
       <div class="chips">
@@ -462,6 +355,19 @@ function setHomeAllGood(){
         <button class="chip ${payFilter==="credit"?"active":""}" onclick="setPayFilter('credit')">Saldo a favor</button>
       </div>
     `;
+
+    const taskOptions = `
+      <div class="card" style="margin-top:12px;">
+        <div class="kTitle">Filtrar</div>
+        <div class="muted" style="margin-top:6px;">Elige una campaña para encontrar más rápido.</div>
+        <select id="taskFilter" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.12);font-weight:900;">
+          <option value="all">Todas las campañas</option>
+          ${tasksAll.map(t=>`<option value="${esc(t.id)}" ${selectedTask===t.id?"selected":""}>${esc(t.title||"Campaña")}</option>`).join("")}
+          <option value="no_task" ${selectedTask==="no_task"?"selected":""}>Otros (sin campaña)</option>
+        </select>
+      </div>
+    `;
+
 
     function renderPaymentRow(r){
       const st = String(r.status||"").toLowerCase();
@@ -519,6 +425,12 @@ function setHomeAllGood(){
         </div>
       </div>
     ` : ``;
+    // Aplicar filtro por campaña (si no es "all")
+    if(selectedTask !== "all"){
+      paysFiltered = paysFiltered.filter(p => (p.fromTaskId || "no_task") === selectedTask);
+    }
+
+
 
     // agrupar pagos por campaña
     const paysByTask = {};
@@ -595,16 +507,36 @@ function setHomeAllGood(){
         }
 
         // Mensual
+        const total = rows.length;
+        const paidCount = rows.filter(r=>String(r.status||"").toLowerCase()==="paid").length;
+        const pendCount = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase())).length;
+        const progressPct = total ? Math.round((paidCount/total)*100) : 0;
+
         return `
           <div class="card" style="margin-top:12px;">
-            <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
-            <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+              <div>
+                <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+              </div>
+              <div class="muted" style="font-weight:950;">${paidCount}/${total} pagadas</div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <div style="height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
+                <div style="height:100%;width:${progressPct}%;background:rgba(91,92,226,.85);"></div>
+              </div>
+              <div class="muted" style="margin-top:6px;font-weight:900;">
+                ${pendCount ? `Quedan ${pendCount} cuota(s) por pagar 😅` : `¡Listo! Campaña al día 🥳`}
+              </div>
+            </div>
+
             <div style="margin-top:10px;">
               ${rows.map(r=>renderPaymentRow(r)).join("")}
             </div>
           </div>
         `;
-      }).join("");
+}).join("");
 
     const others = (paysByTask["no_task"]||[]).length ? `
       <div class="card" style="margin-top:12px;">
@@ -618,10 +550,15 @@ function setHomeAllGood(){
 
     app.innerHTML = `
       <div class="card">
-        <div class="kTitle">Pagos</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div class="kTitle">Pagos</div>
+          ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
+        </div>
         <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
         ${chips}
       </div>
+
+      ${taskOptions}
 
       ${nextCard}
 
@@ -633,6 +570,19 @@ function setHomeAllGood(){
 
       ${others}
     `;
+
+    // hook filtro campaña
+    const sel = document.getElementById("taskFilter");
+    if(sel){
+      sel.onchange = ()=>{
+        window.__apoTaskFilter = sel.value;
+        renderPayments();
+      };
+    }
+
+    // marcar como visto (para badge 🆕)
+    localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
+
   }
 
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
