@@ -422,11 +422,22 @@ function dueBadge(iso){
       const title = document.querySelector("#cardNextDue .kTitle");
       if(title) title.innerHTML = "🥳 ¡Todo al día!";
       const pill = document.getElementById("homeDuePill");
-      if(pill){ pill.className="tag ok"; pill.textContent="🎉 Sin pagos pendientes"; }
+      if(pill){ pill.className="tag ok"; pill.textContent="Todo en orden"; }
       const amt = document.getElementById("homeNextDueAmount");
       if(amt){ amt.textContent="No tienes pagos por ahora 😄"; amt.style.fontSize="20px"; }
       const txt = document.getElementById("homePendingText");
-      if(txt) txt.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad 😄";
+
+      // ocultar línea de vencimiento cuando está al día
+      const metaLine = document.querySelector("#cardNextDue .muted");
+      if(metaLine) metaLine.style.display = "none";
+
+      // botón menos "ansioso" cuando está al día
+      const btn = document.querySelector("#cardNextDue .btnx");
+      if(btn){
+        btn.classList.remove("primary");
+        btn.textContent = "Revisar pagos";
+      }
+      if(txt) txt.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad";
     }
   }
 
@@ -439,6 +450,7 @@ function dueBadge(iso){
   const selectedTask = window.__apoTaskFilter || "all";
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
+    const creditTotal = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
 
 
     const chips = `
@@ -446,21 +458,20 @@ function dueBadge(iso){
         <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
         <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
         <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
-        <button class="chip ${payFilter==="credit"?"active":""}" onclick="setPayFilter('credit')">Saldo a favor</button>
+        <button class="chip ${payFilter==="credit"?"active":""} ${creditTotal>0?"":"disabled"}" ${creditTotal>0?`onclick="setPayFilter(\'credit\')"`:""}>${creditTotal>0?"💰 Saldo a favor":"Saldo a favor"}</button>
       </div>
     `;
 
-    const taskOptions = `
-      <div class="card" style="margin-top:12px;">
-        <div class="kTitle">Filtrar</div>
-        <div class="muted" style="margin-top:6px;">Elige una campaña para encontrar más rápido.</div>
-        <select id="taskFilter" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.12);font-weight:900;">
+    const taskOptions = (tasksAll.length>1 || (paysAll||[]).some(p=>!p.fromTaskId)) ? `
+      <div style="margin-top:12px;">
+        <div class="muted" style="font-weight:900;margin-bottom:6px;">🔍 Campaña</div>
+        <select id="taskFilter" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.12);font-weight:900;">
           <option value="all">Todas las campañas</option>
           ${tasksAll.map(t=>`<option value="${esc(t.id)}" ${selectedTask===t.id?"selected":""}>${esc(t.title||"Campaña")}</option>`).join("")}
           <option value="no_task" ${selectedTask==="no_task"?"selected":""}>Otros (sin campaña)</option>
         </select>
       </div>
-    `;
+    ` : ``;
 
 
     function renderPaymentRow(r){
@@ -648,7 +659,7 @@ function dueBadge(iso){
           <div class="kTitle">Pagos</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
-        <div class="muted" style="margin-top:6px;">Si tienes saldo a favor, se aplicará automáticamente al pagar.</div>
+        <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
         ${chips}
       </div>
 
@@ -658,7 +669,13 @@ function dueBadge(iso){
 
       ${
         emptyAll
-          ? `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:800;line-height:1.45;">Aún no hay campañas ni cobros publicados. Cuando la directiva cree una campaña, aparecerá aquí.</div></div>`
+          ? (() => {
+            if(payFilter==="pending") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">🎉 No tienes pagos pendientes. Te avisaremos cuando la directiva publique un cobro 😊</div></div>`;
+            if(payFilter==="upcoming") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">📅 No hay pagos próximos por ahora.</div></div>`;
+            if(payFilter==="paid") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no tienes pagos registrados.</div></div>`;
+            if(payFilter==="credit") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">No tienes saldo a favor por ahora.</div></div>`;
+            return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no hay campañas ni cobros publicados. Te avisaremos cuando haya novedades 😊</div></div>`;
+          })()
           : (campaignCards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
       }
 
