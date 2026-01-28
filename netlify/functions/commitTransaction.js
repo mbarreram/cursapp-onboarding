@@ -1,11 +1,20 @@
-const { Environment, IntegrationApiKeys, IntegrationCommerceCodes, Options, WebpayPlus } = require("transbank-sdk");
+
+const {
+  Environment,
+  IntegrationApiKeys,
+  IntegrationCommerceCodes,
+  Options,
+  WebpayPlus
+} = require("transbank-sdk");
 
 function getTx(){
   const env = (process.env.TBK_ENV || "Integration").toLowerCase();
   if(env === "production"){
     const commerceCode = process.env.TBK_COMMERCE_CODE;
     const apiKey = process.env.TBK_API_KEY;
-    if(!commerceCode || !apiKey) throw new Error("Faltan TBK_COMMERCE_CODE / TBK_API_KEY");
+    if(!commerceCode || !apiKey){
+      throw new Error("Faltan TBK_COMMERCE_CODE / TBK_API_KEY");
+    }
     return new WebpayPlus.Transaction(new Options(commerceCode, apiKey, Environment.Production));
   }
   return new WebpayPlus.Transaction(new Options(
@@ -35,10 +44,11 @@ exports.handler = async (event) => {
       token = b.token_ws || b.token || "";
     }else{
       const form = parseForm(event.body || "");
-      // Cancelación: Webpay manda TBK_TOKEN / TBK_ORDEN_COMPRA / TBK_ID_SESION
+
       if(form.TBK_TOKEN || form.TBK_ORDEN_COMPRA || form.TBK_ID_SESION){
         return { statusCode: 302, headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` } };
       }
+
       token = form.token_ws || "";
     }
 
