@@ -320,20 +320,114 @@ function dueBadge(iso){
 
   // -------- Pages --------
   function renderHome(){
-    app.innerHTML = `
-      ${reportSummaryCard()}
+    // datos para home
+    const paysAll = load(KEY_PAYMENTS, []);
+    const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
+    const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-      <div class="grid2">
-        <div class="card" style="cursor:pointer" onclick="go('payments')">
-          <div class="kTitle">💳 Pagos</div>
-          <div class="muted" style="margin-top:6px;">Ver pendientes, próximas, pagadas y saldo a favor</div>
+    const nextDue = paysAll
+      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
+      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+
+    const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
+    const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
+
+    const r = latestReport();
+
+    app.innerHTML = `
+      <!-- 1) Próxima cuota -->
+      <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="kTitle">⏰ Próxima cuota</div>
+          <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
-        <div class="card" style="cursor:pointer" onclick="go('informes')">
-          <div class="kTitle">📄 Informes</div>
-          <div class="muted" style="margin-top:6px;">Ver informes publicados por la directiva</div>
+
+        <div class="muted" style="margin-top:6px;font-weight:900;">
+          Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
+          · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
+        </div>
+
+        <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
+          ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
+        </div>
+
+        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+          <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
         </div>
       </div>
+
+      <!-- 2) Pendientes -->
+      <div class="card" id="cardPending" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="kTitle">💳 Pagos pendientes</div>
+          ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
+        </div>
+
+        <div class="muted" style="margin-top:6px;font-weight:900;" id="homePendingText">
+          Tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
+        </div>
+
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="muted">Total pendiente</div>
+          <div style="font-weight:950;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+        </div>
+
+        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+          <button class="btnx" id="btnGoPending" type="button">Ver todos</button>
+        </div>
+      </div>
+
+      <!-- 3) Estado del curso (más humano) -->
+      <div class="card" style="margin-top:12px;">
+           <div class="kTitle">📊 Estado del curso</div>
+        <div class="muted" style="margin-top:6px;line-height:1.45;">
+          Así va el fondo del curso. Estos montos son del curso completo, no personales.
+        </div>
+
+        ${
+          r ? `
+          <div style="margin-top:12px;">
+            <div style="display:flex;justify-content:space-between;"><span>💰 Recaudado</span><b>${clp(r.recaudadoCurso||0)}</b></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>🧾 Gastado</span><b>${clp(r.gastadoCurso||0)}</b></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>📦 Disponible</span><b>${clp(r.disponibleCurso||0)}</b></div>
+          </div>
+          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+            <button class="btnx" onclick="openReport('${esc(r.period||"")}')">Ver informe</button>
+          </div>
+          ` : `
+          <div class="muted" style="margin-top:10px;font-weight:900;">Aún no hay informes publicados.</div>
+          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+            <button class="btnx" onclick="go('informes')">Ver informes</button>
+          </div>
+          `
+        }
+      </div>
     `;
+
+    // comportamiento botones
+    const goPending = document.getElementById("btnGoPending");
+    if(goPending) goPending.onclick = ()=> go("payments");
+
+    const payNext = document.getElementById("btnPayNext");
+    if(payNext){
+      payNext.onclick = ()=>{
+        if(nextDue?.id) payNow(nextDue.id);
+        else go("payments");
+      };
+    }
+
+    // Si está al día: copy divertido
+    const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+    if(pending.length===0 && upcoming.length===0){
+      const title = document.querySelector("#cardNextDue .kTitle");
+      if(title) title.innerHTML = "🥳 ¡Todo al día!";
+      const pill = document.getElementById("homeDuePill");
+      if(pill){ pill.className="tag ok"; pill.textContent="🎉 Sin pagos pendientes"; }
+      const amt = document.getElementById("homeNextDueAmount");
+      if(amt){ amt.textContent="No tienes pagos por ahora 😄"; amt.style.fontSize="20px"; }
+      const txt = document.getElementById("homePendingText");
+      if(txt) txt.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad 😄";
+    }
   }
 
   let payFilter="pending";
