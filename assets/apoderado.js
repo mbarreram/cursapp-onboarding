@@ -539,6 +539,8 @@ function dueBadge(iso){
 
 
     function renderPaymentRow(r){
+      let justPaidId="";
+      try{ justPaidId = sessionStorage.getItem("justPaidPaymentId")||""; }catch(e){}
       const st = String(r.status||"").toLowerCase();
       const isPend = (st==="pending" || st==="partial");
       const isPaidRow = (st==="paid");
@@ -554,7 +556,9 @@ function dueBadge(iso){
                   : isCred ? `<span class="tag">Saldo a favor</span>`
                   : `<span class="tag warn">Pendiente</span>`;
 
-      const badges = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      const paidJust = (justPaidId && justPaidId===String(r.id)) ? `<span class="tag ok">✅ Pago efectuado</span>` : ``;
+
+      const badges = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${paidJust}
         ${badge}${monthTag}${r.typeTag?`<span class="tag">${esc(r.typeTag)}</span>`:""}
       </div>`;
 
@@ -806,6 +810,8 @@ function dueBadge(iso){
 
     // marcar como visto (para badge 🆕)
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
+
+    try{ if(sessionStorage.getItem("justPaidPaymentId")) sessionStorage.removeItem("justPaidPaymentId"); }catch(e){}
 
     // toast simple post-pago
     try{

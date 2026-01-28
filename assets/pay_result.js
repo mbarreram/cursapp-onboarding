@@ -30,36 +30,19 @@
       save(KEY_PAYMENTS, pays);
     }
 
-    try{ sessionStorage.setItem("justPaid","1"); }catch(e){}
+    try{ sessionStorage.setItem("justPaid","1"); sessionStorage.setItem("justPaidPaymentId", pid); }catch(e){}
 
     el.innerHTML = `
       <div class="card">
         <div class="kTitle">✅ Pago aprobado</div>
         <div class="muted" style="margin-top:6px;">Redirigiendo a Pagos…</div>
-        <div class="muted" style="margin-top:6px;">Monto: <b>${clp(amount)}</b></div>
-        <div class="muted" style="margin-top:6px;">Autorización: <b>${esc(auth||"—")}</b></div>
-        <div class="muted" style="margin-top:6px;font-size:12px;">resp_code: <b>${esc(resp||"")}</b></div>
-        <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx primary" id="btnBack">Volver a Pagos</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="kTitle">🧾 Comprobante</div>
-        <div class="listLines" style="margin-top:12px;">
-          <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
-          <div class="lineItem"><b>Autorización:</b> ${esc(auth||"—")}</div>
-          <div class="lineItem"><b>Fecha:</b> ${esc(new Date().toLocaleString("es-CL"))}</div>
-          <div class="lineItem"><b>Operación:</b> ${esc(buy||"—")}</div>
-          <div class="lineItem"><b>ID pago:</b> ${esc(pid)}</div>
+        <div style="margin-top:12px;height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
+          <div style="height:100%;width:65%;background:rgba(34,197,94,.65);"></div>
         </div>
       </div>
     `;
 
-    document.getElementById("btnBack").onclick = backToPayments;
-
-    // Redirección automática a Pagos (éxito)
-    setTimeout(backToPayments, 1200);
+    setTimeout(backToPayments, 600);
 
   }else{
     el.innerHTML = `
