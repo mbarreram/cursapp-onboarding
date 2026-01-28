@@ -806,20 +806,20 @@ function dueBadge(iso){
     renderPayments();
   };
 
-window.payNow = function(id){
-    // Flujo de pago (checkout)
-    const pays = load(KEY_PAYMENTS, []);
-    const i = pays.findIndex(p=>p.id===id);
-    if(i<0) return;
 
-    const checkouts = load(KEY_CHECKOUTS, []);
-    const checkout = {
-      id: "ck_" + Math.random().toString(16).slice(2),
-      paymentId: id,
-      createdAt: nowISO(),
-      status: "created",
-      returnTo: "apoderado.html"
-    };
+const KEY_CHECKOUTS = "cursapp_checkouts_v1";
+
+window.payNow = function(id){
+  const checkouts = load(KEY_CHECKOUTS, []);
+  const checkout = { id:"ck_"+Math.random().toString(16).slice(2), paymentId:id, createdAt: nowISO() };
+  checkouts.unshift(checkout);
+  save(KEY_CHECKOUTS, checkouts);
+
+  location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
+};
+  
+
+
     checkouts.unshift(checkout);
     save(KEY_CHECKOUTS, checkouts);
 
