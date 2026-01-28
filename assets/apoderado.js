@@ -323,7 +323,7 @@ function dueBadge(iso){
     <!-- HOME APODERADO -->
 
     <!-- CARD 1: PRÓXIMA CUOTA -->
-    <div class="card" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
+    <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="kTitle">⏰ Próxima cuota</div>
         <span class="tag warn">Vence pronto</span>
@@ -343,7 +343,7 @@ function dueBadge(iso){
     </div>
 
     <!-- CARD 2: PENDIENTES -->
-    <div class="card" style="margin-top:12px;">
+    <div class="card" id="cardPending" style="margin-top:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="kTitle">💳 Pagos pendientes</div>
 
@@ -392,7 +392,60 @@ function dueBadge(iso){
       </div>
     </div>
   `;
+    // ---- Home: estado amigable según pagos ----
+const paysAll = load(KEY_PAYMENTS, []);
+const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
+const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+
+// Si no hay nada pendiente ni próxima: estás al día
+if(pending.length === 0 && upcoming.length === 0){
+  setHomeAllGood();
 }
+  }
+  
+function setHomeAllGood(){
+  const card = document.getElementById("cardNextDue");
+  if(!card) return;
+
+  // Título y pill
+  const title = card.querySelector(".kTitle");
+  if(title) title.innerHTML = "🥳 ¡Todo al día!";
+  const pill = card.querySelector(".tag");
+  if(pill){
+    pill.className = "tag ok";
+    pill.textContent = "🎉 Sin pagos pendientes";
+  }
+
+  // Meta
+  const meta = document.getElementById("homeNextDueDate");
+  const days = document.getElementById("homeNextDueDays");
+  if(meta) meta.textContent = "—";
+  if(days) days.textContent = "—";
+
+  // Monto -> mensaje alegre
+  const amt = document.getElementById("homeNextDueAmount");
+  if(amt){
+    amt.textContent = "No tienes pagos por ahora 😄";
+    amt.style.fontSize = "20px";
+  }
+
+  // Botón
+  const btn = card.querySelector(".btnx.primary");
+  if(btn){
+    btn.textContent = "Ver pagos";
+    btn.onclick = ()=> go("payments");
+  }
+
+  // Pendientes card
+  const pendingCard = document.getElementById("cardPending");
+  if(pendingCard){
+    const muted = pendingCard.querySelector(".muted");
+    if(muted) muted.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad 😄";
+    const total = pendingCard.querySelector("#homePendingTotal");
+    if(total) total.textContent = "$0";
+  }
+}
+
 
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
