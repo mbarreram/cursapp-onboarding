@@ -1,4 +1,3 @@
-
 const {
   Environment,
   IntegrationApiKeys,
@@ -29,6 +28,14 @@ function parseForm(body){
   return Object.fromEntries(params.entries());
 }
 
+function decodeBody(event){
+  if(!event.body) return "";
+  if(event.isBase64Encoded){
+    return Buffer.from(event.body, "base64").toString("utf8");
+  }
+  return event.body;
+}
+
 exports.handler = async (event) => {
   const qs = event.queryStringParameters || {};
   const pid = qs.pid || "";
@@ -38,32 +45,51 @@ exports.handler = async (event) => {
     const headers = event.headers || {};
     const ct = (headers["content-type"] || headers["Content-Type"] || "").toLowerCase();
 
+    const rawBody = decodeBody(event);
+
     let token = "";
+
     if(ct.includes("application/json")){
-      const b = JSON.parse(event.body || "{}");
+      const b = JSON.parse(rawBody || "{}");
       token = b.token_ws || b.token || "";
     }else{
-      const form = parseForm(event.body || "");
+      const form = parseForm(rawBody);
 
+      // Cancelación: Webpay manda TBK_TOKEN / TBK_ORDEN_COMPRA / TBK_ID_SESION
       if(form.TBK_TOKEN || form.TBK_ORDEN_COMPRA || form.TBK_ID_SESION){
-        return { statusCode: 302, headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` } };
+        return {
+          statusCode: 302,
+          headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
+        };
       }
 
       token = form.token_ws || "";
     }
 
     if(!token){
-      return { statusCode: 302, headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` } };
+      return {
+        statusCode: 302,
+        headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
+      };
     }
 
     const tx = getTx();
     const resp = await tx.commit(token);
 
     const ok = String(resp.response_code) === "0";
-    const loc = `/pay_result.html?ok=${ok?1:0}&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}&amount=${encodeURIComponent(resp.amount||"")}&auth=${encodeURIComponent(resp.authorization_code||"")}&resp=${encodeURIComponent(resp.response_code||"")}`;
+    const loc = `/pay_result.html?ok=${ok?1:0}`
+      + `&pid=${encodeURIComponent(pid)}`
+      + `&cid=${encodeURIComponent(cid)}`
+      + `&amount=${encodeURIComponent(resp.amount||"")}`
+      + `&auth=${encodeURIComponent(resp.authorization_code||"")}`
+      + `&resp=${encodeURIComponent(resp.response_code||"")}`;
 
     return { statusCode: 302, headers: { Location: loc } };
+
   }catch(e){
-    return { statusCode: 302, headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` } };
+    return {
+      statusCode: 302,
+      headers: { Location: `/pay_result.html?ok=0&pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}` }
+    };
   }
 };
