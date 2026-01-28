@@ -1,3 +1,4 @@
+
 (function(){
   const KEY_TASKS = "cursapp_tasks_v1";
   const KEY_PAYMENTS = "cursapp_payments_v1";
@@ -32,7 +33,7 @@
     const t = p ? tasks.find(tt=>tt.id===p.fromTaskId) : null;
 
     if(!p){
-      el.innerHTML = `<div class="card"><div class="kTitle">Pago no encontrado</div></div>`;
+      el.innerHTML = `<div class="card"><div class="kTitle">Pago no encontrado</div><div class="muted" style="margin-top:6px;">Vuelve a Pagos e inténtalo nuevamente.</div></div>`;
       return;
     }
 
@@ -44,24 +45,44 @@
         <div class="muted" style="margin-top:6px;">Campaña: <b>${esc(t?.title||"—")}</b></div>
         <div class="muted" style="margin-top:6px;">Vence: <b>${esc(p.dueDate||"—")}</b></div>
         <div style="margin-top:10px;font-weight:950;font-size:22px;">Total: ${clp(amount)}</div>
+      </div>
 
-        <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx primary" id="btnWebpay">Ir a Webpay</button>
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="kTitle">Método de pago</div>
+          <span class="badge">Transbank</span>
+        </div>
+        <div class="muted" style="margin-top:6px;">Pago con tarjetas vía Webpay Plus (Integración).</div>
+
+        <div class="method" style="margin-top:12px;">
+          <div>
+            <div class="t">Webpay Plus</div>
+            <div class="muted s">Serás redirigido a Transbank para pagar.</div>
+          </div>
+          <div>
+            <span class="badge">Recomendado</span>
+            <div style="margin-top:8px;display:flex;justify-content:flex-end;">
+              <button class="btnx primary" id="btnWebpay">Ir a Webpay</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
 
     document.getElementById("btnWebpay").onclick = async ()=>{
+      const btn = document.getElementById("btnWebpay");
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = "Redirigiendo…";
+
       try{
         const data = await callFn("createTransaction", {
           paymentId: pid,
           checkoutId: cid,
           amount,
-          // Webpay hará POST a esta URL al finalizar
           returnUrl: `${location.origin}/.netlify/functions/commitTransaction?pid=${encodeURIComponent(pid)}&cid=${encodeURIComponent(cid)}`
         });
 
-        // Webpay requiere POST a data.url con token_ws
         const form = document.createElement("form");
         form.method = "POST";
         form.action = data.url;
@@ -73,6 +94,8 @@
         document.body.appendChild(form);
         form.submit();
       }catch(e){
+        btn.disabled = false;
+        btn.textContent = old;
         alert(e.message || "No se pudo iniciar Webpay");
       }
     };

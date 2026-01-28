@@ -758,6 +758,15 @@ function dueBadge(iso){
     // marcar como visto (para badge 🆕)
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
 
+    // toast simple post-pago
+    try{
+      if(sessionStorage.getItem("justPaid")==="1"){
+        sessionStorage.removeItem("justPaid");
+        alert("✅ Pago registrado");
+      }
+    }catch(e){}
+
+
   }
 
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
@@ -916,5 +925,7 @@ if (DEMO_MODE) {
 }
 
 initMenu();
-go("home"); // default seguro post-reset
+const hash = (location.hash || "").replace("#","");
+if(hash==="payments") go("payments");
+else go("home"); // default seguro post-reset
 })();
