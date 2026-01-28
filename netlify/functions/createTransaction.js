@@ -1,26 +1,35 @@
-// Netlify Function: createTransaction
-// Implementa aquí la creación REAL de la transacción en tu backend (Webpay/Transbank u otra pasarela).
-// Requiere variables de entorno (commerce_code, api_key, environment) y librería oficial del proveedor.
-//
-// Debe retornar: { redirectUrl: "https://..." }
+const { Environment, IntegrationApiKeys, IntegrationCommerceCodes, Options, WebpayPlus } = require("transbank-sdk");
+
+function getTx(){
+  const env = (process.env.TBK_ENV || "Integration").toLowerCase();
+  if(env === "production"){
+    const commerceCode = process.env.TBK_COMMERCE_CODE;
+    const apiKey = process.env.TBK_API_KEY;
+    if(!commerceCode || !apiKey) throw new Error("Faltan TBK_COMMERCE_CODE / TBK_API_KEY");
+    return new WebpayPlus.Transaction(new Options(commerceCode, apiKey, Environment.Production));
+  }
+  // Integración por defecto (SDK oficial)
+  return new WebpayPlus.Transaction(new Options(
+    IntegrationCommerceCodes.WEBPAY_PLUS,
+    IntegrationApiKeys.WEBPAY,
+    Environment.Integration
+  ));
+}
 
 exports.handler = async (event) => {
   try{
     const body = JSON.parse(event.body || "{}");
-    const { paymentId, checkoutId, amount, returnUrl } = body;
+    const { amount, returnUrl, paymentId, checkoutId } = body;
+    if(!amount || !returnUrl) return { statusCode: 400, body: JSON.stringify({ error:"Faltan amount/returnUrl" }) };
 
-    if(!paymentId || !amount || !returnUrl){
-      return { statusCode: 400, body: JSON.stringify({ error: "Faltan parámetros" }) };
-    }
+    const tx = getTx();
+    const buyOrder = ("O-" + (paymentId||"") + "-" + Date.now()).slice(0, 26);
+    const sessionId = ("S-" + (checkoutId||"") + "-" + Date.now()).slice(0, 61);
 
-    // TODO: Crear transacción real con el SDK del proveedor.
-    // Por ahora devolvemos error explícito para que se note que falta configuración.
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        error: "Webpay no está configurado aún. Configura la Netlify Function createTransaction con el SDK y credenciales."
-      })
-    };
+    // create(buyOrder, sessionId, amount, returnUrl) según docs de Transbank
+    const resp = await tx.create(buyOrder, sessionId, amount, returnUrl);  [oai_citation:1‡proyecto-ejemplo-node.transbankdevelopers.cl](https://proyecto-ejemplo-node.transbankdevelopers.cl/webpay-plus)
+
+    return { statusCode: 200, body: JSON.stringify({ token: resp.token, url: resp.url }) };
   }catch(e){
     return { statusCode: 500, body: JSON.stringify({ error: e.message || "Error" }) };
   }
