@@ -480,9 +480,16 @@ function dueBadge(iso){
       const isPaidRow = (st==="paid");
       const isCred = (st==="credit");
 
+      const mName = r.dueDate ? monthNameFromISO(r.dueDate) : "";
+      const monthTag = (mName && !isCred) ? `<span class="tag">${esc("Mes " + mName)}</span>` : "";
+
       const badge = isPaidRow ? `<span class="tag ok">Pagada</span>`
                   : isCred ? `<span class="tag">Saldo a favor</span>`
                   : `<span class="tag warn">Pendiente</span>`;
+
+      const badges = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${badge}${monthTag}${r.typeTag?`<span class="tag">${esc(r.typeTag)}</span>`:""}
+      </div>`;
 
       const due = r.dueDate ? dueBadge(r.dueDate) : ``;
       const dueTxt = r.dueDate ? `<div class="muted" style="margin-top:6px;">Vence ${esc(r.dueDate)} · ${due}</div>` : ``;
@@ -490,10 +497,10 @@ function dueBadge(iso){
       const amount = Number(r.amountRemaining ?? r.amount ?? 0);
 
       return `
-        <div class="payRow">
+        <div class="payRow payRowSep">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="min-width:200px;">
-              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${badge}${r.typeTag?`<span class="tag">${esc(r.typeTag)}</span>`:""}</div>
+              ${badges}
               <div style="margin-top:8px;font-weight:950;font-size:18px;">${formatCLP(amount)}</div>
               ${dueTxt}
             </div>
@@ -616,6 +623,10 @@ function dueBadge(iso){
         const paidCount = rows.filter(r=>String(r.status||"").toLowerCase()==="paid").length;
         const pendCount = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase())).length;
         const progressPct = total ? Math.round((paidCount/total)*100) : 0;
+        const campId = `camp_${t.id}`;
+        const isOpen = !!window.__apoCampOpen?.[campId];
+        const visibleRows = isOpen ? rows : rows.slice(0,2);
+
 
         return `
           <div class="card" style="margin-top:12px;">
@@ -636,9 +647,14 @@ function dueBadge(iso){
               </div>
             </div>
 
-            <div style="margin-top:10px;">
-              ${rows.map(r=>renderPaymentRow(r)).join("")}
+            <div class="kCampRail" style="margin-top:10px;">
+              ${visibleRows.map(r=>renderPaymentRow(r)).join("")}
             </div>
+            ${rows.length>2 ? `
+              <div class="actions" style="margin-top:10px;justify-content:flex-end;">
+                <button class="btnx" onclick="toggleCamp('${esc(campId)}')">${isOpen ? "Contraer" : `Ver todas (${rows.length})`}</button>
+              </div>
+            ` : ``}
           </div>
         `;
 }).join("");
@@ -734,7 +750,15 @@ function dueBadge(iso){
     renderPayments();
   };
 
-  window.payNow = function(id){
+  
+  // ---- Camp accordion state (Apoderado) ----
+  window.__apoCampOpen = window.__apoCampOpen || {};
+  window.toggleCamp = function(campId){
+    window.__apoCampOpen[campId] = !window.__apoCampOpen[campId];
+    renderPayments();
+  };
+
+window.payNow = function(id){
     const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
