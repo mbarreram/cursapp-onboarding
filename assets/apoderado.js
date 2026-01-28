@@ -479,9 +479,11 @@ function dueBadge(iso){
       const isPend = (st==="pending" || st==="partial");
       const isPaidRow = (st==="paid");
       const isCred = (st==="credit");
+      const task = tasksAll.find(t=>t.id===r.fromTaskId);
+      const isMonthlyTask = String(task?.type||"") === "monthly";
 
       const mName = r.dueDate ? monthNameFromISO(r.dueDate) : "";
-      const monthTag = (mName && !isCred) ? `<span class="tag">${esc("Mes " + mName)}</span>` : "";
+      const monthTag = (mName && !isCred && isMonthlyTask) ? `<span class="tag">${esc("Mes " + mName)}</span>` : "";
 
       const badge = isPaidRow ? `<span class="tag ok">Pagada</span>`
                   : isCred ? `<span class="tag">Saldo a favor</span>`
@@ -528,6 +530,7 @@ function dueBadge(iso){
     const nextCard = nextDue ? `
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
         <div style="font-weight:950;">Próxima cuota</div>
+        <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"—")}</b></div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
           Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
         </div>
@@ -562,7 +565,10 @@ function dueBadge(iso){
       const m = campaignMeta(t);
       return `
         <div class="card" style="margin-top:12px;">
-          <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                  <span class="tag">Campaña</span>
+                </div>
           ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
             <span class="tag">Monto ${formatCLP(m.amount)}</span>
@@ -605,7 +611,10 @@ function dueBadge(iso){
             <div class="card" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div>
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                  <span class="tag">Campaña</span>
+                </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
                 ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${esc(t.id)}')">Pagar todo</button>` : ``}
@@ -632,7 +641,10 @@ function dueBadge(iso){
           <div class="card" style="margin-top:12px;">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
               <div>
-                <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
+                  <span class="tag">Campaña</span>
+                </div>
                 <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
               </div>
               <div class="muted" style="font-weight:950;">${paidCount}/${total} pagadas</div>
