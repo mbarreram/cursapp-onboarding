@@ -74,6 +74,130 @@
   const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
   const deudoresCount = () => payments().filter(isPendingLike).length;
 
+  // ---- curso / apoderados aprobados ----
+  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_ENROLL = "cursapp_enrollments_v1";
+
+  function activeCourseKey(){
+    return localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+  }
+  function approvedApoderados(){
+    const ck = activeCourseKey();
+    try{
+      const list = JSON.parse(localStorage.getItem(KEY_ENROLL) || "[]");
+      return list.filter(e => (!ck || e.courseKey===ck) && e.status==="approved");
+    }catch(e){
+      return [];
+    }
+  }
+  function approvedCount(){
+    const n = approvedApoderados().length;
+    return n || 1; // fallback
+  }
+
+  // ---- fechas / periodos ----
+  function ymFromISO(iso){
+    if(!iso) return "";
+    const s = String(iso);
+    if(s.length >= 7) return s.slice(0,7);
+    return "";
+  }
+  function currentYYYYMM(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  }
+  function endOfMonthDate(ym){
+    const [y,m] = ym.split("-").map(x=>parseInt(x,10));
+    if(!y || !m) return null;
+    return new Date(y, m, 0); // last day of month
+  }
+  function withinMonth(iso, ym){
+    return ymFromISO(iso) === ym;
+  }
+
+  // ---- KPIs mes ----
+  function collectedMonth(ym){
+    // prefer paidAt / paidDate if exists; fallback dueDate
+    return sum(payments().filter(p=>{
+      if(!isPaid(p)) return false;
+      const dt = p.paidAt || p.paidDate || p.paid_on || "";
+      return withinMonth(String(dt).slice(0,10), ym) || withinMonth(p.createdAt||"", ym);
+    }), p=>p.amount);
+  }
+
+  function spentMonth(ym){
+    return sum(expenses().filter(e=> withinMonth(e.date||"", ym)), e=>e.amount);
+  }
+
+  function pendingMonthReal(ym){
+    return sum(payments().filter(p=>{
+      if(!isPendingLike(p)) return false;
+      if(String(p.status||"").toLowerCase()==="opted_out") return false;
+      const due = p.dueDate || "";
+      return withinMonth(due, ym);
+    }), p => (p.amountRemaining ?? p.amount ?? 0));
+  }
+
+  // Proyección máxima (ajustada por opt-out si existe)
+  function pendingMonthProjected(ym){
+    const people = approvedCount();
+    const tks = tasks();
+    let expected = 0;
+
+    // monthly campaigns: contribute amount if month is within their schedule
+    tks.forEach(t=>{
+      if(t.closed) return;
+      const type = String(t.type||"single").toLowerCase();
+      const amt = Number(t.amount||0);
+
+      if(type==="monthly"){
+        // month range: from startDate month to start+months-1
+        const startYM = ymFromISO(t.startDate||t.dueDate||"");
+        if(!startYM) return;
+        const months = Math.max(1, Number(t.months||1));
+
+        // compute index of ym relative to startYM
+        const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
+        const cy = parseInt(ym.slice(0,4),10), cm = parseInt(ym.slice(5,7),10);
+        const idx = (cy - sy)*12 + (cm - sm) + 1; // 1-based
+        if(idx < 1 || idx > months) return;
+
+        expected += amt * people;
+
+        // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
+        if(t.mandatoryParticipation === false){
+          const opted = payments().filter(p=>{
+            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+          }).length;
+          expected -= Math.min(opted, people) * amt;
+        }
+        return;
+      }
+
+      // single payment: only count if dueDate month equals ym
+      const dueYM = ymFromISO(t.dueDate||"");
+      if(dueYM && dueYM===ym){
+        expected += amt * people;
+
+        if(t.mandatoryParticipation === false){
+          const opted = payments().filter(p=>{
+            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+          }).length;
+          expected -= Math.min(opted, people) * amt;
+        }
+      }
+    });
+
+    return Math.max(0, expected);
+  }
+
+  function debtorsMonthCount(ym){
+    // count unique apoderados with pending in month (if we have email); else count pending items
+    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
+    const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
+    return emails.size ? emails.size : pend.length;
+  }
+
   function collectedTask(id){
     return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
   }
@@ -85,41 +209,6 @@
   }
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
-  }
-
-  
-  // ---- curso / apoderados (para estimaciones) ----
-  function getActiveCourseKey(){
-    const ck = localStorage.getItem("cursapp_active_course_v1") || "";
-    if(ck) return ck;
-    try{
-      const c = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null");
-      return (c && c.courseKey) ? c.courseKey : "";
-    }catch(e){ return ""; }
-  }
-  function approvedApoderadosCount(){
-    const ck = getActiveCourseKey();
-    try{
-      const list = JSON.parse(localStorage.getItem("cursapp_enrollments_v1") || "[]");
-      const n = list.filter(e => (!ck || e.courseKey === ck) && e.status === "approved").length;
-      return n || 0;
-    }catch(e){ return 0; }
-  }
-  function taskMonths(task){
-    return (task && String(task.type||"") === "monthly") ? Math.max(1, Number(task.months||1)) : 1;
-  }
-  function paymentsCountForTask(taskId){
-    return payments().filter(p=>p.fromTaskId===taskId).length;
-  }
-  function expectedTotalForTask(task){
-    const ap = Math.max(approvedApoderadosCount(), 1); // fallback 1 si no hay enrollments aún
-    const m = taskMonths(task);
-    return Number(task.amount||0) * m * ap;
-  }
-  function expectedPendingForTask(task){
-    const total = expectedTotalForTask(task);
-    const rec = collectedTask(task.id);
-    return Math.max(0, total - rec);
   }
 
   function latestReport(){
@@ -239,19 +328,24 @@
 
   // ----- Home -----
   function renderHome(){
-    const rec = collectedCourse();
-    const gas = spentCourse();
+    const ym = currentYYYYMM();
+    const recMes = collectedMonth(ym);
+    const recTot = collectedCourse();
+    const gasMes = spentMonth(ym);
+    const gasTot = spentCourse();
     const sal = saldoCourse();
 
-    const pend = pendingTotal();
-    const debtors = deudoresCount();
+    const pendRealMes = pendingMonthReal(ym);
+    const pendProjMes = pendingMonthProjected(ym);
+    const debtorsMes = debtorsMonthCount(ym);
     const credit = creditTotal();
+    const apods = approvedCount();
 
     const last = latestReport();
 
     const alerts = [];
-    if(pend > 0) alerts.push(`⏳ Pendiente curso: ${clp(pend)}`);
-    if(debtors > 0) alerts.push(`👥 Deudores: ${debtors}`);
+    if(pendProjMes > 0) alerts.push(`⏳ Pendiente mes: ${clp(pendProjMes)}`);
+    if(debtorsMes > 0) alerts.push(`👥 Deudores (mes): ${debtorsMes}`);
     if(isDirty()) alerts.push(`📄 Informe desactualizado`);
 
     app.innerHTML = `
@@ -288,15 +382,17 @@
         </div>
 
         <div class="kpiGrid">
-          <div class="kpi"><div class="lbl">💰 Recaudado</div><div class="val">${clp(rec)}</div></div>
-          <div class="kpi"><div class="lbl">🧾 Rendido</div><div class="val">${clp(gas)}</div></div>
-          <div class="kpi"><div class="lbl">⚖️ Saldo</div><div class="val">${clp(sal)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente (curso)</div><div class="val">${clp(pend)}</div></div>
+          <div class="kpi"><div class="lbl">💰 Recaudado (mes)</div><div class="val">${clp(recMes)}</div></div>
+          <div class="kpi"><div class="lbl">💰 Recaudado (total)</div><div class="val">${clp(recTot)}</div></div>
+          <div class="kpi"><div class="lbl">🧾 Gastado (mes)</div><div class="val">${clp(gasMes)}</div></div>
+          <div class="kpi"><div class="lbl">🧾 Gastado (total)</div><div class="val">${clp(gasTot)}</div></div>
+          <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
+          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendProjMes)}</div></div>
         </div>
 
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="pill">👥 Deudores ${debtors}</span>
-          ${approvedApoderadosCount() ? `<span class="pill">👨‍👩‍👧‍👦 Apoderados ${approvedApoderadosCount()}</span>` : ``}
+          <span class="pill">👥 Deudores (mes) ${debtorsMes}</span>
+          <span class="pill">🧑‍🤝‍🧑 Apoderados ${apods}</span>
           <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
           ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
         </div>
@@ -343,18 +439,8 @@
       const rec = collectedTask(t.id);
       const gas = spentTask(t.id);
       const saldo = rec - gas;
-      const pendReal = pendingTask(t.id);
-      const ap = Math.max(approvedApoderadosCount(), 1);
-      const expectedItems = ap * taskMonths(t);
-      const actualItems = paymentsCountForTask(t.id);
-
-      const pendEst = expectedPendingForTask(t);
-      const pend = Math.max(pendReal, pendEst);
-
-      let debtors = deudoresTask(t.id);
-      // Si aún no se han generado cobros por apoderado, mostramos apoderados como deudores estimados
-      if(actualItems < expectedItems) debtors = ap;
-      else debtors = Math.min(debtors, ap);
+      const pend = pendingTask(t.id);
+      const debtors = deudoresTask(t.id);
 
       const monto = Number(t.amount||0);
       const tipo = campaignTypeLabel(t);
@@ -379,10 +465,8 @@
                 <span class="pill ok">Rec ${clp(rec)}</span>
                 <span class="pill warn">Gas ${clp(gas)}</span>
                 <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
-                <span class="pill">👨‍👩‍👧‍👦 Apoderados ${Math.max(approvedApoderadosCount(),1)}</span>
                 <span class="pill">Deudores ${debtors}</span>
                 <span class="pill warn">Pendiente ${clp(pend)}</span>
-                <span class="pill">Por apoderado ${clp(Number(t.amount||0) * taskMonths(t))}</span>
               </div>
 
               ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
@@ -547,6 +631,103 @@ window.deleteCampaign = function(taskId){
       .map(p=>{
         if(p.fromTaskId===taskId && isPaid(p)){
           return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+
+  // ----- Publicar cobros (genera pagos por apoderado aprobado) -----
+  function endOfMonthISO(ym){
+    const d = endOfMonthDate(ym);
+    if(!d) return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function addMonthsYM(ym, add){
+    const y = parseInt(ym.slice(0,4),10);
+    const m = parseInt(ym.slice(5,7),10);
+    const base = (y*12 + (m-1)) + add;
+    const ny = Math.floor(base/12);
+    const nm = (base%12)+1;
+    return `${ny}-${String(nm).padStart(2,'0')}`;
+  }
+
+  function paymentsForTask(taskId){
+    return payments().filter(p=>p.fromTaskId===taskId);
+  }
+
+  function publishCobrosForTask(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+    const people = approvedApoderados();
+    if(!people.length){
+      alert('No hay apoderados aprobados para generar cobros.');
+      return;
+    }
+    const existing = paymentsForTask(taskId);
+    const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
+    const out = payments().slice();
+    const type = String(t.type||'single').toLowerCase();
+    if(type==='monthly'){
+      const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
+      const months = Math.max(1, Number(t.months||1));
+      for(let i=0;i<months;i++){
+        const period = addMonthsYM(startYM, i);
+        const dueDate = endOfMonthISO(period);
+        const idx = i+1;
+        people.forEach(e=>{
+          const email = e.email || '';
+          const key = `${email}||${period}||${idx}`;
+          if(byKey.has(key)) return;
+          out.unshift({
+            id: uid('pay'),
+            fromTaskId: t.id,
+            concept: `${t.title} · Cuota ${idx}/${months}`,
+            amount: Number(t.amount||0),
+            status: 'pending',
+            dueDate,
+            period,
+            installmentIndex: idx,
+            apoderadoEmail: email,
+            apoderadoName: e.apoderadoName||'',
+            alumno: e.alumno||'',
+            createdAt: new Date().toISOString()
+          });
+          byKey.add(key);
+        });
+      }
+    } else {
+      const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
+      const dueDate = t.dueDate||endOfMonthISO(period);
+      people.forEach(e=>{
+        const email = e.email || '';
+        const key = `${email}||${period}||1`;
+        if(byKey.has(key)) return;
+        out.unshift({
+          id: uid('pay'),
+          fromTaskId: t.id,
+          concept: t.title,
+          amount: Number(t.amount||0),
+          status: 'pending',
+          dueDate,
+          period,
+          installmentIndex: 1,
+          apoderadoEmail: email,
+          apoderadoName: e.apoderadoName||'',
+          alumno: e.alumno||'',
+          createdAt: new Date().toISOString()
+        });
+        byKey.add(key);
+      });
+    }
+    save(KEY_PAYMENTS, out);
+    markDirty();
+    alert('Cobros publicados ✅');
+    go('campanas');
+  }
+
+  window.publishCobrosForTask = publishCobrosForTask;
+  window.publishCobros = publishCobrosForTask;
+
         }
         return p;
       });
@@ -590,8 +771,8 @@ window.deleteCampaign = function(taskId){
   }
 
   // ----- boot -----
-  // ✅ CAMBIO 1: no sembrar demo automáticamente
-  const DEMO_SEED = false;
+  // ✅ DEMO seed solo si está activado globalmente
+  const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
   if (DEMO_SEED) ensureDemo();
 
   initMenu();

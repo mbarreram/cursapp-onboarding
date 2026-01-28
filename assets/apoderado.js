@@ -163,7 +163,7 @@ function dueBadge(iso){
           <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
         </div>
         <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
+          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesión</button>
           <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
         </div>
       </div>
@@ -177,7 +177,7 @@ function dueBadge(iso){
           <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
         </div>
         <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx" onclick="location.href='login.html'">Cerrar sesión</button>
+          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesión</button>
           <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
         </div>
       </div>
@@ -666,3 +666,4 @@ initMenu();
 go("payments"); // para revisión rápida
 })();
  
+})();
