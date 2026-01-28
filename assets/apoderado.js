@@ -14,6 +14,7 @@
   const KEY_REPORTS = "cursapp_monthly_reports_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_CHECKOUTS = "cursapp_checkouts_v1";
   const KEY_LAST_SEEN_PAYMENTS = "cursapp_last_seen_payments_v1";
   const KEY_OPTOUT = "cursapp_optout_tasks_v1";
 
@@ -806,24 +807,23 @@ function dueBadge(iso){
   };
 
 window.payNow = function(id){
+    // Flujo de pago (checkout)
     const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
 
-    const r = applyCreditsToPayment(pays, i);
+    const checkouts = load(KEY_CHECKOUTS, []);
+    const checkout = {
+      id: "ck_" + Math.random().toString(16).slice(2),
+      paymentId: id,
+      createdAt: nowISO(),
+      status: "created",
+      returnTo: "apoderado.html"
+    };
+    checkouts.unshift(checkout);
+    save(KEY_CHECKOUTS, checkouts);
 
-    if(r.changed){
-      save(KEY_PAYMENTS, pays);
-      if(r.remaining<=0) alert(`✅ Pago cubierto con saldo a favor.\nAplicado: ${clp(r.usedTotal)}`);
-      else alert(`✅ Se aplicó saldo a favor: ${clp(r.usedTotal)}\nRestante por pagar: ${clp(r.remaining)} (demo)`);
-    }else{
-      pays[i].status="paid";
-      pays[i].paidAt=nowISO();
-      save(KEY_PAYMENTS, pays);
-      alert("Pago realizado ✅ (demo)");
-    }
-
-    renderPayments();
+    location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
   };
 
   function renderInformes(){
