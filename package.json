@@ -1,0 +1,7 @@
+{
+  "name": "cursapp-netlify-functions",
+  "private": true,
+  "dependencies": {
+    "transbank-sdk": "^4.0.0"
+  }
+}
