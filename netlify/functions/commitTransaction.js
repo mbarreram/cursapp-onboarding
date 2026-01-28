@@ -88,6 +88,7 @@ exports.handler = async (event) => {
       + `&amount=${encodeURIComponent(resp.amount||"")}`
       + `&auth=${encodeURIComponent(resp.authorization_code||"")}`
       + `&resp=${encodeURIComponent(resp.response_code||"")}`
+      + `&buy=${encodeURIComponent(resp.buy_order||"")}`
       + `&reason=${encodeURIComponent(ok?"approved":"rejected")}`;
 
     return redirect(loc);
