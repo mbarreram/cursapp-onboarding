@@ -236,7 +236,43 @@ function dueBadge(iso){
     go("home");
   };
 
-  // -------- Reports --------
+  
+  // -------- Comprobantes --------
+  window.openReceipt = function(id){
+    const pays = load(KEY_PAYMENTS, []);
+    const p = pays.find(x=>x.id===id);
+    if(!p) return;
+
+    const amount = Number(p.amountRemaining ?? p.amount ?? 0);
+    const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
+    const method = p.paidWith || "—";
+    const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
+    const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
+
+    openModal(`
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">🧾 Comprobante</div>
+            <div class="muted" style="margin-top:6px;">Pago ${esc(p.status||"")}</div>
+          </div>
+          <button class="btnx" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div class="listLines" style="margin-top:12px;">
+          <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
+          <div class="lineItem"><b>Fecha:</b> ${esc(paidAt)}</div>
+          <div class="lineItem"><b>Método:</b> ${esc(method)}</div>
+          <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
+          <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
+          <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
+        </div>
+      </div>
+    `);
+  };
+
+// -------- Reports --------
   function reports(){ return load(KEY_REPORTS, []); }
   function latestReport(){ const r = reports(); return r.length ? r[0] : null; }
 
@@ -523,6 +559,7 @@ function dueBadge(iso){
       </div>`;
 
       const due = r.dueDate ? dueBadge(r.dueDate) : ``;
+      const paidInfo = isPaidRow ? (()=>{ const dt = r.paidAt ? new Date(r.paidAt).toLocaleDateString("es-CL") : "—"; const op = r.transactionId || r.webpay?.buyOrder || "—"; return `<div class="muted" style="margin-top:6px;">Pagada ${esc(dt)} · Op ${esc(op)}</div>`; })() : ``;
       const dueTxt = r.dueDate ? `<div class="muted" style="margin-top:6px;">Vence ${esc(r.dueDate)} · ${due}</div>` : ``;
 
       const amount = Number(r.amountRemaining ?? r.amount ?? 0);
@@ -533,7 +570,7 @@ function dueBadge(iso){
             <div style="min-width:200px;">
               ${badges}
               <div style="margin-top:8px;font-weight:950;font-size:18px;">${formatCLP(amount)}</div>
-              ${dueTxt}
+              ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
               ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
@@ -717,12 +754,24 @@ function dueBadge(iso){
 
     const emptyAll = (!tasksAll.length && !paysAll.length);
 
+    // Toast post-pago (no intrusivo)
+    let toastHtml = ``;
+    try{
+      if(sessionStorage.getItem("justPaid")==="1"){
+        sessionStorage.removeItem("justPaid");
+        toastHtml = `
+          <div class="toastOk">✅ Pago registrado. Gracias 🙌</div>
+        `;
+      }
+    }catch(e){}
+
     app.innerHTML = `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div class="kTitle">Pagos</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
+        ${toastHtml}
         <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
         ${chips}
       </div>
@@ -762,7 +811,7 @@ function dueBadge(iso){
     try{
       if(sessionStorage.getItem("justPaid")==="1"){
         sessionStorage.removeItem("justPaid");
-        alert("✅ Pago registrado");
+        
       }
     }catch(e){}
 
