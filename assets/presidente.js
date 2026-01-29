@@ -560,7 +560,51 @@
   // Mantener ELIMINAR campaña (activa) en Presidente
   
   // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
-  window.publishCobros = function(taskId){ return publishCobrosForTask(taskId); };
+  window.publishCobros = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return alert("Campaña no encontrada.");
+
+    // Evitar duplicados
+    const ps = payments().slice();
+
+    function addPayment(dueDate, concept){
+      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
+      if(exists) return;
+      ps.unshift({
+        id: uid("pay"),
+        fromTaskId: taskId,
+        concept,
+        amount: Number(t.amount||0),
+        status: "pending",
+        dueDate,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    function addMonths(dateStr, n){
+      const d = new Date(dateStr + "T12:00:00");
+      if(isNaN(d.getTime())) return dateStr;
+      d.setMonth(d.getMonth()+n);
+      return d.toISOString().slice(0,10);
+    }
+
+    const type = String(t.type||"single").toLowerCase();
+    if(type === "monthly"){
+      const months = Math.max(1, Number(t.months||1));
+      const base = t.startDate || todayISO();
+      for(let i=0;i<months;i++){
+        const due = addMonths(base, i);
+        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
+      }
+    }else{
+      addPayment(t.dueDate || todayISO(), t.title);
+    }
+
+    save(KEY_PAYMENTS, ps);
+    markDirty();
+    alert("Cobros publicados ✅");
+    go("campanas");
+  };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
@@ -615,12 +659,13 @@ window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
     const people = approvedApoderados();
+    const ck = activeCourseKey();
     if(!people.length){
       alert('No hay apoderados aprobados para generar cobros.');
       return;
     }
     const existing = paymentsForTask(taskId);
-    const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
+    const byKey = new Set(existing.map(p=>`${p.courseKey||''}||${p.apoderadoId||p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
     const out = payments().slice();
     const type = String(t.type||'single').toLowerCase();
     if(type==='monthly'){
@@ -631,11 +676,17 @@ window.deleteCampaign = function(taskId){
         const dueDate = endOfMonthISO(period);
         const idx = i+1;
         people.forEach(e=>{
+          // asegurar IDs internos por curso
+          if(!e.apoderadoId) e.apoderadoId = uid('apo');
+          if(!e.alumnoId) e.alumnoId = uid('alu');
           const email = e.email || '';
-          const key = `${email}||${period}||${idx}`;
+          const key = `${ck}||${e.apoderadoId||email}||${period}||${idx}`;
           if(byKey.has(key)) return;
           out.unshift({
             id: uid('pay'),
+            courseKey: ck,
+            apoderadoId: e.apoderadoId,
+            alumnoId: e.alumnoId,
             fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),
@@ -643,6 +694,9 @@ window.deleteCampaign = function(taskId){
             dueDate,
             period,
             installmentIndex: idx,
+            courseKey: ck,
+            apoderadoId: e.apoderadoId,
+            alumnoId: e.alumnoId,
             apoderadoEmail: email,
             apoderadoName: e.apoderadoName||'',
             alumno: e.alumno||'',
@@ -655,8 +709,11 @@ window.deleteCampaign = function(taskId){
       const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
       const dueDate = t.dueDate||endOfMonthISO(period);
       people.forEach(e=>{
+          // asegurar IDs internos por curso
+          if(!e.apoderadoId) e.apoderadoId = uid('apo');
+          if(!e.alumnoId) e.alumnoId = uid('alu');
         const email = e.email || '';
-        const key = `${email}||${period}||1`;
+        const key = `${ck}||${e.apoderadoId||email}||${period}||1`;
         if(byKey.has(key)) return;
         out.unshift({
           id: uid('pay'),
@@ -667,7 +724,10 @@ window.deleteCampaign = function(taskId){
           dueDate,
           period,
           installmentIndex: 1,
-          apoderadoEmail: email,
+          courseKey: ck,
+            apoderadoId: e.apoderadoId,
+            alumnoId: e.alumnoId,
+            apoderadoEmail: email,
           apoderadoName: e.apoderadoName||'',
           alumno: e.alumno||'',
           createdAt: new Date().toISOString()
@@ -675,6 +735,7 @@ window.deleteCampaign = function(taskId){
         byKey.add(key);
       });
     }
+    try{ localStorage.setItem(KEY_ENROLL, JSON.stringify(JSON.parse(localStorage.getItem(KEY_ENROLL)||'[]'))); }catch(e){}
     save(KEY_PAYMENTS, out);
     markDirty();
     alert('Cobros publicados ✅');
