@@ -297,7 +297,17 @@
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // ----- UI pieces -----
+  
+  // ----- Watcher: refrescar Campañas cuando cambian las tasks -----
+  let __TASKS_SIG = "";
+  function __tasksSig(){
+    try{
+      const raw = localStorage.getItem(KEY_TASKS) || "[]";
+      let h=0; for(let i=0;i<raw.length;i++) h=(h*31 + raw.charCodeAt(i))>>>0;
+      return String(h);
+    }catch(e){ return ""; }
+  }
+// ----- UI pieces -----
   function statusPillForCampaign(t){
     if(t.closed){
       const pend = pendingTask(t.id);
@@ -776,5 +786,10 @@ window.deleteCampaign = function(taskId){
   if (DEMO_SEED) ensureDemo();
 
   initMenu();
+  setInterval(()=>{
+    if(state.tab!=="campanas") return;
+    const sig = __tasksSig();
+    if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
+  }, 800);
   go("home");
 })();
