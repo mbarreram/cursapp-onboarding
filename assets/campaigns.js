@@ -13,13 +13,22 @@
 ========================================================= */
 
 (function () {
+  // Prefer curso-scoped keys when config.js is present (prod-ready demo)
+  const sk = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function")
+    ? window.CURSAPP.scopedKey
+    : (k) => k;
+
   function detectKey(candidates) {
     for (const k of candidates) if (localStorage.getItem(k) != null) return k;
     return "";
   }
 
+  // ✅ Use course-scoped tasks key if available; fallback to legacy keys for existing demos
+  const SCOPED_TASKS = sk("tasks_v1");
   const KEY_TASKS =
-    detectKey(["cursapp_tasks_v1", "tasks", "campanas", "cursapp_campaigns_v1"]) || "cursapp_tasks_v1";
+    (localStorage.getItem(SCOPED_TASKS) != null
+      ? SCOPED_TASKS
+      : (detectKey(["cursapp_tasks_v1", "tasks", "campanas", "cursapp_campaigns_v1"]) || SCOPED_TASKS));
   const KEY_DIRTY =
     detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
