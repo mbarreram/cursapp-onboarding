@@ -56,13 +56,17 @@
   }
   initSafeStorage();
 
-  // -------- Auto-cobros: instanciar pagos para el apoderado cuando exista una campaña --------
+  // -------- Auto-cobros: instanciar pagos pendientes para el apoderado --------
   function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
-    if(!ident) return paysAll;
-    const { courseKey, apoderadoId, alumnoId, email } = ident;
-    if(!courseKey) return paysAll;
+    ident = ident || {};
+    const courseKey = String(ident.courseKey||"").trim();
+    if(!courseKey) return paysAll || [];
+    const apoderadoId = String(ident.apoderadoId||"").trim();
+    const alumnoId = String(ident.alumnoId||"").trim();
+    const email = String(ident.email||"").toLowerCase().trim();
 
     const out = (paysAll||[]).slice();
+
     const byKey = new Set(out.map(p=>{
       const ck = String(p.courseKey||"").trim();
       const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
@@ -114,7 +118,6 @@
       }
     });
 
-    // persistir si se agregaron pagos nuevos
     if(out.length !== (paysAll||[]).length){
       save(KEY_PAYMENTS, out);
     }
@@ -126,6 +129,9 @@
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
+
+  function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
+
 
   function nowISO(){ return new Date().toISOString(); }
   function todayISO(){
@@ -457,7 +463,7 @@ function dueBadge(iso){
   function endOfMonthISO(ym){
     const [y,m] = String(ym||"").split("-").map(x=>parseInt(x,10));
     if(!y || !m) return "";
-    const d = new Date(y, m, 0); // last day of month
+    const d = new Date(y, m, 0);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth()+1).padStart(2,'0');
     const dd = String(d.getDate()).padStart(2,'0');
@@ -475,10 +481,7 @@ function dueBadge(iso){
 // -------- Pages --------
   function renderHome(){
     // datos para home
-    const paysAll = load(KEY_PAYMENTS, []);
-    const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    const tasksAll = load(KEY_TASKS, []);
-    const paysAll2 = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+    let paysAll = load(KEY_PAYMENTS, []);
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
@@ -602,11 +605,12 @@ function dueBadge(iso){
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
-    const paysAll = load(KEY_PAYMENTS, []);
+    let paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
+
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    // crear pagos automáticamente para este apoderado si faltan
-    const paysAll2 = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+    paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+
 
     try{
       if(window.__apoForcePaid){
