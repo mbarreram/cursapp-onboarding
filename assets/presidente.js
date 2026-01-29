@@ -297,7 +297,17 @@
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // ----- UI pieces -----
+  
+  // ----- Watcher: refrescar Campañas al cambiar tasks -----
+  let __TASKS_SIG = "";
+  function __tasksSig(){
+    try{
+      const raw = localStorage.getItem(KEY_TASKS) || "[]";
+      let h=0; for(let i=0;i<raw.length;i++) h=(h*31 + raw.charCodeAt(i))>>>0;
+      return String(h);
+    }catch(e){ return ""; }
+  }
+// ----- UI pieces -----
   function statusPillForCampaign(t){
     if(t.closed){
       const pend = pendingTask(t.id);
@@ -424,6 +434,7 @@
   }
 
   function renderCampanas(){
+    autoPublishScan();
     const filtered = getFilteredCampaigns();
 
     const chips = `
@@ -476,7 +487,7 @@
 
             <div class="actions">
               <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-              ${(!payments().some(p=>p.fromTaskId===t.id)) ? `<button class="btnx primary" onclick="publishCobrosForTask('${t.id}')">📣 Publicar cobros</button>` : ``}
+              ${(!payments().some(p=>p.fromTaskId===t.id)) ? `` : ``}
               ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
             </div>
           </div>
@@ -560,51 +571,7 @@
   // Mantener ELIMINAR campaña (activa) en Presidente
   
   // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
-  window.publishCobros = function(taskId){
-    const t = tasks().find(x=>x.id===taskId);
-    if(!t) return alert("Campaña no encontrada.");
-
-    // Evitar duplicados
-    const ps = payments().slice();
-
-    function addPayment(dueDate, concept){
-      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
-      if(exists) return;
-      ps.unshift({
-        id: uid("pay"),
-        fromTaskId: taskId,
-        concept,
-        amount: Number(t.amount||0),
-        status: "pending",
-        dueDate,
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    function addMonths(dateStr, n){
-      const d = new Date(dateStr + "T12:00:00");
-      if(isNaN(d.getTime())) return dateStr;
-      d.setMonth(d.getMonth()+n);
-      return d.toISOString().slice(0,10);
-    }
-
-    const type = String(t.type||"single").toLowerCase();
-    if(type === "monthly"){
-      const months = Math.max(1, Number(t.months||1));
-      const base = t.startDate || todayISO();
-      for(let i=0;i<months;i++){
-        const due = addMonths(base, i);
-        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
-      }
-    }else{
-      addPayment(t.dueDate || todayISO(), t.title);
-    }
-
-    save(KEY_PAYMENTS, ps);
-    markDirty();
-    alert("Cobros publicados ✅");
-    go("campanas");
-  };
+  window.publishCobros = function(taskId){ return publishCobrosForTask(taskId); };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
@@ -655,17 +622,18 @@ window.deleteCampaign = function(taskId){
     return payments().filter(p=>p.fromTaskId===taskId);
   }
 
-  function publishCobrosForTask(taskId){
+  function publishCobrosForTask(taskId, opts){
+    opts = opts || {};
+    const silent = !!opts.silent;
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
     const people = approvedApoderados();
-    const ck = activeCourseKey();
     if(!people.length){
-      alert('No hay apoderados aprobados para generar cobros.');
+      if(!silent) alert('No hay apoderados aprobados para generar cobros.');
       return;
     }
     const existing = paymentsForTask(taskId);
-    const byKey = new Set(existing.map(p=>`${p.courseKey||''}||${p.apoderadoId||p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
+    const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
     const out = payments().slice();
     const type = String(t.type||'single').toLowerCase();
     if(type==='monthly'){
@@ -676,17 +644,11 @@ window.deleteCampaign = function(taskId){
         const dueDate = endOfMonthISO(period);
         const idx = i+1;
         people.forEach(e=>{
-          // asegurar IDs internos por curso
-          if(!e.apoderadoId) e.apoderadoId = uid('apo');
-          if(!e.alumnoId) e.alumnoId = uid('alu');
           const email = e.email || '';
-          const key = `${ck}||${e.apoderadoId||email}||${period}||${idx}`;
+          const key = `${email}||${period}||${idx}`;
           if(byKey.has(key)) return;
           out.unshift({
             id: uid('pay'),
-            courseKey: ck,
-            apoderadoId: e.apoderadoId,
-            alumnoId: e.alumnoId,
             fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),
@@ -694,9 +656,6 @@ window.deleteCampaign = function(taskId){
             dueDate,
             period,
             installmentIndex: idx,
-            courseKey: ck,
-            apoderadoId: e.apoderadoId,
-            alumnoId: e.alumnoId,
             apoderadoEmail: email,
             apoderadoName: e.apoderadoName||'',
             alumno: e.alumno||'',
@@ -709,11 +668,8 @@ window.deleteCampaign = function(taskId){
       const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
       const dueDate = t.dueDate||endOfMonthISO(period);
       people.forEach(e=>{
-          // asegurar IDs internos por curso
-          if(!e.apoderadoId) e.apoderadoId = uid('apo');
-          if(!e.alumnoId) e.alumnoId = uid('alu');
         const email = e.email || '';
-        const key = `${ck}||${e.apoderadoId||email}||${period}||1`;
+        const key = `${email}||${period}||1`;
         if(byKey.has(key)) return;
         out.unshift({
           id: uid('pay'),
@@ -724,10 +680,7 @@ window.deleteCampaign = function(taskId){
           dueDate,
           period,
           installmentIndex: 1,
-          courseKey: ck,
-            apoderadoId: e.apoderadoId,
-            alumnoId: e.alumnoId,
-            apoderadoEmail: email,
+          apoderadoEmail: email,
           apoderadoName: e.apoderadoName||'',
           alumno: e.alumno||'',
           createdAt: new Date().toISOString()
@@ -735,10 +688,9 @@ window.deleteCampaign = function(taskId){
         byKey.add(key);
       });
     }
-    try{ localStorage.setItem(KEY_ENROLL, JSON.stringify(JSON.parse(localStorage.getItem(KEY_ENROLL)||'[]'))); }catch(e){}
     save(KEY_PAYMENTS, out);
     markDirty();
-    alert('Cobros publicados ✅');
+    if(!silent) alert('Cobros publicados ✅');
     go('campanas');
   }
 
@@ -787,11 +739,43 @@ window.deleteCampaign = function(taskId){
     go("informes");
   }
 
-  // ----- boot -----
+  
+  // ----- Auto-publicación global (sin botón) -----
+  let __AUTO_PUBLISH_LOOP = null;
+  function autoPublishScan(){
+    try{
+      const ts = tasks();
+      ts.forEach(t=>{
+        if(!t || t.closed || isExpired(t)) return;
+        const hasPays = payments().some(p=>p.fromTaskId===t.id);
+        if(hasPays) return;
+        // publicar una sola vez, marcar flag en task para evitar reintentos
+        if(t.cobrosPublishedAt || t.cobrosPublished) return;
+        publishCobrosForTask(t.id, {silent:true});
+        // marcar en task
+        const all = tasks().slice();
+        const i = all.findIndex(x=>x.id===t.id);
+        if(i>=0){
+          all[i].cobrosPublishedAt = new Date().toISOString();
+          all[i].cobrosPublished = true;
+          save(KEY_TASKS, all);
+        }
+      });
+    }catch(e){}
+  }
+// ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
   const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
   if (DEMO_SEED) ensureDemo();
 
   initMenu();
+  // iniciar autopublish + watcher
+  if(!__AUTO_PUBLISH_LOOP){ __AUTO_PUBLISH_LOOP = setInterval(autoPublishScan, 1200); }
+  setInterval(()=>{
+    if(state.tab!=="campanas") return;
+    const sig=__tasksSig();
+    if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
+  }, 800);
+
   go("home");
 })();
