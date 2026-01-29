@@ -702,7 +702,8 @@ function dueBadge(iso){
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
               </div>
-              <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
+${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
+                            <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
               </div>
@@ -739,6 +740,8 @@ function dueBadge(iso){
               ` : ``}
             </div>
             </div>
+
+            ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
 
             <div style="margin-top:10px;">
               <div style="height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
@@ -788,8 +791,7 @@ function dueBadge(iso){
           <div class="kTitle">Pagos</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
-        ${toastHtml}
-        <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
+                <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
         ${chips}
       </div>
 
