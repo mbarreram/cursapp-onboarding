@@ -613,6 +613,10 @@ function dueBadge(iso){
   function renderPayments(){
     let paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
+    // pago recién efectuado (para banner por campaña)
+    let justPaidId = "";
+    try{ justPaidId = sessionStorage.getItem("justPaidPaymentId") || ""; }catch(e){}
+
 
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
