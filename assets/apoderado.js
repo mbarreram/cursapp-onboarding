@@ -172,12 +172,14 @@ function dueBadge(iso){
     const profile = getActiveProfile();
     const courseKey = (profile?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
 
-    // 1) IDs desde profile si existen
-    let apoderadoId = (profile?.apoderadoId || profile?.apoderado?.apoderadoId || "").trim();
-    let alumnoId = (profile?.alumnoId || profile?.apoderado?.alumnoId || "").trim();
-
-    // 2) Buscar en enrollments por courseKey + email
+    // email (solo para fallback)
     const email = String(profile?.apoderado?.email || profile?.user?.email || profile?.email || "").toLowerCase().trim();
+
+    // IDs si existen en profile
+    let apoderadoId = String(profile?.apoderadoId || profile?.apoderado?.apoderadoId || "").trim();
+    let alumnoId = String(profile?.alumnoId || profile?.apoderado?.alumnoId || "").trim();
+
+    // 1) Buscar en enrollments por courseKey+email
     if((!apoderadoId || !alumnoId) && email && courseKey){
       try{
         const enr = JSON.parse(localStorage.getItem("cursapp_enrollments_v1") || "[]");
@@ -185,7 +187,6 @@ function dueBadge(iso){
         if(e){
           apoderadoId = apoderadoId || String(e.apoderadoId||"").trim();
           alumnoId = alumnoId || String(e.alumnoId||"").trim();
-          // si faltan, generar y persistir en enrollments
           let changed = false;
           if(!apoderadoId){ apoderadoId = uid("apo"); e.apoderadoId = apoderadoId; changed = true; }
           if(!alumnoId){ alumnoId = uid("alu"); e.alumnoId = alumnoId; changed = true; }
@@ -196,7 +197,7 @@ function dueBadge(iso){
       }catch(e){}
     }
 
-    // 3) Persistir en KEY_USER_IDS por courseKey+email como fallback interno
+    // 2) Fallback interno: map por courseKey+email
     if(email && courseKey && (!apoderadoId || !alumnoId)){
       const m = getUserIdsMap();
       const key = `${courseKey}||${email}`;
@@ -207,7 +208,7 @@ function dueBadge(iso){
       saveUserIdsMap(m);
     }
 
-    // 4) Persistir en profile si podemos
+    // 3) Persistir en profile si podemos
     if(profile && courseKey){
       const profiles = load(KEY_PROFILES, []);
       const i = profiles.findIndex(p=>p.courseKey===courseKey && (p.role==="apoderado" || p.user?.role==="apoderado"));
@@ -449,12 +450,12 @@ function dueBadge(iso){
     const paysAll = load(KEY_PAYMENTS, []);
     const ident = getActiveIdentity();
     const paysUser = paysAll.filter(p=>{
-      const ck=String(p.courseKey||"").trim();
-      if(ident.courseKey && ck && ck!==ident.courseKey) return false;
-      const pid=String(p.apoderadoId||"").trim();
-      if(pid && ident.apoderadoId) return pid===ident.apoderadoId;
-      const pe=String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
-      if(pe && ident.email) return pe===ident.email;
+      const ck = String(p.courseKey||"").trim();
+      if(ident.courseKey && ck && ck !== ident.courseKey) return false;
+      const pid = String(p.apoderadoId||"").trim();
+      if(pid && ident.apoderadoId) return pid === ident.apoderadoId;
+      const pe = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      if(pe && ident.email) return pe === ident.email;
       return (!ident.apoderadoId && !ident.email);
     });
     const pending = paysUser.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
@@ -583,23 +584,17 @@ function dueBadge(iso){
     const paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
     const ident = getActiveIdentity();
-    const courseKey = ident.courseKey;
-    const apoderadoId = ident.apoderadoId;
-    const email = ident.email;
-
-    // Pagos del apoderado activo (v2: por IDs; v1: fallback por email)
     const paysUser = paysAll.filter(p=>{
       const ck = String(p.courseKey||"").trim();
-      if(courseKey && ck && ck!==courseKey) return false;
+      if(ident.courseKey && ck && ck !== ident.courseKey) return false;
 
       const pid = String(p.apoderadoId||"").trim();
-      if(pid && apoderadoId) return pid===apoderadoId;
+      if(pid && ident.apoderadoId) return pid === ident.apoderadoId;
 
       const pe = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
-      if(pe && email) return pe===email;
+      if(pe && ident.email) return pe === ident.email;
 
-      // legacy sin identidad: mostrar solo si no hay identidad activa
-      return (!apoderadoId && !email);
+      return (!ident.apoderadoId && !ident.email);
     });
 
     try{
