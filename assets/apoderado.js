@@ -512,6 +512,10 @@ function dueBadge(iso){
     const paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
 
+    let justPaidId="";
+    try{ justPaidId = sessionStorage.getItem("justPaidPaymentId")||""; }catch(e){}
+
+
     try{
       if(window.__apoForcePaid){
         payFilter = "paid";
@@ -553,8 +557,6 @@ function dueBadge(iso){
 
 
     function renderPaymentRow(r){
-      let justPaidId="";
-      try{ justPaidId = sessionStorage.getItem("justPaidPaymentId")||""; }catch(e){}
       const st = String(r.status||"").toLowerCase();
       const isPend = (st==="pending" || st==="partial");
       const isPaidRow = (st==="paid");
@@ -591,7 +593,15 @@ function dueBadge(iso){
               ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
+              ${
+                (isPend && !optedOut)
+                  ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>`
+                  : (isPaidRow
+                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">Comprobante</button>`
+                      : (optedOut
+                          ? `<span class="tag">No participo</span>`
+                          : `<span class="muted">—</span>`))
+              }
             </div>
           </div>
         </div>
@@ -774,17 +784,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
     const emptyAll = (!tasksAll.length && !paysAll.length);
 
-    // Toast post-pago (no intrusivo)
-    let toastHtml = ``;
-    try{
-      if(sessionStorage.getItem("justPaid")==="1"){
-        sessionStorage.removeItem("justPaid");
-        toastHtml = `
-          <div class="toastOk">✅ Pago registrado. Gracias 🙌</div>
-        `;
-      }
-    }catch(e){}
-
     app.innerHTML = `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -837,10 +836,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         sessionStorage.removeItem("justPaidTaskId");
       }
     }catch(e){}
-
-
-    try{ if(sessionStorage.getItem("justPaidPaymentId")) sessionStorage.removeItem("justPaidPaymentId"); }catch(e){}
-
     // toast simple post-pago
     try{
       if(sessionStorage.getItem("justPaid")==="1"){
