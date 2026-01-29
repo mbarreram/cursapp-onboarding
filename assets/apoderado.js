@@ -17,6 +17,7 @@
   const KEY_CHECKOUTS = "cursapp_checkouts_v1";
   const KEY_LAST_SEEN_PAYMENTS = "cursapp_last_seen_payments_v1";
   const KEY_OPTOUT = "cursapp_optout_tasks_v1";
+  const KEY_USER_IDS = "cursapp_user_ids_v1";
 
 
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
@@ -61,6 +62,9 @@
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
+
+  function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
+
 
   function nowISO(){ return new Date().toISOString(); }
   function todayISO(){
@@ -159,7 +163,64 @@ function dueBadge(iso){
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // -------- Profile / Header --------
+  
+  // -------- Identidad activa (courseKey + apoderadoId + alumnoId) --------
+  function getUserIdsMap(){ return load(KEY_USER_IDS, {}); }
+  function saveUserIdsMap(m){ save(KEY_USER_IDS, m); }
+
+  function getActiveIdentity(){
+    const profile = getActiveProfile();
+    const courseKey = (profile?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+
+    // 1) IDs desde profile si existen
+    let apoderadoId = (profile?.apoderadoId || profile?.apoderado?.apoderadoId || "").trim();
+    let alumnoId = (profile?.alumnoId || profile?.apoderado?.alumnoId || "").trim();
+
+    // 2) Buscar en enrollments por courseKey + email
+    const email = String(profile?.apoderado?.email || profile?.user?.email || profile?.email || "").toLowerCase().trim();
+    if((!apoderadoId || !alumnoId) && email && courseKey){
+      try{
+        const enr = JSON.parse(localStorage.getItem("cursapp_enrollments_v1") || "[]");
+        const e = enr.find(x=>x.courseKey===courseKey && String(x.email||"").toLowerCase().trim()===email);
+        if(e){
+          apoderadoId = apoderadoId || String(e.apoderadoId||"").trim();
+          alumnoId = alumnoId || String(e.alumnoId||"").trim();
+          // si faltan, generar y persistir en enrollments
+          let changed = false;
+          if(!apoderadoId){ apoderadoId = uid("apo"); e.apoderadoId = apoderadoId; changed = true; }
+          if(!alumnoId){ alumnoId = uid("alu"); e.alumnoId = alumnoId; changed = true; }
+          if(changed){
+            localStorage.setItem("cursapp_enrollments_v1", JSON.stringify(enr));
+          }
+        }
+      }catch(e){}
+    }
+
+    // 3) Persistir en KEY_USER_IDS por courseKey+email como fallback interno
+    if(email && courseKey && (!apoderadoId || !alumnoId)){
+      const m = getUserIdsMap();
+      const key = `${courseKey}||${email}`;
+      const rec = m[key] || {};
+      if(!apoderadoId) apoderadoId = rec.apoderadoId || uid("apo");
+      if(!alumnoId) alumnoId = rec.alumnoId || uid("alu");
+      m[key] = { apoderadoId, alumnoId };
+      saveUserIdsMap(m);
+    }
+
+    // 4) Persistir en profile si podemos
+    if(profile && courseKey){
+      const profiles = load(KEY_PROFILES, []);
+      const i = profiles.findIndex(p=>p.courseKey===courseKey && (p.role==="apoderado" || p.user?.role==="apoderado"));
+      if(i>=0){
+        if(!profiles[i].apoderadoId) profiles[i].apoderadoId = apoderadoId;
+        if(!profiles[i].alumnoId) profiles[i].alumnoId = alumnoId;
+        save(KEY_PROFILES, profiles);
+      }
+    }
+
+    return { courseKey, email, apoderadoId, alumnoId };
+  }
+// -------- Profile / Header --------
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -386,15 +447,25 @@ function dueBadge(iso){
   function renderHome(){
     // datos para home
     const paysAll = load(KEY_PAYMENTS, []);
-    const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
+    const ident = getActiveIdentity();
+    const paysUser = paysAll.filter(p=>{
+      const ck=String(p.courseKey||"").trim();
+      if(ident.courseKey && ck && ck!==ident.courseKey) return false;
+      const pid=String(p.apoderadoId||"").trim();
+      if(pid && ident.apoderadoId) return pid===ident.apoderadoId;
+      const pe=String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      if(pe && ident.email) return pe===ident.email;
+      return (!ident.apoderadoId && !ident.email);
+    });
+    const pending = paysUser.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-    const nextDue = paysAll
+    const nextDue = paysUser
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
-    const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
+    const hasNew = paysUser.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
 
     const r = latestReport();
 
@@ -511,10 +582,25 @@ function dueBadge(iso){
   function renderPayments(){
     const paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
+    const ident = getActiveIdentity();
+    const courseKey = ident.courseKey;
+    const apoderadoId = ident.apoderadoId;
+    const email = ident.email;
 
-    let justPaidId="";
-    try{ justPaidId = sessionStorage.getItem("justPaidPaymentId")||""; }catch(e){}
+    // Pagos del apoderado activo (v2: por IDs; v1: fallback por email)
+    const paysUser = paysAll.filter(p=>{
+      const ck = String(p.courseKey||"").trim();
+      if(courseKey && ck && ck!==courseKey) return false;
 
+      const pid = String(p.apoderadoId||"").trim();
+      if(pid && apoderadoId) return pid===apoderadoId;
+
+      const pe = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      if(pe && email) return pe===email;
+
+      // legacy sin identidad: mostrar solo si no hay identidad activa
+      return (!apoderadoId && !email);
+    });
 
     try{
       if(window.__apoForcePaid){
@@ -531,8 +617,8 @@ function dueBadge(iso){
     }catch(e){}
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
-    const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
-    const creditTotal = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
+    const hasNew = paysUser.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
+    const creditTotal = paysUser.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
 
 
     const chips = `
@@ -557,6 +643,8 @@ function dueBadge(iso){
 
 
     function renderPaymentRow(r){
+      let justPaidId="";
+      try{ justPaidId = sessionStorage.getItem("justPaidPaymentId")||""; }catch(e){}
       const st = String(r.status||"").toLowerCase();
       const isPend = (st==="pending" || st==="partial");
       const isPaidRow = (st==="paid");
@@ -593,15 +681,7 @@ function dueBadge(iso){
               ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${
-                (isPend && !optedOut)
-                  ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>`
-                  : (isPaidRow
-                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">Comprobante</button>`
-                      : (optedOut
-                          ? `<span class="tag">No participo</span>`
-                          : `<span class="muted">—</span>`))
-              }
+              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
             </div>
           </div>
         </div>
@@ -610,14 +690,14 @@ function dueBadge(iso){
 
     // filtro de pagos
     let paysFiltered = [];
-    if(payFilter==="pending") paysFiltered = paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()));
-    else if(payFilter==="upcoming") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
-    else if(payFilter==="paid") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid");
-    else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit");
-    else paysFiltered = paysAll.slice();
+    if(payFilter==="pending") paysFiltered = paysUser.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()));
+    else if(payFilter==="upcoming") paysFiltered = paysUser.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+    else if(payFilter==="paid") paysFiltered = paysUser.filter(p=>String(p.status||"").toLowerCase()==="paid");
+    else if(payFilter==="credit") paysFiltered = paysUser.filter(p=>String(p.status||"").toLowerCase()==="credit");
+    else paysFiltered = paysUser.slice();
 
     // próxima cuota destacada (solo si hay pendiente con fecha)
-    const nextDue = paysAll
+    const nextDue = paysUser
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
@@ -784,6 +864,17 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
     const emptyAll = (!tasksAll.length && !paysAll.length);
 
+    // Toast post-pago (no intrusivo)
+    let toastHtml = ``;
+    try{
+      if(sessionStorage.getItem("justPaid")==="1"){
+        sessionStorage.removeItem("justPaid");
+        toastHtml = `
+          <div class="toastOk">✅ Pago registrado. Gracias 🙌</div>
+        `;
+      }
+    }catch(e){}
+
     app.innerHTML = `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -836,6 +927,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         sessionStorage.removeItem("justPaidTaskId");
       }
     }catch(e){}
+
+
+    try{ if(sessionStorage.getItem("justPaidPaymentId")) sessionStorage.removeItem("justPaidPaymentId"); }catch(e){}
+
     // toast simple post-pago
     try{
       if(sessionStorage.getItem("justPaid")==="1"){
