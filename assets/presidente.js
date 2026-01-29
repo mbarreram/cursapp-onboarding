@@ -297,17 +297,7 @@
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  
-  // ----- Watcher: refrescar Campañas al cambiar tasks -----
-  let __TASKS_SIG = "";
-  function __tasksSig(){
-    try{
-      const raw = localStorage.getItem(KEY_TASKS) || "[]";
-      let h=0; for(let i=0;i<raw.length;i++) h=(h*31 + raw.charCodeAt(i))>>>0;
-      return String(h);
-    }catch(e){ return ""; }
-  }
-// ----- UI pieces -----
+  // ----- UI pieces -----
   function statusPillForCampaign(t){
     if(t.closed){
       const pend = pendingTask(t.id);
@@ -434,7 +424,6 @@
   }
 
   function renderCampanas(){
-    autoPublishScan();
     const filtered = getFilteredCampaigns();
 
     const chips = `
@@ -487,7 +476,7 @@
 
             <div class="actions">
               <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-              ${(!payments().some(p=>p.fromTaskId===t.id)) ? `` : ``}
+              
               ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
             </div>
           </div>
@@ -571,7 +560,51 @@
   // Mantener ELIMINAR campaña (activa) en Presidente
   
   // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
-  window.publishCobros = function(taskId){ return publishCobrosForTask(taskId); };
+  window.publishCobros = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return alert("Campaña no encontrada.");
+
+    // Evitar duplicados
+    const ps = payments().slice();
+
+    function addPayment(dueDate, concept){
+      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
+      if(exists) return;
+      ps.unshift({
+        id: uid("pay"),
+        fromTaskId: taskId,
+        concept,
+        amount: Number(t.amount||0),
+        status: "pending",
+        dueDate,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    function addMonths(dateStr, n){
+      const d = new Date(dateStr + "T12:00:00");
+      if(isNaN(d.getTime())) return dateStr;
+      d.setMonth(d.getMonth()+n);
+      return d.toISOString().slice(0,10);
+    }
+
+    const type = String(t.type||"single").toLowerCase();
+    if(type === "monthly"){
+      const months = Math.max(1, Number(t.months||1));
+      const base = t.startDate || todayISO();
+      for(let i=0;i<months;i++){
+        const due = addMonths(base, i);
+        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
+      }
+    }else{
+      addPayment(t.dueDate || todayISO(), t.title);
+    }
+
+    save(KEY_PAYMENTS, ps);
+    markDirty();
+    alert("Cobros publicados ✅");
+    go("campanas");
+  };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
@@ -622,14 +655,12 @@ window.deleteCampaign = function(taskId){
     return payments().filter(p=>p.fromTaskId===taskId);
   }
 
-  function publishCobrosForTask(taskId, opts){
-    opts = opts || {};
-    const silent = !!opts.silent;
+  function publishCobrosForTask(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
     const people = approvedApoderados();
     if(!people.length){
-      if(!silent) alert('No hay apoderados aprobados para generar cobros.');
+      alert('No hay apoderados aprobados para generar cobros.');
       return;
     }
     const existing = paymentsForTask(taskId);
@@ -690,7 +721,7 @@ window.deleteCampaign = function(taskId){
     }
     save(KEY_PAYMENTS, out);
     markDirty();
-    if(!silent) alert('Cobros publicados ✅');
+    alert('Cobros publicados ✅');
     go('campanas');
   }
 
@@ -739,43 +770,11 @@ window.deleteCampaign = function(taskId){
     go("informes");
   }
 
-  
-  // ----- Auto-publicación global (sin botón) -----
-  let __AUTO_PUBLISH_LOOP = null;
-  function autoPublishScan(){
-    try{
-      const ts = tasks();
-      ts.forEach(t=>{
-        if(!t || t.closed || isExpired(t)) return;
-        const hasPays = payments().some(p=>p.fromTaskId===t.id);
-        if(hasPays) return;
-        // publicar una sola vez, marcar flag en task para evitar reintentos
-        if(t.cobrosPublishedAt || t.cobrosPublished) return;
-        publishCobrosForTask(t.id, {silent:true});
-        // marcar en task
-        const all = tasks().slice();
-        const i = all.findIndex(x=>x.id===t.id);
-        if(i>=0){
-          all[i].cobrosPublishedAt = new Date().toISOString();
-          all[i].cobrosPublished = true;
-          save(KEY_TASKS, all);
-        }
-      });
-    }catch(e){}
-  }
-// ----- boot -----
+  // ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
   const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
   if (DEMO_SEED) ensureDemo();
 
   initMenu();
-  // iniciar autopublish + watcher
-  if(!__AUTO_PUBLISH_LOOP){ __AUTO_PUBLISH_LOOP = setInterval(autoPublishScan, 1200); }
-  setInterval(()=>{
-    if(state.tab!=="campanas") return;
-    const sig=__tasksSig();
-    if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
-  }, 800);
-
   go("home");
 })();
