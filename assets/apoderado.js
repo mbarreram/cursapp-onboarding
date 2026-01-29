@@ -701,7 +701,6 @@ function dueBadge(iso){
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
-                ``
               </div>
               <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
