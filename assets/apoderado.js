@@ -511,7 +511,21 @@ function dueBadge(iso){
   function renderPayments(){
     const paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = load(KEY_TASKS, []);
+
+    try{
+      if(window.__apoForcePaid){
+        payFilter = "paid";
+        window.__apoForcePaid = false;
+      }
+    }catch(e){}
+
   const selectedTask = window.__apoTaskFilter || "all";
+
+    try{
+      const tId = sessionStorage.getItem("justPaidTaskId")||"";
+      if(tId){ window.__apoTaskFilter = tId; }
+    }catch(e){}
+
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
     const creditTotal = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
@@ -569,7 +583,7 @@ function dueBadge(iso){
       const amount = Number(r.amountRemaining ?? r.amount ?? 0);
 
       return `
-        <div class="payRow payRowSep">
+        <div class="payRow payRowSep" id="pay_${esc(r.id)}">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="min-width:200px;">
               ${badges}
@@ -687,7 +701,7 @@ function dueBadge(iso){
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
-                ${pend.length ? `<button class="btnx primary" onclick="paySingleCampaign('${esc(t.id)}')">Pagar</button>` : ``}
+                ``
               </div>
               <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
@@ -810,6 +824,19 @@ function dueBadge(iso){
 
     // marcar como visto (para badge 🆕)
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
+
+    try{
+      const pid = sessionStorage.getItem("justPaidPaymentId")||"";
+      if(pid){
+        const elRow = document.getElementById("pay_"+pid);
+        if(elRow && elRow.scrollIntoView){
+          elRow.scrollIntoView({behavior:"smooth", block:"center"});
+        }
+        sessionStorage.removeItem("justPaidPaymentId");
+        sessionStorage.removeItem("justPaidTaskId");
+      }
+    }catch(e){}
+
 
     try{ if(sessionStorage.getItem("justPaidPaymentId")) sessionStorage.removeItem("justPaidPaymentId"); }catch(e){}
 
@@ -981,6 +1008,9 @@ if (DEMO_MODE) {
 
 initMenu();
 const hash = (location.hash || "").replace("#","");
-if(hash==="payments") go("payments");
+if(hash==="payments_paid"){
+  try{ window.__apoForcePaid = true; }catch(e){}
+  go("payments");
+}else if(hash==="payments") go("payments");
 else go("home"); // default seguro post-reset
 })();
