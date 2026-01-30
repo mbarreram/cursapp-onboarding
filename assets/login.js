@@ -112,7 +112,6 @@
       email: String(userEmail||'').trim().toLowerCase(),
       courseKey: profile?.courseKey || ''
     });
-  });
   }
 
   function showCourseChooser(userEmail, profiles){
