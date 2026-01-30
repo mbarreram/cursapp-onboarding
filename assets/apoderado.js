@@ -283,17 +283,27 @@ function dueBadge(iso){
     const key = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
+  // -------- Active identity (para auto-generar cobros por campaña) --------
+  // Esta identidad alimenta ensurePaymentsForIdentity() (production-ready).
+  function getActiveIdentity(){
+    const s = getSession() || {};
+    const p = getActiveProfile();
 
-// -------- Identity (course + apoderado) --------
-// Necesario para instanciar cobros correctamente en demo (y calza con producción)
-function getActiveIdentity(){
-  const s = getSession() || {};
-  const p = getActiveProfile() || {};
-  const courseKey = String(p.courseKey || s.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-  const email = String(s.userId || s.email || "").toLowerCase().trim();
-  const alumno = String(s.alumno || (p.apoderado && p.apoderado.alumno) || "").trim();
-  return { courseKey, apoderadoId: email, alumnoId: alumno, email };
-}
+    const courseKey = String(
+      (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE) || "")
+    ).trim();
+
+    const email = String(s.userId || s.email || p?.apoderado?.email || "").toLowerCase().trim();
+    const alumno = String(s.alumno || p?.apoderado?.alumno || "").trim();
+
+    return {
+      courseKey,
+      // Para el demo usamos userId/email como identificador estable del apoderado.
+      apoderadoId: String(s.userId || "").trim(),
+      alumnoId: alumno,
+      email
+    };
+  }
 
 
   function setHeader(){
@@ -515,7 +525,7 @@ function getActiveIdentity(){
   function renderHome(){
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
-    const ident0 = getActiveIdentity();
+    const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = load(KEY_TASKS, []);
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
 
@@ -524,7 +534,6 @@ function getActiveIdentity(){
 
     const nextDue = paysAll
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
-      .filter(p => (selectedTask==="all") ? true : ((p.fromTaskId||"no_task")===selectedTask))
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
@@ -650,7 +659,7 @@ function getActiveIdentity(){
     try{ justPaidId = sessionStorage.getItem("justPaidPaymentId") || ""; }catch(e){}
 
 
-    const ident = getActiveIdentity();
+    const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
     // ✅ Scope por apoderado (evita cruce entre usuarios):
@@ -681,6 +690,10 @@ function getActiveIdentity(){
 
   const selectedTask = window.__apoTaskFilter || "all";
 
+    try{
+      const tId = sessionStorage.getItem("justPaidTaskId")||"";
+      if(tId){ window.__apoTaskFilter = tId; }
+    }catch(e){}
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
@@ -765,7 +778,6 @@ function getActiveIdentity(){
     // próxima cuota destacada (solo si hay pendiente con fecha)
     const nextDue = paysAll
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
-      .filter(p => (selectedTask==="all") ? true : ((p.fromTaskId||"no_task")===selectedTask))
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
     const nextCard = nextDue ? `
@@ -1008,6 +1020,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
   }
+
+
+
+  
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
     const pays = load(KEY_PAYMENTS, []);
