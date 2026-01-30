@@ -283,6 +283,28 @@ function dueBadge(iso){
     const key = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
+  // -------- Active identity (para auto-generar cobros por campaña) --------
+  // Esta identidad alimenta ensurePaymentsForIdentity() (production-ready).
+  function getActiveIdentity(){
+    const s = getSession() || {};
+    const p = getActiveProfile();
+
+    const courseKey = String(
+      (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE) || "")
+    ).trim();
+
+    const email = String(s.userId || s.email || p?.apoderado?.email || "").toLowerCase().trim();
+    const alumno = String(s.alumno || p?.apoderado?.alumno || "").trim();
+
+    return {
+      courseKey,
+      // Para el demo usamos userId/email como identificador estable del apoderado.
+      apoderadoId: String(s.userId || "").trim(),
+      alumnoId: alumno,
+      email
+    };
+  }
+
 
   function setHeader(){
     if(!whoCourseLine) return;
@@ -1001,69 +1023,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
 
-// === FIX: autogenerar cobros (charges) para apoderado ===
-function ensureChargesForApoderado(){
-  try{
-    // sesión apoderado
-    const session = (window.CURSAPP && CURSAPP.getSession) ? CURSAPP.getSession() : null;
-    if(!session || session.role !== "apoderado") return;
-
-    const courseKey = localStorage.getItem("cursapp_active_course_v1");
-    if(!courseKey) return;
-
-    // keys scoped por curso (mismo criterio que el resto del demo refactor)
-    const tasksKey = (window.CURSAPP && CURSAPP.scopedKey)
-      ? CURSAPP.scopedKey("tasks_v1")
-      : `cursapp_${courseKey}_tasks_v1`;
-
-    const paysKey = (window.CURSAPP && CURSAPP.scopedKey)
-      ? CURSAPP.scopedKey("payments_v1")
-      : `cursapp_${courseKey}_payments_v1`;
-
-    const tasks = JSON.parse(localStorage.getItem(tasksKey) || "[]");
-    let payments = JSON.parse(localStorage.getItem(paysKey) || "[]");
-
-    const meKey = String(session.userId || "").toLowerCase().trim();
-    if(!meKey) return;
-
-    let created = false;
-
-    // Para campañas activas obligatorias: asegurar un cobro pendiente para este apoderado
-    tasks
-      .filter(t => (t.participation === "mandatory" || t.participation === "Obligatoria") && (t.status === "active" || t.status === "Activa"))
-      .forEach(t => {
-        const campaignId = t.id || t.taskId || t.campaignId;
-        if(!campaignId) return;
-
-        const exists = payments.some(p =>
-          String(p.campaignId || p.taskId || "") === String(campaignId) &&
-          String(p.apoderadoKey || "").toLowerCase().trim() === meKey
-        );
-
-        if(!exists){
-          payments.push({
-            id: "pay_" + Math.random().toString(36).slice(2),
-            campaignId,
-            concept: t.name || t.title || "Campaña",
-            amount: Number(t.amount || 0),
-            dueDate: t.endDate || t.fin || t.end || null,
-            status: "pending",
-            alumno: session.alumno || session.studentName || "Alumno",
-            apoderadoKey: meKey,
-            createdAt: new Date().toISOString()
-          });
-          created = true;
-        }
-      });
-
-    if(created){
-      localStorage.setItem(paysKey, JSON.stringify(payments));
-    }
-  }catch(e){
-    // silencioso en demo
-  }
-}
-// === /FIX ===
   
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
