@@ -139,6 +139,15 @@
     }), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
+  // Pendiente operacional del mes (dashboard):
+  // - Usa proyección máxima del mes (campañas) menos lo recaudado.
+  // - Evita depender de que los cobros existan ya en payments_v1.
+  function pendingMonth(ym){
+    const expected = pendingMonthProjected(ym);
+    const collected = collectedMonth(ym);
+    return Math.max(0, expected - collected);
+  }
+
   // Proyección máxima (ajustada por opt-out si existe)
   function pendingMonthProjected(ym){
     const people = approvedCount();
@@ -346,9 +355,12 @@
     const gasTot = spentCourse();
     const sal = saldoCourse();
 
-    const pendRealMes = pendingMonthReal(ym);
+    const pendMes = pendingMonth(ym);
     const pendProjMes = pendingMonthProjected(ym);
-    const debtorsMes = debtorsMonthCount(ym);
+    // Para el dashboard: si existe pendiente (proyección - recaudado),
+    // asumimos deudores potenciales = apoderados aprobados.
+    // (En producción esto vendrá del Billing Service con detalle por apoderado.)
+    const debtorsMes = pendMes > 0 ? approvedCount() : 0;
     const credit = creditTotal();
     const apods = approvedCount();
 
@@ -357,7 +369,7 @@
     const alerts = [];
     // En el dashboard principal mostramos el pendiente REAL (lo que falta por pagar).
     // La proyección se puede usar para análisis, pero no debe confundirse con lo adeudado.
-    if(pendRealMes > 0) alerts.push(`⏳ Pendiente mes: ${clp(pendRealMes)}`);
+    if(pendMes > 0) alerts.push(`⏳ Pendiente mes: ${clp(pendMes)}`);
     if(debtorsMes > 0) alerts.push(`👥 Deudores (mes): ${debtorsMes}`);
     if(isDirty()) alerts.push(`📄 Informe desactualizado`);
 
@@ -400,10 +412,10 @@
           <div class="kpi"><div class="lbl">🧾 Gastado (mes)</div><div class="val">${clp(gasMes)}</div></div>
           <div class="kpi"><div class="lbl">🧾 Gastado (total)</div><div class="val">${clp(gasTot)}</div></div>
           <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendRealMes)}</div></div>
+          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendMes)}</div></div>
         </div>
 
-        ${pendProjMes>pendRealMes ? `
+        ${pendProjMes>pendMes ? `
           <div class="muted" style="margin-top:10px;font-weight:900;">
             Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
           </div>
