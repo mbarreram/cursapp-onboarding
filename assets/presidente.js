@@ -355,7 +355,9 @@
     const last = latestReport();
 
     const alerts = [];
-    if(pendProjMes > 0) alerts.push(`⏳ Pendiente mes: ${clp(pendProjMes)}`);
+    // En el dashboard principal mostramos el pendiente REAL (lo que falta por pagar).
+    // La proyección se puede usar para análisis, pero no debe confundirse con lo adeudado.
+    if(pendRealMes > 0) alerts.push(`⏳ Pendiente mes: ${clp(pendRealMes)}`);
     if(debtorsMes > 0) alerts.push(`👥 Deudores (mes): ${debtorsMes}`);
     if(isDirty()) alerts.push(`📄 Informe desactualizado`);
 
@@ -398,8 +400,14 @@
           <div class="kpi"><div class="lbl">🧾 Gastado (mes)</div><div class="val">${clp(gasMes)}</div></div>
           <div class="kpi"><div class="lbl">🧾 Gastado (total)</div><div class="val">${clp(gasTot)}</div></div>
           <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendProjMes)}</div></div>
+          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendRealMes)}</div></div>
         </div>
+
+        ${pendProjMes>pendRealMes ? `
+          <div class="muted" style="margin-top:10px;font-weight:900;">
+            Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
+          </div>
+        ` : ``}
 
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="pill">👥 Deudores (mes) ${debtorsMes}</span>

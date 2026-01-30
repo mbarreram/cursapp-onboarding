@@ -23,6 +23,12 @@
     try{ return JSON.parse(localStorage.getItem("cursapp_session_v1")||"null"); }catch(e){ return null; }
   }
 
+  function ymFromISO(iso){
+    if(!iso) return "";
+    const s = String(iso);
+    return s.length>=7 ? s.slice(0,7) : "";
+  }
+
   if(ok){
     const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(x=>x.id===pid);
@@ -34,11 +40,46 @@
       pays[i].paidWith="webpay";
       pays[i].webpay = { authorizationCode: auth, responseCode: resp, amount, buyOrder: buy };
       pays[i].transactionId = buy || pays[i].transactionId;
-      // ✅ asegurar scope por apoderado
+      // ✅ asegurar identidad + scope (evita regeneración de cobros y cruces)
       try{
-        const s = (window.CURSAPP && window.CURSAPP.getSession) ? window.CURSAPP.getSession() : JSON.parse(localStorage.getItem("cursapp_session_v1")||"null");
+        const s = getSession();
         const mk = String(s?.userId||"").toLowerCase().trim();
-        if(mk && !pays[i].apoderadoKey) pays[i].apoderadoKey = mk;
+        const courseKey = String(localStorage.getItem("cursapp_active_course_v1")||"").trim();
+
+        if(mk){
+          // compat
+          pays[i].apoderadoKey = pays[i].apoderadoKey || mk;
+          pays[i].apoderadoEmail = pays[i].apoderadoEmail || mk;
+          pays[i].apoderadoId = pays[i].apoderadoId || mk;
+        }
+        if(courseKey) pays[i].courseKey = pays[i].courseKey || courseKey;
+
+        // completar period si falta (para deduplicar mensual/single)
+        if(!pays[i].period){
+          pays[i].period = ymFromISO(pays[i].dueDate || pays[i].paidAt || "");
+        }
+
+        // limpieza: si existió un pending duplicado (por identidad incompleta), lo removemos
+        const k = `${pays[i].courseKey||""}||${pays[i].apoderadoEmail||pays[i].apoderadoKey||""}||${pays[i].fromTaskId||""}||${pays[i].period||""}||${pays[i].installmentIndex||""}`;
+        const isDup = (p)=>{
+          if(!p || p.id===pays[i].id) return false;
+          const st = String(p.status||"").toLowerCase();
+          if(!(st==="pending" || st==="partial" || st==="unpaid" || st==="due")) return false;
+          const kk = `${p.courseKey||""}||${(p.apoderadoEmail||p.apoderadoKey||p.apoderadoId||"")}||${p.fromTaskId||""}||${(p.period||ymFromISO(p.dueDate||""))||""}||${p.installmentIndex||""}`;
+          return kk === k;
+        };
+
+        // normalizar identidad en el pool completo antes de filtrar
+        for(const p of pays){
+          if(!p) continue;
+          if(!p.courseKey && courseKey) p.courseKey = courseKey;
+          if(!p.period) p.period = ymFromISO(p.dueDate||p.paidAt||"");
+        }
+
+        const filtered = pays.filter(p=>!isDup(p));
+        if(filtered.length !== pays.length){
+          pays.length = 0; filtered.forEach(x=>pays.push(x));
+        }
       }catch(e){}
       save(KEY_PAYMENTS, pays);
     }
