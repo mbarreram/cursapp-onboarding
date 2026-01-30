@@ -15,6 +15,9 @@
   const KEY_REPORTS = sk("monthly_reports_v1");
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_CHECKOUTS = sk("checkouts_v1");
+  const KEY_LAST_SEEN_PAYMENTS = sk("last_seen_payments_v1");
+  const KEY_OPTOUT = sk("optout_tasks_v1");
 
   function getSession(){
     return (window.CURSAPP && typeof window.CURSAPP.getSession === "function")
@@ -23,33 +26,24 @@
   }
   function meKey(){
     const s = getSession();
+    return String(s?.userId||"").toLowerCase().trim();
+  }
+  function myEmail(){
+    const s = getSession();
+    // userId en este demo suele ser el email
     return String(s?.email || s?.userId || "").toLowerCase().trim();
   }
 
-  // Scope de pagos por identidad (evita cruces entre apoderados)
+
   function isMinePayment(p){
     const mk = meKey();
     if(!mk) return true;
-
-    // nuevo modelo: apoderadoKey explícito
     if(p && p.apoderadoKey) return String(p.apoderadoKey).toLowerCase().trim() === mk;
-
-    // modelo generado por ensurePaymentsForIdentity (DB-like)
-    if(p && p.apoderadoEmail) return String(p.apoderadoEmail).toLowerCase().trim() === mk;
-    if(p && p.apoderadoId) return String(p.apoderadoId).toLowerCase().trim() === mk;
-
-    // fallback legacy: match por alumno seleccionado en sesión
+    // fallback legacy: match by alumno seleccionado (perfil elegido en login)
     const s = getSession();
     if(s && s.alumno && p && p.alumno) return String(p.alumno) === String(s.alumno);
-
     return false;
   }
-
-  const KEY_CHECKOUTS = sk("checkouts_v1");
-  const KEY_LAST_SEEN_PAYMENTS = "cursapp_last_seen_payments_v1";
-  const KEY_OPTOUT = "cursapp_optout_tasks_v1";
-
-
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
 
@@ -124,7 +118,7 @@
 
     const byKey = new Set(out.map(p=>{
       const ck = String(p.courseKey||"").trim();
-      const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.apoderadoKey||p.email||"").toLowerCase().trim();
       const tid = String(p.fromTaskId||"");
       const per = String(p.period||ymFromISO(p.dueDate)||"");
       const idx = String(p.installmentIndex||"");
@@ -142,7 +136,7 @@
         apoderadoId: apoderadoId || "",
         alumnoId: alumnoId || "",
         apoderadoEmail: email || "",
-        apoderadoKey: (apoderadoId || email || "").toLowerCase(),
+        apoderadoKey: aid,
         fromTaskId: t.id,
         concept,
         amount: Number(t.amount||0),
@@ -296,18 +290,25 @@ function dueBadge(iso){
     const key = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
-
-  // Identidad activa (para generar cobros por apoderado/alumno)
+  // -------- Active identity (para auto-generar cobros por campaña) --------
+  // Esta identidad alimenta ensurePaymentsForIdentity() (production-ready).
   function getActiveIdentity(){
+    const s = getSession() || {};
     const p = getActiveProfile();
-    if(!p) return null;
-    const s = getSession();
-    const ap = p.apoderado || {};
+
+    const courseKey = String(
+      (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE) || "")
+    ).trim();
+
+    const email = String(s.userId || s.email || p?.apoderado?.email || "").toLowerCase().trim();
+    const alumno = String(s.alumno || p?.apoderado?.alumno || "").trim();
+
     return {
-      courseKey: p.courseKey || (localStorage.getItem(KEY_ACTIVE_COURSE)||''),
-      apoderadoId: String(ap.id || ap.email || s?.email || s?.userId || '').trim(),
-      alumnoId: String(ap.alumno || s?.alumno || '').trim(),
-      email: String(ap.email || s?.email || s?.userId || '').toLowerCase().trim()
+      courseKey,
+      // Para el demo usamos userId/email como identificador estable del apoderado.
+      apoderadoId: String(s.userId || "").trim(),
+      alumnoId: alumno,
+      email
     };
   }
 
@@ -534,7 +535,7 @@ function dueBadge(iso){
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = load(KEY_TASKS, []);
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
-    // ✅ Scope por apoderado
+    // ✅ Solo mis pagos (evita contar pagos de otros apoderados / legacy)
     paysAll = paysAll.filter(isMinePayment);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
@@ -670,7 +671,27 @@ function dueBadge(iso){
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
-    // ✅ Scope por apoderado
+    // ✅ Scope por apoderado (evita cruce entre usuarios):
+    // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
+    // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesión
+    const mk = meKey();
+    let patched = false;
+    if(mk){
+      for(const p of paysAll){
+        if(!p) continue;
+        if(!p.apoderadoKey && isMinePayment(p)){
+          p.apoderadoKey = mk;
+          if(!p.apoderadoEmail) p.apoderadoEmail = myEmail();
+          if(!p.courseKey){
+            const identC = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
+            if(identC?.courseKey) p.courseKey = identC.courseKey;
+          }
+          patched = true;
+        }
+      }
+    }
+    if(patched) save(KEY_PAYMENTS, paysAll);
+
     paysAll = paysAll.filter(isMinePayment);
 
 
@@ -753,7 +774,7 @@ function dueBadge(iso){
               ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
+              ${isPaidRow ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">Comprobante</button>` : ((isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`))}
             </div>
           </div>
         </div>
@@ -1014,6 +1035,9 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
   }
 
+
+
+  
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
     const pays = load(KEY_PAYMENTS, []);
@@ -1037,6 +1061,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         // no credit -> mark paid demo
         pays[o.idx].status="paid";
         pays[o.idx].paidAt=nowISO();
+        if(!pays[o.idx].apoderadoKey){
+          const mk = meKey();
+          if(mk) pays[o.idx].apoderadoKey = mk;
+        }
       }
     }
 
