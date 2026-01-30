@@ -212,8 +212,29 @@
     return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
   }
   function pendingTask(id){
-    return sum(payments().filter(p=>p.fromTaskId===id && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    // pendiente operacional (solo cobros instanciados)
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
+
+  function expectedTaskTotal(t){
+    if(!t) return 0;
+    const monto = Number(t.amount||0);
+    const nApo = approvedCount(); // apoderados aprobados (fallback=1)
+    const type = String(t.type||"single").toLowerCase();
+    if(type==="monthly"){
+      const months = Math.max(1, Number(t.months||1));
+      return monto * months * nApo;
+    }
+    return monto * nApo;
+  }
+
+  function pendingTaskEstimated(t){
+    // Pendiente estimado (aunque aún no existan cobros instanciados para apoderados)
+    const expected = expectedTaskTotal(t);
+    const rec = collectedTask(t.id);
+    return Math.max(0, expected - rec);
+  }
+
   function deudoresTask(id){
     return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
   }
@@ -320,7 +341,7 @@
 // ----- UI pieces -----
   function statusPillForCampaign(t){
     if(t.closed){
-      const pend = pendingTask(t.id);
+      const pend = pendingTaskEstimated(t);
       if(pend > 0) return `<span class="pill warn">Cerrada · con pagos pendientes</span>`;
       return `<span class="pill">Cerrada</span>`;
     }
@@ -329,7 +350,7 @@
   }
 
   function lineClassForCampaign(t){
-    const pend = pendingTask(t.id);
+    const pend = pendingTaskEstimated(t);
     const saldo = collectedTask(t.id) - spentTask(t.id);
     if(saldo < 0) return "isDanger";
     if(pend > 0 && t.closed) return "isWarn";
@@ -470,7 +491,7 @@
       const rec = collectedTask(t.id);
       const gas = spentTask(t.id);
       const saldo = rec - gas;
-      const pend = pendingTask(t.id);
+      const pend = pendingTaskEstimated(t);
       const debtors = deudoresTask(t.id);
 
       const monto = Number(t.amount||0);

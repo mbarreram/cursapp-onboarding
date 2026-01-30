@@ -736,10 +736,7 @@ function dueBadge(iso){
 
   const selectedTask = window.__apoTaskFilter || "all";
 
-    try{
-      const tId = sessionStorage.getItem("justPaidTaskId")||"";
-      if(tId){ window.__apoTaskFilter = tId; }
-    }catch(e){}
+    
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
@@ -806,7 +803,13 @@ function dueBadge(iso){
               ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
+              ${
+                (isPend && !optedOut)
+                  ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>`
+                  : (isPaidRow
+                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">🧾 Comprobante</button>`
+                      : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`))
+              }
             </div>
           </div>
         </div>
@@ -822,7 +825,11 @@ function dueBadge(iso){
     else paysFiltered = paysAll.slice();
 
     // próxima cuota destacada (solo si hay pendiente con fecha)
-    const nextDue = paysAll
+    const nextDueBase = (selectedTask && selectedTask!=="all")
+      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask)
+      : paysAll;
+
+    const nextDue = nextDueBase
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
