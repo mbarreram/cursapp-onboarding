@@ -29,15 +29,27 @@
     return String(s?.userId||"").toLowerCase().trim();
   }
 
-  function isMinePayment(p){
-    const mk = meKey();
-    if(!mk) return true;
-    if(p && p.apoderadoKey) return String(p.apoderadoKey).toLowerCase().trim() === mk;
-    // fallback legacy: match by alumno seleccionado (perfil elegido en login)
-    const s = getSession();
-    if(s && s.alumno && p && p.alumno) return String(p.alumno) === String(s.alumno);
-    return false;
-  }
+  
+function isMinePayment(p){
+  const mk = meKey();
+  if(!mk) return true;
+
+  // Prefer explicit identity fields
+  const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
+  if(ak) return ak === mk;
+
+  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
+  if(ae) return ae === mk;
+
+  const aid = String(p?.apoderadoId||"").toLowerCase().trim();
+  if(aid) return aid === mk;
+
+  // Legacy fallback: match by alumno seleccionado (perfil elegido en login)
+  const s = getSession();
+  if(s && s.alumno && p && p.alumno) return String(p.alumno) === String(s.alumno);
+
+  return false;
+}
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
 
@@ -74,6 +86,60 @@
     if(localStorage.getItem(KEY_PROFILES)===null) save(KEY_PROFILES, []);
   }
   initSafeStorage();
+
+
+// -------- Normalizar campañas (compat presidente/apoderado) --------
+function normalizeTask(t){
+  t = t || {};
+  const title = t.title || t.name || t.nombre || "Campaña";
+  const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
+  const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
+  const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
+  const mandatoryParticipation = (t.mandatoryParticipation !== undefined)
+    ? !!t.mandatoryParticipation
+    : (String(partRaw).toLowerCase().includes("oblig") || String(partRaw).toLowerCase()==="mandatory" || String(partRaw).toLowerCase()==="si");
+
+  const status = String(t.status || t.estado || "").toLowerCase();
+  const closed = (t.closed !== undefined) ? !!t.closed : (status==="closed" || status==="cerrada" || status==="canceled" || status==="cancelada");
+
+  const typeRaw = String(t.type || t.tipo || "single").toLowerCase();
+  const type = (typeRaw.includes("mens") || typeRaw==="monthly") ? "monthly" : "single";
+
+  const months = Number(t.months || t.cuotas || t.meses || 1) || 1;
+  const amount = Number(t.amount || t.monto || 0) || 0;
+
+  return {
+    ...t,
+    id: t.id || t.taskId || t.campaignId,
+    title,
+    startDate,
+    dueDate,
+    endDate: dueDate,
+    mandatoryParticipation,
+    type,
+    months,
+    amount,
+    closed
+  };
+}
+
+function normalizeTasks(list){
+  return (list || []).map(normalizeTask).filter(t=>t && t.id);
+}
+
+// Identidad activa (para instanciar cobros de forma estable)
+function getActiveIdentity(){
+  const p = getActiveProfile();
+  const s = getSession();
+  const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+
+  return {
+    courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
+    apoderadoId: email || "",
+    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
+    email
+  };
+}
 
   // -------- Auto-cobros: instanciar pagos pendientes para el apoderado --------
   function ymFromISO(iso){
@@ -283,28 +349,6 @@ function dueBadge(iso){
     const key = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
     return profiles.find(p=>p.courseKey===key) || profiles[0];
   }
-  // -------- Active identity (para auto-generar cobros por campaña) --------
-  // Esta identidad alimenta ensurePaymentsForIdentity() (production-ready).
-  function getActiveIdentity(){
-    const s = getSession() || {};
-    const p = getActiveProfile();
-
-    const courseKey = String(
-      (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE) || "")
-    ).trim();
-
-    const email = String(s.userId || s.email || p?.apoderado?.email || "").toLowerCase().trim();
-    const alumno = String(s.alumno || p?.apoderado?.alumno || "").trim();
-
-    return {
-      courseKey,
-      // Para el demo usamos userId/email como identificador estable del apoderado.
-      apoderadoId: String(s.userId || "").trim(),
-      alumnoId: alumno,
-      email
-    };
-  }
-
 
   function setHeader(){
     if(!whoCourseLine) return;
@@ -526,8 +570,10 @@ function dueBadge(iso){
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    const tasks0 = load(KEY_TASKS, []);
+    const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
+    // scope a este apoderado
+    paysAll = paysAll.filter(isMinePayment);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -653,7 +699,7 @@ function dueBadge(iso){
 
   function renderPayments(){
     let paysAll = load(KEY_PAYMENTS, []);
-    const tasksAll = load(KEY_TASKS, []);
+    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     // pago recién efectuado (para banner por campaña)
     let justPaidId = "";
     try{ justPaidId = sessionStorage.getItem("justPaidPaymentId") || ""; }catch(e){}
@@ -1023,6 +1069,69 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
 
+// === FIX: autogenerar cobros (charges) para apoderado ===
+function ensureChargesForApoderado(){
+  try{
+    // sesión apoderado
+    const session = (window.CURSAPP && CURSAPP.getSession) ? CURSAPP.getSession() : null;
+    if(!session || session.role !== "apoderado") return;
+
+    const courseKey = localStorage.getItem("cursapp_active_course_v1");
+    if(!courseKey) return;
+
+    // keys scoped por curso (mismo criterio que el resto del demo refactor)
+    const tasksKey = (window.CURSAPP && CURSAPP.scopedKey)
+      ? CURSAPP.scopedKey("tasks_v1")
+      : `cursapp_${courseKey}_tasks_v1`;
+
+    const paysKey = (window.CURSAPP && CURSAPP.scopedKey)
+      ? CURSAPP.scopedKey("payments_v1")
+      : `cursapp_${courseKey}_payments_v1`;
+
+    const tasks = JSON.parse(localStorage.getItem(tasksKey) || "[]");
+    let payments = JSON.parse(localStorage.getItem(paysKey) || "[]");
+
+    const meKey = String(session.userId || "").toLowerCase().trim();
+    if(!meKey) return;
+
+    let created = false;
+
+    // Para campañas activas obligatorias: asegurar un cobro pendiente para este apoderado
+    tasks
+      .filter(t => (t.participation === "mandatory" || t.participation === "Obligatoria") && (t.status === "active" || t.status === "Activa"))
+      .forEach(t => {
+        const campaignId = t.id || t.taskId || t.campaignId;
+        if(!campaignId) return;
+
+        const exists = payments.some(p =>
+          String(p.campaignId || p.taskId || "") === String(campaignId) &&
+          String(p.apoderadoKey || "").toLowerCase().trim() === meKey
+        );
+
+        if(!exists){
+          payments.push({
+            id: "pay_" + Math.random().toString(36).slice(2),
+            campaignId,
+            concept: t.name || t.title || "Campaña",
+            amount: Number(t.amount || 0),
+            dueDate: t.endDate || t.fin || t.end || null,
+            status: "pending",
+            alumno: session.alumno || session.studentName || "Alumno",
+            apoderadoKey: meKey,
+            createdAt: new Date().toISOString()
+          });
+          created = true;
+        }
+      });
+
+    if(created){
+      localStorage.setItem(paysKey, JSON.stringify(payments));
+    }
+  }catch(e){
+    // silencioso en demo
+  }
+}
+// === /FIX ===
   
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
