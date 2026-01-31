@@ -145,16 +145,24 @@ function normalizeTasks(list){
 // Identidad activa (para instanciar cobros de forma estable)
 function getActiveIdentity(){
   const p = getActiveProfile();
-  const s = getSession();
-  const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+  const s = getSession() || {};
+  const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
+  const courseKey = (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"");
+
+  // 🔑 Identidad única por apoderado: preferir SIEMPRE el email de sesión
+  const email = String(s.userId || s.email || p?.apoderado?.email || "").toLowerCase().trim();
+
+  // Fallback robusto (nunca vacío): si no hay email, usar el profileId activo
+  const idStrong = email || (activeProfileId ? ("profile_"+activeProfileId) : ("profile_"+String(p?.profileId||p?.id||"unknown")));
 
   return {
-    courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
-    apoderadoId: email || "",
-    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
-    email
+    courseKey,
+    apoderadoId: idStrong,
+    alumnoId: String(p?.apoderado?.alumno || s.alumno || "").trim(),
+    email: email || idStrong
   };
 }
+
 
   // -------- Auto-cobros: instanciar pagos pendientes para el apoderado --------
   function ymFromISO(iso){
@@ -182,18 +190,22 @@ function getActiveIdentity(){
   }
 
   function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
-    ident = ident || {};
-    const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-    if(!courseKey) return paysAll || [];
-    const apoderadoId = String(ident.apoderadoId||"").trim();
-    const alumnoId = String(ident.alumnoId||"").trim();
-    const email = String(ident.email||"").toLowerCase().trim();
+  ident = ident || {};
+  const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  if(!courseKey) return paysAll || [];
 
-    const out = (paysAll||[]).slice();
+  const apoderadoId = String(ident.apoderadoId||"").trim();
+  const alumnoId = String(ident.alumnoId||"").trim();
+  const email = String(ident.email||"").toLowerCase().trim();
+
+  // 🔑 identidad fuerte: nunca vacía
+  const aidStrong = (apoderadoId || email || ("unknown_"+courseKey));
+
+  const out = (paysAll||[]).slice();
 
     const byKey = new Set(out.map(p=>{
       const ck = String(p.courseKey||"").trim();
-      const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const aid = String(p.apoderadoKey||"").trim() || String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
       const tid = String(p.fromTaskId||"");
       const per = String(p.period||ymFromISO(p.dueDate)||"");
       const idx = String(p.installmentIndex||"");
@@ -201,14 +213,15 @@ function getActiveIdentity(){
     }));
 
     function pushPay(t, period, installmentIndex, dueDate, concept){
-      const aid = apoderadoId || email || "";
+      const aid = aidStrong;
       const key = `${courseKey}||${aid}||${t.id}||${period}||${installmentIndex}`;
       if(byKey.has(key)) return;
 
       out.unshift({
         id: uid("pay"),
         courseKey,
-        apoderadoId: apoderadoId || "",
+        apoderadoKey: aidStrong,
+        apoderadoId: aidStrong,
         alumnoId: alumnoId || "",
         apoderadoEmail: email || "",
         fromTaskId: t.id,
@@ -750,6 +763,45 @@ function dueBadge(iso){
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
+// ✅ Normalizar identidad en pagos existentes (evita cobros compartidos)
+// - si no tienen apoderadoKey pero sí apoderadoId/email, lo rellenamos
+// - si no tienen ninguna identidad, los marcamos como "huérfanos" para que no se asignen a otro apoderado
+(function normalizePaymentIdentity(){
+  let changed = false;
+  for(const p of paysAll){
+    if(!p) continue;
+    const ak = String(p.apoderadoKey||"").trim();
+    const aid = String(p.apoderadoId||"").trim();
+    const ae = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+
+    if(!ak){
+      if(aid || ae){
+        p.apoderadoKey = (aid || ae);
+        changed = true;
+      }else{
+        // Si fue pagado recientemente en esta sesión, lo asignamos al apoderado actual (evita que "desaparezca")
+const mk = meKey();
+const paidAtMs = p.paidAt ? new Date(p.paidAt).getTime() : 0;
+const nowMs = Date.now();
+if(mk && paidAtMs && Math.abs(nowMs - paidAtMs) < 10*60*1000){
+  p.apoderadoKey = mk;
+  p.apoderadoId = mk;
+  p.apoderadoEmail = mk;
+  changed = true;
+}else{
+  // huérfano: no debe calzar con ningún usuario
+  p.apoderadoKey = "orphan_" + String(p.id||"");
+  changed = true;
+}
+      }
+    }
+    // mantener consistencia
+    if(!p.apoderadoId) { p.apoderadoId = String(p.apoderadoKey||""); changed = true; }
+    if(!p.apoderadoEmail) { p.apoderadoEmail = String(p.apoderadoKey||""); changed = true; }
+  }
+  if(changed) save(KEY_PAYMENTS, paysAll);
+})();
+
     // ✅ Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
     // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesión
@@ -1142,9 +1194,12 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         // no credit -> mark paid demo
         pays[o.idx].status="paid";
         pays[o.idx].paidAt=nowISO();
-        if(!pays[o.idx].apoderadoKey){
-          const mk = meKey();
-          if(mk) pays[o.idx].apoderadoKey = mk;
+        // 🔑 siempre amarrar al apoderado actual
+        const mk = meKey();
+        if(mk){
+          pays[o.idx].apoderadoKey = mk;
+          pays[o.idx].apoderadoId = mk;
+          pays[o.idx].apoderadoEmail = mk;
         }
       }
     }
