@@ -1,3 +1,25 @@
+
+
+alert(
+  "[APODERADO INIT]\n\n" +
+  "session:\n" +
+  localStorage.getItem("cursapp_session_v1") + "\n\n" +
+  "activeCourse:\n" +
+  localStorage.getItem("cursapp_active_course_v1") + "\n\n" +
+  "activeProfile:\n" +
+  localStorage.getItem("cursapp_active_profile_v1")
+);
+
+const session = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null");
+
+if (!session || !session.userId || !session.courseKey) {
+  alert(
+    "❌ CONTEXTO INVÁLIDO EN APODERADO\n\n" +
+    JSON.stringify(session, null, 2)
+  );
+  throw new Error("Contexto apoderado inválido");
+}
+
 (function(){
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
