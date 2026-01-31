@@ -76,11 +76,10 @@ function djb2hex(str){
 
 function normalizedPayments(){
   const ck = activeCourseKey();
-  const ps = normalizedPayments().map(p=>({
+  const ps = payments().map(p=>({
     ...p,
     courseKey: p.courseKey || ck
   }));
-  // ignore rows without owner/alumno for multi-apoderado correctness
   return ps;
 }
   const expenses = () => load(KEY_EXPENSES, []);
