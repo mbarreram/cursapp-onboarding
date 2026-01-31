@@ -133,10 +133,12 @@ function getActiveIdentity(){
   const p = getActiveProfile();
   const s = getSession();
   const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+  const aid = email || "unknown_apoderado";
 
   return {
     courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
-    apoderadoId: email || "",
+    apoderadoKey: aid,
+    apoderadoId: aid,
     alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
     email
   };
@@ -175,11 +177,13 @@ function getActiveIdentity(){
     const alumnoId = String(ident.alumnoId||"").trim();
     const email = String(ident.email||"").toLowerCase().trim();
 
+    const aidStrong = (apoderadoId || email || "unknown_apoderado");
+
     const out = (paysAll||[]).slice();
 
     const byKey = new Set(out.map(p=>{
       const ck = String(p.courseKey||"").trim();
-      const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const aid = String(p.apoderadoKey||"").trim() || String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
       const tid = String(p.fromTaskId||"");
       const per = String(p.period||ymFromISO(p.dueDate)||"");
       const idx = String(p.installmentIndex||"");
@@ -187,14 +191,15 @@ function getActiveIdentity(){
     }));
 
     function pushPay(t, period, installmentIndex, dueDate, concept){
-      const aid = apoderadoId || email || "";
+      const aid = aidStrong;
       const key = `${courseKey}||${aid}||${t.id}||${period}||${installmentIndex}`;
       if(byKey.has(key)) return;
 
       out.unshift({
         id: uid("pay"),
         courseKey,
-        apoderadoId: apoderadoId || "",
+        apoderadoKey: aidStrong,
+        apoderadoId: aidStrong,
         alumnoId: alumnoId || "",
         apoderadoEmail: email || "",
         fromTaskId: t.id,
@@ -744,9 +749,10 @@ function dueBadge(iso){
     if(mk){
       for(const p of paysAll){
         if(!p) continue;
-        if(!p.apoderadoKey && isMinePayment(p)){
-          p.apoderadoKey = mk;
-          patched = true;
+        if(isMinePayment(p)){
+          if(!p.apoderadoKey){ p.apoderadoKey = mk; patched = true; }
+          if(!p.apoderadoId){ p.apoderadoId = mk; patched = true; }
+          if(!p.apoderadoEmail){ p.apoderadoEmail = mk; patched = true; }
         }
       }
     }
@@ -1191,9 +1197,11 @@ function ensureChargesForApoderado(){
         // no credit -> mark paid demo
         pays[o.idx].status="paid";
         pays[o.idx].paidAt=nowISO();
-        if(!pays[o.idx].apoderadoKey){
-          const mk = meKey();
-          if(mk) pays[o.idx].apoderadoKey = mk;
+        const mk = meKey();
+        if(mk){
+          if(!pays[o.idx].apoderadoKey) pays[o.idx].apoderadoKey = mk;
+          if(!pays[o.idx].apoderadoId) pays[o.idx].apoderadoId = mk;
+          if(!pays[o.idx].apoderadoEmail) pays[o.idx].apoderadoEmail = mk;
         }
       }
     }
