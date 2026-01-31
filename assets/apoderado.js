@@ -8,7 +8,8 @@
   const goOnboarding = document.getElementById("goOnboarding");
   const logoutBtn = document.getElementById("logoutBtn");
   const whoCourseLine = document.getElementById("whoCourseLine");
-
+// ===== Active profile (Fase 2) =====
+const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
   const sk = (base)=> (window.CURSAPP && window.CURSAPP.scopedKey) ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
   const KEY_TASKS = sk("tasks_v1");
   const KEY_PAYMENTS = sk("payments_v1");
