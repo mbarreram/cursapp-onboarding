@@ -15,18 +15,6 @@
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
-  // ===== payment identity helpers (production-safe) =====
-  function stableAlumnoId(courseKey, apoderadoEmail, alumnoLabel){
-    const base = String(courseKey||"") + "|" + String(apoderadoEmail||"") + "|" + String(alumnoLabel||"");
-    let h=5381;
-    for(let i=0;i<base.length;i++) h = ((h<<5)+h) + base.charCodeAt(i);
-    return "stu_" + (h>>>0).toString(16);
-  }
-  function paymentKey(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
-    return [courseKey||"", taskId||"", String(apoderadoEmail||"").toLowerCase().trim(), alumnoId||"", period||"", String(installmentIndex||"1")].join("|");
-  }
-
-
   function detectKey(candidates) {
     for (const k of candidates) if (localStorage.getItem(k) != null) return k;
     return "";
@@ -672,7 +660,6 @@
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
-    const ckActive = activeCourseKey();
 
     if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
     if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
@@ -724,12 +711,38 @@ window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
     const people = approvedApoderados();
+    const courseKey = activeCourseKey();
+
+    function djb2(str){
+      let h=5381;
+      const s=String(str||"");
+      for(let i=0;i<s.length;i++) h=((h<<5)+h)+s.charCodeAt(i);
+      return (h>>>0).toString(16);
+    }
+    function alumnoIdFor(email, alumno){
+      return "stu_" + djb2([courseKey, String(email||"").toLowerCase().trim(), String(alumno||"").trim()].join("|"));
+    }
+    function paymentKeyFor(email, alumnoId, taskId, period, idx){
+      return [courseKey, taskId, String(email||"").toLowerCase().trim(), alumnoId, String(period||""), String(idx||"")].join("|");
+    }
+
     if(!people.length){
       alert('No hay apoderados aprobados para generar cobros.');
       return;
     }
     const existing = paymentsForTask(taskId);
-    const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
+    const byKey = new Set(existing.map(p=>`${p.paymentKey||""}`.trim()).filter(Boolean));
+    // fallback legacy: construir key si no existe paymentKey
+    existing.forEach(p=>{
+      if(p.paymentKey) return;
+      const email = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const alumnoId = p.alumnoId || alumnoIdFor(email, p.alumno||"");
+      const period = p.period || ymFromISO(p.dueDate)||"";
+      const idx = p.installmentIndex || "";
+      const k = paymentKeyFor(email, alumnoId, String(p.fromTaskId||taskId||""), period, idx);
+      byKey.add(k);
+    });
+
     const out = payments().slice();
     const type = String(t.type||'single').toLowerCase();
     if(type==='monthly'){
@@ -741,11 +754,14 @@ window.deleteCampaign = function(taskId){
         const idx = i+1;
         people.forEach(e=>{
           const email = e.email || '';
-          const key = `${email}||${period}||${idx}`;
-          if(byKey.has(key)) return;
+          const alumno = e.alumno || '';
+          const alumnoId = alumnoIdFor(email, alumno);
+          const paymentKey = paymentKeyFor(email, alumnoId, t.id, period, idx);
+          if(byKey.has(paymentKey)) return;
           out.unshift({
             id: uid('pay'),
-            courseKey: ckActive,
+            courseKey,
+
             fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),
@@ -753,16 +769,17 @@ window.deleteCampaign = function(taskId){
             dueDate,
             period,
             installmentIndex: idx,
-            paymentKey: paymentKey(ckActive, t.id, String(email||'').toLowerCase().trim(), stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''), period, idx),
-            apoderadoKey: String(email||'').toLowerCase().trim(),
-            apoderadoId: String(email||'').toLowerCase().trim(),
-            apoderadoEmail: String(email||'').toLowerCase().trim(),
+            apoderadoKey: email,
+            apoderadoId: email,
+            apoderadoEmail: email,
+            alumnoId,
+            paymentKey,
+            apoderadoEmail: email,
             apoderadoName: e.apoderadoName||'',
             alumno: e.alumno||'',
-            alumnoId: stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''),
             createdAt: new Date().toISOString()
           });
-          byKey.add(key);
+          byKey.add(paymentKey);
         });
       }
     } else {
@@ -770,10 +787,14 @@ window.deleteCampaign = function(taskId){
       const dueDate = t.dueDate||endOfMonthISO(period);
       people.forEach(e=>{
         const email = e.email || '';
-        const key = `${email}||${period}||1`;
-        if(byKey.has(key)) return;
+        const alumno = e.alumno || '';
+        const alumnoId = alumnoIdFor(email, alumno);
+        const paymentKey = paymentKeyFor(email, alumnoId, t.id, period, 1);
+        if(byKey.has(paymentKey)) return;
         out.unshift({
           id: uid('pay'),
+          courseKey,
+
           fromTaskId: t.id,
           concept: t.title,
           amount: Number(t.amount||0),
@@ -781,15 +802,17 @@ window.deleteCampaign = function(taskId){
           dueDate,
           period,
           installmentIndex: 1,
-          apoderadoKey: String(email||'').toLowerCase().trim(),
-            apoderadoId: String(email||'').toLowerCase().trim(),
-            apoderadoEmail: String(email||'').toLowerCase().trim(),
+          apoderadoKey: email,
+          apoderadoId: email,
+          apoderadoEmail: email,
+          alumnoId,
+          paymentKey,
+          apoderadoEmail: email,
           apoderadoName: e.apoderadoName||'',
           alumno: e.alumno||'',
-            alumnoId: stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''),
           createdAt: new Date().toISOString()
         });
-        byKey.add(key);
+        byKey.add(paymentKey);
       });
     }
     save(KEY_PAYMENTS, out);
