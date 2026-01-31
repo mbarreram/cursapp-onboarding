@@ -15,17 +15,17 @@
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
-
-// ---- stable hash (for deterministic IDs in demo) ----
-function djb2hex(str){
-  let h = 5381;
-  const s = String(str||"");
-  for(let i=0;i<s.length;i++){
-    h = ((h<<5)+h) + s.charCodeAt(i);
-    h = h >>> 0;
+  // ===== payment identity helpers (production-safe) =====
+  function stableAlumnoId(courseKey, apoderadoEmail, alumnoLabel){
+    const base = String(courseKey||"") + "|" + String(apoderadoEmail||"") + "|" + String(alumnoLabel||"");
+    let h=5381;
+    for(let i=0;i<base.length;i++) h = ((h<<5)+h) + base.charCodeAt(i);
+    return "stu_" + (h>>>0).toString(16);
   }
-  return h.toString(16);
-}
+  function paymentKey(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
+    return [courseKey||"", taskId||"", String(apoderadoEmail||"").toLowerCase().trim(), alumnoId||"", period||"", String(installmentIndex||"1")].join("|");
+  }
+
 
   function detectKey(candidates) {
     for (const k of candidates) if (localStorage.getItem(k) != null) return k;
@@ -72,16 +72,6 @@ function djb2hex(str){
   // data access
   const tasks = () => load(KEY_TASKS, []);
   const payments = () => load(KEY_PAYMENTS, []);
-
-
-function normalizedPayments(){
-  const ck = activeCourseKey();
-  const ps = payments().map(p=>({
-    ...p,
-    courseKey: p.courseKey || ck
-  }));
-  return ps;
-}
   const expenses = () => load(KEY_EXPENSES, []);
   const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
@@ -89,13 +79,13 @@ function normalizedPayments(){
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
   const closedTasks = () => tasks().filter(t => !!t.closed);
 
-  const collectedCourse = () => sum(normalizedPayments().filter(isPaid), p => p.amount);
+  const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
   const spentCourse = () => sum(expenses(), e => e.amount);
   const saldoCourse = () => collectedCourse() - spentCourse();
 
-  const creditTotal = () => sum(normalizedPayments().filter(isCredit), p => p.amount);
-  const pendingTotal = () => sum(normalizedPayments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
-  const deudoresCount = () => normalizedPayments().filter(isPendingLike).length;
+  const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
+  const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
+  const deudoresCount = () => payments().filter(isPendingLike).length;
 
   // ---- curso / apoderados aprobados ----
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
@@ -141,7 +131,7 @@ function normalizedPayments(){
   // ---- KPIs mes ----
   function collectedMonth(ym){
     // prefer paidAt / paidDate if exists; fallback dueDate
-    return sum(normalizedPayments().filter(p=>{
+    return sum(payments().filter(p=>{
       if(!isPaid(p)) return false;
       const dt = p.paidAt || p.paidDate || p.paid_on || "";
       return withinMonth(String(dt).slice(0,10), ym) || withinMonth(p.createdAt||"", ym);
@@ -153,7 +143,7 @@ function normalizedPayments(){
   }
 
   function pendingMonthReal(ym){
-    return sum(normalizedPayments().filter(p=>{
+    return sum(payments().filter(p=>{
       if(!isPendingLike(p)) return false;
       if(String(p.status||"").toLowerCase()==="opted_out") return false;
       const due = p.dueDate || "";
@@ -198,7 +188,7 @@ function normalizedPayments(){
 
         // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
         if(t.mandatoryParticipation === false){
-          const opted = normalizedPayments().filter(p=>{
+          const opted = payments().filter(p=>{
             return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
@@ -212,7 +202,7 @@ function normalizedPayments(){
         expected += amt * people;
 
         if(t.mandatoryParticipation === false){
-          const opted = normalizedPayments().filter(p=>{
+          const opted = payments().filter(p=>{
             return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
@@ -225,17 +215,17 @@ function normalizedPayments(){
 
   function debtorsMonthCount(ym){
     // count unique apoderados with pending in month (if we have email); else count pending items
-    const pend = normalizedPayments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
+    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
     const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
     return emails.size ? emails.size : pend.length;
   }
 
   function collectedTask(id){
-    return sum(normalizedPayments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
+    return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
   }
   function pendingTask(id){
     // pendiente operacional (solo cobros instanciados)
-    return sum(normalizedPayments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
   function expectedTaskTotal(t){
@@ -258,7 +248,7 @@ function normalizedPayments(){
   }
 
   function deudoresTask(id){
-    return normalizedPayments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+    return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
   }
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
@@ -639,7 +629,7 @@ function normalizedPayments(){
     if(!t) return alert("Campaña no encontrada.");
 
     // Evitar duplicados
-    const ps = normalizedPayments().slice();
+    const ps = payments().slice();
 
     function addPayment(dueDate, concept){
       const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
@@ -682,6 +672,7 @@ function normalizedPayments(){
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
+    const ckActive = activeCourseKey();
 
     if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
     if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
@@ -700,7 +691,7 @@ window.deleteCampaign = function(taskId){
     save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
 
     // pagos: paid -> credit, pending-like -> remove
-    const ps = normalizedPayments()
+    const ps = payments()
       .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
       .map(p=>{
         if(p.fromTaskId===taskId && isPaid(p)){
@@ -726,7 +717,7 @@ window.deleteCampaign = function(taskId){
   }
 
   function paymentsForTask(taskId){
-    return normalizedPayments().filter(p=>p.fromTaskId===taskId);
+    return payments().filter(p=>p.fromTaskId===taskId);
   }
 
   function publishCobrosForTask(taskId){
@@ -739,7 +730,7 @@ window.deleteCampaign = function(taskId){
     }
     const existing = paymentsForTask(taskId);
     const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
-    const out = normalizedPayments().slice();
+    const out = payments().slice();
     const type = String(t.type||'single').toLowerCase();
     if(type==='monthly'){
       const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
@@ -754,11 +745,7 @@ window.deleteCampaign = function(taskId){
           if(byKey.has(key)) return;
           out.unshift({
             id: uid('pay'),
-            courseKey: activeCourseKey(),
-            apoderadoKey: email.toLowerCase(),
-            apoderadoId: email.toLowerCase(),
-            alumnoId: ('stu_' + djb2hex(activeCourseKey() + '|' + email.toLowerCase() + '|' + String(e.alumno||''))),
-            paymentKey: `${activeCourseKey()}||${t.id}||${email.toLowerCase()}||${'stu_' + djb2hex(activeCourseKey() + '|' + email.toLowerCase() + '|' + String(e.alumno||''))}||${period}||${idx}`,
+            courseKey: ckActive,
             fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),
@@ -766,9 +753,13 @@ window.deleteCampaign = function(taskId){
             dueDate,
             period,
             installmentIndex: idx,
-            apoderadoEmail: email,
+            paymentKey: paymentKey(ckActive, t.id, String(email||'').toLowerCase().trim(), stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''), period, idx),
+            apoderadoKey: String(email||'').toLowerCase().trim(),
+            apoderadoId: String(email||'').toLowerCase().trim(),
+            apoderadoEmail: String(email||'').toLowerCase().trim(),
             apoderadoName: e.apoderadoName||'',
             alumno: e.alumno||'',
+            alumnoId: stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''),
             createdAt: new Date().toISOString()
           });
           byKey.add(key);
@@ -790,9 +781,12 @@ window.deleteCampaign = function(taskId){
           dueDate,
           period,
           installmentIndex: 1,
-          apoderadoEmail: email,
+          apoderadoKey: String(email||'').toLowerCase().trim(),
+            apoderadoId: String(email||'').toLowerCase().trim(),
+            apoderadoEmail: String(email||'').toLowerCase().trim(),
           apoderadoName: e.apoderadoName||'',
           alumno: e.alumno||'',
+            alumnoId: stableAlumnoId(ckActive, String(email||'').toLowerCase().trim(), e.alumno||''),
           createdAt: new Date().toISOString()
         });
         byKey.add(key);
