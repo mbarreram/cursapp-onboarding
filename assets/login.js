@@ -15,6 +15,7 @@
   const KEY_USERS = "cursapp_users_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_ACTIVE_PROFILE = "cursapp_active_profile_v1";
   const KEY_ENROLL = "cursapp_enrollments_v1";
   const KEY_DEMO_USER = "cursapp_demo_user";
 
@@ -28,18 +29,6 @@
     }
   }
   function saveJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
-
-  function setSessionSafe(obj){
-    if(window.CURSAPP && typeof window.CURSAPP.setSession === 'function'){
-      window.CURSAPP.setSession(obj);
-    }else{
-      saveJSON('cursapp_session_v1', obj);
-      saveJSON('cursapp_demo_user', obj);
-    }
-  }
-  function clearLegacyDemo(){
-    try{ localStorage.removeItem('cursapp_demo_user'); }catch(e){}
-  }
 
   function showErr(msg){
     if(!loginError) return;
@@ -61,6 +50,10 @@
 
   function setActiveCourseKey(k){
     localStorage.setItem(KEY_ACTIVE_COURSE, k);
+  }
+
+  function setActiveProfileId(id){
+    localStorage.setItem(KEY_ACTIVE_PROFILE, String(id||""));
   }
 
   function buildCourseLabel(p){
@@ -103,14 +96,11 @@
   // ✅ NUEVO: guardar sesión apoderado para banner/menú tesorero
   function setApoderadoSession(userEmail, profile){
     const ap = profile?.apoderado || {};
-    clearLegacyDemo();
-    setSessionSafe({
-      name: (ap.name || 'Apoderado') + ' (Demo)',
-      role: 'apoderado',
-      alumno: ap.alumno || 'Alumno',
-      userId: String(userEmail||'').trim().toLowerCase(),
-      email: String(userEmail||'').trim().toLowerCase(),
-      courseKey: profile?.courseKey || ''
+    saveJSON(KEY_DEMO_USER, {
+      name: (ap.name || "Apoderado") + " (Demo)",
+      role: "apoderado",
+      alumno: ap.alumno || "Alumno",
+      email: userEmail
     });
   }
 
@@ -123,6 +113,7 @@
       if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
 
       setActiveCourseKey(p.courseKey);
+      setActiveProfileId(p.profileId || p.id || (userEmail+"||"+p.courseKey));
       setApoderadoSession(userEmail, p);  // ✅
       window.location.href = "apoderado.html";
       return;
@@ -177,7 +168,8 @@
         if(!ensureApprovedOrBlock(userEmail, p.courseKey)) return;
 
         setActiveCourseKey(p.courseKey);
-        setApoderadoSession(userEmail, p); // ✅
+      setActiveProfileId(p.profileId || p.id || (userEmail+"||"+p.courseKey));
+      setApoderadoSession(userEmail, p); // ✅
         window.location.href = "apoderado.html";
       };
     });
@@ -192,11 +184,11 @@
 
     // Demo roles (guardan sesión)
     if((u==="tesorero" || u==="presidente") && p==="demo"){
-      clearLegacyDemo();
-      setSessionSafe({
+      saveJSON(KEY_DEMO_USER, {
         name: (u === "presidente" ? "Presidente" : "Tesorero") + " (Demo)",
         role: u
       });
+      localStorage.removeItem(KEY_ACTIVE_PROFILE);
       window.location.href = u + ".html";
       return;
     }
@@ -235,6 +227,7 @@
       if(!ensureApprovedOrBlock(u, courseKey)) return;
 
       setActiveCourseKey(courseKey);
+      setActiveProfileId(profiles[0].profileId || profiles[0].id || (u+"||"+courseKey));
       setApoderadoSession(u, profiles[0]); // ✅
       window.location.href = "apoderado.html";
       return;

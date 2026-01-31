@@ -15,6 +15,7 @@
   const KEY_REPORTS = sk("monthly_reports_v1");
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_ACTIVE_PROFILE = "cursapp_active_profile_v1";
   const KEY_CHECKOUTS = sk("checkouts_v1");
   const KEY_LAST_SEEN_PAYMENTS = sk("last_seen_payments_v1");
   const KEY_OPTOUT = sk("optout_tasks_v1");
@@ -29,27 +30,15 @@
     return String(s?.userId||"").toLowerCase().trim();
   }
 
-  
-function isMinePayment(p){
-  const mk = meKey();
-  if(!mk) return true;
-
-  // Prefer explicit identity fields
-  const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
-  if(ak) return ak === mk;
-
-  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
-  if(ae) return ae === mk;
-
-  const aid = String(p?.apoderadoId||"").toLowerCase().trim();
-  if(aid) return aid === mk;
-
-  // Legacy fallback: match by alumno seleccionado (perfil elegido en login)
-  const s = getSession();
-  if(s && s.alumno && p && p.alumno) return String(p.alumno) === String(s.alumno);
-
-  return false;
-}
+  function isMinePayment(p){
+    const mk = meKey();
+    if(!mk) return true;
+    if(p && p.apoderadoKey) return String(p.apoderadoKey).toLowerCase().trim() === mk;
+    // fallback legacy: match by alumno seleccionado (perfil elegido en login)
+    const s = getSession();
+    if(s && s.alumno && p && p.alumno) return String(p.alumno) === String(s.alumno);
+    return false;
+  }
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
   const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
 
@@ -86,60 +75,6 @@ function isMinePayment(p){
     if(localStorage.getItem(KEY_PROFILES)===null) save(KEY_PROFILES, []);
   }
   initSafeStorage();
-
-
-// -------- Normalizar campañas (compat presidente/apoderado) --------
-function normalizeTask(t){
-  t = t || {};
-  const title = t.title || t.name || t.nombre || "Campaña";
-  const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
-  const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
-  const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
-  const mandatoryParticipation = (t.mandatoryParticipation !== undefined)
-    ? !!t.mandatoryParticipation
-    : (String(partRaw).toLowerCase().includes("oblig") || String(partRaw).toLowerCase()==="mandatory" || String(partRaw).toLowerCase()==="si");
-
-  const status = String(t.status || t.estado || "").toLowerCase();
-  const closed = (t.closed !== undefined) ? !!t.closed : (status==="closed" || status==="cerrada" || status==="canceled" || status==="cancelada");
-
-  const typeRaw = String(t.type || t.tipo || "single").toLowerCase();
-  const type = (typeRaw.includes("mens") || typeRaw==="monthly") ? "monthly" : "single";
-
-  const months = Number(t.months || t.cuotas || t.meses || 1) || 1;
-  const amount = Number(t.amount || t.monto || 0) || 0;
-
-  return {
-    ...t,
-    id: t.id || t.taskId || t.campaignId,
-    title,
-    startDate,
-    dueDate,
-    endDate: dueDate,
-    mandatoryParticipation,
-    type,
-    months,
-    amount,
-    closed
-  };
-}
-
-function normalizeTasks(list){
-  return (list || []).map(normalizeTask).filter(t=>t && t.id);
-}
-
-// Identidad activa (para instanciar cobros de forma estable)
-function getActiveIdentity(){
-  const p = getActiveProfile();
-  const s = getSession();
-  const email = String(s?.userId || s?.email || "").toLowerCase().trim();
-
-  return {
-    courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
-    apoderadoId: email || "",
-    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
-    email
-  };
-}
 
   // -------- Auto-cobros: instanciar pagos pendientes para el apoderado --------
   function ymFromISO(iso){
@@ -346,8 +281,35 @@ function dueBadge(iso){
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
-    const key = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    return profiles.find(p=>p.courseKey===key) || profiles[0];
+
+    const s = getSession() || {};
+    const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
+    const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
+
+    // 1) Perfiles SOLO del usuario logueado (evita cruces entre apoderados)
+    let mine = profiles.filter(p=>{
+      const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
+      const pUserId = String(p?.userId || p?.user?.userId || "");
+      return (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
+    });
+
+    // Fallback legacy: si el profile no trae email, no rompemos
+    if(!mine.length) mine = profiles.slice();
+
+    // 2) Respetar profile activo si existe
+    if(activeProfileId){
+      const byId = mine.find(p => String(p?.profileId || p?.id || "") === String(activeProfileId));
+      if(byId) return byId;
+    }
+
+    // 3) Si no hay profileId, usar courseKey dentro de mis perfiles
+    if(activeCourse){
+      const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
+      if(byCourse) return byCourse;
+    }
+
+    return mine[0] || profiles[0] || null;
   }
 
   function setHeader(){
@@ -570,10 +532,8 @@ function dueBadge(iso){
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    const tasks0 = normalizeTasks(load(KEY_TASKS, []));
+    const tasks0 = load(KEY_TASKS, []);
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
-    // scope a este apoderado
-    paysAll = paysAll.filter(isMinePayment);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -699,7 +659,7 @@ function dueBadge(iso){
 
   function renderPayments(){
     let paysAll = load(KEY_PAYMENTS, []);
-    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+    const tasksAll = load(KEY_TASKS, []);
     // pago recién efectuado (para banner por campaña)
     let justPaidId = "";
     try{ justPaidId = sessionStorage.getItem("justPaidPaymentId") || ""; }catch(e){}
@@ -736,7 +696,10 @@ function dueBadge(iso){
 
   const selectedTask = window.__apoTaskFilter || "all";
 
-    
+    try{
+      const tId = sessionStorage.getItem("justPaidTaskId")||"";
+      if(tId){ window.__apoTaskFilter = tId; }
+    }catch(e){}
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
@@ -803,13 +766,7 @@ function dueBadge(iso){
               ${isPaidRow ? paidInfo : dueTxt}
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              ${
-                (isPend && !optedOut)
-                  ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>`
-                  : (isPaidRow
-                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">🧾 Comprobante</button>`
-                      : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`))
-              }
+              ${(isPend && !optedOut) ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>` : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`)}
             </div>
           </div>
         </div>
@@ -825,11 +782,7 @@ function dueBadge(iso){
     else paysFiltered = paysAll.slice();
 
     // próxima cuota destacada (solo si hay pendiente con fecha)
-    const nextDueBase = (selectedTask && selectedTask!=="all")
-      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask)
-      : paysAll;
-
-    const nextDue = nextDueBase
+    const nextDue = paysAll
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
