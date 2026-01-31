@@ -72,6 +72,27 @@
     return `${c.schoolName||"Colegio"} · ${c.level||""}${c.letter||""} ${c.year||""} · ${c.jornada||""}`;
   }
 
+
+   
+
+
+   alert(
+  "[LOGIN → APODERADO]\n\n" +
+  "userId: " + u + "\n" +
+  "courseKey: " + courseKey + "\n" +
+  "profileId: " + (profile.profileId || profile.id) + "\n" +
+  "role: apoderado\n\n" +
+  "session:\n" +
+  JSON.stringify({
+    userId: u,
+    role: "apoderado",
+    courseKey,
+    profileId: (profile.profileId || profile.id)
+  }, null, 2)
+);
+
+
+
   // ====== Aprobación obligatoria (A) ======
   function enrollments(){
     return loadJSON(KEY_ENROLL, []);
