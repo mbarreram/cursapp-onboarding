@@ -15,6 +15,18 @@
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
+
+// ---- stable hash (for deterministic IDs in demo) ----
+function djb2hex(str){
+  let h = 5381;
+  const s = String(str||"");
+  for(let i=0;i<s.length;i++){
+    h = ((h<<5)+h) + s.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(16);
+}
+
   function detectKey(candidates) {
     for (const k of candidates) if (localStorage.getItem(k) != null) return k;
     return "";
@@ -60,6 +72,17 @@
   // data access
   const tasks = () => load(KEY_TASKS, []);
   const payments = () => load(KEY_PAYMENTS, []);
+
+
+function normalizedPayments(){
+  const ck = activeCourseKey();
+  const ps = normalizedPayments().map(p=>({
+    ...p,
+    courseKey: p.courseKey || ck
+  }));
+  // ignore rows without owner/alumno for multi-apoderado correctness
+  return ps;
+}
   const expenses = () => load(KEY_EXPENSES, []);
   const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
@@ -67,13 +90,13 @@
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
   const closedTasks = () => tasks().filter(t => !!t.closed);
 
-  const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
+  const collectedCourse = () => sum(normalizedPayments().filter(isPaid), p => p.amount);
   const spentCourse = () => sum(expenses(), e => e.amount);
   const saldoCourse = () => collectedCourse() - spentCourse();
 
-  const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
-  const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
-  const deudoresCount = () => payments().filter(isPendingLike).length;
+  const creditTotal = () => sum(normalizedPayments().filter(isCredit), p => p.amount);
+  const pendingTotal = () => sum(normalizedPayments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
+  const deudoresCount = () => normalizedPayments().filter(isPendingLike).length;
 
   // ---- curso / apoderados aprobados ----
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
@@ -119,7 +142,7 @@
   // ---- KPIs mes ----
   function collectedMonth(ym){
     // prefer paidAt / paidDate if exists; fallback dueDate
-    return sum(payments().filter(p=>{
+    return sum(normalizedPayments().filter(p=>{
       if(!isPaid(p)) return false;
       const dt = p.paidAt || p.paidDate || p.paid_on || "";
       return withinMonth(String(dt).slice(0,10), ym) || withinMonth(p.createdAt||"", ym);
@@ -131,7 +154,7 @@
   }
 
   function pendingMonthReal(ym){
-    return sum(payments().filter(p=>{
+    return sum(normalizedPayments().filter(p=>{
       if(!isPendingLike(p)) return false;
       if(String(p.status||"").toLowerCase()==="opted_out") return false;
       const due = p.dueDate || "";
@@ -176,7 +199,7 @@
 
         // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
         if(t.mandatoryParticipation === false){
-          const opted = payments().filter(p=>{
+          const opted = normalizedPayments().filter(p=>{
             return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
@@ -190,7 +213,7 @@
         expected += amt * people;
 
         if(t.mandatoryParticipation === false){
-          const opted = payments().filter(p=>{
+          const opted = normalizedPayments().filter(p=>{
             return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
@@ -203,17 +226,17 @@
 
   function debtorsMonthCount(ym){
     // count unique apoderados with pending in month (if we have email); else count pending items
-    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
+    const pend = normalizedPayments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
     const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
     return emails.size ? emails.size : pend.length;
   }
 
   function collectedTask(id){
-    return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
+    return sum(normalizedPayments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
   }
   function pendingTask(id){
     // pendiente operacional (solo cobros instanciados)
-    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    return sum(normalizedPayments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
   function expectedTaskTotal(t){
@@ -236,7 +259,7 @@
   }
 
   function deudoresTask(id){
-    return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+    return normalizedPayments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
   }
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
@@ -617,7 +640,7 @@
     if(!t) return alert("Campaña no encontrada.");
 
     // Evitar duplicados
-    const ps = payments().slice();
+    const ps = normalizedPayments().slice();
 
     function addPayment(dueDate, concept){
       const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
@@ -678,7 +701,7 @@ window.deleteCampaign = function(taskId){
     save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
 
     // pagos: paid -> credit, pending-like -> remove
-    const ps = payments()
+    const ps = normalizedPayments()
       .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
       .map(p=>{
         if(p.fromTaskId===taskId && isPaid(p)){
@@ -704,7 +727,7 @@ window.deleteCampaign = function(taskId){
   }
 
   function paymentsForTask(taskId){
-    return payments().filter(p=>p.fromTaskId===taskId);
+    return normalizedPayments().filter(p=>p.fromTaskId===taskId);
   }
 
   function publishCobrosForTask(taskId){
@@ -717,7 +740,7 @@ window.deleteCampaign = function(taskId){
     }
     const existing = paymentsForTask(taskId);
     const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
-    const out = payments().slice();
+    const out = normalizedPayments().slice();
     const type = String(t.type||'single').toLowerCase();
     if(type==='monthly'){
       const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
@@ -732,6 +755,11 @@ window.deleteCampaign = function(taskId){
           if(byKey.has(key)) return;
           out.unshift({
             id: uid('pay'),
+            courseKey: activeCourseKey(),
+            apoderadoKey: email.toLowerCase(),
+            apoderadoId: email.toLowerCase(),
+            alumnoId: ('stu_' + djb2hex(activeCourseKey() + '|' + email.toLowerCase() + '|' + String(e.alumno||''))),
+            paymentKey: `${activeCourseKey()}||${t.id}||${email.toLowerCase()}||${'stu_' + djb2hex(activeCourseKey() + '|' + email.toLowerCase() + '|' + String(e.alumno||''))}||${period}||${idx}`,
             fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),

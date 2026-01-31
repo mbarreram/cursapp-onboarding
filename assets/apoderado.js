@@ -143,15 +143,23 @@ function normalizeTasks(list){
 }
 
 // Identidad activa (para instanciar cobros de forma estable)
+
 function getActiveIdentity(){
   const p = getActiveProfile();
   const s = getSession();
   const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+  const courseKey = (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"");
+  const alumnoName = String(p?.apoderado?.alumno || s?.alumno || "").trim();
+
+  // alumnoId determinístico (para no cruzar pagos entre apoderados/curso)
+  const alumnoId = alumnoName ? ("stu_" + djb2hex(courseKey + "|" + email + "|" + alumnoName)) : "";
 
   return {
-    courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
-    apoderadoId: email || "unknown_apoderado",
-    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
+    courseKey,
+    apoderadoId: email || "",
+    apoderadoKey: email || "",
+    alumnoId,
+    alumnoName,
     email
   };
 }
@@ -181,76 +189,89 @@ function getActiveIdentity(){
     return `${ny}-${String(nm).padStart(2,'0')}`;
   }
 
-  function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
-    ident = ident || {};
-    const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-    if(!courseKey) return paysAll || [];
-    const apoderadoId = String(ident.apoderadoId||"").trim();
-    const alumnoId = String(ident.alumnoId||"").trim();
-    const email = String(ident.email||"").toLowerCase().trim();
+  
+function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
+  ident = ident || {};
+  const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  if(!courseKey) return paysAll || [];
 
-    const out = (paysAll||[]).slice();
+  const email = String(ident.email||"").toLowerCase().trim();
+  const apoderadoId = String(ident.apoderadoId||ident.apoderadoKey||"").trim() || email;
+  const alumnoId = String(ident.alumnoId||"").trim();
+  const alumnoName = String(ident.alumnoName||"").trim();
 
-    const byKey = new Set(out.map(p=>{
-      const ck = String(p.courseKey||"").trim();
-      const aid = String(p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
-      const tid = String(p.fromTaskId||"");
-      const per = String(p.period||ymFromISO(p.dueDate)||"");
-      const idx = String(p.installmentIndex||"");
-      return `${ck}||${aid}||${tid}||${per}||${idx}`;
-    }));
+  // 🔑 owner fuerte (nunca vacío)
+  const owner = (apoderadoId || email || "unknown_apoderado").toLowerCase().trim();
 
-    function pushPay(t, period, installmentIndex, dueDate, concept){
-      const aid = apoderadoId || email || "";
-      const key = `${courseKey}||${aid}||${t.id}||${period}||${installmentIndex}`;
-      if(byKey.has(key)) return;
+  const out = (paysAll||[]).slice();
 
-      out.unshift({
-        id: uid("pay"),
-        courseKey,
-        apoderadoKey: (apoderadoId || email || ""),
-        apoderadoId: (apoderadoId || email || ""),
-        alumnoId: alumnoId || "",
-        apoderadoEmail: email || "",
-        fromTaskId: t.id,
-        concept,
-        amount: Number(t.amount||0),
-        status: "pending",
-        dueDate,
-        period,
-        installmentIndex,
-        createdAt: nowISO()
-      });
-      byKey.add(key);
-    }
+  // paymentKey determinístico:
+  // courseKey|campaignId|owner|alumnoId|period|installmentIndex
+  const keyOf = (p)=>{
+    const ck = String(p.courseKey||"").trim();
+    const camp = String(p.fromTaskId||p.campaignId||p.taskId||"").trim();
+    const own = String(p.apoderadoKey||p.apoderadoId||p.apoderadoEmail||p.email||"").toLowerCase().trim();
+    const sid = String(p.alumnoId||"").trim();
+    const per = String(p.period||ymFromISO(p.dueDate)||"").trim();
+    const idx = String(p.installmentIndex||"1").trim();
+    return `${ck}||${camp}||${own}||${sid}||${per}||${idx}`;
+  };
 
-    (tasksAll||[]).forEach(t=>{
-      if(!t) return;
-      if(t.closed) return;
+  const byKey = new Set(out.map(p=> p.paymentKey ? String(p.paymentKey) : keyOf(p)));
 
-      const type = String(t.type||"single").toLowerCase();
-      if(type==="monthly"){
-        const startYM = ymFromISO(t.startDate||t.dueDate||todayISO());
-        const months = Math.max(1, Number(t.months||1));
-        for(let i=0;i<months;i++){
-          const period = addMonthsYM(startYM, i);
-          const dueDate = endOfMonthISO(period);
-          const idx = i+1;
-          pushPay(t, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
-        }
-      }else{
-        const period = ymFromISO(t.dueDate||t.startDate||todayISO());
-        const dueDate = t.dueDate || endOfMonthISO(period);
-        pushPay(t, period, 1, dueDate, t.title);
-      }
+  function pushPay(t, period, installmentIndex, dueDate, concept){
+    const campId = String(t.id||"").trim();
+    const sid = alumnoId || ("stu_" + djb2hex(courseKey + "|" + owner + "|" + (alumnoName||"")));
+    const pk = `${courseKey}||${campId}||${owner}||${sid}||${period}||${installmentIndex}`;
+    if(byKey.has(pk)) return;
+
+    out.unshift({
+      id: uid("pay"),
+      paymentKey: pk,
+      courseKey,
+      apoderadoKey: owner,
+      apoderadoId: owner,
+      apoderadoEmail: owner,
+      alumnoId: sid,
+      alumno: alumnoName || "",
+      fromTaskId: campId,
+      concept,
+      amount: Number(t.amount||0),
+      status: "pending",
+      dueDate,
+      period,
+      installmentIndex,
+      createdAt: nowISO()
     });
-
-    if(out.length !== (paysAll||[]).length){
-      save(KEY_PAYMENTS, out);
-    }
-    return out;
+    byKey.add(pk);
   }
 
+  (tasksAll||[]).forEach(t=>{
+    if(!t) return;
+    if(t.closed) return;
+
+    const type = String(t.type||"single").toLowerCase();
+    if(type==="monthly"){
+      const startYM = ymFromISO(t.startDate||t.dueDate||todayISO());
+      const months = Math.max(1, Number(t.months||1));
+      for(let i=0;i<months;i++){
+        const period = addMonthsYM(startYM, i);
+        const dueDate = endOfMonthISO(period);
+        const idx = i+1;
+        pushPay(t, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
+      }
+    }else{
+      const period = ymFromISO(t.dueDate||t.startDate||todayISO());
+      const dueDate = t.dueDate || endOfMonthISO(period);
+      pushPay(t, period, 1, dueDate, t.title);
+    }
+  });
+
+  if(out.length !== (paysAll||[]).length){
+    save(KEY_PAYMENTS, out);
+  }
+  return out;
+}
 
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
@@ -258,7 +279,19 @@ function getActiveIdentity(){
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
 
-  function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
+  
+
+// ---- stable hash (for deterministic IDs in demo) ----
+function djb2hex(str){
+  let h = 5381;
+  const s = String(str||"");
+  for(let i=0;i<s.length;i++){
+    h = ((h<<5) + h) + s.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(16);
+}
+function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 
   function nowISO(){ return new Date().toISOString(); }
@@ -759,10 +792,8 @@ function dueBadge(iso){
     if(mk){
       for(const p of paysAll){
         if(!p) continue;
-        if(isMinePayment(p)){
-          if(!p.apoderadoKey) p.apoderadoKey = mk;
-          if(!p.apoderadoId) p.apoderadoId = mk;
-          if(!p.apoderadoEmail) p.apoderadoEmail = mk;
+        if(!p.apoderadoKey && isMinePayment(p)){
+          p.apoderadoKey = mk;
           patched = true;
         }
       }
@@ -1146,11 +1177,18 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         pays[o.idx].status="paid";
         pays[o.idx].paidAt=nowISO();
         const mk = meKey();
-        if(mk){
-          pays[o.idx].apoderadoKey = mk;
-          pays[o.idx].apoderadoId = mk;
-          pays[o.idx].apoderadoEmail = mk;
-        }
+        const ident = getActiveIdentity();
+        const sid = String(pays[o.idx].alumnoId || ident.alumnoId || "").trim();
+        const campId = String(pays[o.idx].fromTaskId || taskId || "").trim();
+        const period = String(pays[o.idx].period || ymFromISO(pays[o.idx].dueDate) || "").trim();
+        const idx = String(pays[o.idx].installmentIndex || "1").trim();
+        pays[o.idx].courseKey = pays[o.idx].courseKey || ident.courseKey;
+        pays[o.idx].apoderadoKey = mk;
+        pays[o.idx].apoderadoId = mk;
+        pays[o.idx].apoderadoEmail = mk;
+        pays[o.idx].alumnoId = sid;
+        pays[o.idx].alumno = pays[o.idx].alumno || ident.alumnoName || "";
+        pays[o.idx].paymentKey = pays[o.idx].paymentKey || `${pays[o.idx].courseKey}||${campId}||${mk}||${sid}||${period}||${idx}`;
       }
     }
 
@@ -1180,26 +1218,35 @@ window.payNow = function(id){
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
 
-    // ✅ Seguridad Fase 2: no permitir pagar cobros de otro apoderado
-    if(!isMinePayment(pays[i])){
-      alert("Este cobro no pertenece a tu apoderado. Refresca la página o vuelve a iniciar sesión.");
-      return;
-    }
 
-    // ✅ Asegurar identidad del pago antes de ir a checkout
-    const mk = meKey();
-    if(mk){
-      pays[i].apoderadoKey = mk;
-      pays[i].apoderadoId = mk;
-      pays[i].apoderadoEmail = mk;
-      save(KEY_PAYMENTS, pays);
-    }
+const mk = meKey();
+// ✅ Bloqueo duro: no permitir pagar cobros de otro apoderado
+const owner = String(pays[i].apoderadoKey || pays[i].apoderadoId || pays[i].apoderadoEmail || "").toLowerCase().trim();
+if(owner && owner !== mk){
+  alert("Este cobro no pertenece a este apoderado.");
+  return;
+}
+
+// ✅ Sellar identidad y paymentKey antes del checkout
+const ident = getActiveIdentity();
+const sid = String(pays[i].alumnoId || ident.alumnoId || "").trim();
+const campId = String(pays[i].fromTaskId || "").trim();
+const period = String(pays[i].period || ymFromISO(pays[i].dueDate) || "").trim();
+const idx = String(pays[i].installmentIndex || "1").trim();
+pays[i].courseKey = pays[i].courseKey || ident.courseKey;
+pays[i].apoderadoKey = mk;
+pays[i].apoderadoId = mk;
+pays[i].apoderadoEmail = mk;
+pays[i].alumnoId = sid;
+pays[i].alumno = pays[i].alumno || ident.alumnoName || "";
+pays[i].paymentKey = pays[i].paymentKey || `${pays[i].courseKey}||${campId}||${mk}||${sid}||${period}||${idx}`;
+save(KEY_PAYMENTS, pays);
+
 
     const checkouts = load(KEY_CHECKOUTS, []);
     const checkout = {
       id: "ck_" + Math.random().toString(16).slice(2),
       paymentId: id,
-      apoderadoKey: meKey(),
       createdAt: nowISO(),
       status: "created"
     };
