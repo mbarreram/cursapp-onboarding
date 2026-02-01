@@ -1,0 +1,77 @@
+/* =========================================================
+   Cursapp · UX CSS only (Presidente + Tesorero)
+   Goal: keep the current visual language, but make "chips" and
+         "info pills" look non-clickable, while preserving the
+         accent bar and the card hierarchy you already approved.
+   Safe: CSS-only (no JS/HTML changes)
+   ========================================================= */
+
+/* ---- 1) "Info chips" must NOT look like buttons ---- */
+.pill,
+.chipInfoPill,
+.chipInfo,
+.chip,
+.tag {
+  cursor: default !important;
+  user-select: none !important;
+}
+
+.pill,
+.chipInfoPill,
+.chipInfo {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.pill:hover,
+.chipInfoPill:hover,
+.chipInfo:hover,
+.tag:hover {
+  filter: none !important;
+  transform: none !important;
+}
+
+/* Make informational chips more badge-like (subtle) */
+.pill,
+.chipInfoPill {
+  border: 1px solid rgba(17,24,39,.10) !important;
+  background: rgba(17,24,39,.03) !important;
+  font-weight: 900 !important;
+}
+
+/* Keep semantic colors but soften them */
+.pill.ok,
+.chipInfoPill.ok {
+  background: rgba(34,197,94,.10) !important;
+  border-color: rgba(34,197,94,.20) !important;
+}
+.pill.warn,
+.chipInfoPill.warn {
+  background: rgba(245,158,11,.10) !important;
+  border-color: rgba(245,158,11,.20) !important;
+}
+.pill.danger,
+.chipInfoPill.danger {
+  background: rgba(239,68,68,.10) !important;
+  border-color: rgba(239,68,68,.20) !important;
+}
+
+/* ---- 2) Keep "real buttons" clearly clickable ---- */
+button,
+.btn,
+.btnx {
+  cursor: pointer;
+}
+
+.btnx:hover,
+.btn:hover {
+  filter: brightness(0.98);
+}
+
+/* ---- 3) Optional: reduce chip icon dominance so they read as labels ---- */
+.pill img,
+.chipInfoPill img {
+  opacity: .9;
+}
+
+/* Accent bars & cards: keep as-is (no overrides) */
