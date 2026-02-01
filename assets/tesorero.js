@@ -170,16 +170,32 @@
       const s = rec - gas;
       const miss = missingBoletaCount(expensesForTask(x.id));
       return `
-        <div class="lineItem clickable" style="cursor:pointer" onclick="go('rendiciones','${x.id}')">
-          <div style="font-weight:950;">${esc(x.title)}</div>
-          <div class="muted" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;">
-            <span class="pill ok">Rec ${clp(rec)}</span>
-            <span class="pill warn">Gas ${clp(gas)}</span>
-            <span class="pill ${s<0?'danger':''}">Saldo ${clp(s)}</span>
-            ${miss?`<span class="pill danger">⚠️ sin boleta ${miss}</span>`:""}
-          </div>
-        </div>
-      `;
+  <div class="tes-campCard clickable" style="cursor:pointer" onclick="go('rendiciones','${x.id}')">
+    <div class="tes-campHead">
+      <div>
+        <div class="tes-campTitle">${esc(x.title)}</div>
+        <div class="tes-campDates">${esc(x.startDate||"")} → ${esc(x.dueDate||"")}</div>
+      </div>
+      ${miss?`<span class="tes-badgeWarn">⚠️ sin boleta ${miss}</span>`:""}
+    </div>
+
+    <div class="tes-metrics">
+      <div class="tes-metricBox">
+        <div class="tes-metricLbl">Recaudado</div>
+        <div class="tes-metricVal">${clp(rec)}</div>
+      </div>
+      <div class="tes-metricBox">
+        <div class="tes-metricLbl">Gastado</div>
+        <div class="tes-metricVal">${clp(gas)}</div>
+      </div>
+      <div class="tes-metricBox tes-metricWide">
+        <div class="tes-metricLbl">Saldo</div>
+        <div class="tes-metricVal">${clp(s)}</div>
+      </div>
+    </div>
+  </div>
+`;
+      
     }).join("");
 
     app.innerHTML = `
