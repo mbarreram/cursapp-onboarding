@@ -1252,11 +1252,6 @@ window.payNow = function(id){
 
     location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
   };
-    checkouts.unshift(checkout);
-    save(KEY_CHECKOUTS, checkouts);
-
-    location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
-  };
 
   function renderInformes(){
     const reps = reports();
