@@ -427,35 +427,44 @@
           </div>
         </div>
 
-        <div class="kpiGrid">
-          <div class="kpi"><div class="lbl">💰 Recaudado (mes)</div><div class="val">${clp(recMes)}</div></div>
-          <div class="kpi"><div class="lbl">💰 Recaudado (total)</div><div class="val">${clp(recTot)}</div></div>
-          <div class="kpi"><div class="lbl">🧾 Gastado (mes)</div><div class="val">${clp(gasMes)}</div></div>
-          <div class="kpi"><div class="lbl">🧾 Gastado (total)</div><div class="val">${clp(gasTot)}</div></div>
-          <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
-          <div class="kpi"><div class="lbl">⏳ Pendiente (mes)</div><div class="val">${clp(pendMes)}</div></div>
-        </div>
+        <div class="muted" style="margin-top:10px;font-weight:950;">Cobros</div>
+<div class="kpiGrid">
+  <div class="kpi isOk"><div class="lbl">💰 Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
+  <div class="kpi isOk"><div class="lbl">💰 Cobrado total</div><div class="val">${clp(recTot)}</div></div>
+</div>
 
-        ${pendProjMes>pendMes ? `
-          <div class="muted" style="margin-top:10px;font-weight:900;">
-            Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
-          </div>
-        ` : ``}
+<div class="muted" style="margin-top:12px;font-weight:950;">Gastos</div>
+<div class="kpiGrid">
+  <div class="kpi"><div class="lbl">🧾 Gastado este mes</div><div class="val">${clp(gasMes)}</div></div>
+  <div class="kpi"><div class="lbl">🧾 Gastado total</div><div class="val">${clp(gasTot)}</div></div>
+</div>
 
-        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-          <span class="pill">👥 Deudores (mes) ${debtorsMes}</span>
-          <span class="pill">🧑‍🤝‍🧑 Apoderados ${apods}</span>
-          <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
-          ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
-        </div>
+<div class="muted" style="margin-top:12px;font-weight:950;">Resultado</div>
+<div class="kpiGrid">
+  <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
+  <div class="kpi isWarn"><div class="lbl">⏳ Por cobrar este mes</div><div class="val">${clp(pendMes)}</div></div>
+</div>
+
+${pendProjMes>pendMes ? `
+  <div class="muted" style="margin-top:10px;font-weight:900;">
+    Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
+  </div>
+` : ``}
+
+<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+  <span class="pill">👥 Deudores (mes) ${debtorsMes}</span>
+  <span class="pill">🧑‍🤝‍🧑 Apoderados ${apods}</span>
+  <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
+  ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
+</div>
       </div>
 
       <div class="card">
         <div class="kTitle">Acciones</div>
-        <div class="actions" style="margin-top:10px;">
+        <div class="actionsRow" style="margin-top:10px;">
           <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
-          <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
-          <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
+<button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
+<button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
         </div>
       </div>
     `;
@@ -499,76 +508,44 @@
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
-      
       return `
-        <div class="campCard ${lineClassForCampaign(t)}" style="margin-top:12px;">
-          <div class="campHead">
-            <div class="campTitleRow">
-              <div class="campTitle">${esc(t.title)}</div>
-              ${statusPillForCampaign(t)}
-            </div>
-            <div class="campDates">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
-          </div>
+        <div class="lineItem ${lineClassForCampaign(t)}">
+          <div class="row">
+            <div>
+              <div style="font-weight:950;">${esc(t.title)} ${statusPillForCampaign(t)}</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
 
-          <div class="chipInfoRow">
-            <span class="chipInfo">💵 <strong>Monto</strong> ${clp(monto)}</span>
-            <span class="chipInfo">🧾 <strong>Tipo</strong> ${esc(tipo)}</span>
-            <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
-            ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
-          </div>
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill">💵 Monto ${clp(monto)}</span>
+                <span class="pill">${esc(tipo)}</span>
+                <span class="pill">${esc(part)}</span>
+                ${meta?`<span class="pill">🎯 Meta ${clp(meta)}</span>`:""}
+              </div>
 
-          <div class="campMetrics">
-            <div class="metricBox">
-              <div class="metricLbl">Recaudado</div>
-              <div class="metricVal">${clp(rec)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Gastado</div>
-              <div class="metricVal">${clp(gas)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Saldo</div>
-              <div class="metricVal">${clp(saldo)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Deudores</div>
-              <div class="metricVal">${Number(debtors||0)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Pendiente</div>
-              <div class="metricVal">${clp(pend)}</div>
-            </div>
-          </div>
+              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
+                <span class="pill ok">Rec ${clp(rec)}</span>
+                <span class="pill warn">Gas ${clp(gas)}</span>
+                <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
+                <span class="pill">Deudores ${debtors}</span>
+                <span class="pill warn">Pendiente ${clp(pend)}</span>
+              </div>
 
-          ${t.closed && pend>0 ? `<div class="muted" style="padding:0 14px 12px 14px;font-size:12px;">
-            Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
-          </div>` : ``}
+              ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
+                Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
+              </div>` : ``}
+            </div>
 
-          <div class="campActions">
-            <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-            ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+            <div class="actions">
+              <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+              
+              ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+            </div>
           </div>
         </div>
       `;
-}).join("");
+    }).join("");
 
     app.innerHTML = `
-      <style>
-.campCard{border-radius:18px;border:1px solid rgba(0,0,0,.08);overflow:hidden;background:#fff}
-.campHead{padding:14px 14px 10px 14px}
-.campTitleRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.campTitle{font-weight:950;font-size:20px}
-.campDates{margin-top:6px;font-size:12px;opacity:.7;font-weight:800}
-.chipInfoRow{padding:0 14px 12px 14px;display:flex;gap:8px;flex-wrap:wrap}
-.chipInfo{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.10);background:rgba(17,24,39,.03);font-weight:900;font-size:13px;cursor:default;user-select:none}
-.chipInfo strong{font-weight:950}
-.campMetrics{padding:12px 14px;background:rgba(17,24,39,.02);border-top:1px solid rgba(0,0,0,.06);display:flex;gap:10px;flex-wrap:wrap}
-.metricBox{flex:1 1 120px;min-width:120px;border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:14px;padding:10px 12px}
-.metricLbl{font-size:12px;opacity:.7;font-weight:900}
-.metricVal{margin-top:4px;font-weight:950;font-size:16px}
-.campActions{padding:12px 14px 14px 14px;border-top:1px solid rgba(0,0,0,.06);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-</style>
-
       <div class="card">
         <div class="row">
           <div>
