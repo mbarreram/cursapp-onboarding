@@ -394,8 +394,7 @@
     if(debtorsMes > 0) alerts.push(`👥 Deudores (mes): ${debtorsMes}`);
     if(isDirty()) alerts.push(`📄 Informe desactualizado`);
 
-    app.innerHTML = `
-      ${alerts.length ? `
+    app.innerHTML = `      ${alerts.length ? `
         <div class="warnBox">
           <div style="font-weight:950;">Resumen rápido</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
@@ -427,44 +426,44 @@
           </div>
         </div>
 
-        <div class="muted" style="margin-top:10px;font-weight:950;">Cobros</div>
-<div class="kpiGrid">
-  <div class="kpi isOk"><div class="lbl">💰 Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
-  <div class="kpi isOk"><div class="lbl">💰 Cobrado total</div><div class="val">${clp(recTot)}</div></div>
-</div>
+        <div class="sectionLabel">Cobros</div>
+        <div class="kpiGrid">
+          <div class="kpi isOk"><div class="lbl">💰 Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
+          <div class="kpi isOk"><div class="lbl">💰 Cobrado total</div><div class="val">${clp(recTot)}</div></div>
+        </div>
 
-<div class="muted" style="margin-top:12px;font-weight:950;">Gastos</div>
-<div class="kpiGrid">
-  <div class="kpi"><div class="lbl">🧾 Gastado este mes</div><div class="val">${clp(gasMes)}</div></div>
-  <div class="kpi"><div class="lbl">🧾 Gastado total</div><div class="val">${clp(gasTot)}</div></div>
-</div>
+        <div class="sectionLabel" style="margin-top:10px;">Gastos</div>
+        <div class="kpiGrid">
+          <div class="kpi"><div class="lbl">🧾 Gastado este mes</div><div class="val">${clp(gasMes)}</div></div>
+          <div class="kpi"><div class="lbl">🧾 Gastado total</div><div class="val">${clp(gasTot)}</div></div>
+        </div>
 
-<div class="muted" style="margin-top:12px;font-weight:950;">Resultado</div>
-<div class="kpiGrid">
-  <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
-  <div class="kpi isWarn"><div class="lbl">⏳ Por cobrar este mes</div><div class="val">${clp(pendMes)}</div></div>
-</div>
+        <div class="sectionLabel" style="margin-top:10px;">Resultado</div>
+        <div class="kpiGrid">
+          <div class="kpi"><div class="lbl">⚖️ Saldo disponible</div><div class="val">${clp(sal)}</div></div>
+          <div class="kpi isWarn"><div class="lbl">⏳ Por cobrar este mes</div><div class="val">${clp(pendMes)}</div></div>
+        </div>
 
-${pendProjMes>pendMes ? `
-  <div class="muted" style="margin-top:10px;font-weight:900;">
-    Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
-  </div>
-` : ``}
+        ${pendProjMes>pendMes ? `
+          <div class="muted" style="margin-top:10px;font-weight:900;">
+            Proyección máxima del mes: <b>${clp(pendProjMes)}</b>
+          </div>
+        ` : ``}
 
-<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-  <span class="pill">👥 Deudores (mes) ${debtorsMes}</span>
-  <span class="pill">🧑‍🤝‍🧑 Apoderados ${apods}</span>
-  <span class="pill ok">➕ Saldo a favor ${clp(credit)}</span>
-  ${isDirty()?`<span class="pill warn">📄 Informe desactualizado</span>`:""}
-</div>
+        <div class="chipsInfo" style="margin-top:10px;">
+          <span class="chipInfoPill">👥 Deudores (mes) <b>${debtorsMes}</b></span>
+          <span class="chipInfoPill">🧑‍🤝‍🧑 Apoderados <b>${apods}</b></span>
+          <span class="chipInfoPill ok">➕ Saldo a favor <b>${clp(credit)}</b></span>
+          ${isDirty()?`<span class="chipInfoPill warn">📄 Informe desactualizado</span>`:""}
+        </div>
       </div>
 
       <div class="card">
         <div class="kTitle">Acciones</div>
         <div class="actionsRow" style="margin-top:10px;">
           <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
-<button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
-<button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
+          <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
         </div>
       </div>
     `;
@@ -508,41 +507,55 @@ ${pendProjMes>pendMes ? `
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
-      return `
-        <div class="lineItem ${lineClassForCampaign(t)}">
-          <div class="row">
-            <div>
-              <div style="font-weight:950;">${esc(t.title)} ${statusPillForCampaign(t)}</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
-
-              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span class="pill">💵 Monto ${clp(monto)}</span>
-                <span class="pill">${esc(tipo)}</span>
-                <span class="pill">${esc(part)}</span>
-                ${meta?`<span class="pill">🎯 Meta ${clp(meta)}</span>`:""}
-              </div>
-
-              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span class="pill ok">Rec ${clp(rec)}</span>
-                <span class="pill warn">Gas ${clp(gas)}</span>
-                <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
-                <span class="pill">Deudores ${debtors}</span>
-                <span class="pill warn">Pendiente ${clp(pend)}</span>
-              </div>
-
-              ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
-                Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
-              </div>` : ``}
+      return `        <div class="campCard ${lineClassForCampaign(t)}">
+          <div class="campHead">
+            <div class="campTitleRow">
+              <div class="campTitle">${esc(t.title)}</div>
+              ${statusPillForCampaign(t)}
             </div>
+            <div class="campDates">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+          </div>
 
-            <div class="actions">
-              <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-              
-              ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+          <div class="chipInfoRow">
+            <span class="chipInfo">💵 <strong>Monto</strong> ${clp(monto)}</span>
+            <span class="chipInfo">🧾 <strong>Tipo</strong> ${esc(tipo)}</span>
+            <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
+            ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
+          </div>
+
+          <div class="campMetrics">
+            <div class="metricBox">
+              <div class="metricLbl">Recaudado</div>
+              <div class="metricVal">${clp(rec)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Gastado</div>
+              <div class="metricVal">${clp(gas)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Saldo</div>
+              <div class="metricVal">${clp(saldo)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Deudores</div>
+              <div class="metricVal">${Number(debtors||0)}</div>
+            </div>
+            <div class="metricBox metricWide">
+              <div class="metricLbl">Pendiente</div>
+              <div class="metricVal">${clp(pend)}</div>
             </div>
           </div>
+
+          <div class="campActions">
+            <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+            ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+          </div>
+
+          ${t.closed && pend>0 ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;">
+            Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
+          </div>` : ``}
         </div>
-      `;
+    `;
     }).join("");
 
     app.innerHTML = `
