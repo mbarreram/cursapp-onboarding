@@ -191,3 +191,69 @@ button,
 .lineItem > div:first-child{
   letter-spacing: -0.1px;
 }
+
+/* ===============================
+   TESORERO UNIFORMIDAD con PRESIDENTE
+   =============================== */
+
+/* 1) KPI idénticos a Presidente */
+.tes-kpi .kpi .lbl { font-size:12px !important; opacity:.72 !important; font-weight:900 !important; }
+.tes-kpi .kpi .val { font-size:18px !important; font-weight:950 !important; }
+
+/* 2) Campaña estilo “campCard” (mismo look que Presidente) */
+.tes-campCard{
+  position: relative;
+  border: 1px solid rgba(17,24,39,.08);
+  border-radius: 18px;
+  overflow:hidden;
+  background:#fff;
+  padding: 14px 14px 14px 20px;
+  margin-top: 12px;
+}
+.tes-campCard::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:12px;
+  bottom:12px;
+  width:6px;
+  border-radius:999px;
+  background: rgba(37,99,235,.95);
+}
+
+.tes-campHead{ display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; }
+.tes-campTitle{ font-weight:950; font-size:18px; }
+.tes-campDates{ margin-top:6px; font-size:12px; opacity:.65; font-weight:800; }
+
+/* 3) Métricas en cajas (no chips) */
+.tes-metrics{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.tes-metricBox{
+  flex: 1 1 120px;
+  min-width: 120px;
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.tes-metricLbl{ font-size:12px; opacity:.65; font-weight:900; }
+.tes-metricVal{ margin-top:4px; font-weight:950; font-size:15px; }
+
+.tes-metricWide{ flex: 1 1 100%; }
+
+/* 4) Badge sin boleta (informativo) */
+.tes-badgeWarn{
+  display:inline-flex;
+  gap:8px;
+  align-items:center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(245,158,11,.14);
+  color: rgba(146,64,14,.95);
+  font-weight: 950;
+  font-size: 13px;
+}
