@@ -1,77 +1,71 @@
 /* =========================================================
-   Cursapp · UX CSS only (Presidente + Tesorero)
-   Goal: keep the current visual language, but make "chips" and
-         "info pills" look non-clickable, while preserving the
-         accent bar and the card hierarchy you already approved.
-   Safe: CSS-only (no JS/HTML changes)
+   UX Pres+Tes v2 — Make info chips look like badges (not buttons)
+   CSS-only. Keeps your approved style (accent bars + cards).
    ========================================================= */
 
-/* ---- 1) "Info chips" must NOT look like buttons ---- */
-.pill,
-.chipInfoPill,
-.chipInfo,
-.chip,
-.tag {
+/* 1) Global: keep real buttons clickable */
+button, .btn, .btnx { cursor: pointer; }
+.btnx:hover, .btn:hover { filter: brightness(.98); }
+
+/* 2) INFO chips/pills: neutralize "button" affordance */
+.pill, .chipInfoPill, .chipInfo, .tag {
   cursor: default !important;
   user-select: none !important;
-}
-
-.pill,
-.chipInfoPill,
-.chipInfo {
   box-shadow: none !important;
   transform: none !important;
+  transition: none !important;
 }
-
-.pill:hover,
-.chipInfoPill:hover,
-.chipInfo:hover,
-.tag:hover {
+.pill:hover, .chipInfoPill:hover, .chipInfo:hover, .tag:hover {
   filter: none !important;
   transform: none !important;
 }
 
-/* Make informational chips more badge-like (subtle) */
+/* 3) Badge style (smaller, flatter) — applies everywhere, but keeps semantic colors */
 .pill,
-.chipInfoPill {
-  border: 1px solid rgba(17,24,39,.10) !important;
-  background: rgba(17,24,39,.03) !important;
-  font-weight: 900 !important;
+.chipInfoPill{
+  border: 0 !important;
+  background: rgba(17,24,39,.04) !important;
+  padding: 8px 10px !important;
+  border-radius: 999px !important;
+  font-weight: 950 !important;
+  font-size: 13px !important;
+  line-height: 1.05 !important;
 }
 
-/* Keep semantic colors but soften them */
+/* Preserve semantic colors but make them "badge-like" (no outline) */
 .pill.ok,
-.chipInfoPill.ok {
-  background: rgba(34,197,94,.10) !important;
-  border-color: rgba(34,197,94,.20) !important;
+.chipInfoPill.ok{
+  background: rgba(34,197,94,.12) !important;
+  color: rgba(21,128,61,.95) !important;
 }
 .pill.warn,
-.chipInfoPill.warn {
-  background: rgba(245,158,11,.10) !important;
-  border-color: rgba(245,158,11,.20) !important;
+.chipInfoPill.warn{
+  background: rgba(245,158,11,.14) !important;
+  color: rgba(146,64,14,.95) !important;
 }
 .pill.danger,
-.chipInfoPill.danger {
-  background: rgba(239,68,68,.10) !important;
-  border-color: rgba(239,68,68,.20) !important;
+.chipInfoPill.danger{
+  background: rgba(239,68,68,.14) !important;
+  color: rgba(153,27,27,.95) !important;
 }
 
-/* ---- 2) Keep "real buttons" clearly clickable ---- */
-button,
-.btn,
-.btnx {
-  cursor: pointer;
+/* 4) Presidente dashboard chip row: tighter spacing */
+.chipsInfo{
+  gap: 8px !important;
+}
+.chipsInfo .chipInfoPill{
+  padding: 8px 10px !important;
 }
 
-.btnx:hover,
-.btn:hover {
-  filter: brightness(0.98);
+/* 5) Tesorero: chips inside cards (Rec/Gas/Saldo, warnings) should never look clickable */
+.campaignsActive .pill,
+.rendicionesCard .pill,
+.rendicionesCard .chipInfoPill{
+  cursor: default !important;
 }
 
-/* ---- 3) Optional: reduce chip icon dominance so they read as labels ---- */
-.pill img,
-.chipInfoPill img {
-  opacity: .9;
+/* 6) If your filter chips use class .chip.active, keep them clickable */
+.chips .chip{
+  cursor: pointer !important;
+  box-shadow: none !important;
 }
-
-/* Accent bars & cards: keep as-is (no overrides) */
