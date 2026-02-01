@@ -69,3 +69,50 @@ button, .btn, .btnx { cursor: pointer; }
   cursor: pointer !important;
   box-shadow: none !important;
 }
+/* ===============================
+   NEUTRALIZAR LOOK DE BOTÓN
+   SOLO EN FICHAS INFORMATIVAS
+   =============================== */
+
+/* Fichas tipo info (NO acciones) */
+.card .pill,
+.card .chip,
+.card .tag,
+.card .badge,
+.summary .pill,
+.summary .chip,
+.summary .tag,
+.summary .badge {
+  background: #f6f7f9;
+  border: 1px solid #e5e7eb;
+  box-shadow: none !important;
+  cursor: default;
+  pointer-events: none;
+  font-weight: 600;
+}
+
+/* Quitar hover tipo botón */
+.card .pill:hover,
+.card .chip:hover,
+.card .tag:hover,
+.card .badge:hover {
+  background: #f6f7f9;
+  transform: none;
+}
+
+/* Colores semánticos (mantiene significado, no botón) */
+.badge-success { background:#e9f9ef; color:#166534; border-color:#bbf7d0; }
+.badge-warning { background:#fff4e5; color:#92400e; border-color:#fde68a; }
+.badge-danger  { background:#feecec; color:#991b1b; border-color:#fecaca; }
+.badge-neutral { background:#f3f4f6; color:#374151; }
+
+/* ===============================
+   ASEGURAR QUE BOTONES SIGAN SIENDO BOTONES
+   =============================== */
+button,
+.btn,
+.btn.primary,
+.btn.ghost {
+  pointer-events: auto;
+  cursor: pointer;
+}
