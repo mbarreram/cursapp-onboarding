@@ -1,14 +1,6 @@
 
 
-alert(
-  "[APODERADO INIT]\n\n" +
-  "session:\n" +
-  localStorage.getItem("cursapp_session_v1") + "\n\n" +
-  "activeCourse:\n" +
-  localStorage.getItem("cursapp_active_course_v1") + "\n\n" +
-  "activeProfile:\n" +
-  localStorage.getItem("cursapp_active_profile_v1")
-);
+
 
 const session = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null");
 
