@@ -20,22 +20,7 @@
     return "";
   }
 
-  
-
-// ---- identity helpers (payments) ----
-function hash32(str){
-  let h=5381;
-  const s=String(str||"");
-  for(let i=0;i<s.length;i++) h=((h<<5)+h)+s.charCodeAt(i);
-  return (h>>>0).toString(16);
-}
-function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
-  return "alu_" + hash32([courseKey, apoderadoEmail, alumnoLabel].join("|"));
-}
-function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
-  return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
-}
-// storage keys (scoped por curso; listo para producción)
+  // storage keys (scoped por curso; listo para producción)
   const sk = (base)=> (window.CURSAPP && window.CURSAPP.scopedKey) ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
   const KEY_TASKS = sk("tasks_v1");
   const KEY_PAYMENTS = sk("payments_v1");
@@ -514,44 +499,76 @@ function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, insta
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
+      
       return `
-        <div class="lineItem ${lineClassForCampaign(t)}">
-          <div class="row">
-            <div>
-              <div style="font-weight:950;">${esc(t.title)} ${statusPillForCampaign(t)}</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
-
-              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span class="pill">💵 Monto ${clp(monto)}</span>
-                <span class="pill">${esc(tipo)}</span>
-                <span class="pill">${esc(part)}</span>
-                ${meta?`<span class="pill">🎯 Meta ${clp(meta)}</span>`:""}
-              </div>
-
-              <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;">
-                <span class="pill ok">Rec ${clp(rec)}</span>
-                <span class="pill warn">Gas ${clp(gas)}</span>
-                <span class="pill ${saldo<0?"danger":""}">Saldo ${clp(saldo)}</span>
-                <span class="pill">Deudores ${debtors}</span>
-                <span class="pill warn">Pendiente ${clp(pend)}</span>
-              </div>
-
-              ${t.closed && pend>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">
-                Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
-              </div>` : ``}
+        <div class="campCard ${lineClassForCampaign(t)}" style="margin-top:12px;">
+          <div class="campHead">
+            <div class="campTitleRow">
+              <div class="campTitle">${esc(t.title)}</div>
+              ${statusPillForCampaign(t)}
             </div>
+            <div class="campDates">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+          </div>
 
-            <div class="actions">
-              <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
-              
-              ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
+          <div class="chipInfoRow">
+            <span class="chipInfo">💵 <strong>Monto</strong> ${clp(monto)}</span>
+            <span class="chipInfo">🧾 <strong>Tipo</strong> ${esc(tipo)}</span>
+            <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
+            ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
+          </div>
+
+          <div class="campMetrics">
+            <div class="metricBox">
+              <div class="metricLbl">Recaudado</div>
+              <div class="metricVal">${clp(rec)}</div>
             </div>
+            <div class="metricBox">
+              <div class="metricLbl">Gastado</div>
+              <div class="metricVal">${clp(gas)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Saldo</div>
+              <div class="metricVal">${clp(saldo)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Deudores</div>
+              <div class="metricVal">${Number(debtors||0)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Pendiente</div>
+              <div class="metricVal">${clp(pend)}</div>
+            </div>
+          </div>
+
+          ${t.closed && pend>0 ? `<div class="muted" style="padding:0 14px 12px 14px;font-size:12px;">
+            Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
+          </div>` : ``}
+
+          <div class="campActions">
+            <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
+            ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
           </div>
         </div>
       `;
-    }).join("");
+}).join("");
 
     app.innerHTML = `
+      <style>
+.campCard{border-radius:18px;border:1px solid rgba(0,0,0,.08);overflow:hidden;background:#fff}
+.campHead{padding:14px 14px 10px 14px}
+.campTitleRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.campTitle{font-weight:950;font-size:20px}
+.campDates{margin-top:6px;font-size:12px;opacity:.7;font-weight:800}
+.chipInfoRow{padding:0 14px 12px 14px;display:flex;gap:8px;flex-wrap:wrap}
+.chipInfo{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.10);background:rgba(17,24,39,.03);font-weight:900;font-size:13px;cursor:default;user-select:none}
+.chipInfo strong{font-weight:950}
+.campMetrics{padding:12px 14px;background:rgba(17,24,39,.02);border-top:1px solid rgba(0,0,0,.06);display:flex;gap:10px;flex-wrap:wrap}
+.metricBox{flex:1 1 120px;min-width:120px;border:1px solid rgba(0,0,0,.08);background:#fff;border-radius:14px;padding:10px 12px}
+.metricLbl{font-size:12px;opacity:.7;font-weight:900}
+.metricVal{margin-top:4px;font-weight:950;font-size:16px}
+.campActions{padding:12px 14px 14px 14px;border-top:1px solid rgba(0,0,0,.06);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+</style>
+
       <div class="card">
         <div class="row">
           <div>
@@ -627,96 +644,51 @@ function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, insta
   // Mantener ELIMINAR campaña (activa) en Presidente
   
   // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
-  
-// ✅ Publicar cobros: genera pagos pendientes por apoderado aprobado (con identidad fuerte)
-window.publishCobros = function(taskId){
-  const t = tasks().find(x=>x.id===taskId);
-  if(!t) return alert("Campaña no encontrada.");
+  window.publishCobros = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return alert("Campaña no encontrada.");
 
-  const ck = activeCourseKey() || ""; // courseKey scoped
-  const people = approvedApoderados();
-  if(!people.length){
-    alert("No hay apoderados aprobados para generar cobros.");
-    return;
-  }
+    // Evitar duplicados
+    const ps = payments().slice();
 
-  const ps = payments().slice();
-  const existingKeys = new Set(ps.filter(p=>p.fromTaskId===taskId).map(p=>String(p.paymentKey||"")));
-  const type = String(t.type||"single").toLowerCase();
-
-  function endOfMonthISO(ym){
-    const d = endOfMonthDate(ym);
-    if(!d) return "";
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-  function addMonthsYM(ym, add){
-    const y = parseInt(ym.slice(0,4),10);
-    const m = parseInt(ym.slice(5,7),10);
-    const base = (y*12 + (m-1)) + add;
-    const ny = Math.floor(base/12);
-    const nm = (base%12)+1;
-    return `${ny}-${String(nm).padStart(2,'0')}`;
-  }
-
-  function addOne(apEmail, alumnoLabel, period, installmentIndex, dueDate, concept){
-    const aluId = alumnoIdOf(ck, apEmail, alumnoLabel);
-    const pk = paymentKeyOf(ck, taskId, apEmail, aluId, period, installmentIndex);
-    if(existingKeys.has(pk)) return;
-
-    ps.unshift({
-      id: uid("pay"),
-      paymentKey: pk,
-      courseKey: ck,
-      fromTaskId: taskId,
-      concept,
-      amount: Number(t.amount||0),
-      status: "pending",
-      dueDate,
-      period,
-      installmentIndex,
-      apoderadoKey: apEmail,
-      apoderadoId: apEmail,
-      apoderadoEmail: apEmail,
-      alumno: alumnoLabel || "",
-      alumnoId: aluId,
-      createdAt: new Date().toISOString()
-    });
-    existingKeys.add(pk);
-  }
-
-  if(type==="monthly"){
-    const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
-    const months = Math.max(1, Number(t.months||1));
-    for(let i=0;i<months;i++){
-      const period = addMonthsYM(startYM, i);
-      const dueDate = endOfMonthISO(period);
-      const idx = i+1;
-      people.forEach(e=>{
-        const email = String(e.email||"").toLowerCase().trim();
-        const alumno = String(e.alumno||"");
-        if(!email) return;
-        addOne(email, alumno, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
+    function addPayment(dueDate, concept){
+      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
+      if(exists) return;
+      ps.unshift({
+        id: uid("pay"),
+        fromTaskId: taskId,
+        concept,
+        amount: Number(t.amount||0),
+        status: "pending",
+        dueDate,
+        createdAt: new Date().toISOString()
       });
     }
-  } else {
-    const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
-    const dueDate = t.dueDate || endOfMonthISO(period);
-    people.forEach(e=>{
-      const email = String(e.email||"").toLowerCase().trim();
-      const alumno = String(e.alumno||"");
-      if(!email) return;
-      addOne(email, alumno, period, 1, dueDate, t.title);
-    });
-  }
 
-  save(KEY_PAYMENTS, ps);
-  markDirty();
-  alert("Cobros publicados ✅");
-  go("campanas");
-};
+    function addMonths(dateStr, n){
+      const d = new Date(dateStr + "T12:00:00");
+      if(isNaN(d.getTime())) return dateStr;
+      d.setMonth(d.getMonth()+n);
+      return d.toISOString().slice(0,10);
+    }
+
+    const type = String(t.type||"single").toLowerCase();
+    if(type === "monthly"){
+      const months = Math.max(1, Number(t.months||1));
+      const base = t.startDate || todayISO();
+      for(let i=0;i<months;i++){
+        const due = addMonths(base, i);
+        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
+      }
+    }else{
+      addPayment(t.dueDate || todayISO(), t.title);
+    }
+
+    save(KEY_PAYMENTS, ps);
+    markDirty();
+    alert("Cobros publicados ✅");
+    go("campanas");
+  };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
