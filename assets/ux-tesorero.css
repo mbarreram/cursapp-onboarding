@@ -64,3 +64,22 @@
   flex-wrap:wrap;
   justify-content:flex-end;
 }
+/* ===== Fix alineación acciones rendición ===== */
+.expenseActions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:stretch;
+}
+
+/* Primario (Subir boleta) ocupa una fila completa */
+.expenseActions .btnPrimaryMini{
+  flex: 1 1 100%;
+}
+
+/* Secundarios: 2 columnas iguales */
+.expenseActions .btnMini,
+.expenseActions .btnDangerMini{
+  flex: 1 1 calc(50% - 5px);
+  min-width: 140px;
+}
