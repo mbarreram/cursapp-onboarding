@@ -249,7 +249,7 @@
       <div class="card">
         <div class="row">
           <div class="kTitle">🎯 Rendiciones por campaña</div>
-          <div class="actions">
+          <div class="actions actionsRow">
             <select id="taskSel" class="btnMini">
               <option value="">Ver todas</option>
               ${t.map(x=>`<option value="${x.id}" ${selectedTaskId===x.id?"selected":""}>${esc(x.title)}</option>`).join("")}
@@ -281,14 +281,13 @@
           <div>
             <div style="font-weight:950;">${esc(task.title)} <span class="pill" style="margin-left:8px;">Campaña</span></div>
             <div class="muted" style="margin-top:6px;font-weight:800;font-size:12px;">${task.startDate||""} → ${task.dueDate||""}</div>
-            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-              <span class="pill ok">Recaudado ${clp(rec)}</span>
+            <div class="metricsRow"><span class="pill ok">Recaudado ${clp(rec)}</span>
               <span class="pill warn">Gastado ${clp(gas)}</span>
               <span class="pill ${s<0?'danger':''}">Saldo ${clp(s)}</span>
               ${miss?`<span class="pill danger">⚠️ sin boleta ${miss}</span>`:""}
             </div>
           </div>
-          <div class="actions">
+          <div class="actions actionsRow">
             <button class="btnMini" onclick="openEditCampaign('${task.id}')">✏️ Editar campaña</button>
             <button class="btnPrimaryMini" onclick="openCreateExpense('campaign','${task.id}')">+ Agregar gasto</button>
           </div>
@@ -312,22 +311,30 @@
          <button class="btnMini" onclick="replaceBoleta('${e.id}')">🔁 Reemplazar</button>`
       : `<button class="btnPrimaryMini" onclick="uploadBoleta('${e.id}')">📎 Subir boleta</button>`;
 
+    // Nombre de campaña para "Rendición — Campaña"
+    const campName = (e.scope==="campaign")
+      ? (tasksAll().find(t=>t.id===e.campaignId)?.title || "Campaña")
+      : "Fondo del curso";
+
+    const desc = (e.note && String(e.note).trim()) ? String(e.note).trim() : "";
+
     return `
-      <div class="card" style="background:#f8fafc;margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
-          <span class="pill">🧾 Rendición</span>
+      <div class="expenseCard">
+        <div class="expenseHeader">
+          <div class="expenseTitle">Rendición — ${esc(campName)}</div>
           ${badge}
         </div>
 
-        <div style="margin-top:10px;font-weight:950;">${esc(e.title)}</div>
-        <div class="muted" style="margin-top:6px;font-weight:800;font-size:12px;">
-          ${scopeLabel(e)} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")} · ${esc(e.date||"")}
+        <div class="expenseBody">
+          <div class="expenseItem">Ítem: <b>${esc(e.title)}</b></div>
+          <div class="expenseMeta">Fecha rendición: ${esc(e.date||"")}</div>
+          <div class="expenseMeta">Monto: <b>${clp(e.amount)}</b></div>
+          ${desc ? `<div class="expenseMeta">Descripción: ${esc(desc)}</div>` : ``}
+          <div class="expenseSubMeta">${esc(scopeLabel(e))} · ${esc(e.category||"Otros")} · ${esc(e.vendor||"—")}</div>
         </div>
-        <div style="margin-top:8px;font-weight:950;font-size:18px;">${clp(e.amount)}</div>
 
-        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(229,231,235,.95);display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+        <div class="expenseActions actionBar">
           ${boletaButtons}
-          <span style="flex:1;min-width:10px;"></span>
           <button class="btnMini" onclick="editExpense('${e.id}')">✏️ Editar</button>
           <button class="btnDangerMini" onclick="deleteExpense('${e.id}')">🗑️ Eliminar</button>
         </div>

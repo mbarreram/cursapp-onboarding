@@ -1,0 +1,66 @@
+/* =========================================================
+   Tesorero · Rendiciones UI (UX)
+   Visual only — keeps all logic intact
+   ========================================================= */
+
+.metricsRow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin-top:10px;
+}
+
+/* RenderExpenseCard v2 */
+.expenseCard{
+  background:#f8fafc;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:18px;
+  padding:14px;
+  margin-top:12px;
+}
+
+.expenseHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.expenseTitle{
+  font-weight:950;
+  letter-spacing:-0.1px;
+}
+
+.expenseBody{
+  margin-top:10px;
+}
+
+.expenseItem{
+  font-weight:900;
+}
+
+.expenseMeta{
+  margin-top:6px;
+  font-weight:800;
+  font-size:12px;
+  opacity:.70;
+}
+
+.expenseSubMeta{
+  margin-top:8px;
+  font-weight:800;
+  font-size:12px;
+  opacity:.55;
+}
+
+.actionBar{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed rgba(229,231,235,.95);
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
