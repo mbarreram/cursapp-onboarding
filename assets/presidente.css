@@ -110,3 +110,4 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
 .kpi .lbl{opacity:.88;font-weight:900;}
 .kpi .val{letter-spacing:-0.3px;}
 .warnBox{border-radius:16px;}
+@import url('presidente-ux-additions.css');
