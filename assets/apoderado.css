@@ -197,3 +197,7 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
   border: 1px solid rgba(34,197,94,.22);
   font-weight: 900;
 }
+
+/* === UX Refinamiento (Apoderado) === */
+.chips{gap:8px;}
+.payRow{border-radius:16px;}
