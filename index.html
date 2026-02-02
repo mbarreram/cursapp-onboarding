@@ -106,6 +106,27 @@
 });
   }
 </script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btnDirectiva = document.getElementById("btnDirectiva");
+  const btnApoderado = document.getElementById("btnApoderado");
+
+  // Cambia SOLO esta variable si decides usar /dashboard.html en vez de /onboarding/dashboard.html
+  const ONBOARDING_URL = "/onboarding/dashboard.html";
+
+  if (btnDirectiva) {
+    btnDirectiva.addEventListener("click", () => {
+      window.location.href = `${ONBOARDING_URL}?mode=directiva&role=presidente`;
+    });
+  }
+
+  if (btnApoderado) {
+    btnApoderado.addEventListener("click", () => {
+      window.location.href = `${ONBOARDING_URL}?mode=apoderado`;
+    });
+  }
+});
+</script>
 
 </body>
 </html>
