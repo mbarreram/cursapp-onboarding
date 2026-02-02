@@ -17,14 +17,18 @@
       <div class="icon">🎓</div>
       <h3>Soy directiva</h3>
       <p>Crear curso y gestionar campañas, pagos y rendiciones.</p>
-      <button>Registrar curso</button>
+<button id="btnDirectiva" class="btn primary">
+  Registrar curso
+</button>
     </div>
 
     <div class="entry-card secondary" onclick="goApoderado()">
       <div class="icon">👨‍👩‍👧</div>
       <h3>Soy apoderado</h3>
       <p>Unirme a un curso y pagar mis cuotas.</p>
-      <button>Unirme al curso</button>
+      <button id="btnApoderado" class="btn secondary">
+  Unirme al curso
+</button>
     </div>
   </section>
 
@@ -53,7 +57,9 @@
       <div id="loginError" class="error" style="display:none;"></div>
 
       <div class="actions">
-        <button type="submit" class="btn-primary">Ingresar</button>
+        <button id="btnLogin" class="btn primary">
+  Ingresar
+</button>
         <button type="button" class="btn-secondary" onclick="resetForm()">Cancelar</button>
       </div>
     </form>
@@ -73,21 +79,31 @@
 <script>
   function goDirectiva() {
     // mismo flujo que hoy, pero guiado
-    document.getElementById("username").value = "presidente";
-    document.getElementById("password").value = "";
-    document.getElementById("username").focus();
+    document.getElementById("btnDirectiva")?.addEventListener("click", () => {
+  // Directiva por defecto entra como presidente
+  window.location.href = "/onboarding.html?mode=directiva&role=presidente";
+});
   }
 
   function goApoderado() {
-    document.getElementById("username").value = "apoderado";
-    document.getElementById("password").value = "";
-    document.getElementById("username").focus();
+    document.getElementById("btnApoderado")?.addEventListener("click", () => {
+  window.location.href = "/onboarding.html?mode=apoderado";
+});
   }
 
   function resetForm() {
-    document.getElementById("loginForm").reset();
-    const err = document.getElementById("loginError");
-    if (err) err.style.display = "none";
+    document.getElementById("btnLogin")?.addEventListener("click", () => {
+  const user = document.getElementById("loginUser").value;
+  const pass = document.getElementById("loginPass").value;
+
+  if (!user || !pass) {
+    alert("Completa usuario y contraseña");
+    return;
+  }
+
+  // tu lógica actual
+  // login.js ya maneja roles y redirección
+});
   }
 </script>
 
