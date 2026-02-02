@@ -1,105 +1,90 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Cursapp · Finanzas claras para tu curso</title>
-  <link rel="stylesheet" href="assets/landing.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cursapp · Finanzas del curso en un solo lugar</title>
+  <link rel="stylesheet" href="./assets/landing.css?v=2" />
 </head>
 <body>
-
-<header class="topbar">
-  <div class="logo">Cursapp</div>
-  <nav>
-    <a href="#que-es">Qué es</a>
-    <a href="#roles">Roles</a>
-    <a href="#precios">Precios</a>
-    <a href="login.html" class="btn-outline">Ingresar</a>
-  </nav>
-</header>
-
-<section class="hero">
-  <div class="hero-text">
-    <h1>Orden financiero<br>para tu curso</h1>
-    <p>
-      Cursapp refuerza la labor de la directiva del curso,
-      facilitando cobros, rendiciones y transparencia.
-    </p>
-
-    <div class="hero-actions">
-      <a href="onboarding.html" class="btn-primary">
-        Comienza ahora · Registra tu curso
-      </a>
-      <a href="login.html" class="link">
-        Ya estoy registrado · Ingresar
-      </a>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand"><span class="brand__logo">C</span><span class="brand__name">Cursapp</span></div>
+      <nav class="nav">
+        <a href="#que-es">Qué es</a>
+        <a href="#roles">Roles</a>
+        <a href="#pantallas">Pantallas</a>
+        <a href="#precios">Precios</a>
+      </nav>
+      <div class="topbar__cta">
+        <a class="btn btn--ghost" href="./index.html">Ingresar</a>
+        <a class="btn btn--primary" href="./onboarding/dashboard.html">Registrar curso</a>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <div class="hero-image">
-    <img src="assets/hero.png" alt="Cursapp ilustración" />
-  </div>
-</section>
-
-<section id="pantallas" class="screens">
-  <h2>Cursapp en acción</h2>
-  <div class="phones">
-    <div class="phone">Presidente</div>
-    <div class="phone">Tesorero</div>
-    <div class="phone">Apoderado</div>
-  </div>
-</section>
-
-<section id="roles" class="roles">
-  <h2>Roles claros</h2>
-  <div class="role-grid">
-    <div class="role">
-      <h3>Presidente</h3>
-      <p>Gestiona campañas, cobros y visión general.</p>
+  <section class="hero">
+    <div class="container hero__grid">
+      <div class="hero__copy">
+        <div class="pill pill--soft"><span class="dot"></span> Finanzas del curso, ordenadas y transparentes</div>
+        <h1>Cursapp refuerza la labor de la directiva: cobros, pagos y rendiciones en un solo lugar.</h1>
+        <p class="lead">Crea campañas, recibe pagos con pasarela y mantén un resumen claro del fondo del curso para presidente, tesorero y apoderados.</p>
+        <div class="hero__actions">
+          <a class="btn btn--primary btn--lg" href="./onboarding/dashboard.html">Comienza ahora — Registra tu curso</a>
+          <a class="btn btn--ghost btn--lg" href="./onboarding/dashboard.html#apoderado">Soy apoderado — Registrarme al curso</a>
+        </div>
+        <div class="hero__subcta"><a href="./index.html">Ya estoy registrado — Ingresar</a></div>
+      </div>
+      <div class="hero__art"><img class="heroImg" src="./assets/people_hero.png" alt="Cursapp en acción"></div>
     </div>
-    <div class="role">
-      <h3>Tesorero</h3>
-      <p>Rinde gastos, adjunta boletas y genera informes.</p>
+  </section>
+
+  <section class="section" id="que-es">
+    <div class="container">
+      <div class="section__head">
+        <h2>Qué es Cursapp</h2>
+        <p>Una app para organizar la gestión financiera del curso con claridad: campañas de cobro, pagos por pasarela y rendiciones del fondo.</p>
+      </div>
     </div>
-    <div class="role">
-      <h3>Apoderado</h3>
-      <p>Paga cuotas y revisa el estado del curso.</p>
+  </section>
+
+  <section class="section section--alt" id="roles">
+    <div class="container">
+      <div class="section__head"><h2>Roles y responsabilidades</h2><p>Cada rol ve lo que necesita, con permisos y trazabilidad.</p></div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section id="precios" class="pricing">
-  <h2>Precios simples</h2>
-
-  <div class="pricing-grid">
-    <div class="price-card">
-      <h3>Inscripción</h3>
-      <p class="price">$0</p>
-      <p>Gratis hasta el 30 de marzo</p>
+  <section class="section" id="pantallas">
+    <div class="container">
+      <div class="section__head"><h2>Pantallas finales</h2><p>Una vista rápida de cómo se ve Cursapp en el día a día.</p></div>
+      <div class="inlineArt"><img src="./assets/people_duo.png" alt="Ilustración Cursapp"></div>
     </div>
+  </section>
 
-    <div class="price-card highlight">
-      <h3>Uso anual</h3>
-      <p class="price">$990</p>
-      <p>Pago único anual por apoderado</p>
+  <section class="section section--alt" id="precios">
+    <div class="container">
+      <div class="section__head"><h2>Precios</h2><p>Simple y por uso, pensado para cursos.</p></div>
+      <div class="annualBox">
+        <div class="annualGrid">
+          <div>
+            <h3>Aprox $3.000 al año</h3>
+            <p class="muted">Entre el costo anual (único) y el recargo por uso de pasarela en cuotas del curso, los apoderados pagarán aproximadamente <b>$3.000 al año</b>.</p>
+          </div>
+          <img src="./assets/people_group.png" alt="Ilustración apoderados">
+        </div>
+      </div>
     </div>
+  </section>
 
-    <div class="price-card">
-      <h3>Pago de cuotas</h3>
-      <p>Recargo 3% por pasarela</p>
-      <p class="example">$2.000 → $2.060</p>
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <span class="brand__logo brand__logo--sm">C</span>
+        <div><div class="footer__name">Cursapp</div><div class="footer__small">Gestión financiera del curso, simple y transparente.</div></div>
+      </div>
     </div>
-  </div>
+  </footer>
 
-  <p class="note">
-    En promedio, un apoderado paga alrededor de
-    <strong>$3.000 al año</strong> considerando inscripción y pagos de cuota.
-  </p>
-</section>
-
-<footer class="footer">
-  <p>© 2026 Cursapp · Finanzas claras para tu curso</p>
-</footer>
-
+  <script src="./assets/landing.js?v=2"></script>
 </body>
 </html>
