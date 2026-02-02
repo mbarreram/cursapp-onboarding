@@ -1,0 +1,65 @@
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background:#f6f8fb;
+  margin:0;
+}
+.container {
+  max-width:420px;
+  margin:auto;
+  padding:24px;
+}
+.cards {
+  display:grid;
+  gap:16px;
+}
+.card {
+  background:white;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 10px 30px rgba(0,0,0,.06);
+}
+.card.primary button {
+  background:#f5c400;
+}
+.card.secondary button {
+  background:#e9eefc;
+}
+.card button {
+  width:100%;
+  border:none;
+  padding:12px;
+  border-radius:10px;
+  font-weight:600;
+}
+.login {
+  margin-top:24px;
+  background:white;
+  border-radius:16px;
+  padding:20px;
+}
+.login input {
+  width:100%;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+.actions {
+  display:flex;
+  gap:12px;
+}
+.ingresar {
+  flex:1;
+  background:#6b5cff;
+  color:white;
+}
+.cancelar {
+  flex:1;
+}
+.links {
+  margin-top:16px;
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+}
