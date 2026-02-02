@@ -1,7 +1,1 @@
-(function(){
-  const btn=document.getElementById('hamburger');
-  const nav=document.getElementById('mobileNav');
-  if(btn && nav){
-    btn.addEventListener('click', ()=> nav.classList.toggle('open'));
-  }
-})();
+(function(){const b=document.getElementById('hamburger');const n=document.getElementById('mobileNav');if(b&&n){b.addEventListener('click',()=>n.classList.toggle('open'));}})();
