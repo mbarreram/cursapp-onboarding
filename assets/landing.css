@@ -127,3 +127,33 @@ a{text-decoration:none;color:inherit}
   .annualGrid{grid-template-columns:1fr}
   .footer__inner{flex-direction:column}
 }
+
+
+/* ===== Real Screens (phone shots) ===== */
+.screensReal{
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.phone--shot{
+  padding: 12px;
+}
+.phone__frame{
+  border: 1px solid rgba(15,23,42,.08);
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+}
+.phone__frame .shot{
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.phone__cap{
+  margin-top: 10px;
+  font-weight: 900;
+  color: rgba(15,23,42,.75);
+  font-size: 13px;
+  text-align: center;
+}
+@media (max-width: 980px){
+  .screensReal{grid-template-columns: 1fr;}
+}
