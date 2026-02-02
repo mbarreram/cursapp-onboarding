@@ -1,65 +1,110 @@
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+}
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background:#f6f8fb;
-  margin:0;
+  margin: 0;
+  background: #f6f8fb;
 }
-.container {
-  max-width:420px;
-  margin:auto;
-  padding:24px;
+
+.auth-container {
+  max-width: 420px;
+  margin: 40px auto;
+  padding: 16px;
 }
-.cards {
-  display:grid;
-  gap:16px;
+
+.entry-cards {
+  display: grid;
+  gap: 16px;
 }
-.card {
-  background:white;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:0 10px 30px rgba(0,0,0,.06);
+
+.entry-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.06);
+  cursor: pointer;
 }
-.card.primary button {
-  background:#f5c400;
+
+.entry-card .icon {
+  font-size: 32px;
 }
-.card.secondary button {
-  background:#e9eefc;
+
+.entry-card h3 {
+  margin: 12px 0 6px;
 }
-.card button {
-  width:100%;
-  border:none;
-  padding:12px;
-  border-radius:10px;
-  font-weight:600;
+
+.entry-card p {
+  color: #666;
+  font-size: 14px;
 }
-.login {
-  margin-top:24px;
-  background:white;
-  border-radius:16px;
-  padding:20px;
+
+.entry-card button {
+  margin-top: 12px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 700;
 }
-.login input {
-  width:100%;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:10px;
-  border:1px solid #ddd;
+
+.primary button {
+  background: #facc15;
 }
+
+.secondary button {
+  background: #e5e7eb;
+}
+
+.login-card {
+  margin-top: 28px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.06);
+}
+
+.login-card input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
 .actions {
-  display:flex;
-  gap:12px;
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
 }
-.ingresar {
-  flex:1;
-  background:#6b5cff;
-  color:white;
+
+.btn-primary {
+  flex: 1;
+  background: #6d5dfc;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
 }
-.cancelar {
-  flex:1;
+
+.btn-secondary {
+  flex: 1;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
 }
+
 .links {
-  margin-top:16px;
-  display:flex;
-  justify-content:space-between;
-  font-size:14px;
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.error {
+  color: #dc2626;
+  margin-top: 10px;
+  font-size: 14px;
 }
