@@ -216,3 +216,101 @@ body {
 .entry-card.secondary button:hover{
   background:#eef2ff;
 }
+/* =========================
+   Registrar Group (nuevo)
+   ========================= */
+
+.regGroup{
+  background:#fff;
+  border-radius:20px;
+  padding:18px;
+  box-shadow:0 12px 34px rgba(0,0,0,.06);
+  margin-bottom:18px;
+}
+
+.regGroup__head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.regGroup__title{
+  margin:0;
+  font-size:18px;
+  font-weight:900;
+}
+
+.regGroup__sub{
+  margin:0;
+  color:#64748b;
+  font-weight:600;
+  font-size:13px;
+}
+
+.regGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.regCard{
+  border:1px solid rgba(15,23,42,.10);
+  border-radius:18px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  background:linear-gradient(180deg, rgba(15,23,42,.01), rgba(15,23,42,.00));
+}
+
+.regCard__icon{
+  width:42px;height:42px;
+  border-radius:14px;
+  display:grid;place-items:center;
+  background:rgba(15,23,42,.04);
+  font-size:20px;
+}
+
+.regCard__title{
+  margin:0;
+  font-size:16px;
+  font-weight:900;
+}
+
+.regCard__text{
+  margin:0;
+  color:#64748b;
+  font-weight:600;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.regCard__btn{
+  margin-top:auto;
+  width:100%;
+  padding:12px 14px;
+  border-radius:14px;
+  font-weight:900;
+  cursor:pointer;
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+}
+
+.regCard__btn--primary{
+  border:none;
+  background:#facc15;
+  color:#111827;
+  box-shadow:0 12px 26px rgba(250,204,21,.22);
+}
+
+.regCard__btn--ghost{
+  background:#f8fafc;
+  border:1.5px solid #c7d2fe;
+  color:#1e3a8a;
+}
+
+@media (max-width: 860px){
+  .regGrid{ grid-template-columns:1fr; }
+}
