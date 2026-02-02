@@ -1,46 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Cursapp · Login</title>
-  <link rel="stylesheet" href="assets/styles.css?v=400">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cursapp · Ingreso</title>
+<link rel="stylesheet" href="assets/login-pro.css">
 </head>
-<body class="auth">
+<body>
+<div class="container">
 
-  <div class="auth-card">
-    <div class="brandCenter">
-      <div class="logo big">C</div>
-      <h1>Cursapp</h1>
-      <p class="muted">Acceso</p>
+  <div class="cards">
+    <div class="card primary">
+      <h3>Soy directiva</h3>
+      <p>Registrar curso y comenzar la gestión.</p>
+      <button>Registrar curso</button>
     </div>
 
-    <form id="loginForm">
-      <label>Correo</label>
-      <input id="username" placeholder="correo@dominio.com" autocomplete="email" required>
-
-      <label>Contraseña</label>
-      <input id="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" required>
-
-      <div id="loginError" class="error" style="display:none;"></div>
-
-      <button class="btn primary" type="submit">Ingresar</button>
-    </form>
-
-    <div style="margin-top:14px;">
-      <a href="onboarding/dashboard.html" style="font-weight:950;text-decoration:none;">
-        ¿No estás registrado? Configura tu curso
-      </a>
-      <div class="muted small" style="margin-top:6px;">
-        Completa el onboarding para crear tu cuenta y activar el acceso.
-      </div>
+    <div class="card secondary">
+      <h3>Soy apoderado</h3>
+      <p>Unirme al curso y ver mis cuotas.</p>
+      <button>Unirme al curso</button>
     </div>
-
-    <p class="muted small" style="margin-top:14px;">
-      Demo: también puedes usar <b>tesorero</b> o <b>presidente</b> con contraseña <b>demo</b>.
-    </p>
   </div>
 
-  <script src="assets/login.js?v=200"></script>
+  <div class="login">
+    <h3>¿Ya estás registrado?</h3>
+    <input placeholder="Usuario">
+    <input type="password" placeholder="Contraseña">
+
+    <div class="actions">
+      <button class="ingresar">Ingresar</button>
+      <button class="cancelar">Cancelar</button>
+    </div>
+
+    <div class="links">
+      <a href="#">Olvidé mi contraseña</a>
+      <a href="#">Recuperar contraseña</a>
+    </div>
+  </div>
+
+</div>
 </body>
 </html>
