@@ -199,3 +199,11 @@ body {
   font-weight:800;
 }
 .links a:hover{ text-decoration:underline; }
+
+.btn-secondary{
+  background:none;
+  border:none;
+  color:#64748b;
+  font-weight:700;
+  padding:6px;
+}
