@@ -17,18 +17,26 @@
       <div class="icon">🎓</div>
       <h3>Soy directiva</h3>
       <p>Crear curso y gestionar campañas, pagos y rendiciones.</p>
-<button id="btnDirectiva" class="btn primary">
+
+
+<button id="btnDirectiva" type="button" class="btn primary">
   Registrar curso
 </button>
+
+
+
+      
     </div>
 
     <div class="entry-card secondary" onclick="goApoderado()">
       <div class="icon">👨‍👩‍👧</div>
       <h3>Soy apoderado</h3>
-      <p>Unirme a un curso y pagar mis cuotas.</p>
-      <button id="btnApoderado" class="btn secondary">
+      <p>Unirme a un curso y pagar mis cuotas.</>
+
+<button id="btnApoderado" type="button" class="btn secondary">
   Unirme al curso
 </button>
+      
     </div>
   </section>
 
@@ -57,7 +65,7 @@
       <div id="loginError" class="error" style="display:none;"></div>
 
       <div class="actions">
-        <button id="btnLogin" class="btn primary">
+        <button type="submit" class="btn primary">
   Ingresar
 </button>
         <button type="button" class="btn-secondary" onclick="resetForm()">Cancelar</button>
@@ -73,45 +81,16 @@
 </div>
 
 <!-- TU LOGIN REAL -->
-<script src="login.js"></script>
 
 <!-- Helpers UX -->
+
+<script src="login.js"></script>
+
 <script>
-  function goDirectiva() {
-    // mismo flujo que hoy, pero guiado
-    document.getElementById("btnDirectiva")?.addEventListener("click", () => {
-  // Directiva por defecto entra como presidente
-  window.location.href = "/onboarding.html?mode=directiva&role=presidente";
-});
-  }
-
-  function goApoderado() {
-    document.getElementById("btnApoderado")?.addEventListener("click", () => {
-  window.location.href = "/onboarding.html?mode=apoderado";
-});
-  }
-
-  function resetForm() {
-    document.getElementById("btnLogin")?.addEventListener("click", () => {
-  const user = document.getElementById("loginUser").value;
-  const pass = document.getElementById("loginPass").value;
-
-  if (!user || !pass) {
-    alert("Completa usuario y contraseña");
-    return;
-  }
-
-  // tu lógica actual
-  // login.js ya maneja roles y redirección
-});
-  }
-</script>
-  <script>
 document.addEventListener("DOMContentLoaded", () => {
   const btnDirectiva = document.getElementById("btnDirectiva");
   const btnApoderado = document.getElementById("btnApoderado");
 
-  // Cambia SOLO esta variable si decides usar /dashboard.html en vez de /onboarding/dashboard.html
   const ONBOARDING_URL = "/onboarding/dashboard.html";
 
   if (btnDirectiva) {
@@ -127,6 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 </script>
+
+  
+  
 
 </body>
 </html>
