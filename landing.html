@@ -50,49 +50,43 @@
   <main>
     <!-- HERO -->
     <section class="hero" id="top">
-      <div class="container hero__grid">
-        <div class="hero__copy">
-          <p class="eyebrow"><span class="dot"></span> Finanzas del curso, ordenadas y transparentes</p>
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <p class="eyebrow"><span class="dot"></span> Directiva y tesorería, en control</p>
 
-          <h1>
-            Cursapp refuerza la labor de la directiva:
-            cobros, pagos y rendiciones en un solo lugar.
-          </h1>
+      <h1>Finanzas del curso claras. Cobros y rendiciones en minutos.</h1>
 
-          <p class="lead">
-            Crea campañas, recibe pagos con pasarela y mantén un resumen claro del fondo del curso
-            para presidente, tesorero y apoderados.
-          </p>
+      <p class="lead">
+        Campañas, pagos con comprobante y rendiciones con boletas.
+        Todo en un solo lugar.
+      </p>
 
-          <div class="hero__cta">
-            <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">
-              Registra tu curso gratis
-              <span class="btn__sub">Soy directiva</span>
-            </a>
+      <div class="hero__cta">
+        <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">
+          Registra tu curso gratis
+          <span class="btn__sub">Solo directiva · hasta 30 de marzo</span>
+        </a>
 
-            <p class="hero__hint">
-              Si eres apoderado, entra con <b>Ingresar</b> y selecciona “Soy apoderado”.
-            </p>
-          </div>
-
-          <div class="trust">
-            <div class="trust__item">🔒 <span>Roles y permisos</span></div>
-            <div class="trust__item">💳 <span>Pasarela de pago</span></div>
-            <div class="trust__item">🧾 <span>Rendiciones y boletas</span></div>
-          </div>
-        </div>
-
-        <div class="hero__art" aria-hidden="true">
-          <div class="heroCard">
-            <!-- Si quieres, pon aquí una ilustración: ./assets/img/hero-team.png -->
-            <div class="heroPlaceholder">
-              <div class="heroPlaceholder__title">Cursapp</div>
-              <div class="heroPlaceholder__sub">Directiva · Apoderados</div>
-            </div>
-          </div>
+        <div class="hero__ctaRow">
+          <a class="btn btn--ghost" href="./index.html">Ingresar</a>
+          <a class="btn btn--ghost" href="./index.html#apoderado">Soy apoderado</a>
         </div>
       </div>
-    </section>
+
+      <div class="trust">
+        <div class="trust__item">🔒 <span>Roles</span></div>
+        <div class="trust__item">💳 <span>Pagos con comprobante</span></div>
+        <div class="trust__item">🧾 <span>Rendiciones y boletas</span></div>
+      </div>
+    </div>
+
+    <div class="hero__art" aria-hidden="true">
+      <div class="heroCard">
+        <img class="heroImg" src="./assets/img/hero-team.png" alt="">
+      </div>
+    </div>
+  </div>
+</section>
 
     <!-- WHAT IS -->
     <section class="section" id="que-es">
@@ -168,52 +162,56 @@
     </section>
 
     <!-- CONOCENOS (Carrusel real) -->
-    <section class="section" id="conocenos">
-      <div class="container">
-        <div class="sectionHead">
-          <h2>Conócenos</h2>
-          <p>Te compartimos algunos screens reales de Cursapp dentro de un celular.</p>
+    
+<section class="section" id="conocenos">
+  <div class="container">
+    <div class="sectionHead">
+      <h2>Conócenos</h2>
+      <p>Swipe para ver pantallas reales dentro de un celular.</p>
+    </div>
+
+    <div class="carouselWrap">
+      <div class="carousel" id="carousel">
+        <div class="phoneShot">
+          <div class="phoneShot__bar"></div>
+          <div class="phoneShot__frame">
+            <img src="./assets/screens/presidente.jpg" alt="Presidente" loading="lazy">
+          </div>
+          <div class="phoneShot__cap">Presidente</div>
         </div>
 
-        <div class="carouselWrap">
-          <div class="carousel" id="carousel">
-            <div class="phoneShot">
-              <div class="phoneShot__bar"></div>
-              <div class="phoneShot__frame">
-                <img src="./assets/screens/presidente.jpg" alt="Pantalla Presidente" loading="lazy">
-              </div>
-              <div class="phoneShot__cap">Presidente</div>
-            </div>
-
-            <div class="phoneShot">
-              <div class="phoneShot__bar"></div>
-              <div class="phoneShot__frame">
-                <img src="./assets/screens/apoderado.jpg" alt="Pantalla Apoderado" loading="lazy">
-              </div>
-              <div class="phoneShot__cap">Apoderado</div>
-            </div>
-
-            <div class="phoneShot">
-              <div class="phoneShot__bar"></div>
-              <div class="phoneShot__frame">
-                <img src="./assets/screens/tesorero_inicio.jpg" alt="Pantalla Tesorero Inicio" loading="lazy">
-              </div>
-              <div class="phoneShot__cap">Tesorero · Inicio</div>
-            </div>
-
-            <div class="phoneShot">
-              <div class="phoneShot__bar"></div>
-              <div class="phoneShot__frame">
-                <img src="./assets/screens/tesorero_rendiciones.jpg" alt="Pantalla Tesorero Rendiciones" loading="lazy">
-              </div>
-              <div class="phoneShot__cap">Tesorero · Rendiciones</div>
-            </div>
+        <div class="phoneShot">
+          <div class="phoneShot__bar"></div>
+          <div class="phoneShot__frame">
+            <img src="./assets/screens/apoderado.jpg" alt="Apoderado" loading="lazy">
           </div>
+          <div class="phoneShot__cap">Apoderado</div>
+        </div>
 
-          <div class="dots" id="dots" aria-hidden="true"></div>
+        <div class="phoneShot">
+          <div class="phoneShot__bar"></div>
+          <div class="phoneShot__frame">
+            <img src="./assets/screens/tesorero_inicio.jpg" alt="Tesorero inicio" loading="lazy">
+          </div>
+          <div class="phoneShot__cap">Tesorero · Inicio</div>
+        </div>
+
+        <div class="phoneShot">
+          <div class="phoneShot__bar"></div>
+          <div class="phoneShot__frame">
+            <img src="./assets/screens/tesorero_rendiciones.jpg" alt="Tesorero rendiciones" loading="lazy">
+          </div>
+          <div class="phoneShot__cap">Tesorero · Rendiciones</div>
         </div>
       </div>
-    </section>
+
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </div>
+  </div>
+</section>
+
+
+    
 
     <!-- PRICING -->
     <section class="section section--alt" id="precios">
