@@ -9,12 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./assets/landing.css?v=1" />
+  <link rel="stylesheet" href="./assets/css/landing.css?v=1" />
 </head>
 <body>
   <header class="topbar">
     <div class="container topbar__inner">
-      <a class="brand" href="./landing.html" aria-label="Cursapp">
+      <a class="brand" href="./landing.html" aria-label="Cursapp inicio">
         <span class="brand__mark" aria-hidden="true"></span>
         <span class="brand__name">Cursapp</span>
       </a>
@@ -48,6 +48,7 @@
   </header>
 
   <main>
+    <!-- HERO -->
     <section class="hero" id="top">
       <div class="container hero__grid">
         <div class="hero__copy">
@@ -68,8 +69,9 @@
               Registra tu curso gratis
               <span class="btn__sub">Soy directiva</span>
             </a>
+
             <p class="hero__hint">
-              Si eres apoderado, ingresa desde <b>Ingresar</b> y selecciona “Soy apoderado”.
+              Si eres apoderado, entra con <b>Ingresar</b> y selecciona “Soy apoderado”.
             </p>
           </div>
 
@@ -82,17 +84,25 @@
 
         <div class="hero__art" aria-hidden="true">
           <div class="heroCard">
-            <img class="heroImg" src="./assets/img/hero-team.png" alt="">
+            <!-- Si quieres, pon aquí una ilustración: ./assets/img/hero-team.png -->
+            <div class="heroPlaceholder">
+              <div class="heroPlaceholder__title">Cursapp</div>
+              <div class="heroPlaceholder__sub">Directiva · Apoderados</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- WHAT IS -->
     <section class="section" id="que-es">
       <div class="container">
         <div class="sectionHead">
           <h2>Qué es Cursapp</h2>
-          <p>Una app para organizar la gestión financiera del curso con claridad: campañas de cobro, pagos por pasarela y rendiciones del fondo.</p>
+          <p>
+            Una app para organizar la gestión financiera del curso con claridad:
+            campañas de cobro, pagos por pasarela y rendiciones del fondo.
+          </p>
         </div>
 
         <div class="features">
@@ -115,6 +125,7 @@
       </div>
     </section>
 
+    <!-- ROLES -->
     <section class="section section--alt" id="roles">
       <div class="container">
         <div class="sectionHead">
@@ -132,6 +143,7 @@
               <li>Ver resumen del curso</li>
             </ul>
           </article>
+
           <article class="role">
             <div class="role__top"><span class="role__icon">🧾</span><h3>Tesorero</h3></div>
             <p class="role__desc">Rendiciones claras, boletas y saldo.</p>
@@ -141,6 +153,7 @@
               <li>Ver pendiente de rendir</li>
             </ul>
           </article>
+
           <article class="role">
             <div class="role__top"><span class="role__icon">👨‍👩‍👧</span><h3>Apoderado</h3></div>
             <p class="role__desc">Pagos simples con comprobante.</p>
@@ -151,79 +164,70 @@
             </ul>
           </article>
         </div>
-
-        <div class="rolesArt">
-          <img src="./assets/img/roles-directiva.png" alt="Ilustración directiva">
-          <img src="./assets/img/roles-apoderado.png" alt="Ilustración apoderados">
-        </div>
       </div>
     </section>
 
+    <!-- CONOCENOS (Carrusel real) -->
     <section class="section" id="conocenos">
       <div class="container">
         <div class="sectionHead">
           <h2>Conócenos</h2>
-          <p>Te compartiremos algunos screens reales de Cursapp. Por ahora, este es un preview enmascarado dentro de un celular.</p>
+          <p>Te compartimos algunos screens reales de Cursapp dentro de un celular.</p>
         </div>
 
-        <div class="phones">
-          <div class="phone">
-            <div class="phone__bar"></div>
-            <div class="phone__screen">
-              <div class="phone__header">
-                <div class="avatar">C</div>
-                <div><div class="hTitle">Presidente</div><div class="hSub">Cobros · Gastos · Resultado</div></div>
+        <div class="carouselWrap">
+          <div class="carousel" id="carousel">
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/presidente.jpg" alt="Pantalla Presidente" loading="lazy">
               </div>
-              <div class="kpiMini">
-                <div class="k"><div class="l">Cobrado mes</div><div class="v">$2.000</div></div>
-                <div class="k warn"><div class="l">Por cobrar</div><div class="v">$2.000</div></div>
+              <div class="phoneShot__cap">Presidente</div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/apoderado.jpg" alt="Pantalla Apoderado" loading="lazy">
               </div>
-              <div class="ctaMini primary">+ Crear campaña</div>
+              <div class="phoneShot__cap">Apoderado</div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/tesorero_inicio.jpg" alt="Pantalla Tesorero Inicio" loading="lazy">
+              </div>
+              <div class="phoneShot__cap">Tesorero · Inicio</div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/tesorero_rendiciones.jpg" alt="Pantalla Tesorero Rendiciones" loading="lazy">
+              </div>
+              <div class="phoneShot__cap">Tesorero · Rendiciones</div>
             </div>
           </div>
 
-          <div class="phone">
-            <div class="phone__bar"></div>
-            <div class="phone__screen">
-              <div class="phone__header">
-                <div class="avatar">C</div>
-                <div><div class="hTitle">Apoderado</div><div class="hSub">Cuotas y pagos</div></div>
-              </div>
-              <div class="kpiMini">
-                <div class="k warn"><div class="l">Próxima cuota</div><div class="v">$2.000</div></div>
-                <div class="k"><div class="l">Pendiente</div><div class="v">$2.000</div></div>
-              </div>
-              <div class="ctaMini primary">Pagar ahora</div>
-            </div>
-          </div>
-
-          <div class="phone">
-            <div class="phone__bar"></div>
-            <div class="phone__screen">
-              <div class="phone__header">
-                <div class="avatar">C</div>
-                <div><div class="hTitle">Tesorero</div><div class="hSub">Rendiciones y boletas</div></div>
-              </div>
-              <div class="kpiMini">
-                <div class="k"><div class="l">Gastado</div><div class="v">$25.000</div></div>
-                <div class="k danger"><div class="l">Pend. rendir</div><div class="v">$25.000</div></div>
-              </div>
-              <div class="ctaMini">Subir boleta</div>
-            </div>
-          </div>
+          <div class="dots" id="dots" aria-hidden="true"></div>
         </div>
       </div>
     </section>
 
+    <!-- PRICING -->
     <section class="section section--alt" id="precios">
       <div class="container">
         <div class="sectionHead">
           <h2>Precios claros</h2>
-          <p>Primero gratis. Luego, un costo anual único y un recargo por uso de pasarela en cuotas.</p>
+          <p>
+            <b>Inscripción gratis</b> hasta el <b>30 de marzo</b>.
+            Después, un costo anual único y un recargo por cuota pagada con pasarela.
+          </p>
         </div>
 
         <div class="pricing3">
-          <div class="priceCard highlight">
+          <div class="priceCard highlightFree">
             <div class="priceKicker">Hasta el 30 de marzo</div>
             <div class="priceTitle">Inscripción del curso</div>
             <div class="priceValue">Gratis</div>
@@ -234,28 +238,23 @@
             <div class="priceKicker">Desde el 31 de marzo</div>
             <div class="priceTitle">Costo anual (único)</div>
             <div class="priceValue">$990</div>
-            <div class="priceNote">Único anual por apoderado.</div>
+            <div class="priceNote">Pago único anual por apoderado.</div>
           </div>
 
           <div class="priceCard">
             <div class="priceKicker">En cada pago de cuota</div>
             <div class="priceTitle">Pasarela de pago</div>
             <div class="priceValue">+3%</div>
-            <div class="priceNote">Ej: cuota $2.000 → total $2.060 (recargo $60).</div>
+            <div class="priceNote">
+              Ej: cuota $2.000 → pagas $2.060 (recargo $60).
+              Incluye confirmación automática y comprobante.
+            </div>
           </div>
         </div>
 
         <div class="annualBox">
-          <div class="annualGrid">
-            <div>
-              <h3>Aprox $3.000 al año</h3>
-              <p class="muted">
-                Entre el costo anual (único) y el recargo por uso de pasarela en cuotas del curso,
-                los apoderados pagarán aproximadamente <b>$3.000 al año</b>.
-              </p>
-            </div>
-            <img src="./assets/img/roles-apoderado.png" alt="Ilustración apoderados">
-          </div>
+          <h3>Aprox $3.000 al año</h3>
+          <p class="muted">Sumando el costo anual (único) y el uso normal de pasarela durante el año.</p>
         </div>
 
         <div class="bottomCta">
@@ -289,6 +288,6 @@
     </footer>
   </main>
 
-  <script src="./assets/landing.js?v=1"></script>
+  <script src="./assets/js/landing.js?v=1"></script>
 </body>
 </html>
