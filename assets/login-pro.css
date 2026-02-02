@@ -108,3 +108,94 @@ body {
   margin-top: 10px;
   font-size: 14px;
 }
+/* =========================
+   UX refinamiento Login (Opción A)
+   ========================= */
+
+/* --- Cards superiores --- */
+.entry-card button{
+  width:100%;
+  border:none;
+  padding:12px 14px;
+  border-radius:14px;
+  font-weight:800;
+  cursor:pointer;
+  transition: transform .06s ease, filter .15s ease, box-shadow .15s ease;
+}
+
+/* Directiva (primario amarillo) */
+.entry-card.primary button{
+  background:#facc15;
+  color:#111827;
+  box-shadow: 0 12px 30px rgba(250,204,21,.25);
+}
+.entry-card.primary button:hover{ filter: brightness(.98); }
+.entry-card.primary button:active{ transform: scale(.99); }
+
+/* Apoderado (outline, NO parece bloqueado) */
+.entry-card.secondary button{
+  background:#fff;
+  border:1px solid rgba(15,23,42,.14);
+  color:#111827;
+  box-shadow: 0 10px 22px rgba(15,23,42,.06);
+}
+.entry-card.secondary button:hover{ background: rgba(15,23,42,.02); }
+.entry-card.secondary button:active{ transform: scale(.99); }
+
+/* --- Login inferior --- */
+.actions{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:12px;
+  margin-top:14px;
+}
+
+/* Botones parejos */
+.btn-primary, .btn-secondary{
+  width:100%;
+  padding:14px 16px;
+  border-radius:14px;
+  font-weight:900;
+  border:1px solid rgba(15,23,42,.12);
+  transition: transform .06s ease, filter .15s ease;
+}
+
+/* Ingresar pro (azul degradado) */
+.btn-primary{
+  background:linear-gradient(180deg, #6d5dfc, #3b82f6);
+  color:#fff;
+  border:none;
+  box-shadow: 0 14px 30px rgba(59,130,246,.22);
+}
+.btn-primary:hover{ filter: brightness(.98); }
+.btn-primary:active{ transform: scale(.99); }
+
+/* Cancelar ghost */
+.btn-secondary{
+  background:#fff;
+  color:#111827;
+}
+.btn-secondary:hover{ background: rgba(15,23,42,.02); }
+.btn-secondary:active{ transform: scale(.99); }
+
+/* Desktop: acciones lado a lado */
+@media (min-width: 860px){
+  .actions{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Links inferiores más “pro” */
+.links{
+  margin-top:14px;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  font-size:13px;
+}
+.links a{
+  color:#2563eb;
+  text-decoration:none;
+  font-weight:800;
+}
+.links a:hover{ text-decoration:underline; }
