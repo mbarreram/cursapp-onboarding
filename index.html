@@ -12,33 +12,38 @@
 <div class="auth-container">
 
   <!-- ===== CARDS DE ACCIÓN ===== -->
-  <section class="entry-cards">
-    <div class="entry-card primary" onclick="goDirectiva()">
-      <div class="icon">🎓</div>
-      <h3>Soy directiva</h3>
-      <p>Crear curso y gestionar campañas, pagos y rendiciones.</p>
+  <section class="regGroup">
+  <div class="regGroup__head">
+    <h2 class="regGroup__title">Registrar</h2>
+    <p class="regGroup__sub">Elige tu rol para comenzar.</p>
+  </div>
 
+  <div class="regGrid">
+    <!-- Directiva -->
+    <article class="regCard regCard--directiva">
+      <div class="regCard__icon">🎓</div>
+      <div class="regCard__body">
+        <h3 class="regCard__title">Directiva</h3>
+        <p class="regCard__text">Crear curso y gestionar campañas, pagos y rendiciones.</p>
+      </div>
+      <button id="btnDirectiva" type="button" class="regCard__btn regCard__btn--primary">
+        Registrar
+      </button>
+    </article>
 
-<button id="btnDirectiva" type="button" class="btn primary">
-  Registrar curso
-</button>
-
-
-
-      
-    </div>
-
-    <div class="entry-card secondary" onclick="goApoderado()">
-      <div class="icon">👨‍👩‍👧</div>
-      <h3>Soy apoderado</h3>
-      <p>Unirme a un curso y pagar mis cuotas.</>
-
-<button id="btnApoderado" type="button" class="btn secondary">
-  Unirme al curso
-</button>
-      
-    </div>
-  </section>
+    <!-- Apoderado -->
+    <article class="regCard regCard--apoderado">
+      <div class="regCard__icon">👨‍👩‍👧</div>
+      <div class="regCard__body">
+        <h3 class="regCard__title">Apoderado</h3>
+        <p class="regCard__text">Unirme a un curso y pagar mis cuotas.</p>
+      </div>
+      <button id="btnApoderado" type="button" class="regCard__btn regCard__btn--ghost">
+        Registrar
+      </button>
+    </article>
+  </div>
+</section>
 
   <!-- ===== LOGIN EXISTENTE ===== -->
   <section class="login-card">
