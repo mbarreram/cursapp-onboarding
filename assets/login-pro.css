@@ -207,3 +207,12 @@ body {
   font-weight:700;
   padding:6px;
 }
+.entry-card.secondary button{
+  background:#f8fafc;
+  border:1.5px solid #c7d2fe;
+  color:#1e3a8a;
+  font-weight:800;
+}
+.entry-card.secondary button:hover{
+  background:#eef2ff;
+}
