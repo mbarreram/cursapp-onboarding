@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Cursapp · Onboarding</title>
 
-  <link rel="stylesheet" href="/onboarding/assets/styles.css?v=1604">
+  <link rel="stylesheet" href="/onboarding/assets/styles.css?v=1500">
 
   <style>
     .debugCard{border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);border-radius:16px;padding:12px;margin-top:12px}
@@ -40,6 +40,19 @@
     </div>
   </div>
 
+  <!-- Hero productivo (solo directiva) -->
+  <div class="container" id="onbHero" style="margin-top:12px;display:none;">
+    <div class="card" style="padding:16px;">
+      <div style="font-size:20px;font-weight:950;line-height:1.15;">Crea tu curso en 2 minutos</div>
+      <div class="muted" style="margin-top:8px;">Al finalizar, Cursapp genera <b>código para apoderados</b> y <b>código para tesorero</b>.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;">
+        <span class="pill" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;font-weight:700;">✅ Cobros y pagos</span>
+        <span class="pill" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;font-weight:700;">🧾 Rendiciones</span>
+        <span class="pill" style="padding:8px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;font-weight:700;">🔒 Transparencia</span>
+      </div>
+    </div>
+  </div>
+
   <div class="container" id="app"></div>
 
   <script>
@@ -66,13 +79,16 @@
       const role = (qs.get("role") || "presidente").toLowerCase();
       const t = document.getElementById("onbModeTitle");
       const s = document.getElementById("onbModeSub");
+      const hero = document.getElementById('onbHero');
 
       if(mode === "directiva"){
+        hero.style.display = 'block';
         t.textContent = "Onboarding · Directiva";
         s.textContent = (role === "tesorero")
           ? "Crear curso como Tesorero."
           : "Crear curso como Presidente.";
       } else {
+        hero.style.display = 'none';
         t.textContent = "Onboarding · Apoderado";
         s.textContent = "Unirte al curso y registrar al alumno/a.";
       }
@@ -85,9 +101,8 @@
   </script>
 
   <!-- core conecta backLogin + reset -->
-  <script defer src="/assets/config.js?v=2"></script>
-  <script defer src="/assets/core.js?v=1501"></script>
+  <script defer src="/assets/core.js?v=1500"></script>
 <script defer src="/assets/enrollments.js?v=1600"></script>
-<script defer src="/onboarding/assets/onboarding.js?v=1604"></script>
+<script defer src="/onboarding/assets/onboarding.js?v=1605"></script>
 </body>
 </html>
