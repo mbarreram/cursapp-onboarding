@@ -337,29 +337,21 @@ body {
   font-weight:900;
 }
 
-./* ===== Registrar mini (responsive) ===== */
-
 .regMini__grid{
   display:grid;
+  grid-template-columns: 1fr 1fr; /* SIEMPRE 2 */
   gap:10px;
-
-  /* Responsive real:
-     - en móviles: 2 columnas si caben, si no, baja a 1
-     - en pantallas grandes: se expanden y quedan más “pro”
-  */
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  align-items: stretch;
 }
 
-/* Opcional: en pantallas MUY pequeñas, fuerza 1 columna (por seguridad) */
-@media (max-width: 330px){
-  .regMini__grid{ grid-template-columns: 1fr; }
-}
-..regMiniCard{
+.regMiniCard{
+  border:1px solid rgba(15,23,42,.10);
+  border-radius:16px;
+  padding:12px;
+  background:linear-gradient(180deg, rgba(15,23,42,.01), rgba(15,23,42,0));
   display:flex;
   flex-direction:column;
-  justify-content:space-between; /* empuja el botón hacia abajo */
-  height:100%;
+  gap:10px;
+  min-width:0;
 }
 
 .regMiniCard__top{
