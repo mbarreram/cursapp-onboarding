@@ -112,11 +112,64 @@ function uid(prefix = "id") {
 
   function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
 
-  function validateEmail(e){
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
+  function normalizeEmail(e){
+  return String(e || "").trim().toLowerCase();
+}
+
+// Lista corta (editable). Útil para demos/MVP.
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  "mailinator.com",
+  "guerrillamail.com",
+  "10minutemail.com",
+  "tempmail.com",
+  "yopmail.com",
+  "trashmail.com"
+]);
+
+function validateEmailStrict(emailRaw){
+  const email = normalizeEmail(emailRaw);
+
+  if(!email) return { ok:false, reason:"Ingresa tu correo." };
+  if(/\s/.test(email)) return { ok:false, reason:"El correo no puede contener espacios." };
+  if(email.length > 160) return { ok:false, reason:"El correo es demasiado largo." };
+
+  // Regex más estricta (sin ser RFC completo)
+  const re = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+  if(!re.test(email)) return { ok:false, reason:"Correo inválido. Revisa el formato." };
+
+  const domain = (email.split("@")[1] || "").toLowerCase();
+  if(DISPOSABLE_EMAIL_DOMAINS.has(domain)){
+    return { ok:false, reason:"Ese dominio de correo no está permitido (temporal/desechable)." };
   }
 
-  function hashDemo(str){
+  return { ok:true, email };
+}
+
+function validateEmailPair(email1, email2){
+  const v1 = validateEmailStrict(email1);
+  if(!v1.ok) return v1;
+
+  const e2 = normalizeEmail(email2);
+  if(!e2) return { ok:false, reason:"Confirma tu correo." };
+  if(v1.email !== e2) return { ok:false, reason:"El correo y su confirmación no coinciden." };
+
+  return { ok:true, email: v1.email };
+}
+
+function emailAlreadyInCourse(email, courseKey){
+  const e = normalizeEmail(email);
+  const users = loadUsers();
+  const profiles = loadProfiles();
+  return profiles.some(p=>{
+    if(!p) return false;
+    if(p.role !== "apoderado") return false;
+    if(p.courseKey !== courseKey) return false;
+    const u = users.find(x=>x && x.userId === p.userId);
+    return normalizeEmail(u?.email) === e;
+  });
+}
+
+function hashDemo(str){
     let h=5381;
     const s = String(str||"");
     for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
@@ -572,8 +625,20 @@ function uid(prefix = "id") {
 
         if(d.alsoApoderado){
           $("dAlumno") && (($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); }));
-          $("dEmail") && (($("dEmail").oninput = ()=>{ d.dEmail = $("dEmail").value; saveDraft(d); }));
-          $("dEmail2") && (($("dEmail2").oninput = ()=>{ d.dEmail2 = $("dEmail2").value; saveDraft(d); }));
+          $("dEmail") && ($("dEmail").oninput = ()=>{
+  d.dEmail = $("dEmail").value;
+  const e2 = $("dEmail2");
+  if(e2 && !String(e2.value||"").trim()){
+    e2.value = $("dEmail").value;
+    d.dEmail2 = e2.value;
+  }
+  saveDraft(d);
+});
+
+$("dEmail2") && ($("dEmail2").oninput = ()=>{
+  d.dEmail2 = $("dEmail2").value;
+  saveDraft(d);
+});
           $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
           $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
           $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
@@ -581,8 +646,20 @@ function uid(prefix = "id") {
       }
 
       if(MODE==="apoderado"){
-        $("onbEmail") && (($("onbEmail").oninput = ()=>{ d.email = $("onbEmail").value; saveDraft(d); }));
-        $("onbEmail2") && (($("onbEmail2").oninput = ()=>{ d.email2 = $("onbEmail2").value; saveDraft(d); }));
+        $("onbEmail") && ($("onbEmail").oninput = ()=>{
+  d.email = $("onbEmail").value;
+  const e2 = $("onbEmail2");
+  if(e2 && !String(e2.value||"").trim()){
+    e2.value = $("onbEmail").value;
+    d.email2 = e2.value;
+  }
+  saveDraft(d);
+});
+
+$("onbEmail2") && ($("onbEmail2").oninput = ()=>{
+  d.email2 = $("onbEmail2").value;
+  saveDraft(d);
+});
         $("onbPhone") && (($("onbPhone").oninput = ()=>{ d.phone = $("onbPhone").value; saveDraft(d); }));
         $("onbPass") && (($("onbPass").oninput = ()=>{ d.pass = $("onbPass").value; saveDraft(d); }));
         $("onbPass2") && (($("onbPass2").oninput = ()=>{ d.pass2 = $("onbPass2").value; saveDraft(d); }));
@@ -646,7 +723,18 @@ function uid(prefix = "id") {
             d.dPhone = String($("dPhone")?.value || "").trim();
 
             if(!dAl){ alert("Completa alumno/a."); return; }
-            if(!validateEmail(e1) || e1!==e2){ alert("Correo inválido o no coincide."); return; }
+            const ev = validateEmailPair(e1, e2);
+if(!ev.ok){ alert(ev.reason); return; }
+const emailOk = ev.email;
+
+const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
+if(emailAlreadyInCourse(emailOk, courseKey)){
+  alert("Este correo ya está registrado como apoderado en este curso.");
+  return;
+}
+
+d.dEmail = emailOk;
+d.dEmail2 = emailOk;
             if(p1.length < 6){ alert("Password mínimo 6 caracteres."); return; }
             if(p1 !== p2){ alert("Password no coincide."); return; }
 
@@ -667,7 +755,16 @@ function uid(prefix = "id") {
         d.pass2 = String($("onbPass2")?.value || "");
 
         if(!d.alumno){ alert("Completa alumno/a."); return; }
-        if(!validateEmail(d.email) || d.email!==d.email2){ alert("Correo inválido o no coincide."); return; }
+        const ev = validateEmailPair(d.email, d.email2);
+if(!ev.ok){ alert(ev.reason); return; }
+d.email = ev.email;
+d.email2 = ev.email;
+
+const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
+if(emailAlreadyInCourse(d.email, courseKey)){
+  alert("Este correo ya está registrado como apoderado en este curso.");
+  return;
+}
         if(d.pass.length < 6){ alert("Password mínimo 6 caracteres."); return; }
         if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
 
