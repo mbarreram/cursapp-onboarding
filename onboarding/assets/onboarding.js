@@ -39,43 +39,86 @@ function uid(prefix = "id") {
   }catch(e){}
 })();
 
-  // Demo data
+  // Demo data (Chile) — expandido para probar casuísticas
+  // Nota: estos datos son ficticios (Demo).
   const REGIONS = [
-  { id: "rm", name: "Región Metropolitana" },
-  { id: "v", name: "Valparaíso" },
-  { id: "bio", name: "Biobío" },
-  { id: "arau", name: "La Araucanía" },
-  { id: "coq", name: "Coquimbo" },
-];
+    { id: "rm", name: "Región Metropolitana" },
+    { id: "val", name: "Valparaíso" },
+    { id: "coq", name: "Coquimbo" },
+    { id: "bio", name: "Biobío" },
+    { id: "ara", name: "La Araucanía" },
+    { id: "lag", name: "Los Lagos" },
+  ];
+
   const COMUNAS = [
-  { id: "rm_scl", name: "Santiago", regionId: "rm" },
-  { id: "rm_nun", name: "Ñuñoa", regionId: "rm" },
-  { id: "rm_las", name: "Las Condes", regionId: "rm" },
-  { id: "v_vina", name: "Viña del Mar", regionId: "v" },
-  { id: "v_valp", name: "Valparaíso", regionId: "v" },
-  { id: "v_quil", name: "Quilpué", regionId: "v" },
-  { id: "bio_con", name: "Concepción", regionId: "bio" },
-  { id: "bio_talc", name: "Talcahuano", regionId: "bio" },
-  { id: "bio_chi", name: "Chillán", regionId: "bio" },
-  { id: "arau_tem", name: "Temuco", regionId: "arau" },
-  { id: "arau_pad", name: "Padre Las Casas", regionId: "arau" },
-  { id: "arau_ang", name: "Angol", regionId: "arau" },
-  { id: "coq_las", name: "La Serena", regionId: "coq" },
-  { id: "coq_coq", name: "Coquimbo", regionId: "coq" },
-  { id: "coq_ovi", name: "Ovalle", regionId: "coq" },
-];
+    // RM
+    { id: "rm-stg", regionId: "rm", name: "Santiago" },
+    { id: "rm-pro", regionId: "rm", name: "Providencia" },
+    { id: "rm-nun", regionId: "rm", name: "Ñuñoa" },
+    { id: "rm-lfl", regionId: "rm", name: "La Florida" },
+
+    // Valparaíso
+    { id: "val-val", regionId: "val", name: "Valparaíso" },
+    { id: "val-vdm", regionId: "val", name: "Viña del Mar" },
+    { id: "val-qui", regionId: "val", name: "Quilpué" },
+
+    // Coquimbo
+    { id: "coq-coq", regionId: "coq", name: "Coquimbo" },
+    { id: "coq-lse", regionId: "coq", name: "La Serena" },
+
+    // Biobío
+    { id: "bio-con", regionId: "bio", name: "Concepción" },
+    { id: "bio-sps", regionId: "bio", name: "San Pedro de la Paz" },
+
+    // Araucanía
+    { id: "ara-tem", regionId: "ara", name: "Temuco" },
+    { id: "ara-pad", regionId: "ara", name: "Padre Las Casas" },
+
+    // Los Lagos
+    { id: "lag-pmt", regionId: "lag", name: "Puerto Montt" },
+    { id: "lag-osc", regionId: "lag", name: "Osorno" },
+  ];
+
   const SCHOOLS = [
-  { id: "sch_rm_1", name: "Colegio San Martín (Demo)", communeId: "rm_scl" },
-  { id: "sch_rm_2", name: "Liceo Bicentenario Ñuñoa (Demo)", communeId: "rm_nun" },
-  { id: "sch_rm_3", name: "Colegio Andes Las Condes (Demo)", communeId: "rm_las" },
-  { id: "sch_v_1", name: "Colegio Mar y Tierra Viña (Demo)", communeId: "v_vina" },
-  { id: "sch_v_2", name: "Liceo Puerto Valparaíso (Demo)", communeId: "v_valp" },
-  { id: "sch_v_3", name: "Colegio Quilpué Centro (Demo)", communeId: "v_quil" },
-  { id: "sch_bio_1", name: "Colegio Concepción Norte (Demo)", communeId: "bio_con" },
-  { id: "sch_bio_2", name: "Liceo Talcahuano (Demo)", communeId: "bio_talc" },
-  { id: "sch_arau_1", name: "Colegio Temuco Sur (Demo)", communeId: "arau_tem" },
-  { id: "sch_coq_1", name: "Colegio La Serena (Demo)", communeId: "coq_las" },
-];
+    // Santiago
+    { id: "sch-stg-1", comunaId: "rm-stg", name: "Colegio Central (Demo)" },
+    { id: "sch-stg-2", comunaId: "rm-stg", name: "Liceo Santiago (Demo)" },
+    // Providencia
+    { id: "sch-pro-1", comunaId: "rm-pro", name: "Colegio Providencia (Demo)" },
+    // Ñuñoa
+    { id: "sch-nun-1", comunaId: "rm-nun", name: "Colegio Ñuñoa (Demo)" },
+    // La Florida
+    { id: "sch-lfl-1", comunaId: "rm-lfl", name: "Colegio La Florida (Demo)" },
+
+    // Valparaíso
+    { id: "sch-val-1", comunaId: "val-val", name: "Colegio Puerto (Demo)" },
+    // Viña del Mar
+    { id: "sch-vdm-1", comunaId: "val-vdm", name: "Colegio Viña (Demo)" },
+    // Quilpué
+    { id: "sch-qui-1", comunaId: "val-qui", name: "Colegio Quilpué (Demo)" },
+
+    // Coquimbo
+    { id: "sch-coq-1", comunaId: "coq-coq", name: "Colegio Coquimbo (Demo)" },
+    { id: "sch-coq-2", comunaId: "coq-coq", name: "Colegio San Joaquín Coquimbo (Demo)" },
+    { id: "sch-coq-3", comunaId: "coq-coq", name: "Liceo Diego Portales Coquimbo (Demo)" },
+    // La Serena
+    { id: "sch-lse-1", comunaId: "coq-lse", name: "Colegio La Serena (Demo)" },
+
+    // Concepción
+    { id: "sch-con-1", comunaId: "bio-con", name: "Colegio Concepción (Demo)" },
+    // San Pedro de la Paz
+    { id: "sch-sps-1", comunaId: "bio-sps", name: "Colegio San Pedro (Demo)" },
+
+    // Temuco
+    { id: "sch-tem-1", comunaId: "ara-tem", name: "Colegio Temuco (Demo)" },
+    // Padre Las Casas
+    { id: "sch-pad-1", comunaId: "ara-pad", name: "Colegio Padre Las Casas (Demo)" },
+
+    // Puerto Montt
+    { id: "sch-pmt-1", comunaId: "lag-pmt", name: "Colegio Puerto Montt (Demo)" },
+    // Osorno
+    { id: "sch-osc-1", comunaId: "lag-osc", name: "Colegio Osorno (Demo)" },
+  ];
   const LEVELS = ["1°","2°","3°","4°","5°","6°","7°","8°","I°","II°","III°","IV°"];
   const LETTERS = ["A","B","C","D","E","F"];
   const JORNADAS = ["Mañana","Tarde"];
@@ -177,11 +220,16 @@ function uid(prefix = "id") {
     const progressPct = Math.round((step/stepsTotal)*100);
 
     // defaults (solo presidente crea curso)
-    const regionId = (d.regionId && REGIONS.some(r=>r.id===d.regionId)) ? d.regionId : REGIONS[0].id;
-    const comunas = COMUNAS.filter(c=>c.regionId===regionId);
-    const comunaId = (d.comunaId && comunas.some(c=>c.id===d.comunaId)) ? d.comunaId : (comunas[0]?.id||"");
-    const schools = SCHOOLS.filter(s=>s.comunaId===comunaId);
-    const schoolId = (d.schoolId && schools.some(s=>s.id===d.schoolId)) ? d.schoolId : (schools[0]?.id||"");
+    // Si viene un state viejo desde localStorage con IDs que ya no existen, lo normalizamos.
+    const validRegionId = REGIONS.some(r => r && r.id === d.regionId) ? d.regionId : (REGIONS[0]?.id || "");
+    const comunas = COMUNAS.filter(c => c && c.regionId === validRegionId);
+    const validComunaId = comunas.some(c => c && c.id === d.comunaId) ? d.comunaId : (comunas[0]?.id || "");
+    const schools = SCHOOLS.filter(s => s && s.comunaId === validComunaId);
+    const validSchoolId = schools.some(s => s && s.id === d.schoolId) ? d.schoolId : (schools[0]?.id || "");
+
+    const regionId = validRegionId;
+    const comunaId = validComunaId;
+    const schoolId = validSchoolId;
 
     const jornada = d.jornada || JORNADAS[0];
     const year = d.year || nowYear();
@@ -214,11 +262,26 @@ function uid(prefix = "id") {
       ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"} alsoAp=${alsoAp?"1":"0"}</div>`
       : "";
 
-    function option(list, valueKey, labelKey, selected){
-      return list.map(x=>`<option value="${x[valueKey]}" ${x[valueKey]===selected?"selected":""}>${x[labelKey]}</option>`).join("");
+    function option(list, valueKey, labelKey, selected, placeholder){
+      const ph = placeholder || "Selecciona…";
+      const safe = Array.isArray(list) ? list : [];
+      const rows = safe
+        .map((x) => {
+          if (x == null) return null;
+          // Permite arrays de strings o de objetos
+          const val = typeof x === "string" ? x : x[valueKey];
+          const lbl = typeof x === "string" ? x : x[labelKey];
+          if (!val || !lbl) return null;
+          return `<option value="${escapeHtml(val)}" ${val===selected?"selected":""}>${escapeHtml(lbl)}</option>`;
+        })
+        .filter(Boolean)
+        .join("");
+      const hasSelected = !!selected && rows.includes(`value="${escapeHtml(selected)}"`);
+      return `<option value="" ${!hasSelected?"selected":""}>${escapeHtml(ph)}</option>` + rows;
     }
-    function optionVals(list, selected){
-      return list.map(x=>`<option value="${x}" ${x===selected?"selected":""}>${x}</option>`).join("");
+
+    function optionVals(list, selected, placeholder){
+      return option(list, null, null, selected, placeholder);
     }
 
     const courseObj = getCourseV1();
@@ -270,15 +333,15 @@ function uid(prefix = "id") {
 
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Región</label>
-                <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
+                <select id="onbRegion">${option(REGIONS,"id","name",regionId,"Selecciona región")}</select>
               </div>
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Comuna</label>
-                <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
+                <select id="onbComuna">${option(comunas,"id","name",comunaId,"Selecciona comuna")}</select>
               </div>
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Colegio</label>
-                <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
+                <select id="onbSchool">${option(schools,"id","name",schoolId,"Selecciona colegio")}</select>
               </div>
             `)
           }
@@ -509,15 +572,6 @@ function uid(prefix = "id") {
           jornada: course.course?.jornada || "",
           alumno: "Nombre alumno(a)"
         }));
-
-        // ✅ sesión única (producción-ready)
-        try{
-          if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-            window.CURSAPP.setSession({ userId: "tesorero", role: "tesorero", courseKey: course.courseKey });
-          }else{
-            localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: "tesorero", role: "tesorero", courseKey: course.courseKey }));
-          }
-        }catch(e){}
 
         if(prev) prev.innerHTML = courseSummaryHTML(course);
         clearDraft();
@@ -750,15 +804,6 @@ function uid(prefix = "id") {
             jornada: courseObj.course.jornada,
             alumno: "Nombre alumno(a)"
           }));
-
-          // ✅ sesión única (producción-ready)
-          try{
-            if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-              window.CURSAPP.setSession({ userId: "presidente", role: "presidente", courseKey });
-            }else{
-              localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: "presidente", role: "presidente", courseKey }));
-            }
-          }catch(e){}
 
           clearDraft();
           alert(
