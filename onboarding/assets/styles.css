@@ -164,3 +164,103 @@ select:focus, input:focus{
   color: var(--ob-text);
   letter-spacing: -0.01em;
 }
+
+
+/* Wizard bar (mejorada) */
+.wizard{ margin-top:10px; }
+.wizardMeta{ color:#6b7280; font-weight:800; font-size:13px; }
+.wizardTrack{
+  margin-top:8px;
+  height:10px;
+  background: rgba(17,24,39,.08);
+  border-radius: 999px;
+  overflow:hidden;
+  border: 1px solid rgba(17,24,39,.06);
+}
+.wizardFill{
+  height:100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(91,75,255,.95), rgba(106,92,255,.85));
+}
+.wizardDots{
+  margin-top:10px;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.wDot{
+  flex:1;
+  height:26px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:950;
+  font-size:12px;
+  background: rgba(17,24,39,.06);
+  border: 1px solid rgba(17,24,39,.07);
+  color:#6b7280;
+}
+.wDot.active{
+  background: rgba(91,75,255,.12);
+  border-color: rgba(91,75,255,.25);
+  color: var(--ob-primary);
+}
+.wDot.done{
+  background: rgba(16,185,129,.12);
+  border-color: rgba(16,185,129,.22);
+  color: rgba(16,185,129,1);
+}
+
+/* Checkbox row */
+.checkRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+  user-select:none;
+}
+.checkRow input[type="checkbox"]{
+  width:22px;
+  height:22px;
+}
+
+/* OTP row */
+.otpRow{
+  margin-top:10px;
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.otpRow input{
+  flex:1;
+  min-width:140px;
+}
+.otpRow button{
+  white-space:nowrap;
+}
+
+/* Summary card */
+.summaryCard{
+  margin-top:10px;
+  padding:14px 14px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.70);
+  border: 1px solid rgba(17,24,39,.08);
+}
+.summaryCard .h2{ font-weight:950; font-size:16px; margin-bottom:10px; }
+.summaryCard .kv{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 0;
+  border-bottom: 1px dashed rgba(17,24,39,.10);
+}
+.summaryCard .kv:last-of-type{ border-bottom:none; }
+.summaryCard .kv span{ color:#6b7280; font-weight:800; }
+.summaryCard .divider{ height:1px; background: rgba(17,24,39,.10); margin:12px 0; }
+
+@media (max-width:520px){
+  .otpRow{ flex-direction:column; align-items:stretch; }
+  .wizardDots{ gap:6px; }
+}

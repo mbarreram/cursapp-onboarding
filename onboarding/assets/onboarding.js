@@ -75,7 +75,12 @@ function uid(prefix = "id") {
   {"id": "sch-coq", "comunaId": "iv-coq", "name": "Colegio Bahía (Demo)"},
   {"id": "sch-ls", "comunaId": "iv-ls", "name": "Colegio Faro La Serena (Demo)"},
   {"id": "sch-conce", "comunaId": "viii-conce", "name": "Colegio Concepción (Demo)"},
-  {"id": "sch-temu", "comunaId": "ix-temu", "name": "Colegio Araucanía (Demo)"}
+  {"id": "sch-temu", "comunaId": "ix-temu", "name": "Colegio Araucanía (Demo)"},
+  {"id": "sch-quilpue", "comunaId": "v-quilpue", "name": "Colegio Quilpué (Demo)"},
+  {"id": "sch-talc", "comunaId": "viii-talc", "name": "Liceo Talcahuano (Demo)"},
+  {"id": "sch-vill", "comunaId": "ix-vill", "name": "Colegio Villarrica (Demo)"},
+  {"id": "sch-ptm", "comunaId": "x-pto", "name": "Colegio Puerto Montt (Demo)"},
+  {"id": "sch-oso", "comunaId": "x-osorno", "name": "Colegio Osorno (Demo)"}
 ];
   const LEVELS = ["1°","2°","3°","4°","5°","6°","7°","8°","I°","II°","III°","IV°"];
   const LETTERS = ["A","B","C","D","E","F"];
@@ -110,65 +115,57 @@ function uid(prefix = "id") {
   function loadProfiles(){ return loadJSON(KEY_PROFILES, []); }
   function saveProfiles(p){ saveJSON(KEY_PROFILES, p||[]); }
 
+  function emailAlreadyInCourse(emailRaw, courseKey){
+    const v = validateEmailStrict(emailRaw);
+    if(!v.ok) return false;
+    const email = v.email;
+
+    const users = loadUsers();
+    const profiles = loadProfiles();
+    return profiles.some(p => {
+      if(!p || p.role !== "apoderado" || p.courseKey !== courseKey) return false;
+      const u = users.find(x => x.userId === p.userId);
+      return u && normalizeEmail(u.email) === email;
+    });
+  }
+
   function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
 
   function normalizeEmail(e){
-  return String(e || "").trim().toLowerCase();
-}
-
-// Lista corta (editable). Útil para demos/MVP.
-const DISPOSABLE_EMAIL_DOMAINS = new Set([
-  "mailinator.com",
-  "guerrillamail.com",
-  "10minutemail.com",
-  "tempmail.com",
-  "yopmail.com",
-  "trashmail.com"
-]);
-
-function validateEmailStrict(emailRaw){
-  const email = normalizeEmail(emailRaw);
-
-  if(!email) return { ok:false, reason:"Ingresa tu correo." };
-  if(/\s/.test(email)) return { ok:false, reason:"El correo no puede contener espacios." };
-  if(email.length > 160) return { ok:false, reason:"El correo es demasiado largo." };
-
-  // Regex más estricta (sin ser RFC completo)
-  const re = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
-  if(!re.test(email)) return { ok:false, reason:"Correo inválido. Revisa el formato." };
-
-  const domain = (email.split("@")[1] || "").toLowerCase();
-  if(DISPOSABLE_EMAIL_DOMAINS.has(domain)){
-    return { ok:false, reason:"Ese dominio de correo no está permitido (temporal/desechable)." };
+    return String(e || "").trim().toLowerCase();
   }
 
-  return { ok:true, email };
-}
+  // Lista corta (editable) de dominios desechables típicos
+  const DISPOSABLE_EMAIL_DOMAINS = new Set([
+    "mailinator.com",
+    "guerrillamail.com",
+    "10minutemail.com",
+    "tempmail.com",
+    "yopmail.com",
+    "trashmail.com"
+  ]);
 
-function validateEmailPair(email1, email2){
-  const v1 = validateEmailStrict(email1);
-  if(!v1.ok) return v1;
+  function validateEmailStrict(emailRaw){
+    const email = normalizeEmail(emailRaw);
 
-  const e2 = normalizeEmail(email2);
-  if(!e2) return { ok:false, reason:"Confirma tu correo." };
-  if(v1.email !== e2) return { ok:false, reason:"El correo y su confirmación no coinciden." };
+    if(!email) return { ok:false, reason:"Ingresa tu correo." };
+    if(/\s/.test(email)) return { ok:false, reason:"El correo no puede contener espacios." };
+    if(email.length > 160) return { ok:false, reason:"El correo es demasiado largo." };
 
-  return { ok:true, email: v1.email };
-}
+    const re = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
+    if(!re.test(email)) return { ok:false, reason:"Correo inválido. Revisa el formato." };
 
-function emailAlreadyInCourse(email, courseKey){
-  const e = normalizeEmail(email);
-  const users = loadUsers();
-  const profiles = loadProfiles();
-  return profiles.some(p=>{
-    if(!p) return false;
-    if(p.role !== "apoderado") return false;
-    if(p.courseKey !== courseKey) return false;
-    const u = users.find(x=>x && x.userId === p.userId);
-    return normalizeEmail(u?.email) === e;
-  });
-}
+    const domain = email.split("@")[1] || "";
+    if(DISPOSABLE_EMAIL_DOMAINS.has(domain)){
+      return { ok:false, reason:"Ese dominio de correo no está permitido (temporal/desechable)." };
+    }
+    return { ok:true, email };
+  }
 
+  // Compatibilidad con el validador simple previo
+  function validateEmail(e){
+    return validateEmailStrict(e).ok;
+  }
 function hashDemo(str){
     let h=5381;
     const s = String(str||"");
@@ -229,6 +226,18 @@ function hashDemo(str){
     const step = Number(d.step||1);
     const stepsTotal = 4;
     const progressPct = Math.round((step/stepsTotal)*100);
+    const wizardDots = Array.from({length: stepsTotal}, (_, i) => {
+      const n = i + 1;
+      const cls = n < step ? "done" : (n === step ? "active" : "");
+      return `<span class="wDot ${cls}">${n}</span>`;
+    }).join("");
+    const regionSel = REGIONS.find(r=>r.id===d.regionId);
+    const comunaSel = COMUNAS.find(c=>c.id===d.comunaId);
+    const schoolSel = SCHOOLS.find(s=>s.id===d.schoolId);
+    const courseKeyPreview = (d.schoolId && d.level && d.letter && d.jornada && d.year)
+      ? makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year)
+      : "";
+
 
     // defaults (solo presidente crea curso)
     const regionId = d.regionId || REGIONS[0].id;
@@ -251,6 +260,9 @@ function hashDemo(str){
     const phone = d.phone || "";
     const pass = d.pass || "";
     const pass2 = d.pass2 || "";
+    const emailOtpSent = !!d.emailOtpSent;
+    const emailOtpVerified = !!d.emailOtpVerified;
+    const emailOtpCode = d.emailOtpCode || "";
 
     // directiva también apoderado (campos separados)
     const alsoAp = !!d.alsoApoderado;
@@ -259,6 +271,9 @@ function hashDemo(str){
     const dPhone = d.dPhone || "";
     const dPass = d.dPass || "";
     const dPass2 = d.dPass2 || "";
+    const dEmailOtpSent = !!d.dEmailOtpSent;
+    const dEmailOtpVerified = !!d.dEmailOtpVerified;
+    const dEmailOtpCode = d.dEmailOtpCode || "";
 
     const inviteCodeInput = (d.inviteCode || "").toUpperCase();         // apoderados
     const treasurerCodeInput = (d.treasurerCodeInput || "").toUpperCase(); // tesorero join
@@ -279,26 +294,14 @@ function hashDemo(str){
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
 
     root.innerHTML = `
-      ${(MODE==="directiva" && DIRECTIVA_ROLE==="presidente") ? `
-      <div class="card heroCard" style="margin-top:12px;">
-        <div class="h1">Crea tu curso en 2 minutos</div>
-        <div class="sub" style="margin-top:6px;">
-          Al finalizar, Cursapp genera <b>código para apoderados</b> y <b>código para tesorero</b>.
-        </div>
-        <div class="badges" style="margin-top:12px;">
-          <span class="badge"><span class="emo">✅</span> Cobros y pagos</span>
-          <span class="badge"><span class="emo">🧾</span> Rendiciones</span>
-          <span class="badge"><span class="emo">🔒</span> Transparencia</span>
-        </div>
-      </div>
-` : ``}
+      
 
       <div class="card" style="margin-top:12px;">
         <div style="font-weight:950;font-size:18px;">Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
-        <div class="muted" style="margin-top:6px;">Paso ${step} de ${stepsTotal}</div>
-
-        <div style="margin-top:8px;">
-          <div style="height:100%;width:${progressPct}%;background:rgba(91,92,226,.85)"></div>
+        <div class="wizard">
+          <div class="wizardMeta">Paso ${step} de ${stepsTotal}</div>
+          <div class="wizardTrack"><div class="wizardFill" style="width:${progressPct}%"></div></div>
+          <div class="wizardDots">${wizardDots}</div>
         </div>
         ${debugLine}
       </div>
@@ -393,7 +396,7 @@ function hashDemo(str){
 
           ${MODE==="directiva" ? `
             <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <label style="display:flex;gap:10px;align-items:center;cursor:pointer;">
+              <label class="checkRow">
                 <input id="alsoAp" type="checkbox" ${alsoAp ? "checked":""}/>
                 <span style="font-weight:950;">También soy apoderado de este curso</span>
               </label>
@@ -406,15 +409,21 @@ function hashDemo(str){
                 <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
               </div>
 
+              
               <div style="margin-top:12px;">
-                <label style="font-weight:900;">Correo apoderado</label>
-                <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}" />
+                <label style="font-weight:900;">Correo apoderado (obligatorio)</label>
+                <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}"
+                       autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
+                <div class="otpRow">
+                  <button class="btn ghost" id="btnSendOtpD" type="button">${dEmailOtpSent ? "Reenviar código" : "Enviar código"}</button>
+                  <input id="dOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
+                  <button class="btn ghost" id="btnVerifyOtpD" type="button">Validar</button>
+                </div>
+                <div class="muted" style="margin-top:6px;">
+                  ${dEmailOtpVerified ? "✅ Correo verificado." : (dEmailOtpSent ? `Código enviado. <b>(Demo: ${escapeHtml(dEmailOtpCode)})</b>` : "Valida este correo para activar tu perfil apoderado.")}
+                </div>
               </div>
 
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Confirmar correo</label>
-                <input id="dEmail2" placeholder="correo@dominio.com" value="${escapeHtml(dEmail2)}" />
-              </div>
 
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Teléfono (opcional)</label>
@@ -423,7 +432,7 @@ function hashDemo(str){
 
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Password</label>
-                <input id="dPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(dPass)}" />
+                <input id="dPass" type="password" placeholder="Mínimo 4 caracteres" value="${escapeHtml(dPass)}" />
               </div>
 
               <div style="margin-top:12px;">
@@ -440,22 +449,25 @@ function hashDemo(str){
           ${MODE==="apoderado" ? `
             <div style="margin-top:12px;">
               <label style="font-weight:900;">Correo (obligatorio)</label>
-              <input id="onbEmail" placeholder="correo@dominio.com" value="${escapeHtml(email)}" />
+              <input id="onbEmail" placeholder="correo@dominio.com" value="${escapeHtml(email)}"
+                     autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
+              <div class="otpRow">
+                <button class="btn ghost" id="btnSendOtp" type="button">${emailOtpSent ? "Reenviar código" : "Enviar código"}</button>
+                <input id="onbOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
+                <button class="btn ghost" id="btnVerifyOtp" type="button">Validar</button>
+              </div>
+              <div class="muted" style="margin-top:6px;">
+                ${emailOtpVerified ? "✅ Correo verificado." : (emailOtpSent ? `Código enviado. <b>(Demo: ${escapeHtml(emailOtpCode)})</b>` : "Presiona <b>Enviar código</b> para validar tu correo y continuar.")}
+              </div>
             </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Confirmar correo</label>
-              <input id="onbEmail2" placeholder="correo@dominio.com" value="${escapeHtml(email2)}" />
-            </div>
-
-            <div style="margin-top:12px;">
+<div style="margin-top:12px;">
               <label style="font-weight:900;">Teléfono (opcional)</label>
               <input id="onbPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(phone)}" />
             </div>
 
             <div style="margin-top:12px;">
               <label style="font-weight:900;">Password</label>
-              <input id="onbPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(pass)}" />
+              <input id="onbPass" type="password" placeholder="Mínimo 4 caracteres" value="${escapeHtml(pass)}" />
             </div>
 
             <div style="margin-top:12px;">
@@ -485,7 +497,20 @@ function hashDemo(str){
               </div>
             </div>
           ` : `
-            <div class="muted" style="font-weight:900;">Listo para finalizar.</div>
+            
+            <div class="summaryCard">
+              <div class="h2">Resumen</div>
+              <div class="kv"><span>Región</span><b>${escapeHtml(regionSel?.name || "-")}</b></div>
+              <div class="kv"><span>Comuna</span><b>${escapeHtml(comunaSel?.name || "-")}</b></div>
+              <div class="kv"><span>Colegio</span><b>${escapeHtml(schoolSel?.name || "-")}</b></div>
+              <div class="kv"><span>Curso</span><b>${escapeHtml(`${d.level||""}${d.letter||""} · ${d.jornada||""} · ${d.year||""}`.trim() || "-")}</b></div>
+              <div class="kv"><span>Clave curso</span><b>${escapeHtml(courseKeyPreview || "-")}</b></div>
+              <div class="divider"></div>
+              <div class="muted">
+                Al finalizar, podrás encontrar el <b>código de invitación</b> en el menú del Presidente, en <b>Apoderados</b>.
+              </div>
+            </div>
+
           `}
         `:""}
 
@@ -625,20 +650,42 @@ function hashDemo(str){
 
         if(d.alsoApoderado){
           $("dAlumno") && (($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); }));
-          $("dEmail") && ($("dEmail").oninput = ()=>{
-  d.dEmail = $("dEmail").value;
-  const e2 = $("dEmail2");
-  if(e2 && !String(e2.value||"").trim()){
-    e2.value = $("dEmail").value;
-    d.dEmail2 = e2.value;
-  }
-  saveDraft(d);
-});
 
-$("dEmail2") && ($("dEmail2").oninput = ()=>{
-  d.dEmail2 = $("dEmail2").value;
-  saveDraft(d);
-});
+          $("dEmail") && (($("dEmail").oninput = ()=>{
+            d.dEmail = $("dEmail").value;
+            // reset OTP if email changes
+            d.dEmailOtpSent = false;
+            d.dEmailOtpVerified = false;
+            d.dEmailOtpCode = "";
+            saveDraft(d);
+          }));
+
+          $("btnSendOtpD") && ($("btnSendOtpD").onclick = ()=>{
+            const v = validateEmailStrict(d.dEmail);
+            if(!v.ok){ alert(v.reason); return; }
+            const code = String(Math.floor(100000 + Math.random()*900000));
+            d.dEmail = v.email;
+            d.dEmailOtpCode = code;
+            d.dEmailOtpSent = true;
+            d.dEmailOtpVerified = false;
+            saveDraft(d);
+            render();
+          });
+
+          $("btnVerifyOtpD") && ($("btnVerifyOtpD").onclick = ()=>{
+            const typed = String(($("dOtp")?.value || "")).trim();
+            if(!d.dEmailOtpSent){ alert("Primero envía el código."); return; }
+            if(typed !== String(d.dEmailOtpCode)){ alert("Código incorrecto."); return; }
+            d.dEmailOtpVerified = true;
+            saveDraft(d);
+            render();
+          });
+
+          $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
+          $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
+          $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
+        }));
+          $("dEmail") && (($("dEmail").oninput = ()=>{ d.dEmail = $("dEmail").value; saveDraft(d); }));
           $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
           $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
           $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
@@ -646,24 +693,40 @@ $("dEmail2") && ($("dEmail2").oninput = ()=>{
       }
 
       if(MODE==="apoderado"){
-        $("onbEmail") && ($("onbEmail").oninput = ()=>{
-  d.email = $("onbEmail").value;
-  const e2 = $("onbEmail2");
-  if(e2 && !String(e2.value||"").trim()){
-    e2.value = $("onbEmail").value;
-    d.email2 = e2.value;
-  }
-  saveDraft(d);
-});
+        $("onbEmail") && (($("onbEmail").oninput = ()=>{
+          d.email = $("onbEmail").value;
+          // reset OTP if email changes
+          d.emailOtpSent = false;
+          d.emailOtpVerified = false;
+          d.emailOtpCode = "";
+          saveDraft(d);
+        }));
 
-$("onbEmail2") && ($("onbEmail2").oninput = ()=>{
-  d.email2 = $("onbEmail2").value;
-  saveDraft(d);
-});
+        $("btnSendOtp") && ($("btnSendOtp").onclick = ()=>{
+          const v = validateEmailStrict(d.email);
+          if(!v.ok){ alert(v.reason); return; }
+          const code = String(Math.floor(100000 + Math.random()*900000));
+          d.email = v.email;
+          d.emailOtpCode = code;
+          d.emailOtpSent = true;
+          d.emailOtpVerified = false;
+          saveDraft(d);
+          render();
+        });
+
+        $("btnVerifyOtp") && ($("btnVerifyOtp").onclick = ()=>{
+          const typed = String(($("onbOtp")?.value || "")).trim();
+          if(!d.emailOtpSent){ alert("Primero envía el código."); return; }
+          if(typed !== String(d.emailOtpCode)){ alert("Código incorrecto."); return; }
+          d.emailOtpVerified = true;
+          saveDraft(d);
+          render();
+        });
+
         $("onbPhone") && (($("onbPhone").oninput = ()=>{ d.phone = $("onbPhone").value; saveDraft(d); }));
         $("onbPass") && (($("onbPass").oninput = ()=>{ d.pass = $("onbPass").value; saveDraft(d); }));
         $("onbPass2") && (($("onbPass2").oninput = ()=>{ d.pass2 = $("onbPass2").value; saveDraft(d); }));
-      }
+      }      }
     }
 
     // Paso 4 apoderado radio
@@ -715,32 +778,34 @@ $("onbEmail2") && ($("onbEmail2").oninput = ()=>{
         if(MODE==="directiva"){
           if(d.alsoApoderado){
             const dAl = String($("dAlumno")?.value || "").trim();
-            const e1 = String($("dEmail")?.value || "").trim().toLowerCase();
-            const e2 = String($("dEmail2")?.value || "").trim().toLowerCase();
+            const e1raw = String($("dEmail")?.value || "");
             const p1 = String($("dPass")?.value || "");
             const p2 = String($("dPass2")?.value || "");
 
             d.dPhone = String($("dPhone")?.value || "").trim();
 
             if(!dAl){ alert("Completa alumno/a."); return; }
-            const ev = validateEmailPair(e1, e2);
-if(!ev.ok){ alert(ev.reason); return; }
-const emailOk = ev.email;
 
-const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
-if(emailAlreadyInCourse(emailOk, courseKey)){
-  alert("Este correo ya está registrado como apoderado en este curso.");
-  return;
-}
+            const ev = validateEmailStrict(e1raw);
+            if(!ev.ok){ alert(ev.reason); return; }
 
-d.dEmail = emailOk;
-d.dEmail2 = emailOk;
-            if(p1.length < 6){ alert("Password mínimo 6 caracteres."); return; }
+            if(!d.dEmailOtpVerified){
+              alert("Debes validar el correo con el código antes de continuar.");
+              return;
+            }
+
+            // Evitar duplicado por curso (apoderado)
+            const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
+            if(emailAlreadyInCourse(ev.email, courseKey)){
+              alert("Este correo ya está registrado como apoderado en este curso.");
+              return;
+            }
+
+            if(p1.length < 4){ alert("Password mínimo 4 caracteres."); return; }
             if(p1 !== p2){ alert("Password no coincide."); return; }
 
             d.alumno = dAl;
-            d.dEmail = e1;
-            d.dEmail2 = e2;
+            d.dEmail = ev.email;
             d.dPass = p1;
             d.dPass2 = p2;
           }
@@ -748,26 +813,34 @@ d.dEmail2 = emailOk;
         }
 
         // apoderado
-        d.email = String($("onbEmail")?.value || "").trim().toLowerCase();
-        d.email2 = String($("onbEmail2")?.value || "").trim().toLowerCase();
+        const eRaw = String($("onbEmail")?.value || "");
         d.phone = String($("onbPhone")?.value || "").trim();
         d.pass = String($("onbPass")?.value || "");
         d.pass2 = String($("onbPass2")?.value || "");
 
         if(!d.alumno){ alert("Completa alumno/a."); return; }
-        const ev = validateEmailPair(d.email, d.email2);
-if(!ev.ok){ alert(ev.reason); return; }
-d.email = ev.email;
-d.email2 = ev.email;
 
-const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
-if(emailAlreadyInCourse(d.email, courseKey)){
-  alert("Este correo ya está registrado como apoderado en este curso.");
-  return;
-}
-        if(d.pass.length < 6){ alert("Password mínimo 6 caracteres."); return; }
+        const ev = validateEmailStrict(eRaw);
+        if(!ev.ok){ alert(ev.reason); return; }
+
+        if(!d.emailOtpVerified){
+          alert("Debes validar el correo con el código antes de continuar.");
+          return;
+        }
+
+        // Evitar duplicado por curso (apoderado)
+        const course = getCourseV1();
+        const c = course?.course || {};
+        const courseKey = c.courseKey || makeCourseKey(c.schoolId, c.level, c.letter, c.jornada, c.year);
+        if(courseKey && emailAlreadyInCourse(ev.email, courseKey)){
+          alert("Este correo ya está registrado como apoderado en este curso.");
+          return;
+        }
+
+        if(d.pass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
         if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
 
+        d.email = ev.email;
         d.step = 4; saveDraft(d); render(); return;
       }
 
