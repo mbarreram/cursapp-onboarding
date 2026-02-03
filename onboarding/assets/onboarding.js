@@ -205,206 +205,65 @@ function uid(prefix = "id") {
     const courseObj = getCourseV1();
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
 
+
+// --- premium copy ---
+let stepTitle = "";
+let stepDesc = "";
+let stepNote = "";
+if (MODE === "directiva") {
+  const role = (DIRECTIVA_ROLE === "tesorero") ? "Tesorería" : "Directiva";
+  const isTesorero = (DIRECTIVA_ROLE === "tesorero");
+  const roleLabel = isTesorero ? "Tesorero" : "Presidente";
+  if (step === 1) { stepTitle = `Configura tu curso`; stepDesc = `Selecciona región, comuna y colegio. Esto define el contexto del curso.`; }
+  if (step === 2) { stepTitle = `Datos del curso`; stepDesc = `Año, nivel y letra. Puedes cambiarlo después si es necesario.`; }
+  if (step === 3) { stepTitle = `Tu directiva`; stepDesc = `Identifica al ${roleLabel} para generar los códigos de unión.`; stepNote = `Al finalizar se crearán un código para apoderados y otro para tesorería.`; }
+  if (step === 4) { stepTitle = `Listo para crear`; stepDesc = `Revisa y crea el curso. Luego comparte los códigos con tu comunidad.`; }
+} else {
+  if (step === 1) { stepTitle = `Únete a tu curso`; stepDesc = `Ingresa el código del curso (te lo comparte la directiva).`; }
+  if (step === 2) { stepTitle = `Datos del estudiante`; stepDesc = `Selecciona el alumno/a y confirma tu relación como apoderado.`; }
+  if (step === 3) { stepTitle = `Confirmación`; stepDesc = `Acepta términos y finaliza tu registro.`; }
+}
+
+    
     root.innerHTML = `
-      <div class="card" style="margin-top:12px;">
-        <div style="font-weight:950;font-size:18px;">Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
-        <div class="muted" style="margin-top:6px;">Paso ${step} de ${stepsTotal}</div>
-
-        <div style="margin-top:8px;height:10px;background:rgba(229,231,235,.9);border-radius:999px;overflow:hidden;">
-          <div style="height:100%;width:${progressPct}%;background:rgba(91,92,226,.85)"></div>
+      <div class="onbPremium">
+        <div class="onbHero">
+          <div class="onbHeroLeft">
+            <div class="onbBadge">${MODE === "directiva" ? "🎓" : "👪"} Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
+            <h1>${stepTitle}</h1>
+            <p class="onbLead">${stepDesc}</p>
+            ${stepNote ? `<div class="softNote">${stepNote}</div>` : ``}
+          </div>
+          <div class="onbHeroRight">
+            <div class="stepper" aria-label="Progreso">
+              ${Array.from({length: stepsTotal}, (_, i) => {
+                const n = i + 1;
+                const cls = n < step ? "stepDot done" : (n === step ? "stepDot active" : "stepDot");
+                const label = n < step ? "✓" : String(n);
+                return `<div class="${cls}" title="Paso ${n}">${label}</div>${n < stepsTotal ? `<div class="stepLine"></div>` : ``}`;
+              }).join("")}
+            </div>
+            <div class="chips" style="justify-content:flex-end">
+              <span class="chip">Paso <b>${step}</b> de <b>${stepsTotal}</b></span>
+              ${MODE === "directiva" ? `<span class="chip">Se generan <b>2 códigos</b></span>` : `<span class="chip">Unión con <b>código</b></span>`}
+            </div>
+            ${debugLine ? `<div style="margin-top:10px">${debugLine}</div>` : ``}
+          </div>
         </div>
-        ${debugLine}
-      </div>
 
-      ${banner}
+        ${banner}
 
-      <div class="card" style="margin-top:12px;">
-        ${step===1 ? `
-          ${
-            MODE==="apoderado" ? `
-              <div>
-                <label style="font-weight:900;">Código de invitación (Apoderados)</label>
-                <input id="onbInviteCode" placeholder="Ej: ABC123" value="${escapeHtml(inviteCodeInput)}" />
-                <button class="btn primary" id="btnValidateCode" type="button" style="width:100%;margin-top:10px;">Validar código</button>
-                <div class="muted" style="margin-top:8px;">Pídeselo a la directiva del curso.</div>
-                <div id="coursePreview" style="margin-top:12px;"></div>
-              </div>
-            ` : (DIRECTIVA_ROLE==="tesorero" ? `
-              <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-                <div style="font-weight:950;">Unirme como Tesorero</div>
-                <div class="muted" style="margin-top:6px;">
-                  Pega el código especial de tesorero que te entregó el Presidente.
-                </div>
-              </div>
+        <div class="onbCard onbMain">
+          ${content}
+        </div>
 
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Código directiva (Tesorero)</label>
-                <input id="onbTreasurerCode" placeholder="Ej: X7K9Q2" value="${escapeHtml(treasurerCodeInput)}" />
-                <button class="btn primary" id="btnValidateTreasurer" type="button" style="width:100%;margin-top:10px;">Validar y entrar</button>
-                <div id="treasurerPreview" style="margin-top:12px;"></div>
-              </div>
-            ` : `
-              <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-                <div style="font-weight:950;">Crear curso (solo Presidente)</div>
-                <div class="muted" style="margin-top:6px;">Al finalizar se generará el código para apoderados y el código para tesorero.</div>
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Región</label>
-                <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
-              </div>
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Comuna</label>
-                <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
-              </div>
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Colegio</label>
-                <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
-              </div>
-            `)
-          }
-        `:""}
-
-        ${step===2 ? `
-          ${MODE==="directiva" && DIRECTIVA_ROLE==="presidente" ? `
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <div style="flex:1;min-width:160px;">
-                <label style="font-weight:900;">Jornada</label>
-                <select id="onbJornada">${optionVals(JORNADAS,jornada)}</select>
-              </div>
-              <div style="flex:1;min-width:160px;">
-                <label style="font-weight:900;">Año</label>
-                <input id="onbYear" inputmode="numeric" value="${year}" />
-              </div>
-            </div>
-
-            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-              <div style="flex:1;min-width:160px;">
-                <label style="font-weight:900;">Nivel</label>
-                <select id="onbLevel">${optionVals(LEVELS,level)}</select>
-              </div>
-              <div style="flex:1;min-width:160px;">
-                <label style="font-weight:900;">Letra</label>
-                <select id="onbLetter">${optionVals(LETTERS,letter)}</select>
-              </div>
-            </div>
-          ` : `
-            <div class="muted" style="font-weight:900;">Paso no usado.</div>
-          `}
-        `:""}
-
-        ${step===3 ? `
-          <div>
-            <label style="font-weight:900;">Nombre ${MODE==="directiva" ? "directiva" : "apoderado"}</label>
-            <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
+        <div class="onbBottomBar">
+          <div class="onbBottomInner">
+            <button id="backBtn" class="btn ghost" ${step <= 1 ? "disabled" : ""}>← Atrás</button>
+            <button id="clearBtn" class="btn ghost">Limpiar</button>
+            <div class="right"></div>
+            <button id="nextBtn" class="btn ${isLast ? "warn" : "primary"}">${isLast ? (MODE === "directiva" ? "Crear curso" : "Unirme") : "Continuar"}</button>
           </div>
-
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Alumno/a ${MODE==="directiva" ? "(opcional)" : ""}</label>
-            <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
-          </div>
-
-          ${MODE==="directiva" ? `
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <label style="display:flex;gap:10px;align-items:center;cursor:pointer;">
-                <input id="alsoAp" type="checkbox" ${alsoAp ? "checked":""}/>
-                <span style="font-weight:950;">También soy apoderado de este curso</span>
-              </label>
-              <div class="muted" style="margin-top:6px;">Registrarás tu alumno/a y podrás cambiar de rol desde el menú.</div>
-            </div>
-
-            ${alsoAp ? `
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Alumno/a (obligatorio)</label>
-                <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Correo apoderado</label>
-                <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Confirmar correo</label>
-                <input id="dEmail2" placeholder="correo@dominio.com" value="${escapeHtml(dEmail2)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Teléfono (opcional)</label>
-                <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Password</label>
-                <input id="dPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(dPass)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Confirmar password</label>
-                <input id="dPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(dPass2)}" />
-              </div>
-
-              <div class="muted" style="margin-top:10px;font-weight:800;">
-                Tu perfil apoderado quedará <b>aprobado automáticamente</b> por ser directiva.
-              </div>
-            ` : ``}
-          ` : ``}
-
-          ${MODE==="apoderado" ? `
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Correo (obligatorio)</label>
-              <input id="onbEmail" placeholder="correo@dominio.com" value="${escapeHtml(email)}" />
-            </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Confirmar correo</label>
-              <input id="onbEmail2" placeholder="correo@dominio.com" value="${escapeHtml(email2)}" />
-            </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Teléfono (opcional)</label>
-              <input id="onbPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(phone)}" />
-            </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Password</label>
-              <input id="onbPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(pass)}" />
-            </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Confirmar password</label>
-              <input id="onbPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(pass2)}" />
-            </div>
-          ` : ``}
-        `:""}
-
-        ${step===4 ? `
-          ${MODE==="apoderado" ? `
-            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <div style="font-weight:950;">Activación por curso</div>
-              <div class="muted" style="margin-top:6px;">Setup único: <b>$7.990</b> por apoderado por curso (demo).</div>
-
-              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-                <label class="tag" style="cursor:pointer;">
-                  <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> Pagar ahora
-                </label>
-                <label class="tag" style="cursor:pointer;">
-                  <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> Pagar después
-                </label>
-              </div>
-
-              <div class="muted" style="margin-top:8px;">
-                Aunque pagues, el ingreso quedará <b>pendiente de aprobación</b> por la directiva.
-              </div>
-            </div>
-          ` : `
-            <div class="muted" style="font-weight:900;">Listo para finalizar.</div>
-          `}
-        `:""}
-
-        <div style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;">
-          <button class="btn ghost" id="btnPrev" ${step===1?"disabled":""}>Atrás</button>
-          <button class="btn primary" id="btnNext">${step===4?"Finalizar":"Continuar"}</button>
         </div>
       </div>
     `;
