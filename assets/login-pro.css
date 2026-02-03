@@ -314,3 +314,113 @@ body {
 @media (max-width: 860px){
   .regGrid{ grid-template-columns:1fr; }
 }
+/* ===== Registrar mini (2 cards en 1 fila) ===== */
+
+.regMini{
+  background:#fff;
+  border-radius:18px;
+  padding:14px;
+  box-shadow:0 12px 34px rgba(0,0,0,.06);
+  margin-bottom:14px;
+}
+
+.regMini__head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.regMini__title{
+  margin:0;
+  font-size:16px;
+  font-weight:900;
+}
+
+.regMini__grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr; /* SIEMPRE 2 */
+  gap:10px;
+}
+
+.regMiniCard{
+  border:1px solid rgba(15,23,42,.10);
+  border-radius:16px;
+  padding:12px;
+  background:linear-gradient(180deg, rgba(15,23,42,.01), rgba(15,23,42,0));
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width:0;
+}
+
+.regMiniCard__top{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-width:0;
+}
+
+.regMiniCard__icon{
+  width:40px;
+  height:40px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:rgba(15,23,42,.04);
+  font-size:18px;
+  flex:0 0 auto;
+}
+
+.regMiniCard__title{
+  margin:0;
+  font-size:15px;
+  font-weight:900;
+  line-height:1.1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.regMiniCard__sub{
+  margin:4px 0 0 0;
+  color:#64748b;
+  font-weight:700;
+  font-size:12px;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.regMiniCard__btn{
+  width:100%;
+  padding:10px 10px;
+  border-radius:14px;
+  font-weight:900;
+  cursor:pointer;
+  border:1px solid rgba(15,23,42,.12);
+  background:#fff;
+}
+
+.regMiniCard__btn--yellow{
+  border:none;
+  background:#facc15;
+  color:#111827;
+  box-shadow:0 12px 26px rgba(250,204,21,.22);
+}
+
+.regMiniCard__btn--ghost{
+  background:#f8fafc;
+  border:1.5px solid #c7d2fe;
+  color:#1e3a8a;
+}
+
+/* iPhone muy angosto: apretamos un poco */
+@media (max-width: 380px){
+  .regMiniCard{ padding:10px; }
+  .regMiniCard__icon{ width:36px; height:36px; }
+  .regMiniCard__title{ font-size:14px; }
+  .regMiniCard__sub{ font-size:11px; }
+  .regMini__grid{ gap:8px; }
+}
