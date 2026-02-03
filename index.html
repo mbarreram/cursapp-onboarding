@@ -12,39 +12,42 @@
 <div class="auth-container">
 
   <!-- ===== CARDS DE ACCIÓN ===== -->
-  <section class="regGroup">
-  <div class="regGroup__head">
-    <h2 class="regGroup__title">Registrar</h2>
-    <p class="regGroup__sub">Elige tu rol para comenzar.</p>
+
+<section class="regMini">
+  <div class="regMini__head">
+    <h2 class="regMini__title">Registrar</h2>
   </div>
 
-  <div class="regGrid">
-    <!-- Directiva -->
-    <article class="regCard regCard--directiva">
-      <div class="regCard__icon">🎓</div>
-      <div class="regCard__body">
-        <h3 class="regCard__title">Directiva</h3>
-        <p class="regCard__text">Crear curso y gestionar campañas, pagos y rendiciones.</p>
+  <div class="regMini__grid">
+    <!-- Directiva / Presidente -->
+    <article class="regMiniCard regMiniCard--primary">
+      <div class="regMiniCard__top">
+        <div class="regMiniCard__icon">🎓</div>
+        <div>
+          <h3 class="regMiniCard__title">Presidente</h3>
+          <p class="regMiniCard__sub">Registra tu curso</p>
+        </div>
       </div>
-      <button id="btnDirectiva" type="button" class="regCard__btn regCard__btn--primary">
+      <button id="btnDirectiva" type="button" class="regMiniCard__btn regMiniCard__btn--yellow">
         Registrar
       </button>
     </article>
 
     <!-- Apoderado -->
-    <article class="regCard regCard--apoderado">
-      <div class="regCard__icon">👨‍👩‍👧</div>
-      <div class="regCard__body">
-        <h3 class="regCard__title">Apoderado</h3>
-        <p class="regCard__text">Unirme a un curso y pagar mis cuotas.</p>
+    <article class="regMiniCard">
+      <div class="regMiniCard__top">
+        <div class="regMiniCard__icon">👨‍👩‍👧</div>
+        <div>
+          <h3 class="regMiniCard__title">Apoderado</h3>
+          <p class="regMiniCard__sub">Regístrate</p>
+        </div>
       </div>
-      <button id="btnApoderado" type="button" class="regCard__btn regCard__btn--ghost">
+      <button id="btnApoderado" type="button" class="regMiniCard__btn regMiniCard__btn--ghost">
         Registrar
       </button>
     </article>
   </div>
 </section>
-
   <!-- ===== LOGIN EXISTENTE ===== -->
   <section class="login-card">
     <h1>Ingresa a tu curso</h1>
