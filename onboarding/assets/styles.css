@@ -1,5 +1,4 @@
-@import url('/assets/presidente-ux-additions.css?v=1');
-
+@import url('../../assets/styles.css?v=400');
 :root{
   --bg:#f5f7fb;
   --card:#ffffff;

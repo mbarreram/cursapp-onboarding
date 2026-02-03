@@ -41,57 +41,40 @@ function uid(prefix = "id") {
 
   // Demo data
   const REGIONS = [
-  "Región Metropolitana",
-  "Región de Valparaíso",
-  "Región del Biobío",
-  "Región de La Araucanía",
-  "Región de Coquimbo"
+  { id: "rm", name: "Región Metropolitana" },
+  { id: "v", name: "Valparaíso" },
+  { id: "bio", name: "Biobío" },
+  { id: "arau", name: "La Araucanía" },
+  { id: "coq", name: "Coquimbo" },
 ];
   const COMUNAS = [
-  // RM
-  "Santiago",
-  "Providencia",
-  "Ñuñoa",
-  "Las Condes",
-  "Maipú",
-  // Valpo
-  "Valparaíso",
-  "Viña del Mar",
-  "Quilpué",
-  "Concón",
-  // Biobío
-  "Concepción",
-  "Talcahuano",
-  // Araucanía
-  "Temuco",
-  "Villarrica",
-  // Coquimbo
-  "La Serena",
-  "Coquimbo"
+  { id: "rm_scl", name: "Santiago", regionId: "rm" },
+  { id: "rm_nun", name: "Ñuñoa", regionId: "rm" },
+  { id: "rm_las", name: "Las Condes", regionId: "rm" },
+  { id: "v_vina", name: "Viña del Mar", regionId: "v" },
+  { id: "v_valp", name: "Valparaíso", regionId: "v" },
+  { id: "v_quil", name: "Quilpué", regionId: "v" },
+  { id: "bio_con", name: "Concepción", regionId: "bio" },
+  { id: "bio_talc", name: "Talcahuano", regionId: "bio" },
+  { id: "bio_chi", name: "Chillán", regionId: "bio" },
+  { id: "arau_tem", name: "Temuco", regionId: "arau" },
+  { id: "arau_pad", name: "Padre Las Casas", regionId: "arau" },
+  { id: "arau_ang", name: "Angol", regionId: "arau" },
+  { id: "coq_las", name: "La Serena", regionId: "coq" },
+  { id: "coq_coq", name: "Coquimbo", regionId: "coq" },
+  { id: "coq_ovi", name: "Ovalle", regionId: "coq" },
 ];
   const SCHOOLS = [
-  // Demo base
-  "Colegio X (Demo)",
-  // RM
-  "Liceo Central de Santiago",
-  "Colegio Providencia",
-  "Colegio Ñuñoa",
-  "Colegio Los Andes (Las Condes)",
-  "Colegio Maipú",
-  // Valpo
-  "Liceo de Valparaíso",
-  "Colegio Viña del Mar",
-  "Colegio Quilpué",
-  "Colegio Concón",
-  // Biobío
-  "Liceo Concepción",
-  "Colegio Talcahuano",
-  // Araucanía
-  "Colegio Temuco",
-  "Liceo Villarrica",
-  // Coquimbo
-  "Colegio La Serena",
-  "Colegio Coquimbo"
+  { id: "sch_rm_1", name: "Colegio San Martín (Demo)", communeId: "rm_scl" },
+  { id: "sch_rm_2", name: "Liceo Bicentenario Ñuñoa (Demo)", communeId: "rm_nun" },
+  { id: "sch_rm_3", name: "Colegio Andes Las Condes (Demo)", communeId: "rm_las" },
+  { id: "sch_v_1", name: "Colegio Mar y Tierra Viña (Demo)", communeId: "v_vina" },
+  { id: "sch_v_2", name: "Liceo Puerto Valparaíso (Demo)", communeId: "v_valp" },
+  { id: "sch_v_3", name: "Colegio Quilpué Centro (Demo)", communeId: "v_quil" },
+  { id: "sch_bio_1", name: "Colegio Concepción Norte (Demo)", communeId: "bio_con" },
+  { id: "sch_bio_2", name: "Liceo Talcahuano (Demo)", communeId: "bio_talc" },
+  { id: "sch_arau_1", name: "Colegio Temuco Sur (Demo)", communeId: "arau_tem" },
+  { id: "sch_coq_1", name: "Colegio La Serena (Demo)", communeId: "coq_las" },
 ];
   const LEVELS = ["1°","2°","3°","4°","5°","6°","7°","8°","I°","II°","III°","IV°"];
   const LETTERS = ["A","B","C","D","E","F"];
@@ -194,11 +177,11 @@ function uid(prefix = "id") {
     const progressPct = Math.round((step/stepsTotal)*100);
 
     // defaults (solo presidente crea curso)
-    const regionId = d.regionId || REGIONS[0].id;
+    const regionId = (d.regionId && REGIONS.some(r=>r.id===d.regionId)) ? d.regionId : REGIONS[0].id;
     const comunas = COMUNAS.filter(c=>c.regionId===regionId);
-    const comunaId = d.comunaId || (comunas[0]?.id||"");
+    const comunaId = (d.comunaId && comunas.some(c=>c.id===d.comunaId)) ? d.comunaId : (comunas[0]?.id||"");
     const schools = SCHOOLS.filter(s=>s.comunaId===comunaId);
-    const schoolId = d.schoolId || (schools[0]?.id||"");
+    const schoolId = (d.schoolId && schools.some(s=>s.id===d.schoolId)) ? d.schoolId : (schools[0]?.id||"");
 
     const jornada = d.jornada || JORNADAS[0];
     const year = d.year || nowYear();
