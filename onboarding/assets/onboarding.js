@@ -1,7 +1,7 @@
 /* =========================================================
    Cursapp · Onboarding (Wizard) — Opción 1
-   - Presidente: crea el curso (genera inviteCode + treasurerCode)
-   - Tesorero: NO crea curso, se une con treasurerCode
+   - Presidente: crea el curso (genera inviteCode)
+   - Tesorero: no tiene onboarding (lo designa el Presidente)
    - Apoderado: valida inviteCode, salta a paso 3, crea user/profile + enrollment pending
    - Directiva puede marcar “También soy apoderado” (auto-approved y asociado al rol)
    ========================================================= */
@@ -23,6 +23,34 @@ function uid(prefix = "id") {
   const QS = new URLSearchParams(location.search);
   const MODE = (QS.get("mode") || "apoderado").toLowerCase(); // directiva | apoderado
   const DIRECTIVA_ROLE = (QS.get("role") || "presidente").toLowerCase(); // presidente | tesorero
+
+  // 🚫 No hay onboarding de tesorero: lo designa el Presidente dentro del curso.
+  if(MODE==="directiva" && DIRECTIVA_ROLE==="tesorero"){
+    const app = $("app");
+    if(app){
+      app.innerHTML = `
+        <div class="page">
+          <div class="top">
+            <div class="brand"><div class="logo">C</div></div>
+            <button class="menuBtn" type="button" aria-label="Menu">≡</button>
+          </div>
+          <div class="card hero">
+            <div class="title">Onboarding · Directiva</div>
+            <div class="subtitle">El rol de tesorero lo designa el Presidente.</div>
+          </div>
+          <div class="card" style="padding:18px;">
+            <div style="font-weight:900;margin-bottom:6px;">¿Qué hacer ahora?</div>
+            <div class="muted">Pídele al Presidente que te asigne como <b>Tesorero</b> desde el menú del curso.</div>
+            <div style="margin-top:14px;display:flex;gap:10px;">
+              <button class="btn primary" type="button" onclick="location.href='/onboarding/?mode=directiva&role=presidente'">Ir a crear curso</button>
+              <button class="btn" type="button" onclick="history.back()">Volver</button>
+            </div>
+          </div>
+        </div>`;
+    }
+    throw new Error("cursapp_onboarding: directiva role tesorero is disabled");
+  }
+
    // ✅ Si cambiaste de rol/mode, resetea el draft para evitar que “quede pegado” en presidente
 (function(){
   try{
@@ -279,6 +307,16 @@ function hashDemo(str){
     const treasurerCodeInput = (d.treasurerCodeInput || "").toUpperCase(); // tesorero join
     const payChoice = d.payChoice || "now";
 
+    // Resumen (humano)
+    const primaryRoleLabel = (MODE === "directiva")
+      ? (DIRECTIVA_ROLE === "tesorero" ? "Tesorero" : "Presidente")
+      : "Apoderado";
+    const rolesLabel = (MODE === "directiva" && alsoAp) ? `${primaryRoleLabel} · Apoderado` : primaryRoleLabel;
+    const emailRegisteredRaw = (MODE === "directiva")
+      ? (d.dEmail || "")
+      : (MODE === "apoderado" ? (d.email || "") : "");
+    const emailRegistered = String(emailRegisteredRaw || "").trim();
+
     const debugLine = DEBUG
       ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"} alsoAp=${alsoAp?"1":"0"}</div>`
       : "";
@@ -319,21 +357,7 @@ function hashDemo(str){
                 <div class="muted" style="margin-top:8px;">Pídeselo a la directiva del curso.</div>
                 <div id="coursePreview" style="margin-top:12px;"></div>
               </div>
-            ` : (DIRECTIVA_ROLE==="tesorero" ? `
-              <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-                <div style="font-weight:950;">Unirme como Tesorero</div>
-                <div class="muted" style="margin-top:6px;">
-                  Pega el código especial de tesorero que te entregó el Presidente.
-                </div>
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Código directiva (Tesorero)</label>
-                <input id="onbTreasurerCode" placeholder="Ej: X7K9Q2" value="${escapeHtml(treasurerCodeInput)}" />
-                <button class="btn primary" id="btnValidateTreasurer" type="button" style="width:100%;margin-top:10px;">Validar y entrar</button>
-                <div id="treasurerPreview" style="margin-top:12px;"></div>
-              </div>
-            ` : `
+            ` : (`
               <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
                 <div style="font-weight:950;">Crear curso (solo Presidente)</div>
                 <div class="muted" style="margin-top:6px;">Al finalizar se generará el código para apoderados y el código para tesorero.</div>
@@ -389,62 +413,59 @@ function hashDemo(str){
             <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
           </div>
 
+          ${MODE==="directiva" ? `
           <div style="margin-top:12px;">
-            <label style="font-weight:900;">Alumno/a ${MODE==="directiva" ? "(opcional)" : ""}</label>
-            <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
+            <label style="font-weight:900;">Correo (usuario)</label>
+            <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}"
+                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
+            <div class="otpRow">
+              <button class="btn ghost" id="btnSendOtpD" type="button">${dEmailOtpSent ? "Reenviar código" : "Enviar código"}</button>
+              <input id="dOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
+              <button class="btn ghost" id="btnVerifyOtpD" type="button">Validar</button>
+            </div>
+            ${dEmailOtpSent ? `<div class="muted" style="margin-top:6px;">${dEmailOtpVerified ? "✅ Correo validado." : "Te enviamos un código (demo). " + (DEBUG ? ("Código: <b>"+escapeHtml(dEmailOtpCode)+"</b>") : "")}</div>` : ``}
           </div>
 
-          ${MODE==="directiva" ? `
-            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <label class="checkRow">
-                <input id="alsoAp" type="checkbox" ${alsoAp ? "checked":""}/>
-                <span style="font-weight:950;">También soy apoderado de este curso</span>
-              </label>
-              <div class="muted" style="margin-top:6px;">Registrarás tu alumno/a y podrás cambiar de rol desde el menú.</div>
+          <div class="grid2" style="margin-top:12px;">
+            <div>
+              <label style="font-weight:900;">Password</label>
+              <input id="dPass" type="password" placeholder="mínimo 4 caracteres" value="${escapeHtml(dPass)}" autocomplete="new-password" />
+            </div>
+            <div>
+              <label style="font-weight:900;">Confirmar password</label>
+              <input id="dPass2" type="password" placeholder="repite password" value="${escapeHtml(dPass2)}" autocomplete="new-password" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(99,102,241,.06);">
+            <label class="checkRow">
+              <input id="alsoAp" type="checkbox" ${alsoAp?"checked":""} />
+              <span style="font-weight:900;">También soy apoderado de este curso</span>
+            </label>
+            <div class="muted" style="margin-top:6px;">
+              Si activas esta opción, registrarás tu alumno/a (obligatorio) y podrás cambiar de rol desde el menú.
+            </div>
+          </div>
+
+          ${alsoAp ? `
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Alumno/a (obligatorio)</label>
+              <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(d.alumno || "")}" />
             </div>
 
-            ${alsoAp ? `
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Alumno/a (obligatorio)</label>
-                <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
-              </div>
-
-              
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Correo apoderado (obligatorio)</label>
-                <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}"
-                       autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
-                <div class="otpRow">
-                  <button class="btn ghost" id="btnSendOtpD" type="button">${dEmailOtpSent ? "Reenviar código" : "Enviar código"}</button>
-                  <input id="dOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
-                  <button class="btn ghost" id="btnVerifyOtpD" type="button">Validar</button>
-                </div>
-                <div class="muted" style="margin-top:6px;">
-                  ${dEmailOtpVerified ? "✅ Correo verificado." : (dEmailOtpSent ? `Código enviado. <b>(Demo: ${escapeHtml(dEmailOtpCode)})</b>` : "Valida este correo para activar tu perfil apoderado.")}
-                </div>
-              </div>
-
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Teléfono (opcional)</label>
-                <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Password</label>
-                <input id="dPass" type="password" placeholder="Mínimo 4 caracteres" value="${escapeHtml(dPass)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Confirmar password</label>
-                <input id="dPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(dPass2)}" />
-              </div>
-
-              <div class="muted" style="margin-top:10px;font-weight:800;">
-                Tu perfil apoderado quedará <b>aprobado automáticamente</b> por ser directiva.
-              </div>
-            ` : ``}
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Teléfono (opcional)</label>
+              <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" inputmode="tel" />
+            </div>
           ` : ``}
+` : `
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Alumno/a (obligatorio)</label>
+            <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
+          </div>
+` }
+
+          
 
           ${MODE==="apoderado" ? `
             <div style="margin-top:12px;">
@@ -504,7 +525,8 @@ function hashDemo(str){
               <div class="kv"><span>Comuna</span><b>${escapeHtml(comunaSel?.name || "-")}</b></div>
               <div class="kv"><span>Colegio</span><b>${escapeHtml(schoolSel?.name || "-")}</b></div>
               <div class="kv"><span>Curso</span><b>${escapeHtml(`${d.level||""}${d.letter||""} · ${d.jornada||""} · ${d.year||""}`.trim() || "-")}</b></div>
-              <div class="kv"><span>Clave curso</span><b>${escapeHtml(courseKeyPreview || "-")}</b></div>
+              <div class="kv"><span>Rol</span><b>${escapeHtml(rolesLabel || "-")}</b></div>
+              <div class="kv"><span>Correo registrado</span><b>${escapeHtml(emailRegistered || "-")}</b></div>
               <div class="divider"></div>
               <div class="muted">
                 Al finalizar, podrás encontrar el <b>código de invitación</b> en el menú del Presidente, en <b>Apoderados</b>.
@@ -648,43 +670,46 @@ function hashDemo(str){
         const chk = $("alsoAp");
         chk && (chk.onchange = ()=>{ d.alsoApoderado = !!chk.checked; saveDraft(d); render(); });
 
+        // Credenciales del Presidente (siempre)
+        $("dEmail") && (($("dEmail").oninput = ()=>{
+          d.dEmail = $("dEmail").value;
+          // reset OTP si cambia el correo
+          d.dEmailOtpSent = false;
+          d.dEmailOtpVerified = false;
+          d.dEmailOtpCode = "";
+          saveDraft(d);
+        }));
+
+        $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
+        $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
+
+        $("btnSendOtpD") && ($("btnSendOtpD").onclick = ()=>{
+          const v = validateEmailStrict(d.dEmail);
+          if(!v.ok){ alert(v.reason); return; }
+          const code = String(Math.floor(100000 + Math.random()*900000));
+          d.dEmail = v.email;
+          d.dEmailOtpCode = code;
+          d.dEmailOtpSent = true;
+          d.dEmailOtpVerified = false;
+          saveDraft(d);
+          render();
+        });
+
+        $("btnVerifyOtpD") && ($("btnVerifyOtpD").onclick = ()=>{
+          const typed = String(($("dOtp")?.value || "")).trim();
+          if(!d.dEmailOtpSent){ alert("Primero envía el código."); return; }
+          if(typed !== String(d.dEmailOtpCode)){ alert("Código incorrecto."); return; }
+          d.dEmailOtpVerified = true;
+          saveDraft(d);
+          render();
+        });
+
+        // Si también es apoderado, registra alumno/a (obligatorio)
         if(d.alsoApoderado){
           $("dAlumno") && (($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); }));
-
-          $("dEmail") && (($("dEmail").oninput = ()=>{
-            d.dEmail = $("dEmail").value;
-            // reset OTP if email changes
-            d.dEmailOtpSent = false;
-            d.dEmailOtpVerified = false;
-            d.dEmailOtpCode = "";
-            saveDraft(d);
-          }));
-
-          $("btnSendOtpD") && ($("btnSendOtpD").onclick = ()=>{
-            const v = validateEmailStrict(d.dEmail);
-            if(!v.ok){ alert(v.reason); return; }
-            const code = String(Math.floor(100000 + Math.random()*900000));
-            d.dEmail = v.email;
-            d.dEmailOtpCode = code;
-            d.dEmailOtpSent = true;
-            d.dEmailOtpVerified = false;
-            saveDraft(d);
-            render();
-          });
-
-          $("btnVerifyOtpD") && ($("btnVerifyOtpD").onclick = ()=>{
-            const typed = String(($("dOtp")?.value || "")).trim();
-            if(!d.dEmailOtpSent){ alert("Primero envía el código."); return; }
-            if(typed !== String(d.dEmailOtpCode)){ alert("Código incorrecto."); return; }
-            d.dEmailOtpVerified = true;
-            saveDraft(d);
-            render();
-          });
-
           $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
-          $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
-          $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
         }
+
       }
 
       if(MODE==="apoderado"){
@@ -771,23 +796,32 @@ function hashDemo(str){
         if(!d.name){ alert("Completa el nombre."); return; }
 
         if(MODE==="directiva"){
+          // Credenciales del Presidente (usuario de entrada)
+          const eRaw = String($("dEmail")?.value || "");
+          const p1 = String($("dPass")?.value || "");
+          const p2 = String($("dPass2")?.value || "");
+
+          const ev = validateEmailStrict(eRaw);
+          if(!ev.ok){ alert(ev.reason); return; }
+
+          if(!d.dEmailOtpVerified){
+            alert("Debes validar el correo con el código antes de continuar.");
+            return;
+          }
+
+          if(p1.length < 4){ alert("Password mínimo 4 caracteres."); return; }
+          if(p1 !== p2){ alert("Password no coincide."); return; }
+
+          d.dEmail = ev.email;
+          d.dPass = p1;
+          d.dPass2 = p2;
+
+          // Si también es apoderado, registra alumno/a (obligatorio)
           if(d.alsoApoderado){
             const dAl = String($("dAlumno")?.value || "").trim();
-            const e1raw = String($("dEmail")?.value || "");
-            const p1 = String($("dPass")?.value || "");
-            const p2 = String($("dPass2")?.value || "");
-
             d.dPhone = String($("dPhone")?.value || "").trim();
 
             if(!dAl){ alert("Completa alumno/a."); return; }
-
-            const ev = validateEmailStrict(e1raw);
-            if(!ev.ok){ alert(ev.reason); return; }
-
-            if(!d.dEmailOtpVerified){
-              alert("Debes validar el correo con el código antes de continuar.");
-              return;
-            }
 
             // Evitar duplicado por curso (apoderado)
             const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
@@ -796,15 +830,13 @@ function hashDemo(str){
               return;
             }
 
-            if(p1.length < 4){ alert("Password mínimo 4 caracteres."); return; }
-            if(p1 !== p2){ alert("Password no coincide."); return; }
-
             d.alumno = dAl;
-            d.dEmail = ev.email;
-            d.dPass = p1;
-            d.dPass2 = p2;
+          }else{
+            d.alumno = "";
           }
+
           d.step = 4; saveDraft(d); render(); return;
+        }
         }
 
         // apoderado
@@ -850,105 +882,96 @@ function hashDemo(str){
         // directiva: solo presidente finaliza creación
         if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
           const inviteCode = generateCode();
-          const treasurerCode = generateCode();
 
-          const courseObj = {
+          // ✅ Crear usuario (siempre) — el correo es el usuario de entrada
+          const email = String(d.dEmail || "").trim().toLowerCase();
+          let users = loadUsers();
+          const existing = users.find(u=>String(u.email||"").toLowerCase()===email);
+          const userId = existing ? existing.userId : ("u_"+uid("usr"));
+          const passHash = hashDemo(d.dPass || "");
+
+          if(existing){
+            existing.passwordHashDemo = passHash;
+            existing.updatedAt = nowISO();
+          }else{
+            users.unshift({ userId, email, passwordHashDemo: passHash, createdAt: nowISO() });
+          }
+          saveUsers(users);
+
+          // ✅ Crear perfiles
+          let profiles = loadProfiles();
+          profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && (p.role==="presidente" || p.role==="apoderado")));
+
+          profiles.unshift({
+            profileId: "pr_"+uid("p"),
+            userId,
+            role: "presidente",
             courseKey,
-            inviteCode,
-            treasurerCode,
-            directiva: { presidente: { name: d.name }, tesorero: { name: "" } },
             course: {
               regionId: d.regionId, regionName: region?region.name:"",
               comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
               schoolId: d.schoolId, schoolName: school?school.name:"",
-              jornada: d.jornada,
-              level: d.level,
-              letter: d.letter,
-              year: d.year
+              jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
             },
-            createdAt: nowISO(),
-            createdByRole: "presidente"
-          };
+            directiva: { name: d.name, email },
+            createdAt: nowISO()
+          });
 
-          localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
-          setActiveCourseKey(courseKey);
-
-          // Presidente también apoderado (auto-approved) asociado al rol presidente
           if(d.alsoApoderado){
-            // upsert user
-            let users = loadUsers();
-            const existing = users.find(u=>u.email===d.dEmail);
-            let userId = existing ? existing.userId : ("u_"+uid("usr"));
-            const passHash = hashDemo(d.dPass);
-
-            if(existing){
-              existing.passwordHashDemo = passHash;
-              existing.updatedAt = nowISO();
-            }else{
-              users.unshift({ userId, email: d.dEmail, passwordHashDemo: passHash, createdAt: nowISO() });
-            }
-            saveUsers(users);
-
-            // upsert profile apoderado
-            let profiles = loadProfiles();
-            profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && p.role==="apoderado"));
             profiles.unshift({
               profileId: "pr_"+uid("p"),
               userId,
               role: "apoderado",
               courseKey,
-              course: courseObj.course,
+              course: {
+                regionId: d.regionId, regionName: region?region.name:"",
+                comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+                schoolId: d.schoolId, schoolName: school?school.name:"",
+                jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
+              },
               apoderado: { name: d.name, alumno: d.alumno, phone: d.dPhone || "" },
               activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
               createdAt: nowISO()
             });
-            saveProfiles(profiles);
-
-            // enrollment approved (si existe approveEnrollment)
-            if(typeof createEnrollment === "function"){
-              const res = createEnrollment({
-                apoderadoName: d.name, alumno: d.alumno, email: d.dEmail, phone: d.dPhone || "",
-                activationAmount: 7990, activationStatus: "paid"
-              });
-              if(res && res.ok && typeof approveEnrollment === "function"){
-                approveEnrollment(res.enrollment.enrollmentId, "presidente");
-              }
-            }
-
-            // guardar perfil apoderado asociado al rol presidente
-            const map = loadJSON(KEY_DIRECTIVA_AP_BY_ROLE, {});
-            map["presidente"] = { email: d.dEmail, apoderadoName: d.name, alumno: d.alumno, courseKey };
-            saveJSON(KEY_DIRECTIVA_AP_BY_ROLE, map);
           }
+          saveProfiles(profiles);
 
-          // sesión presidente
-          localStorage.setItem("cursapp_demo_user", JSON.stringify({
-            name: (d.name || "Presidente") + " (Demo)",
-            role: "presidente",
-            colegio: courseObj.course.schoolName,
-            curso: `${courseObj.course.level}${courseObj.course.letter} ${courseObj.course.year}`,
-            jornada: courseObj.course.jornada,
-            alumno: "Nombre alumno(a)"
-          }));
+          const courseObj = {
+            courseKey,
+            inviteCode,
+            directiva: { presidente: { userId, name: d.name, email }, tesorero: { userId:"", name:"", email:"" } },
+            course: {
+              regionId: d.regionId, regionName: region?region.name:"",
+              comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+              schoolId: d.schoolId, schoolName: school?school.name:"",
+              jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
+            },
+            createdAt: nowISO(),
+            createdByRole: "presidente",
+            createdByUserId: userId
+          };
 
-          // ✅ sesión única (producción-ready)
+          localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
+
+          // ✅ curso activo + sesión
+          setActiveCourseKey(courseKey);
           try{
             if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-              window.CURSAPP.setSession({ userId: "presidente", role: "presidente", courseKey });
+              window.CURSAPP.setSession({ userId, role: "presidente", courseKey });
             }else{
-              localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: "presidente", role: "presidente", courseKey }));
+              localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId, role: "presidente", courseKey }));
             }
           }catch(e){}
 
           clearDraft();
           alert(
             "Curso creado ✅\n\n" +
-            "Código apoderados: " + inviteCode + "\n" +
-            "Código tesorero: " + treasurerCode + "\n\n" +
-            "Comparte el código tesorero solo con el tesorero."
+            "Tu usuario es: " + email + "\n\n" +
+            "El código de invitación estará en el menú del Presidente, en Apoderados."
           );
           window.location.href = "/presidente.html";
           return;
+        }
         }
 
         // apoderado finalize (pending)
