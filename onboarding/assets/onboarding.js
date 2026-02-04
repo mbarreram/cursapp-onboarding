@@ -357,28 +357,31 @@ function uid(prefix = "id") {
                      placeholder="correo@dominio.com" value="${escapeHtml(d.pEmail||'')}" />
             </div>
 
-            <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-              <div style="flex:1; min-width:160px;">
-                <label style="font-weight:900;">Código (OTP)</label>
-                <input id="pOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
-                       value="${escapeHtml(d.pOtp||'')}" />
-              </div>
-              <button class="btn ghost" id="btnSendOtp" type="button" style="min-width:160px;">Enviar código</button>
-              <button class="btn primary" id="btnVerifyOtp" type="button" style="min-width:160px;">Validar</button>
-            </div>
-            <div id="otpHint" class="muted" style="margin-top:8px; display:${d.pOtpSent ? "block":"none"};">
-              Demo OTP: <b>${escapeHtml(d.pOtpCode||"")}</b>
-            </div>
+            
+<div class="muted" style="margin-top:8px;">Revisa tu correo e ingresa el código para continuar.</div>
+
+<div class="otpRow" style="margin-top:10px;">
+  <div class="otpField">
+    <label style="font-weight:900;">Código (OTP)</label>
+    <input id="pOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
+           value="${escapeHtml(d.pOtp||'')}" />
+  </div>
+  <button class="btn ghost" id="btnSendOtp" type="button">Enviar código</button>
+  <button class="btn primary" id="btnVerifyOtp" type="button">Validar</button>
+</div>
+
+<div id="otpHint" class="muted" style="margin-top:8px; display:${d.pOtpSent ? "block":"none"};">
+  Demo OTP: <b>${escapeHtml(d.pOtpCode||"")}</b>
+</div>
+
+<div id="otpOk" class="otpStatusOk" style="display:${d.pOtpVerified ? "inline-flex":"none"};">✓ Código verificado</div>
+
 
             <div style="margin-top:10px;">
               <label style="font-weight:900;">Contraseña (mín. 4)</label>
               <input id="pPass" type="password" autocomplete="new-password" placeholder="••••" value="${escapeHtml(d.pPass||'')}" />
             </div>
 
-            <div style="margin-top:10px;">
-              <label style="font-weight:900;">Repetir contraseña</label>
-              <input id="pPass2" type="password" autocomplete="new-password" placeholder="••••" value="${escapeHtml(d.pPass2||'')}" />
-            </div>
           </div>
           ` : ``}
 
@@ -402,15 +405,6 @@ function uid(prefix = "id") {
                 <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" />
               </div>
 
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Password</label>
-                <input id="dPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(dPass)}" />
-              </div>
-
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Confirmar password</label>
-                <input id="dPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(dPass2)}" />
-              </div>
 
               <div class="muted" style="margin-top:10px;font-weight:800;">
                 Tu perfil apoderado quedará <b>aprobado automáticamente</b> por ser directiva.
@@ -612,7 +606,7 @@ function uid(prefix = "id") {
         if(code !== String(d.aOtpCode||"")){ alert("Código incorrecto."); return; }
         d.aOtpVerified = true;
         saveDraft(d);
-        alert("Correo verificado ✅");
+        // Mostrar estado verificado en UI
         render();
       });
 
@@ -634,9 +628,7 @@ function uid(prefix = "id") {
       pEmail && (pEmail.oninput = ()=>{ d.pEmail = pEmail.value; saveDraft(d); });
       pOtp && (pOtp.oninput = ()=>{ d.pOtp = pOtp.value; saveDraft(d); });
       $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
-      $("pPass2") && ($("pPass2").oninput = ()=>{ d.pPass2 = $("pPass2").value; saveDraft(d); });
-
-      sendBtn && (sendBtn.onclick = ()=>{
+sendBtn && (sendBtn.onclick = ()=>{
         const e = String(pEmail?.value||"").trim().toLowerCase();
         if(!validateEmail(e)){ alert("Correo inválido."); return; }
         d.pEmail = e;
@@ -645,8 +637,7 @@ function uid(prefix = "id") {
         d.pOtpVerified = false;
         d.pOtpSentAt = Date.now();
         saveDraft(d);
-        alert("Demo OTP: " + d.pOtpCode);
-        render();
+render();
       });
 
       verBtn && (verBtn.onclick = ()=>{
@@ -656,7 +647,7 @@ function uid(prefix = "id") {
         if(code !== String(d.pOtpCode||"")){ alert("Código incorrecto."); return; }
         d.pOtpVerified = true;
         saveDraft(d);
-        alert("Correo verificado ✅");
+        // Mostrar estado verificado en UI
         render();
       });
 
@@ -715,11 +706,8 @@ function uid(prefix = "id") {
         if(!d.pOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
 
         d.pPass = String($("pPass")?.value || "");
-        d.pPass2 = String($("pPass2")?.value || "");
-        if(d.pPass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
-        if(d.pPass !== d.pPass2){ alert("Password no coincide."); return; }
-
-        if(d.alsoApoderado){
+if(String(d.pPass||"").length < 4){ alert("La contraseña debe tener al menos 4 caracteres."); return; }
+if(d.alsoApoderado){
           d.alumno = String($("dAlumno")?.value || "").trim();
           d.dPhone = String($("dPhone")?.value || "").trim();
           if(!d.alumno){ alert("Completa alumno/a."); return; }

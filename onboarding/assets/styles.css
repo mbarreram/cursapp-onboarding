@@ -195,3 +195,12 @@ select:focus, input:focus{
   border-color: rgba(91,92,226,.30);
   color: rgba(20,26,40,.85);
 }
+
+
+/* Fix: checkbox should not be full width */
+input[type="checkbox"]{ width:auto; padding:0; }
+
+.otpRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.otpRow .otpField{flex:1;min-width:170px;}
+.otpRow .btn{min-width:140px;}
+.otpStatusOk{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.22);color:rgba(21,128,61,1);font-weight:900;font-size:13px;margin-top:10px;}
