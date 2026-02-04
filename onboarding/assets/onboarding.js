@@ -751,6 +751,18 @@ if(d.alsoApoderado){
 
       const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
 
+      // Evita duplicar el mismo curso (mismo courseKey)
+      try{
+        const existingCourse = loadProfiles().some(p=>String(p.courseKey||"")===String(courseKey||"") && String(p.role||"").toLowerCase()==="presidente");
+        if(existingCourse){
+          alert("Este curso ya existe. Inicia sesión y entra al curso para administrarlo.");
+          setActiveCourseKey(courseKey);
+          window.location.href = "/login.html";
+          return;
+        }
+      }catch(e){}
+
+
       if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
         const inviteCode = generateCode();
 
@@ -780,13 +792,44 @@ if(d.alsoApoderado){
         let users = loadUsers();
         const existingP = users.find(u=>String(u.email||"").toLowerCase()===pEmailNorm);
         const presidenteUserId = existingP ? existingP.userId : ("u_"+uid("usr"));
+        // Anti-abuso: máximo 5 colegios creados por el mismo correo (como presidente)
+        try{
+          const schoolIdNow = String(d.schoolId||"");
+          const presProfiles = loadProfiles().filter(p=>p.userId===presidenteUserId && String(p.role||"").toLowerCase()==="presidente");
+          const schools = new Set(presProfiles.map(p=>String((p.course&&p.course.schoolId)||"")).filter(Boolean));
+          if(schoolIdNow && !schools.has(schoolIdNow) && schools.size >= 5){
+            alert("Has alcanzado el límite de 5 colegios. Si necesitas registrar más, comunícate a soporte@cursapp.cl");
+            return;
+          }
+        }catch(e){}
+
         if(existingP){
-          existingP.passwordHashDemo = pPassHash;
+          // Si el usuario ya existe, NO sobreescribimos la contraseña. Debe coincidir.
+          if(existingP.passwordHashDemo && existingP.passwordHashDemo !== pPassHash){
+            alert("Este correo ya tiene una cuenta. Ingresa la misma contraseña de tu cuenta para crear otro curso.");
+            return;
+          }
           existingP.updatedAt = nowISO();
         }else{
           users.unshift({ userId: presidenteUserId, email: pEmailNorm, passwordHashDemo: pPassHash, createdAt: nowISO() });
         }
         saveUsers(users);
+
+        // Perfil Presidente (necesario para login multi-curso / multi-rol)
+        try{
+          let profiles = loadProfiles();
+          profiles = profiles.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && String(p.role||"").toLowerCase()==="presidente"));
+          profiles.unshift({
+            profileId: "pr_"+uid("p"),
+            userId: presidenteUserId,
+            role: "presidente",
+            courseKey,
+            course: courseObj.course,
+            createdAt: nowISO()
+          });
+          saveProfiles(profiles);
+        }catch(e){}
+
 
         // Si también es apoderado: perfil apoderado con el mismo usuario
         if(d.alsoApoderado){
