@@ -1,7 +1,7 @@
 /* =========================================================
    Cursapp · Onboarding (Wizard) — Opción 1
    - Presidente: crea el curso (genera inviteCode)
-   - Tesorero: no tiene onboarding (lo designa el Presidente)
+   - Tesorero: lo designa el Presidente dentro del curso
    - Apoderado: valida inviteCode, salta a paso 3, crea user/profile + enrollment pending
    - Directiva puede marcar “También soy apoderado” (auto-approved y asociado al rol)
    ========================================================= */
@@ -23,34 +23,6 @@ function uid(prefix = "id") {
   const QS = new URLSearchParams(location.search);
   const MODE = (QS.get("mode") || "apoderado").toLowerCase(); // directiva | apoderado
   const DIRECTIVA_ROLE = (QS.get("role") || "presidente").toLowerCase(); // presidente | tesorero
-
-  // 🚫 No hay onboarding de tesorero: lo designa el Presidente dentro del curso.
-  if(MODE==="directiva" && DIRECTIVA_ROLE==="tesorero"){
-    const app = $("app");
-    if(app){
-      app.innerHTML = `
-        <div class="page">
-          <div class="top">
-            <div class="brand"><div class="logo">C</div></div>
-            <button class="menuBtn" type="button" aria-label="Menu">≡</button>
-          </div>
-          <div class="card hero">
-            <div class="title">Onboarding · Directiva</div>
-            <div class="subtitle">El rol de tesorero lo designa el Presidente.</div>
-          </div>
-          <div class="card" style="padding:18px;">
-            <div style="font-weight:900;margin-bottom:6px;">¿Qué hacer ahora?</div>
-            <div class="muted">Pídele al Presidente que te asigne como <b>Tesorero</b> desde el menú del curso.</div>
-            <div style="margin-top:14px;display:flex;gap:10px;">
-              <button class="btn primary" type="button" onclick="location.href='/onboarding/?mode=directiva&role=presidente'">Ir a crear curso</button>
-              <button class="btn" type="button" onclick="history.back()">Volver</button>
-            </div>
-          </div>
-        </div>`;
-    }
-    throw new Error("cursapp_onboarding: directiva role tesorero is disabled");
-  }
-
    // ✅ Si cambiaste de rol/mode, resetea el draft para evitar que “quede pegado” en presidente
 (function(){
   try{
@@ -103,12 +75,7 @@ function uid(prefix = "id") {
   {"id": "sch-coq", "comunaId": "iv-coq", "name": "Colegio Bahía (Demo)"},
   {"id": "sch-ls", "comunaId": "iv-ls", "name": "Colegio Faro La Serena (Demo)"},
   {"id": "sch-conce", "comunaId": "viii-conce", "name": "Colegio Concepción (Demo)"},
-  {"id": "sch-temu", "comunaId": "ix-temu", "name": "Colegio Araucanía (Demo)"},
-  {"id": "sch-quilpue", "comunaId": "v-quilpue", "name": "Colegio Quilpué (Demo)"},
-  {"id": "sch-talc", "comunaId": "viii-talc", "name": "Liceo Talcahuano (Demo)"},
-  {"id": "sch-vill", "comunaId": "ix-vill", "name": "Colegio Villarrica (Demo)"},
-  {"id": "sch-ptm", "comunaId": "x-pto", "name": "Colegio Puerto Montt (Demo)"},
-  {"id": "sch-oso", "comunaId": "x-osorno", "name": "Colegio Osorno (Demo)"}
+  {"id": "sch-temu", "comunaId": "ix-temu", "name": "Colegio Araucanía (Demo)"}
 ];
   const LEVELS = ["1°","2°","3°","4°","5°","6°","7°","8°","I°","II°","III°","IV°"];
   const LETTERS = ["A","B","C","D","E","F"];
@@ -143,58 +110,13 @@ function uid(prefix = "id") {
   function loadProfiles(){ return loadJSON(KEY_PROFILES, []); }
   function saveProfiles(p){ saveJSON(KEY_PROFILES, p||[]); }
 
-  function emailAlreadyInCourse(emailRaw, courseKey){
-    const v = validateEmailStrict(emailRaw);
-    if(!v.ok) return false;
-    const email = v.email;
-
-    const users = loadUsers();
-    const profiles = loadProfiles();
-    return profiles.some(p => {
-      if(!p || p.role !== "apoderado" || p.courseKey !== courseKey) return false;
-      const u = users.find(x => x.userId === p.userId);
-      return u && normalizeEmail(u.email) === email;
-    });
-  }
-
   function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
 
-  function normalizeEmail(e){
-    return String(e || "").trim().toLowerCase();
-  }
-
-  // Lista corta (editable) de dominios desechables típicos
-  const DISPOSABLE_EMAIL_DOMAINS = new Set([
-    "mailinator.com",
-    "guerrillamail.com",
-    "10minutemail.com",
-    "tempmail.com",
-    "yopmail.com",
-    "trashmail.com"
-  ]);
-
-  function validateEmailStrict(emailRaw){
-    const email = normalizeEmail(emailRaw);
-
-    if(!email) return { ok:false, reason:"Ingresa tu correo." };
-    if(/\s/.test(email)) return { ok:false, reason:"El correo no puede contener espacios." };
-    if(email.length > 160) return { ok:false, reason:"El correo es demasiado largo." };
-
-    const re = /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
-    if(!re.test(email)) return { ok:false, reason:"Correo inválido. Revisa el formato." };
-
-    const domain = email.split("@")[1] || "";
-    if(DISPOSABLE_EMAIL_DOMAINS.has(domain)){
-      return { ok:false, reason:"Ese dominio de correo no está permitido (temporal/desechable)." };
-    }
-    return { ok:true, email };
-  }
-
-  // Compatibilidad con el validador simple previo
   function validateEmail(e){
-    return validateEmailStrict(e).ok;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
   }
-function hashDemo(str){
+
+  function hashDemo(str){
     let h=5381;
     const s = String(str||"");
     for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
@@ -254,25 +176,38 @@ function hashDemo(str){
     const step = Number(d.step||1);
     const stepsTotal = 4;
     const progressPct = Math.round((step/stepsTotal)*100);
-    const wizardDots = Array.from({length: stepsTotal}, (_, i) => {
-      const n = i + 1;
-      const cls = n < step ? "done" : (n === step ? "active" : "");
-      return `<span class="wDot ${cls}">${n}</span>`;
-    }).join("");
-    const regionSel = REGIONS.find(r=>r.id===d.regionId);
-    const comunaSel = COMUNAS.find(c=>c.id===d.comunaId);
-    const schoolSel = SCHOOLS.find(s=>s.id===d.schoolId);
-    const courseKeyPreview = (d.schoolId && d.level && d.letter && d.jornada && d.year)
-      ? makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year)
-      : "";
 
+    // defaults (solo presidente crea curso) — con fallbacks para evitar combos sin data
+    // 1) región válida con comunas
+    let regionId = d.regionId || (REGIONS[0] && REGIONS[0].id);
+    if(regionId){
+      const hasComunas = COMUNAS.some(c=>c.regionId===regionId);
+      if(!hasComunas){
+        const r2 = REGIONS.find(r=>COMUNAS.some(c=>c.regionId===r.id));
+        if(r2) regionId = r2.id;
+      }
+    }
 
-    // defaults (solo presidente crea curso)
-    const regionId = d.regionId || REGIONS[0].id;
-    const comunas = COMUNAS.filter(c=>c.regionId===regionId);
-    const comunaId = d.comunaId || (comunas[0]?.id||"");
-    const schools = SCHOOLS.filter(s=>s.comunaId===comunaId);
-    const schoolId = d.schoolId || (schools[0]?.id||"");
+    // 2) comuna válida dentro de la región
+    let comunas = COMUNAS.filter(c=>c.regionId===regionId);
+    let comunaId = d.comunaId || (comunas[0]?.id || "");
+    if(!comunaId || !comunas.some(c=>c.id===comunaId)){
+      comunaId = comunas[0]?.id || "";
+    }
+
+    // 3) colegio válido dentro de la comuna; si no hay, mover a una comuna con colegios
+    let schools = SCHOOLS.filter(s=>s.comunaId===comunaId);
+    if(!schools.length){
+      const comunaWithSchools = comunas.find(c=>SCHOOLS.some(s=>s.comunaId===c.id));
+      if(comunaWithSchools){
+        comunaId = comunaWithSchools.id;
+        schools = SCHOOLS.filter(s=>s.comunaId===comunaId);
+      }
+    }
+    let schoolId = d.schoolId || (schools[0]?.id || "");
+    if(!schoolId || !schools.some(s=>s.id===schoolId)){
+      schoolId = schools[0]?.id || "";
+    }
 
     const jornada = d.jornada || JORNADAS[0];
     const year = d.year || nowYear();
@@ -288,9 +223,6 @@ function hashDemo(str){
     const phone = d.phone || "";
     const pass = d.pass || "";
     const pass2 = d.pass2 || "";
-    const emailOtpSent = !!d.emailOtpSent;
-    const emailOtpVerified = !!d.emailOtpVerified;
-    const emailOtpCode = d.emailOtpCode || "";
 
     // directiva también apoderado (campos separados)
     const alsoAp = !!d.alsoApoderado;
@@ -299,23 +231,9 @@ function hashDemo(str){
     const dPhone = d.dPhone || "";
     const dPass = d.dPass || "";
     const dPass2 = d.dPass2 || "";
-    const dEmailOtpSent = !!d.dEmailOtpSent;
-    const dEmailOtpVerified = !!d.dEmailOtpVerified;
-    const dEmailOtpCode = d.dEmailOtpCode || "";
 
     const inviteCodeInput = (d.inviteCode || "").toUpperCase();         // apoderados
-    const treasurerCodeInput = (d.treasurerCodeInput || "").toUpperCase(); // tesorero join
     const payChoice = d.payChoice || "now";
-
-    // Resumen (humano)
-    const primaryRoleLabel = (MODE === "directiva")
-      ? (DIRECTIVA_ROLE === "tesorero" ? "Tesorero" : "Presidente")
-      : "Apoderado";
-    const rolesLabel = (MODE === "directiva" && alsoAp) ? `${primaryRoleLabel} · Apoderado` : primaryRoleLabel;
-    const emailRegisteredRaw = (MODE === "directiva")
-      ? (d.dEmail || "")
-      : (MODE === "apoderado" ? (d.email || "") : "");
-    const emailRegistered = String(emailRegisteredRaw || "").trim();
 
     const debugLine = DEBUG
       ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"} alsoAp=${alsoAp?"1":"0"}</div>`
@@ -332,14 +250,15 @@ function hashDemo(str){
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
 
     root.innerHTML = `
-      
-
       <div class="card" style="margin-top:12px;">
         <div style="font-weight:950;font-size:18px;">Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
-        <div class="wizard">
-          <div class="wizardMeta">Paso ${step} de ${stepsTotal}</div>
-          <div class="wizardTrack"><div class="wizardFill" style="width:${progressPct}%"></div></div>
-          <div class="wizardDots">${wizardDots}</div>
+        <div class="muted" style="margin-top:6px;">Paso ${step} de ${stepsTotal}</div>
+
+        <div class="wizardWrap" style="margin-top:10px;">
+          <div class="wizardBar"><div class="wizardFill" style="width:${progressPct}%"></div></div>
+          <div class="wizardSteps" aria-hidden="true">
+            ${[1,2,3,4].map(n=>`<div class="wStep ${step===n?"active":(step>n?"done":"")}"><span>${n}</span></div>`).join("")}
+          </div>
         </div>
         ${debugLine}
       </div>
@@ -357,10 +276,17 @@ function hashDemo(str){
                 <div class="muted" style="margin-top:8px;">Pídeselo a la directiva del curso.</div>
                 <div id="coursePreview" style="margin-top:12px;"></div>
               </div>
-            ` : (`
+            ` : (DIRECTIVA_ROLE!=="presidente" ? `
+              <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+                <div style="font-weight:950;">El tesorero no se registra aquí</div>
+                <div class="muted" style="margin-top:6px;">
+                  El Presidente designa al tesorero desde el menú del curso.
+                </div>
+              </div>
+            ` : `
               <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
                 <div style="font-weight:950;">Crear curso (solo Presidente)</div>
-                <div class="muted" style="margin-top:6px;">Al finalizar se generará el código para apoderados y el código para tesorero.</div>
+                <div class="muted" style="margin-top:6px;">Al finalizar se generará el código de invitación para apoderados.</div>
               </div>
 
               <div style="margin-top:12px;">
@@ -413,82 +339,118 @@ function hashDemo(str){
             <input id="onbName" placeholder="Nombre y apellido" value="${escapeHtml(name)}" />
           </div>
 
-          ${MODE==="directiva" ? `
+          ${MODE==="apoderado" ? `
           <div style="margin-top:12px;">
-            <label style="font-weight:900;">Correo (usuario)</label>
-            <input id="dEmail" placeholder="correo@dominio.com" value="${escapeHtml(dEmail)}"
-                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
-            <div class="otpRow">
-              <button class="btn ghost" id="btnSendOtpD" type="button">${dEmailOtpSent ? "Reenviar código" : "Enviar código"}</button>
-              <input id="dOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
-              <button class="btn ghost" id="btnVerifyOtpD" type="button">Validar</button>
-            </div>
-            ${dEmailOtpSent ? `<div class="muted" style="margin-top:6px;">${dEmailOtpVerified ? "✅ Correo validado." : "Te enviamos un código (demo). " + (DEBUG ? ("Código: <b>"+escapeHtml(dEmailOtpCode)+"</b>") : "")}</div>` : ``}
-          </div>
-
-          <div class="grid2" style="margin-top:12px;">
-            <div>
-              <label style="font-weight:900;">Password</label>
-              <input id="dPass" type="password" placeholder="mínimo 4 caracteres" value="${escapeHtml(dPass)}" autocomplete="new-password" />
-            </div>
-            <div>
-              <label style="font-weight:900;">Confirmar password</label>
-              <input id="dPass2" type="password" placeholder="repite password" value="${escapeHtml(dPass2)}" autocomplete="new-password" />
-            </div>
-          </div>
-
-          <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(99,102,241,.06);">
-            <label class="checkRow">
-              <input id="alsoAp" type="checkbox" ${alsoAp?"checked":""} />
-              <span style="font-weight:900;">También soy apoderado de este curso</span>
-            </label>
-            <div class="muted" style="margin-top:6px;">
-              Si activas esta opción, registrarás tu alumno/a (obligatorio) y podrás cambiar de rol desde el menú.
-            </div>
-          </div>
-
-          ${alsoAp ? `
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Alumno/a (obligatorio)</label>
-              <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(d.alumno || "")}" />
-            </div>
-
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Teléfono (opcional)</label>
-              <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" inputmode="tel" />
-            </div>
-          ` : ``}
-` : `
-          <div style="margin-top:12px;">
-            <label style="font-weight:900;">Alumno/a (obligatorio)</label>
+            <label style="font-weight:900;">Alumno/a</label>
             <input id="onbAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
           </div>
-` }
+          ` : ``}
 
-          
+          ${MODE==="directiva" ? `
+          <div class="credBox" style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+            <div style="font-weight:950;">Acceso del Presidente</div>
+            <div class="muted" style="margin-top:6px;">Este correo será tu usuario de entrada.</div>
+
+            <div style="margin-top:10px;">
+              <label style="font-weight:900;">Correo (usuario)</label>
+              <input id="pEmail" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                     placeholder="correo@dominio.com" value="${escapeHtml(d.pEmail||'')}" />
+            </div>
+
+            <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+              <div style="flex:1; min-width:160px;">
+                <label style="font-weight:900;">Código (OTP)</label>
+                <input id="pOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
+                       value="${escapeHtml(d.pOtp||'')}" />
+              </div>
+              <button class="btn ghost" id="btnSendOtp" type="button" style="min-width:160px;">Enviar código</button>
+              <button class="btn primary" id="btnVerifyOtp" type="button" style="min-width:160px;">Validar</button>
+            </div>
+            <div id="otpHint" class="muted" style="margin-top:8px; display:${d.pOtpSent ? "block":"none"};">
+              Demo OTP: <b>${escapeHtml(d.pOtpCode||"")}</b>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label style="font-weight:900;">Contraseña (mín. 4)</label>
+              <input id="pPass" type="password" autocomplete="new-password" placeholder="••••" value="${escapeHtml(d.pPass||'')}" />
+            </div>
+
+            <div style="margin-top:10px;">
+              <label style="font-weight:900;">Repetir contraseña</label>
+              <input id="pPass2" type="password" autocomplete="new-password" placeholder="••••" value="${escapeHtml(d.pPass2||'')}" />
+            </div>
+          </div>
+          ` : ``}
+
+          ${MODE==="directiva" ? `
+            <div style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+              <label style="display:flex;gap:10px;align-items:center;cursor:pointer;">
+                <input id="alsoAp" type="checkbox" ${alsoAp ? "checked":""}/>
+                <span style="font-weight:950;">También soy apoderado de este curso</span>
+              </label>
+              <div class="muted" style="margin-top:6px;">Registrarás tu alumno/a y podrás cambiar de rol desde el menú.</div>
+            </div>
+
+            ${alsoAp ? `
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Alumno/a (obligatorio)</label>
+                <input id="dAlumno" placeholder="Nombre alumno/a" value="${escapeHtml(alumno)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Teléfono (opcional)</label>
+                <input id="dPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(dPhone)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Password</label>
+                <input id="dPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(dPass)}" />
+              </div>
+
+              <div style="margin-top:12px;">
+                <label style="font-weight:900;">Confirmar password</label>
+                <input id="dPass2" type="password" placeholder="Repite tu password" value="${escapeHtml(dPass2)}" />
+              </div>
+
+              <div class="muted" style="margin-top:10px;font-weight:800;">
+                Tu perfil apoderado quedará <b>aprobado automáticamente</b> por ser directiva.
+              </div>
+            ` : ``}
+          ` : ``}
 
           ${MODE==="apoderado" ? `
-            <div style="margin-top:12px;">
-              <label style="font-weight:900;">Correo (obligatorio)</label>
-              <input id="onbEmail" placeholder="correo@dominio.com" value="${escapeHtml(email)}"
-                     autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" />
-              <div class="otpRow">
-                <button class="btn ghost" id="btnSendOtp" type="button">${emailOtpSent ? "Reenviar código" : "Enviar código"}</button>
-                <input id="onbOtp" placeholder="Código 6 dígitos" value="" inputmode="numeric" autocomplete="one-time-code" />
-                <button class="btn ghost" id="btnVerifyOtp" type="button">Validar</button>
+            <div class="credBox" style="margin-top:12px;border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+              <div style="font-weight:950;">Correo de acceso</div>
+              <div class="muted" style="margin-top:6px;">Te pediremos un código (OTP) para continuar.</div>
+
+              <div style="margin-top:10px;">
+                <label style="font-weight:900;">Correo (usuario)</label>
+                <input id="onbEmail" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                       placeholder="correo@dominio.com" value="${escapeHtml(email)}" />
               </div>
-              <div class="muted" style="margin-top:6px;">
-                ${emailOtpVerified ? "✅ Correo verificado." : (emailOtpSent ? `Código enviado. <b>(Demo: ${escapeHtml(emailOtpCode)})</b>` : "Presiona <b>Enviar código</b> para validar tu correo y continuar.")}
+
+              <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                <div style="flex:1; min-width:160px;">
+                  <label style="font-weight:900;">Código (OTP)</label>
+                  <input id="aOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
+                         value="${escapeHtml(d.aOtp||'')}" />
+                </div>
+                <button class="btn ghost" id="btnSendOtpA" type="button" style="min-width:160px;">Enviar código</button>
+                <button class="btn primary" id="btnVerifyOtpA" type="button" style="min-width:160px;">Validar</button>
+              </div>
+              <div id="otpHintA" class="muted" style="margin-top:8px; display:${d.aOtpSent ? "block":"none"};">
+                Demo OTP: <b>${escapeHtml(d.aOtpCode||"")}</b>
               </div>
             </div>
-<div style="margin-top:12px;">
+
+            <div style="margin-top:12px;">
               <label style="font-weight:900;">Teléfono (opcional)</label>
               <input id="onbPhone" placeholder="+56 9 1234 5678" value="${escapeHtml(phone)}" />
             </div>
 
             <div style="margin-top:12px;">
               <label style="font-weight:900;">Password</label>
-              <input id="onbPass" type="password" placeholder="Mínimo 4 caracteres" value="${escapeHtml(pass)}" />
+              <input id="onbPass" type="password" placeholder="Mínimo 6 caracteres" value="${escapeHtml(pass)}" />
             </div>
 
             <div style="margin-top:12px;">
@@ -518,21 +480,19 @@ function hashDemo(str){
               </div>
             </div>
           ` : `
-            
-            <div class="summaryCard">
-              <div class="h2">Resumen</div>
-              <div class="kv"><span>Región</span><b>${escapeHtml(regionSel?.name || "-")}</b></div>
-              <div class="kv"><span>Comuna</span><b>${escapeHtml(comunaSel?.name || "-")}</b></div>
-              <div class="kv"><span>Colegio</span><b>${escapeHtml(schoolSel?.name || "-")}</b></div>
-              <div class="kv"><span>Curso</span><b>${escapeHtml(`${d.level||""}${d.letter||""} · ${d.jornada||""} · ${d.year||""}`.trim() || "-")}</b></div>
-              <div class="kv"><span>Rol</span><b>${escapeHtml(rolesLabel || "-")}</b></div>
-              <div class="kv"><span>Correo registrado</span><b>${escapeHtml(emailRegistered || "-")}</b></div>
-              <div class="divider"></div>
-              <div class="muted">
-                Al finalizar, podrás encontrar el <b>código de invitación</b> en el menú del Presidente, en <b>Apoderados</b>.
+            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
+              <div style="font-weight:950;">Resumen</div>
+              <div class="muted" style="margin-top:6px;">Revisa tus datos antes de finalizar.</div>
+
+              <div style="margin-top:10px;display:grid;gap:8px;">
+                <div><span class="muted">Rol:</span> <b>Presidente</b></div>
+                <div><span class="muted">Correo registrado:</span> <b>${escapeHtml(String(d.pEmail||"").trim().toLowerCase()) || "-"}</b></div>
+              </div>
+
+              <div class="muted" style="margin-top:10px;">
+                Al finalizar, encontrarás el <b>código de invitación</b> en el menú del Presidente → <b>Apoderados</b>.
               </div>
             </div>
-
           `}
         `:""}
 
@@ -548,498 +508,394 @@ function hashDemo(str){
   }
 
   function wire(step, d, ctx){
-    const btnPrev = $("btnPrev");
-    const btnNext = $("btnNext");
+  const btnPrev = $("btnPrev");
+  const btnNext = $("btnNext");
 
-    // Apoderado: validar inviteCode y saltar a step 3
-    if(step===1 && MODE==="apoderado"){
-      const inv = $("onbInviteCode");
-      const btn = $("btnValidateCode");
-      const preview = $("coursePreview");
+  // --- Step 1: Apoderado valida inviteCode ---
+  if(step===1 && MODE==="apoderado"){
+    const inv = $("onbInviteCode");
+    const btn = $("btnValidateCode");
+    const preview = $("coursePreview");
 
-      inv && (inv.oninput = ()=>{ d.inviteCode = String(inv.value||"").trim().toUpperCase(); saveDraft(d); });
+    inv && (inv.oninput = ()=>{ d.inviteCode = String(inv.value||"").trim().toUpperCase(); saveDraft(d); });
 
-      btn && (btn.onclick = ()=>{
-        const code = String(d.inviteCode||"").trim().toUpperCase();
-        if(!code){ alert("Ingresa el código de invitación."); return; }
+    btn && (btn.onclick = ()=>{
+      const code = String(d.inviteCode||"").trim().toUpperCase();
+      if(!code){ alert("Ingresa el código de invitación."); return; }
 
-        const course = getCourseV1();
-        if(!course || !course.inviteCode){ alert("Aún no existe un curso creado por el Presidente."); return; }
+      const course = getCourseV1();
+      if(!course || !course.inviteCode){ alert("Aún no existe un curso creado por el Presidente."); return; }
 
-        if(code !== String(course.inviteCode||"").toUpperCase()){
-          alert("Código de invitación incorrecto.");
-          if(preview) preview.innerHTML = "";
-          return;
-        }
-
-        const c = course.course || {};
-        d.regionId = c.regionId;
-        d.comunaId = c.comunaId;
-        d.schoolId = c.schoolId;
-        d.jornada = c.jornada;
-        d.level = c.level;
-        d.letter = c.letter;
-        d.year = c.year;
-
-        d.courseLocked = true;
-        d.step = 3;
-        saveDraft(d);
-
-        if(preview) preview.innerHTML = courseSummaryHTML(course);
-        render();
-      });
-    }
-
-    // Directiva tesorero: validar treasurerCode y entrar
-    if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="tesorero"){
-      const inp = $("onbTreasurerCode");
-      const btn = $("btnValidateTreasurer");
-      const prev = $("treasurerPreview");
-
-      inp && (inp.oninput = ()=>{ d.treasurerCodeInput = String(inp.value||"").trim().toUpperCase(); saveDraft(d); });
-
-      btn && (btn.onclick = ()=>{
-        const course = getCourseV1();
-        if(!course || !course.treasurerCode){
-          alert("Aún no existe un curso creado por el Presidente.");
-          return;
-        }
-
-        const code = String(d.treasurerCodeInput||"").trim().toUpperCase();
-        if(!code){ alert("Ingresa el código de tesorero."); return; }
-
-        if(code !== String(course.treasurerCode||"").toUpperCase()){
-          alert("Código de tesorero incorrecto.");
-          if(prev) prev.innerHTML = "";
-          return;
-        }
-
-        setActiveCourseKey(course.courseKey);
-
-        localStorage.setItem("cursapp_demo_user", JSON.stringify({
-          name: "Tesorero (Demo)",
-          role: "tesorero",
-          colegio: course.course?.schoolName || "Colegio",
-          curso: `${course.course?.level||""}${course.course?.letter||""} ${course.course?.year||""}`,
-          jornada: course.course?.jornada || "",
-          alumno: "Nombre alumno(a)"
-        }));
-
-        // ✅ sesión única (producción-ready)
-        try{
-          if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-            window.CURSAPP.setSession({ userId: "tesorero", role: "tesorero", courseKey: course.courseKey });
-          }else{
-            localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: "tesorero", role: "tesorero", courseKey: course.courseKey }));
-          }
-        }catch(e){}
-
-        if(prev) prev.innerHTML = courseSummaryHTML(course);
-        clearDraft();
-        window.location.href = "/tesorero.html";
-      });
-
-      // El tesorero no usa Continuar
-      const next = $("btnNext");
-      if(next) next.onclick = ()=> alert("Usa “Validar y entrar”.");
-    }
-
-    // Directiva presidente: selección curso (paso 1)
-    if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
-      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool");
-      r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); };
-      c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); };
-      s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); };
-      d.regionId = ctx.regionId; d.comunaId = ctx.comunaId; d.schoolId = ctx.schoolId;
-    }
-
-    // Paso 2 solo presidente
-    if(step===2 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
-      $("onbJornada").onchange = ()=>{ d.jornada=$("onbJornada").value; saveDraft(d); };
-      $("onbYear").oninput = ()=>{ d.year=$("onbYear").value; saveDraft(d); };
-      $("onbLevel").onchange = ()=>{ d.level=$("onbLevel").value; saveDraft(d); };
-      $("onbLetter").onchange = ()=>{ d.letter=$("onbLetter").value; saveDraft(d); };
-    }
-
-    // Paso 3 inputs
-    if(step===3){
-      $("onbName") && (($("onbName").oninput = ()=>{ d.name = $("onbName").value; saveDraft(d); }));
-      $("onbAlumno") && (($("onbAlumno").oninput = ()=>{ d.alumno = $("onbAlumno").value; saveDraft(d); }));
-
-      if(MODE==="directiva"){
-        const chk = $("alsoAp");
-        chk && (chk.onchange = ()=>{ d.alsoApoderado = !!chk.checked; saveDraft(d); render(); });
-
-        // Credenciales del Presidente (siempre)
-        $("dEmail") && (($("dEmail").oninput = ()=>{
-          d.dEmail = $("dEmail").value;
-          // reset OTP si cambia el correo
-          d.dEmailOtpSent = false;
-          d.dEmailOtpVerified = false;
-          d.dEmailOtpCode = "";
-          saveDraft(d);
-        }));
-
-        $("dPass") && (($("dPass").oninput = ()=>{ d.dPass = $("dPass").value; saveDraft(d); }));
-        $("dPass2") && (($("dPass2").oninput = ()=>{ d.dPass2 = $("dPass2").value; saveDraft(d); }));
-
-        $("btnSendOtpD") && ($("btnSendOtpD").onclick = ()=>{
-          const v = validateEmailStrict(d.dEmail);
-          if(!v.ok){ alert(v.reason); return; }
-          const code = String(Math.floor(100000 + Math.random()*900000));
-          d.dEmail = v.email;
-          d.dEmailOtpCode = code;
-          d.dEmailOtpSent = true;
-          d.dEmailOtpVerified = false;
-          saveDraft(d);
-          render();
-        });
-
-        $("btnVerifyOtpD") && ($("btnVerifyOtpD").onclick = ()=>{
-          const typed = String(($("dOtp")?.value || "")).trim();
-          if(!d.dEmailOtpSent){ alert("Primero envía el código."); return; }
-          if(typed !== String(d.dEmailOtpCode)){ alert("Código incorrecto."); return; }
-          d.dEmailOtpVerified = true;
-          saveDraft(d);
-          render();
-        });
-
-        // Si también es apoderado, registra alumno/a (obligatorio)
-        if(d.alsoApoderado){
-          $("dAlumno") && (($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); }));
-          $("dPhone") && (($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); }));
-        }
-
+      if(code !== String(course.inviteCode||"").toUpperCase()){
+        alert("Código de invitación incorrecto.");
+        if(preview) preview.innerHTML = "";
+        return;
       }
 
-      if(MODE==="apoderado"){
-        $("onbEmail") && (($("onbEmail").oninput = ()=>{
-          d.email = $("onbEmail").value;
-          // reset OTP if email changes
-          d.emailOtpSent = false;
-          d.emailOtpVerified = false;
-          d.emailOtpCode = "";
-          saveDraft(d);
-        }));
+      const c = course.course || {};
+      d.regionId = c.regionId;
+      d.comunaId = c.comunaId;
+      d.schoolId = c.schoolId;
+      d.jornada = c.jornada;
+      d.level = c.level;
+      d.letter = c.letter;
+      d.year = c.year;
 
-        $("btnSendOtp") && ($("btnSendOtp").onclick = ()=>{
-          const v = validateEmailStrict(d.email);
-          if(!v.ok){ alert(v.reason); return; }
-          const code = String(Math.floor(100000 + Math.random()*900000));
-          d.email = v.email;
-          d.emailOtpCode = code;
-          d.emailOtpSent = true;
-          d.emailOtpVerified = false;
-          saveDraft(d);
-          render();
-        });
-
-        $("btnVerifyOtp") && ($("btnVerifyOtp").onclick = ()=>{
-          const typed = String(($("onbOtp")?.value || "")).trim();
-          if(!d.emailOtpSent){ alert("Primero envía el código."); return; }
-          if(typed !== String(d.emailOtpCode)){ alert("Código incorrecto."); return; }
-          d.emailOtpVerified = true;
-          saveDraft(d);
-          render();
-        });
-
-        $("onbPhone") && (($("onbPhone").oninput = ()=>{ d.phone = $("onbPhone").value; saveDraft(d); }));
-        $("onbPass") && (($("onbPass").oninput = ()=>{ d.pass = $("onbPass").value; saveDraft(d); }));
-        $("onbPass2") && (($("onbPass2").oninput = ()=>{ d.pass2 = $("onbPass2").value; saveDraft(d); }));
-      }
-    }
-
-    // Paso 4 apoderado radio
-    if(step===4 && MODE==="apoderado"){ 
-      document.querySelectorAll("input[name=pay]").forEach(r=>{
-        r.onchange = ()=>{ d.payChoice = r.value; saveDraft(d); };
-      });
-    }
-
-    // Prev
-    btnPrev && (btnPrev.onclick = ()=>{
-      d.step = Math.max(1, Number(d.step||1)-1);
+      d.courseLocked = true;
+      d.step = 3;
       saveDraft(d);
+
+      if(preview) preview.innerHTML = courseSummaryHTML(course);
       render();
     });
 
-    // Next
-    btnNext && (btnNext.onclick = ()=>{
-      // apoderado step1 no usa continuar
-      if(step===1 && MODE==="apoderado"){ alert("Primero valida el código de invitación."); return; }
+    // Continuar no aplica
+    btnNext && (btnNext.onclick = ()=> alert("Primero valida el código de invitación."));
+  }
 
-      // presidente step1 -> step2
-      if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
-        if(!d.regionId || !d.comunaId || !d.schoolId){ alert("Selecciona región, comuna y colegio."); return; }
-        d.step = 2; saveDraft(d); render(); return;
+  // --- Step 1: Directiva (solo Presidente crea curso) ---
+  if(step===1 && MODE==="directiva"){
+    if(DIRECTIVA_ROLE!=="presidente"){
+      btnNext && (btnNext.onclick = ()=> alert("El tesorero lo designa el Presidente desde el menú del curso."));
+    }else{
+      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool");
+      r && (r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); });
+      c && (c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); });
+      s && (s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); });
+      d.regionId = ctx.regionId; d.comunaId = ctx.comunaId; d.schoolId = ctx.schoolId;
+    }
+  }
+
+  // --- Step 2 wiring ---
+  if(step===2){
+    if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
+      $("onbJornada") && ($("onbJornada").onchange = ()=>{ d.jornada=$("onbJornada").value; saveDraft(d); });
+      $("onbYear") && ($("onbYear").oninput = ()=>{ d.year=$("onbYear").value; saveDraft(d); });
+      $("onbLevel") && ($("onbLevel").onchange = ()=>{ d.level=$("onbLevel").value; saveDraft(d); });
+      $("onbLetter") && ($("onbLetter").onchange = ()=>{ d.letter=$("onbLetter").value; saveDraft(d); });
+    }
+  }
+
+  // --- Step 3 inputs (OTP + pass) ---
+  if(step===3){
+    $("onbName") && ($("onbName").oninput = ()=>{ d.name = $("onbName").value; saveDraft(d); });
+
+    // Apoderado
+    if(MODE==="apoderado"){
+      $("onbAlumno") && ($("onbAlumno").oninput = ()=>{ d.alumno = $("onbAlumno").value; saveDraft(d); });
+
+      const emailInp = $("onbEmail");
+      const otpInp = $("aOtp");
+      const sendBtn = $("btnSendOtpA");
+      const verBtn = $("btnVerifyOtpA");
+
+      emailInp && (emailInp.oninput = ()=>{ d.email = emailInp.value; saveDraft(d); });
+      otpInp && (otpInp.oninput = ()=>{ d.aOtp = otpInp.value; saveDraft(d); });
+
+      sendBtn && (sendBtn.onclick = ()=>{
+        const e = String(emailInp?.value||"").trim().toLowerCase();
+        if(!validateEmail(e)){ alert("Correo inválido."); return; }
+        d.email = e;
+        d.aOtpCode = String(Math.floor(100000 + Math.random()*900000));
+        d.aOtpSent = true;
+        d.aOtpVerified = false;
+        d.aOtpSentAt = Date.now();
+        saveDraft(d);
+        alert("Demo OTP: " + d.aOtpCode);
+        render();
+      });
+
+      verBtn && (verBtn.onclick = ()=>{
+        const code = String(otpInp?.value||"").trim();
+        if(!d.aOtpSent){ alert("Primero envía el código."); return; }
+        if(Date.now() - (d.aOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
+        if(code !== String(d.aOtpCode||"")){ alert("Código incorrecto."); return; }
+        d.aOtpVerified = true;
+        saveDraft(d);
+        alert("Correo verificado ✅");
+        render();
+      });
+
+      $("onbPhone") && ($("onbPhone").oninput = ()=>{ d.phone = $("onbPhone").value; saveDraft(d); });
+      $("onbPass") && ($("onbPass").oninput = ()=>{ d.pass = $("onbPass").value; saveDraft(d); });
+      $("onbPass2") && ($("onbPass2").oninput = ()=>{ d.pass2 = $("onbPass2").value; saveDraft(d); });
+    }
+
+    // Directiva (Presidente)
+    if(MODE==="directiva"){
+      const chk = $("alsoAp");
+      chk && (chk.onchange = ()=>{ d.alsoApoderado = !!chk.checked; saveDraft(d); render(); });
+
+      const pEmail = $("pEmail");
+      const pOtp = $("pOtp");
+      const sendBtn = $("btnSendOtp");
+      const verBtn = $("btnVerifyOtp");
+
+      pEmail && (pEmail.oninput = ()=>{ d.pEmail = pEmail.value; saveDraft(d); });
+      pOtp && (pOtp.oninput = ()=>{ d.pOtp = pOtp.value; saveDraft(d); });
+      $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
+      $("pPass2") && ($("pPass2").oninput = ()=>{ d.pPass2 = $("pPass2").value; saveDraft(d); });
+
+      sendBtn && (sendBtn.onclick = ()=>{
+        const e = String(pEmail?.value||"").trim().toLowerCase();
+        if(!validateEmail(e)){ alert("Correo inválido."); return; }
+        d.pEmail = e;
+        d.pOtpCode = String(Math.floor(100000 + Math.random()*900000));
+        d.pOtpSent = true;
+        d.pOtpVerified = false;
+        d.pOtpSentAt = Date.now();
+        saveDraft(d);
+        alert("Demo OTP: " + d.pOtpCode);
+        render();
+      });
+
+      verBtn && (verBtn.onclick = ()=>{
+        const code = String(pOtp?.value||"").trim();
+        if(!d.pOtpSent){ alert("Primero envía el código."); return; }
+        if(Date.now() - (d.pOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
+        if(code !== String(d.pOtpCode||"")){ alert("Código incorrecto."); return; }
+        d.pOtpVerified = true;
+        saveDraft(d);
+        alert("Correo verificado ✅");
+        render();
+      });
+
+      if(d.alsoApoderado){
+        $("dAlumno") && ($("dAlumno").oninput = ()=>{ d.alumno = $("dAlumno").value; saveDraft(d); });
+        $("dPhone") && ($("dPhone").oninput = ()=>{ d.dPhone = $("dPhone").value; saveDraft(d); });
       }
+    }
+  }
 
-      // step2
-      if(step===2){
-        if(MODE==="apoderado"){ d.step = 3; saveDraft(d); render(); return; }
+  // --- Step 4 wiring (apoderado radios) ---
+  if(step===4 && MODE==="apoderado"){
+    document.querySelectorAll("input[name=pay]").forEach(r=>{
+      r.onchange = ()=>{ d.payChoice = r.value; saveDraft(d); };
+    });
+  }
 
-        if(DIRECTIVA_ROLE==="presidente"){
-          d.jornada = $("onbJornada").value;
-          d.year = String($("onbYear").value||"").trim();
-          d.level = $("onbLevel").value;
-          d.letter = $("onbLetter").value;
+  // --- Prev ---
+  btnPrev && (btnPrev.onclick = ()=>{
+    d.step = Math.max(1, Number(d.step||1)-1);
+    saveDraft(d);
+    render();
+  });
 
-          if(!/^\d{4}$/.test(d.year)){ alert("Año inválido."); return; }
-        }
+  // --- Next / Finalize ---
+  btnNext && (btnNext.onclick = ()=>{
+    // Step 1 directiva presidente -> step2
+    if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
+      if(!d.regionId || !d.comunaId || !d.schoolId){ alert("Selecciona región, comuna y colegio."); return; }
+      d.step = 2; saveDraft(d); render(); return;
+    }
+
+    // Step 2
+    if(step===2){
+      if(MODE==="apoderado"){ d.step = 3; saveDraft(d); render(); return; }
+
+      if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
+        d.jornada = $("onbJornada").value;
+        d.year = String($("onbYear").value||"").trim();
+        d.level = $("onbLevel").value;
+        d.letter = $("onbLetter").value;
+
+        if(!/^\d{4}$/.test(d.year)){ alert("Año inválido."); return; }
         d.step = 3; saveDraft(d); render(); return;
       }
+    }
 
-      // step3 validations
-      if(step===3){
-        d.name = String($("onbName")?.value || "").trim();
-        d.alumno = String($("onbAlumno")?.value || "").trim();
-        if(!d.name){ alert("Completa el nombre."); return; }
+    // Step 3 validations -> step4
+    if(step===3){
+      d.name = String($("onbName")?.value || "").trim();
+      if(!d.name){ alert("Completa el nombre."); return; }
 
-        if(MODE==="directiva"){
-          // Credenciales del Presidente (usuario de entrada)
-          const eRaw = String($("dEmail")?.value || "");
-          const p1 = String($("dPass")?.value || "");
-          const p2 = String($("dPass2")?.value || "");
+      if(MODE==="directiva"){
+        d.pEmail = String($("pEmail")?.value || "").trim().toLowerCase();
+        if(!validateEmail(d.pEmail)){ alert("Correo inválido."); return; }
+        if(!d.pOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
 
-          const ev = validateEmailStrict(eRaw);
-          if(!ev.ok){ alert(ev.reason); return; }
+        d.pPass = String($("pPass")?.value || "");
+        d.pPass2 = String($("pPass2")?.value || "");
+        if(d.pPass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
+        if(d.pPass !== d.pPass2){ alert("Password no coincide."); return; }
 
-          if(!d.dEmailOtpVerified){
-            alert("Debes validar el correo con el código antes de continuar.");
-            return;
-          }
-
-          if(p1.length < 4){ alert("Password mínimo 4 caracteres."); return; }
-          if(p1 !== p2){ alert("Password no coincide."); return; }
-
-          d.dEmail = ev.email;
-          d.dPass = p1;
-          d.dPass2 = p2;
-
-          // Si también es apoderado, registra alumno/a (obligatorio)
-          if(d.alsoApoderado){
-            const dAl = String($("dAlumno")?.value || "").trim();
-            d.dPhone = String($("dPhone")?.value || "").trim();
-
-            if(!dAl){ alert("Completa alumno/a."); return; }
-
-            // Evitar duplicado por curso (apoderado)
-            const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
-            if(emailAlreadyInCourse(ev.email, courseKey)){
-              alert("Este correo ya está registrado como apoderado en este curso.");
-              return;
-            }
-
-            d.alumno = dAl;
-          }else{
-            d.alumno = "";
-          }
-
-          d.step = 4; saveDraft(d); render(); return;
-        }
+        if(d.alsoApoderado){
+          d.alumno = String($("dAlumno")?.value || "").trim();
+          d.dPhone = String($("dPhone")?.value || "").trim();
+          if(!d.alumno){ alert("Completa alumno/a."); return; }
+        }else{
+          d.alumno = "";
         }
 
-        // apoderado
-        const eRaw = String($("onbEmail")?.value || "");
-        d.phone = String($("onbPhone")?.value || "").trim();
-        d.pass = String($("onbPass")?.value || "");
-        d.pass2 = String($("onbPass2")?.value || "");
-
-        if(!d.alumno){ alert("Completa alumno/a."); return; }
-
-        const ev = validateEmailStrict(eRaw);
-        if(!ev.ok){ alert(ev.reason); return; }
-
-        if(!d.emailOtpVerified){
-          alert("Debes validar el correo con el código antes de continuar.");
-          return;
-        }
-
-        // Evitar duplicado por curso (apoderado)
-        const course = getCourseV1();
-        const c = course?.course || {};
-        const courseKey = c.courseKey || makeCourseKey(c.schoolId, c.level, c.letter, c.jornada, c.year);
-        if(courseKey && emailAlreadyInCourse(ev.email, courseKey)){
-          alert("Este correo ya está registrado como apoderado en este curso.");
-          return;
-        }
-
-        if(d.pass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
-        if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
-
-        d.email = ev.email;
         d.step = 4; saveDraft(d); render(); return;
       }
 
-      // step4 finalize
-      if(step===4){
-        const region = REGIONS.find(r=>r.id===d.regionId);
-        const comuna = COMUNAS.find(c=>c.id===d.comunaId);
-        const school = SCHOOLS.find(s=>s.id===d.schoolId);
+      if(MODE==="apoderado"){
+        d.alumno = String($("onbAlumno")?.value || "").trim();
+        if(!d.alumno){ alert("Completa alumno/a."); return; }
 
-        const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
+        d.email = String($("onbEmail")?.value || "").trim().toLowerCase();
+        if(!validateEmail(d.email)){ alert("Correo inválido."); return; }
+        if(!d.aOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
 
-        // directiva: solo presidente finaliza creación
-        if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
-          const inviteCode = generateCode();
+        d.phone = String($("onbPhone")?.value || "").trim();
+        d.pass = String($("onbPass")?.value || "");
+        d.pass2 = String($("onbPass2")?.value || "");
+        if(d.pass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
+        if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
 
-          // ✅ Crear usuario (siempre) — el correo es el usuario de entrada
-          const email = String(d.dEmail || "").trim().toLowerCase();
-          let users = loadUsers();
-          const existing = users.find(u=>String(u.email||"").toLowerCase()===email);
-          const userId = existing ? existing.userId : ("u_"+uid("usr"));
-          const passHash = hashDemo(d.dPass || "");
+        d.step = 4; saveDraft(d); render(); return;
+      }
+    }
 
-          if(existing){
-            existing.passwordHashDemo = passHash;
-            existing.updatedAt = nowISO();
-          }else{
-            users.unshift({ userId, email, passwordHashDemo: passHash, createdAt: nowISO() });
-          }
-          saveUsers(users);
+    // Step 4 finalize
+    if(step===4){
+      const region = REGIONS.find(r=>r.id===d.regionId);
+      const comuna = COMUNAS.find(c=>c.id===d.comunaId);
+      const school = SCHOOLS.find(s=>s.id===d.schoolId);
 
-          // ✅ Crear perfiles
+      const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
+
+      if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
+        const inviteCode = generateCode();
+
+        const courseObj = {
+          courseKey,
+          inviteCode,
+          directiva: { presidente: { name: d.name }, tesorero: { name: "" } },
+          course: {
+            regionId: d.regionId, regionName: region?region.name:"",
+            comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+            schoolId: d.schoolId, schoolName: school?school.name:"",
+            jornada: d.jornada,
+            level: d.level,
+            letter: d.letter,
+            year: d.year
+          },
+          createdAt: nowISO(),
+          createdByRole: "presidente"
+        };
+
+        localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
+        setActiveCourseKey(courseKey);
+
+        // Usuario Presidente
+        const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
+        const pPassHash = hashDemo(d.pPass||"");
+        let users = loadUsers();
+        const existingP = users.find(u=>String(u.email||"").toLowerCase()===pEmailNorm);
+        const presidenteUserId = existingP ? existingP.userId : ("u_"+uid("usr"));
+        if(existingP){
+          existingP.passwordHashDemo = pPassHash;
+          existingP.updatedAt = nowISO();
+        }else{
+          users.unshift({ userId: presidenteUserId, email: pEmailNorm, passwordHashDemo: pPassHash, createdAt: nowISO() });
+        }
+        saveUsers(users);
+
+        // Si también es apoderado: perfil apoderado con el mismo usuario
+        if(d.alsoApoderado){
           let profiles = loadProfiles();
-          profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && (p.role==="presidente" || p.role==="apoderado")));
-
+          profiles = profiles.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && p.role==="apoderado"));
           profiles.unshift({
             profileId: "pr_"+uid("p"),
-            userId,
-            role: "presidente",
-            courseKey,
-            course: {
-              regionId: d.regionId, regionName: region?region.name:"",
-              comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-              schoolId: d.schoolId, schoolName: school?school.name:"",
-              jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
-            },
-            directiva: { name: d.name, email },
-            createdAt: nowISO()
-          });
-
-          if(d.alsoApoderado){
-            profiles.unshift({
-              profileId: "pr_"+uid("p"),
-              userId,
-              role: "apoderado",
-              courseKey,
-              course: {
-                regionId: d.regionId, regionName: region?region.name:"",
-                comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-                schoolId: d.schoolId, schoolName: school?school.name:"",
-                jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
-              },
-              apoderado: { name: d.name, alumno: d.alumno, phone: d.dPhone || "" },
-              activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
-              createdAt: nowISO()
-            });
-          }
-          saveProfiles(profiles);
-
-          const courseObj = {
-            courseKey,
-            inviteCode,
-            directiva: { presidente: { userId, name: d.name, email }, tesorero: { userId:"", name:"", email:"" } },
-            course: {
-              regionId: d.regionId, regionName: region?region.name:"",
-              comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-              schoolId: d.schoolId, schoolName: school?school.name:"",
-              jornada: d.jornada, level: d.level, letter: d.letter, year: d.year
-            },
-            createdAt: nowISO(),
-            createdByRole: "presidente",
-            createdByUserId: userId
-          };
-
-          localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
-
-          // ✅ curso activo + sesión
-          setActiveCourseKey(courseKey);
-          try{
-            if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-              window.CURSAPP.setSession({ userId, role: "presidente", courseKey });
-            }else{
-              localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId, role: "presidente", courseKey }));
-            }
-          }catch(e){}
-
-          clearDraft();
-          alert(
-            "Curso creado ✅\n\n" +
-            "Tu usuario es: " + email + "\n\n" +
-            "El código de invitación estará en el menú del Presidente, en Apoderados."
-          );
-          window.location.href = "/presidente.html";
-          return;
-        }
-        }
-
-        // apoderado finalize (pending)
-        if(MODE==="apoderado"){
-          d.payChoice = d.payChoice || "now";
-
-          let users = loadUsers();
-          const existing = users.find(u=>u.email===d.email);
-          let userId = existing ? existing.userId : ("u_"+uid("usr"));
-          const passHash = hashDemo(d.pass);
-
-          if(existing){
-            existing.passwordHashDemo = passHash;
-            existing.updatedAt = nowISO();
-          }else{
-            users.unshift({ userId, email: d.email, passwordHashDemo: passHash, createdAt: nowISO() });
-          }
-          saveUsers(users);
-
-          let profiles = loadProfiles();
-          const activation = {
-            required:true, amount:7990,
-            status: (d.payChoice==="later") ? "pending" : "paid",
-            createdAt: nowISO(),
-            paidAt: (d.payChoice==="later") ? null : nowISO()
-          };
-
-          profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey));
-          profiles.unshift({
-            profileId: "pr_"+uid("p"),
-            userId,
+            userId: presidenteUserId,
             role: "apoderado",
             courseKey,
-            course: { regionId: d.regionId, regionName: region?region.name:"", comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-                      schoolId: d.schoolId, schoolName: school?school.name:"", jornada: d.jornada, level: d.level, letter: d.letter, year: d.year },
-            apoderado: { name: d.name, alumno: d.alumno, phone: d.phone },
-            activation,
+            course: courseObj.course,
+            apoderado: { name: d.name, alumno: d.alumno, phone: d.dPhone || "" },
+            activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
             createdAt: nowISO()
           });
           saveProfiles(profiles);
 
-          setActiveCourseKey(courseKey);
+          const map = loadJSON(KEY_DIRECTIVA_AP_BY_ROLE, {});
+          map["presidente"] = { email: pEmailNorm, apoderadoName: d.name, alumno: d.alumno, courseKey };
+          saveJSON(KEY_DIRECTIVA_AP_BY_ROLE, map);
+        }
 
-          if(typeof createEnrollment !== "function"){
-            alert("Falta enrollments.js.\n\nCarga /assets/enrollments.js antes de onboarding.js.");
-            return;
+        // sesión
+        try{
+          if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
+            window.CURSAPP.setSession({ userId: presidenteUserId, role: "presidente", courseKey });
+          }else{
+            localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: presidenteUserId, role: "presidente", courseKey }));
           }
+        }catch(e){}
 
-          const res = createEnrollment({
-            apoderadoName: d.name, alumno: d.alumno, email: d.email, phone: d.phone,
-            activationAmount: 7990, activationStatus: activation.status
-          });
+        clearDraft();
+        alert("Curso creado ✅\n\nAhora encontrarás el código de invitación en el menú del Presidente → Apoderados.");
+        window.location.href = "/presidente.html";
+        return;
+      }
 
-          if(!res || !res.ok){
-            alert((res && res.error) ? res.error : "No se pudo enviar la solicitud.");
-            return;
-          }
+      if(MODE==="apoderado"){
+        const payChoice = d.payChoice || "now";
+        const activation = (payChoice==="later") ? { status:"unpaid", paidAt:"" } : { status:"paid", paidAt: nowISO() };
 
-          clearDraft();
-          alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
-          window.location.href = "/index.html?pending=1";
+        // usuario apoderado
+        let users = loadUsers();
+        const existing = users.find(u=>String(u.email||"").toLowerCase()===String(d.email||"").toLowerCase());
+        const userId = existing ? existing.userId : ("u_"+uid("usr"));
+        const passHash = hashDemo(d.pass);
+
+        if(existing){
+          existing.passwordHashDemo = passHash;
+          existing.updatedAt = nowISO();
+        }else{
+          users.unshift({ userId, email: d.email, passwordHashDemo: passHash, createdAt: nowISO() });
+        }
+        saveUsers(users);
+
+        // perfil apoderado
+        let profiles = loadProfiles();
+        profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && p.role==="apoderado"));
+        profiles.unshift({
+          profileId: "pr_"+uid("p"),
+          userId,
+          role: "apoderado",
+          courseKey,
+          course: {
+            regionId: d.regionId, regionName: region?region.name:"",
+            comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+            schoolId: d.schoolId, schoolName: school?school.name:"",
+            jornada: d.jornada,
+            level: d.level,
+            letter: d.letter,
+            year: d.year
+          },
+          apoderado: { name: d.name, alumno: d.alumno, phone: d.phone || "" },
+          activation: { required:true, amount:7990, status: activation.status, createdAt: nowISO(), paidAt: activation.paidAt },
+          createdAt: nowISO()
+        });
+        saveProfiles(profiles);
+
+        // enrollment (pendiente) si existe
+        if(typeof createEnrollment !== "function"){
+          alert("Falta enrollments.js.\n\nCarga /assets/enrollments.js antes de onboarding.js.");
           return;
         }
 
-        alert("Acción no válida.");
+        const res = createEnrollment({
+          apoderadoName: d.name, alumno: d.alumno, email: d.email, phone: d.phone || "",
+          activationAmount: 7990, activationStatus: activation.status
+        });
+
+        if(!res || !res.ok){
+          alert((res && res.error) ? res.error : "No se pudo enviar la solicitud.");
+          return;
+        }
+
+        clearDraft();
+        alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
+        window.location.href = "/index.html?pending=1";
+        return;
       }
-    });
-  }
+
+      alert("Acción no válida.");
+    }
+  });
+}
 
   // Init
   const d = loadDraft();
