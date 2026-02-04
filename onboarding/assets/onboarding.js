@@ -478,12 +478,19 @@ function uid(prefix = "id") {
               <div style="font-weight:950;">Resumen</div>
               <div class="muted" style="margin-top:6px;">Revisa tus datos antes de finalizar.</div>
 
-              <div style="margin-top:10px;display:grid;gap:8px;">
-                <div><span class="muted">Rol:</span> <b>Presidente</b></div>
-                <div><span class="muted">Correo registrado:</span> <b>${escapeHtml(String(d.pEmail||"").trim().toLowerCase()) || "-"}</b></div>
+              <div class="muted" style="margin-top:10px;line-height:1.45;">
+                Te registrarás en el colegio <b>${escapeHtml(String((SCHOOLS.find(s=>s.id===d.schoolId)||{}).name||"").trim())||"—"}</b>,
+                curso <b>${escapeHtml(String(d.level||"").trim())}°${escapeHtml(String(d.letter||"").trim().toUpperCase())}</b>,
+                jornada <b>${escapeHtml(String(d.jornada||"").trim())||"—"}</b>,
+                año <b>${escapeHtml(String(d.year||"").trim())||"—"}</b>.
               </div>
 
-              <div class="muted" style="margin-top:10px;">
+              <div style="margin-top:12px;display:grid;gap:8px;">
+                <div><span class="muted">Correo de acceso:</span> <b>${escapeHtml(String(d.pEmail||"").trim().toLowerCase()) || "-"}</b></div>
+                <div><span class="muted">Rol:</span> <b>${escapeHtml((DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : (d.alsoApoderado ? "Presidente · Apoderado" : "Presidente")))}</b></div>
+              </div>
+
+              <div class="muted" style="margin-top:12px;">
                 Al finalizar, encontrarás el <b>código de invitación</b> en el menú del Presidente → <b>Apoderados</b>.
               </div>
             </div>
