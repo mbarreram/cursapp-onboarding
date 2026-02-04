@@ -23,6 +23,12 @@ function createEnrollment(data) {
 
   const enrollments = loadEnrollments();
 
+  // Permite crear enrollments aprobados en casos especiales (ej: Presidente que también es Apoderado).
+  // Mantiene el comportamiento histórico: por defecto siempre queda "pending".
+  const forcedStatus = (data && data.status) ? String(data.status) : "pending";
+  const reviewedBy = (data && data.reviewedBy) ? String(data.reviewedBy) : null;
+  const reviewedAt = (data && data.reviewedAt) ? String(data.reviewedAt) : null;
+
   const enrollment = {
     enrollmentId: "enr_" + Date.now(),
     courseKey: localStorage.getItem("cursapp_active_course_v1"),
@@ -34,10 +40,11 @@ function createEnrollment(data) {
       amount: data.activationAmount || 0,
       status: data.activationStatus || "pending"
     },
-    status: "pending", // SIEMPRE pendiente
+    // Por defecto queda pendiente. En casos especiales puede forzarse a "approved".
+    status: (forcedStatus === "approved" ? "approved" : "pending"),
     createdAt: new Date().toISOString(),
-    reviewedAt: null,
-    reviewedBy: null
+    reviewedAt: (forcedStatus === "approved" ? (reviewedAt || new Date().toISOString()) : null),
+    reviewedBy: (forcedStatus === "approved" ? (reviewedBy || "directiva") : null)
   };
 
   enrollments.push(enrollment);
