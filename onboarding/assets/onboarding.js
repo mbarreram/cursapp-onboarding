@@ -423,9 +423,14 @@ function uid(prefix = "id") {
 
 
             <div style="margin-top:10px;">
-              <label style="font-weight:900;">Contraseña (mín. 4)</label>
+              <label style="font-weight:900;">Contraseña (mín. 6)</label>
               <input id="pPass" type="password" autocomplete="new-password" placeholder="••••" value="${escapeHtml(d.pPass||'')}" />
             </div>
+            <div style="margin-top:12px;">
+              <label style="font-weight:900;">Confirmar contraseña</label>
+              <input id="pPass2" type="password" autocomplete="new-password" placeholder="Repite tu contraseña" value="${escapeHtml(d.pPass2||'')}" />
+            </div>
+
 
           </div>
           ` : ``}
@@ -480,6 +485,8 @@ function uid(prefix = "id") {
               <div id="otpHintA" class="muted" style="margin-top:8px; display:${d.aOtpSent ? "block":"none"};">
                 Demo OTP: <b>${escapeHtml(d.aOtpCode||"")}</b>
               </div>
+              <div id="otpOkA" class="otpStatusOk" style="display:${d.aOtpVerified ? "inline-flex":"none"};">✓ Código verificado</div>
+
             </div>
 
             <div style="margin-top:12px;">
@@ -501,6 +508,27 @@ function uid(prefix = "id") {
 
         ${step===4 ? `
           ${MODE==="apoderado" ? `
+            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:#fff;">
+              <div style="font-weight:950;">Resumen</div>
+              <div class="muted" style="margin-top:6px;">Revisa tus datos antes de finalizar.</div>
+
+              <div class="muted" style="margin-top:10px;line-height:1.45;">
+                Te registrarás en el colegio <b>${escapeHtml(String((SCHOOLS.find(s=>s.id===d.schoolId)||{}).name||"").trim())||"—"}</b>,
+                curso <b>${escapeHtml(String(d.level||"").trim())}${escapeHtml(String(d.letter||"").trim().toUpperCase())}</b>,
+                jornada <b>${escapeHtml(String(d.jornada||"").trim())||"—"}</b>,
+                año <b>${escapeHtml(String(d.year||"").trim())||"—"}</b>.
+              </div>
+
+              <div style="margin-top:12px;display:grid;gap:8px;">
+                <div><span class="muted">Correo de acceso:</span> <b>${escapeHtml(String(d.email||"").trim().toLowerCase()) || "-"}</b></div>
+                <div><span class="muted">Alumno/a:</span> <b>${escapeHtml(String(d.alumno||"").trim()) || "-"}</b></div>
+              </div>
+
+              <div class="muted" style="margin-top:12px;">
+                Tu ingreso al curso quedará <b>pendiente de aprobación</b> por la directiva.
+              </div>
+            </div>
+
             <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
               <div style="font-weight:950;">Activación por curso</div>
               <div class="muted" style="margin-top:6px;">Setup único: <b>$7.990</b> por apoderado por curso (demo).</div>
@@ -634,6 +662,14 @@ function uid(prefix = "id") {
       const otpInp = $("aOtp");
       const sendBtn = $("btnSendOtpA");
       const verBtn = $("btnVerifyOtpA");
+      // Si ya está verificado, bloquear correo y envío
+      if(d.aOtpVerified){
+        try{
+          if(emailInp) emailInp.disabled = true;
+          if(sendBtn) sendBtn.disabled = true;
+        }catch(e){}
+      }
+
 
       emailInp && (emailInp.oninput = ()=>{ d.email = emailInp.value; saveDraft(d); });
       otpInp && (otpInp.oninput = ()=>{ d.aOtp = otpInp.value; saveDraft(d); });
@@ -680,6 +716,16 @@ function uid(prefix = "id") {
       pEmail && (pEmail.oninput = ()=>{ d.pEmail = pEmail.value; saveDraft(d); });
       pOtp && (pOtp.oninput = ()=>{ d.pOtp = pOtp.value; saveDraft(d); });
       $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
+      $("pPass2") && ($("pPass2").oninput = ()=>{ d.pPass2 = $("pPass2").value; saveDraft(d); });
+
+      // Si ya está verificado, bloquear correo y envío
+      if(d.pOtpVerified){
+        try{
+          if(pEmail) pEmail.disabled = true;
+          if(sendBtn) sendBtn.disabled = true;
+        }catch(e){}
+      }
+
 sendBtn && (sendBtn.onclick = ()=>{
         const e = String(pEmail?.value||"").trim().toLowerCase();
         if(!validateEmail(e)){ alert("Correo inválido."); return; }
@@ -758,7 +804,9 @@ render();
         if(!d.pOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
 
         d.pPass = String($("pPass")?.value || "");
-if(String(d.pPass||"").length < 4){ alert("La contraseña debe tener al menos 4 caracteres."); return; }
+d.pPass2 = String($("pPass2")?.value || "");
+        if(d.pPass.length < 6){ alert("La contraseña debe tener al menos 6 caracteres."); return; }
+        if(d.pPass !== d.pPass2){ alert("Las contraseñas no coinciden."); return; }
 if(d.alsoApoderado){
           d.alumno = String($("dAlumno")?.value || "").trim();
           d.dPhone = String($("dPhone")?.value || "").trim();
@@ -781,7 +829,7 @@ if(d.alsoApoderado){
         d.phone = String($("onbPhone")?.value || "").trim();
         d.pass = String($("onbPass")?.value || "");
         d.pass2 = String($("onbPass2")?.value || "");
-        if(d.pass.length < 4){ alert("Password mínimo 4 caracteres."); return; }
+        if(d.pass.length < 6){ alert("Password mínimo 6 caracteres."); return; }
         if(d.pass !== d.pass2){ alert("Password no coincide."); return; }
 
         d.step = 4; saveDraft(d); render(); return;
