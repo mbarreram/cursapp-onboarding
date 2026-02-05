@@ -243,8 +243,8 @@ const esc = (s) =>
     }
 
     const roleItems = roles.map(r=>({
-      label: r==="presidente" ? "Entrar como Presidente" : r==="tesorero" ? "Entrar como Tesorero" : "Entrar como Apoderado",
-      meta: r==="apoderado" ? "Requiere aprobación por directiva" : "",
+      label: r==="presidente" ? "🎓 Presidente" : r==="tesorero" ? "💳 Tesorero" : "👨‍👩‍👧 Apoderado",
+      meta: r==="apoderado" ? (roles.includes("presidente") ? "Aprobado automáticamente" : "Requiere aprobación por directiva") : "",
       role: r,
       profile: byRole[r]
     }));
