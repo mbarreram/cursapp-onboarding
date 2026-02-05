@@ -23,9 +23,19 @@ function createEnrollment(data) {
 
   const enrollments = loadEnrollments();
 
+  const courseKey = data.courseKey || localStorage.getItem("cursapp_active_course_v1");
+  const alumnoNorm = String(data.alumno||"").trim().toLowerCase();
+  const emailNorm = String(data.email||"").trim().toLowerCase();
+
+  // Evitar duplicados: mismo email + courseKey + alumno
+  const dup = enrollments.find(e => String(e.email||"").toLowerCase()===emailNorm && String(e.courseKey||"")===String(courseKey||"") && String(e.alumno||"").trim().toLowerCase()===alumnoNorm);
+  if(dup){
+    return { ok:false, error:"Este apoderado ya está registrado para este alumno en este curso.", enrollment: dup };
+  }
+
   const enrollment = {
     enrollmentId: "enr_" + Date.now(),
-    courseKey: data.courseKey || localStorage.getItem("cursapp_active_course_v1"),
+    courseKey: courseKey,
     apoderadoName: data.apoderadoName,
     alumno: data.alumno,
     email: data.email,
@@ -34,28 +44,19 @@ function createEnrollment(data) {
       amount: data.activationAmount || 0,
       status: data.activationStatus || "pending"
     },
-    status: data.status || "pending",
+    status: data.status || "pending", // pending | approved
     createdAt: new Date().toISOString(),
     reviewedAt: null,
     reviewedBy: null
   };
 
-  
-// Evitar duplicados por correo+curso
-const dup = enrollments.find(x =>
-  String(x.email||"").toLowerCase() === String(enrollment.email||"").toLowerCase() &&
-  String(x.courseKey||"") === String(enrollment.courseKey||"")
-);
-if (dup) {
-  return { ok: false, error: "Este correo ya tiene una solicitud/registro en este curso." };
-}
 
-// Si viene aprobado desde un flujo especial (Presidente+Apoderado)
-if (enrollment.status === "approved") {
-  enrollment.reviewedAt = new Date().toISOString();
-  enrollment.reviewedBy = data.reviewedBy || "presidente";
-}
-enrollments.push(enrollment);
+  // Si viene aprobado (caso Presidente+Apoderado), registrar auditoría
+  if(enrollment.status === "approved"){
+    enrollment.reviewedAt = data.reviewedAt || new Date().toISOString();
+    enrollment.reviewedBy = data.reviewedBy || "presidente";
+  }
+  enrollments.push(enrollment);
   saveEnrollments(enrollments);
 
   return { ok: true, enrollment };

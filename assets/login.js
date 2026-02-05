@@ -91,7 +91,12 @@
       .filter(x => String(x.email||"").trim().toLowerCase() === e && String(x.courseKey||"") === ck)
       .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
     return matches[0] || null;
+  
+  function findEnrollments(email, courseKey){
+    const e = String(email||"").trim().toLowerCase();
+    return loadEnrollments().filter(x => String(x.email||"").trim().toLowerCase()===e && String(x.courseKey||"")===String(courseKey||""));
   }
+}
 
   function requireApproved(email, courseKey){
     const enr = findEnrollment(email, courseKey);
@@ -139,80 +144,45 @@
   // ===== UI: choose course =====
   function renderChooser(title, subtitle, items, onPick){
     const card = document.querySelector(".auth-card");
-    
-if(!card){
-  // Fallback: modal overlay (sin prompt)
-  const overlay = document.createElement("div");
-  overlay.style.position = "fixed";
-  overlay.style.inset = "0";
-  overlay.style.background = "rgba(0,0,0,.35)";
-  overlay.style.display = "flex";
-  overlay.style.alignItems = "center";
-  overlay.style.justifyContent = "center";
-  overlay.style.zIndex = "9999";
+    if(!card){
+      // Overlay modal fallback (sin prompt nativo)
+      const old = document.getElementById("cursappPickerOverlay");
+      if(old) old.remove();
 
-  const box = document.createElement("div");
-  box.style.width = "min(92vw, 420px)";
-  box.style.background = "#fff";
-  box.style.borderRadius = "16px";
-  box.style.boxShadow = "0 18px 60px rgba(0,0,0,.25)";
-  box.style.padding = "16px";
-
-  const h = document.createElement("div");
-  h.style.fontWeight = "800";
-  h.style.fontSize = "16px";
-  h.style.marginBottom = "6px";
-  h.textContent = title;
-
-  const sub = document.createElement("div");
-  sub.style.color = "#667085";
-  sub.style.fontSize = "13px";
-  sub.style.marginBottom = "12px";
-  sub.textContent = subtitle;
-
-  const list = document.createElement("div");
-  list.style.display = "grid";
-  list.style.gap = "8px";
-
-  items.forEach((it, i)=>{
-    const b = document.createElement("button");
-    b.type = "button";
-    b.style.width = "100%";
-    b.style.textAlign = "left";
-    b.style.border = "1px solid rgba(99,102,241,.28)";
-    b.style.background = "rgba(99,102,241,.06)";
-    b.style.borderRadius = "12px";
-    b.style.padding = "10px 12px";
-    b.style.fontWeight = "700";
-    b.style.cursor = "pointer";
-    b.textContent = (it.label || ("Opción "+(i+1)));
-    b.onclick = ()=>{
-      overlay.remove();
-      onPick(it);
-    };
-    list.appendChild(b);
-  });
-
-  const cancel = document.createElement("button");
-  cancel.type = "button";
-  cancel.textContent = "Cancelar";
-  cancel.style.marginTop = "10px";
-  cancel.style.width = "100%";
-  cancel.style.border = "1px solid rgba(0,0,0,.12)";
-  cancel.style.background = "#fff";
-  cancel.style.borderRadius = "12px";
-  cancel.style.padding = "10px 12px";
-  cancel.style.fontWeight = "700";
-  cancel.onclick = ()=> overlay.remove();
-
-  box.appendChild(h);
-  box.appendChild(sub);
-  box.appendChild(list);
-  box.appendChild(cancel);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-  return;
-}
+      const wrap = document.createElement("div");
+      wrap.id = "cursappPickerOverlay";
+      wrap.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:18px;";
+      wrap.innerHTML = `
+        <div style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(2,6,23,.25);overflow:hidden;">
+          <div style="padding:16px 16px 6px 16px;">
+            <div style="font-weight:950;font-size:18px;">${esc(title)}</div>
+            <div style="margin-top:6px;color:rgba(15,23,42,.65);font-size:13px;">${esc(subtitle||"")}</div>
+          </div>
+          <div style="padding:0 10px 12px 10px;max-height:60vh;overflow:auto;">
+            ${items.map((it,i)=>`
+              <button data-pk="${i}" style="width:100%;text-align:left;border:1px solid rgba(229,231,235,.95);background:#fff;border-radius:14px;padding:12px;margin:8px 6px;cursor:pointer;">
+                <div style="font-weight:900;color:rgba(15,23,42,.92);">${esc(it.name||"")}</div>
+                ${it.meta ? `<div style="margin-top:4px;color:rgba(15,23,42,.6);font-size:12px;">${esc(it.meta)}</div>` : ``}
+              </button>
+            `).join("")}
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 16px 16px 16px;background:rgba(248,250,252,1);">
+            <button id="pkCancel" style="border:1px solid rgba(226,232,240,1);background:#fff;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;">Cancelar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(wrap);
+      wrap.addEventListener("click",(ev)=>{ if(ev.target===wrap) wrap.remove(); });
+      wrap.querySelector("#pkCancel").addEventListener("click", ()=>wrap.remove());
+      wrap.querySelectorAll("button[data-pk]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const i = Number(btn.getAttribute("data-pk"));
+          wrap.remove();
+          onPick(items[i] || items[0]);
+        });
+      });
+      return;
+    }
 
     card.innerHTML = `
       <div class="brandCenter">
@@ -263,7 +233,52 @@ if(!card){
     }));
 
     renderChooser("Elegir rol", "Selecciona cómo ingresar", roleItems, (it)=>{
-      if(it.role==="apoderado" && !requireApproved(userEmail, courseKey)) return;
+      if(it.role==="apoderado"){
+        const list = findEnrollments(userEmail, courseKey);
+        if(!list || !list.length){
+          showErr("No existe una solicitud para este curso. Completa onboarding como apoderado para enviar tu solicitud.");
+          return;
+        }
+        // Si hay más de un alumno, elegir cuál gestionar (separación de cuotas)
+        if(list.length > 1){
+          const items = list.map(e=>({
+            name: e.alumno || "Alumno/a",
+            meta: (e.status==="approved" ? "Aprobado" : "Pendiente"),
+            enr: e
+          }));
+          renderChooser("Elegir alumno/a", "Selecciona el alumno para gestionar pagos y cuotas", items, (pick)=>{
+            const enr = pick.enr;
+            if(!enr || enr.status!=="approved"){
+              showErr(enr && enr.status!=="approved" ? "La solicitud de este alumno está pendiente de aprobación." : "Solicitud inválida.");
+              return;
+            }
+            // Guardar alumno activo en sesión demo_user
+            try{
+              const u = JSON.parse(localStorage.getItem("cursapp_demo_user")||"{}");
+              u.apoderado = u.apoderado || {};
+              u.apoderado.alumno = enr.alumno || "";
+              u.apoderado.email = userEmail;
+              localStorage.setItem("cursapp_demo_user", JSON.stringify(u));
+              localStorage.setItem("cursapp_active_enrollment_v1", enr.enrollmentId||"");
+            }catch(e){}
+            go("apoderado", userEmail, courseKey, it.profile);
+          });
+          return;
+        }
+        // Solo 1 alumno/enrollment
+        if(!requireApproved(userEmail, courseKey)) return;
+        try{
+          const enr = list[0];
+          const u = JSON.parse(localStorage.getItem("cursapp_demo_user")||"{}");
+          u.apoderado = u.apoderado || {};
+          u.apoderado.alumno = enr.alumno || "";
+          u.apoderado.email = userEmail;
+          localStorage.setItem("cursapp_demo_user", JSON.stringify(u));
+          localStorage.setItem("cursapp_active_enrollment_v1", enr.enrollmentId||"");
+        }catch(e){}
+        go("apoderado", userEmail, courseKey, it.profile);
+        return;
+      }
       go(it.role, userEmail, courseKey, it.profile);
     });
   }
