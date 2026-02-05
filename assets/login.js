@@ -19,8 +19,6 @@
   const KEY_USERS = "cursapp_users_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
-  const KEY_COURSE_V1 = "cursapp_course_v1";
-  const KEY_COURSES_V1 = "cursapp_courses_v1";
   const KEY_ACTIVE_PROFILE = "cursapp_active_profile_v1";
   const KEY_ENROLL = "cursapp_enrollments_v1";
   const KEY_SESSION = "cursapp_session_v1";
@@ -112,12 +110,6 @@
   function go(role, userEmail, courseKey, profile){
     const pid = profile ? profileIdOf(userEmail, profile) : "";
     setActiveCourseKey(courseKey || "");
-    // Mantener compat: muchas vistas leen cursapp_course_v1
-    try{
-      const list = loadJSON(KEY_COURSES_V1, []);
-      const found = list.find(x=>String(x?.courseKey||"")===String(courseKey||""));
-      if(found) localStorage.setItem(KEY_COURSE_V1, JSON.stringify(found));
-    }catch(e){}
     setActiveProfileId(pid || "");
     setSession({
       userId: userEmail,
@@ -147,12 +139,80 @@
   // ===== UI: choose course =====
   function renderChooser(title, subtitle, items, onPick){
     const card = document.querySelector(".auth-card");
-    if(!card){
-      const chosen = prompt(title + "\n" + subtitle + "\n\nIngresa el índice (1..n):", "1");
-      const idx = Number(chosen||1)-1;
-      onPick(items[idx] || items[0]);
-      return;
-    }
+    
+if(!card){
+  // Fallback: modal overlay (sin prompt)
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(0,0,0,.35)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "9999";
+
+  const box = document.createElement("div");
+  box.style.width = "min(92vw, 420px)";
+  box.style.background = "#fff";
+  box.style.borderRadius = "16px";
+  box.style.boxShadow = "0 18px 60px rgba(0,0,0,.25)";
+  box.style.padding = "16px";
+
+  const h = document.createElement("div");
+  h.style.fontWeight = "800";
+  h.style.fontSize = "16px";
+  h.style.marginBottom = "6px";
+  h.textContent = title;
+
+  const sub = document.createElement("div");
+  sub.style.color = "#667085";
+  sub.style.fontSize = "13px";
+  sub.style.marginBottom = "12px";
+  sub.textContent = subtitle;
+
+  const list = document.createElement("div");
+  list.style.display = "grid";
+  list.style.gap = "8px";
+
+  items.forEach((it, i)=>{
+    const b = document.createElement("button");
+    b.type = "button";
+    b.style.width = "100%";
+    b.style.textAlign = "left";
+    b.style.border = "1px solid rgba(99,102,241,.28)";
+    b.style.background = "rgba(99,102,241,.06)";
+    b.style.borderRadius = "12px";
+    b.style.padding = "10px 12px";
+    b.style.fontWeight = "700";
+    b.style.cursor = "pointer";
+    b.textContent = (it.label || ("Opción "+(i+1)));
+    b.onclick = ()=>{
+      overlay.remove();
+      onPick(it);
+    };
+    list.appendChild(b);
+  });
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancelar";
+  cancel.style.marginTop = "10px";
+  cancel.style.width = "100%";
+  cancel.style.border = "1px solid rgba(0,0,0,.12)";
+  cancel.style.background = "#fff";
+  cancel.style.borderRadius = "12px";
+  cancel.style.padding = "10px 12px";
+  cancel.style.fontWeight = "700";
+  cancel.onclick = ()=> overlay.remove();
+
+  box.appendChild(h);
+  box.appendChild(sub);
+  box.appendChild(list);
+  box.appendChild(cancel);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  return;
+}
 
     card.innerHTML = `
       <div class="brandCenter">

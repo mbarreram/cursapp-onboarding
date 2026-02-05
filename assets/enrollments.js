@@ -23,19 +23,9 @@ function createEnrollment(data) {
 
   const enrollments = loadEnrollments();
 
-  const courseKey = (data.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
-  const emailNorm = String(data.email||"").trim().toLowerCase();
-  const existingDup = enrollments
-    .filter(e => String(e.courseKey||"")===courseKey && String(e.email||"").trim().toLowerCase()===emailNorm)
-    .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")))[0];
-  if(existingDup){
-    // si ya existe, no duplicar
-    return { ok: true, enrollment: existingDup, duplicated: true };
-  }
-
   const enrollment = {
     enrollmentId: "enr_" + Date.now(),
-    courseKey: (data.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim(),
+    courseKey: data.courseKey || localStorage.getItem("cursapp_active_course_v1"),
     apoderadoName: data.apoderadoName,
     alumno: data.alumno,
     email: data.email,
@@ -44,13 +34,28 @@ function createEnrollment(data) {
       amount: data.activationAmount || 0,
       status: data.activationStatus || "pending"
     },
-    status: (data.status || "pending"), // pending por defecto; presidente/apoderado puede forzar approved
+    status: data.status || "pending",
     createdAt: new Date().toISOString(),
     reviewedAt: null,
     reviewedBy: null
   };
 
-  enrollments.push(enrollment);
+  
+// Evitar duplicados por correo+curso
+const dup = enrollments.find(x =>
+  String(x.email||"").toLowerCase() === String(enrollment.email||"").toLowerCase() &&
+  String(x.courseKey||"") === String(enrollment.courseKey||"")
+);
+if (dup) {
+  return { ok: false, error: "Este correo ya tiene una solicitud/registro en este curso." };
+}
+
+// Si viene aprobado desde un flujo especial (Presidente+Apoderado)
+if (enrollment.status === "approved") {
+  enrollment.reviewedAt = new Date().toISOString();
+  enrollment.reviewedBy = data.reviewedBy || "presidente";
+}
+enrollments.push(enrollment);
   saveEnrollments(enrollments);
 
   return { ok: true, enrollment };
