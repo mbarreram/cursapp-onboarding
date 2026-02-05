@@ -19,6 +19,8 @@
   const KEY_USERS = "cursapp_users_v1";
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_COURSE_V1 = "cursapp_course_v1";
+  const KEY_COURSES_V1 = "cursapp_courses_v1";
   const KEY_ACTIVE_PROFILE = "cursapp_active_profile_v1";
   const KEY_ENROLL = "cursapp_enrollments_v1";
   const KEY_SESSION = "cursapp_session_v1";
@@ -110,6 +112,12 @@
   function go(role, userEmail, courseKey, profile){
     const pid = profile ? profileIdOf(userEmail, profile) : "";
     setActiveCourseKey(courseKey || "");
+    // Mantener compat: muchas vistas leen cursapp_course_v1
+    try{
+      const list = loadJSON(KEY_COURSES_V1, []);
+      const found = list.find(x=>String(x?.courseKey||"")===String(courseKey||""));
+      if(found) localStorage.setItem(KEY_COURSE_V1, JSON.stringify(found));
+    }catch(e){}
     setActiveProfileId(pid || "");
     setSession({
       userId: userEmail,
@@ -140,36 +148,9 @@
   function renderChooser(title, subtitle, items, onPick){
     const card = document.querySelector(".auth-card");
     if(!card){
-      // Fallback sin prompt: render simple chooser en el body
-      const overlay = document.createElement("div");
-      overlay.style.position = "fixed";
-      overlay.style.inset = "0";
-      overlay.style.background = "rgba(15,23,42,.55)";
-      overlay.style.zIndex = "9999";
-      overlay.style.display = "flex";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.innerHTML = `
-        <div style="width:min(520px,92vw);background:#fff;border-radius:16px;padding:16px;border:1px solid rgba(229,231,235,.9);">
-          <div style="font-weight:950;font-size:18px;">${title}</div>
-          <div style="margin-top:6px;color:#64748b;font-weight:700;">${subtitle}</div>
-          <div style="margin-top:12px;">
-            ${items.map((it,i)=>`
-              <button type="button" data-pick="${i}" style="width:100%;text-align:left;padding:12px;border-radius:14px;border:1px solid rgba(229,231,235,.9);background:#fff;margin-top:10px;font-weight:900;">
-                ${it.label}${it.meta ? `<div style="margin-top:4px;color:#64748b;font-weight:800;font-size:12px;">${it.meta}</div>` : ``}
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-      overlay.querySelectorAll("button[data-pick]").forEach(btn=>{
-        btn.onclick = ()=>{
-          const idx = Number(btn.getAttribute("data-pick"));
-          overlay.remove();
-          onPick(items[idx] || items[0]);
-        };
-      });
+      const chosen = prompt(title + "\n" + subtitle + "\n\nIngresa el índice (1..n):", "1");
+      const idx = Number(chosen||1)-1;
+      onPick(items[idx] || items[0]);
       return;
     }
 

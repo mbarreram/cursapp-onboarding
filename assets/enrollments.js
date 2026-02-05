@@ -23,15 +23,19 @@ function createEnrollment(data) {
 
   const enrollments = loadEnrollments();
 
-  // Permite crear enrollments aprobados en casos especiales (ej: Presidente que también es Apoderado).
-  // Mantiene el comportamiento histórico: por defecto siempre queda "pending".
-  const forcedStatus = (data && data.status) ? String(data.status) : "pending";
-  const reviewedBy = (data && data.reviewedBy) ? String(data.reviewedBy) : null;
-  const reviewedAt = (data && data.reviewedAt) ? String(data.reviewedAt) : null;
+  const courseKey = (data.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
+  const emailNorm = String(data.email||"").trim().toLowerCase();
+  const existingDup = enrollments
+    .filter(e => String(e.courseKey||"")===courseKey && String(e.email||"").trim().toLowerCase()===emailNorm)
+    .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")))[0];
+  if(existingDup){
+    // si ya existe, no duplicar
+    return { ok: true, enrollment: existingDup, duplicated: true };
+  }
 
   const enrollment = {
     enrollmentId: "enr_" + Date.now(),
-    courseKey: localStorage.getItem("cursapp_active_course_v1"),
+    courseKey: (data.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim(),
     apoderadoName: data.apoderadoName,
     alumno: data.alumno,
     email: data.email,
@@ -40,11 +44,10 @@ function createEnrollment(data) {
       amount: data.activationAmount || 0,
       status: data.activationStatus || "pending"
     },
-    // Por defecto queda pendiente. En casos especiales puede forzarse a "approved".
-    status: (forcedStatus === "approved" ? "approved" : "pending"),
+    status: (data.status || "pending"), // pending por defecto; presidente/apoderado puede forzar approved
     createdAt: new Date().toISOString(),
-    reviewedAt: (forcedStatus === "approved" ? (reviewedAt || new Date().toISOString()) : null),
-    reviewedBy: (forcedStatus === "approved" ? (reviewedBy || "directiva") : null)
+    reviewedAt: null,
+    reviewedBy: null
   };
 
   enrollments.push(enrollment);
