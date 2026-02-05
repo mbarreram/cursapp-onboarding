@@ -8,6 +8,10 @@
    - Apoderado requiere enrollment approved (por curso).
    - Mantiene accesos demo: presidente/tesorero con pass demo.
    ========================================================= */
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>'"]/g, (c) =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "'":"&#39;", '"':"&quot;" }[c])
+  );
 
 (function(){
 
