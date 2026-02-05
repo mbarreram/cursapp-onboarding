@@ -16,6 +16,7 @@ function uid(prefix = "id") {
   const KEY_PROFILES = "cursapp_profiles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
   const KEY_COURSE_V1 = "cursapp_course_v1";
+  const KEY_COURSES_V1 = "cursapp_courses_v1";
   const KEY_DIRECTIVA_AP_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
 
   const DEBUG = localStorage.getItem("cursapp_onb_debug") === "1";
@@ -104,7 +105,23 @@ function uid(prefix = "id") {
   function saveDraft(d){ saveJSON(KEY_ONB_DRAFT, d||{}); }
   function clearDraft(){ localStorage.removeItem(KEY_ONB_DRAFT); }
 
-  function loadUsers(){ return loadJSON(KEY_USERS, []); }
+  
+  function loadCourses(){
+    try{ return JSON.parse(localStorage.getItem(KEY_COURSES_V1)) || []; }catch(e){ return []; }
+  }
+  function saveCourses(list){ localStorage.setItem(KEY_COURSES_V1, JSON.stringify(list||[])); }
+  function upsertCourse(courseObj){
+    const list = loadCourses();
+    const ck = String(courseObj?.courseKey||"");
+    const i = list.findIndex(x=>String(x?.courseKey||"")===ck);
+    if(i>=0) list[i]=courseObj; else list.unshift(courseObj);
+    saveCourses(list);
+  }
+  function getCourseByKey(courseKey){
+    const ck=String(courseKey||"");
+    return loadCourses().find(x=>String(x?.courseKey||"")===ck) || null;
+  }
+function loadUsers(){ return loadJSON(KEY_USERS, []); }
   function saveUsers(u){ saveJSON(KEY_USERS, u||[]); }
 
   function loadProfiles(){ return loadJSON(KEY_PROFILES, []); }
@@ -126,12 +143,6 @@ function uid(prefix = "id") {
   function makeCourseKey(schoolId, level, letter, jornada, year){
     return [schoolId, level, letter, jornada, year].join("|");
   }
-
-  function getPresidentProfile(courseKey){
-    const profiles = loadProfiles();
-    return profiles.find(p=>p && p.role==="presidente" && p.courseKey===courseKey) || null;
-  }
-
 
   function generateCode(){
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -758,66 +769,14 @@ if(d.alsoApoderado){
       const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
 
       if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
-        // --- Un usuario por correo ---
-        const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
-        if(!validateEmail(pEmailNorm)){ alert("Correo inválido."); return; }
-
-        const pPassHash = hashDemo(d.pPass||"");
-
-        let users = loadUsers();
-        const existingP = users.find(u=>String(u.email||"").toLowerCase()===pEmailNorm);
-        const presidenteUserId = existingP ? existingP.userId : ("u_"+uid("usr"));
-
-        // Si ya existe el correo, NO sobreescribir password: debe coincidir
-        if(existingP && existingP.passwordHashDemo && existingP.passwordHashDemo !== pPassHash){
-          alert("Este correo ya tiene una cuenta. Inicia sesión con tu contraseña.");
-          return;
-        }
-
-        // --- Regla: SOLO 1 presidente por curso ---
-        const existingPresidentProfile = getPresidentProfile(courseKey);
-        if(existingPresidentProfile && existingPresidentProfile.userId !== presidenteUserId){
-          alert("Ya existe un Presidente para este curso. No se puede crear un segundo Presidente en el mismo colegio/curso/jornada/año.");
-          return;
-        }
-
-        // Persistir/crear user (si no existía)
-        if(existingP){
-          existingP.passwordHashDemo = existingP.passwordHashDemo || pPassHash;
-          existingP.updatedAt = nowISO();
-        }else{
-          users.unshift({ userId: presidenteUserId, email: pEmailNorm, passwordHashDemo: pPassHash, createdAt: nowISO() });
-        }
-        saveUsers(users);
-
-        // Crear/actualizar perfil PRESIDENTE para este curso
-        let profilesP = loadProfiles();
-        profilesP = profilesP.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && p.role==="presidente"));
-        profilesP.unshift({
-          profileId: "pr_"+uid("p"),
-          userId: presidenteUserId,
-          role: "presidente",
-          courseKey,
-          course: {
-            regionId: d.regionId, regionName: region?region.name:"",
-            comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-            schoolId: d.schoolId, schoolName: school?school.name:"",
-            jornada: d.jornada,
-            level: d.level,
-            letter: d.letter,
-            year: d.year
-          },
-          directiva: { name: d.name },
-          createdAt: nowISO()
-        });
-        saveProfiles(profilesP);
-
-        const inviteCode = generateCode();
+        const existingCourse = getCourseByKey(courseKey) || getCourseV1();
+        const sameKey = existingCourse && String(existingCourse.courseKey||"")===courseKey;
+        const inviteCode = (sameKey && existingCourse.inviteCode) ? existingCourse.inviteCode : generateCode();
 
         const courseObj = {
           courseKey,
           inviteCode,
-          directiva: { presidente: { name: d.name, email: pEmailNorm }, tesorero: { name: "" } },
+          directiva: { presidente: { name: d.name }, tesorero: { name: "" } },
           course: {
             regionId: d.regionId, regionName: region?region.name:"",
             comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
@@ -831,12 +790,34 @@ if(d.alsoApoderado){
           createdByRole: "presidente"
         };
 
+        // Guardar en registro de cursos (multi-curso) + mantener compat con curso activo
+        upsertCourse(courseObj);
         localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
         setActiveCourseKey(courseKey);
 
+        // Usuario Presidente
+        const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
+        const pPassHash = hashDemo(d.pPass||"");
+        let users = loadUsers();
+        const existingP = users.find(u=>String(u.email||"").toLowerCase()===pEmailNorm);
+        const presidenteUserId = existingP ? existingP.userId : ("u_"+uid("usr"));
+
+        // Si el correo ya existe, NO sobreescribimos password: debe coincidir
+        if(existingP && existingP.passwordHashDemo && existingP.passwordHashDemo !== pPassHash){
+          alert("Este correo ya tiene cuenta. La contraseña no coincide. Inicia sesión con tu contraseña.");
+          return;
+        }
+        if(existingP){
+          existingP.updatedAt = nowISO();
+        }else{
+          users.unshift({ userId: presidenteUserId, email: pEmailNorm, passwordHashDemo: pPassHash, createdAt: nowISO() });
+        }
+        saveUsers(users);
+
+
         // Si también es apoderado: perfil apoderado con el mismo usuario
         if(d.alsoApoderado){
-          let profiles = loadProfiles();
+          profiles = loadProfiles();
           profiles = profiles.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && p.role==="apoderado"));
           profiles.unshift({
             profileId: "pr_"+uid("p"),
@@ -849,6 +830,23 @@ if(d.alsoApoderado){
             createdAt: nowISO()
           });
           saveProfiles(profiles);
+
+          // Enrollment auto-aprobado (para poder entrar como Apoderado)
+          if(typeof createEnrollment === "function"){
+            setActiveCourseKey(courseKey);
+            createEnrollment({
+              courseKey,
+              apoderadoName: d.name,
+              alumno: d.alumno,
+              email: pEmailNorm,
+              phone: d.dPhone || "",
+              activationAmount: 7990,
+              activationStatus: "paid",
+              status: "approved",
+              reviewedAt: nowISO(),
+              reviewedBy: "presidente"
+            });
+          }
 
           const map = loadJSON(KEY_DIRECTIVA_AP_BY_ROLE, {});
           map["presidente"] = { email: pEmailNorm, apoderadoName: d.name, alumno: d.alumno, courseKey };
@@ -876,17 +874,22 @@ if(d.alsoApoderado){
 
         // usuario apoderado
         let users = loadUsers();
-        const existing = users.find(u=>String(u.email||"").toLowerCase()===String(d.email||"").toLowerCase());
+        const emailNorm = String(d.email||"").trim().toLowerCase();
+        const existing = users.find(u=>String(u.email||"").toLowerCase()===emailNorm);
         const userId = existing ? existing.userId : ("u_"+uid("usr"));
         const passHash = hashDemo(d.pass);
 
+        if(existing && existing.passwordHashDemo && existing.passwordHashDemo !== passHash){
+          alert("Este correo ya tiene cuenta. La contraseña no coincide.");
+          return;
+        }
         if(existing){
-          existing.passwordHashDemo = passHash;
           existing.updatedAt = nowISO();
         }else{
-          users.unshift({ userId, email: d.email, passwordHashDemo: passHash, createdAt: nowISO() });
+          users.unshift({ userId, email: emailNorm, passwordHashDemo: passHash, createdAt: nowISO() });
         }
         saveUsers(users);
+
 
         // perfil apoderado
         let profiles = loadProfiles();
@@ -917,7 +920,10 @@ if(d.alsoApoderado){
           return;
         }
 
+        setActiveCourseKey(courseKey);
+
         const res = createEnrollment({
+          courseKey,
           apoderadoName: d.name, alumno: d.alumno, email: d.email, phone: d.phone || "",
           activationAmount: 7990, activationStatus: activation.status
         });
