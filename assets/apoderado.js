@@ -1199,7 +1199,8 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   };
 
 
-window.payNow = function(id){
+  // === B2: Previsualización antes de pagar ===
+  function proceedToCheckout(id){
     // Checkout Webpay (Transbank): ir a pantalla de pago
     const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(p=>p.id===id);
@@ -1215,6 +1216,7 @@ window.payNow = function(id){
       alert("Este cobro no pertenece a este apoderado.");
       return;
     }
+
     // ✅ Si no tiene dueño, lo sellamos al apoderado actual (solo si ya es visible para él)
     pays[i].courseKey = pays[i].courseKey || courseKey;
     pays[i].apoderadoKey = mk;
@@ -1243,6 +1245,55 @@ window.payNow = function(id){
     save(KEY_CHECKOUTS, checkouts);
 
     location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
+  }
+
+  function openPayPreview(id){
+    const pays = load(KEY_PAYMENTS, []);
+    const p = pays.find(x=>x.id===id);
+    if(!p) return;
+
+    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+    const t = tasksAll.find(x=>x.id===p.fromTaskId);
+
+    const amount = Number(p.amountRemaining ?? p.amount ?? 0);
+    const due = p.dueDate ? String(p.dueDate) : "—";
+    const campaign = t?.title ? t.title : (p.concept || "Cobro");
+    const concept = p.concept || (t?.type==="monthly" ? `Cuota ${p.installmentIndex || ""}/${t.months || ""}` : "Pago");
+
+    const creditTotal = pays
+      .filter(x=>String(x.status||"").toLowerCase()==="credit")
+      .reduce((a,x)=>a+Number(x.amount||0),0);
+
+    openModal(`
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">Confirmar pago</div>
+            <div class="muted" style="margin-top:6px;">Revisa el detalle antes de continuar.</div>
+          </div>
+          <button class="btnx" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div class="listLines" style="margin-top:12px;">
+          <div class="lineItem"><b>Campaña:</b> ${esc(campaign)}</div>
+          <div class="lineItem"><b>Concepto:</b> ${esc(concept)}</div>
+          <div class="lineItem"><b>Vence:</b> ${esc(due)}</div>
+          <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
+          ${creditTotal>0 ? `<div class="lineItem"><b>Saldo a favor:</b> ${clp(creditTotal)} <span class="muted">(se aplica automáticamente en demo)</span></div>` : ``}
+        </div>
+
+        <div class="actions" style="margin-top:14px;justify-content:flex-end;gap:10px;">
+          <button class="btnx" onclick="closeModal()">Cancelar</button>
+          <button class="btnx primary" onclick="closeModal(); window.payNow('${esc(id)}', true)">Continuar</button>
+        </div>
+      </div>
+    `);
+  }
+
+  // Compat: payNow() ahora muestra preview; payNow(id, true) continúa directo a /pay.html
+  window.payNow = function(id, direct){
+    if(direct===true) return proceedToCheckout(id);
+    return openPayPreview(id);
   };
 
   function renderInformes(){
