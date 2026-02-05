@@ -10,6 +10,19 @@
    ========================================================= */
 
 (function(){
+
+  // --- mostrar errores runtime en UI (evita "no hace nada") ---
+  window.addEventListener("error", (ev)=>{
+    try{
+      const msg = ev && ev.message ? ev.message : "Error inesperado";
+      const box = document.getElementById("loginError");
+      if(box){
+        box.style.display="block";
+        box.textContent = "Error JS: " + msg;
+      }
+    }catch(_){}
+  });
+
   const form = document.getElementById("loginForm");
   const username = document.getElementById("username");
   const password = document.getElementById("password");
@@ -329,7 +342,8 @@
     e.preventDefault();
     clearErr();
 
-    const u = String(username?.value||"").trim().toLowerCase();
+    try{
+      const u = String(username?.value||"").trim().toLowerCase();
     const p = String(password?.value||"");
 
     // Demo presidente/tesorero
@@ -374,5 +388,9 @@
     });
 
     resolveAndEnter(u, norm);
+    } catch(err){
+      console.error(err);
+      showErr('Error en login: ' + (err && err.message ? err.message : String(err)));
+    }
   });
 })();
