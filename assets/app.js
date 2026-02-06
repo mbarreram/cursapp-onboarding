@@ -638,10 +638,19 @@ function computeSummary(role){
 
 function pendingMy(){
   const mine = loadPayments().filter(isMinePayment);
-  const pending = mine.filter(p => p.status !== "paid");
-  const total = pending.reduce((a,b)=>a+Number(b.amount||0),0);
+
+  // ✅ NO contar opted_out como pendiente
+  const pending = mine.filter(p =>
+    p.status !== "paid" &&
+    String(p.status||"").toLowerCase() !== "opted_out"
+  );
+
+  // ✅ usar amountRemaining si existe
+  const total = pending.reduce((a,b)=> a + Number(b.amountRemaining ?? b.amount ?? 0), 0);
+
   return { count: pending.length, amount: total };
 }
+
 
 function listMyStudents(){
   const mine = loadPayments().filter(isMinePayment);
@@ -3096,3 +3105,87 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHeader();
   renderByRole(user.role, "home");
 });
+
+
+/* =========================================================
+   FIX DEFINITIVO PARTICIPACIÓN / PENDIENTES / DEUDORES
+   Fuente única de verdad
+========================================================= */
+
+function isOptedOut(p){
+  return String(p.status||"").toLowerCase() === "opted_out";
+}
+
+function campaignIsMandatory(task){
+  return task.mandatoryParticipation === true;
+}
+
+function guardianParticipates(task, apoderadoKey){
+  if (campaignIsMandatory(task)) return true;
+
+  const opted = loadPayments().some(p =>
+    p.fromTaskId === task.id &&
+    (p.apoderadoKey || "").toLowerCase() === String(apoderadoKey||"").toLowerCase() &&
+    isOptedOut(p)
+  );
+
+  // SIN_RESPUESTA = NO participa hasta aceptar
+  return !opted;
+}
+
+function guardianDueForTask(task, apoderadoKey){
+  if (!guardianParticipates(task, apoderadoKey)) return 0;
+
+  const pays = loadPayments().filter(p =>
+    p.fromTaskId === task.id &&
+    (p.apoderadoKey || "").toLowerCase() === String(apoderadoKey||"").toLowerCase() &&
+    p.status !== "paid" &&
+    !isOptedOut(p)
+  );
+
+  return pays.reduce((a,b)=>a+Number(b.amountRemaining ?? b.amount ?? 0),0);
+}
+
+function campaignStats(task){
+  const payments = loadPayments().filter(p => p.fromTaskId === task.id);
+  const apoderados = new Set(payments.map(p => (p.apoderadoKey||"").toLowerCase()).filter(Boolean));
+
+  let participan = 0;
+  let noParticipan = 0;
+  let pendiente = 0;
+  let deudores = 0;
+  let cuotasPendientes = 0;
+
+  apoderados.forEach(k=>{
+    const part = guardianParticipates(task, k);
+    if (part) {
+      participan++;
+      const due = guardianDueForTask(task, k);
+      if (due > 0){
+        deudores++;
+        pendiente += due;
+        cuotasPendientes += payments.filter(p =>
+          p.fromTaskId===task.id &&
+          (p.apoderadoKey||"").toLowerCase()===k &&
+          p.status!=="paid" &&
+          !isOptedOut(p)
+        ).length;
+      }
+    } else {
+      noParticipan++;
+    }
+  });
+
+  return {
+    participan,
+    noParticipan,
+    pendiente,
+    deudores,
+    cuotasPendientes
+  };
+}
+
+function totalPendienteApoderado(apoderadoKey){
+  const tasks = loadTasks();
+  return tasks.reduce((sum,t)=> sum + guardianDueForTask(t, apoderadoKey), 0);
+}
