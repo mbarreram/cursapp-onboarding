@@ -279,7 +279,7 @@ function ensureSeedExpenses(){
 }
 
 function loadPayments(){ return JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]"); }
-function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p)); }
+function savePayments(p){ localStorage.setItem(KEY_PAYMENTS, JSON.stringify(p)); cursappNotifyDataChanged(); }
 
 
 function normalizePaymentIds(){
@@ -315,6 +315,14 @@ function normalizePaymentIds(){
 function loadReceipts(){ return JSON.parse(localStorage.getItem(KEY_RECEIPTS) || "[]"); }
 function saveReceipts(r){ localStorage.setItem(KEY_RECEIPTS, JSON.stringify(r)); }
 
+
+
+
+// ---------- data change bus (re-render sin relogin) ----------
+function cursappNotifyDataChanged(){
+  try{ window.dispatchEvent(new Event("cursapp:dataChanged")); }catch(e){}
+  try{ window.dispatchEvent(new Event("storage")); }catch(e){}
+}
 
 function findTaskById(id){
   return loadTasks().find(t => t.id === id) || null;
@@ -435,7 +443,7 @@ function setSelectedTask(id){ localStorage.setItem("cursapp_selected_task", id||
 function getSelectedTask(){ return localStorage.getItem("cursapp_selected_task") || ""; }
 function clearSelectedTask(){ localStorage.removeItem("cursapp_selected_task"); }
 function loadTasks(){ return JSON.parse(localStorage.getItem(KEY_TASKS) || "[]"); }
-function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); }
+function saveTasks(t){ localStorage.setItem(KEY_TASKS, JSON.stringify(t)); cursappNotifyDataChanged(); }
 
 function sumExpenses(list){ return (list||[]).reduce((a,b)=>a+Number(b.amount||0),0); }
 function expensesByScope(scope){ return loadExpenses().filter(e=>e.scope===scope); }
@@ -638,19 +646,10 @@ function computeSummary(role){
 
 function pendingMy(){
   const mine = loadPayments().filter(isMinePayment);
-
-  // ✅ NO contar opted_out como pendiente
-  const pending = mine.filter(p =>
-    p.status !== "paid" &&
-    String(p.status||"").toLowerCase() !== "opted_out"
-  );
-
-  // ✅ usar amountRemaining si existe
-  const total = pending.reduce((a,b)=> a + Number(b.amountRemaining ?? b.amount ?? 0), 0);
-
+  const pending = mine.filter(p => p.status !== "paid");
+  const total = pending.reduce((a,b)=>a+Number(b.amount||0),0);
   return { count: pending.length, amount: total };
 }
-
 
 function listMyStudents(){
   const mine = loadPayments().filter(isMinePayment);
@@ -981,10 +980,46 @@ function optOutPayment(paymentId){
   const idx = pays.findIndex(x=>x.id === paymentId);
   if(idx < 0) return;
   if(pays[idx].status === "paid") return;
-  pays[idx].status = "opted_out";
-  pays[idx].optedOutAt = isoDate();
+
+  const p0 = pays[idx];
+  const taskId = p0.fromTaskId || null;
+  const mk = meKey ? String(meKey()||"").toLowerCase().trim() : "";
+
+  // Si es campaña NO obligatoria: marcar como opted_out TODO lo pendiente (actual + futuro) de esa campaña para este apoderado.
+  // Esto evita que el "Total pendiente" siga contando cuotas donde el apoderado ya dijo "No participo".
+  const t = taskId ? findTaskById(taskId) : null;
+  const isVoluntary = !!(t && t.mandatoryParticipation === false);
+
+  for(let i=0;i<pays.length;i++){
+    const p = pays[i];
+    if(p.status === "paid") continue;
+    if(!isVoluntary){
+      // caso normal: solo la cuota seleccionada
+      if(p.id !== paymentId) continue;
+    } else {
+      // caso no obligatoria: misma campaña + mismo apoderado
+      if(String(p.fromTaskId||"") !== String(taskId||"")) continue;
+
+      // match por apoderadoKey/email si existe; si no, al menos match por alumno del usuario.
+      if(mk){
+        const pk = String(p.apoderadoKey || p.apoderadoEmail || p.email || "").toLowerCase().trim();
+        if(pk && pk !== mk) continue;
+      } else {
+        // fallback: si no hay key, no tocar otros alumnos
+        if(p.alumno && p.alumno !== p0.alumno) continue;
+      }
+    }
+
+    if(p.status === "opted_out") continue;
+    pays[i] = { ...p, status:"opted_out", optedOutAt: isoDate() };
+  }
+
   savePayments(pays);
-  alert("Marcado como No participó. No se cobrará esta cuota.");
+  alert(isVoluntary
+    ? "Marcado como No participó en esta campaña. No se cobrarán sus cuotas pendientes."
+    : "Marcado como No participó. No se cobrará esta cuota."
+  );
+
   goTab(getCurrentTab());
 }
 
@@ -3082,6 +3117,17 @@ function goTab(tab){
   renderByRole(user.role, tab);
 }
 
+
+// Re-render automático si cambian datos (ej: crear campaña, no participar, conciliar pago, etc.)
+window.addEventListener("cursapp:dataChanged", ()=>{
+  try{
+    const user = getUser();
+    if(!user) return;
+    const tab = getCurrentTab ? getCurrentTab() : (localStorage.getItem("cursapp_current_tab") || "home");
+    renderByRole(user.role, tab);
+  }catch(e){}
+});
+
 /* ---------- boot ---------- */
 document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
@@ -3105,87 +3151,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderHeader();
   renderByRole(user.role, "home");
 });
-
-
-/* =========================================================
-   FIX DEFINITIVO PARTICIPACIÓN / PENDIENTES / DEUDORES
-   Fuente única de verdad
-========================================================= */
-
-function isOptedOut(p){
-  return String(p.status||"").toLowerCase() === "opted_out";
-}
-
-function campaignIsMandatory(task){
-  return task.mandatoryParticipation === true;
-}
-
-function guardianParticipates(task, apoderadoKey){
-  if (campaignIsMandatory(task)) return true;
-
-  const opted = loadPayments().some(p =>
-    p.fromTaskId === task.id &&
-    (p.apoderadoKey || "").toLowerCase() === String(apoderadoKey||"").toLowerCase() &&
-    isOptedOut(p)
-  );
-
-  // SIN_RESPUESTA = NO participa hasta aceptar
-  return !opted;
-}
-
-function guardianDueForTask(task, apoderadoKey){
-  if (!guardianParticipates(task, apoderadoKey)) return 0;
-
-  const pays = loadPayments().filter(p =>
-    p.fromTaskId === task.id &&
-    (p.apoderadoKey || "").toLowerCase() === String(apoderadoKey||"").toLowerCase() &&
-    p.status !== "paid" &&
-    !isOptedOut(p)
-  );
-
-  return pays.reduce((a,b)=>a+Number(b.amountRemaining ?? b.amount ?? 0),0);
-}
-
-function campaignStats(task){
-  const payments = loadPayments().filter(p => p.fromTaskId === task.id);
-  const apoderados = new Set(payments.map(p => (p.apoderadoKey||"").toLowerCase()).filter(Boolean));
-
-  let participan = 0;
-  let noParticipan = 0;
-  let pendiente = 0;
-  let deudores = 0;
-  let cuotasPendientes = 0;
-
-  apoderados.forEach(k=>{
-    const part = guardianParticipates(task, k);
-    if (part) {
-      participan++;
-      const due = guardianDueForTask(task, k);
-      if (due > 0){
-        deudores++;
-        pendiente += due;
-        cuotasPendientes += payments.filter(p =>
-          p.fromTaskId===task.id &&
-          (p.apoderadoKey||"").toLowerCase()===k &&
-          p.status!=="paid" &&
-          !isOptedOut(p)
-        ).length;
-      }
-    } else {
-      noParticipan++;
-    }
-  });
-
-  return {
-    participan,
-    noParticipan,
-    pendiente,
-    deudores,
-    cuotasPendientes
-  };
-}
-
-function totalPendienteApoderado(apoderadoKey){
-  const tasks = loadTasks();
-  return tasks.reduce((sum,t)=> sum + guardianDueForTask(t, apoderadoKey), 0);
-}

@@ -234,7 +234,16 @@
     markDirty();
     closeModal();
     alert("Campaña creada ✅");
-  }
+  
+// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
+try{
+  window.dispatchEvent(new Event("cursapp:dataChanged"));
+}catch(e){}
+try{
+  const tab = localStorage.getItem("cursapp_current_tab") || "home";
+  if(typeof window.goTab === "function") window.goTab(tab);
+}catch(e){}
+}
 
   function openEdit(taskId) {
     const ts = load(KEY_TASKS, []);
@@ -372,7 +381,16 @@
     markDirty();
     closeModal();
     alert("Campaña actualizada ✅");
-  }
+  
+// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
+try{
+  window.dispatchEvent(new Event("cursapp:dataChanged"));
+}catch(e){}
+try{
+  const tab = localStorage.getItem("cursapp_current_tab") || "home";
+  if(typeof window.goTab === "function") window.goTab(tab);
+}catch(e){}
+}
 
   function openClose(activeTasksProvider) {
     const ts = activeTasksProvider ? activeTasksProvider() : load(KEY_TASKS, []).filter(t=>!t.closed);
@@ -435,7 +453,16 @@
     markDirty();
     closeModal();
     alert("Campaña cerrada ✅");
-  }
+  
+// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
+try{
+  window.dispatchEvent(new Event("cursapp:dataChanged"));
+}catch(e){}
+try{
+  const tab = localStorage.getItem("cursapp_current_tab") || "home";
+  if(typeof window.goTab === "function") window.goTab(tab);
+}catch(e){}
+}
 
   // expose API
   window.Campaigns = {

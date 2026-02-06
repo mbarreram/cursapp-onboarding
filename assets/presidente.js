@@ -13,6 +13,38 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])
     );
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
+
+// ---------- clipboard helper (iOS Safari friendly) ----------
+async function copyTextToClipboard(text){
+  const s = String(text||"");
+  // Prefer modern API (HTTPS + user gesture)
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await copyTextToClipboard(s);
+      return true;
+    }
+  }catch(e){}
+  // Fallback: temporary textarea + execCommand('copy')
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = s;
+    ta.setAttribute("readonly","");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.width = "1px";
+    ta.style.height = "1px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return !!ok;
+  }catch(e){}
+  return false;
+}
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
   function detectKey(candidates) {
@@ -930,7 +962,7 @@ function renderDeudores(){
         const ta = out.querySelectorAll("textarea")[idx];
         const txt = ta?.value || "";
         if(navigator.clipboard?.writeText){
-          navigator.clipboard.writeText(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(txt));
+          copyTextToClipboard(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(txt));
         }else{
           fallbackCopy(txt);
         }
