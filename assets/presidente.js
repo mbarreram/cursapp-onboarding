@@ -324,6 +324,7 @@
     if(tab==="home") renderHome();
     if(tab==="campanas") renderCampanas();
     if(tab==="informes") renderInformes();
+    if(tab==="deudores") renderDeudores();
   }
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
@@ -580,7 +581,354 @@
   }
 
   // ----- Informes -----
-  function renderInformes(){
+  // =========================
+// Módulo Cobranza / Deudores
+// =========================
+function todayISO(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const da = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${da}`;
+}
+function isPast(iso){
+  if(!iso) return false;
+  return String(iso).slice(0,10) < todayISO();
+}
+function taskById(id){
+  return tasks().find(t => String(t.id) === String(id));
+}
+function apoderadoKey(p){
+  return String((p.apoderadoEmail||p.email||"")).toLowerCase();
+}
+function money(n){ return clp(Number(n||0)); }
+
+function debtorRowsFor(email){
+  const em = String(email||"").toLowerCase();
+  const pays = payments().filter(p => apoderadoKey(p) === em);
+  const pending = pays.filter(isPendingLike);
+
+  return pending.map(p=>{
+    const t = taskById(p.fromTaskId);
+    const mandatory = t ? (t.mandatoryParticipation !== false) : true;
+    return {
+      pay: p,
+      task: t,
+      mandatory,
+      dueDate: String(p.dueDate||"").slice(0,10),
+      amount: Number(p.amount||0),
+      overdue: isPast(p.dueDate||"")
+    };
+  });
+}
+
+function summarizeDebts(email){
+  const rows = debtorRowsFor(email);
+  const byCampaign = new Map();
+  let totalAll = 0, totalOverdue = 0, totalUpcoming = 0;
+
+  rows.forEach(r=>{
+    totalAll += r.amount;
+    if(r.overdue) totalOverdue += r.amount; else totalUpcoming += r.amount;
+
+    const id = String(r.task?.id || r.pay.fromTaskId || "unknown");
+    if(!byCampaign.has(id)){
+      byCampaign.set(id, {
+        taskId: id,
+        title: r.task?.title || r.pay.title || "Campaña",
+        mandatory: r.mandatory,
+        pendingCount: 0,
+        overdueAmount: 0,
+        upcomingAmount: 0,
+        pendingAmount: 0
+      });
+    }
+    const s = byCampaign.get(id);
+    s.pendingCount += 1;
+    s.pendingAmount += r.amount;
+    if(r.overdue) s.overdueAmount += r.amount; else s.upcomingAmount += r.amount;
+  });
+
+  const campaigns = Array.from(byCampaign.values()).sort((a,b)=>{
+    if(a.mandatory !== b.mandatory) return a.mandatory ? -1 : 1;
+    return b.pendingAmount - a.pendingAmount;
+  });
+
+  return { campaigns, totalAll, totalOverdue, totalUpcoming };
+}
+
+function monthMandatoryOutstanding(ym){
+  const pays = payments().filter(isPendingLike).filter(p => withinMonth(p.dueDate||"", ym));
+  let total = 0;
+  pays.forEach(p=>{
+    const t = taskById(p.fromTaskId);
+    if(t && t.mandatoryParticipation === false) return;
+    total += Number(p.amount||0);
+  });
+  return total;
+}
+
+function renderBar(label, value, max){
+  const pct = max>0 ? Math.max(2, Math.round((value/max)*100)) : 0;
+  return `
+    <div class="barRow">
+      <div class="barLabel">${esc(label)}</div>
+      <div class="barTrack"><div class="barFill" style="width:${pct}%;"></div></div>
+      <div class="barVal">${money(value)}</div>
+    </div>
+  `;
+}
+
+function activeCourse(){
+  try{
+    const ck = activeCourseKey();
+    const courses = JSON.parse(localStorage.getItem("cursapp_courses_v1")||"[]");
+    return courses.find(c=>c.courseKey===ck) || null;
+  }catch(e){ return null; }
+}
+
+function buildWhatsappText(profile, summary){
+  const name = (profile.apoderadoName||profile.name||"").trim() || "Apoderado/a";
+  const alumno = (profile.alumno||"").trim();
+  const c = activeCourse() || {};
+  const courseLine = `${c.schoolName||"Colegio"} · ${c.level||""}${c.letter||""} ${c.year||""} · ${c.jornada||""}`.replace(/\s+/g," ").trim();
+  const today = todayISO();
+
+  let lines = [];
+  lines.push(`Hola ${name}${alumno?` (Alumno/a: ${alumno})`:``}.`);
+  lines.push(`Te comparto el resumen de cobros del curso ${courseLine} al ${today}:`);
+  lines.push("");
+
+  if(summary.campaigns.length===0){
+    lines.push("✅ No registras deudas pendientes.");
+  }else{
+    summary.campaigns.forEach(ca=>{
+      const tag = ca.mandatory ? "Obligatoria" : "Voluntaria";
+      lines.push(`• ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}.`);
+      const det = [];
+      if(ca.overdueAmount>0) det.push(`vencido ${money(ca.overdueAmount)}`);
+      if(ca.upcomingAmount>0) det.push(`por vencer ${money(ca.upcomingAmount)}`);
+      if(det.length) lines.push(`  (${det.join(" · ")})`);
+    });
+    lines.push("");
+    lines.push(`Total pendiente: ${money(summary.totalAll)}.`);
+  }
+
+  lines.push("");
+  lines.push("Gracias.");
+  return lines.join("\n");
+}
+
+function renderDeudores(){
+  const ym = ymFromISO(todayISO());
+
+  const aprobados = approvedApoderados().map(e=>({
+    email: String(e.email||"").toLowerCase(),
+    apoderadoName: e.apoderadoName||e.name||"",
+    alumno: e.alumno||""
+  }));
+
+  // Pendiente del mes (solo obligatorias) por email
+  const pendingMonth = payments().filter(isPendingLike).filter(p=> withinMonth(p.dueDate||"", ym));
+  const mandatoryPendingByEmail = new Map();
+  pendingMonth.forEach(p=>{
+    const t = taskById(p.fromTaskId);
+    if(t && t.mandatoryParticipation === false) return;
+    const em = apoderadoKey(p);
+    if(!em) return;
+    mandatoryPendingByEmail.set(em, (mandatoryPendingByEmail.get(em)||0) + Number(p.amount||0));
+  });
+
+  const debtors = aprobados
+    .map(a=>({ ...a, monthPendingMandatory: mandatoryPendingByEmail.get(a.email)||0 }))
+    .filter(a=> a.monthPendingMandatory > 0)
+    .sort((a,b)=> b.monthPendingMandatory - a.monthPendingMandatory);
+
+  const totalMandatoryMonth = monthMandatoryOutstanding(ym);
+
+  app.innerHTML = `
+    <div class="kTitle">Cobranza</div>
+    <div class="muted" style="margin-top:6px;">Busca por apoderado o alumno y obtén el resumen de deudas (con texto listo para WhatsApp).</div>
+
+    <div class="kpiGrid" style="margin-top:12px;">
+      <div class="kpi">
+        <div class="kpiLabel">Deudores (mes · obligatorias)</div>
+        <div class="kpiVal">${debtors.length}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpiLabel">Deuda obligatoria del mes</div>
+        <div class="kpiVal">${clp(totalMandatoryMonth)}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpiLabel">Apoderados aprobados</div>
+        <div class="kpiVal">${approvedApoderados().length}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;">Indicador por campañas (pendiente total)</div>
+      <div class="muted" style="margin-top:6px;">Top campañas con mayor deuda pendiente (todas, incluyendo voluntarias).</div>
+      <div id="barsMount" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;">Buscar apoderado / alumno</div>
+      <div class="muted" style="margin-top:6px;">Escribe un nombre o correo.</div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <input id="debtorQuery" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
+        <button class="btn primary" id="debtorSearchBtn" type="button">Buscar</button>
+      </div>
+
+      <div id="debtorResults" style="margin-top:10px;"></div>
+    </div>
+
+    <style>
+      .kpiGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+      @media (max-width:760px){.kpiGrid{grid-template-columns:1fr;}}
+      .kpi{border:1px solid rgba(15,23,42,.10);border-radius:16px;background:#fff;padding:12px;}
+      .kpiLabel{color:rgba(15,23,42,.62);font-weight:900;font-size:12px;}
+      .kpiVal{font-weight:950;font-size:22px;margin-top:4px;}
+      .barRow{display:grid;grid-template-columns:140px 1fr 90px;gap:10px;align-items:center;margin:8px 0;}
+      .barLabel{font-weight:900;font-size:12px;color:rgba(15,23,42,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .barTrack{height:10px;border-radius:999px;background:rgba(15,23,42,.08);overflow:hidden;}
+      .barFill{height:100%;border-radius:999px;background:rgba(91,92,226,.65);}
+      .barVal{font-weight:950;font-size:12px;text-align:right;}
+      .resultRow{padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:14px;background:#fff;margin-top:10px;}
+      .resultTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+      .resultName{font-weight:950;}
+      .pill{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;border:1px solid rgba(15,23,42,.12);background:rgba(15,23,42,.04);}
+      .pill.bad{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.08);}
+      .pill.good{border-color:rgba(34,197,94,.22);background:rgba(34,197,94,.08);}
+      textarea{width:100%;min-height:120px;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.10);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    </style>
+  `;
+
+  // bars
+  const pendingAll = payments().filter(isPendingLike);
+  const byTask = new Map();
+  pendingAll.forEach(p=>{
+    const id = String(p.fromTaskId||"unknown");
+    byTask.set(id, (byTask.get(id)||0) + Number(p.amount||0));
+  });
+  const bars = Array.from(byTask.entries())
+    .map(([id,amt])=>({ id, amt, title: taskById(id)?.title || "Campaña" }))
+    .sort((a,b)=> b.amt - a.amt)
+    .slice(0,5);
+  const max = bars[0]?.amt || 0;
+  const barsMount = document.getElementById("barsMount");
+  barsMount && (barsMount.innerHTML = bars.length
+    ? bars.map(r=> renderBar(r.title, r.amt, max)).join("")
+    : `<div class="muted">No hay deuda pendiente registrada.</div>`);
+
+  const qInp = document.getElementById("debtorQuery");
+  const btn = document.getElementById("debtorSearchBtn");
+  const out = document.getElementById("debtorResults");
+
+  function fallbackCopy(txt){
+    try{
+      const tmp = document.createElement("textarea");
+      tmp.value = txt;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      tmp.remove();
+      toast("Copiado ✅");
+    }catch(e){
+      alert("No pude copiar automáticamente. Selecciona y copia manualmente.");
+    }
+  }
+
+  function doSearch(){
+    const q = String(qInp?.value||"").trim().toLowerCase();
+    if(!q){
+      out.innerHTML = `<div class="muted">Escribe un nombre o correo para buscar.</div>`;
+      return;
+    }
+    const matches = aprobados.filter(a=>{
+      return a.email.includes(q) ||
+        String(a.apoderadoName||"").toLowerCase().includes(q) ||
+        String(a.alumno||"").toLowerCase().includes(q);
+    }).slice(0,10);
+
+    if(!matches.length){
+      out.innerHTML = `<div class="muted">Sin resultados.</div>`;
+      return;
+    }
+
+    out.innerHTML = matches.map(profile=>{
+      const sum = summarizeDebts(profile.email);
+      const monthMand = mandatoryPendingByEmail.get(profile.email) || 0;
+      const wa = buildWhatsappText(profile, sum);
+      return `
+        <div class="resultRow">
+          <div class="resultTop">
+            <div>
+              <div class="resultName">${esc(profile.apoderadoName||profile.email||"Apoderado")}</div>
+              <div class="muted" style="margin-top:2px;">Alumno/a: <b>${esc(profile.alumno||"—")}</b></div>
+              <div class="muted" style="margin-top:2px;">Correo: <b>${esc(profile.email||"—")}</b></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="pill ${monthMand>0?"bad":"good"}">Deuda obligatoria mes: ${money(monthMand)}</span>
+              <span class="pill ${sum.totalAll>0?"bad":"good"}">Deuda total: ${money(sum.totalAll)}</span>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div style="font-weight:950;">Cuotas / pagos pendientes por campaña</div>
+            ${sum.campaigns.length ? `
+              <div style="margin-top:8px;display:grid;gap:8px;">
+                ${sum.campaigns.map(ca=>`
+                  <div style="border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:10px;background:rgba(255,255,255,.9);">
+                    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                      <div style="font-weight:950;">${esc(ca.title)}</div>
+                      <div class="muted" style="font-weight:900;">${ca.mandatory ? "Obligatoria" : "Voluntaria"}</div>
+                    </div>
+                    <div class="muted" style="margin-top:6px;">
+                      Pendientes: <b>${ca.pendingCount}</b> · Monto: <b>${money(ca.pendingAmount)}</b>
+                      ${ca.overdueAmount>0 ? `· Vencido: <b>${money(ca.overdueAmount)}</b>` : ``}
+                      ${ca.upcomingAmount>0 ? `· Por vencer: <b>${money(ca.upcomingAmount)}</b>` : ``}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            ` : `<div class="muted" style="margin-top:8px;">✅ No registra deudas pendientes.</div>`}
+          </div>
+
+          <div style="margin-top:12px;">
+            <div style="font-weight:950;">Resumen para WhatsApp</div>
+            <div class="muted" style="margin-top:6px;">Copia y pega este texto.</div>
+            <textarea readonly>${esc(wa)}</textarea>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+              <button class="btn primary" type="button" data-copy="1">Copiar texto</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    out.querySelectorAll('button[data-copy="1"]').forEach((b, idx)=>{
+      b.onclick = ()=>{
+        const ta = out.querySelectorAll("textarea")[idx];
+        const txt = ta?.value || "";
+        if(navigator.clipboard?.writeText){
+          navigator.clipboard.writeText(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(txt));
+        }else{
+          fallbackCopy(txt);
+        }
+      };
+    });
+  }
+
+  btn && (btn.onclick = doSearch);
+  qInp && (qInp.onkeydown = (e)=>{ if(e.key==="Enter") doSearch(); });
+
+  out.innerHTML = debtors.length
+    ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) → ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" · ")} ...</div>`
+    : `<div class="muted">✅ No hay deudores obligatorios este mes.</div>`;
+}
+
+function renderInformes(){
     const reps = reports();
 
     app.innerHTML = `
