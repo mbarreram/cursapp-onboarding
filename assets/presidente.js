@@ -20,7 +20,7 @@ async function copyTextToClipboard(text){
   // Prefer modern API (HTTPS + user gesture)
   try{
     if(navigator.clipboard && navigator.clipboard.writeText){
-      await copyTextToClipboard(s);
+      await navigator.clipboard.writeText(s);
       return true;
     }
   }catch(e){}
@@ -374,6 +374,17 @@ function cuotasPendientesTask(id){
   }
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // 🔄 Re-render inmediato cuando cambian campañas/pagos/etc (evita cerrar sesión)
+  window.addEventListener("cursapp:dataChanged", () => {
+    try{
+      const sig = __tasksSig();
+      if(sig) __TASKS_SIG = sig;
+      // re-render tab actual
+      go(state.tab || "home");
+    }catch(e){}
+  });
+
 
   
   // ----- Watcher: refrescar Campañas cuando cambian las tasks -----

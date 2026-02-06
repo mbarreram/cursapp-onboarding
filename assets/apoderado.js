@@ -99,7 +99,14 @@ function isMinePayment(p){
   window.toggleOptOut = function(taskId){
     const next = !isOptedOut(taskId);
     setOptedOut(taskId, next);
-    renderPayments();
+    // re-render tab actual para que el "pendiente" cambie altiro
+    try{
+      const activeBtn = (document.querySelector('.navItem.active') || {});
+      const tab = activeBtn.dataset ? activeBtn.dataset.tab : "home";
+      if(typeof go === "function") go(tab || "home");
+      else { try{ renderHome(); }catch(e){} try{ renderPayments(); }catch(e){} }
+    }catch(e){ try{ renderHome(); }catch(_){} try{ renderPayments(); }catch(_){} }
+    try{ window.dispatchEvent(new Event("cursapp:dataChanged")); }catch(e){}
   };
 
 // ---- Safe init post-reset (no pisa datos reales) ----
@@ -710,15 +717,29 @@ function dueBadge(iso){
     let paysAll = load(KEY_PAYMENTS, []);
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
+    // 🔍 lookup campañas por id para aplicar opt-out en no obligatorias
+    const taskById = Object.create(null);
+    for(const t of tasks0){ if(t && t.id) taskById[String(t.id)] = t; }
+    const isPaymentOptedOut = (p)=>{
+      const tid = p && p.fromTaskId ? String(p.fromTaskId) : "";
+      if(!tid) return false;
+      const t = taskById[tid];
+      return !!(t && t.mandatoryParticipation===false && typeof isOptedOut==="function" && isOptedOut(tid));
+    };
+
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
+    // ✅ Si una campaña NO es obligatoria y marqué "No participo", no debe aparecer como pendiente
+    const isPendingLike = (p)=>["pending","partial"].includes(String(p.status||"").toLowerCase());
+    const isUpcomingLike = (p)=>String(p.status||"").toLowerCase()==="upcoming";
 
-    const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()));
+
+    const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
     const nextDue = paysAll
-      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
+      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
@@ -864,6 +885,10 @@ function dueBadge(iso){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
+    // ✅ Si una campaña NO es obligatoria y marqué "No participo", no debe aparecer como pendiente
+    const isPendingLike = (p)=>["pending","partial"].includes(String(p.status||"").toLowerCase());
+    const isUpcomingLike = (p)=>String(p.status||"").toLowerCase()==="upcoming";
+
 
 
     try{
@@ -957,19 +982,19 @@ function dueBadge(iso){
 
     // filtro de pagos
     let paysFiltered = [];
-    if(payFilter==="pending") paysFiltered = paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()));
-    else if(payFilter==="upcoming") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+    if(payFilter==="pending") paysFiltered = paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
+    else if(payFilter==="upcoming") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7 && !isPaymentOptedOut(p));
     else if(payFilter==="paid") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid");
     else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit");
     else paysFiltered = paysAll.slice();
 
     // próxima cuota destacada (solo si hay pendiente con fecha)
     const nextDueBase = (selectedTask && selectedTask!=="all")
-      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask)
-      : paysAll;
+      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask && !isPaymentOptedOut(p))
+      : paysAll.filter(p=>!isPaymentOptedOut(p));
 
     const nextDue = nextDueBase
-      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate)
+      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
 
     const nextCard = nextDue ? `
@@ -1051,7 +1076,9 @@ function dueBadge(iso){
         // Resumen simple para single (paga todo)
         if(!isMonthly){
           const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
-          const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
+          let totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
+          const optedOut = (t.mandatoryParticipation===false && typeof isOptedOut==="function" && isOptedOut(t.id));
+          if(optedOut) totalPend = 0;
           return `
             <div class="card" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
