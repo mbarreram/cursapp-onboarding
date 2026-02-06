@@ -22,7 +22,6 @@ if (!session || !session.userId || !session.courseKey) {
   const goOnboarding = document.getElementById("goOnboarding");
   const logoutBtn = document.getElementById("logoutBtn");
   const whoCourseLine = document.getElementById("whoCourseLine");
-  const whoRoleTitle = document.getElementById("whoRoleTitle");
 // ===== Active profile (Fase 2) =====
 const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
   const sk = (base)=> (window.CURSAPP && window.CURSAPP.scopedKey) ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
@@ -426,28 +425,18 @@ function dueBadge(iso){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
     if(!p || !p.course){
-      if(whoRoleTitle) whoRoleTitle.textContent = "Rol: Apoderado";
-      whoCourseLine.textContent = "Colegio Demo · Curso Demo";
+      whoCourseLine.textContent = "Curso Demo · Colegio Demo";
       return;
     }
     const c = p.course;
     const ap = p.apoderado || {};
-    // Ajuste UX header:
-// - Título: "Rol: Apoderado"
-// - Línea 1: nombre apoderado (sin "· Apoderado")
-// - Línea 2: "Alumno/a: ..."
-// - Línea 3: colegio/curso
-if(whoRoleTitle) whoRoleTitle.textContent = "Rol: Apoderado";
-
-const nameLine = (ap.name || session.userId || "Apoderado").trim();
-const alumnoLine = (ap.alumno || "").trim();
-const courseLine = (c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||"");
-
-whoCourseLine.innerHTML = `
-  <div style="font-weight:950;color:#111827;">${esc(nameLine)}</div>
-  ${alumnoLine ? `<div class="muted" style="margin-top:2px;font-weight:900;">${esc("Alumno/a: "+alumnoLine)}</div>` : `<div class="muted" style="margin-top:2px;font-weight:900;">${esc("Alumno/a: —")}</div>`}
-  <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">${esc(courseLine)}</div>
-`;
+    whoCourseLine.innerHTML = `
+      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado")+" · Apoderado")}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;">${esc(ap.alumno||"Alumno/a")}</div>
+      <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">
+        ${esc((c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||""))}
+      </div>
+    `;
   }
 
   // -------- Activation gate --------
@@ -491,12 +480,50 @@ whoCourseLine.innerHTML = `
   window.payActivation = function(){
     const profiles = load(KEY_PROFILES, []);
     const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    const i = profiles.findIndex(p=>p.courseKey===activeKey && (p.role==="apoderado" || p.user?.role==="apoderado"));
-    if(i>=0){
-      profiles[i].activation.status="paid";
-      profiles[i].activation.paidAt=nowISO();
+    const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
+
+    // Intentamos actualizar el perfil activo del usuario (por id si existe),
+    // y si no, por courseKey + email del usuario logueado.
+    const s = getSession() || {};
+    const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
+
+    const idx = profiles.findIndex(p=>{
+      if(activeProfileId && String(p.id||"") === String(activeProfileId)) return true;
+      if(p.courseKey !== activeKey) return false;
+      const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
+      return sessionEmail && pEmail === sessionEmail;
+    });
+
+    if(idx >= 0){
+      // asegurar estructura activation
+      const act = profiles[idx].activation || {};
+      act.required = true;
+      act.status = "paid";
+      act.paidAt = nowISO();
+      profiles[idx].activation = act;
+
+      save(KEY_PROFILES, profiles);
+
+      // si tienes un perfil activo cacheado en storage, refrescarlo también
+      try{
+        localStorage.setItem(KEY_ACTIVE_PROFILE, String(profiles[idx].id || activeProfileId || ""));
+      }catch(e){}
+    }else{
+      // fallback ultra defensivo: marca activación pagada en todos los perfiles del curso del usuario
+      profiles.forEach(p=>{
+        if(p.courseKey !== activeKey) return;
+        const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
+        if(sessionEmail && pEmail === sessionEmail){
+          const act = p.activation || {};
+          act.required = true;
+          act.status = "paid";
+          act.paidAt = nowISO();
+          p.activation = act;
+        }
+      });
       save(KEY_PROFILES, profiles);
     }
+
     closeModal();
     go("home");
   };
