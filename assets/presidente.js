@@ -236,8 +236,22 @@
   }
 
   function deudoresTask(id){
-    return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+  // Regla: X cuotas pendientes = 1 deudor (apoderado único)
+  const set = new Set();
+  payments().forEach(p=>{
+    if(p.fromTaskId!==id) return;
+    if(!isPendingLike(p)) return;
+    const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
+    if(k) set.add(k);
   }
+
+function cuotasPendientesTask(id){
+  // Total de cuotas/pagos pendientes (sin agrupar por persona)
+  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+}
+);
+  return set.size;
+}
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
@@ -502,7 +516,7 @@
       const saldo = rec - gas;
       const pend = pendingTaskEstimated(t);
       const debtors = deudoresTask(t.id);
-
+      const cuotasPendientes = cuotasPendientesTask(t.id);
       const monto = Number(t.amount||0);
       const tipo = campaignTypeLabel(t);
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
@@ -540,6 +554,10 @@
             <div class="metricBox">
               <div class="metricLbl">Deudores</div>
               <div class="metricVal">${Number(debtors||0)}</div>
+            </div>
+            <div class="metricBox">
+              <div class="metricLbl">Cuotas pendientes</div>
+              <div class="metricVal">${Number(cuotasPendientes||0)}</div>
             </div>
             <div class="metricBox metricWide">
               <div class="metricLbl">Pendiente</div>
