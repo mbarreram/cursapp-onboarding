@@ -99,15 +99,27 @@ function isMinePayment(p){
   window.toggleOptOut = function(taskId){
     const next = !isOptedOut(taskId);
     setOptedOut(taskId, next);
-    // re-render tab actual para que el "pendiente" cambie altiro
-    try{
-      const activeBtn = (document.querySelector('.navItem.active') || {});
-      const tab = activeBtn.dataset ? activeBtn.dataset.tab : "home";
-      if(typeof go === "function") go(tab || "home");
-      else { try{ renderHome(); }catch(e){} try{ renderPayments(); }catch(e){} }
-    }catch(e){ try{ renderHome(); }catch(_){} try{ renderPayments(); }catch(_){} }
-    try{ window.dispatchEvent(new Event("cursapp:dataChanged")); }catch(e){}
+    renderPayments();
   };
+
+  // ---- Helper: pagos excluidos por opt-out (solo campañas NO obligatorias) ----
+  // Compat con fixes anteriores: algunos lugares usan isPaymentOptedOut().
+  function isPaymentOptedOut(p){
+    try{
+      const tid = (p && (p.fromTaskId || p.taskId || p.campaignId)) || "";
+      if(!tid) return false;
+      const ts = normalizeTasks(load(KEY_TASKS, []));
+      const t = ts.find(x=>String(x.id)===String(tid));
+      if(!t) return false;
+      if(t.mandatoryParticipation === false){
+        return isOptedOut(String(t.id));
+      }
+      return false;
+    }catch(e){
+      return false;
+    }
+  }
+  window.isPaymentOptedOut = isPaymentOptedOut;
 
 // ---- Safe init post-reset (no pisa datos reales) ----
   function initSafeStorage(){
@@ -717,23 +729,9 @@ function dueBadge(iso){
     let paysAll = load(KEY_PAYMENTS, []);
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
-    // 🔍 lookup campañas por id para aplicar opt-out en no obligatorias
-    const taskById = Object.create(null);
-    for(const t of tasks0){ if(t && t.id) taskById[String(t.id)] = t; }
-    const isPaymentOptedOut = (p)=>{
-      const tid = p && p.fromTaskId ? String(p.fromTaskId) : "";
-      if(!tid) return false;
-      const t = taskById[tid];
-      return !!(t && t.mandatoryParticipation===false && typeof isOptedOut==="function" && isOptedOut(tid));
-    };
-
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
-    // ✅ Si una campaña NO es obligatoria y marqué "No participo", no debe aparecer como pendiente
-    const isPendingLike = (p)=>["pending","partial"].includes(String(p.status||"").toLowerCase());
-    const isUpcomingLike = (p)=>String(p.status||"").toLowerCase()==="upcoming";
-
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -830,7 +828,7 @@ function dueBadge(iso){
     }
 
     // Si está al día: copy divertido
-    const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7);
+    const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7 && !isPaymentOptedOut(p));
     if(pending.length===0 && upcoming.length===0){
       const title = document.querySelector("#cardNextDue .kTitle");
       if(title) title.innerHTML = "🥳 ¡Todo al día!";
@@ -885,10 +883,6 @@ function dueBadge(iso){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
-    // ✅ Si una campaña NO es obligatoria y marqué "No participo", no debe aparecer como pendiente
-    const isPendingLike = (p)=>["pending","partial"].includes(String(p.status||"").toLowerCase());
-    const isUpcomingLike = (p)=>String(p.status||"").toLowerCase()==="upcoming";
-
 
 
     try{
@@ -990,8 +984,8 @@ function dueBadge(iso){
 
     // próxima cuota destacada (solo si hay pendiente con fecha)
     const nextDueBase = (selectedTask && selectedTask!=="all")
-      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask && !isPaymentOptedOut(p))
-      : paysAll.filter(p=>!isPaymentOptedOut(p));
+      ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask)
+      : paysAll;
 
     const nextDue = nextDueBase
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
@@ -1076,9 +1070,7 @@ function dueBadge(iso){
         // Resumen simple para single (paga todo)
         if(!isMonthly){
           const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
-          let totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
-          const optedOut = (t.mandatoryParticipation===false && typeof isOptedOut==="function" && isOptedOut(t.id));
-          if(optedOut) totalPend = 0;
+          const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
           return `
             <div class="card" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">

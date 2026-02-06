@@ -375,16 +375,17 @@ function cuotasPendientesTask(id){
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // 🔄 Re-render inmediato cuando cambian campañas/pagos/etc (evita cerrar sesión)
-  window.addEventListener("cursapp:dataChanged", () => {
+  // ---- Refresh UI when data changes (campaigns/payments) ----
+  // campaigns.js emite este evento al crear/editar/cerrar campañas.
+  window.addEventListener('cursapp:dataChanged', ()=>{
     try{
-      const sig = __tasksSig();
-      if(sig) __TASKS_SIG = sig;
-      // re-render tab actual
-      go(state.tab || "home");
+      const tab = (state && state.tab) ? state.tab : 'home';
+      if(tab==='home') renderHome();
+      else if(tab==='campanas') renderCampanas();
+      else if(tab==='deudores') renderDeudores();
+      else if(tab==='informes') renderInformes();
     }catch(e){}
   });
-
 
   
   // ----- Watcher: refrescar Campañas cuando cambian las tasks -----
