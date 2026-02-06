@@ -479,49 +479,58 @@ function dueBadge(iso){
 
   window.payActivation = function(){
     const profiles = load(KEY_PROFILES, []);
-    const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
+    const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || session?.courseKey || "";
+    const uid = String(session?.userId || "").toLowerCase();
 
-    // Intentamos actualizar el perfil activo del usuario (por id si existe),
-    // y si no, por courseKey + email del usuario logueado.
-    const s = getSession() || {};
-    const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
-
-    const idx = profiles.findIndex(p=>{
-      if(activeProfileId && String(p.id||"") === String(activeProfileId)) return true;
-      if(p.courseKey !== activeKey) return false;
-      const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
-      return sessionEmail && pEmail === sessionEmail;
+    // 1) actualizar perfil activo (si existe como objeto separado)
+    //    Algunos flujos gatean por el perfil activo en vez de recorrer profiles.
+    const ACTIVE_PROFILE_KEYS = ["cursapp_active_profile_v1", "cursapp_active_profile", "cursapp_profile_active_v1"];
+    ACTIVE_PROFILE_KEYS.forEach(k=>{
+      try{
+        const ap = JSON.parse(localStorage.getItem(k) || "null");
+        if(ap && String(ap.courseKey||"")===String(activeKey||"")){
+          const em = String(ap.email||ap.userId||ap.user?.email||"").toLowerCase();
+          if(!uid || !em || em===uid){
+            if(!ap.activation || typeof ap.activation!=="object") ap.activation = { required:true, status:"pending" };
+            ap.activation.required = true;
+            ap.activation.status = "paid";
+            ap.activation.paidAt = nowISO();
+            localStorage.setItem(k, JSON.stringify(ap));
+          }
+        }
+      }catch(e){}
     });
 
-    if(idx >= 0){
-      // asegurar estructura activation
-      const act = profiles[idx].activation || {};
-      act.required = true;
-      act.status = "paid";
-      act.paidAt = nowISO();
-      profiles[idx].activation = act;
+    // 2) actualizar en listado de perfiles
+    const i = profiles.findIndex(p=>{
+      if(String(p.courseKey||"") !== String(activeKey||"")) return false;
+      const email = String(p.email || p.user?.email || p.userId || p.user?.id || "").toLowerCase();
+      return email && uid && email === uid;
+    });
 
+    if(i>=0){
+      if(!profiles[i].activation || typeof profiles[i].activation !== "object"){
+        profiles[i].activation = { required:true, status:"pending" };
+      }
+      profiles[i].activation.required = true;
+      profiles[i].activation.status = "paid";
+      profiles[i].activation.paidAt = nowISO();
       save(KEY_PROFILES, profiles);
-
-      // si tienes un perfil activo cacheado en storage, refrescarlo también
-      try{
-        localStorage.setItem(KEY_ACTIVE_PROFILE, String(profiles[idx].id || activeProfileId || ""));
-      }catch(e){}
     }else{
-      // fallback ultra defensivo: marca activación pagada en todos los perfiles del curso del usuario
+      // fallback: marcar en todos los perfiles del mismo curso+email
+      let touched = false;
       profiles.forEach(p=>{
-        if(p.courseKey !== activeKey) return;
-        const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
-        if(sessionEmail && pEmail === sessionEmail){
-          const act = p.activation || {};
-          act.required = true;
-          act.status = "paid";
-          act.paidAt = nowISO();
-          p.activation = act;
+        if(String(p.courseKey||"") !== String(activeKey||"")) return;
+        const email = String(p.email || p.user?.email || p.userId || p.user?.id || "").toLowerCase();
+        if(email && uid && email === uid){
+          if(!p.activation || typeof p.activation !== "object") p.activation = { required:true, status:"pending" };
+          p.activation.required = true;
+          p.activation.status = "paid";
+          p.activation.paidAt = nowISO();
+          touched = true;
         }
       });
-      save(KEY_PROFILES, profiles);
+      if(touched) save(KEY_PROFILES, profiles);
     }
 
     closeModal();
