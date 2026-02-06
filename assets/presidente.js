@@ -243,15 +243,15 @@
     if(!isPendingLike(p)) return;
     const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
     if(k) set.add(k);
-  }
+  });
+  return set.size;
+}
 
 function cuotasPendientesTask(id){
   // Total de cuotas/pagos pendientes (sin agrupar por persona)
   return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
 }
-);
-  return set.size;
-}
+
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
