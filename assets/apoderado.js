@@ -478,59 +478,80 @@ function dueBadge(iso){
   }
 
   window.payActivation = function(){
-    const profiles = load(KEY_PROFILES, []);
-    const activeKey = localStorage.getItem(KEY_ACTIVE_COURSE) || session?.courseKey || "";
-    const uid = String(session?.userId || "").toLowerCase();
+    try{
+      const profiles = load(KEY_PROFILES, []);
+      const s = getSession() || {};
+      const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
+      const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+      let activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
 
-    // 1) actualizar perfil activo (si existe como objeto separado)
-    //    Algunos flujos gatean por el perfil activo en vez de recorrer profiles.
-    const ACTIVE_PROFILE_KEYS = ["cursapp_active_profile_v1", "cursapp_active_profile", "cursapp_profile_active_v1"];
-    ACTIVE_PROFILE_KEYS.forEach(k=>{
-      try{
-        const ap = JSON.parse(localStorage.getItem(k) || "null");
-        if(ap && String(ap.courseKey||"")===String(activeKey||"")){
-          const em = String(ap.email||ap.userId||ap.user?.email||"").toLowerCase();
-          if(!uid || !em || em===uid){
-            if(!ap.activation || typeof ap.activation!=="object") ap.activation = { required:true, status:"pending" };
-            ap.activation.required = true;
-            ap.activation.status = "paid";
-            ap.activation.paidAt = nowISO();
-            localStorage.setItem(k, JSON.stringify(ap));
+      // Si el activeProfileId se corrompió (por ejemplo guardaron JSON), intenta reparar
+      if(activeProfileId && String(activeProfileId).trim().startsWith("{")){
+        try{
+          const obj = JSON.parse(activeProfileId);
+          const pid = String(obj.profileId || obj.id || "").trim();
+          if(pid){
+            localStorage.setItem(KEY_ACTIVE_PROFILE, pid);
+            activeProfileId = pid;
+          }else{
+            localStorage.removeItem(KEY_ACTIVE_PROFILE);
+            activeProfileId = "";
           }
+        }catch(e){
+          localStorage.removeItem(KEY_ACTIVE_PROFILE);
+          activeProfileId = "";
         }
-      }catch(e){}
-    });
-
-    // 2) actualizar en listado de perfiles
-    const i = profiles.findIndex(p=>{
-      if(String(p.courseKey||"") !== String(activeKey||"")) return false;
-      const email = String(p.email || p.user?.email || p.userId || p.user?.id || "").toLowerCase();
-      return email && uid && email === uid;
-    });
-
-    if(i>=0){
-      if(!profiles[i].activation || typeof profiles[i].activation !== "object"){
-        profiles[i].activation = { required:true, status:"pending" };
       }
-      profiles[i].activation.required = true;
-      profiles[i].activation.status = "paid";
-      profiles[i].activation.paidAt = nowISO();
-      save(KEY_PROFILES, profiles);
-    }else{
-      // fallback: marcar en todos los perfiles del mismo curso+email
+
+      const markPaid = (p)=>{
+        if(!p.activation || typeof p.activation !== "object"){
+          p.activation = { required:true, status:"pending" };
+        }
+        p.activation.required = true;
+        p.activation.status = "paid";
+        p.activation.paidAt = nowISO();
+      };
+
       let touched = false;
-      profiles.forEach(p=>{
-        if(String(p.courseKey||"") !== String(activeKey||"")) return;
-        const email = String(p.email || p.user?.email || p.userId || p.user?.id || "").toLowerCase();
-        if(email && uid && email === uid){
-          if(!p.activation || typeof p.activation !== "object") p.activation = { required:true, status:"pending" };
-          p.activation.required = true;
-          p.activation.status = "paid";
-          p.activation.paidAt = nowISO();
+
+      // 1) Si hay perfil activo id, se prioriza
+      if(activeProfileId){
+        const ix = profiles.findIndex(p => String(p.profileId || p.id || "") === String(activeProfileId));
+        if(ix>=0){
+          markPaid(profiles[ix]);
           touched = true;
         }
-      });
-      if(touched) save(KEY_PROFILES, profiles);
+      }
+
+      // 2) Si no tocamos nada, buscamos por curso + email de sesión
+      if(!touched && activeCourse && sessionEmail){
+        profiles.forEach(p=>{
+          const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
+          if(String(p.courseKey||"")===String(activeCourse) && pEmail===sessionEmail){
+            markPaid(p);
+            touched = true;
+          }
+        });
+      }
+
+      // 3) Fallback: curso + rol apoderado (último recurso)
+      if(!touched && activeCourse){
+        const ix = profiles.findIndex(p => String(p.courseKey||"")===String(activeCourse) && (p.role==="apoderado" || p.user?.role==="apoderado"));
+        if(ix>=0){
+          markPaid(profiles[ix]);
+          touched = true;
+        }
+      }
+
+      if(touched){
+        save(KEY_PROFILES, profiles);
+        try{ toast("Activación completada ✅"); }catch(e){ alert("Activación completada ✅"); }
+      }else{
+        try{ toast("No encontré el perfil para activar"); }catch(e){ alert("No encontré el perfil para activar"); }
+      }
+    }catch(e){
+      console.error(e);
+      try{ toast("Error al activar"); }catch(_){ alert("Error al activar"); }
     }
 
     closeModal();
