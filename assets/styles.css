@@ -339,9 +339,8 @@ p{ margin:0; }
   font-weight: 700;
 }
 
-
-/* ===== Ayuda Apoderado ===== */
-.helpIcon{
+/* ===== Ayuda (Apoderado) ===== */
+.helpBtn{
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -349,25 +348,43 @@ p{ margin:0; }
   height:22px;
   margin-left:8px;
   border-radius:999px;
-  border:1px solid rgba(229,231,235,.95);
+  border:1px solid rgba(17,24,39,.18);
   background:#fff;
-  color:#64748b;
+  color:#111827;
   font-weight:950;
   font-size:13px;
   line-height:1;
   cursor:pointer;
+  opacity:.9;
 }
-.helpIcon:active{ transform:scale(.98); }
-
-.helpModalCard{ padding:16px 16px; }
-.helpScroll{
-  margin-top:12px;
-  max-height:70vh;
+.helpBtn:active{ transform: scale(.98); }
+.helpModalCard{
+  max-height: 78vh;
+  display:flex;
+  flex-direction:column;
+  padding-bottom: 12px;
+}
+.helpHeader{
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.helpBody{
   overflow:auto;
-  -webkit-overflow-scrolling:touch;
-  padding-right:4px;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
-.helpItem{ padding:12px 4px; border-bottom:1px solid rgba(229,231,235,.8); }
-.helpItem:last-child{ border-bottom:none; }
-.helpQ{ font-weight:950; font-size:16px; color:#0f172a; }
-.helpA{ margin-top:6px; color:#64748b; font-weight:800; line-height:1.45; }
+.helpQA{ padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+.helpQA:last-child{ border-bottom: none; }
+.helpQ{ font-weight: 950; font-size: 18px; color:#0f172a; margin-bottom: 6px; }
+.helpA{ color:#475569; font-weight: 800; line-height: 1.45; font-size: 15px; }
+.helpFooter{
+  position: sticky;
+  bottom: 0;
+  padding-top: 10px;
+  background: #fff;
+  border-top: 1px solid rgba(0,0,0,.08);
+  display:flex;
+  justify-content:flex-end;
+}
+
