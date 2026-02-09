@@ -206,16 +206,33 @@
   function menuButton(label, onClick, opts={}){
     const icon = opts.icon ? `${opts.icon} ` : '';
     const id = opts.id ? ` id="${opts.id}"` : '';
-    return `<button class="btn ghost" type="button"${id} style="width:100%;text-align:left;" data-menu-action="${escapeHtml(onClick)}">${icon}${escapeHtml(label)}</button>`;
+    const extra = opts.extraAttrs ? ` ${opts.extraAttrs}` : '';
+    const hiddenStyle = opts.hidden ? 'display:none;' : '';
+    return `<button class="btn ghost" type="button"${id}${extra} style="${hiddenStyle}width:100%;text-align:left;" data-menu-action="${escapeHtml(onClick)}">${icon}${escapeHtml(label)}</button>`;
   }
 
+  
   function renderMenu(role){
     const dd = $('#menuDropdown');
     if(!dd) return;
 
     role = normalizeRole(role);
-
     const items = [];
+
+    // Hidden compatibility placeholders (avoid crashes in existing JS that expects these IDs)
+    // - apoderado.js expects #goOnboarding and #logoutBtn
+    // - presidente/tesorero JS expect #resetBtn and #logoutBtn
+    const needGoOnboarding = !!$('#goOnboarding') || role === 'apoderado';
+    const needResetBtn = !!$('#resetBtn') || role === 'presidente' || role === 'tesorero';
+
+    if(needGoOnboarding){
+      items.push(menuButton('Configurar curso', 'goOnboarding', { id:'goOnboarding', hidden:true }));
+    }
+    if(needResetBtn){
+      items.push(menuButton('Reset datos (demo)', 'resetDemo', { id:'resetBtn', hidden:true }));
+    }
+    // We'll include a hidden logoutBtn placeholder too; visible logout uses the same id.
+    // (No need to add a hidden one.)
 
     if(role === 'apoderado'){
       if(canSwitchToDirectiva()){
@@ -226,10 +243,8 @@
       items.push(menuButton('Ayuda', 'help', {icon:'❓'}));
       items.push(menuButton('Mi perfil', 'profile', {icon:'👤'}));
       items.push(menuButton('Reset total (dev)', 'resetTotal', {icon:'🧨'}));
-      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪'}));
-    }
-
-    if(role === 'presidente'){
+      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪', id:'logoutBtn'}));
+    } else if(role === 'presidente'){
       items.push(menuButton('Volver a apoderado', 'toApoderado', {icon:'👤'}));
       items.push(menuButton('Apoderados del curso', 'goApoderados', {icon:'👥'}));
       items.push(menuButton('Campañas', 'goCampanas', {icon:'📌'}));
@@ -238,27 +253,41 @@
       items.push(menuButton('Mi perfil', 'profile', {icon:'👤'}));
       items.push(menuButton('Ayuda', 'help', {icon:'❓'}));
       items.push(menuButton('Reset total (dev)', 'resetTotal', {icon:'🧨'}));
-      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪'}));
-    }
-
-    if(role === 'tesorero'){
+      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪', id:'logoutBtn'}));
+    } else if(role === 'tesorero'){
       items.push(menuButton('Volver a apoderado', 'toApoderado', {icon:'👤'}));
       items.push(menuButton('Rendiciones', 'goRendiciones', {icon:'🧾'}));
       items.push(menuButton('Informes', 'goInformes', {icon:'📊'}));
       items.push(menuButton('Mi perfil', 'profile', {icon:'👤'}));
       items.push(menuButton('Ayuda', 'help', {icon:'❓'}));
       items.push(menuButton('Reset total (dev)', 'resetTotal', {icon:'🧨'}));
-      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪'}));
+      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪', id:'logoutBtn'}));
+    } else {
+      // fallback
+      items.push(menuButton('Cerrar sesión', 'logout', {icon:'🚪', id:'logoutBtn'}));
     }
 
     dd.innerHTML = items.join('\n');
 
-    // Bind clicks (single handler)
     dd.onclick = function(ev){
       const btn = ev.target.closest('[data-menu-action]');
       if(!btn) return;
       const a = btn.getAttribute('data-menu-action') || '';
       switch(a){
+        case 'goOnboarding':{
+          const b = $('#goOnboarding');
+          if(b && b !== btn){ b.click(); closeMenu(); return; }
+          // if not wired by existing js, fallback
+          location.href = '/onboarding/dashboard.html';
+          closeMenu();
+          break;
+        }
+        case 'resetDemo':{
+          const b = $('#resetBtn');
+          if(b && b !== btn){ b.click(); closeMenu(); return; }
+          showInfoModal('Reset demo', 'No está disponible en esta pantalla.');
+          break;
+        }
         case 'toDirectiva':
           if(window.CURSAPP_SWITCH && typeof window.CURSAPP_SWITCH.toDirectiva === 'function') window.CURSAPP_SWITCH.toDirectiva();
           else location.href = '/presidente.html';
@@ -305,6 +334,7 @@
   }
 
   function closeMenu(){
+(){
     const dd = $('#menuDropdown');
     if(dd) dd.style.display = 'none';
   }
