@@ -305,12 +305,6 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
 
-  // ---- Ayudas (Apoderado) ----
-  function helpIcon(text){
-    return `<span class="helpIcon" title="${esc(text)}" aria-label="Ayuda" role="img">?</span>`;
-  }
-
-
   function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 
@@ -410,44 +404,86 @@ function dueBadge(iso){
   }
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
+  // ===== Ayuda Apoderado (FAQ + tooltips clickeables) =====
+  function buildHelpContent(topic){
+    const items = [
+      {k:"mandatory", q:"¿Qué es una campaña obligatoria?", a:"Es un cobro del curso en el que todos participan. No puedes excluirte."},
+      {k:"optional", q:"¿Qué es una campaña no obligatoria?", a:"Puedes elegir Participar o No participo. Si eliges No participo, ese cobro se excluye de tu pendiente."},
+      {k:"arrears", q:"¿Puedo pagar cuotas atrasadas juntas?", a:"Sí. Puedes pagar cuotas vencidas y la del mes en una sola transacción."},
+      {k:"due", q:"¿Qué significa Vencida vs Pendiente?", a:"Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasó su fecha."},
+      {k:"credit", q:"¿Qué es “Saldo a favor”?", a:"Se descuenta automáticamente en tus próximos pagos."},
+      {k:"contact", q:"¿A quién contacto si tengo un problema?", a:"Contacta al presidente o tesorero del curso."},
+    ];
+    const focus = String(topic||"").trim().toLowerCase();
+    const intro = {
+      home: "Aquí encuentras respuestas rápidas sobre tus pagos y campañas.",
+      payments: "Aquí se explica cómo funcionan cuotas, vencimientos y saldo a favor.",
+      next: "La próxima cuota es el pago con fecha más cercana. Puedes pagar cuotas vencidas junto con esta.",
+      pending: "El total pendiente suma campañas obligatorias y campañas no obligatorias en las que participas.",
+      default: "Respuestas rápidas para usar Cursapp como apoderado."
+    }[focus] || {
+      mandatory:"Campañas obligatorias: todos participan.",
+      optional:"Campañas no obligatorias: puedes participar o excluirte.",
+      arrears:"Pagos de cuotas: puedes pagar varias juntas.",
+      due:"Vencida vs pendiente: qué significa cada concepto.",
+      credit:"Saldo a favor: cómo se aplica.",
+      contact:"Soporte: con quién hablar."
+    }[focus] || "Respuestas rápidas para usar Cursapp como apoderado.";
 
-  // ---- Centro de ayuda (Modal) ----
-  window.openHelp = function(){
-    openModal(`
-      <div class="card">
-        <div class="row">
+    const list = items.map(it=>{
+      const hl = (focus && (focus===it.k)) ? 'style="outline:2px solid rgba(91,92,226,.28);background:rgba(91,92,226,.06);border-radius:14px;padding:12px 12px;"' : '';
+      return `
+        <div class="helpItem" ${hl} data-help-k="${esc(it.k)}">
+          <div class="helpQ">${esc(it.q)}</div>
+          <div class="helpA">${esc(it.a)}</div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="card helpModalCard">
+        <div class="row" style="align-items:flex-start;">
           <div>
-            <div class="kTitle">❓ Ayuda · Apoderado</div>
-            <div class="muted" style="margin-top:6px;">Guía rápida para entender pagos, campañas y estados.</div>
+            <div class="kTitle">❓ Ayuda Apoderado</div>
+            <div class="muted" style="margin-top:6px;line-height:1.45;">${esc(intro)}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
-
-        <div class="helpList" style="margin-top:12px;line-height:1.45;">
-          <b>¿Cómo sé cuánto debo pagar?</b>
-          <div class="muted">En <b>Inicio</b> verás tu <b>Total pendiente</b> y la <b>Próxima cuota</b>. En <b>Pagos</b> puedes ver el detalle por campaña.</div>
-
-          <b>¿Qué es una campaña obligatoria?</b>
-          <div class="muted">Es un cobro del curso en el que <b>todos participan</b>.</div>
-
-          <b>¿Qué es una campaña no obligatoria?</b>
-          <div class="muted">Puedes elegir <b>Participar</b> o <b>No participo</b>. Si eliges <b>No participo</b>, ese cobro se excluye de tu pendiente.</div>
-
-          <b>¿Puedo pagar cuotas atrasadas juntas?</b>
-          <div class="muted">Sí. Puedes pagar cuotas vencidas y la del mes en una sola transacción.</div>
-
-          <b>¿Qué significa Vencida vs Pendiente?</b>
-          <div class="muted"><b>Pendiente</b> incluye todo lo que falta por pagar. <b>Vencida</b> es una cuota que pasó su fecha.</div>
-
-          <b>¿Qué es “Saldo a favor”?</b>
-          <div class="muted">Se descuenta automáticamente en tus próximos pagos.</div>
-
-          <b>¿A quién contacto si tengo un problema?</b>
-          <div class="muted">Contacta al presidente o tesorero del curso.</div>
+        <div class="helpScroll">
+          ${list}
         </div>
       </div>
-    `);
+    `;
+  }
+
+  // Global: usable desde apoderado.html y desde los íconos "?"
+  window.openHelp = function(topic){
+    try{
+      openModal(buildHelpContent(topic));
+      // scroll al item destacado si corresponde
+      const k = String(topic||"").trim().toLowerCase();
+      if(k && modalRoot){
+        setTimeout(()=>{
+          const el = modalRoot.querySelector(`[data-help-k="${k}"]`);
+          if(el && el.scrollIntoView) el.scrollIntoView({block:"start", behavior:"smooth"});
+        }, 80);
+      }
+    }catch(e){
+      console.error(e);
+    }
   };
+
+  // Delegación: hace clickeables los íconos "?" aunque sean spans
+  document.addEventListener("click", (ev)=>{
+    const t = ev.target;
+    const btn = t && (t.closest ? t.closest(".helpIcon") : null);
+    if(!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const topic = btn.getAttribute("data-help") || btn.getAttribute("data-topic") || "";
+    window.openHelp(topic);
+  }, true);
+
 
   // -------- Profile / Header --------
   function getActiveProfile(){
@@ -793,7 +829,7 @@ function dueBadge(iso){
       <!-- 1) Próxima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">⏰ Próxima cuota ${helpIcon("Corresponde al pago con fecha más cercana. Puedes pagar cuotas vencidas junto con esta.")}</div>
+          <div class="kTitle">⏰ Próxima cuota</div>
           <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
 
@@ -814,7 +850,7 @@ function dueBadge(iso){
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">💳 Pagos pendientes ${helpIcon("Es la suma de campañas obligatorias + campañas no obligatorias en las que participas (si marcaste \"No participo\", se excluye).")}</div>
+          <div class="kTitle">💳 Pagos pendientes</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
 
@@ -1212,7 +1248,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
     app.innerHTML = `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div class="kTitle">Pagos ${helpIcon("Aquí ves tus cobros por campaña. Pendiente incluye todo lo no pagado. Vencida es una cuota con fecha ya pasada.")}</div>
+          <div class="kTitle">Pagos</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
                 <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
