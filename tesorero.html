@@ -33,32 +33,7 @@
       border:1px solid rgba(229,231,235,.9);
       border-radius:14px;padding:8px;min-width:240px;
       box-shadow:0 10px 30px rgba(0,0,0,.12);z-index:10002;">
-
-      <button class="btn ghost" id="resetBtn" type="button"
-        style="width:100%;text-align:left;">
-        Reset datos (demo)
-      </button>
-
-      <button class="btn ghost" type="button"
-        style="width:100%;text-align:left;"
-        onclick="location.href='/apoderados.html'">
-        👥 Apoderados
-      </button>
-
-      <!-- ✅ Cambiar a apoderado (basado en enrollment/email) -->
-      <button class="btn ghost" type="button"
-        style="width:100%;text-align:left;"
-        onclick="CURSAPP_SWITCH.toApoderado()">
-        👤 Entrar como apoderado
-      </button>
-      <button class="btn ghost" type="button" onclick="CURSAPP.hardReset()" style="width:100%;text-align:left;">
-  🧨 Reset total (dev)
-</button>
-
-      <button class="btn ghost" id="logoutBtn" type="button"
-        style="width:100%;text-align:left;">
-        Cerrar sesión
-      </button>
+    
     </div>
   </div>
 </header>
@@ -79,5 +54,6 @@
 <script defer src="/assets/tesorero.js?v=1001"></script>
   <script defer src="/assets/core.js?v=2301"></script>
   <link rel="stylesheet" href="/assets/ux-tesorero.css?v=1">
+  <script defer src="/assets/menu.js?v=1"></script>
 </body>
 </html>
