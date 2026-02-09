@@ -338,3 +338,24 @@ p{ margin:0; }
   border-radius: 14px;
   font-weight: 700;
 }
+
+
+/* ===== AYUDA APODERADO (tooltips + modal) ===== */
+.helpIcon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border:1px solid rgba(229,231,235,.95);
+  background:#fff;
+  color:#64748b;
+  font-size:12px;
+  font-weight:900;
+  margin-left:6px;
+  cursor:pointer;
+}
+.helpIcon:active{ transform:scale(.98); }
+.helpList b{ display:block; margin-top:10px; }
+.helpList .muted{ margin-top:4px; }

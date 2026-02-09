@@ -305,6 +305,12 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
 
+  // ---- Ayudas (Apoderado) ----
+  function helpIcon(text){
+    return `<span class="helpIcon" title="${esc(text)}" aria-label="Ayuda" role="img">?</span>`;
+  }
+
+
   function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
 
@@ -404,6 +410,44 @@ function dueBadge(iso){
   }
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
+
+  // ---- Centro de ayuda (Modal) ----
+  window.openHelp = function(){
+    openModal(`
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="kTitle">❓ Ayuda · Apoderado</div>
+            <div class="muted" style="margin-top:6px;">Guía rápida para entender pagos, campañas y estados.</div>
+          </div>
+          <button class="btnx" onclick="closeModal()">Cerrar</button>
+        </div>
+
+        <div class="helpList" style="margin-top:12px;line-height:1.45;">
+          <b>¿Cómo sé cuánto debo pagar?</b>
+          <div class="muted">En <b>Inicio</b> verás tu <b>Total pendiente</b> y la <b>Próxima cuota</b>. En <b>Pagos</b> puedes ver el detalle por campaña.</div>
+
+          <b>¿Qué es una campaña obligatoria?</b>
+          <div class="muted">Es un cobro del curso en el que <b>todos participan</b>.</div>
+
+          <b>¿Qué es una campaña no obligatoria?</b>
+          <div class="muted">Puedes elegir <b>Participar</b> o <b>No participo</b>. Si eliges <b>No participo</b>, ese cobro se excluye de tu pendiente.</div>
+
+          <b>¿Puedo pagar cuotas atrasadas juntas?</b>
+          <div class="muted">Sí. Puedes pagar cuotas vencidas y la del mes en una sola transacción.</div>
+
+          <b>¿Qué significa Vencida vs Pendiente?</b>
+          <div class="muted"><b>Pendiente</b> incluye todo lo que falta por pagar. <b>Vencida</b> es una cuota que pasó su fecha.</div>
+
+          <b>¿Qué es “Saldo a favor”?</b>
+          <div class="muted">Se descuenta automáticamente en tus próximos pagos.</div>
+
+          <b>¿A quién contacto si tengo un problema?</b>
+          <div class="muted">Contacta al presidente o tesorero del curso.</div>
+        </div>
+      </div>
+    `);
+  };
 
   // -------- Profile / Header --------
   function getActiveProfile(){
@@ -749,7 +793,7 @@ function dueBadge(iso){
       <!-- 1) Próxima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">⏰ Próxima cuota</div>
+          <div class="kTitle">⏰ Próxima cuota ${helpIcon("Corresponde al pago con fecha más cercana. Puedes pagar cuotas vencidas junto con esta.")}</div>
           <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
 
@@ -770,7 +814,7 @@ function dueBadge(iso){
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">💳 Pagos pendientes</div>
+          <div class="kTitle">💳 Pagos pendientes ${helpIcon("Es la suma de campañas obligatorias + campañas no obligatorias en las que participas (si marcaste \"No participo\", se excluye).")}</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
 
@@ -1168,7 +1212,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
     app.innerHTML = `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div class="kTitle">Pagos</div>
+          <div class="kTitle">Pagos ${helpIcon("Aquí ves tus cobros por campaña. Pendiente incluye todo lo no pagado. Vencida es una cuota con fecha ya pasada.")}</div>
           ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
         </div>
                 <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
