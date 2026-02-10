@@ -557,6 +557,42 @@ function dueBadge(iso){
       return;
     }
     const c = p.course;
+
+    // --- FIX alumno faltante al volver desde Presidente ---
+    try {
+      if (!p?.apoderado?.alumno) {
+        const profiles = load(KEY_PROFILES, []);
+        const s = getSession() || {};
+        const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
+        const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+        const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
+        const pUserId = String(p?.userId || p?.user?.userId || "");
+        const mine = (profiles || []).filter(x=>{
+          const xEmail = String(x?.apoderado?.email || x?.user?.email || "").trim().toLowerCase();
+          const xUserId = String(x?.userId || x?.user?.userId || "");
+          return (sessionEmail && xEmail === sessionEmail) || (s.userId && xUserId === String(s.userId)) || (pEmail && xEmail === pEmail) || (pUserId && xUserId === pUserId);
+        });
+
+        const donor = (mine || []).find(x =>
+          String(x?.apoderado?.alumno || "").trim() &&
+          String(x?.courseKey || "") === String(p?.courseKey || activeCourse || "")
+        );
+
+        if (donor) {
+          p.apoderado = p.apoderado || {};
+          p.apoderado.alumno = donor.apoderado.alumno;
+
+          // Persistir perfil activo para que no vuelva a fallar
+          const pid = String(p?.profileId || p?.id || "");
+          const idx = profiles.findIndex(x => String(x?.profileId || x?.id || "") === pid);
+          if (idx >= 0) {
+            profiles[idx] = p;
+            save(KEY_PROFILES, profiles);
+          }
+        }
+      }
+    } catch (e) {}
+
     const ap = p.apoderado || {};
     whoCourseLine.innerHTML = `
       <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado")+" · Apoderado")}</div>
