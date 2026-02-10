@@ -1331,7 +1331,3 @@ window.deleteCampaign = function(taskId){
     openModalSafe(html);
   };
 })();
-;
-})();
-
-
