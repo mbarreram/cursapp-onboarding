@@ -399,3 +399,22 @@ p{ margin:0; }
   overflow: auto !important;
   -webkit-overflow-scrolling: touch;
 }
+
+/* === Menú dropdown: destacar sobre fondo blanco === */
+#menuDropdown{
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.08),
+    0 2px 6px rgba(0,0,0,0.05);
+}
+#menuDropdown .btn{
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+#menuDropdown .btn:active{
+  background: rgba(108,92,231,0.08);
+}
+
