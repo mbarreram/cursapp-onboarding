@@ -303,9 +303,39 @@ function cuotasPendientesTask(id){
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
+  window.openModal = openModal;
   window.closeModal = closeModal;
 
-  // ----- menu -----
+  
+  // ----- help icon -----
+  function helpIcon(topic){
+    return `<button class="helpIcon" type="button" onclick="openHelp('${topic||'presidente'}')">?</button>`;
+  }
+
+  (function ensureHelpIconStyles(){
+    if(document.getElementById('helpIconStyles_v1')) return;
+    const css = `
+      .helpIcon{
+        width:26px;height:26px;min-width:26px;
+        border-radius:999px;
+        border:1px solid rgba(0,0,0,.12);
+        background:#fff;
+        font-weight:950;
+        color:rgba(17,24,39,.9);
+        display:inline-flex;align-items:center;justify-content:center;
+        box-shadow:0 6px 14px rgba(0,0,0,.10);
+        cursor:pointer;
+      }
+      .helpIcon:active{ transform:scale(.98); }
+      .helpRow{ display:flex;align-items:center;justify-content:space-between;gap:10px; }
+    `;
+    const st = document.createElement('style');
+    st.id = 'helpIconStyles_v1';
+    st.textContent = css;
+    document.head.appendChild(st);
+  })();
+
+// ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
@@ -455,7 +485,7 @@ function cuotasPendientesTask(id){
 
     app.innerHTML = `      ${alerts.length ? `
         <div class="warnBox">
-          <div style="font-weight:950;">Resumen rápido</div>
+          <div class="helpRow"><div style="font-weight:950;">Resumen rápido</div>${helpIcon('home')}</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
         </div>
       `:""}
@@ -477,7 +507,7 @@ function cuotasPendientesTask(id){
       <div class="card">
         <div class="row">
           <div>
-            <div class="kTitle">Resumen ejecutivo del curso</div>
+            <div class="helpRow"><div class="kTitle">Resumen ejecutivo del curso</div>${helpIcon('resumen')}</div>
             <div class="muted" style="margin-top:6px;">Montos globales (no personales)</div>
           </div>
           <div class="actions">
@@ -958,7 +988,7 @@ function renderDeudores(){
           </div>
 
           <div style="margin-top:12px;">
-            <div style="font-weight:950;">Resumen para WhatsApp</div>
+            <div class="helpRow"><div style="font-weight:950;">Resumen para WhatsApp</div>${helpIcon('whatsapp')}</div>
             <div class="muted" style="margin-top:6px;">Copia y pega este texto.</div>
             <textarea readonly>${esc(wa)}</textarea>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
@@ -1268,66 +1298,128 @@ window.deleteCampaign = function(taskId){
   go("home");
 })();
 
+window.openHelp = function(topic){
+  const html =
+    '<div class="card" style="max-height:70vh;overflow:auto;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+        '<div style="font-weight:900;font-size:18px;">❓ Ayuda Presidente</div>' +
+        '<button class="btn ghost" type="button" onclick="closeModal()">Cerrar</button>' +
+      '</div>' +
 
+      '<div style="margin-top:12px;line-height:1.45;">' +
+
+        '<b>Campaña obligatoria</b>' +
+        '<div class="muted">Todos los apoderados deben pagar. No existe “No participo”.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Campaña no obligatoria</b>' +
+        '<div class="muted">Cada apoderado elige Participar o No participo. Solo los que participan cuentan en pendiente.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Deudores vs Cuotas pendientes</b>' +
+        '<div class="muted"><b>Deudores</b> = cantidad de apoderados con deuda vigente. <b>Cuotas pendientes</b> = detalle de cuotas sin pagar.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Crear y publicar campaña</b>' +
+        '<div class="muted">Crea la campaña, revisa monto/fechas y luego publícala. Al publicar, queda visible para apoderados.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Aprobación de apoderados</b>' +
+        '<div class="muted">Los apoderados quedan “pendientes” hasta que el presidente los apruebe para ingresar al curso.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Cobranza (WhatsApp)</b>' +
+        '<div class="muted">Usa la sección Deudores para copiar mensajes listos por apoderado y enviarlos.</div>' +
+        '<div style="height:10px;"></div>' +
+
+        '<b>Cierre de campaña</b>' +
+        '<div class="muted">Cierra manualmente indicando motivo (meta cumplida, fin de plazo, error, etc.).</div>' +
+
+      '</div>' +
+    '</div>';
+
+  if (typeof openModal === "function") openModal(html);
+  else alert("Ayuda Presidente: revisa campañas, deudores y cobranza.");
+};
 // --- Ayuda Presidente (misma UX que Apoderado) ---
-(function(){
-  function ensureHelpStyles(){
-    if(document.getElementById("helpStyles_v1")) return;
-    var css =
-      ".helpModal{width:min(560px,92vw);max-height:78vh;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.18);}" +
-      ".helpHead{padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.08);}" +
-      ".helpTitle{font-weight:900;font-size:18px;}" +
-      ".helpBody{padding:14px 16px;overflow:auto;max-height:56vh;-webkit-overflow-scrolling:touch;}" +
-      ".helpQ{font-weight:800;font-size:16px;margin-top:10px;}" +
-      ".helpA{color:rgba(0,0,0,.65);margin-top:6px;line-height:1.45;}" +
-      ".helpSep{height:1px;background:rgba(0,0,0,.06);margin:12px 0;}" +
-      ".helpFoot{padding:12px 16px;border-top:1px solid rgba(0,0,0,.08);display:flex;justify-content:flex-end;position:sticky;bottom:0;background:#fff;}";
-    var st = document.createElement("style");
-    st.id = "helpStyles_v1";
-    st.textContent = css;
-    document.head.appendChild(st);
+(function () {
+  function esc(s){
+    return String(s ?? "").replace(/[&<>'"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   }
 
-  function openModalSafe(html){
-    if(typeof window.openModal === "function") return window.openModal(html);
-    // Fallback
+  // Si no existe openModal/closeModal, fallback suave
+  function _open(html){
+    if (typeof window.openModal === "function") return window.openModal(html);
     alert("Ayuda Presidente: revisa Campañas, Deudores e Informes.");
   }
+  function _close(){
+    if (typeof window.closeModal === "function") return window.closeModal();
+    const mr = document.getElementById("modalRoot");
+    if (mr) mr.innerHTML = "";
+  }
 
+  // Contenido FAQ Presidente (puedes ajustar texto)
+  function buildFaqHTML(){
+    const items = [
+      ["¿Qué es una campaña obligatoria?", "Es un cobro del curso donde todos participan. No puedes excluirte."],
+      ["¿Qué es una campaña no obligatoria?", "El apoderado elige Participar o No participo. Si elige No participo, ese cobro se excluye de su pendiente."],
+      ["Deudores vs Cuotas pendientes", "Deudores = apoderados con deuda vigente. Cuotas pendientes = cantidad de cuotas impagas (detalle)."],
+      ["Crear y publicar campaña", "Crea la campaña, revisa monto/fechas y publícala para que quede visible a apoderados."],
+      ["Cobranza (WhatsApp)", "En Deudores puedes copiar un texto listo por apoderado y enviarlo."],
+      ["Cierre de campaña", "Cierra manualmente e indica el motivo (meta cumplida, fin de plazo, error, etc.)."],
+      ["Aprobación de apoderados", "Los apoderados quedan pendientes hasta que el presidente los apruebe para ingresar al curso."]
+    ];
+
+    let body = "";
+    for (const [q,a] of items){
+      body += `
+        <div class="helpQ">${esc(q)}</div>
+        <div class="helpA">${esc(a)}</div>
+        <div class="helpSep"></div>
+      `;
+    }
+
+    return `
+      <div class="helpModal">
+        <div class="helpHead">
+          <div class="helpTitle">❓ Ayuda Presidente</div>
+        </div>
+
+        <div class="helpBody">
+          ${body}
+        </div>
+
+        <div class="helpFoot">
+          <button class="btn primary" type="button" onclick="window.__closeHelpPresident()">Cerrar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // API pública igual a Apoderado
+  window.__closeHelpPresident = _close;
   window.openHelp = function(topic){
-    ensureHelpStyles();
-    var html =
-      '<div class="helpModal">' +
-        '<div class="helpHead"><div class="helpTitle">❓ Ayuda Presidente</div></div>' +
-        '<div class="helpBody">' +
-
-          '<div class="helpQ">¿Qué es una campaña obligatoria?</div>' +
-          '<div class="helpA">Es un cobro del curso en el que todos participan. No puedes excluirte.</div>' +
-          '<div class="helpSep"></div>' +
-
-          '<div class="helpQ">¿Qué es una campaña no obligatoria?</div>' +
-          '<div class="helpA">El apoderado elige Participar o No participo. Si elige No participo, ese cobro se excluye de su pendiente.</div>' +
-          '<div class="helpSep"></div>' +
-
-          '<div class="helpQ">Deudores vs Cuotas pendientes</div>' +
-          '<div class="helpA"><b>Deudores</b> = apoderados con deuda vigente. <b>Cuotas pendientes</b> = cuotas impagas (detalle).</div>' +
-          '<div class="helpSep"></div>' +
-
-          '<div class="helpQ">Crear y publicar campaña</div>' +
-          '<div class="helpA">Crea la campaña, revisa monto/fechas y publícala para que quede visible para apoderados.</div>' +
-          '<div class="helpSep"></div>' +
-
-          '<div class="helpQ">Cobranza (WhatsApp)</div>' +
-          '<div class="helpA">En Deudores puedes copiar un mensaje listo por apoderado y enviarlo por WhatsApp.</div>' +
-          '<div class="helpSep"></div>' +
-
-          '<div class="helpQ">Cierre de campaña</div>' +
-          '<div class="helpA">Cierra manualmente e indica el motivo (meta cumplida, fin de plazo, error, etc.).</div>' +
-
-        '</div>' +
-        '<div class="helpFoot"><button class="btn primary" type="button" onclick="closeModal()">Cerrar</button></div>' +
-      '</div>';
-
-    openModalSafe(html);
+    _open(buildFaqHTML());
   };
+
+  // Si no existen estilos help*, los inyecta (para que se vea igual)
+  (function ensureHelpStyles(){
+    if (document.getElementById("helpStyles_v1")) return;
+    const css = `
+      .helpModal{ width:min(560px, 92vw); max-height:78vh; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,.18); }
+      .helpHead{ padding:14px 16px; border-bottom:1px solid rgba(0,0,0,.08); }
+      .helpTitle{ font-weight:900; font-size:18px; }
+      .helpBody{ padding:14px 16px; overflow:auto; max-height:56vh; -webkit-overflow-scrolling:touch; }
+      .helpQ{ font-weight:800; font-size:16px; margin-top:10px; }
+      .helpA{ color:rgba(0,0,0,.65); margin-top:6px; line-height:1.45; }
+      .helpSep{ height:1px; background:rgba(0,0,0,.06); margin:12px 0; }
+      .helpFoot{ padding:12px 16px; border-top:1px solid rgba(0,0,0,.08); display:flex; justify-content:flex-end; position:sticky; bottom:0; background:#fff; }
+    `;
+    const style = document.createElement("style");
+    style.id = "helpStyles_v1";
+    style.textContent = css;
+    document.head.appendChild(style);
+  })();
 })();
+
+
