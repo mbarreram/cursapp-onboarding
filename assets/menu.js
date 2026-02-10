@@ -1,7 +1,8 @@
 /* assets/menu.js
    Menú único por rol (apoderado / presidente / tesorero)
-   - Compatible Safari iOS (sin template literals complejos)
-   - Mantiene IDs legacy: goOnboarding, resetBtn, logoutBtn
+   - Compatible Safari iOS
+   - Toggle robusto (touchstart + click)
+   - Mantiene IDs legacy esperados por scripts existentes: goOnboarding, resetBtn, logoutBtn
 */
 
 (function () {
@@ -49,7 +50,6 @@
   }
 
   function goTab(tab) {
-    // Cambia tab bottomNav si existe en esta vista
     var btn = document.querySelector('.navItem[data-tab="' + tab + '"]');
     if (btn) btn.click();
   }
@@ -60,7 +60,7 @@
   }
 
   function ensureLegacyButtons(container) {
-    // Estos IDs son usados por tus JS actuales (apoderado/presidente/tesorero)
+    // IDs usados por tus JS actuales
     // Los dejamos invisibles pero presentes para no romper nada.
     var legacy = [
       { id: "goOnboarding", text: "Configurar curso", style: "display:none" },
@@ -82,11 +82,10 @@
   }
 
   function btnHTML(label, onclickJs, icon) {
-    // HTML simple, sin template literals complejos
     var ico = icon ? (icon + " ") : "";
     return (
       '<button class="btn ghost" type="button" style="width:100%;text-align:left;" onclick="' +
-      onclickJs.replace(/"/g, "&quot;") +
+      String(onclickJs || "").replace(/"/g, "&quot;") +
       '">' +
       ico +
       label +
@@ -98,23 +97,72 @@
     return '<div style="height:1px;background:rgba(229,231,235,.9);margin:6px 0;"></div>';
   }
 
+  function hasFn(path) {
+    // path ejemplo: "CURSAPP_SWITCH.toDirectiva"
+    try {
+      var parts = path.split(".");
+      var obj = window;
+      for (var i = 0; i < parts.length; i++) {
+        obj = obj[parts[i]];
+        if (obj == null) return false;
+      }
+      return typeof obj === "function";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function bindMenuToggle(dd) {
+    var menuBtn = qs("#menuBtn");
+    if (!menuBtn || menuBtn.__cursappMenuBound) return;
+
+    menuBtn.__cursappMenuBound = true;
+
+    function toggleMenu(e) {
+      try {
+        if (e && e.preventDefault) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+      } catch (_) {}
+
+      var isOpen = dd.style.display === "block";
+      dd.style.display = isOpen ? "none" : "block";
+    }
+
+    // iOS: touchstart es más confiable
+    menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
+    menuBtn.addEventListener("click", toggleMenu);
+
+    // Cerrar al tocar fuera
+    document.addEventListener("touchstart", function (e) {
+      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+    }, { passive: true });
+
+    document.addEventListener("click", function (e) {
+      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+    });
+  }
+
   function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
 
-    // Limpia y repinta
+    // Asegurar estilo base si el HTML lo trae inline
+    dd.style.display = "none";
+
     dd.innerHTML = "";
 
-    // Reglas por rol
     var parts = [];
 
-    // ——— APODERADO ———
+    // =====================
+    // APODERADO
+    // =====================
     if (role === "apoderado") {
-      // Volver a directiva (solo si existe el switch)
-      if (window.CURSAPP_SWITCH && typeof window.CURSAPP_SWITCH.toDirectiva === "function") {
+      // Volver a directiva (si existe el switch)
+      if (hasFn("CURSAPP_SWITCH.toDirectiva")) {
         parts.push(btnHTML("Volver a directiva", "CURSAPP_SWITCH.toDirectiva();", "🧑‍💼"));
       }
 
+      // Orden solicitado
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
       parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} closeMenu();", "❓"));
@@ -122,16 +170,19 @@
 
       parts.push(dividerHTML());
 
-      // Reset total dev (mantener)
+      // Dev / sesión
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "var b=document.getElementById('logoutBtn'); if(b){b.click()} closeMenu();", "🚪"));
     }
 
-    // ——— PRESIDENTE ———
+    // =====================
+    // PRESIDENTE
+    // =====================
     if (role === "presidente") {
-      if (window.CURSAPP_SWITCH && typeof window.CURSAPP_SWITCH.toApoderado === "function") {
+      if (hasFn("CURSAPP_SWITCH.toApoderado")) {
         parts.push(btnHTML("Volver a apoderado", "CURSAPP_SWITCH.toApoderado();", "👤"));
       }
+
       parts.push(btnHTML("Apoderados del curso", "location.href='/apoderados.html';", "👥"));
       parts.push(btnHTML("Campañas", "goTab('campanas'); closeMenu();", "📌"));
       parts.push(btnHTML("Deudores", "goTab('deudores'); closeMenu();", "🧾"));
@@ -145,11 +196,14 @@
       parts.push(btnHTML("Cerrar sesión", "var b=document.getElementById('logoutBtn'); if(b){b.click()} closeMenu();", "🚪"));
     }
 
-    // ——— TESORERO ———
+    // =====================
+    // TESORERO
+    // =====================
     if (role === "tesorero") {
-      if (window.CURSAPP_SWITCH && typeof window.CURSAPP_SWITCH.toApoderado === "function") {
+      if (hasFn("CURSAPP_SWITCH.toApoderado")) {
         parts.push(btnHTML("Volver a apoderado", "CURSAPP_SWITCH.toApoderado();", "👤"));
       }
+
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
@@ -163,20 +217,14 @@
 
     dd.innerHTML = parts.join("");
 
-    // Mantener compatibilidad con IDs antiguos
+    // Compatibilidad con scripts existentes
     ensureLegacyButtons(dd);
 
-    // Asegurar que el click del menú funcione incluso si los otros scripts fallan
-    var menuBtn = qs("#menuBtn");
-    if (menuBtn && !menuBtn.__cursappMenuBound) {
-      menuBtn.__cursappMenuBound = true;
-      menuBtn.addEventListener("click", function () {
-        dd.style.display = (dd.style.display === "none" || !dd.style.display) ? "block" : "none";
-      });
-      document.addEventListener("click", function (e) {
-        if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
-      });
-    }
+    // Toggle robusto iOS
+    bindMenuToggle(dd);
+
+    // Seguridad: siempre parte cerrado
+    dd.style.display = "none";
   }
 
   function init() {
@@ -184,11 +232,10 @@
     renderMenu(role);
   }
 
-  // Exponer helpers usados en onclicks
+  // Exponer helpers usados en onclick
   window.goTab = goTab;
   window.closeMenu = closeMenu;
 
-  // Inicializar
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {
