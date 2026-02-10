@@ -387,4 +387,15 @@ p{ margin:0; }
   display:flex;
   justify-content:flex-end;
 }
-
+/* === Menú dropdown: fijo y estable en iOS === */
+#menuDropdown{
+  position: fixed !important;
+  right: 16px !important;
+  top: 64px !important; /* ajusta fino si quieres 56/68 */
+  z-index: 10050 !important;
+  max-width: calc(100vw - 32px) !important;
+  width: 260px;
+  max-height: calc(100vh - 96px) !important;
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
