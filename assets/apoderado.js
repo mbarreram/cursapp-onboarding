@@ -565,6 +565,38 @@ function dueBadge(iso){
     `;
   }
 
+  function ensureAlumnoActivo() {
+  // 1) Si ya hay alumno en sesión/UI, no tocar
+  try {
+    const headerAlumno = document.querySelector("#studentName, .studentName, [data-student-name]");
+    if (headerAlumno && headerAlumno.textContent && headerAlumno.textContent.trim()) return;
+  } catch(e){}
+
+  // 2) Buscar alumno guardado (si existe)
+  let alumno = null;
+  try { alumno = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e){}
+
+  // 3) Si no existe, intenta tomar el primero desde datos del apoderado (si los tienes)
+  if (!alumno) {
+    try {
+      const kids = JSON.parse(localStorage.getItem("cursapp_kids_v1") || "[]");
+      if (Array.isArray(kids) && kids.length) alumno = kids[0];
+    } catch(e){}
+  }
+
+  // 4) Si lo encontró, guardarlo y pintarlo
+  if (alumno) {
+    try { localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumno)); } catch(e){}
+    // Ajusta selector a tu header real:
+    const el = document.querySelector("#studentName") || document.querySelector(".studentName");
+    if (el) el.textContent = alumno.nombre || alumno.name || "Alumno/a";
+  }
+}
+
+
+  
+
+
   // -------- Activation gate --------
   function isActivationPending(){
     const p = getActiveProfile();
