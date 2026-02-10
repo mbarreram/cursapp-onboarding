@@ -111,6 +111,7 @@
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
+  window.openModal = openModal;
   window.closeModal = closeModal;
 
   // ---------- menu ----------

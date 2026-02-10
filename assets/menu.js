@@ -245,8 +245,19 @@
 
     // APODERADO
     if (role === "apoderado") {
-      // Volver a directiva: preferir switch directo sin depender de email
-      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      // Volver a directiva: mostrar solo si existe perfil presidente
+      try{
+        if (typeof findProfileIdByRole === "function" && findProfileIdByRole("presidente")) {
+          parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+        }
+      }catch(e){}
+
+      // Entrar como Tesorero: solo si existe perfil tesorero
+      try{
+        if (typeof findProfileIdByRole === "function" && findProfileIdByRole("tesorero")) {
+          parts.push(btnHTML("Entrar como Tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
+        }
+      }catch(e){}
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
