@@ -547,6 +547,8 @@ function dueBadge(iso){
     return mine[0] || null;
   }
 
+  ensureAlumnoActivo();
+
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
