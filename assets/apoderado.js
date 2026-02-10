@@ -1606,4 +1606,36 @@ if(hash==="payments_paid"){
   go("payments");
 }else if(hash==="payments") go("payments");
 else go("home"); // default seguro post-reset
+
+
+// ---------- UX: ocultar banner antiguo "permisos de Tesorero" (se reemplaza por Elegir rol en menú) ----------
+function removeTesoreroBanner(){
+  try{
+    var needles = ["tienes permisos de tesorero", "entrar como tesorero"];
+    var nodes = Array.prototype.slice.call(document.querySelectorAll("button, a, div, section, article"));
+    for(var i=0;i<nodes.length;i++){
+      var el = nodes[i];
+      var t = (el && el.textContent) ? String(el.textContent).toLowerCase() : "";
+      for(var j=0;j<needles.length;j++){
+        if(t.indexOf(needles[j])>=0){
+          // ocultar el contenedor más cercano tipo card
+          var p = el;
+          for(var k=0;k<6 && p; k++){
+            if(p.classList && (p.classList.contains("card") || p.classList.contains("kpiCard") || p.classList.contains("panel"))){
+              p.style.display="none";
+              return;
+            }
+            p = p.parentElement;
+          }
+          // fallback: ocultar el mismo elemento
+          el.style.display="none";
+          return;
+        }
+      }
+    }
+  }catch(_){}
+}
+setTimeout(removeTesoreroBanner, 0);
+setTimeout(removeTesoreroBanner, 400);
+
 })();

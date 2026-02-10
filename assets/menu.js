@@ -130,8 +130,62 @@
     if (dd) dd.style.display = "none";
   }
 
-  // -------- Help fallback (works everywhere) --------
-  function openHelpFallback() {
+  
+// -------- Modal helper (sin depender de core.js) --------
+function showModal(html){
+  // Preferir openModal del core si existe
+  try{
+    if(window.openModal && typeof window.openModal === "function"){ window.openModal(html); return; }
+  }catch(_){}
+  var root = document.getElementById("modalRoot");
+  if(!root){ alert("No se pudo abrir modal (falta modalRoot)."); return; }
+  root.innerHTML = '<div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">' +
+    '<div class="card" style="width:min(820px,100%);margin-bottom:12px;">'+ html +'</div></div>';
+}
+function hideModal(){
+  try{ if(window.closeModal && typeof window.closeModal==="function"){ window.closeModal(); return; } }catch(_){}
+  var root = document.getElementById("modalRoot");
+  if(root) root.innerHTML="";
+}
+
+
+// -------- Role chooser (homologa "Elegir rol") --------
+function openRoleChooser(){
+  var canApo = !!findProfileIdByRole("apoderado") || true; // siempre
+  var canPres = !!findProfileIdByRole("presidente");
+  var canTes = !!findProfileIdByRole("tesorero");
+
+  var opt = [];
+  if(canApo) opt.push({role:"apoderado", label:"Apoderado", desc:"Aprobado automáticamente", icon:"👪"});
+  if(canPres) opt.push({role:"presidente", label:"Presidente", desc:"Gestión del curso y campañas", icon:"🎓"});
+  if(canTes) opt.push({role:"tesorero", label:"Tesorero", desc:"Rendiciones e informes", icon:"💼"});
+
+  var cards = opt.map(function(o){
+    return ''+
+    '<button class="btn ghost" type="button" style="width:100%;text-align:left;padding:14px;border:1px solid rgba(229,231,235,.9);border-radius:14px;margin-top:10px;" '+
+    'onclick="switchToRole(\''+o.role+'\')">'+
+      '<div style="display:flex;gap:12px;align-items:flex-start;">'+
+        '<div style="font-size:20px;line-height:1;margin-top:1px;">'+o.icon+'</div>'+
+        '<div>'+
+          '<div style="font-weight:900;">'+o.label+'</div>'+
+          '<div class="muted" style="font-weight:700;margin-top:2px;">'+o.desc+'</div>'+
+        '</div>'+
+      '</div>'+
+    '</button>';
+  }).join("");
+
+  showModal(''+
+    '<div class="card helpModalCard">'+
+      '<div class="helpHeader" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">'+
+        '<div><div class="kTitle">Elegir rol</div><div class="muted" style="font-weight:700;margin-top:4px;">Selecciona cómo ingresar</div></div>'+
+        '<button class="btnx ghost" type="button" onclick="hideModal()">Cerrar</button>'+
+      '</div>'+
+      '<div class="helpBody">'+ cards +'</div>'+
+    '</div>'
+  );
+}
+// -------- Help fallback (works everywhere) --------
+  function openHelpFallback(role) {
     // Si existe openModal (tu core), úsalo; si no, usa alert.
     var html =
       '<div class="card" style="max-height:70vh;overflow:auto;">' +
@@ -243,34 +297,33 @@
 
     var parts = [];
 
-    // APODERADO
-    if (role === "apoderado") {
-      // Volver a directiva: mostrar solo si existe perfil presidente
-      try{
-        if (typeof findProfileIdByRole === "function" && findProfileIdByRole("presidente")) {
-          parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
-        }
-      }catch(e){}
+    
+// APODERADO
+if (role === "apoderado") {
+  // Homologado: elegir rol (como login)
+  parts.push(btnHTML("Elegir rol", "openRoleChooser(); closeMenu();", "🎛️"));
 
-      // Entrar como Tesorero: solo si existe perfil tesorero
-      try{
-        if (typeof findProfileIdByRole === "function" && findProfileIdByRole("tesorero")) {
-          parts.push(btnHTML("Entrar como Tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
-        }
-      }catch(e){}
+  // Accesos a otros roles solo si existen en perfiles
+  if (findProfileIdByRole("presidente")) {
+    parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+  }
+  if (findProfileIdByRole("tesorero")) {
+    parts.push(btnHTML("Entrar como Tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
+  }
 
-      parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
-      parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
-      parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
+  parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
+  parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
+  parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('apoderado')} else {openHelpFallback('apoderado')} closeMenu();", "❓"));
+  parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
-      parts.push(dividerHTML());
+  parts.push(dividerHTML());
 
-      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
-    }
+  parts.push(btnHTML("Reset curso (solo datos)", "if(!confirm('Esto borra campañas/pagos/gastos del curso. ¿Continuar?')) return; localStorage.removeItem('cursapp_tasks_v1'); localStorage.removeItem('cursapp_payments_v1'); localStorage.removeItem('cursapp_expenses_v1'); localStorage.removeItem('cursapp_monthly_reports_v1'); localStorage.removeItem('cursapp_receipts_v1'); alert('Curso reseteado ✅'); location.reload();", "🧹"));
+  parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+  parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
+}
 
-    // PRESIDENTE
+    // PRESIDENTEENTE
     if (role === "presidente") {
       parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
@@ -287,20 +340,28 @@
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
-    // TESORERO
-    if (role === "tesorero") {
-      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+    
+// TESORERO
+if (role === "tesorero") {
+  parts.push(btnHTML("Elegir rol", "openRoleChooser(); closeMenu();", "🎛️"));
 
-      parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
-      parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
-      parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+  parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+  if (findProfileIdByRole("presidente")) {
+    parts.push(btnHTML("Ir a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+  }
 
-      parts.push(dividerHTML());
+  parts.push(btnHTML("Inicio", "goTab('home'); closeMenu();", "🏠"));
+  parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
+  parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
+  parts.push(btnHTML("Pagos", "switchToRole('apoderado');", "💳"));
+  parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('tesorero')} else {openHelpFallback('tesorero')} closeMenu();", "❓"));
+  parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
-      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
-    }
+  parts.push(dividerHTML());
+
+  parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+  parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
+}
 
     dd.innerHTML = parts.join("");
 
@@ -316,6 +377,13 @@
 
   function init() {
     var role = normalizeRole(getRoleFromSession());
+    // Fallback: inferir rol por la página actual (evita menú incorrecto si la sesión no trae role)
+    try{
+      var p = (location && location.pathname ? String(location.pathname).toLowerCase() : '');
+      if(p.indexOf('tesorero')>=0) role='tesorero';
+      else if(p.indexOf('presidente')>=0) role='presidente';
+      else if(p.indexOf('apoderado')>=0) role='apoderado';
+    }catch(_e){}
     renderMenu(role);
   }
 
@@ -325,6 +393,9 @@
   window.logout = logout;
   window.switchToRole = switchToRole;
   window.openHelpFallback = openHelpFallback;
+  window.openRoleChooser = openRoleChooser;
+  window.hideModal = hideModal;
+  window.showModal = showModal;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
