@@ -113,46 +113,6 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  // ---------- ayuda ----------
-  window.openHelp = function(key){
-    key = String(key||"").toLowerCase();
-    var title = "Ayuda";
-    var body = "";
-    if(key==="tesorero"){
-      title = "Ayuda Tesorero";
-      body = `
-        <div class="helpQ">¿Qué hace el Tesorero?</div>
-        <div class="helpA">Registra gastos, rinde cuentas y publica informes del curso.</div>
-
-        <div class="helpQ">¿Qué es una rendición?</div>
-        <div class="helpA">Es un registro de un gasto con respaldo (boleta/foto/nota) asociado a una campaña o gasto general.</div>
-
-        <div class="helpQ">¿Cómo cuadras el saldo?</div>
-        <div class="helpA">Saldo = Recaudado - Gastado. Si algo no cuadra, revisa rendiciones y pagos recientes.</div>
-
-        <div class="helpQ">¿Puedo editar o eliminar una rendición?</div>
-        <div class="helpA">Sí, mientras el informe no esté publicado (en demo). En producción conviene dejar trazabilidad.</div>
-      `;
-    }else{
-      // fallback
-      title = "Ayuda";
-      body = `<div class="helpA">Revisa las secciones disponibles en el menú.</div>`;
-    }
-
-    openModal(`
-      <div class="card helpModalCard">
-        <div class="helpHeader">
-          <div>
-            <div class="kTitle">❓ ${esc(title)}</div>
-          </div>
-          <button class="btn small" onclick="closeModal()">Cerrar</button>
-        </div>
-        <div class="helpBody">${body}</div>
-      </div>
-    `);
-  };
-
-
   // ---------- menu ----------
   function initMenu(){
     if(menuBtn && menuDropdown){

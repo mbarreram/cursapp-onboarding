@@ -27,13 +27,6 @@
   }
 
   function getRoleFromSession() {
-
-    // Inferir por URL para evitar menús incorrectos cuando la sesión no trae role (iOS cache / redirects)
-    try {
-      var p = (location && location.pathname ? String(location.pathname) : "").toLowerCase();
-      if (p.indexOf("tesorero") >= 0) return "tesorero";
-      if (p.indexOf("presidente") >= 0) return "presidente";
-    } catch (_) {}
     var s = getSession();
     if (s && s.role) return String(s.role);
     // fallback: active profile
@@ -93,6 +86,34 @@
     } catch (_) {}
     return null;
   }
+
+  function getActiveProfile() {
+    try {
+      var activeId = localStorage.getItem("cursapp_active_profile_v1");
+      var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
+      var profiles = safeJsonParse(profilesRaw);
+      if (!activeId || !profiles) return null;
+
+      if (!Array.isArray(profiles)) {
+        var p = profiles[activeId];
+        if (!p) return null;
+        return p.profile ? p.profile : p;
+      }
+
+      for (var i = 0; i < profiles.length; i++) {
+        var pp = profiles[i];
+        if (pp && String(pp.id) === String(activeId)) return pp.profile ? pp.profile : pp;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function hasTesoreroPermission() {
+    var p = getActiveProfile();
+    var dr = (p && p.directivaRole) ? String(p.directivaRole).toLowerCase() : "";
+    return dr === "tesorero" || dr === "tesorero/apoderado" || dr === "apoderado/tesorero";
+  }
+
 
   function switchToRole(targetRole) {
     // 1) Preferir setear perfil activo (no depende de email)
@@ -252,13 +273,12 @@
 
     // APODERADO
     if (role === "apoderado") {
-      // Cambios de rol (mostrar solo si el perfil existe)
-      if (findProfileIdByRole("presidente")) {
-        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      if (hasTesoreroPermission()) {
+        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💰"));
       }
-      if (findProfileIdByRole("tesorero")) {
-        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
-      }
+
+      // Volver a directiva: preferir switch directo sin depender de email
+      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
@@ -294,8 +314,8 @@
 
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('tesorero')} else {openHelpFallback()} closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
