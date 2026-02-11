@@ -50,36 +50,7 @@
     return "apoderado";
   }
 
-  
-  // -------- Debug helper (mobile-friendly) --------
-  function copyDebug() {
-    const keys = [
-      "cursapp_session_v1",
-      "cursapp_profiles_v1",
-      "cursapp_enrollments_v1",
-      "cursapp_directiva_apoderado_by_role_v1",
-      "cursapp_active_course_v1",
-      "cursapp_course_v1"
-    ];
-    const out = {};
-    keys.forEach((k) => {
-      const raw = localStorage.getItem(k);
-      out[k] = safeJsonParse(raw) ?? raw;
-    });
-    const text = JSON.stringify(out, null, 2);
-
-    // Prefer Clipboard API; fallback to prompt for iOS
-    const done = () => alert("✅ Debug copiado al portapapeles. Pégalo en el chat.");
-    const fail = () => { try { prompt("Copia este texto y pégalo en el chat:", text); } catch (e) { alert(text); } };
-
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      navigator.clipboard.writeText(text).then(done).catch(fail);
-    } else {
-      fail();
-    }
-  }
-
-function normalizeRole(role) {
+  function normalizeRole(role) {
     role = (role || "").toLowerCase();
     if (role.indexOf("tesor") >= 0) return "tesorero";
     if (role.indexOf("pres") >= 0 || role.indexOf("direct") >= 0) return "presidente";
@@ -333,7 +304,6 @@ function normalizeRole(role) {
 
       parts.push(dividerHTML());
 
-      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
@@ -351,7 +321,6 @@ function normalizeRole(role) {
 
       parts.push(dividerHTML());
 
-      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
@@ -367,7 +336,6 @@ function normalizeRole(role) {
 
       parts.push(dividerHTML());
 
-      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
