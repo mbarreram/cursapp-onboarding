@@ -12,6 +12,33 @@
   function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
   // -------- Session / profiles helpers --------
+  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
+  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_FORCE_ROLE_PICKER = "cursapp_force_role_picker_v1";
+
+  function getActiveCourseKey() {
+    try {
+      const s = getSession() || {};
+      return s.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    } catch (e) { return ""; }
+  }
+
+  function getUserEmail() {
+    try { return (getSession() || {}).userEmail || ""; } catch (e) { return ""; }
+  }
+
+  function hasDirectivaRole(role) {
+    try {
+      const ck = getActiveCourseKey();
+      const email = (getUserEmail() || "").toLowerCase();
+      const all = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
+      const entry = (all && ck && all[ck]) ? all[ck] : null;
+      const r = entry && entry[role];
+      const target = (r && (r.email || r.userEmail || r.mail || "")) || "";
+      return !!(email && target && String(target).toLowerCase() === email);
+    } catch (e) { return false; }
+  }
+
   function getSession() {
     try {
       if (window.CURSAPP && typeof window.CURSAPP.getSession === "function") {
@@ -207,54 +234,10 @@
   }
 
   // -------- Toggle binding --------
-  
-  function ensureDropdownPortal(dd) {
-    try {
-      if (!dd || dd.__cursappPortal) return;
-      // Mover a <body> para evitar cortes por overflow en headers/containers
-      document.body.appendChild(dd);
-      dd.__cursappPortal = true;
-
-      // Estilos base (solo si no existen)
-      dd.style.position = "fixed";
-      dd.style.zIndex = "9999";
-      dd.style.border = "1px solid rgba(0,0,0,0.10)";
-      dd.style.boxShadow = "0 10px 30px rgba(0,0,0,0.12)";
-      dd.style.background = "rgba(255,255,255,0.98)";
-      dd.style.backdropFilter = "blur(6px)";
-      dd.style.borderRadius = "18px";
-      dd.style.padding = "10px";
-      dd.style.minWidth = "260px";
-      dd.style.maxWidth = "92vw";
-      dd.style.maxHeight = "70vh";
-      dd.style.overflowY = "auto";
-    } catch (_) {}
-  }
-
-  function positionDropdown(dd) {
-    try {
-      var menuBtn = qs("#menuBtn");
-      if (!dd || !menuBtn) return;
-      var r = menuBtn.getBoundingClientRect();
-      var vw = window.innerWidth || document.documentElement.clientWidth || 360;
-      var vh = window.innerHeight || document.documentElement.clientHeight || 640;
-
-      var top = Math.min(vh - 20, r.bottom + 10);
-      var right = Math.max(10, vw - r.right);
-      dd.style.top = top + "px";
-      dd.style.right = right + "px";
-      dd.style.left = "auto";
-    } catch (_) {}
-  }
-
   function bindMenuToggle(dd) {
     var menuBtn = qs("#menuBtn");
     if (!menuBtn || menuBtn.__cursappMenuBound) return;
     menuBtn.__cursappMenuBound = true;
-
-    // Reposicionar cuando cambia viewport
-    window.addEventListener("resize", function(){ if (dd.style.display === "block") positionDropdown(dd); });
-    window.addEventListener("scroll", function(){ if (dd.style.display === "block") positionDropdown(dd); }, true);
 
     function toggleMenu(e) {
       try {
@@ -263,7 +246,6 @@
       } catch (_) {}
       var isOpen = dd.style.display === "block";
       dd.style.display = isOpen ? "none" : "block";
-      if (!isOpen) { ensureDropdownPortal(dd); positionDropdown(dd); }
     }
 
     menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
@@ -281,7 +263,6 @@
   function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
-    ensureDropdownPortal(dd);
 
     // Siempre parte cerrado
     dd.style.display = "none";
@@ -291,8 +272,13 @@
 
     // APODERADO
     if (role === "apoderado") {
-      // Volver a directiva: preferir switch directo sin depender de email
-      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      // Cambiar rol (según permisos)
+      if (hasDirectivaRole('presidente')) {
+        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      }
+      if (hasDirectivaRole('tesorero')) {
+        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
+      }
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
@@ -302,6 +288,8 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -319,6 +307,8 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -334,6 +324,8 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -367,3 +359,42 @@
     init();
   }
 })();
+  function debugRoleInfo() {
+    try {
+      const s = getSession() || {};
+      const ck = getActiveCourseKey();
+      const email = getUserEmail();
+      const directiva = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
+      const entry = (directiva && ck) ? directiva[ck] : null;
+      const info = {
+        session: s,
+        activeCourseKey: ck,
+        userEmail: email,
+        directivaEntry: entry,
+        perms: {
+          presidente: hasDirectivaRole('presidente'),
+          tesorero: hasDirectivaRole('tesorero'),
+        },
+        forceRolePickerFlag: localStorage.getItem(KEY_FORCE_ROLE_PICKER) || null,
+      };
+      const msg = "DEBUG ROL\n\n" + JSON.stringify(info, null, 2) +
+        "\n\nAcciones:\n- OK: Copia este texto (mantén presionado)\n- Para forzar selector al entrar: usa el botón 'Forzar selector (dev)' en el menú.";
+      alert(msg);
+      closeMenu();
+    } catch (e) {
+      alert("DEBUG ROL: error " + (e && e.message ? e.message : e));
+      closeMenu();
+    }
+  }
+
+  function forceRolePickerNextLogin() {
+    try {
+      localStorage.setItem(KEY_FORCE_ROLE_PICKER, "1");
+      alert("Listo. En el próximo login se mostrará el selector de rol (si tienes más de 1 rol).");
+    } catch (e) {
+      alert("No pude guardar la bandera de selector: " + (e && e.message ? e.message : e));
+    }
+    closeMenu();
+  }
+
+
