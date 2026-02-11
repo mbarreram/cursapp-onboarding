@@ -1599,43 +1599,112 @@ if (DEMO_MODE) {
   ensureDemo();
 }
 
+
+  // --- Multi-rol (Apoderado/Tesorero): mostrar selector al entrar (1 vez por sesión) ---
+  function __profilesHasRole(roleKey){
+    roleKey = String(roleKey||"").toLowerCase();
+    try{
+      var raw = localStorage.getItem("cursapp_profiles_v1");
+      if(!raw) return false;
+      var p = JSON.parse(raw);
+      var arr = Array.isArray(p) ? p : Object.values(p||{});
+      for(var i=0;i<arr.length;i++){
+        var r = (arr[i] && arr[i].role) ? String(arr[i].role).toLowerCase() : "";
+        if(roleKey==="tesorero" && r.indexOf("tesor")>=0) return true;
+        if(roleKey==="presidente" && (r.indexOf("pres")>=0 || r.indexOf("direct")>=0)) return true;
+        if(roleKey==="apoderado" && r.indexOf("apod")>=0) return true;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  function __hideLegacyTesoreroBanner(){
+    try{
+      // Oculta tarjeta antigua "Tienes permisos de Tesorero"
+      var nodes = Array.from(document.querySelectorAll("div,section,article,button"));
+      for(var i=0;i<nodes.length;i++){
+        var t = (nodes[i].innerText||"").trim();
+        if(t.indexOf("Tienes permisos de Tesorero")>=0){
+          // esconder el contenedor principal
+          nodes[i].style.display="none";
+          if(nodes[i].parentElement) nodes[i].parentElement.style.display="none";
+          break;
+        }
+      }
+    }catch(e){}
+  }
+
+  function __openRoleChooser(){
+    // Usamos openModal si existe (misma UI de ayudas). Fallback: alert.
+    if(typeof openModal !== "function"){
+      alert("Elegir rol: Apoderado o Tesorero");
+      return;
+    }
+    var canTesorero = __profilesHasRole("tesorero");
+    var body = `
+      <div class="card helpModalCard" style="max-width:520px">
+        <div class="helpHeader">
+          <div>
+            <div class="kTitle">Elegir rol</div>
+            <div class="muted" style="margin-top:6px;font-weight:800;">Selecciona cómo ingresar</div>
+          </div>
+          <button class="btn small" onclick="closeModal()">Cerrar</button>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn wide" style="display:flex;gap:10px;align-items:center;justify-content:flex-start;" onclick="window.__setRole('apoderado')">
+            <span style="font-size:20px">👥</span>
+            <div style="text-align:left">
+              <div style="font-weight:900">Apoderado</div>
+              <div class="muted">Aprobado automáticamente</div>
+            </div>
+          </button>
+          ${canTesorero ? `
+          <div style="height:10px"></div>
+          <button class="btn wide" style="display:flex;gap:10px;align-items:center;justify-content:flex-start;" onclick="window.__setRole('tesorero')">
+            <span style="font-size:20px">💼</span>
+            <div style="text-align:left">
+              <div style="font-weight:900">Tesorero</div>
+              <div class="muted">Rendiciones e informes</div>
+            </div>
+          </button>` : ``}
+        </div>
+      </div>`;
+    openModal(body);
+  }
+
+  window.__setRole = function(r){
+    try{
+      localStorage.setItem("cursapp_role_prompted_v1","1");
+    }catch(e){}
+    try{ closeModal(); }catch(e){}
+    if(String(r)==="tesorero"){
+      location.href="/tesorero.html";
+    }else{
+      // quedarse en apoderado
+      try{ __hideLegacyTesoreroBanner(); }catch(e){}
+    }
+  };
+
+  function __maybePromptRole(){
+    try{
+      var already = localStorage.getItem("cursapp_role_prompted_v1")==="1";
+      if(already) return;
+      // solo si hay multi-rol tesorero disponible
+      if(__profilesHasRole("tesorero")){
+        // Mostrar una vez al entrar al dashboard apoderado
+        setTimeout(__openRoleChooser, 250);
+      }
+    }catch(e){}
+  }
+
 initMenu();
+__hideLegacyTesoreroBanner();
+__maybePromptRole();
+
 const hash = (location.hash || "").replace("#","");
 if(hash==="payments_paid"){
   try{ window.__apoForcePaid = true; }catch(e){}
   go("payments");
 }else if(hash==="payments") go("payments");
 else go("home"); // default seguro post-reset
-
-
-// ---------- UX: ocultar banner antiguo "permisos de Tesorero" (se reemplaza por Elegir rol en menú) ----------
-function removeTesoreroBanner(){
-  try{
-    var needles = ["tienes permisos de tesorero", "entrar como tesorero"];
-    var nodes = Array.prototype.slice.call(document.querySelectorAll("button, a, div, section, article"));
-    for(var i=0;i<nodes.length;i++){
-      var el = nodes[i];
-      var t = (el && el.textContent) ? String(el.textContent).toLowerCase() : "";
-      for(var j=0;j<needles.length;j++){
-        if(t.indexOf(needles[j])>=0){
-          // ocultar el contenedor más cercano tipo card
-          var p = el;
-          for(var k=0;k<6 && p; k++){
-            if(p.classList && (p.classList.contains("card") || p.classList.contains("kpiCard") || p.classList.contains("panel"))){
-              p.style.display="none";
-              return;
-            }
-            p = p.parentElement;
-          }
-          // fallback: ocultar el mismo elemento
-          el.style.display="none";
-          return;
-        }
-      }
-    }
-  }catch(_){}
-}
-setTimeout(removeTesoreroBanner, 0);
-setTimeout(removeTesoreroBanner, 400);
-
 })();

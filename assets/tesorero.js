@@ -112,32 +112,48 @@
   }
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
-  window.openModal = openModal;
 
-  
+  // ---------- ayuda ----------
+  window.openHelp = function(key){
+    key = String(key||"").toLowerCase();
+    var title = "Ayuda";
+    var body = "";
+    if(key==="tesorero"){
+      title = "Ayuda Tesorero";
+      body = `
+        <div class="helpQ">¿Qué hace el Tesorero?</div>
+        <div class="helpA">Registra gastos, rinde cuentas y publica informes del curso.</div>
 
-// ---------- ayuda (modal estilo apoderado) ----------
-function openHelp(topic){
-  var qa = ''+
-    '<div class="helpQA"><div class="helpQ">¿Qué hago como Tesorero?</div><div class="helpA">Registrar gastos (rendiciones) y publicar informes para transparencia.</div></div>'+
-    '<div class="helpQA"><div class="helpQ">¿Gasto general vs por campaña?</div><div class="helpA">General: gasto del fondo del curso sin asociar a una campaña. Por campaña: descuenta el saldo de una campaña específica.</div></div>'+
-    '<div class="helpQA"><div class="helpQ">¿Cómo cuadrar ingresos vs gastos?</div><div class="helpA">Revisa lo recaudado, lo gastado/rendido y el saldo disponible. Mantén respaldos (boletas/transferencias).</div></div>'+
-    '<div class="helpQA"><div class="helpQ">¿Qué publico en Informes?</div><div class="helpA">Un resumen del mes (ingresos, gastos, saldo) y, si aplica, comprobantes.</div></div>';
+        <div class="helpQ">¿Qué es una rendición?</div>
+        <div class="helpA">Es un registro de un gasto con respaldo (boleta/foto/nota) asociado a una campaña o gasto general.</div>
 
-  openModal(''+
-    '<div class="card helpModalCard">'+
-      '<div class="helpHeader" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">'+
-        '<div><div class="kTitle">❓ Ayuda Tesorero</div><div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">Rendiciones e Informes</div></div>'+
-        '<button class="btnx ghost" type="button" onclick="closeModal()">Cerrar</button>'+
-      '</div>'+
-      '<div class="helpBody">'+ qa +'</div>'+
-      '<div class="helpFooter"><button class="btnx primary" type="button" onclick="closeModal()">Cerrar</button></div>'+
-    '</div>'
-  );
-}
-window.openHelp = openHelp;
+        <div class="helpQ">¿Cómo cuadras el saldo?</div>
+        <div class="helpA">Saldo = Recaudado - Gastado. Si algo no cuadra, revisa rendiciones y pagos recientes.</div>
 
-// ---------- menu ----------
+        <div class="helpQ">¿Puedo editar o eliminar una rendición?</div>
+        <div class="helpA">Sí, mientras el informe no esté publicado (en demo). En producción conviene dejar trazabilidad.</div>
+      `;
+    }else{
+      // fallback
+      title = "Ayuda";
+      body = `<div class="helpA">Revisa las secciones disponibles en el menú.</div>`;
+    }
+
+    openModal(`
+      <div class="card helpModalCard">
+        <div class="helpHeader">
+          <div>
+            <div class="kTitle">❓ ${esc(title)}</div>
+          </div>
+          <button class="btn small" onclick="closeModal()">Cerrar</button>
+        </div>
+        <div class="helpBody">${body}</div>
+      </div>
+    `);
+  };
+
+
+  // ---------- menu ----------
   function initMenu(){
     if(menuBtn && menuDropdown){
       menuBtn.onclick = (e)=>{ e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block"); };
