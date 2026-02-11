@@ -87,49 +87,6 @@
     return null;
   }
 
-  function getActiveProfile() {
-    try {
-      var activeId = localStorage.getItem("cursapp_active_profile_v1");
-      var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
-      var profiles = safeJsonParse(profilesRaw);
-      if (!activeId || !profiles) return null;
-
-      if (!Array.isArray(profiles)) {
-        var p = profiles[activeId];
-        if (!p) return null;
-        return p.profile ? p.profile : p;
-      }
-
-      for (var i = 0; i < profiles.length; i++) {
-        var pp = profiles[i];
-        if (pp && String(pp.id) === String(activeId)) return pp.profile ? pp.profile : pp;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  function hasTesoreroPermission() {
-    const sess = getSession();
-    if (!sess || !sess.userId || !sess.courseKey) return false;
-
-    const profiles = getProfiles();
-    const all = Object.values(profiles || {});
-    const sameCourse = all.filter(p => p && p.courseKey === sess.courseKey && p.userId === sess.userId);
-
-    const getDirectivaRole = (prof) => {
-      const dr = (prof?.directivaRole ?? prof?.apoderado?.directivaRole ?? prof?.meta?.directivaRole ?? prof?.directiva ?? "").toString().toLowerCase();
-      return dr;
-    };
-
-    return sameCourse.some(p => {
-      const r = (p?.role ?? "").toString().toLowerCase();
-      const dr = getDirectivaRole(p);
-      const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
-      return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
-    });
-  }
-
-
   function switchToRole(targetRole) {
     // 1) Preferir setear perfil activo (no depende de email)
     var id = findProfileIdByRole(targetRole);
@@ -250,10 +207,54 @@
   }
 
   // -------- Toggle binding --------
+  
+  function ensureDropdownPortal(dd) {
+    try {
+      if (!dd || dd.__cursappPortal) return;
+      // Mover a <body> para evitar cortes por overflow en headers/containers
+      document.body.appendChild(dd);
+      dd.__cursappPortal = true;
+
+      // Estilos base (solo si no existen)
+      dd.style.position = "fixed";
+      dd.style.zIndex = "9999";
+      dd.style.border = "1px solid rgba(0,0,0,0.10)";
+      dd.style.boxShadow = "0 10px 30px rgba(0,0,0,0.12)";
+      dd.style.background = "rgba(255,255,255,0.98)";
+      dd.style.backdropFilter = "blur(6px)";
+      dd.style.borderRadius = "18px";
+      dd.style.padding = "10px";
+      dd.style.minWidth = "260px";
+      dd.style.maxWidth = "92vw";
+      dd.style.maxHeight = "70vh";
+      dd.style.overflowY = "auto";
+    } catch (_) {}
+  }
+
+  function positionDropdown(dd) {
+    try {
+      var menuBtn = qs("#menuBtn");
+      if (!dd || !menuBtn) return;
+      var r = menuBtn.getBoundingClientRect();
+      var vw = window.innerWidth || document.documentElement.clientWidth || 360;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 640;
+
+      var top = Math.min(vh - 20, r.bottom + 10);
+      var right = Math.max(10, vw - r.right);
+      dd.style.top = top + "px";
+      dd.style.right = right + "px";
+      dd.style.left = "auto";
+    } catch (_) {}
+  }
+
   function bindMenuToggle(dd) {
     var menuBtn = qs("#menuBtn");
     if (!menuBtn || menuBtn.__cursappMenuBound) return;
     menuBtn.__cursappMenuBound = true;
+
+    // Reposicionar cuando cambia viewport
+    window.addEventListener("resize", function(){ if (dd.style.display === "block") positionDropdown(dd); });
+    window.addEventListener("scroll", function(){ if (dd.style.display === "block") positionDropdown(dd); }, true);
 
     function toggleMenu(e) {
       try {
@@ -262,6 +263,7 @@
       } catch (_) {}
       var isOpen = dd.style.display === "block";
       dd.style.display = isOpen ? "none" : "block";
+      if (!isOpen) { ensureDropdownPortal(dd); positionDropdown(dd); }
     }
 
     menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
@@ -276,45 +278,10 @@
     });
   }
 
-  
-  // -------- Menu styles/placement (robust on mobile) --------
-  function ensureMenuContainer(dd) {
-    try {
-      if (!dd) return null;
-      var menuBtn = qs("#menuBtn");
-      // Move dropdown to <body> to avoid layout issues inside headers
-      if (dd.parentElement && dd.parentElement !== document.body) {
-        document.body.appendChild(dd);
-      }
-      dd.style.position = "fixed";
-      var top = 74;
-      try {
-        if (menuBtn && menuBtn.getBoundingClientRect) {
-          var r = menuBtn.getBoundingClientRect();
-          top = Math.max(56, Math.round(r.bottom + 8));
-        }
-      } catch (_) {}
-      dd.style.top = top + "px";
-      dd.style.right = "12px";
-      dd.style.left = "auto";
-      dd.style.zIndex = "9999";
-      dd.style.width = "min(360px, calc(100vw - 24px))";
-      dd.style.maxHeight = "70vh";
-      dd.style.overflow = "auto";
-      dd.style.background = "#fff";
-      dd.style.border = "1px solid rgba(0,0,0,.10)";
-      dd.style.borderRadius = "16px";
-      dd.style.boxShadow = "0 18px 40px rgba(0,0,0,.18)";
-      dd.style.padding = "8px";
-      return dd;
-    } catch (_) {
-      return dd;
-    }
-  }
-function renderMenu(role) {
+  function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
-    dd = ensureMenuContainer(dd);
+    ensureDropdownPortal(dd);
 
     // Siempre parte cerrado
     dd.style.display = "none";
@@ -324,18 +291,12 @@ function renderMenu(role) {
 
     // APODERADO
     if (role === "apoderado") {
-      if (hasTesoreroPermission()) {
-        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💰"));
-      }
-
-      // Volver a directiva (solo si tiene permisos de Presidente)
-      if (hasDirectivaPermission()) {
-        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
-      }
+      // Volver a directiva: preferir switch directo sin depender de email
+      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
       parts.push(dividerHTML());
@@ -353,7 +314,7 @@ function renderMenu(role) {
       parts.push(btnHTML("Deudores", "goTab('deudores'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
@@ -368,7 +329,7 @@ function renderMenu(role) {
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
