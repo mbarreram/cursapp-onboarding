@@ -276,9 +276,45 @@
     });
   }
 
-  function renderMenu(role) {
+  
+  // -------- Menu styles/placement (robust on mobile) --------
+  function ensureMenuContainer(dd) {
+    try {
+      if (!dd) return null;
+      var menuBtn = qs("#menuBtn");
+      // Move dropdown to <body> to avoid layout issues inside headers
+      if (dd.parentElement && dd.parentElement !== document.body) {
+        document.body.appendChild(dd);
+      }
+      dd.style.position = "fixed";
+      var top = 74;
+      try {
+        if (menuBtn && menuBtn.getBoundingClientRect) {
+          var r = menuBtn.getBoundingClientRect();
+          top = Math.max(56, Math.round(r.bottom + 8));
+        }
+      } catch (_) {}
+      dd.style.top = top + "px";
+      dd.style.right = "12px";
+      dd.style.left = "auto";
+      dd.style.zIndex = "9999";
+      dd.style.width = "min(360px, calc(100vw - 24px))";
+      dd.style.maxHeight = "70vh";
+      dd.style.overflow = "auto";
+      dd.style.background = "#fff";
+      dd.style.border = "1px solid rgba(0,0,0,.10)";
+      dd.style.borderRadius = "16px";
+      dd.style.boxShadow = "0 18px 40px rgba(0,0,0,.18)";
+      dd.style.padding = "8px";
+      return dd;
+    } catch (_) {
+      return dd;
+    }
+  }
+function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
+    dd = ensureMenuContainer(dd);
 
     // Siempre parte cerrado
     dd.style.display = "none";
