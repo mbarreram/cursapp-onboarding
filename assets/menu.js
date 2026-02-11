@@ -50,7 +50,36 @@
     return "apoderado";
   }
 
-  function normalizeRole(role) {
+  
+  // -------- Debug helper (mobile-friendly) --------
+  function copyDebug() {
+    const keys = [
+      "cursapp_session_v1",
+      "cursapp_profiles_v1",
+      "cursapp_enrollments_v1",
+      "cursapp_directiva_apoderado_by_role_v1",
+      "cursapp_active_course_v1",
+      "cursapp_course_v1"
+    ];
+    const out = {};
+    keys.forEach((k) => {
+      const raw = localStorage.getItem(k);
+      out[k] = safeJsonParse(raw) ?? raw;
+    });
+    const text = JSON.stringify(out, null, 2);
+
+    // Prefer Clipboard API; fallback to prompt for iOS
+    const done = () => alert("✅ Debug copiado al portapapeles. Pégalo en el chat.");
+    const fail = () => { try { prompt("Copia este texto y pégalo en el chat:", text); } catch (e) { alert(text); } };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
+function normalizeRole(role) {
     role = (role || "").toLowerCase();
     if (role.indexOf("tesor") >= 0) return "tesorero";
     if (role.indexOf("pres") >= 0 || role.indexOf("direct") >= 0) return "presidente";
@@ -276,45 +305,9 @@
     });
   }
 
-  
-  // -------- Menu styles/placement (robust on mobile) --------
-  function ensureMenuContainer(dd) {
-    try {
-      if (!dd) return null;
-      var menuBtn = qs("#menuBtn");
-      // Move dropdown to <body> to avoid layout issues inside headers
-      if (dd.parentElement && dd.parentElement !== document.body) {
-        document.body.appendChild(dd);
-      }
-      dd.style.position = "fixed";
-      var top = 74;
-      try {
-        if (menuBtn && menuBtn.getBoundingClientRect) {
-          var r = menuBtn.getBoundingClientRect();
-          top = Math.max(56, Math.round(r.bottom + 8));
-        }
-      } catch (_) {}
-      dd.style.top = top + "px";
-      dd.style.right = "12px";
-      dd.style.left = "auto";
-      dd.style.zIndex = "9999";
-      dd.style.width = "min(360px, calc(100vw - 24px))";
-      dd.style.maxHeight = "70vh";
-      dd.style.overflow = "auto";
-      dd.style.background = "#fff";
-      dd.style.border = "1px solid rgba(0,0,0,.10)";
-      dd.style.borderRadius = "16px";
-      dd.style.boxShadow = "0 18px 40px rgba(0,0,0,.18)";
-      dd.style.padding = "8px";
-      return dd;
-    } catch (_) {
-      return dd;
-    }
-  }
-function renderMenu(role) {
+  function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
-    dd = ensureMenuContainer(dd);
 
     // Siempre parte cerrado
     dd.style.display = "none";
@@ -340,6 +333,7 @@ function renderMenu(role) {
 
       parts.push(dividerHTML());
 
+      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
@@ -357,6 +351,7 @@ function renderMenu(role) {
 
       parts.push(dividerHTML());
 
+      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
@@ -372,6 +367,7 @@ function renderMenu(role) {
 
       parts.push(dividerHTML());
 
+      parts.push(btnHTML("Copiar Debug (roles)", "copyDebug();", "📋"));
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
