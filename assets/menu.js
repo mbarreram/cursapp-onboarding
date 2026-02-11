@@ -109,9 +109,24 @@
   }
 
   function hasTesoreroPermission() {
-    var p = getActiveProfile();
-    var dr = (p && p.directivaRole) ? String(p.directivaRole).toLowerCase() : "";
-    return dr === "tesorero" || dr === "tesorero/apoderado" || dr === "apoderado/tesorero";
+    const sess = getSession();
+    if (!sess || !sess.userId || !sess.courseKey) return false;
+
+    const profiles = getProfiles();
+    const all = Object.values(profiles || {});
+    const sameCourse = all.filter(p => p && p.courseKey === sess.courseKey && p.userId === sess.userId);
+
+    const getDirectivaRole = (prof) => {
+      const dr = (prof?.directivaRole ?? prof?.apoderado?.directivaRole ?? prof?.meta?.directivaRole ?? prof?.directiva ?? "").toString().toLowerCase();
+      return dr;
+    };
+
+    return sameCourse.some(p => {
+      const r = (p?.role ?? "").toString().toLowerCase();
+      const dr = getDirectivaRole(p);
+      const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
+      return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
+    });
   }
 
 
@@ -277,12 +292,14 @@
         parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💰"));
       }
 
-      // Volver a directiva: preferir switch directo sin depender de email
-      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      // Volver a directiva (solo si tiene permisos de Presidente)
+      if (hasDirectivaPermission()) {
+        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      }
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
       parts.push(dividerHTML());
@@ -300,7 +317,7 @@
       parts.push(btnHTML("Deudores", "goTab('deudores'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
@@ -315,7 +332,7 @@
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback(); closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 

@@ -385,17 +385,23 @@ const esc = (s) =>
       const profilesForCourse = allProfiles.filter(p => p.courseKey === ck);
       const roleList = profilesForCourse.map(p => ({ role: p.role || "apoderado", profile: p }));
 
-    // Si el apoderado tiene permiso de Tesorero (directivaRole), lo agregamos como rol adicional
-    // para que aparezca en el selector de rol post-login.
-    const hasTesoreroPerm = profilesForCourse.some(p => {
-      const dr = (p?.profile?.directivaRole ?? p?.directivaRole ?? "").toString().toLowerCase();
-      return dr === "tesorero" || dr === "tesorero/apoderado" || dr === "apoderado/tesorero";
-    });
-    if (hasTesoreroPerm && !roleList.some(r => r.role === "tesorero")) {
-      // Reutilizamos el mismo profileId (apoderado), solo cambia el rol activo en sesión
-      const base = profilesForCourse[0];
-      roleList.push({ role: "tesorero", profile: base });
-    }
+    // Si el apoderado tiene permiso de Tesorero (directivaRole / flags), lo agregamos como rol adicional
+      // para que aparezca en el selector de rol post-login.
+      const getDirectivaRole = (prof) => {
+        const dr = (prof?.directivaRole ?? prof?.apoderado?.directivaRole ?? prof?.meta?.directivaRole ?? prof?.directiva ?? "").toString().toLowerCase();
+        return dr;
+      };
+      const hasTesoreroPerm = profilesForCourse.some(p => {
+        const r = (p?.role ?? "").toString().toLowerCase();
+        const dr = getDirectivaRole(p);
+        const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
+        return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
+      });
+      if (hasTesoreroPerm && !roleList.some(r => r.role === "tesorero")) {
+        // Reutilizamos el mismo perfil base del curso (apoderado) y cambiamos el rol activo en sesión
+        const base = profilesForCourse[0];
+        roleList.push({ role: "tesorero", profile: base });
+      }
 
 chooseRoleForCourse(userEmail, ck, roleList);
       return;
