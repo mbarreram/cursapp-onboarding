@@ -1,420 +1,403 @@
-/*
-  Cursapp - menu.js
-  Menú único para apoderado / tesorero / presidente.
-  - No depende de otras funciones globales.
-  - Lee roles desde localStorage (cursapp_roles_v1) y rol activo (cursapp_active_role_v1).
-  - Mantiene compatibilidad con session (cursapp_session_v1) si existe.
+/* assets/menu.js
+   Menú único por rol (apoderado / presidente / tesorero)
+   FIXES:
+   - Ayuda funciona aunque openHelp no exista (modal simple fallback)
+   - Logout funciona siempre (limpia storage + redirige)
+   - Volver a apoderado/directiva funciona sin depender de email (setea perfil activo + redirige)
+   - Toggle robusto en iOS (touchstart + click)
 */
+
 (function () {
-  'use strict';
+  // Flag to prevent page scripts from binding a second (conflicting) menu handler
+  window.CURSAPP_MENU_HANDLED = true;
 
-  // -------- keys (localStorage) --------
-  var KEY_SESSION = 'cursapp_session_v1';
-  var KEY_ROLES = 'cursapp_roles_v1';
-  var KEY_ACTIVE_ROLE = 'cursapp_active_role_v1';
-  // Opcional: bandera para forzar selector al entrar (debug)
-  var KEY_FORCE_ROLE_PICKER = 'cursapp_force_role_picker_v1';
+  function qs(sel, root) { return (root || document).querySelector(sel); }
+  function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
-  // -------- small helpers --------
-  function safeJsonParse(s, fallback) {
+  // -------- Session / profiles helpers --------
+  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
+  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_FORCE_ROLE_PICKER = "cursapp_force_role_picker_v1";
+
+  function getActiveCourseKey() {
     try {
-      return JSON.parse(s);
-    } catch (e) {
-      return fallback;
-    }
+      const s = getSession() || {};
+      return s.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    } catch (e) { return ""; }
+  }
+
+  function getUserEmail() {
+    try { return (getSession() || {}).userEmail || ""; } catch (e) { return ""; }
+  }
+
+  function hasDirectivaRole(role) {
+    try {
+      const ck = getActiveCourseKey();
+      const email = (getUserEmail() || "").toLowerCase();
+      const all = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
+      const entry = (all && ck && all[ck]) ? all[ck] : null;
+      const r = entry && entry[role];
+      const target = (r && (r.email || r.userEmail || r.mail || "")) || "";
+      return !!(email && target && String(target).toLowerCase() === email);
+    } catch (e) { return false; }
   }
 
   function getSession() {
-    return safeJsonParse(localStorage.getItem(KEY_SESSION) || 'null', null) || {};
-  }
-
-  function setSessionPatch(patch) {
-    var s = getSession();
-    for (var k in patch) s[k] = patch[k];
-    localStorage.setItem(KEY_SESSION, JSON.stringify(s));
-    return s;
-  }
-
-  function getRoles() {
-    var roles = safeJsonParse(localStorage.getItem(KEY_ROLES) || 'null', null);
-    if (Array.isArray(roles)) return roles;
-    // compat: si no existe roles_v1, intenta derivar desde session
-    var s = getSession();
-    if (Array.isArray(s.roles)) return s.roles;
-    return [];
-  }
-
-  function getActiveRole() {
-    var r = localStorage.getItem(KEY_ACTIVE_ROLE);
-    if (r) return r;
-    var s = getSession();
-    return s.role || 'apoderado';
-  }
-
-  function setActiveRole(role) {
-    localStorage.setItem(KEY_ACTIVE_ROLE, role);
-    // compat: mantener session.role sincronizado para pantallas antiguas
-    setSessionPatch({ role: role });
-  }
-
-  function byId(id) {
-    return document.getElementById(id);
-  }
-
-  function on(el, ev, fn) {
-    if (!el) return;
-    el.addEventListener(ev, fn, { passive: false });
-  }
-
-  function isFunction(fn) {
-    return typeof fn === 'function';
-  }
-
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
-    });
-  }
-
-  // -------- menu UI --------
-  function injectMenuStyleOnce() {
-    if (document.getElementById('cursappMenuStyle')) return;
-    var st = document.createElement('style');
-    st.id = 'cursappMenuStyle';
-    st.textContent = [
-      '#menuDropdown{',
-      '  position: fixed;',
-      '  top: 64px; right: 16px;',
-      '  z-index: 9999;',
-      '  min-width: 280px;',
-      '  max-width: calc(100vw - 24px);',
-      '  background: transparent;',
-      '}',
-      '#menuDropdown .menuItemBtn{',
-      '  width: 100%;',
-      '  display:flex;',
-      '  align-items:center;',
-      '  gap:10px;',
-      '  padding:14px 14px;',
-      '  border-radius: 14px;',
-      '  background: rgba(255,255,255,0.98);',
-      '  border: 1px solid rgba(0,0,0,0.08);',
-      '  box-shadow: 0 10px 26px rgba(0,0,0,0.10);',
-      '  font-size: 16px;',
-      '  margin: 10px 0;',
-      '}',
-      '#menuDropdown .menuItemBtn:active{ transform: scale(0.99); }',
-      '#menuDropdown .menuItemIcon{ width: 22px; text-align:center; }',
-      '#menuDropdown .menuSep{ height: 1px; background: rgba(0,0,0,0.08); margin: 10px 6px; border-radius: 1px; }'
-    ].join('\n');
-    document.head.appendChild(st);
-  }
-
-  function positionDropdown(menuBtn, dd) {
-    if (!menuBtn || !dd) return;
-    // Anclar al botón
-    var r = menuBtn.getBoundingClientRect();
-    var top = Math.max(10, Math.round(r.bottom + 10));
-    var right = Math.max(10, Math.round(window.innerWidth - r.right));
-    dd.style.top = top + 'px';
-    dd.style.right = right + 'px';
-  }
-
-  function closeDropdown(dd) {
-    if (!dd) return;
-    dd.style.display = 'none';
-    dd.setAttribute('aria-hidden', 'true');
-  }
-
-  function openDropdown(menuBtn, dd) {
-    if (!dd) return;
-    positionDropdown(menuBtn, dd);
-    dd.style.display = 'block';
-    dd.setAttribute('aria-hidden', 'false');
-  }
-
-  function toggleDropdown(menuBtn, dd) {
-    if (!dd) return;
-    var isOpen = dd.style.display !== 'none' && dd.style.display !== '';
-    if (isOpen) closeDropdown(dd);
-    else openDropdown(menuBtn, dd);
-  }
-
-  // -------- actions --------
-  function go(href) {
-    window.location.href = href;
-  }
-
-  function doLogout() {
-    // Mantener datos del curso si existen, solo limpiar sesión/rol activo
-    localStorage.removeItem(KEY_SESSION);
-    localStorage.removeItem(KEY_ACTIVE_ROLE);
-    // Si existe función logout global, úsala
-    if (isFunction(window.logout)) {
-      try {
-        window.logout();
-        return;
-      } catch (e) {}
-    }
-    // fallback
-    go('index.html');
-  }
-
-  function doResetTotalDev() {
-    if (!confirm('¿Reset total? Esto borrará datos locales (demo).')) return;
     try {
-      localStorage.clear();
-    } catch (e) {}
-    go('index.html');
+      if (window.CURSAPP && typeof window.CURSAPP.getSession === "function") {
+        var s = window.CURSAPP.getSession();
+        if (s) return s;
+      }
+    } catch (_) {}
+
+    var raw = null;
+    try { raw = localStorage.getItem("cursapp_session_v1"); } catch (_) {}
+    var sess = safeJsonParse(raw);
+    return sess || {};
   }
 
-  function doResetCursoSoloDatos() {
-    // Intenta usar resetCurso() si existe; si no, elimina llaves conocidas de datos
-    if (isFunction(window.resetCursoSoloDatos)) {
-      window.resetCursoSoloDatos();
+  function getRoleFromSession() {
+    var s = getSession();
+    if (s && s.role) return String(s.role);
+    // fallback: active profile
+    try {
+      var activeId = localStorage.getItem("cursapp_active_profile_v1");
+      var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
+      var profiles = safeJsonParse(profilesRaw);
+
+      if (activeId && profiles) {
+        // profiles puede ser objeto o array
+        if (profiles[activeId] && profiles[activeId].role) return String(profiles[activeId].role);
+        if (Array.isArray(profiles)) {
+          for (var i = 0; i < profiles.length; i++) {
+            if (profiles[i] && String(profiles[i].id) === String(activeId) && profiles[i].role) {
+              return String(profiles[i].role);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    return "apoderado";
+  }
+
+  function normalizeRole(role) {
+    role = (role || "").toLowerCase();
+    if (role.indexOf("tesor") >= 0) return "tesorero";
+    if (role.indexOf("pres") >= 0 || role.indexOf("direct") >= 0) return "presidente";
+    return "apoderado";
+  }
+
+  function findProfileIdByRole(targetRole) {
+    targetRole = (targetRole || "").toLowerCase();
+    try {
+      var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
+      var profiles = safeJsonParse(profilesRaw);
+
+      if (!profiles) return null;
+
+      // Caso 1: objeto tipo {id: {...}}
+      if (!Array.isArray(profiles)) {
+        for (var k in profiles) {
+          if (!Object.prototype.hasOwnProperty.call(profiles, k)) continue;
+          var p = profiles[k];
+          var r = (p && p.role) ? String(p.role).toLowerCase() : "";
+          if (r.indexOf(targetRole) >= 0) return k;
+        }
+      }
+
+      // Caso 2: array
+      if (Array.isArray(profiles)) {
+        for (var i = 0; i < profiles.length; i++) {
+          var pp = profiles[i];
+          var rr = (pp && pp.role) ? String(pp.role).toLowerCase() : "";
+          if (rr.indexOf(targetRole) >= 0) return pp.id != null ? String(pp.id) : null;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function switchToRole(targetRole) {
+    // 1) Preferir setear perfil activo (no depende de email)
+    var id = findProfileIdByRole(targetRole);
+    if (id) {
+      try { localStorage.setItem("cursapp_active_profile_v1", String(id)); } catch (_) {}
+    }
+
+    // 2) Ajustar role en sesión si existe
+    try {
+      var raw = localStorage.getItem("cursapp_session_v1");
+      var sess = safeJsonParse(raw) || {};
+      sess.role = targetRole;
+      localStorage.setItem("cursapp_session_v1", JSON.stringify(sess));
+    } catch (_) {}
+
+    // 3) Redirigir a vista correspondiente
+    if (targetRole === "apoderado") location.href = "/apoderado.html";
+    else if (targetRole === "presidente") location.href = "/presidente.html";
+    else if (targetRole === "tesorero") location.href = "/tesorero.html";
+  }
+
+  function hasFn(path) {
+    try {
+      var parts = path.split(".");
+      var obj = window;
+      for (var i = 0; i < parts.length; i++) {
+        obj = obj[parts[i]];
+        if (obj == null) return false;
+      }
+      return typeof obj === "function";
+    } catch (_) { return false; }
+  }
+
+  // -------- Navigation helpers --------
+  function goTab(tab) {
+    var btn = document.querySelector('.navItem[data-tab="' + tab + '"]');
+    if (btn) btn.click();
+  }
+  function closeMenu() {
+    var dd = qs("#menuDropdown");
+    if (dd) dd.style.display = "none";
+  }
+
+  // -------- Help fallback (works everywhere) --------
+  function openHelpFallback() {
+    // Si existe openModal (tu core), úsalo; si no, usa alert.
+    var html =
+      '<div class="card" style="max-height:70vh;overflow:auto;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+          '<div style="font-weight:800;font-size:18px;">❓ Ayuda</div>' +
+          '<button class="btn ghost" type="button" onclick="(function(){var m=document.getElementById(\'modalRoot\'); if(m) m.innerHTML=\'\';})();">Cerrar</button>' +
+        '</div>' +
+        '<div style="margin-top:10px;line-height:1.45;">' +
+          '<b>Pagos pendientes</b><div class="muted">Suma de campañas obligatorias + campañas no obligatorias en las que participas.</div>' +
+          '<div style="height:10px;"></div>' +
+          '<b>Campaña obligatoria</b><div class="muted">Todos participan. No puedes excluirte.</div>' +
+          '<div style="height:10px;"></div>' +
+          '<b>Campaña no obligatoria</b><div class="muted">Puedes elegir Participar o No participo. Si eliges No participo, ese cobro se excluye de tu pendiente.</div>' +
+          '<div style="height:10px;"></div>' +
+          '<b>Vencida vs Pendiente</b><div class="muted">Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasó su fecha.</div>' +
+        '</div>' +
+      '</div>';
+
+    if (typeof window.openModal === "function") {
+      window.openModal(html);
       return;
     }
-    if (isFunction(window.resetCurso)) {
-      window.resetCurso();
-      return;
-    }
-    var keys = [
-      'cursapp_campaigns_v1',
-      'cursapp_payments_v1',
-      'cursapp_reports_v1',
-      'cursapp_tasks_v1',
-      'cursapp_debtors_v1'
+    alert("Ayuda: Revisa tus pagos pendientes y campañas. Si tienes un problema, contacta al presidente o tesorero.");
+  }
+
+  // -------- Logout robusto --------
+  function logout() {
+    try {
+      // Limpieza de claves típicas (sin asumir exacto)
+      var keys = [
+        "cursapp_session_v1",
+        "cursapp_active_profile_v1"
+      ];
+      for (var i = 0; i < keys.length; i++) localStorage.removeItem(keys[i]);
+    } catch (_) {}
+
+    // Redirigir al login
+    location.href = "/index.html";
+  }
+
+  // -------- Legacy buttons (compatibilidad con scripts viejos) --------
+  function ensureLegacyButtons(container) {
+    var legacy = [
+      { id: "goOnboarding", text: "Configurar curso", style: "display:none" },
+      { id: "resetBtn", text: "Reset datos (demo)", style: "display:none" },
+      { id: "logoutBtn", text: "Cerrar sesión", style: "display:none" }
     ];
-    keys.forEach(function (k) {
-      try { localStorage.removeItem(k); } catch (e) {}
-    });
-    alert('Datos del curso reseteados (local).');
-    location.reload();
-  }
-
-  // -------- help handlers --------
-  function openHelp(role) {
-    // Si la pantalla tiene un modal de ayuda, úsalo
-    if (isFunction(window.openHelpModal)) {
-      window.openHelpModal(role);
-      return;
-    }
-    // fallback: alert contextual
-    if (role === 'presidente') {
-      alert('Ayuda Presidente: revisa Campañas, Deudores e Informes.');
-    } else if (role === 'tesorero') {
-      alert('Ayuda Tesorero: revisa Rendiciones, Pagos e Informes.');
-    } else {
-      alert('Ayuda: revisa Pagos, campañas obligatorias/no obligatorias e Informes.');
-    }
-  }
-
-  // -------- menu model --------
-  function buildMenuItems(activeRole, roles) {
-    var items = [];
-
-    // Switches entre roles
-    if (activeRole === 'apoderado') {
-      if (roles.indexOf('presidente') >= 0) {
-        items.push({ label: 'Volver a directiva', icon: '👨‍💼', onClick: function () { setActiveRole('presidente'); go('presidente.html'); } });
-      }
-      if (roles.indexOf('tesorero') >= 0) {
-        items.push({ label: 'Ir a tesorero', icon: '💼', onClick: function () { setActiveRole('tesorero'); go('tesorero.html'); } });
+    for (var i = 0; i < legacy.length; i++) {
+      if (!qs("#" + legacy[i].id, container)) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "btn ghost";
+        b.id = legacy[i].id;
+        b.style.cssText = "width:100%;text-align:left;" + legacy[i].style;
+        b.textContent = legacy[i].text;
+        container.appendChild(b);
       }
     }
-
-    if (activeRole === 'presidente') {
-      items.push({ label: 'Volver a apoderado', icon: '👤', onClick: function () { setActiveRole('apoderado'); go('apoderado.html'); } });
-      items.push({ label: 'Apoderados del curso', icon: '👥', onClick: function () { go('presidente.html#apoderados'); } });
-      items.push({ label: 'Campañas', icon: '📌', onClick: function () { go('presidente.html#campanas'); } });
-      items.push({ label: 'Deudores', icon: '🧾', onClick: function () { go('presidente.html#deudores'); } });
-      items.push({ label: 'Informes', icon: '📄', onClick: function () { go('presidente.html#informes'); } });
-      items.push({ sep: true });
-      items.push({ label: 'Mi perfil', icon: '👤', onClick: function () { go('presidente.html#perfil'); } });
-      items.push({ label: 'Ayuda', icon: '❓', onClick: function () { openHelp('presidente'); } });
-      items.push({ sep: true });
-      items.push({ label: 'Reset total (dev)', icon: '🧨', onClick: doResetTotalDev });
-      items.push({ label: 'Cerrar sesión', icon: '🚪', onClick: doLogout });
-      return items;
-    }
-
-    if (activeRole === 'tesorero') {
-      // Tesorero siempre es también apoderado
-      items.push({ label: 'Ir a apoderado', icon: '🏠', onClick: function () { setActiveRole('apoderado'); go('apoderado.html'); } });
-      items.push({ label: 'Rendiciones', icon: '🧾', onClick: function () { go('tesorero.html#rendiciones'); } });
-      items.push({ label: 'Pagos', icon: '💳', onClick: function () { go('tesorero.html#pagos'); } });
-      items.push({ label: 'Informes', icon: '📄', onClick: function () { go('tesorero.html#informes'); } });
-      items.push({ sep: true });
-      items.push({ label: 'Mi perfil', icon: '👤', onClick: function () { go('tesorero.html#perfil'); } });
-      items.push({ label: 'Ayuda', icon: '❓', onClick: function () { openHelp('tesorero'); } });
-      items.push({ sep: true });
-      items.push({ label: 'Reset total (dev)', icon: '🧨', onClick: doResetTotalDev });
-      items.push({ label: 'Cerrar sesión', icon: '🚪', onClick: doLogout });
-      return items;
-    }
-
-    // Apoderado (por defecto)
-    items.push({ label: 'Pagos', icon: '💳', onClick: function () { go('apoderado.html#pagos'); } });
-    items.push({ label: 'Informes', icon: '📄', onClick: function () { go('apoderado.html#informes'); } });
-    items.push({ label: 'Ayuda', icon: '❓', onClick: function () { openHelp('apoderado'); } });
-    items.push({ label: 'Mi perfil', icon: '👤', onClick: function () { go('apoderado.html#perfil'); } });
-    items.push({ sep: true });
-    items.push({ label: 'Reset curso (solo datos)', icon: '🧹', onClick: doResetCursoSoloDatos });
-    items.push({ label: 'Reset total (dev)', icon: '🧨', onClick: doResetTotalDev });
-    items.push({ label: 'Cerrar sesión', icon: '🚪', onClick: doLogout });
-    return items;
   }
 
-  function renderMenu(dd, items) {
-    dd.innerHTML = '';
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      if (it.sep) {
-        var sep = document.createElement('div');
-        sep.className = 'menuSep';
-        dd.appendChild(sep);
-        continue;
+  function btnHTML(label, onclickJs, icon) {
+    var ico = icon ? (icon + " ") : "";
+    return (
+      '<button class="btn ghost" type="button" style="width:100%;text-align:left;" onclick="' +
+      String(onclickJs || "").replace(/"/g, "&quot;") +
+      '">' +
+      ico + label +
+      "</button>"
+    );
+  }
+  function dividerHTML() {
+    return '<div style="height:1px;background:rgba(229,231,235,.9);margin:6px 0;"></div>';
+  }
+
+  // -------- Toggle binding --------
+  function bindMenuToggle(dd) {
+    var menuBtn = qs("#menuBtn");
+    if (!menuBtn || menuBtn.__cursappMenuBound) return;
+    menuBtn.__cursappMenuBound = true;
+
+    function toggleMenu(e) {
+      try {
+        if (e && e.preventDefault) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+      } catch (_) {}
+      var isOpen = dd.style.display === "block";
+      dd.style.display = isOpen ? "none" : "block";
+    }
+
+    menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
+    menuBtn.addEventListener("click", toggleMenu);
+
+    document.addEventListener("touchstart", function (e) {
+      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+    }, { passive: true });
+
+    document.addEventListener("click", function (e) {
+      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+    });
+  }
+
+  function renderMenu(role) {
+    var dd = qs("#menuDropdown");
+    if (!dd) return;
+
+    // Siempre parte cerrado
+    dd.style.display = "none";
+    dd.innerHTML = "";
+
+    var parts = [];
+
+    // APODERADO
+    if (role === "apoderado") {
+      // Cambiar rol (según permisos)
+      if (hasDirectivaRole('presidente')) {
+        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
       }
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'menuItemBtn';
-      btn.innerHTML = '<span class="menuItemIcon">' + esc(it.icon || '') + '</span><span>' + esc(it.label || '') + '</span>';
-      (function (fn) {
-        on(btn, 'click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          closeDropdown(dd);
-          try { fn(); } catch (err) { console.error(err); }
-        });
-      })(it.onClick || function () {});
-      dd.appendChild(btn);
-    }
-  }
-
-  // -------- role picker (optional) --------
-  function shouldForceRolePicker(roles) {
-    try {
-      return localStorage.getItem(KEY_FORCE_ROLE_PICKER) === '1' && roles && roles.length > 1;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function showRolePickerModal(roles) {
-    // Modal simple, sin depender de CSS externo
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
-    var card = document.createElement('div');
-    card.style.cssText = 'width:100%;max-width:520px;background:#fff;border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,0.22);padding:18px;';
-    card.innerHTML =
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">' +
-      '  <div>' +
-      '    <div style="font-size:22px;font-weight:800;">Elegir rol</div>' +
-      '    <div style="margin-top:4px;color:#666;">Selecciona cómo ingresar</div>' +
-      '  </div>' +
-      '  <button id="cursappRolePickerClose" type="button" style="border:1px solid rgba(0,0,0,0.10);background:#fff;border-radius:14px;padding:10px 14px;font-weight:700;">Cerrar</button>' +
-      '</div>' +
-      '<div style="height:1px;background:rgba(0,0,0,0.08);margin:14px 0;"></div>';
-
-    function addRoleBtn(role, title, subtitle, icon) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.style.cssText = 'width:100%;text-align:left;border:1px solid rgba(0,0,0,0.10);background:#fff;border-radius:16px;padding:14px;display:flex;gap:12px;align-items:flex-start;margin:12px 0;';
-      b.innerHTML =
-        '<div style="width:34px;height:34px;border-radius:12px;background:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;font-size:18px;">' + esc(icon) + '</div>' +
-        '<div style="flex:1;">' +
-        '  <div style="font-weight:800;font-size:18px;">' + esc(title) + '</div>' +
-        '  <div style="margin-top:2px;color:#666;">' + esc(subtitle) + '</div>' +
-        '</div>';
-      on(b, 'click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        try { localStorage.removeItem(KEY_FORCE_ROLE_PICKER); } catch (err) {}
-        setActiveRole(role);
-        document.body.removeChild(overlay);
-        if (role === 'presidente') go('presidente.html');
-        else if (role === 'tesorero') go('tesorero.html');
-        else go('apoderado.html');
-      });
-      card.appendChild(b);
-    }
-
-    // Orden sugerido
-    if (roles.indexOf('apoderado') >= 0) addRoleBtn('apoderado', 'Apoderado', 'Aprobado automáticamente', '👥');
-    if (roles.indexOf('tesorero') >= 0) addRoleBtn('tesorero', 'Tesorero', 'Rendiciones e informes', '💼');
-    if (roles.indexOf('presidente') >= 0) addRoleBtn('presidente', 'Presidente', 'Gestión del curso y campañas', '🎓');
-
-    overlay.appendChild(card);
-    document.body.appendChild(overlay);
-    var closeBtn = byId('cursappRolePickerClose');
-    on(closeBtn, 'click', function () {
-      try { localStorage.removeItem(KEY_FORCE_ROLE_PICKER); } catch (err) {}
-      document.body.removeChild(overlay);
-    });
-    on(overlay, 'click', function (e) {
-      if (e.target === overlay) {
-        try { localStorage.removeItem(KEY_FORCE_ROLE_PICKER); } catch (err) {}
-        document.body.removeChild(overlay);
+      if (hasDirectivaRole('tesorero')) {
+        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
       }
-    });
-  }
 
-  // -------- init --------
-  function initMenu() {
-    var menuBtn = byId('menuBtn');
-    var dd = byId('menuDropdown');
+      parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
+      parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
-    if (!menuBtn || !dd) return; // algunas pantallas no usan menú
+      parts.push(dividerHTML());
 
-    injectMenuStyleOnce();
-    closeDropdown(dd); // asegurar cerrado al cargar
-
-    var roles = getRoles();
-    var activeRole = getActiveRole();
-
-    // Si rol activo no está en roles, intenta corregir
-    if (roles.length && roles.indexOf(activeRole) === -1) {
-      // prioriza apoderado
-      activeRole = roles.indexOf('apoderado') >= 0 ? 'apoderado' : roles[0];
-      setActiveRole(activeRole);
+      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
+      parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
-    // Role picker forzado (debug): útil para apoderado/tesorero y apoderado/presidente
-    if (shouldForceRolePicker(roles)) {
-      showRolePickerModal(roles);
+    // PRESIDENTE
+    if (role === "presidente") {
+      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+
+      parts.push(btnHTML("Apoderados del curso", "location.href='/apoderados.html';", "👥"));
+      parts.push(btnHTML("Campañas", "goTab('campanas'); closeMenu();", "📌"));
+      parts.push(btnHTML("Deudores", "goTab('deudores'); closeMenu();", "🧾"));
+      parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
+      parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+
+      parts.push(dividerHTML());
+
+      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
+      parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
-    var items = buildMenuItems(activeRole, roles);
-    renderMenu(dd, items);
+    // TESORERO
+    if (role === "tesorero") {
+      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
-    on(menuBtn, 'click', function (e) {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleDropdown(menuBtn, dd);
-    });
+      parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
+      parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
+      parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
-    // Cerrar al tocar fuera
-    on(document, 'click', function () {
-      closeDropdown(dd);
-    });
+      parts.push(dividerHTML());
 
-    // Evita que click dentro cierre antes de tiempo
-    on(dd, 'click', function (e) {
-      e.stopPropagation();
-    });
+      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
+      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
+      parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
+    }
 
-    // Reposicionar en resize/orientación
-    on(window, 'resize', function () {
-      if (dd.style.display === 'block') positionDropdown(menuBtn, dd);
-    });
-    on(window, 'scroll', function () {
-      if (dd.style.display === 'block') closeDropdown(dd);
-    });
+    dd.innerHTML = parts.join("");
+
+    // Compatibilidad con scripts antiguos (aunque ya no dependemos de ellos)
+    ensureLegacyButtons(dd);
+
+    // Toggle iOS robusto
+    bindMenuToggle(dd);
+
+    // Seguridad
+    dd.style.display = "none";
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMenu);
+  function init() {
+    var role = normalizeRole(getRoleFromSession());
+    renderMenu(role);
+  }
+
+  // Exponer helpers usados en onclick
+  window.goTab = goTab;
+  window.closeMenu = closeMenu;
+  window.logout = logout;
+  window.switchToRole = switchToRole;
+  window.openHelpFallback = openHelpFallback;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    initMenu();
+    init();
   }
 })();
+  function debugRoleInfo() {
+    try {
+      const s = getSession() || {};
+      const ck = getActiveCourseKey();
+      const email = getUserEmail();
+      const directiva = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
+      const entry = (directiva && ck) ? directiva[ck] : null;
+      const info = {
+        session: s,
+        activeCourseKey: ck,
+        userEmail: email,
+        directivaEntry: entry,
+        perms: {
+          presidente: hasDirectivaRole('presidente'),
+          tesorero: hasDirectivaRole('tesorero'),
+        },
+        forceRolePickerFlag: localStorage.getItem(KEY_FORCE_ROLE_PICKER) || null,
+      };
+      const msg = "DEBUG ROL\n\n" + JSON.stringify(info, null, 2) +
+        "\n\nAcciones:\n- OK: Copia este texto (mantén presionado)\n- Para forzar selector al entrar: usa el botón 'Forzar selector (dev)' en el menú.";
+      alert(msg);
+      closeMenu();
+    } catch (e) {
+      alert("DEBUG ROL: error " + (e && e.message ? e.message : e));
+      closeMenu();
+    }
+  }
+
+  function forceRolePickerNextLogin() {
+    try {
+      localStorage.setItem(KEY_FORCE_ROLE_PICKER, "1");
+      alert("Listo. En el próximo login se mostrará el selector de rol (si tienes más de 1 rol).");
+    } catch (e) {
+      alert("No pude guardar la bandera de selector: " + (e && e.message ? e.message : e));
+    }
+    closeMenu();
+  }
+
+

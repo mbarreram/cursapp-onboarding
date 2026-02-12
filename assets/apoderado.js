@@ -1551,7 +1551,7 @@ window.payNow = function(id){
   // Menu
   function initMenu(){
     if(menuBtn && menuDropdown){
-      menuBtn.onclick=(e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
+      if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
       document.addEventListener("click",()=> menuDropdown.style.display="none");
     }
 

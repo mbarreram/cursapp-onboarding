@@ -303,42 +303,12 @@ function cuotasPendientesTask(id){
     `;
   }
   function closeModal(){ modalRoot.innerHTML=""; }
-  window.openModal = openModal;
   window.closeModal = closeModal;
 
-  
-  // ----- help icon -----
-  function helpIcon(topic){
-    return `<button class="helpIcon" type="button" onclick="openHelp('${topic||'presidente'}')">?</button>`;
-  }
-
-  (function ensureHelpIconStyles(){
-    if(document.getElementById('helpIconStyles_v1')) return;
-    const css = `
-      .helpIcon{
-        width:26px;height:26px;min-width:26px;
-        border-radius:999px;
-        border:1px solid rgba(0,0,0,.12);
-        background:#fff;
-        font-weight:950;
-        color:rgba(17,24,39,.9);
-        display:inline-flex;align-items:center;justify-content:center;
-        box-shadow:0 6px 14px rgba(0,0,0,.10);
-        cursor:pointer;
-      }
-      .helpIcon:active{ transform:scale(.98); }
-      .helpRow{ display:flex;align-items:center;justify-content:space-between;gap:10px; }
-    `;
-    const st = document.createElement('style');
-    st.id = 'helpIconStyles_v1';
-    st.textContent = css;
-    document.head.appendChild(st);
-  })();
-
-// ----- menu -----
+  // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
-      menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
+      if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
       document.addEventListener("click", ()=> menuDropdown.style.display="none");
     }
     if(resetBtn){
@@ -485,7 +455,7 @@ function cuotasPendientesTask(id){
 
     app.innerHTML = `      ${alerts.length ? `
         <div class="warnBox">
-          <div class="helpRow"><div style="font-weight:950;">Resumen rápido</div>${helpIcon('home')}</div>
+          <div style="font-weight:950;">Resumen rápido</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>
         </div>
       `:""}
@@ -507,7 +477,7 @@ function cuotasPendientesTask(id){
       <div class="card">
         <div class="row">
           <div>
-            <div class="helpRow"><div class="kTitle">Resumen ejecutivo del curso</div>${helpIcon('resumen')}</div>
+            <div class="kTitle">Resumen ejecutivo del curso</div>
             <div class="muted" style="margin-top:6px;">Montos globales (no personales)</div>
           </div>
           <div class="actions">
@@ -988,7 +958,7 @@ function renderDeudores(){
           </div>
 
           <div style="margin-top:12px;">
-            <div class="helpRow"><div style="font-weight:950;">Resumen para WhatsApp</div>${helpIcon('whatsapp')}</div>
+            <div style="font-weight:950;">Resumen para WhatsApp</div>
             <div class="muted" style="margin-top:6px;">Copia y pega este texto.</div>
             <textarea readonly>${esc(wa)}</textarea>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
