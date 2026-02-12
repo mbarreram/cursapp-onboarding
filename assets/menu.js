@@ -8,40 +8,10 @@
 */
 
 (function () {
-  // Flag to prevent page scripts from binding a second (conflicting) menu handler
-  window.CURSAPP_MENU_HANDLED = true;
-
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
   // -------- Session / profiles helpers --------
-  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
-  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
-  const KEY_FORCE_ROLE_PICKER = "cursapp_force_role_picker_v1";
-
-  function getActiveCourseKey() {
-    try {
-      const s = getSession() || {};
-      return s.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    } catch (e) { return ""; }
-  }
-
-  function getUserEmail() {
-    try { return (getSession() || {}).userEmail || ""; } catch (e) { return ""; }
-  }
-
-  function hasDirectivaRole(role) {
-    try {
-      const ck = getActiveCourseKey();
-      const email = (getUserEmail() || "").toLowerCase();
-      const all = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
-      const entry = (all && ck && all[ck]) ? all[ck] : null;
-      const r = entry && entry[role];
-      const target = (r && (r.email || r.userEmail || r.mail || "")) || "";
-      return !!(email && target && String(target).toLowerCase() === email);
-    } catch (e) { return false; }
-  }
-
   function getSession() {
     try {
       if (window.CURSAPP && typeof window.CURSAPP.getSession === "function") {
@@ -56,7 +26,80 @@
     return sess || {};
   }
 
-  function getRoleFromSession() {
+  
+  // --- permissions / roles (self-contained) ---
+  function getDirectivaByRole() {
+    var raw = null;
+    try { raw = localStorage.getItem("cursapp_directiva_apoderado_by_role_v1"); } catch (_) {}
+    return safeJsonParse(raw) || {};
+  }
+
+  function normRole(r) {
+    return String(r || "").toLowerCase().trim();
+  }
+
+  function nodeHasRole(node, role) {
+    if (!node || typeof node !== "object") return false;
+    var r = normRole(role);
+    var v1 = normRole(node.role);
+    var v2 = normRole(node.directivaRole);
+    var v3 = normRole(node.directiva_role);
+    return v1 === r || v2 === r || v3 === r;
+  }
+
+  function anyNodeHasRole(obj, role) {
+    if (!obj) return false;
+    if (Array.isArray(obj)) return obj.some(function (n) { return nodeHasRole(n, role) || anyNodeHasRole(n, role); });
+    if (typeof obj === "object") {
+      if (nodeHasRole(obj, role)) return true;
+      return Object.keys(obj).some(function (k) { return anyNodeHasRole(obj[k], role); });
+    }
+    return false;
+  }
+
+  function emailMatches(node, email) {
+    if (!email) return false;
+    var e = String(email).toLowerCase().trim();
+    if (!node) return false;
+    if (typeof node === "string") return String(node).toLowerCase().trim() === e;
+    if (typeof node !== "object") return false;
+    var ne = node.email || node.mail || node.userEmail;
+    if (ne && String(ne).toLowerCase().trim() === e) return true;
+    return Object.keys(node).some(function (k) { return emailMatches(node[k], email); });
+  }
+
+  function hasRoleInDirectivaByRole(map, role, email) {
+    if (!map || typeof map !== "object") return false;
+    var r = normRole(role);
+    // Try direct key
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (normRole(k) === r) {
+        return emailMatches(map[k], email);
+      }
+    }
+    // Fallback: deep scan looking for role name in path
+    return emailMatches(map[r], email);
+  }
+
+  function hasDirectivaPermission() {
+    var sess = getSession();
+    var email = sess.email || sess.userEmail || sess.username;
+    var byRole = getDirectivaByRole();
+    var profiles = getProfiles();
+    return hasRoleInDirectivaByRole(byRole, "presidente", email) || anyNodeHasRole(profiles, "presidente");
+  }
+
+  function hasTesoreroPermission() {
+    var sess = getSession();
+    var email = sess.email || sess.userEmail || sess.username;
+    var byRole = getDirectivaByRole();
+    var profiles = getProfiles();
+    return hasRoleInDirectivaByRole(byRole, "tesorero", email) || anyNodeHasRole(profiles, "tesorero");
+  }
+
+function getRoleFromSession() {
     var s = getSession();
     if (s && s.role) return String(s.role);
     // fallback: active profile
@@ -275,13 +318,8 @@
 
     // APODERADO
     if (role === "apoderado") {
-      // Cambiar rol (según permisos)
-      if (hasDirectivaRole('presidente')) {
-        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
-      }
-      if (hasDirectivaRole('tesorero')) {
-        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
-      }
+      // Volver a directiva: preferir switch directo sin depender de email
+      parts.push(btnHTML("Ir a presidente", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
@@ -291,14 +329,12 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
     // PRESIDENTE
     if (role === "presidente") {
-      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ir a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
       parts.push(btnHTML("Apoderados del curso", "location.href='/apoderados.html';", "👥"));
       parts.push(btnHTML("Campañas", "goTab('campanas'); closeMenu();", "📌"));
@@ -310,14 +346,12 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
     // TESORERO
     if (role === "tesorero") {
-      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ir a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
@@ -327,8 +361,6 @@
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -362,42 +394,3 @@
     init();
   }
 })();
-  function debugRoleInfo() {
-    try {
-      const s = getSession() || {};
-      const ck = getActiveCourseKey();
-      const email = getUserEmail();
-      const directiva = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
-      const entry = (directiva && ck) ? directiva[ck] : null;
-      const info = {
-        session: s,
-        activeCourseKey: ck,
-        userEmail: email,
-        directivaEntry: entry,
-        perms: {
-          presidente: hasDirectivaRole('presidente'),
-          tesorero: hasDirectivaRole('tesorero'),
-        },
-        forceRolePickerFlag: localStorage.getItem(KEY_FORCE_ROLE_PICKER) || null,
-      };
-      const msg = "DEBUG ROL\n\n" + JSON.stringify(info, null, 2) +
-        "\n\nAcciones:\n- OK: Copia este texto (mantén presionado)\n- Para forzar selector al entrar: usa el botón 'Forzar selector (dev)' en el menú.";
-      alert(msg);
-      closeMenu();
-    } catch (e) {
-      alert("DEBUG ROL: error " + (e && e.message ? e.message : e));
-      closeMenu();
-    }
-  }
-
-  function forceRolePickerNextLogin() {
-    try {
-      localStorage.setItem(KEY_FORCE_ROLE_PICKER, "1");
-      alert("Listo. En el próximo login se mostrará el selector de rol (si tienes más de 1 rol).");
-    } catch (e) {
-      alert("No pude guardar la bandera de selector: " + (e && e.message ? e.message : e));
-    }
-    closeMenu();
-  }
-
-
