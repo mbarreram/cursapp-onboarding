@@ -448,8 +448,8 @@ const esc = (s) =>
       };
       const hasTesoreroPerm = profilesForCourse.some(p => {
         const r = (p?.role ?? "").toString().toLowerCase();
-      const hasTesoreroDirectiva = hasRoleInDirectiva(userEmail, courseKey, "tesorero");
-      const hasPresidenteDirectiva = hasRoleInDirectiva(userEmail, courseKey, "presidente");
+      const hasTesoreroDirectiva = hasRoleInDirectiva(userEmail, ck, "tesorero");
+      const hasPresidenteDirectiva = hasRoleInDirectiva(userEmail, ck, "presidente");
         const dr = getDirectivaRole(p);
         const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
         return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
