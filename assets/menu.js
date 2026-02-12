@@ -12,33 +12,6 @@
   function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
   // -------- Session / profiles helpers --------
-  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
-  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
-  const KEY_FORCE_ROLE_PICKER = "cursapp_force_role_picker_v1";
-
-  function getActiveCourseKey() {
-    try {
-      const s = getSession() || {};
-      return s.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    } catch (e) { return ""; }
-  }
-
-  function getUserEmail() {
-    try { return (getSession() || {}).userEmail || ""; } catch (e) { return ""; }
-  }
-
-  function hasDirectivaRole(role) {
-    try {
-      const ck = getActiveCourseKey();
-      const email = (getUserEmail() || "").toLowerCase();
-      const all = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
-      const entry = (all && ck && all[ck]) ? all[ck] : null;
-      const r = entry && entry[role];
-      const target = (r && (r.email || r.userEmail || r.mail || "")) || "";
-      return !!(email && target && String(target).toLowerCase() === email);
-    } catch (e) { return false; }
-  }
-
   function getSession() {
     try {
       if (window.CURSAPP && typeof window.CURSAPP.getSession === "function") {
@@ -53,7 +26,72 @@
     return sess || {};
   }
 
+  function getActiveRole(){
+    try { return String(localStorage.getItem("cursapp_active_role_v1") || "") || (getSession().role || ""); } catch(e) { return (getSession().role || ""); }
+  }
+  function setActiveRole(role){
+    try { localStorage.setItem("cursapp_active_role_v1", String(role||"")); } catch(e){}
+    try {
+      var s = getSession();
+      if (s && typeof s === "object") { s.role = role; localStorage.setItem("cursapp_session_v1", JSON.stringify(s)); }
+    } catch(e){}
+  }
+  function getRolesAvailable(){
+    try {
+      var raw = localStorage.getItem("cursapp_roles_v1");
+      var arr = safeJsonParse(raw);
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch(e){}
+    return [];
+
+  function hasRoleInDirectiva(roleName){
+    try{
+      var s = getSession();
+      var email = String((s && (s.userId||s.email||"")) || "").trim().toLowerCase();
+      if(!email) return false;
+      var courseKey = String((s && s.courseKey) || localStorage.getItem("cursapp_active_course_v1") || "");
+      var raw = localStorage.getItem("cursapp_directiva_apoderado_by_role_v1");
+      var d = safeJsonParse(raw);
+      if(!d) return false;
+      var role = String(roleName||"").toLowerCase();
+
+      var stack=[{node:d, path:[]}];
+      while(stack.length){
+        var cur=stack.pop();
+        var node=cur.node;
+        var path=cur.path;
+        if(node && typeof node==="object"){
+          var nodeEmail = String(node.email||node.userId||node.userEmail||"").trim().toLowerCase();
+          var nodeCourse = String(node.courseKey||node.course||node.ck||"");
+          var pathStr = path.join(".").toLowerCase();
+          var nodeRole = String(node.role||node.directivaRole||"").toLowerCase();
+
+          if(nodeEmail && nodeEmail===email){
+            if(nodeCourse && courseKey && nodeCourse!==courseKey){
+              // different course
+            } else {
+              if(nodeRole.includes(role) || pathStr.includes(role)) return true;
+            }
+          }
+
+          if(Array.isArray(node)){
+            for(var i=0;i<node.length;i++) stack.push({node:node[i], path: path.concat(String(i))});
+          } else {
+            for(var k in node){
+              if(!Object.prototype.hasOwnProperty.call(node,k)) continue;
+              stack.push({node: node[k], path: path.concat(k)});
+            }
+          }
+        }
+      }
+      return false;
+    }catch(e){ return false; }
+  }
+  }
+
   function getRoleFromSession() {
+    var ar = getActiveRole();
+    if (ar) return String(ar);
     var s = getSession();
     if (s && s.role) return String(s.role);
     // fallback: active profile
@@ -115,6 +153,7 @@
   }
 
   function switchToRole(targetRole) {
+    setActiveRole(targetRole);
     // 1) Preferir setear perfil activo (no depende de email)
     var id = findProfileIdByRole(targetRole);
     if (id) {
@@ -269,27 +308,24 @@
     dd.innerHTML = "";
 
     var parts = [];
+    var rolesAvail = getRolesAvailable();
+    var canPres = rolesAvail.indexOf("presidente")>=0 || !!findProfileIdByRole("presidente") || hasRoleInDirectiva("presidente");
+    var canTes = rolesAvail.indexOf("tesorero")>=0 || !!findProfileIdByRole("tesorero") || hasRoleInDirectiva("tesorero");
 
     // APODERADO
     if (role === "apoderado") {
-      // Cambiar rol (según permisos)
-      if (hasDirectivaRole('presidente')) {
-        parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
-      }
-      if (hasDirectivaRole('tesorero')) {
-        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
-      }
+      // Cambios de rol (si corresponde)
+      if (canPres) parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      if (canTes) parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💰"));
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general');} else {openHelpFallback();} closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
 
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -302,13 +338,11 @@
       parts.push(btnHTML("Deudores", "goTab('deudores'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general');} else {openHelpFallback();} closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -319,13 +353,11 @@
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
       parts.push(btnHTML("Mi perfil", "alert('Mi perfil: próximamente'); closeMenu();", "👤"));
-      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
+      parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general');} else {openHelpFallback();} closeMenu();", "❓"));
 
       parts.push(dividerHTML());
 
       parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
-      parts.push(btnHTML("Depurar rol (dev)", "debugRoleInfo();", "🧪"));
-      parts.push(btnHTML("Forzar selector rol (dev)", "forceRolePickerNextLogin();", "🎛️"));
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -359,42 +391,3 @@
     init();
   }
 })();
-  function debugRoleInfo() {
-    try {
-      const s = getSession() || {};
-      const ck = getActiveCourseKey();
-      const email = getUserEmail();
-      const directiva = safeParseJson(localStorage.getItem(KEY_DIRECTIVA_BY_ROLE), {});
-      const entry = (directiva && ck) ? directiva[ck] : null;
-      const info = {
-        session: s,
-        activeCourseKey: ck,
-        userEmail: email,
-        directivaEntry: entry,
-        perms: {
-          presidente: hasDirectivaRole('presidente'),
-          tesorero: hasDirectivaRole('tesorero'),
-        },
-        forceRolePickerFlag: localStorage.getItem(KEY_FORCE_ROLE_PICKER) || null,
-      };
-      const msg = "DEBUG ROL\n\n" + JSON.stringify(info, null, 2) +
-        "\n\nAcciones:\n- OK: Copia este texto (mantén presionado)\n- Para forzar selector al entrar: usa el botón 'Forzar selector (dev)' en el menú.";
-      alert(msg);
-      closeMenu();
-    } catch (e) {
-      alert("DEBUG ROL: error " + (e && e.message ? e.message : e));
-      closeMenu();
-    }
-  }
-
-  function forceRolePickerNextLogin() {
-    try {
-      localStorage.setItem(KEY_FORCE_ROLE_PICKER, "1");
-      alert("Listo. En el próximo login se mostrará el selector de rol (si tienes más de 1 rol).");
-    } catch (e) {
-      alert("No pude guardar la bandera de selector: " + (e && e.message ? e.message : e));
-    }
-    closeMenu();
-  }
-
-

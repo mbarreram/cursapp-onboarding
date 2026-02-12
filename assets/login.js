@@ -43,6 +43,9 @@ const esc = (s) =>
   const KEY_DEMO_USER = "cursapp_demo_user";
   const KEY_ACTIVE_ENROLL = "cursapp_active_enrollment_v1";
 
+  const KEY_ROLES_AVAILABLE = "cursapp_roles_v1";
+  const KEY_ACTIVE_ROLE = "cursapp_active_role_v1";
+  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
   // ===== storage helpers =====
   function loadJSON(k, def) {
     try {
@@ -54,6 +57,56 @@ const esc = (s) =>
     }
   }
   function saveJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+  // ===== roles helpers (directiva by role) =====
+  function _normEmail(e){ return String(e||"").trim().toLowerCase(); }
+
+  function hasRoleInDirectiva(userEmail, courseKey, roleName){
+    try{
+      const email = _normEmail(userEmail);
+      const role = String(roleName||"").toLowerCase();
+      const d = loadJSON(KEY_DIRECTIVA_BY_ROLE, null);
+      if(!d) return false;
+
+      // Recorrer estructura buscando coincidencia por rol + email (+ courseKey si existe)
+      const stack = [{node:d, path:[]}];
+      while(stack.length){
+        const cur = stack.pop();
+        const node = cur.node;
+        const path = cur.path;
+
+        if(node && typeof node === "object"){
+          // si el objeto tiene email
+          const nodeEmail = _normEmail(node.email || node.userId || node.userEmail);
+          const nodeCourse = String(node.courseKey || node.course || node.ck || "");
+          const pathStr = path.join(".").toLowerCase();
+
+          if(nodeEmail && nodeEmail === email){
+            // si hay courseKey en nodo, debe calzar
+            if(nodeCourse && courseKey && nodeCourse !== courseKey){
+              // no match por curso
+            } else {
+              // match por rol: en path o en key 'role'
+              const nodeRole = String(node.role || node.directivaRole || "").toLowerCase();
+              if(nodeRole.includes(role) || pathStr.includes(role)) return true;
+            }
+          }
+
+          if(Array.isArray(node)){
+            for(let i=0;i<node.length;i++) stack.push({node:node[i], path: path.concat(String(i))});
+          } else {
+            for(const k in node){
+              if(!Object.prototype.hasOwnProperty.call(node,k)) continue;
+              stack.push({node: node[k], path: path.concat(k)});
+            }
+          }
+        }
+      }
+      return false;
+    }catch(e){
+      return false;
+    }
+  }
 
   function showErr(msg) {
     if (loginError) {
@@ -154,6 +207,7 @@ const esc = (s) =>
       courseKey: courseKey || "",
       profileId: pid || ""
     });
+    try { localStorage.setItem(KEY_ACTIVE_ROLE, role); } catch(e) {}
 
     if (role === "apoderado" && profile) {
       const ap = profile.apoderado || {};
@@ -250,6 +304,7 @@ const esc = (s) =>
     profilesForCourse.forEach(p => { byRole[p.role] = p.profile; });
 
     const roles = Object.keys(byRole);
+    try { saveJSON(KEY_ROLES_AVAILABLE, roles); } catch(e) {}
 
     if (roles.length === 1) {
       const role = roles[0];
@@ -393,14 +448,21 @@ const esc = (s) =>
       };
       const hasTesoreroPerm = profilesForCourse.some(p => {
         const r = (p?.role ?? "").toString().toLowerCase();
+      const hasTesoreroDirectiva = hasRoleInDirectiva(userEmail, courseKey, "tesorero");
+      const hasPresidenteDirectiva = hasRoleInDirectiva(userEmail, courseKey, "presidente");
         const dr = getDirectivaRole(p);
         const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
         return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
       });
-      if (hasTesoreroPerm && !roleList.some(r => r.role === "tesorero")) {
+      if ((hasTesoreroPerm || hasTesoreroDirectiva) && !roleList.some(r => r.role === "tesorero")) {
         // Reutilizamos el mismo perfil base del curso (apoderado) y cambiamos el rol activo en sesión
         const base = profilesForCourse[0];
         roleList.push({ role: "tesorero", profile: base });
+      }
+
+      if (hasPresidenteDirectiva && !roleList.some(r => r.role === "presidente")) {
+        const base = profilesForCourse[0];
+        roleList.push({ role: "presidente", profile: base });
       }
 
 chooseRoleForCourse(userEmail, ck, roleList);
