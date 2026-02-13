@@ -9,6 +9,22 @@
 
 (function () {
   function qs(sel, root) { return (root || document).querySelector(sel); }
+
+  function isMenuDebug() {
+    try {
+      if (String(new URLSearchParams(location.search).get("debugMenu")) === "1") return true;
+    } catch (e) {}
+    try { return localStorage.getItem("cursapp_debug_menu") === "1"; } catch (e2) { return false; }
+  }
+  function menuDebugAlert(title, data) {
+    if (!isMenuDebug()) return;
+    try {
+      var msg = "[MENU DEBUG] " + title + "\n" + (typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      alert(msg);
+    } catch (e) {
+      try { alert("[MENU DEBUG] " + title); } catch(e2) {}
+    }
+  }
   function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
   // -------- Session / profiles helpers --------
@@ -203,6 +219,63 @@ function getRoleFromSession() {
     if (dd) dd.style.display = "none";
   }
 
+  // --- Dropdown portal (fix z-index/stacking on iOS Safari) ---
+  // En algunas pantallas el dropdown quedaba "por detrás" del header.
+  // Esto pasa porque el header (sticky + backdrop-filter) crea stacking contexts.
+  // Solución robusta: mover el dropdown al <body> y posicionarlo en fixed
+  // relativo al botón de menú.
+  function ensureDropdownPortal() {
+    var btn = qs("#menuBtn");
+    var dd = qs("#menuDropdown");
+    if (!btn || !dd) 
+    try {
+      var cr = btn ? btn.getBoundingClientRect() : null;
+      var info = {
+        hasBtn: !!btn,
+        hasDd: !!dd,
+        ddParent: dd && dd.parentElement ? dd.parentElement.tagName : null,
+        btnRect: cr ? {top:Math.round(cr.top), bottom:Math.round(cr.bottom), right:Math.round(cr.right), left:Math.round(cr.left)} : null,
+        ddStyle: dd ? {display: dd.style.display, top: dd.style.top, right: dd.style.right, zIndex: dd.style.zIndex, position: dd.style.position} : null
+      };
+      menuDebugAlert("ensureDropdownPortal", info);
+      // Si el top queda demasiado arriba (raro en iOS), empújalo un poco.
+      if (dd && dd.style.top) {
+        var t = parseInt(dd.style.top, 10);
+        if (!isNaN(t) && t < 40) dd.style.top = "64px";
+      }
+      // Marca visual
+      if (dd && isMenuDebug()) { dd.style.outline = "2px solid rgba(255,0,0,.35)"; }
+    } catch (e3) {
+      menuDebugAlert("ensureDropdownPortal_error", String(e3 && e3.message || e3));
+    }
+return { btn: btn, dd: dd };
+
+    try {
+      if (dd.parentElement !== document.body) {
+        document.body.appendChild(dd);
+      }
+    } catch (e) {}
+
+    // Estilos inline para garantizar prioridad.
+    dd.style.position = "fixed";
+    dd.style.zIndex = "2147483647"; // máximo práctico
+    dd.style.maxHeight = "75vh";
+    dd.style.overflowY = "auto";
+    dd.style.display = dd.style.display || "none";
+
+    // Posicionar junto al botón (alineado a la derecha)
+    try {
+      var r = btn.getBoundingClientRect();
+      var top = Math.round(r.bottom + 8);
+      var right = Math.round(Math.max(12, window.innerWidth - r.right));
+      dd.style.top = top + "px";
+      dd.style.right = right + "px";
+      dd.style.left = "auto";
+    } catch (e2) {}
+
+    return { btn: btn, dd: dd };
+  }
+
   // -------- Help fallback (works everywhere) --------
   function openHelpFallback() {
     // Si existe openModal (tu core), úsalo; si no, usa alert.
@@ -296,6 +369,10 @@ function getRoleFromSession() {
         if (e && e.preventDefault) e.preventDefault();
         if (e && e.stopPropagation) e.stopPropagation();
       } catch (_) {}
+
+      // Fix iOS/Safari stacking + posicionamiento (mueve dropdown a <body>)
+      ensureDropdownPortal(menuBtn, dd);
+
       var isOpen = dd.style.display === "block";
       dd.style.display = isOpen ? "none" : "block";
     }
@@ -315,6 +392,9 @@ function getRoleFromSession() {
   function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
+
+    // Asegura dropdown en <body> para evitar que quede detrás del header
+    ensureDropdownPortal(qs("#menuBtn"), dd);
 
     // Contexto para permisos / switches de rol
     var session = getSession();
