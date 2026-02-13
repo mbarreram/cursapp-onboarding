@@ -11,16 +11,6 @@
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
-  // -------- Debug helpers (enable with ?debugMenu=1) --------
-  var __qs = null;
-  try { __qs = new URLSearchParams(location.search || ""); } catch (_) {}
-  var DEBUG_MENU = !!(__qs && (__qs.get("debugMenu") === "1" || __qs.get("debugMenu") === "true"));
-  function debugMenuAlert(msg) {
-    try {
-      if (DEBUG_MENU) alert(String(msg));
-    } catch (_) {}
-  }
-
   // -------- Session / profiles helpers --------
   function getSession() {
     try {
@@ -36,8 +26,83 @@
     return sess || {};
   }
 
-  function getRoleFromSession() {
+  
+  // --- permissions / roles (self-contained) ---
+  function getDirectivaByRole() {
+    var raw = null;
+    try { raw = localStorage.getItem("cursapp_directiva_apoderado_by_role_v1"); } catch (_) {}
+    return safeJsonParse(raw) || {};
+  }
+
+  function normRole(r) {
+    return String(r || "").toLowerCase().trim();
+  }
+
+  function nodeHasRole(node, role) {
+    if (!node || typeof node !== "object") return false;
+    var r = normRole(role);
+    var v1 = normRole(node.role);
+    var v2 = normRole(node.directivaRole);
+    var v3 = normRole(node.directiva_role);
+    return v1 === r || v2 === r || v3 === r;
+  }
+
+  function anyNodeHasRole(obj, role) {
+    if (!obj) return false;
+    if (Array.isArray(obj)) return obj.some(function (n) { return nodeHasRole(n, role) || anyNodeHasRole(n, role); });
+    if (typeof obj === "object") {
+      if (nodeHasRole(obj, role)) return true;
+      return Object.keys(obj).some(function (k) { return anyNodeHasRole(obj[k], role); });
+    }
+    return false;
+  }
+
+  function emailMatches(node, email) {
+    if (!email) return false;
+    var e = String(email).toLowerCase().trim();
+    if (!node) return false;
+    if (typeof node === "string") return String(node).toLowerCase().trim() === e;
+    if (typeof node !== "object") return false;
+    var ne = node.email || node.mail || node.userEmail;
+    if (ne && String(ne).toLowerCase().trim() === e) return true;
+    return Object.keys(node).some(function (k) { return emailMatches(node[k], email); });
+  }
+
+  function hasRoleInDirectivaByRole(map, role, email) {
+    if (!map || typeof map !== "object") return false;
+    var r = normRole(role);
+    // Try direct key
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (normRole(k) === r) {
+        return emailMatches(map[k], email);
+      }
+    }
+    // Fallback: deep scan looking for role name in path
+    return emailMatches(map[r], email);
+  }
+
+  function hasDirectivaPermission() {
+    var sess = getSession();
+    var email = sess.email || sess.userEmail || sess.username;
+    var byRole = getDirectivaByRole();
+    var profiles = getProfiles();
+    return hasRoleInDirectivaByRole(byRole, "presidente", email) || anyNodeHasRole(profiles, "presidente");
+  }
+
+  function hasTesoreroPermission() {
+    var sess = getSession();
+    var email = sess.email || sess.userEmail || sess.username;
+    var byRole = getDirectivaByRole();
+    var profiles = getProfiles();
+    return hasRoleInDirectivaByRole(byRole, "tesorero", email) || anyNodeHasRole(profiles, "tesorero");
+  }
+
+function getRoleFromSession() {
     var s = getSession();
+    // Prefer role selected via selector / switcher
+    if (s && s.activeRole) return String(s.activeRole);
     if (s && s.role) return String(s.role);
     // fallback: active profile
     try {
@@ -140,6 +205,42 @@
     if (dd) dd.style.display = "none";
   }
 
+  // --- Dropdown portal (fix z-index/stacking on iOS Safari) ---
+  // En algunas pantallas el dropdown quedaba "por detrás" del header.
+  // Esto pasa porque el header (sticky + backdrop-filter) crea stacking contexts.
+  // Solución robusta: mover el dropdown al <body> y posicionarlo en fixed
+  // relativo al botón de menú.
+  function ensureDropdownPortal() {
+    var btn = qs("#menuBtn");
+    var dd = qs("#menuDropdown");
+    if (!btn || !dd) return { btn: btn, dd: dd };
+
+    try {
+      if (dd.parentElement !== document.body) {
+        document.body.appendChild(dd);
+      }
+    } catch (e) {}
+
+    // Estilos inline para garantizar prioridad.
+    dd.style.position = "fixed";
+    dd.style.zIndex = "2147483647"; // máximo práctico
+    dd.style.maxHeight = "75vh";
+    dd.style.overflowY = "auto";
+    dd.style.display = dd.style.display || "none";
+
+    // Posicionar junto al botón (alineado a la derecha)
+    try {
+      var r = btn.getBoundingClientRect();
+      var top = Math.round(r.bottom + 8);
+      var right = Math.round(Math.max(12, window.innerWidth - r.right));
+      dd.style.top = top + "px";
+      dd.style.right = right + "px";
+      dd.style.left = "auto";
+    } catch (e2) {}
+
+    return { btn: btn, dd: dd };
+  }
+
   // -------- Help fallback (works everywhere) --------
   function openHelpFallback() {
     // Si existe openModal (tu core), úsalo; si no, usa alert.
@@ -218,45 +319,27 @@
 
   // -------- Toggle binding --------
   function bindMenuToggle(dd) {
-    // Botón del menú (algunos HTML han variado con el tiempo)
-    var menuBtn = qs("#menuBtn") || qs('[data-menu-btn]') || qs('.menuBtn') || qs('.menu-btn');
-    if (DEBUG_MENU) {
-      debugMenuAlert("bindMenuToggle(): menuBtn=" + (!!menuBtn) + " menuDropdown=" + (!!dd) + " path=" + location.pathname);
-    }
-    if (!menuBtn) return;
-    if (menuBtn.__cursappMenuBound) return;
-    menuBtn.__cursappMenuBound = true;
+    var menuBtn = qs("#menuBtn");
+    if (!menuBtn || menuBtn.__cursappMenuBound) return;
 
-    function positionDropdown() {
-      try {
-        var rect = menuBtn.getBoundingClientRect();
-        // Fuerza estilos críticos para evitar quedar "por detrás" del header.
-        dd.style.position = "fixed";
-        dd.style.top = Math.max(8, rect.bottom + 8) + "px";
-        dd.style.right = Math.max(8, window.innerWidth - rect.right) + "px";
-        dd.style.left = "auto";
-        dd.style.zIndex = "9999";
-        dd.style.maxHeight = Math.floor(window.innerHeight * 0.7) + "px";
-        dd.style.overflowY = "auto";
-      } catch (_) {}
-    }
+    // Some pages previously attached an inline `onclick` toggle for the same button.
+    // If both that handler and our addEventListener handler run, the dropdown toggles
+    // twice (ends up closed), which looks like "the menu does not open".
+    // We centralize the behavior here, so we neutralize any existing onclick.
+    try { menuBtn.onclick = null; } catch (e) {}
+    menuBtn.__cursappMenuBound = true;
 
     function toggleMenu(e) {
       try {
         if (e && e.preventDefault) e.preventDefault();
         if (e && e.stopPropagation) e.stopPropagation();
       } catch (_) {}
+
+      // Fix iOS/Safari stacking + posicionamiento (mueve dropdown a <body>)
+      ensureDropdownPortal(menuBtn, dd);
+
       var isOpen = dd.style.display === "block";
-      if (isOpen) {
-        dd.style.display = "none";
-        if (DEBUG_MENU) debugMenuAlert("toggleMenu(): cerrar");
-      } else {
-        positionDropdown();
-        dd.style.display = "block";
-        if (DEBUG_MENU) {
-          debugMenuAlert("toggleMenu(): abrir top=" + dd.style.top + " right=" + dd.style.right + " z=" + dd.style.zIndex);
-        }
-      }
+      dd.style.display = isOpen ? "none" : "block";
     }
 
     menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
@@ -275,6 +358,16 @@
     var dd = qs("#menuDropdown");
     if (!dd) return;
 
+    // Asegura dropdown en <body> para evitar que quede detrás del header
+    ensureDropdownPortal(qs("#menuBtn"), dd);
+
+    // Contexto para permisos / switches de rol
+    var session = getSession();
+    var courseKey = getActiveCourseKey();
+    var userEmail = session && session.email ? session.email : null;
+    var canPresidente = hasDirectivaPermission(session, courseKey, userEmail);
+    var canTesorero = hasTesoreroPermission(session, courseKey, userEmail);
+
     // Siempre parte cerrado
     dd.style.display = "none";
     dd.innerHTML = "";
@@ -283,8 +376,13 @@
 
     // APODERADO
     if (role === "apoderado") {
-      // Volver a directiva: preferir switch directo sin depender de email
-      parts.push(btnHTML("Volver a directiva", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      // Cambios de rol disponibles según permisos (evita mostrar accesos que no aplican)
+      if (canPresidente) {
+        parts.push(btnHTML("Ir a presidente", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
+      }
+      if (canTesorero) {
+        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
+      }
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
@@ -299,7 +397,7 @@
 
     // PRESIDENTE
     if (role === "presidente") {
-      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ir a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
       parts.push(btnHTML("Apoderados del curso", "location.href='/apoderados.html';", "👥"));
       parts.push(btnHTML("Campañas", "goTab('campanas'); closeMenu();", "📌"));
@@ -316,7 +414,7 @@
 
     // TESORERO
     if (role === "tesorero") {
-      parts.push(btnHTML("Volver a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
+      parts.push(btnHTML("Ir a apoderado", "switchToRole('apoderado'); closeMenu();", "👤"));
 
       parts.push(btnHTML("Rendiciones", "goTab('rendiciones'); closeMenu();", "🧾"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📊"));
