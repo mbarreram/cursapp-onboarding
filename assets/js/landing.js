@@ -1,1 +1,0 @@
-(function(){const b=document.getElementById('hamburger');const n=document.getElementById('mobileNav');if(b&&n){b.addEventListener('click',()=>n.classList.toggle('open'));}})();
