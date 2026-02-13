@@ -283,6 +283,12 @@ function getRoleFromSession() {
   function bindMenuToggle(dd) {
     var menuBtn = qs("#menuBtn");
     if (!menuBtn || menuBtn.__cursappMenuBound) return;
+
+    // Some pages previously attached an inline `onclick` toggle for the same button.
+    // If both that handler and our addEventListener handler run, the dropdown toggles
+    // twice (ends up closed), which looks like "the menu does not open".
+    // We centralize the behavior here, so we neutralize any existing onclick.
+    try { menuBtn.onclick = null; } catch (e) {}
     menuBtn.__cursappMenuBound = true;
 
     function toggleMenu(e) {
