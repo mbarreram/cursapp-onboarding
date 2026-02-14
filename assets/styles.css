@@ -492,3 +492,11 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
   border-color:transparent;
 }
 .btn.accent:active{ transform:scale(.99); }
+
+
+/* === Perfil fintech: key-value list === */
+.finKV{ margin-top:10px; }
+.finKV__row{ display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-top:1px solid rgba(226,232,240,.9); }
+.finKV__row:first-child{ border-top:0; padding-top:2px; }
+.finKV__k{ color:#64748b; font-weight:800; font-size:12px; }
+.finKV__v{ color:#0f172a; font-weight:900; font-size:13px; text-align:right; }

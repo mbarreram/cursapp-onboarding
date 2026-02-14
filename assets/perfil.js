@@ -206,23 +206,18 @@ const el = (id) => document.getElementById(id);
         <section class="finCard">
           <div class="finCard__head">
             <div class="finCard__title">Mi perfil</div>
-            ${approvalBadge}
+            <span class="finBadge finBadge--accent" id="pfRolePill">👤 Perfil</span>
           </div>
 
-          <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;padding-top:6px;">
             <div style="width:56px;height:56px;border-radius:18px;background:color-mix(in srgb, var(--role-accent) 14%, #fff);border:1px solid color-mix(in srgb, var(--role-accent) 28%, rgba(226,232,240,.9));display:flex;align-items:center;justify-content:center;font-weight:950;font-size:22px;">
               ${esc(initials)}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-weight:950;font-size:16px;">${esc(name || "—")}</div>
+              <div style="font-weight:950;font-size:18px;line-height:1.15;">${esc(name || "—")}</div>
               <div class="muted" style="margin-top:3px;font-weight:800;">${esc(email || "—")}</div>
-              <div class="muted" style="margin-top:4px;font-weight:800;">${esc(approvalText)}</div>
-            </div>
-            <div style="text-align:right;">
-              <div class="muted" style="font-weight:900;">Rol activo</div>
-              <div style="font-weight:950;">${esc(roleLabel(currentRole))}</div>
-            </div>
-          </div>
+</div>
+</div>
 
           <div class="finRow" style="margin-top:12px;">
             <div class="finField">
@@ -250,20 +245,41 @@ const el = (id) => document.getElementById(id);
         <section class="finCard">
           <div class="finCard__head">
             <div class="finCard__title">Curso actual</div>
-            <span class="finBadge">🏫 ${esc(course && course.year ? String(course.year) : "—")}</span>
+            <span class="finBadge">🏫 ${esc(course && course.schoolName ? String(course.schoolName) : "—")}</span>
           </div>
-          <div style="font-weight:950;">${esc(courseLine || "—")}</div>
-          <div class="muted" style="margin-top:6px;font-weight:800;">CourseKey: ${esc(courseKey || "—")}</div>
-          <div class="muted" style="margin-top:4px;font-weight:800;">Fecha ingreso: ${esc(joinDate || "—")}</div>
+
+          <div class="finKV">
+            <div class="finKV__row">
+              <div class="finKV__k">Curso</div>
+              <div class="finKV__v">${esc(course ? ((course.level||"")+(course.letter||"")) : "—")}</div>
+            </div>
+            <div class="finKV__row">
+              <div class="finKV__k">Jornada</div>
+              <div class="finKV__v">${esc(course && course.jornada ? course.jornada : "—")}</div>
+            </div>
+            <div class="finKV__row">
+              <div class="finKV__k">Año</div>
+              <div class="finKV__v">${esc(course && course.year ? String(course.year) : "—")}</div>
+            </div>
+            <div class="finKV__row">
+              <div class="finKV__k">Fecha ingreso</div>
+              <div class="finKV__v">${esc(joinDate || "—")}</div>
+            </div>
+          </div>
         </section>
 
         <!-- Roles -->
+
         <section class="finCard">
           <div class="finCard__head">
-            <div class="finCard__title">Roles</div>
+            <div class="finCard__title">Roles y estado</div>
             <span class="finBadge finBadge--accent">🎯 ${esc(roleLabel(currentRole))}</span>
           </div>
           <div class="roleTags">${roleTags}</div>
+          <div class="finStatus" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            ${approvalBadge}
+            <div class="muted" style="font-weight:800;">${esc(approvalText)}</div>
+          </div>
           ${canSwitch ? '<div class="finBtnRow"><button class="btn" id="btnSwitchRole2" type="button">Cambiar rol</button></div>' : ''}
         </section>
 
