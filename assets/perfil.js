@@ -37,6 +37,27 @@ const el = (id) => document.getElementById(id);
     return "h_" + ((h >>> 0).toString(16));
   }
 
+
+  function parseCourseKey(courseKey){
+    // courseKey format: "sch-central|2°|B|Mañana|2026"
+    var parts = String(courseKey||"").split("|");
+    if(parts.length < 5) return null;
+    return {
+      schoolId: parts[0] || "",
+      level: parts[1] || "",
+      letter: parts[2] || "",
+      jornada: parts[3] || "",
+      year: parts[4] || ""
+    };
+  }
+  function schoolNameFromId(id){
+    var map = {
+      "sch-central": "Colegio Central (Demo)",
+      "sch-demo": "Colegio Demo"
+    };
+    return map[String(id||"")] || String(id||"—");
+  }
+
   function getSession(){
     try{
       if(window.CURSAPP && typeof window.CURSAPP.getSessionSafe === "function"){
@@ -124,6 +145,23 @@ const el = (id) => document.getElementById(id);
       course = courses.find(function(c){ return String(c.courseKey||"") === String(courseKey||""); }) || null;
     }catch(_){ course = null; }
 
+
+    // Fallback: derive course fields from courseKey if not stored
+    if(!course && courseKey){
+      var ck = parseCourseKey(courseKey);
+      if(ck){
+        course = {
+          schoolId: ck.schoolId,
+          schoolName: schoolNameFromId(ck.schoolId),
+          level: ck.level,
+          letter: ck.letter,
+          jornada: ck.jornada,
+          year: ck.year
+        };
+      }
+    } else if(course && !course.schoolName && course.schoolId){
+      course.schoolName = schoolNameFromId(course.schoolId);
+    }
     // Enrollment (approval)
     var enrollment = null;
     try{
@@ -143,6 +181,11 @@ const el = (id) => document.getElementById(id);
 
     var initials = (name||email||"U").trim().charAt(0).toUpperCase();
 
+    var apPhoto = profile && profile.photoApoderado ? String(profile.photoApoderado) : "";
+    var alPhoto = profile && profile.photoAlumno ? String(profile.photoAlumno) : "";
+    var alName = (profile && profile.alumno) ? String(profile.alumno) : "";
+    var alInitials = (alName || "A").trim().charAt(0).toUpperCase();
+
     function roleLabel(r){
       r = String(r||"").toLowerCase();
       if(r==="apoderado") return "Apoderado";
@@ -154,11 +197,11 @@ const el = (id) => document.getElementById(id);
     var approvalText = "—";
     var approvalBadge = "";
     if(roles.includes("presidente") && currentRole==="apoderado"){
-      approvalText = "Aprobado automáticamente";
+      approvalText = "Aprobado";
       approvalBadge = '<span class="finBadge finBadge--accent">✅ Aprobado</span>';
     }else if(enrollment){
       if(String(enrollment.status||"").toLowerCase()==="approved"){
-        approvalText = "Aprobado por directiva";
+        approvalText = "Aprobado";
         approvalBadge = '<span class="finBadge finBadge--accent">✅ Aprobado</span>';
       }else{
         approvalText = "Pendiente de aprobación";
@@ -208,15 +251,30 @@ const el = (id) => document.getElementById(id);
             <div class="finCard__title">Mi perfil</div>
             <span class="finBadge finBadge--accent" id="pfRolePill">👤 Perfil</span>
           </div>
+          <div class="pfHead">
+            <div class="pfAvatars">
+              <div class="pfAvatarWrap">
+                <button class="pfAvatarBtn" id="btnApPhoto" type="button" aria-label="Cambiar foto apoderado">
+                  ${apPhoto ? `<img class="pfAvatarImg" src="${apPhoto}" alt="Foto apoderado"/>` : `<span class="pfAvatarTxt">${esc(initials)}</span>`}
+                </button>
+                <div class="pfAvatarLabel">Apoderado</div>
+                <input id="inpApPhoto" class="pfFile" type="file" accept="image/*">
+              </div>
 
-          <div style="display:flex;align-items:flex-start;gap:14px;padding-top:6px;">
-            <div style="width:56px;height:56px;border-radius:18px;background:color-mix(in srgb, var(--role-accent) 14%, #fff);border:1px solid color-mix(in srgb, var(--role-accent) 28%, rgba(226,232,240,.9));display:flex;align-items:center;justify-content:center;font-weight:950;font-size:22px;">
-              ${esc(initials)}
+              <div class="pfAvatarWrap">
+                <button class="pfAvatarBtn" id="btnAlPhoto" type="button" aria-label="Cambiar foto alumno">
+                  ${alPhoto ? `<img class="pfAvatarImg" src="${alPhoto}" alt="Foto alumno"/>` : `<span class="pfAvatarTxt">${esc(alInitials)}</span>`}
+                </button>
+                <div class="pfAvatarLabel">Alumno</div>
+                <input id="inpAlPhoto" class="pfFile" type="file" accept="image/*">
+              </div>
             </div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:950;font-size:18px;line-height:1.15;">${esc(name || "—")}</div>
-              <div class="muted" style="margin-top:3px;font-weight:800;">${esc(email || "—")}</div>
-</div>
+
+            <div class="pfIdentity">
+              <div class="pfName">${esc(name || "—")}</div>
+              <div class="pfEmail">${esc(email || "—")}</div>
+            </div>
+          </div>
 </div>
 
           <div class="finRow" style="margin-top:12px;">
@@ -277,9 +335,10 @@ const el = (id) => document.getElementById(id);
           </div>
           <div class="roleTags">${roleTags}</div>
           <div class="finStatus" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${approvalBadge}
-            <div class="muted" style="font-weight:800;">${esc(approvalText)}</div>
+            <span class="finBadge finBadge--accent">🧭 Rol activo</span>
+            <div style="font-weight:950;">${esc(roleLabel(currentRole))}</div>
           </div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">Estado: ${esc(approvalText || "—")}</div>
           ${canSwitch ? '<div class="finBtnRow"><button class="btn" id="btnSwitchRole2" type="button">Cambiar rol</button></div>' : ''}
         </section>
 
@@ -316,6 +375,43 @@ const el = (id) => document.getElementById(id);
         </section>
       </div>
     `;
+
+    // ---- Photo uploads (demo: store as dataURL in profile) ----
+    function wirePhoto(btnId, inpId, field){
+      var btn = document.getElementById(btnId);
+      var inp = document.getElementById(inpId);
+      if(!btn || !inp) return;
+      btn.onclick = function(){ inp.click(); };
+      inp.onchange = function(){
+        var file = (inp.files && inp.files[0]) ? inp.files[0] : null;
+        if(!file) return;
+        if(!/^image\//.test(file.type||"")){ alert("Selecciona una imagen."); inp.value=""; return; }
+        var reader = new FileReader();
+        reader.onload = function(){
+          try{
+            var dataUrl = String(reader.result||"");
+            profile = profile || {};
+            profile[field] = dataUrl;
+            // persist in profiles list
+            var profiles2 = loadProfiles();
+            var idx = profiles2.findIndex(function(p){
+              return String(p.email||"").toLowerCase()===String(email||"").toLowerCase()
+                && String(p.courseKey||"")===String(courseKey||"");
+            });
+            if(idx>=0) profiles2[idx] = Object.assign({}, profiles2[idx], profile);
+            else profiles2.push(Object.assign({ email: email, courseKey: courseKey }, profile));
+            saveProfiles(profiles2);
+            // rerender
+            render();
+          }catch(e){
+            alert("No se pudo guardar la foto.");
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+    }
+    wirePhoto("btnApPhoto","inpApPhoto","photoApoderado");
+    wirePhoto("btnAlPhoto","inpAlPhoto","photoAlumno");
 
     // ---- Actions ----
     var btnSave = document.getElementById("btnSave");
