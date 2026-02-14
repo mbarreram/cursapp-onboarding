@@ -16,20 +16,6 @@ const esc = (s) =>
 
 (function () {
 
-  // --- debug flag ---
-  // Activa alertas de depuración agregando ?debug=1 al login.html
-  // o seteando localStorage.setItem('cursapp_debug_login','1')
-  const DEBUG_LOGIN = (() => {
-    try {
-      const qs = new URLSearchParams(window.location.search || "");
-      if (qs.get("debug") === "1") return true;
-      return localStorage.getItem("cursapp_debug_login") === "1";
-    } catch (_) {
-      return false;
-    }
-  })();
-  const dAlert = (msg) => { try { if (DEBUG_LOGIN) alert(msg); } catch(_){} };
-
   // --- mostrar errores runtime en UI (evita "no hace nada") ---
   window.addEventListener("error", (ev) => {
     try {
@@ -61,7 +47,34 @@ const esc = (s) =>
   const KEY_ACTIVE_ROLE = "cursapp_active_role_v1";
   const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
   // ===== storage helpers =====
-  function loadJSON(k, def) {
+
+  // --- DEBUG LOGIN (alerts) ---
+  const LOGIN_JS_VERSION = "20260214154124";
+  const DEBUG_LOGIN = (() => {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("debug") === "1") return true;
+      const v = localStorage.getItem("cursapp_debug_login");
+      return v === "1" || v === "true";
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  function dbgAlert(title, data) {
+    if (!DEBUG_LOGIN) return;
+    try {
+      const body = (typeof data === "string") ? data : JSON.stringify(data, null, 2);
+      alert(`[Cursapp Login DEBUG v${LOGIN_JS_VERSION}] ${title}\n\n${body}`);
+    } catch (e) {
+      alert(`[Cursapp Login DEBUG v${LOGIN_JS_VERSION}] ${title}`);
+    }
+  }
+
+
+    if (DEBUG_LOGIN) { try { alert(`[Cursapp Login DEBUG] login.js cargado (v${LOGIN_JS_VERSION})`); } catch(e){} }
+
+function loadJSON(k, def) {
     try {
       const v = localStorage.getItem(k);
       if (v == null) return def;
@@ -155,12 +168,6 @@ const esc = (s) =>
     const s = Object.assign({}, session);
     if (!s.email) s.email = s.userId || "";
     saveJSON(KEY_SESSION, s);
-
-    // DEBUG: confirmar qué quedó guardado
-    dAlert(
-      "[LOGIN DEBUG] session guardada\\n" +
-      JSON.stringify(s, null, 2)
-    );
   }
 
   // Back-compat banner (some pages still read this)
@@ -225,13 +232,11 @@ const esc = (s) =>
     const pid = profile ? profileIdOf(userEmail, profile) : "";
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
-    const rolesAvail = loadJSON(KEY_ROLES_AVAILABLE, []);
-    setSession({
+        dbgAlert("Session BEFORE save", { email: userEmail, courseKey, role, profileId: pid });
+setSession({
       userId: userEmail,
       email: userEmail,
       role,
-      currentRole: role,
-      roles: Array.isArray(rolesAvail) ? rolesAvail : [String(rolesAvail || "")].filter(Boolean),
       courseKey: courseKey || "",
       profileId: pid || ""
     });
@@ -334,8 +339,7 @@ const esc = (s) =>
 
     // ⚠️ Caso tesorero: normalmente el perfil sigue siendo "apoderado" pero
     // el permiso se guarda en cursapp_directiva_apoderado_by_role_v1.
-    // FIX: el helper hasRoleInDirectiva ya lee storage internamente.
-    // Firma: hasRoleInDirectiva(userEmail, courseKey, roleName)
+    const directivaByRole = loadJSON(KEY_DIRECTIVA_BY_ROLE, {});
     const hasTesorero = hasRoleInDirectiva(userEmail, courseKey, "tesorero");
     const hasPresidente = hasRoleInDirectiva(userEmail, courseKey, "presidente");
 
@@ -345,15 +349,8 @@ const esc = (s) =>
       ...(hasPresidente ? ["presidente"] : [])
     ]));
 
-    dAlert(
-      "[LOGIN DEBUG]\\n" +
-      "email: " + userEmail + "\\n" +
-      "courseKey: " + (courseKey || "") + "\\n" +
-      "roles en profiles: " + Object.keys(byRole).join(", ") + "\\n" +
-      "directiva->tesorero: " + (hasTesorero ? "SI" : "NO") + "\\n" +
-      "directiva->presidente: " + (hasPresidente ? "SI" : "NO") + "\\n" +
-      "roles finales: " + roles.join(", ")
-    );
+    dbgAlert("Roles detectados", { userEmail, courseKey, roles, byRole, directivaByRole });
+
 
     // Si agregamos rol virtual sin profile explícito, reutilizamos el profile apoderado
     if (hasTesorero && !byRole.tesorero) byRole.tesorero = byRole.apoderado || null;
