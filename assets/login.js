@@ -49,7 +49,6 @@ const esc = (s) =>
   const KEY_ROLES_AVAILABLE = "cursapp_roles_v1";
   const KEY_ACTIVE_ROLE = "cursapp_active_role_v1";
   const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
-  const KEY_PROFILES = "cursapp_profiles_v1";
   // ===== storage helpers =====
   function loadJSON(k, def) {
     try {
