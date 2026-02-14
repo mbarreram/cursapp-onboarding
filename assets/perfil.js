@@ -110,158 +110,220 @@
     var courseKey = s.courseKey || s.activeCourse || null;
     try{ courseKey = courseKey || localStorage.getItem("cursapp_active_course_v1"); }catch(_){}
 
+    // Course data (if exists)
+    var course = null;
+    try{
+      var courses = loadJSON("cursapp_courses_v1", []) || [];
+      course = courses.find(function(c){ return String(c.courseKey||"") === String(courseKey||""); }) || null;
+    }catch(_){ course = null; }
+
+    // Enrollment (approval)
+    var enrollment = null;
+    try{
+      var ens = loadJSON("cursapp_enrollments_v1", []) || [];
+      enrollment = ens.find(function(e){
+        return String(e.courseKey||"") === String(courseKey||"") &&
+          String(e.email||"").toLowerCase() === String(s.email||s.userId||"").toLowerCase() &&
+          (e.alumno ? true : true);
+      }) || null;
+    }catch(_){ enrollment = null; }
+
     var name = (p && (p.name || p.apoderadoName || (p.apoderado && p.apoderado.name))) || s.name || "";
     var alumno = (p && (p.alumno || (p.apoderado && p.apoderado.alumno))) || s.alumno || "";
     var phone = (p && (p.phone || (p.apoderado && p.apoderado.phone))) || "";
     var email = (s.email || s.userId || (p && (p.email || p.userEmail)) || "").toLowerCase();
-    var currentRole = (s.currentRole || s.role || "apoderado");
+    var currentRole = String((s.currentRole || s.role || "apoderado")).toLowerCase();
 
-    var roleBadges = roles.length ? roles.map(function(r){
-      var label = r.charAt(0).toUpperCase() + r.slice(1);
-      var isActive = String(r) === String(currentRole).toLowerCase();
-      return '<span class="tag" style="margin-right:6px;' + (isActive ? 'border:2px solid rgba(15,23,42,.55);' : '') + '">' + esc(label) + (isActive ? ' ✓' : '') + '</span>';
-    }).join("") : '<span class="tag">Apoderado</span>';
+    var initials = (name||email||"U").trim().charAt(0).toUpperCase();
+
+    function roleLabel(r){
+      r = String(r||"").toLowerCase();
+      if(r==="apoderado") return "Apoderado";
+      if(r==="tesorero") return "Tesorero";
+      if(r==="presidente") return "Presidente";
+      return r.charAt(0).toUpperCase()+r.slice(1);
+    }
+
+    var approvalText = "—";
+    var approvalBadge = "";
+    if(roles.includes("presidente") && currentRole==="apoderado"){
+      approvalText = "Aprobado automáticamente";
+      approvalBadge = '<span class="finBadge finBadge--accent">✅ Aprobado</span>';
+    }else if(enrollment){
+      if(String(enrollment.status||"").toLowerCase()==="approved"){
+        approvalText = "Aprobado por directiva";
+        approvalBadge = '<span class="finBadge finBadge--accent">✅ Aprobado</span>';
+      }else{
+        approvalText = "Pendiente de aprobación";
+        approvalBadge = '<span class="finBadge">⏳ Pendiente</span>';
+      }
+    }else{
+      // Directiva / sin enrollment
+      approvalText = (roles.includes("presidente") || roles.includes("tesorero")) ? "Acceso directiva" : "—";
+      approvalBadge = (roles.includes("presidente") || roles.includes("tesorero")) ? '<span class="finBadge finBadge--accent">🎓 Directiva</span>' : '<span class="finBadge">—</span>';
+    }
+
+    var joinDate = enrollment && enrollment.createdAt ? enrollment.createdAt : "";
+    try{
+      if(joinDate){
+        var d = new Date(joinDate);
+        joinDate = isNaN(d.getTime()) ? joinDate : d.toLocaleDateString("es-CL");
+      }
+    }catch(_){}
+
+    var courseLine = "";
+    if(course){
+      courseLine = `${course.schoolName||"Colegio"} · ${course.level||""}${course.letter||""} ${course.year||""} · ${course.jornada||""}`.replace(/\s+/g," ").trim();
+    }else if(courseKey){
+      courseLine = String(courseKey);
+    }else{
+      courseLine = "—";
+    }
+
+    // Update header lines if present
+    try{
+      var elCourse = document.getElementById("whoCourseLine");
+      if(elCourse) elCourse.textContent = courseLine || "—";
+    }catch(_){}
+
+    var roleTags = roles.length ? roles.map(function(r){
+      var active = (String(r) === currentRole);
+      return '<span class="roleTag '+(active?'roleTag--active':'')+'">'+esc(roleLabel(r))+(active?' ✓':'')+'</span>';
+    }).join("") : '<span class="roleTag roleTag--active">Apoderado ✓</span>';
 
     var canSwitch = roles.length > 1;
 
-    root.innerHTML = (
-      '<div class="card" style="margin-top:14px;">' +
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">' +
-          '<div>' +
-            '<div style="font-weight:950;font-size:18px;">' + esc(name || "—") + '</div>' +
-            '<div class="muted" style="margin-top:4px;font-weight:800;">' + esc(email || "—") + '</div>' +
-          '</div>' +
-          '<div style="text-align:right;">' +
-            '<div class="muted" style="font-weight:900;">Rol activo</div>' +
-            '<div style="font-weight:950;">' + esc(String(currentRole).charAt(0).toUpperCase()+String(currentRole).slice(1)) + '</div>' +
-          '</div>' +
-        '</div>' +
+    root.innerHTML = `
+      <div class="finGrid" style="margin-top:14px;">
+        <!-- Identidad -->
+        <section class="finCard">
+          <div class="finCard__head">
+            <div class="finCard__title">Mi perfil</div>
+            ${approvalBadge}
+          </div>
 
-        '<div style="margin-top:14px;">' +
-          '<div class="muted" style="font-weight:900;">Curso</div>' +
-          '<div style="font-weight:800;margin-top:4px;">' + esc(courseKey || "—") + '</div>' +
-        '</div>' +
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:56px;height:56px;border-radius:18px;background:color-mix(in srgb, var(--role-accent) 14%, #fff);border:1px solid color-mix(in srgb, var(--role-accent) 28%, rgba(226,232,240,.9));display:flex;align-items:center;justify-content:center;font-weight:950;font-size:22px;">
+              ${esc(initials)}
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:950;font-size:16px;">${esc(name || "—")}</div>
+              <div class="muted" style="margin-top:3px;font-weight:800;">${esc(email || "—")}</div>
+              <div class="muted" style="margin-top:4px;font-weight:800;">${esc(approvalText)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="muted" style="font-weight:900;">Rol activo</div>
+              <div style="font-weight:950;">${esc(roleLabel(currentRole))}</div>
+            </div>
+          </div>
 
-        '<div style="margin-top:14px;">' +
-          '<div class="muted" style="font-weight:900;">Mis roles</div>' +
-          '<div style="margin-top:6px;">' + roleBadges + '</div>' +
-        '</div>' +
+          <div class="finRow" style="margin-top:12px;">
+            <div class="finField">
+              <div class="finLabel">Nombre</div>
+              <input class="finInput" id="inpName" value="${esc(name)}" placeholder="Nombre y apellido"/>
+            </div>
+            <div class="finField">
+              <div class="finLabel">Teléfono</div>
+              <input class="finInput" id="inpPhone" value="${esc(phone)}" placeholder="+56 9 1234 5678"/>
+            </div>
+          </div>
 
-        '<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(15,23,42,.08);">' +
-          '<div style="font-weight:950;">Editar datos</div>' +
-          '<div class="muted" style="margin-top:4px;">Se guardan para este usuario.</div>' +
+          <div class="finField">
+            <div class="finLabel">Alumno/a</div>
+            <input class="finInput" id="inpAlumno" value="${esc(alumno)}" placeholder="Nombre del alumno/a"/>
+          </div>
 
-          '<div style="margin-top:12px;display:grid;gap:10px;">' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Nombre</span>' +
-              '<input id="pfName" class="input" type="text" value="' + esc(name) + '" placeholder="Nombre y apellido">' +
-            '</label>' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Alumno</span>' +
-              '<input id="pfAlumno" class="input" type="text" value="' + esc(alumno) + '" placeholder="Nombre del alumno">' +
-            '</label>' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Teléfono</span>' +
-              '<input id="pfPhone" class="input" type="tel" value="' + esc(phone) + '" placeholder="+56 9 ...">' +
-            '</label>' +
-          '</div>' +
+          <div class="finBtnRow">
+            <button class="btn accent" id="btnSave" type="button">Guardar cambios</button>
+            ${canSwitch ? '<button class="btn" id="btnSwitchRole" type="button">Cambiar rol</button>' : ''}
+          </div>
+        </section>
 
-          '<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">' +
-            '<button class="btn" type="button" id="btnSaveProfile">Guardar cambios</button>' +
-            (canSwitch ? '<button class="btn ghost" type="button" id="btnSwitch">Cambiar rol</button>' : '') +
-            '<button class="btn ghost" type="button" id="btnBack">Volver</button>' +
-          '</div>' +
-        '</div>' +
+        <!-- Curso -->
+        <section class="finCard">
+          <div class="finCard__head">
+            <div class="finCard__title">Curso actual</div>
+            <span class="finBadge">🏫 ${esc(course && course.year ? String(course.year) : "—")}</span>
+          </div>
+          <div style="font-weight:950;">${esc(courseLine || "—")}</div>
+          <div class="muted" style="margin-top:6px;font-weight:800;">CourseKey: ${esc(courseKey || "—")}</div>
+          <div class="muted" style="margin-top:4px;font-weight:800;">Fecha ingreso: ${esc(joinDate || "—")}</div>
+        </section>
 
-        '<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(15,23,42,.08);">' +
-          '<div style="font-weight:950;">Cambiar contraseña</div>' +
-          '<div class="muted" style="margin-top:4px;">Debes ingresar tu contraseña actual.</div>' +
+        <!-- Roles -->
+        <section class="finCard">
+          <div class="finCard__head">
+            <div class="finCard__title">Roles</div>
+            <span class="finBadge finBadge--accent">🎯 ${esc(roleLabel(currentRole))}</span>
+          </div>
+          <div class="roleTags">${roleTags}</div>
+          ${canSwitch ? '<div class="finBtnRow"><button class="btn" id="btnSwitchRole2" type="button">Cambiar rol</button></div>' : ''}
+        </section>
 
-          '<div style="margin-top:12px;display:grid;gap:10px;">' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Contraseña actual</span>' +
-              '<input id="pwCurrent" class="input" type="password" autocomplete="current-password" placeholder="••••••••">' +
-            '</label>' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Nueva contraseña</span>' +
-              '<input id="pwNew" class="input" type="password" autocomplete="new-password" placeholder="Mínimo 4 caracteres">' +
-            '</label>' +
-            '<label style="display:grid;gap:6px;">' +
-              '<span class="muted" style="font-weight:900;">Repetir nueva contraseña</span>' +
-              '<input id="pwNew2" class="input" type="password" autocomplete="new-password" placeholder="Repite la nueva contraseña">' +
-            '</label>' +
-          '</div>' +
-          '<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">' +
-            '<button class="btn" type="button" id="btnChangePw">Actualizar contraseña</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>'
-    );
+        <!-- Seguridad -->
+        <section class="finCard">
+          <div class="finCard__head">
+            <div class="finCard__title">Seguridad</div>
+            <span class="finBadge">🔒 Contraseña</span>
+          </div>
 
-    var btnBack = document.getElementById("btnBack");
-    if(btnBack){
-      btnBack.onclick = function(){
-        var r = String(currentRole||"apoderado").toLowerCase();
-        if(r === "presidente") location.href = "/presidente.html";
-        else if(r === "tesorero") location.href = "/tesorero.html";
-        else location.href = "/apoderado.html";
-      };
-    }
+          <div class="finField">
+            <div class="finLabel">Contraseña actual</div>
+            <input class="finInput" id="pwCurrent" type="password" placeholder="••••••"/>
+          </div>
 
-    var btnSwitch = document.getElementById("btnSwitch");
-    if(btnSwitch){
-      btnSwitch.onclick = function(){
-        var next = null;
-        var order = ["apoderado","tesorero","presidente"];
-        for(var i=0;i<order.length;i++){
-          if(order[i] !== String(currentRole).toLowerCase() && roles.includes(order[i])){ next = order[i]; break; }
-        }
-        if(!next){ alert("No hay otro rol disponible."); return; }
+          <div class="finRow">
+            <div class="finField">
+              <div class="finLabel">Nueva contraseña</div>
+              <input class="finInput" id="pwNew" type="password" placeholder="mínimo 4 caracteres"/>
+            </div>
+            <div class="finField">
+              <div class="finLabel">Repetir nueva contraseña</div>
+              <input class="finInput" id="pwNew2" type="password" placeholder="repetir"/>
+            </div>
+          </div>
 
-        if(window.CURSAPP && typeof window.CURSAPP.switchRoleSafe === "function"){
-          var ok = window.CURSAPP.switchRoleSafe(next);
-          if(!ok) return;
-        }else if(window.CURSAPP && typeof window.CURSAPP.switchRole === "function"){
-          window.CURSAPP.switchRole(next);
-        }else{
-          s.currentRole = next; s.role = next;
-          saveJSON("cursapp_session_v1", s);
-        }
+          <div class="finBtnRow">
+            <button class="btn accent" id="btnChangePw" type="button">Cambiar contraseña</button>
+          </div>
 
-        if(next === "presidente") location.href = "/presidente.html";
-        else if(next === "tesorero") location.href = "/tesorero.html";
-        else location.href = "/apoderado.html";
-      };
-    }
+          <div class="muted" style="margin-top:10px;font-weight:800;">
+            Tip: usa una contraseña distinta a la del colegio. (Demo: se guarda en tu navegador).
+          </div>
+        </section>
+      </div>
+    `;
 
-    var btnSaveProfile = document.getElementById("btnSaveProfile");
-    if(btnSaveProfile){
-      btnSaveProfile.onclick = function(){
-        var newName = String((document.getElementById("pfName")||{}).value || "").trim();
-        var newAlumno = String((document.getElementById("pfAlumno")||{}).value || "").trim();
-        var newPhone = String((document.getElementById("pfPhone")||{}).value || "").trim();
+    // ---- Actions ----
+    var btnSave = document.getElementById("btnSave");
+    if(btnSave){
+      btnSave.onclick = function(){
+        var newName = String((document.getElementById("inpName")||{}).value || "").trim();
+        var newAlumno = String((document.getElementById("inpAlumno")||{}).value || "").trim();
+        var newPhone = String((document.getElementById("inpPhone")||{}).value || "").trim();
 
-        if(!newName){
-          alert("Ingresa tu nombre.");
-          return;
-        }
-        if(!p){
-          alert("No se encontró un perfil activo para editar.");
-          return;
+        // Update active profile
+        if(p){
+          if(p.apoderado){
+            p.apoderado.name = newName;
+            p.apoderado.alumno = newAlumno;
+            p.apoderado.phone = newPhone;
+          }
+          p.name = newName;
+          p.alumno = newAlumno;
+          p.phone = newPhone;
         }
 
-        updateProfileObject(p, { name:newName, alumno:newAlumno, phone:newPhone });
-
-        if(Array.isArray(profiles)){
-          var curId = String(p.profileId || p.id || "");
-          for(var i=0;i<profiles.length;i++){
-            var pid = String(profiles[i].profileId || profiles[i].id || "");
-            if(curId && pid === curId){ profiles[i] = p; break; }
+        // Persist profiles
+        for(var i=0;i<profiles.length;i++){
+          if(String(profiles[i].id||"") === String(p && p.id || "")){
+            profiles[i] = p;
+            break;
           }
         }
         saveProfiles(profiles);
 
-        // compat: sesión
+        // compat session
         try{
           var ss = getSession();
           ss.name = newName;
@@ -273,6 +335,78 @@
         render();
       };
     }
+
+    function openRoleChooser(){
+      if(!canSwitch) return;
+      var items = roles.map(function(r){
+        var icon = (r==="tesorero") ? "💳" : (r==="presidente") ? "🎓" : "👨‍👩‍👧";
+        var meta = (r==="apoderado") ? approvalText : (r==="tesorero") ? "Pagos, rendiciones y cobranza" : "Gestión del curso, campañas y apoderados";
+        return { label: icon + " " + roleLabel(r), meta: meta, role: r, icon: icon };
+      });
+      // Reuse chooser from login.js styles
+      if(typeof window.renderChooser === "function"){
+        // if exposed (unlikely)
+      }
+      // Lightweight chooser (same overlay classes)
+      var old = document.getElementById("cursappPickerOverlay");
+      if(old) old.remove();
+      var wrap = document.createElement("div");
+      wrap.id = "cursappPickerOverlay";
+      wrap.className = "cpOverlay";
+      wrap.innerHTML = `
+        <div class="cpPanel" role="dialog" aria-modal="true">
+          <div class="cpPanel__head">
+            <div>
+              <div class="cpTitle">Cambiar rol</div>
+              <div class="cpSub">Selecciona cómo quieres continuar</div>
+            </div>
+            <button type="button" class="cpClose" data-close>✕</button>
+          </div>
+          <div class="cpList">
+            ${items.map(function(it,i){
+              var active = (String(it.role) === currentRole);
+              return `
+                <button type="button" class="cpItem" data-pk="${i}">
+                  <div class="cpItem__icon">${esc(it.icon)}</div>
+                  <div class="cpItem__body">
+                    <div class="cpItem__label">${esc(it.label)} ${active ? " (Activo)" : ""}</div>
+                    <div class="cpItem__meta">${esc(it.meta||"")}</div>
+                  </div>
+                  <div class="cpItem__chev">›</div>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+      wrap.addEventListener("click", function(e){
+        if(e.target === wrap || (e.target && e.target.matches("[data-close]"))) wrap.remove();
+      });
+      document.body.appendChild(wrap);
+      wrap.querySelectorAll("button[data-pk]").forEach(function(btn){
+        btn.onclick = function(){
+          var idx = Number(btn.getAttribute("data-pk"));
+          var target = items[idx] ? items[idx].role : null;
+          if(!target) return;
+          if(target === currentRole){ wrap.remove(); return; }
+          try{
+            if(window.CURSAPP && typeof window.CURSAPP.switchRoleSafe === "function"){
+              var ok = window.CURSAPP.switchRoleSafe(target);
+              if(!ok) return;
+              // go to dashboard for role
+              if(target === "presidente") location.assign("/presidente.html");
+              else if(target === "tesorero") location.assign("/tesorero.html");
+              else location.assign("/apoderado.html");
+            }
+          }catch(_){}
+        };
+      });
+    }
+
+    var btnSwitchRole = document.getElementById("btnSwitchRole");
+    if(btnSwitchRole) btnSwitchRole.onclick = openRoleChooser;
+    var btnSwitchRole2 = document.getElementById("btnSwitchRole2");
+    if(btnSwitchRole2) btnSwitchRole2.onclick = openRoleChooser;
 
     var btnChangePw = document.getElementById("btnChangePw");
     if(btnChangePw){
@@ -325,5 +459,7 @@
   }
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
+  else render();
+})(); === "loading") document.addEventListener("DOMContentLoaded", render);
   else render();
 })();

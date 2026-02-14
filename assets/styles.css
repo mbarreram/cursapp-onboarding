@@ -418,3 +418,77 @@ p{ margin:0; }
   background: rgba(108,92,231,0.08);
 }
 
+
+
+
+/* ===== Role accent (fintech) ===== */
+:root{ --role-accent:#2563eb; }
+html[data-role="apoderado"]{ --role-accent:#2563eb; }
+html[data-role="tesorero"]{ --role-accent:#16a34a; }
+html[data-role="presidente"]{ --role-accent:#f59e0b; }
+
+.topbar{
+  border-bottom:1px solid rgba(229,231,235,.9);
+  box-shadow:0 8px 30px rgba(2,6,23,.04);
+}
+.topbar::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height:3px;
+  background:var(--role-accent);
+}
+
+/* Fintech cards */
+.finGrid{ display:grid; gap:12px; }
+.finCard{
+  background:#fff;
+  border:1px solid rgba(226,232,240,.9);
+  border-radius:16px;
+  box-shadow:0 18px 40px rgba(2,6,23,.06);
+  padding:14px;
+}
+.finCard__head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.finCard__title{ font-weight:950; font-size:14px; letter-spacing:.2px; }
+.finBadge{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:12px;
+  border:1px solid rgba(226,232,240,.9);
+  background:rgba(2,6,23,.03);
+}
+.finBadge--accent{ border-color:rgba(0,0,0,.08); background:color-mix(in srgb, var(--role-accent) 12%, #fff); }
+.finField{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.finLabel{ font-size:12px; font-weight:900; color:rgba(15,23,42,.6); }
+.finInput{
+  width:100%;
+  padding:12px 12px;
+  border-radius:12px;
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+  font-weight:800;
+}
+.finRow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (max-width:520px){ .finRow{ grid-template-columns:1fr; } }
+
+.roleTags{ display:flex; flex-wrap:wrap; gap:8px; }
+.roleTag{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  font-weight:950;
+  font-size:12px;
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+}
+.roleTag--active{ border:2px solid color-mix(in srgb, var(--role-accent) 55%, rgba(15,23,42,.25)); background:color-mix(in srgb, var(--role-accent) 10%, #fff); }
+
+.finBtnRow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+.btn.accent{
+  background:var(--role-accent);
+  color:#fff;
+  border-color:transparent;
+}
+.btn.accent:active{ transform:scale(.99); }

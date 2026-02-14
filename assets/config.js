@@ -67,6 +67,17 @@
     // Mirror legacy for older screens
     try{ localStorage.setItem(KEY_DEMO_USER, JSON.stringify(s)); }catch(e){}
 
+
+    // Apply role theme (fintech accents)
+    try{
+      if(typeof document !== "undefined" && document.documentElement){
+        document.documentElement.setAttribute("data-role", currentRole);
+        var accent = (currentRole === "tesorero") ? "#16a34a" : (currentRole === "presidente") ? "#f59e0b" : "#2563eb";
+        document.documentElement.style.setProperty("--role-accent", accent);
+      }
+    }catch(e){}
+
+
     return s;
   };
 

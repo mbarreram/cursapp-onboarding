@@ -275,71 +275,57 @@ function loadJSON(k, def) {
 
   // ===== UI: chooser (curso/rol/alumno) =====
   function renderChooser(title, subtitle, items, onPick) {
-    const card = document.querySelector(".auth-card");
-    if (!card) {
-      const old = document.getElementById("cursappPickerOverlay");
-      if (old) old.remove();
+    // Fintech overlay chooser (roles / alumno)
+    const old = document.getElementById("cursappPickerOverlay");
+    if (old) old.remove();
 
-      const wrap = document.createElement("div");
-      wrap.id = "cursappPickerOverlay";
-      wrap.style.cssText =
-        "position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:18px;";
-      wrap.innerHTML = `
-        <div style="width:min(560px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 60px rgba(2,6,23,.25);overflow:hidden;">
-          <div style="padding:16px 16px 6px 16px;">
-            <div style="font-weight:950;font-size:18px;">${esc(title)}</div>
-            <div style="margin-top:6px;color:rgba(15,23,42,.65);font-size:13px;">${esc(subtitle||"")}</div>
+    const wrap = document.createElement("div");
+    wrap.id = "cursappPickerOverlay";
+    wrap.className = "cpOverlay";
+
+    wrap.innerHTML = `
+      <div class="cpPanel" role="dialog" aria-modal="true">
+        <div class="cpPanel__head">
+          <div>
+            <div class="cpTitle">${esc(title)}</div>
+            <div class="cpSub">${esc(subtitle || "")}</div>
           </div>
-          <div style="padding:0 10px 12px 10px;max-height:60vh;overflow:auto;">
-            ${items.map((it,i)=>`
-              <button data-pk="${i}" style="width:100%;text-align:left;border:1px solid rgba(229,231,235,.95);background:#fff;border-radius:14px;padding:12px;margin:8px 6px;cursor:pointer;">
-                <div style="font-weight:900;color:rgba(15,23,42,.92);">${esc(it.label||it.name||"")}</div>
-                ${it.meta ? `<div style="margin-top:4px;color:rgba(15,23,42,.6);font-size:12px;">${esc(it.meta)}</div>` : ``}
-              </button>
-            `).join("")}
-          </div>
-          <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 16px 16px 16px;background:rgba(248,250,252,1);">
-            <button id="pkCancel" style="border:1px solid rgba(226,232,240,1);background:#fff;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;">Cancelar</button>
-          </div>
+          <button type="button" class="cpClose" aria-label="Cerrar" data-close>✕</button>
         </div>
-      `;
-      document.body.appendChild(wrap);
-      wrap.addEventListener("click", (ev) => { if (ev.target === wrap) wrap.remove(); });
-      wrap.querySelector("#pkCancel").addEventListener("click", () => wrap.remove());
-      wrap.querySelectorAll("button[data-pk]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const i = Number(btn.getAttribute("data-pk"));
-          wrap.remove();
-          onPick(items[i] || items[0]);
-        });
-      });
-      return;
-    }
 
-    card.innerHTML = `
-      <div class="brandCenter">
-        <div class="logo big">C</div>
-        <h1>Cursapp</h1>
-        <p class="muted">${esc(title)}</p>
-      </div>
-
-      <div style="margin-top:12px;">
-        ${items.map((it,i)=>`
-          <div style="padding:12px;border:1px solid rgba(229,231,235,.9);border-radius:14px;margin-top:10px;">
-            <div style="font-weight:950;">${esc(it.label||it.name||"")}</div>
-            ${it.meta ? `<div class="muted" style="margin-top:6px;font-weight:800;">${esc(it.meta)}</div>` : ``}
-            <div style="margin-top:10px;display:flex;justify-content:flex-end;">
-              <button class="btn primary" type="button" data-pick="${i}">Elegir</button>
-            </div>
-          </div>
-        `).join("")}
+        <div class="cpList">
+          ${items.map((it,i)=>`
+            <button type="button" class="cpItem" data-pk="${i}" data-role="${esc(it.role||"")}" >
+              <div class="cpItem__icon">${esc((it.icon||"").toString().slice(0,3) || "•")}</div>
+              <div class="cpItem__body">
+                <div class="cpItem__label">${esc(it.label || it.name || ("Opción " + (i+1)))}</div>
+                <div class="cpItem__meta">${esc(it.meta || "")}</div>
+              </div>
+              <div class="cpItem__chev">›</div>
+            </button>
+          `).join("")}
+        </div>
       </div>
     `;
 
-    card.querySelectorAll("button[data-pick]").forEach(btn => {
+    // Close handlers
+    wrap.addEventListener("click", (e) => {
+      if (e.target === wrap || (e.target && e.target.matches("[data-close]"))) wrap.remove();
+    });
+
+    document.body.appendChild(wrap);
+
+    wrap.querySelectorAll("button[data-pk]").forEach(btn => {
       btn.onclick = () => {
-        const idx = Number(btn.getAttribute("data-pick"));
-        onPick(items[idx] || items[0]);
+        const idx = Number(btn.getAttribute("data-pk"));
+        const picked = items[idx] || items[0];
+        // Apply accent based on role (if provided)
+        try{
+          const r = String(picked.role||"").toLowerCase().trim();
+          const accent = (r === "tesorero") ? "#16a34a" : (r === "presidente") ? "#f59e0b" : "#2563eb";
+          document.documentElement.style.setProperty("--role-accent", accent);
+        }catch(e){}
+        onPick(picked);
       };
     });
   }
