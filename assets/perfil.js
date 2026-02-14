@@ -185,9 +185,9 @@ const el = (id) => document.getElementById(id);
 
     var initials = (name||email||"U").trim().charAt(0).toUpperCase();
 
-    var apPhoto = profile && profile.photoApoderado ? String(profile.photoApoderado) : "";
-    var alPhoto = profile && profile.photoAlumno ? String(profile.photoAlumno) : "";
-    var alName = (profile && profile.alumno) ? String(profile.alumno) : "";
+    var apPhoto = p && p.photoApoderado ? String(p.photoApoderado) : "";
+    var alPhoto = p && p.photoAlumno ? String(p.photoAlumno) : "";
+    var alName = (p && p.alumno) ? String(p.alumno) : "";
     var alInitials = (alName || "A").trim().charAt(0).toUpperCase();
 
     function roleLabel(r){
@@ -394,16 +394,16 @@ const el = (id) => document.getElementById(id);
         reader.onload = function(){
           try{
             var dataUrl = String(reader.result||"");
-            profile = profile || {};
-            profile[field] = dataUrl;
-            // persist in profiles list
+            var patch = {};
+            patch[field] = dataUrl;
+// persist in profiles list
             var profiles2 = loadProfiles();
             var idx = profiles2.findIndex(function(p){
               return String(p.email||"").toLowerCase()===String(email||"").toLowerCase()
                 && String(p.courseKey||"")===String(courseKey||"");
             });
-            if(idx>=0) profiles2[idx] = Object.assign({}, profiles2[idx], profile);
-            else profiles2.push(Object.assign({ email: email, courseKey: courseKey }, profile));
+            if(idx>=0) profiles2[idx] = Object.assign({}, profiles2[idx], patch);
+            else profiles2.push(Object.assign({ email: email, courseKey: courseKey }, patch));
             saveProfiles(profiles2);
             // rerender
             render();
