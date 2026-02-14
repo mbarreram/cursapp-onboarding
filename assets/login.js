@@ -16,6 +16,20 @@ const esc = (s) =>
 
 (function () {
 
+  // --- debug flag ---
+  // Activa alertas de depuración agregando ?debug=1 al login.html
+  // o seteando localStorage.setItem('cursapp_debug_login','1')
+  const DEBUG_LOGIN = (() => {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      if (qs.get("debug") === "1") return true;
+      return localStorage.getItem("cursapp_debug_login") === "1";
+    } catch (_) {
+      return false;
+    }
+  })();
+  const dAlert = (msg) => { try { if (DEBUG_LOGIN) alert(msg); } catch(_){} };
+
   // --- mostrar errores runtime en UI (evita "no hace nada") ---
   window.addEventListener("error", (ev) => {
     try {
@@ -141,6 +155,12 @@ const esc = (s) =>
     const s = Object.assign({}, session);
     if (!s.email) s.email = s.userId || "";
     saveJSON(KEY_SESSION, s);
+
+    // DEBUG: confirmar qué quedó guardado
+    dAlert(
+      "[LOGIN DEBUG] session guardada\\n" +
+      JSON.stringify(s, null, 2)
+    );
   }
 
   // Back-compat banner (some pages still read this)
@@ -205,10 +225,13 @@ const esc = (s) =>
     const pid = profile ? profileIdOf(userEmail, profile) : "";
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
+    const rolesAvail = loadJSON(KEY_ROLES_AVAILABLE, []);
     setSession({
       userId: userEmail,
       email: userEmail,
       role,
+      currentRole: role,
+      roles: Array.isArray(rolesAvail) ? rolesAvail : [String(rolesAvail || "")].filter(Boolean),
       courseKey: courseKey || "",
       profileId: pid || ""
     });
@@ -311,15 +334,26 @@ const esc = (s) =>
 
     // ⚠️ Caso tesorero: normalmente el perfil sigue siendo "apoderado" pero
     // el permiso se guarda en cursapp_directiva_apoderado_by_role_v1.
-    const directivaByRole = loadJSON(KEY_DIRECTIVA_BY_ROLE, {});
-    const hasTesorero = hasRoleInDirectiva(directivaByRole, "tesorero", userEmail);
-    const hasPresidente = hasRoleInDirectiva(directivaByRole, "presidente", userEmail);
+    // FIX: el helper hasRoleInDirectiva ya lee storage internamente.
+    // Firma: hasRoleInDirectiva(userEmail, courseKey, roleName)
+    const hasTesorero = hasRoleInDirectiva(userEmail, courseKey, "tesorero");
+    const hasPresidente = hasRoleInDirectiva(userEmail, courseKey, "presidente");
 
     const roles = Array.from(new Set([
       ...Object.keys(byRole),
       ...(hasTesorero ? ["tesorero"] : []),
       ...(hasPresidente ? ["presidente"] : [])
     ]));
+
+    dAlert(
+      "[LOGIN DEBUG]\\n" +
+      "email: " + userEmail + "\\n" +
+      "courseKey: " + (courseKey || "") + "\\n" +
+      "roles en profiles: " + Object.keys(byRole).join(", ") + "\\n" +
+      "directiva->tesorero: " + (hasTesorero ? "SI" : "NO") + "\\n" +
+      "directiva->presidente: " + (hasPresidente ? "SI" : "NO") + "\\n" +
+      "roles finales: " + roles.join(", ")
+    );
 
     // Si agregamos rol virtual sin profile explícito, reutilizamos el profile apoderado
     if (hasTesorero && !byRole.tesorero) byRole.tesorero = byRole.apoderado || null;
