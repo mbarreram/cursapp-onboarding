@@ -1,0 +1,220 @@
+
+@import url('../../assets/styles.css?v=400');
+
+/* ========== Onboarding Premium (v1606) ========== */
+:root{
+  --ob-bg1: rgba(109, 88, 255, .14);
+  --ob-bg2: rgba(255, 205, 0, .10);
+  --ob-card: rgba(255,255,255,.92);
+  --ob-border: rgba(20, 26, 40, .08);
+  --ob-shadow: 0 18px 50px rgba(24, 32, 66, .10);
+  --ob-radius: 22px;
+  --ob-primary: #5b4bff;
+  --ob-primary2: #6a5cff;
+  --ob-accent: #ffcf2e;
+  --ob-text: #0f172a;
+  --ob-muted: rgba(15, 23, 42, .64);
+}
+
+body{
+  background:
+    radial-gradient(900px 520px at 20% -10%, var(--ob-bg1), transparent 60%),
+    radial-gradient(820px 520px at 110% 10%, var(--ob-bg2), transparent 58%),
+    linear-gradient(#fbfcff, #f5f7ff);
+}
+
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+  background: rgba(245, 247, 255, .72);
+  border-bottom: 1px solid var(--ob-border);
+}
+
+.container{ max-width: 820px; margin: 0 auto; padding: 14px 14px 40px; }
+
+.card{
+  background: var(--ob-card);
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-radius);
+  box-shadow: var(--ob-shadow);
+}
+
+.cardHeader{
+  display:flex; align-items:center; gap:12px;
+}
+
+.badges{
+  display:flex; flex-wrap:wrap; gap:10px;
+  margin-top: 10px;
+}
+
+.badge{
+  display:inline-flex; align-items:center; gap:10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(91,75,255,.14);
+  background: rgba(91,75,255,.06);
+  color: var(--ob-text);
+  font-weight: 700;
+}
+
+.badge .emo{ font-size: 18px; }
+
+.h1{
+  font-size: clamp(22px, 3.2vw, 30px);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--ob-text);
+}
+
+.sub{
+  color: var(--ob-muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.progress{
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .08);
+  overflow:hidden;
+}
+.progress > div{
+  height: 100%;
+  width: var(--p, 25%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ob-primary), #8b7bff);
+}
+
+.formRow{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 700px){
+  .formRow.grid2{ grid-template-columns: 1fr 1fr; }
+}
+
+label{ font-weight: 800; color: var(--ob-text); }
+
+select, input{
+  width:100%;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, .10);
+  padding: 13px 14px;
+  background: rgba(255,255,255,.96);
+  outline: none;
+  font-size: 16px;
+}
+
+select:focus, input:focus{
+  border-color: rgba(91,75,255,.55);
+  box-shadow: 0 0 0 4px rgba(91,75,255,.12);
+}
+
+.actions{
+  display:flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.btn{
+  border: 1px solid rgba(15,23,42,.10);
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 900;
+  cursor:pointer;
+  background:#fff;
+}
+
+.btnPrimary{
+  border: none;
+  background: linear-gradient(180deg, var(--ob-accent), #ffb800);
+  color: #1a1a1a;
+  box-shadow: 0 14px 28px rgba(255, 183, 0, .20);
+}
+
+.btnGhost{
+  background: rgba(255,255,255,.74);
+}
+
+.tip{
+  background: rgba(91,75,255,.06);
+  border: 1px solid rgba(91,75,255,.14);
+  border-radius: 16px;
+  padding: 14px;
+  color: var(--ob-text);
+}
+
+.smallHelp{
+  color: rgba(15,23,42,.55);
+  font-size: 13px;
+  text-align:center;
+  margin-top: 14px;
+}
+
+/* Make older onboarding cards still look good */
+.sectionTitle{
+  font-weight: 900;
+  color: var(--ob-text);
+  letter-spacing: -0.01em;
+}
+
+
+/* Wizard mejorado */
+.wizardWrap{position:relative}
+.wizardBar{
+  height:10px;
+  background: rgba(20,26,40,.08);
+  border-radius: 999px;
+  overflow:hidden;
+  border:1px solid rgba(20,26,40,.10);
+}
+.wizardFill{height:100%; background: rgba(91,92,226,.90); border-radius:999px}
+.wizardSteps{display:flex;justify-content:space-between;margin-top:10px}
+.wStep{
+  width:28px;height:28px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:13px;
+  border:1px solid rgba(20,26,40,.14);
+  background: rgba(255,255,255,.92);
+  color: rgba(20,26,40,.70);
+}
+.wStep.active{
+  border-color: rgba(91,92,226,.55);
+  box-shadow: 0 10px 30px rgba(91,92,226,.18);
+  color: rgba(91,92,226,.98);
+}
+.wStep.done{
+  background: rgba(91,92,226,.10);
+  border-color: rgba(91,92,226,.30);
+  color: rgba(20,26,40,.85);
+}
+
+
+/* Fix: checkbox should not be full width */
+input[type="checkbox"]{ width:auto; padding:0; }
+
+.otpRow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.otpRow .otpField{flex:1;min-width:170px;}
+.otpRow .btn{min-width:140px;}
+.otpStatusOk{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.22);color:rgba(21,128,61,1);font-weight:900;font-size:13px;margin-top:10px;}
+
+
+/* ===== Homologación OTP + Password (v1606-h1) ===== */
+input:disabled{
+  background: rgba(15,23,42,.04);
+  color: rgba(15,23,42,.55);
+  cursor: not-allowed;
+}
+
+/* Un poco más de aire después del badge OK */
+.otpStatusOk{
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
