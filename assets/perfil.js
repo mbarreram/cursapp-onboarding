@@ -467,6 +467,4 @@ const el = (id) => document.getElementById(id);
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
   else render();
-})(); === "loading") document.addEventListener("DOMContentLoaded", render);
-  else render();
 })();
