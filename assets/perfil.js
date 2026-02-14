@@ -6,6 +6,13 @@
    - Usa sesión normalizada (CURSAPP.getSessionSafe / getSession)
    ========================================================= */
 
+// --- DOM helpers (local, para no depender de otros módulos) ---
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const el = (id) => document.getElementById(id);
+// --------------------------------------------------------------
+
+
 (function(){
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, function(c){
