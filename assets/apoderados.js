@@ -3,6 +3,7 @@
   const KEY_ENROLL = "cursapp_enrollments_v1";
   const KEY_ACTIVE = "cursapp_active_course_v1";
   const KEY_COURSE = "cursapp_course_v1";
+  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
 
   const $ = (id) => document.getElementById(id);
 
@@ -172,6 +173,19 @@
     saveEnrollments(list);
     saveJSON(KEY_COURSE, course);
 
+    // ✅ mantener en sync la estructura usada por el login (cursapp_directiva_apoderado_by_role_v1)
+    try{
+      const map = loadJSON(KEY_DIRECTIVA_BY_ROLE, {}) || {};
+      map["tesorero"] = {
+        email: String(target.email||"").trim().toLowerCase(),
+        apoderadoName: target.apoderadoName || "",
+        alumno: target.alumno || "",
+        courseKey: ck,
+        role: "tesorero"
+      };
+      saveJSON(KEY_DIRECTIVA_BY_ROLE, map);
+    }catch(e){}
+
     alert("Tesorero asignado ✅");
     render();
   }
@@ -195,6 +209,13 @@
 
     saveEnrollments(list);
     saveJSON(KEY_COURSE, course);
+
+    // ✅ limpiar también estructura usada por el login
+    try{
+      const map = loadJSON(KEY_DIRECTIVA_BY_ROLE, {}) || {};
+      const t = map["tesorero"];
+      if(t && String(t.courseKey||"") === ck){ delete map["tesorero"]; saveJSON(KEY_DIRECTIVA_BY_ROLE, map); }
+    }catch(e){}
 
     alert("Tesorero removido ✅");
     render();
