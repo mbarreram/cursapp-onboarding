@@ -12,6 +12,7 @@
   // ===== Storage helpers (demo -> producción) =====
   const KEY_SESSION = "cursapp_session_v1";
   const KEY_DEMO_USER = "cursapp_demo_user";
+  const KEY_ROLES_AVAILABLE = "cursapp_roles_v1";
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
 
   // --- Roles/session hardening (compat: role + roles/currentRole) ---
@@ -42,6 +43,13 @@
 
     // Roles
     var roles = _normalizeRoles(s.roles);
+    if(!roles.length){
+      // Fallback: roles detectados en login (si existen)
+      try{
+        var ra = localStorage.getItem(KEY_ROLES_AVAILABLE);
+        if(ra) roles = _normalizeRoles(JSON.parse(ra));
+      }catch(e){}
+    }
     if(!roles.length){
       var fallback = _normRole(s.currentRole || s.role || "apoderado");
       roles = fallback ? [fallback] : ["apoderado"];

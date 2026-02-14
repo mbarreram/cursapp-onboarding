@@ -233,12 +233,24 @@ function loadJSON(k, def) {
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
         dbgAlert("Session BEFORE save", { email: userEmail, courseKey, role, profileId: pid });
-setSession({
+
+    // Roles disponibles detectados en este login (y fallback seguro)
+    let rolesAvail = [];
+    try { rolesAvail = loadJSON(KEY_ROLES_AVAILABLE, []); } catch(e) { rolesAvail = []; }
+    if (!Array.isArray(rolesAvail)) rolesAvail = [];
+    rolesAvail = Array.from(new Set(rolesAvail.map(r => String(r || "").toLowerCase().trim()).filter(Boolean)));
+    if (!rolesAvail.includes(String(role || "").toLowerCase().trim())) rolesAvail.push(String(role || "").toLowerCase().trim());
+
+    setSession({
       userId: userEmail,
       email: userEmail,
-      role,
       courseKey: courseKey || "",
-      profileId: pid || ""
+      profileId: pid || "",
+
+      // 🔒 Nuevo: roles y rol activo (mantiene compat con "role")
+      roles: rolesAvail,
+      currentRole: String(role || "apoderado").toLowerCase().trim(),
+      role: String(role || "apoderado").toLowerCase().trim()
     });
     try { localStorage.setItem(KEY_ACTIVE_ROLE, role); } catch(e) {}
 
