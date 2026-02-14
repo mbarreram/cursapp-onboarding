@@ -424,66 +424,52 @@ const esc = (s) =>
   }
 
   function resolveAndEnter(userEmail, allProfiles) {
-    // Group by courseKey
-    const courseKeys = Array.from(new Set(allProfiles.map(p => p.courseKey).filter(Boolean)));
+  // Decide curso (si hay varios, hoy tomamos el curso activo si existe; si no, el primero)
+  const activeCourseKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+  const courseKeys = Array.from(new Set((allProfiles || []).map(p => p.courseKey).filter(Boolean)));
 
-    if (!courseKeys.length) {
-      const p0 = allProfiles[0];
-      const role = p0.role || "apoderado";
-      if (role === "apoderado" && !requireApproved(userEmail, p0.courseKey, [role])) return;
-      go(role, userEmail, p0.courseKey, p0);
-      return;
+  const ck = (activeCourseKey && courseKeys.includes(activeCourseKey))
+    ? activeCourseKey
+    : (courseKeys[0] || (allProfiles[0] && allProfiles[0].courseKey) || "");
+
+  const profilesForCourse = (allProfiles || []).filter(p => (p.courseKey || "") === ck);
+
+  // Roles base desde profiles
+  const roleList = [];
+  const seen = new Set();
+  profilesForCourse.forEach(p => {
+    const r = String(p.role || "apoderado").toLowerCase();
+    if (!seen.has(r)) {
+      roleList.push({ role: r, profile: p });
+      seen.add(r);
     }
+  });
 
-    if (courseKeys.length === 1) {
-      const ck = courseKeys[0];
-      const profilesForCourse = allProfiles.filter(p => p.courseKey === ck);
-      const roleList = profilesForCourse.map(p => ({ role: p.role || "apoderado", profile: p }));
-
-    // Si el apoderado tiene permiso de Tesorero (directivaRole / flags), lo agregamos como rol adicional
-      // para que aparezca en el selector de rol post-login.
-      const getDirectivaRole = (prof) => {
-        const dr = (prof?.directivaRole ?? prof?.apoderado?.directivaRole ?? prof?.meta?.directivaRole ?? prof?.directiva ?? "").toString().toLowerCase();
-        return dr;
-      };
-      // Flags directiva (se usan fuera del callback)
-      const hasTesoreroDirectiva = hasRoleInDirectiva(userEmail, ck, "tesorero");
-      const hasPresidenteDirectiva = hasRoleInDirectiva(userEmail, ck, "presidente");
-
-      const hasTesoreroPerm = profilesForCourse.some(p => {
-        const r = (p?.role ?? "").toString().toLowerCase();
-        const dr = getDirectivaRole(p);
-        const flag = !!(p?.isTesorero || p?.tesorero === true || p?.permisos?.tesorero === true || p?.permissions?.includes?.("tesorero"));
-        return flag || r === "tesorero" || r.includes("tesorero") || dr === "tesorero" || dr.includes("tesorero");
-      }) || hasTesoreroDirectiva;
-      if ((hasTesoreroPerm || hasTesoreroDirectiva) && !roleList.some(r => r.role === "tesorero")) {
-        // Reutilizamos el mismo perfil base del curso (apoderado) y cambiamos el rol activo en sesión
-        const base = profilesForCourse[0];
-        roleList.push({ role: "tesorero", profile: base });
-      }
-
-      if (hasPresidenteDirectiva && !roleList.some(r => r.role === "presidente")) {
-        const base = profilesForCourse[0];
-        roleList.push({ role: "presidente", profile: base });
-      }
-
-chooseRoleForCourse(userEmail, ck, roleList);
-      return;
-    }
-
-    // Multiple courses: choose course first
-    const items = courseKeys.map(ck => {
-      const p0 = allProfiles.find(p => p.courseKey === ck) || allProfiles[0];
-      return { courseKey: ck, label: buildCourseLabel(p0), meta: "" };
-    });
-
-    renderChooser("Elegir curso", "Tienes más de un curso", items, (it) => {
-      const ck = it.courseKey;
-      const profilesForCourse = allProfiles.filter(p => p.courseKey === ck);
-      const roleList = profilesForCourse.map(p => ({ role: p.role || "apoderado", profile: p }));
-      chooseRoleForCourse(userEmail, ck, roleList);
-    });
+  // Siempre asegurar apoderado si existe al menos un perfil apoderado o enrollment
+  if (!seen.has("apoderado")) {
+    roleList.push({ role: "apoderado", profile: profilesForCourse[0] || {} });
+    seen.add("apoderado");
   }
+
+  // Roles por directiva_by_role (por email del usuario)
+  const hasTes = hasRoleInDirectiva(userEmail, ck, "tesorero");
+  const hasPres = hasRoleInDirectiva(userEmail, ck, "presidente");
+
+  if (hasTes && !seen.has("tesorero")) {
+    roleList.push({ role: "tesorero", profile: profilesForCourse[0] || {} });
+    seen.add("tesorero");
+  }
+  if (hasPres && !seen.has("presidente")) {
+    roleList.push({ role: "presidente", profile: profilesForCourse[0] || {} });
+    seen.add("presidente");
+  }
+
+  // Guardar roles disponibles para el menú
+  try { saveJSON(KEY_ROLES_AVAILABLE, roleList.map(x => x.role)); } catch(e) {}
+
+  // Elegir rol (modal si hay más de uno)
+  chooseRoleForCourse(userEmail, ck, roleList);
+}
 
   // ===== submit =====
   if (!form) {

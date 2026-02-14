@@ -100,30 +100,30 @@
   }
 
 function getRoleFromSession() {
-    var s = getSession();
-    // Prefer role selected via selector / switcher
-    if (s && s.activeRole) return String(s.activeRole);
-    if (s && s.role) return String(s.role);
-    // fallback: active profile
-    try {
-      var activeId = localStorage.getItem("cursapp_active_profile_v1");
-      var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
-      var profiles = safeJsonParse(profilesRaw);
+  // Prioridad: active role explícito -> session.activeRole -> session.role -> active profile.role
+  try {
+    var ar = localStorage.getItem("cursapp_active_role_v1");
+    if (ar) return String(ar);
+  } catch(_) {}
 
-      if (activeId && profiles) {
-        // profiles puede ser objeto o array
-        if (profiles[activeId] && profiles[activeId].role) return String(profiles[activeId].role);
-        if (Array.isArray(profiles)) {
-          for (var i = 0; i < profiles.length; i++) {
-            if (profiles[i] && String(profiles[i].id) === String(activeId) && profiles[i].role) {
-              return String(profiles[i].role);
-            }
-          }
-        }
-      }
-    } catch (_) {}
-    return "apoderado";
-  }
+  var s = getSession();
+  if (s && (s.activeRole || s.active_role)) return String(s.activeRole || s.active_role);
+  if (s && s.role) return String(s.role);
+
+  // fallback: active profile
+  try {
+    var activeId = localStorage.getItem("cursapp_active_profile_v1");
+    var profilesRaw = localStorage.getItem("cursapp_profiles_v1");
+    var profiles = safeJsonParse(profilesRaw);
+    var all = Array.isArray(profiles) ? profiles : (profiles ? Object.values(profiles) : []);
+    var p = all.find(function(x){
+      return String(x.profileId || x.id || "") === String(activeId || "");
+    });
+    if (p && p.role) return String(p.role);
+  } catch (_) {}
+
+  return "apoderado";
+}
 
   function normalizeRole(role) {
     role = (role || "").toLowerCase();
@@ -163,25 +163,31 @@ function getRoleFromSession() {
   }
 
   function switchToRole(targetRole) {
-    // 1) Preferir setear perfil activo (no depende de email)
-    var id = findProfileIdByRole(targetRole);
-    if (id) {
-      try { localStorage.setItem("cursapp_active_profile_v1", String(id)); } catch (_) {}
-    }
+  targetRole = normalizeRole(String(targetRole || "apoderado"));
 
-    // 2) Ajustar role en sesión si existe
-    try {
-      var raw = localStorage.getItem("cursapp_session_v1");
-      var sess = safeJsonParse(raw) || {};
-      sess.role = targetRole;
-      localStorage.setItem("cursapp_session_v1", JSON.stringify(sess));
-    } catch (_) {}
+  // 0) Guardar rol activo explícito
+  try { localStorage.setItem("cursapp_active_role_v1", targetRole); } catch(_) {}
 
-    // 3) Redirigir a vista correspondiente
-    if (targetRole === "apoderado") location.href = "/apoderado.html";
-    else if (targetRole === "presidente") location.href = "/presidente.html";
-    else if (targetRole === "tesorero") location.href = "/tesorero.html";
+  // 1) Preferir setear perfil activo (no depende de email)
+  var id = findProfileIdByRole(targetRole);
+  if (id) {
+    try { localStorage.setItem("cursapp_active_profile_v1", String(id)); } catch (_) {}
   }
+
+  // 2) Ajustar role en sesión si existe (mantener compatibilidad)
+  try {
+    var raw = localStorage.getItem("cursapp_session_v1");
+    var sess = safeJsonParse(raw) || {};
+    sess.role = targetRole;
+    sess.activeRole = targetRole;
+    localStorage.setItem("cursapp_session_v1", JSON.stringify(sess));
+  } catch (_) {}
+
+  // 3) Redirigir a vista correspondiente
+  if (targetRole === "apoderado") location.href = "/apoderado.html";
+  else if (targetRole === "presidente") location.href = "/presidente.html";
+  else if (targetRole === "tesorero") location.href = "/tesorero.html";
+}
 
   function hasFn(path) {
     try {
@@ -203,42 +209,6 @@ function getRoleFromSession() {
   function closeMenu() {
     var dd = qs("#menuDropdown");
     if (dd) dd.style.display = "none";
-  }
-
-  // --- Dropdown portal (fix z-index/stacking on iOS Safari) ---
-  // En algunas pantallas el dropdown quedaba "por detrás" del header.
-  // Esto pasa porque el header (sticky + backdrop-filter) crea stacking contexts.
-  // Solución robusta: mover el dropdown al <body> y posicionarlo en fixed
-  // relativo al botón de menú.
-  function ensureDropdownPortal() {
-    var btn = qs("#menuBtn");
-    var dd = qs("#menuDropdown");
-    if (!btn || !dd) return { btn: btn, dd: dd };
-
-    try {
-      if (dd.parentElement !== document.body) {
-        document.body.appendChild(dd);
-      }
-    } catch (e) {}
-
-    // Estilos inline para garantizar prioridad.
-    dd.style.position = "fixed";
-    dd.style.zIndex = "2147483647"; // máximo práctico
-    dd.style.maxHeight = "75vh";
-    dd.style.overflowY = "auto";
-    dd.style.display = dd.style.display || "none";
-
-    // Posicionar junto al botón (alineado a la derecha)
-    try {
-      var r = btn.getBoundingClientRect();
-      var top = Math.round(r.bottom + 8);
-      var right = Math.round(Math.max(12, window.innerWidth - r.right));
-      dd.style.top = top + "px";
-      dd.style.right = right + "px";
-      dd.style.left = "auto";
-    } catch (e2) {}
-
-    return { btn: btn, dd: dd };
   }
 
   // -------- Help fallback (works everywhere) --------
@@ -319,54 +289,63 @@ function getRoleFromSession() {
 
   // -------- Toggle binding --------
   function bindMenuToggle(dd) {
-    var menuBtn = qs("#menuBtn");
-    if (!menuBtn || menuBtn.__cursappMenuBound) return;
+  var menuBtn = qs("#menuBtn");
+  if (!menuBtn || menuBtn.__cursappMenuBound) return;
+  menuBtn.__cursappMenuBound = true;
 
-    // Some pages previously attached an inline `onclick` toggle for the same button.
-    // If both that handler and our addEventListener handler run, the dropdown toggles
-    // twice (ends up closed), which looks like "the menu does not open".
-    // We centralize the behavior here, so we neutralize any existing onclick.
-    try { menuBtn.onclick = null; } catch (e) {}
-    menuBtn.__cursappMenuBound = true;
+  // Forzar dropdown flotante sobre cualquier header (iOS/Safari)
+  dd.style.position = "fixed";
+  dd.style.zIndex = "99999";
+  dd.style.display = "none";
 
-    function toggleMenu(e) {
-      try {
-        if (e && e.preventDefault) e.preventDefault();
-        if (e && e.stopPropagation) e.stopPropagation();
-      } catch (_) {}
-
-      // Fix iOS/Safari stacking + posicionamiento (mueve dropdown a <body>)
-      ensureDropdownPortal(menuBtn, dd);
-
-      var isOpen = dd.style.display === "block";
-      dd.style.display = isOpen ? "none" : "block";
-    }
-
-    menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
-    menuBtn.addEventListener("click", toggleMenu);
-
-    document.addEventListener("touchstart", function (e) {
-      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
-    }, { passive: true });
-
-    document.addEventListener("click", function (e) {
-      if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
-    });
+  function placeDropdown() {
+    try {
+      var r = menuBtn.getBoundingClientRect();
+      var top = Math.round(r.bottom + 8);
+      var right = Math.round(window.innerWidth - r.right);
+      dd.style.top = top + "px";
+      dd.style.right = right + "px";
+      dd.style.left = "auto";
+      dd.style.maxHeight = "70vh";
+      dd.style.overflowY = "auto";
+    } catch(_) {}
   }
+
+  function toggleMenu(e) {
+    try {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+    } catch (_) {}
+
+    var isOpen = dd.style.display === "block";
+    if (isOpen) {
+      dd.style.display = "none";
+      return;
+    }
+    placeDropdown();
+    dd.style.display = "block";
+  }
+
+  // Evitar conflicto con handlers antiguos
+  try { menuBtn.onclick = null; } catch(_) {}
+
+  menuBtn.addEventListener("touchstart", toggleMenu, { passive: false });
+  menuBtn.addEventListener("click", toggleMenu);
+
+  window.addEventListener("resize", function(){ if (dd.style.display==="block") placeDropdown(); });
+
+  document.addEventListener("touchstart", function (e) {
+    if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+  }, { passive: true });
+
+  document.addEventListener("click", function (e) {
+    if (!dd.contains(e.target) && e.target !== menuBtn) dd.style.display = "none";
+  });
+}
 
   function renderMenu(role) {
     var dd = qs("#menuDropdown");
     if (!dd) return;
-
-    // Asegura dropdown en <body> para evitar que quede detrás del header
-    ensureDropdownPortal(qs("#menuBtn"), dd);
-
-    // Contexto para permisos / switches de rol
-    var session = getSession();
-    var courseKey = getActiveCourseKey();
-    var userEmail = session && session.email ? session.email : null;
-    var canPresidente = hasDirectivaPermission(session, courseKey, userEmail);
-    var canTesorero = hasTesoreroPermission(session, courseKey, userEmail);
 
     // Siempre parte cerrado
     dd.style.display = "none";
@@ -376,13 +355,8 @@ function getRoleFromSession() {
 
     // APODERADO
     if (role === "apoderado") {
-      // Cambios de rol disponibles según permisos (evita mostrar accesos que no aplican)
-      if (canPresidente) {
-        parts.push(btnHTML("Ir a presidente", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
-      }
-      if (canTesorero) {
-        parts.push(btnHTML("Ir a tesorero", "switchToRole('tesorero'); closeMenu();", "💼"));
-      }
+      // Volver a directiva: preferir switch directo sin depender de email
+      parts.push(btnHTML("Ir a presidente", "switchToRole('presidente'); closeMenu();", "🧑‍💼"));
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
