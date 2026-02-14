@@ -1,0 +1,6 @@
+
+/* Mini patch visual: baja competencia */
+#cardNextDue{
+  box-shadow:none;
+  border-color: rgba(34,197,94,.25);
+}
