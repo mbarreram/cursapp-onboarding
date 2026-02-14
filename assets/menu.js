@@ -38,147 +38,21 @@
     return String(r || "").toLowerCase().trim();
   }
   function getRolesAvailable() {
-    // IMPORTANTE: los roles son por usuario. Si antes se guardaron roles de otro usuario
-    // (ej: presidente) y luego se inicia sesión con otro correo, NO debemos reutilizarlos.
-    var sess0 = safeJsonParse(localStorage.getItem("cursapp_session_v1")) || {};
-    var currentEmail = String(sess0.email || "").toLowerCase().trim();
-
-    // 1) Intento preferido: inferir roles desde el perfil del usuario (cursapp_profiles_v1)
-    // Esto evita depender de course.directiva, que en el MVP no siempre guarda tesorero.
-    try {
-      var profiles = safeJsonParse(localStorage.getItem("cursapp_profiles_v1")) || [];
-      if (currentEmail && Array.isArray(profiles) && profiles.length) {
-        var my = profiles.find(function (p) {
-          if (!p) return false;
-          var pe = String(p.email || p.mail || "").toLowerCase().trim();
-          if (pe && pe === currentEmail) return true;
-          // fallback por userId si está disponible
-          if (sess0.userId && (p.userId === sess0.userId || p.user_id === sess0.userId)) return true;
-          return false;
-        });
-
-        var inferred = [];
-        if (my) {
-          // role puede venir como string, array o mezclado
-          var r = my.role || my.roles || my.directivaRole || my.directivaRoles;
-          var addRoleToken = function (t) {
-            var nr = normRole(t);
-            if (!nr) return;
-            if (nr === "apoderado" || nr === "presidente" || nr === "tesorero") inferred.push(nr);
-          };
-          if (Array.isArray(r)) {
-            r.forEach(addRoleToken);
-          } else if (typeof r === "string") {
-            r.split(/[\s,;|]+/).forEach(addRoleToken);
-          } else if (r && typeof r === "object") {
-            // soporta flags tipo {tesorero:true}
-            if (r.tesorero) inferred.push("tesorero");
-            if (r.presidente) inferred.push("presidente");
-            if (r.apoderado) inferred.push("apoderado");
-          }
-        }
-
-        // Complemento: si el curso/enrollments marcan tesorero/presidente para este email,
-        // lo agregamos aunque el perfil no lo tenga reflejado.
-        try {
-          var course = safeJsonParse(localStorage.getItem("cursapp_course_v1")) || {};
-          if (course && course.directiva) {
-            if (course.directiva.presidente && String(course.directiva.presidente.email || "").toLowerCase().trim() === currentEmail) inferred.push("presidente");
-            if (course.directiva.tesorero && String(course.directiva.tesorero.email || "").toLowerCase().trim() === currentEmail) inferred.push("tesorero");
-          }
-        } catch (_) {}
-        try {
-          var enr = safeJsonParse(localStorage.getItem("cursapp_enrollments_v1")) || [];
-          if (Array.isArray(enr) && currentEmail) {
-            enr.forEach(function (x) {
-              if (!x) return;
-              var ee = String(x.email || "").toLowerCase().trim();
-              if (ee !== currentEmail) return;
-              var dr = normRole(x.directivaRole || x.role);
-              if (dr === "tesorero") inferred.push("tesorero");
-              if (dr === "presidente") inferred.push("presidente");
-            });
-          }
-        } catch (_) {}
-
-        // todo usuario logeado es apoderado por defecto
-        if (currentEmail) inferred.push("apoderado");
-        inferred = Array.from(new Set(inferred));
-        if (inferred.length) {
-          // cache por usuario (evita que se mezclen roles entre correos)
-          try { localStorage.setItem("cursapp_roles_owner_email_v1", currentEmail); } catch (_) {}
-          try { localStorage.setItem("cursapp_roles_available_v1", JSON.stringify(inferred)); } catch (_) {}
-          return inferred;
-        }
-      }
-    } catch (_) {}
-
-    // Historicamente el MVP ha usado dos llaves distintas. Leemos ambas.
     var raw = null;
-    try { raw = localStorage.getItem("cursapp_roles_available_v1"); } catch (_) {}
+    try { raw = localStorage.getItem("cursapp_roles_v1"); } catch (_) {}
     var v = safeJsonParse(raw);
-    if (!Array.isArray(v) || !v.length) {
-      try { raw = localStorage.getItem("cursapp_roles_v1"); } catch (_) {}
-      v = safeJsonParse(raw);
-    }
-
-    // Si el cache pertenece a otro usuario, lo ignoramos.
-    var owner = "";
-    try { owner = String(localStorage.getItem("cursapp_roles_owner_email_v1") || "").toLowerCase().trim(); } catch (_) {}
-    if (owner && currentEmail && owner !== currentEmail) {
-      v = null;
-    }
-
-    var roles = Array.isArray(v) ? v.map(function (r) { return normRole(r); }).filter(Boolean) : [];
-
-    // Fallback inteligente: si no hay roles guardados, inferimos desde course.directiva.
-    if (!roles.length) {
-      var sess = safeJsonParse(localStorage.getItem("cursapp_session_v1")) || {};
-      var email = String(sess.email || "").toLowerCase().trim();
-      var course = safeJsonParse(localStorage.getItem("cursapp_course_v1")) || {};
-      if (email && course && course.directiva) {
-        if (course.directiva.presidente && String(course.directiva.presidente.email || "").toLowerCase().trim() === email) {
-          roles.push("presidente");
-        }
-        if (course.directiva.tesorero && String(course.directiva.tesorero.email || "").toLowerCase().trim() === email) {
-          roles.push("tesorero");
-        }
-      }
-      // por defecto, si hay sesión, asumimos apoderado
-      if (email) roles.push("apoderado");
-      // unique
-      roles = Array.from(new Set(roles));
-    }
-    return roles;
+    if (!Array.isArray(v)) return [];
+    return v.map(function (r) { return normRole(r); });
   }
 
 
   function nodeHasRole(node, role) {
     if (!node || typeof node !== "object") return false;
     var r = normRole(role);
-  // Common string fields
-  var v1 = normRole(node.role);
-  var v2 = normRole(node.directivaRole);
-  var v3 = normRole(node.directiva_role);
-  if (v1 === r || v2 === r || v3 === r) return true;
-
-  // Arrays of roles (common patterns)
-  var arr = node.roles || node.directivaRoles || node.directiva_roles;
-  if (Array.isArray(arr)) {
-    for (var i = 0; i < arr.length; i++) {
-      if (normRole(arr[i]) === r) return true;
-    }
-  }
-
-  // Boolean flags / alternative naming (seen in older/minified variants)
-  if (r === "tesorero") {
-    if (node.isTesorero === true || node.tesorero === true || node.isTreasurer === true) return true;
-  }
-  if (r === "presidente") {
-    if (node.isPresidente === true || node.presidente === true) return true;
-  }
-
-  return false;
+    var v1 = normRole(node.role);
+    var v2 = normRole(node.directivaRole);
+    var v3 = normRole(node.directiva_role);
+    return v1 === r || v2 === r || v3 === r;
   }
 
   function anyNodeHasRole(obj, role) {
@@ -219,7 +93,7 @@
 
   function hasDirectivaPermission() {
     var sess = getSession();
-    var email = sess.email || sess.userEmail || sess.username;
+    var email = sess.email || sess.userEmail || sess.username || sess.userId;
     var byRole = getDirectivaByRole();
     var profiles = getProfiles();
     return hasRoleInDirectivaByRole(byRole, "presidente", email) || anyNodeHasRole(profiles, "presidente");
@@ -227,7 +101,7 @@
 
   function hasTesoreroPermission() {
     var sess = getSession();
-    var email = sess.email || sess.userEmail || sess.username;
+    var email = sess.email || sess.userEmail || sess.username || sess.userId;
     var byRole = getDirectivaByRole();
     var profiles = getProfiles();
     return hasRoleInDirectivaByRole(byRole, "tesorero", email) || anyNodeHasRole(profiles, "tesorero");

@@ -43,9 +43,6 @@ const esc = (s) =>
   const KEY_DEMO_USER = "cursapp_demo_user";
   const KEY_ACTIVE_ENROLL = "cursapp_active_enrollment_v1";
 
-  // Course completo (incluye directiva). En el MVP, el tesorero se persiste aquí.
-  const KEY_COURSE = "cursapp_course_v1";
-
   const KEY_ROLES_AVAILABLE = "cursapp_roles_v1";
   const KEY_ACTIVE_ROLE = "cursapp_active_role_v1";
   const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
@@ -64,119 +61,12 @@ const esc = (s) =>
   // ===== roles helpers (directiva by role) =====
   function _normEmail(e){ return String(e||"").trim().toLowerCase(); }
 
-  function _normRole(r){
-    return String(r||"").trim().toLowerCase();
-  }
-
-  // Flexible role check for legacy data shapes
-  function _nodeHasRole(node, role){
-    if (!node || typeof node !== 'object') return false;
-    var r = _normRole(role);
-    if (!r) return false;
-    // String fields
-    var v1 = _normRole(node.role);
-    var v2 = _normRole(node.directivaRole);
-    var v3 = _normRole(node.directiva_role);
-    var v4 = _normRole(node.rol);
-    var v5 = _normRole(node.kind);
-    if (v1===r || v2===r || v3===r || v4===r || v5===r) return true;
-    // Boolean flags
-    if (r === 'tesorero'){
-      if (node.isTesorero === true || node.tesorero === true || node.isTreasurer === true || node.treasurer === true) return true;
-    }
-    if (r === 'presidente'){
-      if (node.isPresidente === true || node.presidente === true) return true;
-    }
-    // Array fields
-    var arr = node.roles || node.directivaRoles || node.directiva_roles;
-    if (Array.isArray(arr)){
-      for (var i=0;i<arr.length;i++){
-        if (_normRole(arr[i])===r) return true;
-      }
-    }
-    return false;
-  }
-
-  function _anyNodeHasRole(node, role){
-    if (_nodeHasRole(node, role)) return true;
-    if (node && typeof node === 'object'){
-      for (var k in node){
-        if (!Object.prototype.hasOwnProperty.call(node,k)) continue;
-        if (_nodeHasRole(node[k], role)) return true;
-      }
-    }
-    return false;
-  }
-
-  function hasTesoreroPermission(userEmail, courseKey){
-    var email = _normEmail(userEmail);
-    // 1) profiles
-    var profiles = loadJSON(KEY_PROFILES, []);
-    if (Array.isArray(profiles)){
-      for (var i=0;i<profiles.length;i++){
-        var p = profiles[i] || {};
-        var pEmail = _normEmail(p.email || p.userEmail || p.userId);
-        if (pEmail !== email) continue;
-        // If profile stores courseKey, match it; if not, accept
-        var pCourse = String(p.courseKey || p.course || p.course_id || p.activeCourseKey || '');
-        if (pCourse && String(pCourse) !== String(courseKey)) continue;
-        if (_anyNodeHasRole(p, 'tesorero')) return true;
-      }
-    }
-    // 2) directiva map by role
-    var d = loadJSON(KEY_DIRECTIVA_BY_ROLE, null);
-    if (d){
-      var t = d.tesorero || d.treasurer || d.tesorero_directiva;
-      if (t){
-        var tEmail = _normEmail(t.email || t.userEmail || t.userId);
-        if (tEmail === email) return true;
-      }
-      // fallback scan
-      if (_anyNodeHasRole(d, 'tesorero')){
-        // try to confirm email match somewhere
-        // If we can't find email in tesorero node, we still trust this as course-level permission
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function isRoleInEnrollments(role, userEmail, courseKey) {
-    try {
-      const want = normRole(role);
-      if (!want) return false;
-      const e = String(userEmail || "").toLowerCase().trim();
-      const ck = String(courseKey || "").trim();
-      const list = safeJsonParse(localStorage.getItem(KEY_ENROLLMENTS)) || [];
-      if (!Array.isArray(list) || !list.length) return false;
-      return list.some(enr => {
-        if (!enr) return false;
-        if (ck && String(enr.courseKey || "") !== ck) return false;
-        const ee = String(enr.email || "").toLowerCase().trim();
-        if (!ee || ee !== e) return false;
-        return normRole(enr.directivaRole || enr.role) === want;
-      });
-    } catch (_) {
-      return false;
-    }
-  }
-
   function hasRoleInDirectiva(userEmail, courseKey, roleName){
     try{
       const email = _normEmail(userEmail);
       const role = String(roleName||"").toLowerCase();
       const d = loadJSON(KEY_DIRECTIVA_BY_ROLE, null);
-      // En el MVP, el rol "tesorero" se guarda principalmente en el course (course.directiva.tesorero)
-      // y a veces NO existe el mapa KEY_DIRECTIVA_BY_ROLE. Para no perder permisos, inferimos desde el course.
-      if(!d){
-        if(role === "tesorero"){
-          const course = loadJSON(KEY_COURSE, null);
-          const tEmail = _normEmail(course?.directiva?.tesorero?.email);
-          const ck = String(course?.courseKey || "");
-          if(tEmail && tEmail === email && (!courseKey || !ck || ck === courseKey)) return true;
-        }
-        return false;
-      }
+      if(!d) return false;
 
       // Recorrer estructura buscando coincidencia por rol + email (+ courseKey si existe)
       const stack = [{node:d, path:[]}];
@@ -212,14 +102,6 @@ const esc = (s) =>
           }
         }
       }
-
-      // Fallback adicional: tesorero puede estar solo en course.directiva
-      if(role === "tesorero"){
-        const course = loadJSON(KEY_COURSE, null);
-        const tEmail = _normEmail(course?.directiva?.tesorero?.email);
-        const ck = String(course?.courseKey || "");
-        if(tEmail && tEmail === email && (!courseKey || !ck || ck === courseKey)) return true;
-      }
       return false;
     }catch(e){
       return false;
@@ -253,8 +135,12 @@ const esc = (s) =>
   function setActiveProfileId(id) { localStorage.setItem(KEY_ACTIVE_PROFILE, String(id || "")); }
 
   function setSession(session) {
-    // session = { userId, profileId, role, courseKey }
-    saveJSON(KEY_SESSION, session);
+    // session = { userId, profileId, role, courseKey, email? }
+    // Guardamos también email (duplicado) para que menu.js y otras vistas
+    // puedan detectar permisos de directiva (ej: tesorero) de forma confiable.
+    const s = Object.assign({}, session);
+    if (!s.email) s.email = s.userId || "";
+    saveJSON(KEY_SESSION, s);
   }
 
   // Back-compat banner (some pages still read this)
@@ -321,6 +207,7 @@ const esc = (s) =>
     setActiveProfileId(pid || "");
     setSession({
       userId: userEmail,
+      email: userEmail,
       role,
       courseKey: courseKey || "",
       profileId: pid || ""
@@ -338,7 +225,8 @@ const esc = (s) =>
     } else {
       setBanner({
         name: (role === "presidente" ? "Presidente" : role === "tesorero" ? "Tesorero" : "Usuario") + " (Demo)",
-        role
+        role,
+        email: userEmail
       });
     }
 
@@ -421,7 +309,21 @@ const esc = (s) =>
     const byRole = {};
     profilesForCourse.forEach(p => { byRole[p.role] = p.profile; });
 
-    const roles = Object.keys(byRole);
+    // ⚠️ Caso tesorero: normalmente el perfil sigue siendo "apoderado" pero
+    // el permiso se guarda en cursapp_directiva_apoderado_by_role_v1.
+    const directivaByRole = loadJSON(KEY_DIRECTIVA_BY_ROLE, {});
+    const hasTesorero = hasRoleInDirectiva(directivaByRole, "tesorero", userEmail);
+    const hasPresidente = hasRoleInDirectiva(directivaByRole, "presidente", userEmail);
+
+    const roles = Array.from(new Set([
+      ...Object.keys(byRole),
+      ...(hasTesorero ? ["tesorero"] : []),
+      ...(hasPresidente ? ["presidente"] : [])
+    ]));
+
+    // Si agregamos rol virtual sin profile explícito, reutilizamos el profile apoderado
+    if (hasTesorero && !byRole.tesorero) byRole.tesorero = byRole.apoderado || null;
+    if (hasPresidente && !byRole.presidente) byRole.presidente = byRole.apoderado || null;
     try { saveJSON(KEY_ROLES_AVAILABLE, roles); } catch(e) {}
 
     if (roles.length === 1) {
@@ -569,14 +471,8 @@ const esc = (s) =>
     seen.add("apoderado");
   }
 
-  // Roles adicionales (por email del usuario)
-  // - presidente viene principalmente desde directiva_by_role
-  // - tesorero puede estar en directiva_by_role *o* en profiles (según versiones)
-  // tesorero se ha guardado en distintas fuentes según versión del MVP:
-  // - course.directiva.tesorero
-  // - profiles.role
-  // - enrollments.directivaRole
-  const hasTes = hasTesoreroPermission(userEmail, ck) || isRoleInEnrollments("tesorero", userEmail, ck);
+  // Roles por directiva_by_role (por email del usuario)
+  const hasTes = hasRoleInDirectiva(userEmail, ck, "tesorero");
   const hasPres = hasRoleInDirectiva(userEmail, ck, "presidente");
 
   if (hasTes && !seen.has("tesorero")) {
