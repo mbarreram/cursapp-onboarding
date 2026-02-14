@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Cursapp · Mi perfil</title>
+
+  <link rel="stylesheet" href="assets/styles.css?v=400">
+  <link rel="stylesheet" href="assets/login-pro.css?v=1">
+</head>
+<body>
+
+<header>
+  <div class="topbar" style="position:relative;">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <div id="whoRoleTitle" style="font-weight:950;">Mi perfil</div>
+        <div class="muted" style="font-weight:800;font-size:12px;" id="whoCourseLine">—</div>
+      </div>
+    </div>
+
+    <button class="btn ghost" id="menuBtn" type="button"
+      style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
+
+    <div id="menuDropdown" style="display:none;"></div>
+  </div>
+</header>
+
+<main class="container" style="padding-bottom:24px;">
+  <div id="perfilRoot"></div>
+</main>
+
+<div id="modalRoot"></div>
+
+<script defer src="/assets/config.js?v=1"></script>
+<script defer src="/assets/menu.js?v=20260213"></script>
+<script defer src="/assets/perfil.js?v=20260214"></script>
+<script defer src="/assets/core.js?v=2402"></script>
+
+</body>
+</html>
