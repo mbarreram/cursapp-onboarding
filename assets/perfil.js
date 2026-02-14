@@ -581,6 +581,38 @@ const el = (id) => document.getElementById(id);
     }
   }
 
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
-  else render();
+  
+  function safeRender(){
+    try{
+      render();
+    }catch(e){
+      try{
+        console.error("[Perfil] Error:", e);
+      }catch(_){}
+      var root = document.getElementById("perfilRoot") || document.body;
+      var msg = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
+      root.innerHTML = `
+        <div class="finWrap" style="padding:18px">
+          <section class="finCard">
+            <div class="finCard__head">
+              <div class="finCard__title">No se pudo cargar Mi perfil</div>
+            </div>
+            <div class="finCard__body">
+              <div style="font-size:14px;line-height:1.35;color:#444">
+                Ocurrió un error en el script del perfil.<br/>
+                <b>Detalle:</b><br/>
+                <pre style="white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;border-radius:10px;border:1px solid #e6e8ee;margin-top:10px">${esc(msg)}</pre>
+              </div>
+              <div class="finBtnRow" style="margin-top:14px">
+                <button class="btn" type="button" onclick="location.reload()">Recargar</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeRender);
+  else safeRender();
 })();
