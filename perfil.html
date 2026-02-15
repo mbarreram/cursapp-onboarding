@@ -1,12 +1,43 @@
 <!doctype html>
-<html>
+<html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Perfil - Inspector</title>
-<script defer src="assets/perfil.js?v=20260215031827"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Mi perfil</title>
+
+  <link rel="stylesheet" href="assets/styles.css?v=20260215_v25">
+  <link rel="stylesheet" href="assets/login-pro.css?v=20260215_v25">
 </head>
-<body style="margin:0;background:#f6f7fb">
-<div id="perfil-root"></div>
+<body>
+
+  <div id="app">
+    <!-- menú global lo maneja menu.js/core.js (mismos que dashboard) -->
+    <div class="topBar">
+      <div class="brandLeft">
+        <div class="avatarCircle" id="perfilMiniAvatar">C</div>
+        <div class="brandText">
+          <div class="brandTitle">Mi perfil</div>
+          <div class="brandSub" id="perfilSubline">—</div>
+        </div>
+      </div>
+      <button class="iconBtn" id="menuBtn" aria-label="Menú">
+        <span class="icon">≡</span>
+      </button>
+      <div class="dropdown" id="menuDropdown"></div>
+    </div>
+
+    <div class="page" id="perfilRoot" style="padding-bottom:80px;">
+      <div id="perfilContent"></div>
+    </div>
+  </div>
+
+  <div id="debugBanner" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;background:#111;color:#fff;padding:10px 12px;border-radius:12px;font-size:12px;z-index:99999;opacity:.92">
+    Perfil Debug: iniciando…
+  </div>
+
+  <script defer src="assets/config.js?v=20260215_v25"></script>
+  <script defer src="assets/menu.js?v=20260215_v25"></script>
+  <script defer src="assets/core.js?v=20260215_v25"></script>
+  <script defer src="assets/perfil.js?v=20260215_v25"></script>
 </body>
 </html>
