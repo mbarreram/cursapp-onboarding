@@ -127,7 +127,15 @@ const el = (id) => document.getElementById(id);
     p.updatedAt = new Date().toISOString();
   }
 
-  function render(){
+  function getDisplayName(p, session) {
+  const fromProfile = (p && (p.name || p.apoderadoName || (p.apoderado && p.apoderado.name))) || "";
+  const fromSession = (session && (session.apoderadoName || session.displayName || session.name)) || "";
+  const email = (session && session.email) || (p && p.email) || "";
+  const fallback = email ? email.split("@")[0] : "—";
+  return String(fromProfile || fromSession || fallback).trim();
+}
+
+function render(){
     var root = document.getElementById("perfilRoot");
     if(!root) return;
 
@@ -381,238 +389,109 @@ const el = (id) => document.getElementById(id);
     `;
 
     // ---- Photo uploads (demo: store as dataURL in profile) ----
-    function wirePhoto(btnId, inpId, field){
-      var btn = document.getElementById(btnId);
-      var inp = document.getElementById(inpId);
-      if(!btn || !inp) return;
-      btn.onclick = function(){ inp.click(); };
-      inp.onchange = function(){
-        var file = (inp.files && inp.files[0]) ? inp.files[0] : null;
-        if(!file) return;
-        if(!/^image\//.test(file.type||"")){ alert("Selecciona una imagen."); inp.value=""; return; }
-        var reader = new FileReader();
-        reader.onload = function(){
-          try{
-            var dataUrl = String(reader.result||"");
-            var patch = {};
-            patch[field] = dataUrl;
-// persist in profiles list
-            var profiles2 = loadProfiles();
-            var idx = profiles2.findIndex(function(p){
-              return String(p.email||"").toLowerCase()===String(email||"").toLowerCase()
-                && String(p.courseKey||"")===String(courseKey||"");
-            });
-            if(idx>=0) profiles2[idx] = Object.assign({}, profiles2[idx], patch);
-            else profiles2.push(Object.assign({ email: email, courseKey: courseKey }, patch));
-            saveProfiles(profiles2);
-            // rerender
-            render();
-          }catch(e){
-            alert("No se pudo guardar la foto.");
-          }
-        };
-        reader.readAsDataURL(file);
-      };
+    function wirePhoto(root, which, p, session) {
+  const btn = root.querySelector(`[data-photo-btn="${which}"]`);
+  const img = root.querySelector(`[data-photo-img="${which}"]`);
+  const hint = root.querySelector(`[data-photo-hint="${which}"]`);
+  if (!btn || !img) return;
+
+  let input = root.querySelector(`[data-photo-input="${which}"]`);
+  if (!input) {
+    input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.setAttribute("capture", "environment");
+    input.style.display = "none";
+    input.setAttribute("data-photo-input", which);
+    root.appendChild(input);
+  }
+
+  const key = which === "apoderado" ? "photoApoderado" : "photoAlumno";
+  const setUI = (dataUrl) => {
+    if (dataUrl) {
+      img.src = dataUrl;
+      img.classList.add("hasPhoto");
+      if (hint) hint.textContent = "Cambiar foto";
+    } else {
+      img.removeAttribute("src");
+      img.classList.remove("hasPhoto");
+      if (hint) hint.textContent = "Subir foto";
     }
-    wirePhoto("btnApPhoto","inpApPhoto","photoApoderado");
-    wirePhoto("btnAlPhoto","inpAlPhoto","photoAlumno");
+  };
 
-    // ---- Actions ----
-    var btnSave = document.getElementById("btnSave");
-    if(btnSave){
-      btnSave.onclick = function(){
-        var newName = String((document.getElementById("inpName")||{}).value || "").trim();
-        var newAlumno = String((document.getElementById("inpAlumno")||{}).value || "").trim();
-        var newPhone = String((document.getElementById("inpPhone")||{}).value || "").trim();
+  setUI(p && p[key]);
 
-        // Update active profile
-        if(p){
-          if(p.apoderado){
-            p.apoderado.name = newName;
-            p.apoderado.alumno = newAlumno;
-            p.apoderado.phone = newPhone;
-          }
-          p.name = newName;
-          p.alumno = newAlumno;
-          p.phone = newPhone;
-        }
+  btn.onclick = () => input.click();
 
-        // Persist profiles
-        for(var i=0;i<profiles.length;i++){
-          if(String(profiles[i].id||"") === String(p && p.id || "")){
-            profiles[i] = p;
-            break;
-          }
-        }
-        saveProfiles(profiles);
+  input.onchange = async () => {
+    try {
+      const file = input.files && input.files[0];
+      if (!file) return;
 
-        // compat session
-        try{
-          var ss = getSession();
-          ss.name = newName;
-          ss.alumno = newAlumno;
-          saveJSON("cursapp_session_v1", ss);
-        }catch(_){}
-
-        alert("Perfil actualizado.");
-        render();
-      };
-    }
-
-    function openRoleChooser(){
-      if(!canSwitch) return;
-      var items = roles.map(function(r){
-        var icon = (r==="tesorero") ? "💳" : (r==="presidente") ? "🎓" : "👨‍👩‍👧";
-        var meta = (r==="apoderado") ? approvalText : (r==="tesorero") ? "Pagos, rendiciones y cobranza" : "Gestión del curso, campañas y apoderados";
-        return { label: icon + " " + roleLabel(r), meta: meta, role: r, icon: icon };
-      });
-      // Reuse chooser from login.js styles
-      if(typeof window.renderChooser === "function"){
-        // if exposed (unlikely)
+      const t = String(file.type || "");
+      if (!t.startsWith("image/")) {
+        alert("Selecciona una imagen (JPG/PNG/HEIC).");
+        return;
       }
-      // Lightweight chooser (same overlay classes)
-      var old = document.getElementById("cursappPickerOverlay");
-      if(old) old.remove();
-      var wrap = document.createElement("div");
-      wrap.id = "cursappPickerOverlay";
-      wrap.className = "cpOverlay";
-      wrap.innerHTML = `
-        <div class="cpPanel" role="dialog" aria-modal="true">
-          <div class="cpPanel__head">
-            <div>
-              <div class="cpTitle">Cambiar rol</div>
-              <div class="cpSub">Selecciona cómo quieres continuar</div>
-            </div>
-            <button type="button" class="cpClose" data-close>✕</button>
-          </div>
-          <div class="cpList">
-            ${items.map(function(it,i){
-              var active = (String(it.role) === currentRole);
-              return `
-                <button type="button" class="cpItem" data-pk="${i}">
-                  <div class="cpItem__icon">${esc(it.icon)}</div>
-                  <div class="cpItem__body">
-                    <div class="cpItem__label">${esc(it.label)} ${active ? " (Activo)" : ""}</div>
-                    <div class="cpItem__meta">${esc(it.meta||"")}</div>
-                  </div>
-                  <div class="cpItem__chev">›</div>
-                </button>
-              `;
-            }).join("")}
-          </div>
-        </div>
-      `;
-      wrap.addEventListener("click", function(e){
-        if(e.target === wrap || (e.target && e.target.matches("[data-close]"))) wrap.remove();
-      });
-      document.body.appendChild(wrap);
-      wrap.querySelectorAll("button[data-pk]").forEach(function(btn){
-        btn.onclick = function(){
-          var idx = Number(btn.getAttribute("data-pk"));
-          var target = items[idx] ? items[idx].role : null;
-          if(!target) return;
-          if(target === currentRole){ wrap.remove(); return; }
-          try{
-            if(window.CURSAPP && typeof window.CURSAPP.switchRoleSafe === "function"){
-              var ok = window.CURSAPP.switchRoleSafe(target);
-              if(!ok) return;
-              // go to dashboard for role
-              if(target === "presidente") location.assign("/presidente.html");
-              else if(target === "tesorero") location.assign("/tesorero.html");
-              else location.assign("/apoderado.html");
-            }
-          }catch(_){}
-        };
-      });
+
+      const maxMB = 8;
+      if (file.size > maxMB * 1024 * 1024) {
+        alert("La imagen es muy pesada. Máximo " + maxMB + "MB.");
+        return;
+      }
+
+      const dataUrl = await fileToDataURL(file);
+      const compressed = await compressImageDataURL(dataUrl, 720, 0.82);
+
+      const storeKey = "cursapp_profiles_v1";
+      const email = (session && (session.email || session.userEmail)) || p?.email || "";
+      const courseKey = (session && session.courseKey) || p?.courseKey || "";
+      const pid = (session && (session.profileId || session.profileID)) || p?.profileId || p?.profileID || p?.id || null;
+
+      const all = safeJSONParse(localStorage.getItem(storeKey), {});
+      const realId = pid || (email ? ("pr_" + btoa(email).replace(/=/g,"").slice(0,12)) : ("pr_" + Date.now()));
+      const existing = all[realId] || {};
+
+      const next = { ...existing, ...p, id: realId, profileId: realId, email, courseKey, [key]: compressed, updatedAt: new Date().toISOString() };
+      all[realId] = next;
+      localStorage.setItem(storeKey, JSON.stringify(all));
+
+      p[key] = compressed;
+      setUI(compressed);
+
+      input.value = "";
+    } catch (e) {
+      alert("No se pudo cargar la foto: " + (e?.message || e));
     }
+  };
+}
 
-    var btnSwitchRole = document.getElementById("btnSwitchRole");
-    if(btnSwitchRole) btnSwitchRole.onclick = openRoleChooser;
-    var btnSwitchRole2 = document.getElementById("btnSwitchRole2");
-    if(btnSwitchRole2) btnSwitchRole2.onclick = openRoleChooser;
-
-    var btnChangePw = document.getElementById("btnChangePw");
-    if(btnChangePw){
-      btnChangePw.onclick = function(){
-        var cur = String((document.getElementById("pwCurrent")||{}).value || "");
-        var nw = String((document.getElementById("pwNew")||{}).value || "");
-        var nw2 = String((document.getElementById("pwNew2")||{}).value || "");
-
-        if(!email){
-          alert("No se pudo identificar el usuario.");
-          return;
-        }
-        if(nw.length < 4){
-          alert("La nueva contraseña debe tener al menos 4 caracteres.");
-          return;
-        }
-        if(nw !== nw2){
-          alert("La nueva contraseña no coincide.");
-          return;
-        }
-
-        var users = loadJSON("cursapp_users_v1", []);
-        var uidx = -1;
-        for(var i=0;i<users.length;i++){
-          if(String(users[i].email||"").toLowerCase() === email){ uidx = i; break; }
-        }
-        if(uidx === -1){
-          alert("Usuario no encontrado.");
-          return;
-        }
-        var expected = users[uidx].passwordHashDemo;
-        var curHash = hashDemo(cur);
-        if(expected && curHash !== expected){
-          alert("Contraseña actual incorrecta.");
-          return;
-        }
-
-        users[uidx].passwordHashDemo = hashDemo(nw);
-        saveJSON("cursapp_users_v1", users);
-
-        try{
-          document.getElementById("pwCurrent").value = "";
-          document.getElementById("pwNew").value = "";
-          document.getElementById("pwNew2").value = "";
-        }catch(_){}
-
-        alert("Contraseña actualizada.");
-      };
-    }
-  }
-
-  
-  function safeRender(){
-    try{
-      render();
-    }catch(e){
-      try{
-        console.error("[Perfil] Error:", e);
-      }catch(_){}
-      var root = document.getElementById("perfilRoot") || document.body;
-      var msg = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
-      root.innerHTML = `
-        <div class="finWrap" style="padding:18px">
-          <section class="finCard">
-            <div class="finCard__head">
-              <div class="finCard__title">No se pudo cargar Mi perfil</div>
-            </div>
-            <div class="finCard__body">
-              <div style="font-size:14px;line-height:1.35;color:#444">
-                Ocurrió un error en el script del perfil.<br/>
-                <b>Detalle:</b><br/>
-                <pre style="white-space:pre-wrap;word-break:break-word;background:#f6f7f9;padding:10px;border-radius:10px;border:1px solid #e6e8ee;margin-top:10px">${esc(msg)}</pre>
-              </div>
-              <div class="finBtnRow" style="margin-top:14px">
-                <button class="btn" type="button" onclick="location.reload()">Recargar</button>
-              </div>
-            </div>
-          </section>
-        </div>
-      `;
-    }
-  }
-
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", safeRender);
-  else safeRender();
+function safeJSONParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+}
+function compressImageDataURL(dataUrl, maxSide, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.width || 1, h = img.height || 1;
+      const scale = Math.min(1, maxSide / Math.max(w, h));
+      const nw = Math.max(1, Math.round(w * scale));
+      const nh = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = nw; canvas.height = nh;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, nw, nh);
+      let out = "";
+      try { out = canvas.toDataURL("image/jpeg", quality); } catch { out = canvas.toDataURL(); }
+      resolve(out);
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 })();
