@@ -84,7 +84,62 @@
   window.CURSAPP.switchRoleSafe = function(nextRole){
     var s = window.CURSAPP.getSessionSafe();
     var nr = _normRole(nextRole);
-    if(!nr || !s.roles || !Array.isArray(s.roles) || !s.roles.includes(nr)){
+    if(!nr){
+      alert("Rol no disponible para este usuario.");
+      return false;
+    }
+
+    // El rol "apoderado" es base (si existe sesión). No lo bloqueamos por validaciones de demo.
+    if(nr === "apoderado"){
+      try{ if(!s.roles || !Array.isArray(s.roles)) s.roles = []; if(!s.roles.includes(nr)) s.roles.push(nr); }catch(e){}
+      s.currentRole = nr;
+      s.role = nr;
+      try{ localStorage.setItem(KEY_SESSION, JSON.stringify(s)); }catch(e){}
+      try{ localStorage.setItem(KEY_DEMO_USER, JSON.stringify(s)); }catch(e){}
+      return true;
+    }
+    // Si el rol no está en sesión, validamos contra perfiles (fallback) y lo agregamos.
+    try{
+      if(!s.roles || !Array.isArray(s.roles)) s.roles = [];
+      if(!s.roles.includes(nr)){
+        var profRaw = localStorage.getItem("cursapp_profiles_v1");
+        var prof = null;
+        try{ prof = JSON.parse(profRaw); }catch(e){ prof = null; }
+        var ok = false;
+        if(Array.isArray(prof)){
+          for(var i=0;i<prof.length;i++){
+            var it = prof[i] || {};
+            var sameUser = (it.profileId && s.profileId && String(it.profileId) === String(s.profileId))
+              || (it.userId && s.userId && String(it.userId) === String(s.userId));
+            if(sameUser && String(it.role||"").toLowerCase() === nr){ ok = true; break; }
+          }
+        }
+
+        // Fallback: validar contra directiva_apoderado_by_role_v1 (mapea rol -> email)
+        if(!ok){
+          try{
+            var dr = JSON.parse(localStorage.getItem("cursapp_directiva_apoderado_by_role_v1")||"{}")||{};
+            var rec = dr[nr];
+            if(rec && rec.email){
+              var em = (s.email||"");
+              if(!em && s.userId && String(s.userId).indexOf("@")==-1){
+                // Buscar email real en cursapp_users_v1
+                var uu = JSON.parse(localStorage.getItem("cursapp_users_v1")||"[]")||[];
+                for(var k=0;k<uu.length;k++){ if(uu[k] && uu[k].userId && String(uu[k].userId)===String(s.userId) && uu[k].email){ em = uu[k].email; break; } }
+              }
+              if(em && String(rec.email).toLowerCase() === String(em).toLowerCase()) ok = true;
+            }
+          }catch(e){}
+        }
+        if(ok){
+          s.roles.push(nr);
+        }else{
+          alert("Rol no disponible para este usuario.");
+          return false;
+        }
+      }
+    }catch(e){
+      // Si algo falla, mantenemos comportamiento seguro
       alert("Rol no disponible para este usuario.");
       return false;
     }

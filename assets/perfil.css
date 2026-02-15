@@ -1,0 +1,14 @@
+/* Estilos específicos de Perfil (manteniendo el look del resto de módulos) */
+
+/* Email largo sin romper layout */
+.bigEmail, .bigEmail a{
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* Reduce un poco el peso visual del bloque de identidad */
+.bigName{ font-size: 22px; }
+.bigEmail a{ font-size: 14px; }
+
+/* Ajuste de pill de rol para que se alinee mejor en mobile */
+.cardHeader .pill{ max-width: 55%; }
