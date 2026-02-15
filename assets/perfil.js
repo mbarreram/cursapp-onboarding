@@ -1,3 +1,12 @@
+
+// PERFIL_JS_DEBUG_HOOK
+(function(){
+  try {
+    var b = document.getElementById('debugBanner');
+    if (b) b.textContent = "Perfil Debug: perfil.js EJECUTANDO…";
+  } catch(e) {}
+})();
+
 /* =========================================================
    Cursapp · perfil.js (editable)
    - Módulo "Mi perfil"
