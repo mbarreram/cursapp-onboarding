@@ -380,7 +380,7 @@
 
     // ---- CURSO ACTUAL ----
     html += "<div class='card profileCard' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'><span class='secIcon'>🏫</span>Curso actual</div>";
+    html += "  <div class='cardTitleRow'><div class='cardTitle' style='font-weight:800'><span class='secIcon'>🏫</span>Curso actual</div>";
     html += "    <div class='chip'>" + esc(courseLabel || "—") + "</div>";
     html += "  </div>";
     html += "  <div class='kvList'>";

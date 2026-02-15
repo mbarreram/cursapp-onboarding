@@ -224,6 +224,14 @@ function getRoleFromSession() {
   function goTab(tab) {
     var btn = document.querySelector('.navItem[data-tab="' + tab + '"]');
     if (btn) btn.click();
+    // Fallback: si estamos en perfil.html, redirige al módulo correspondiente y deja el hash para que abra la pestaña
+    if (!btn && /\bperfil\.html\b/.test(location.pathname)) {
+      var s = getSession() || {};
+      var role = s.currentRole || s.role || s.activeRole || 'apoderado';
+      var page = (role === 'tesorero') ? 'tesorero.html' : (role === 'presidente' ? 'presidente.html' : 'apoderado.html');
+      location.href = page + '#' + tab;
+      return true;
+    }
   }
   function closeMenu() {
     var dd = qs("#menuDropdown");
