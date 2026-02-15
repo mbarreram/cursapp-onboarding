@@ -20,7 +20,7 @@ const el = (id) => document.getElementById(id);
   try{
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, function(c){
-      return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;","":"&quot;","'":"&#39;"})[c];
     });
   }
   
@@ -95,7 +95,7 @@ function loadJSON(key, fallback){
         return window.CURSAPP.getSession() || {};
       }
     }catch(_){ }
-    return loadJSON("cursapp_session_v1", {}) || {};
+    return loadJSON("cursapp_session", {}) || loadJSON("cursapp_session_v1", {}) || {};
   }
 
   function loadProfiles(){
