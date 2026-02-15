@@ -515,3 +515,11 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
 .pfIdentity{flex:1;min-width:220px}
 .pfName{font-weight:950;font-size:20px;line-height:1.15}
 .pfEmail{margin-top:4px;font-weight:800;color:#64748b}
+
+/* Perfil - fotos premium */
+.photoGrid{display:flex;gap:16px;align-items:flex-start}
+.photoBtn{background:transparent;border:0;padding:0;cursor:pointer}
+.photoWrap{width:92px;text-align:center}
+.photoImg{width:72px;height:72px;border-radius:18px;object-fit:cover;border:1px solid rgba(0,0,0,.08);background:#f3f6ff;display:block;margin:0 auto 6px}
+.photoImg.hasPhoto{background:#fff}
+.photoHint{font-size:12px;opacity:.75}

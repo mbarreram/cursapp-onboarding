@@ -24,7 +24,15 @@ const el = (id) => document.getElementById(id);
     });
   }
   function safeJsonParse(v){ try{ return JSON.parse(v); }catch(e){ return null; } }
-  function loadJSON(key, fallback){
+  
+  function getDisplayName(p, session){
+    var fromProfile = (p && (p.name || p.apoderadoName || (p.apoderado && p.apoderado.name))) || "";
+    var fromSession = (session && (session.apoderadoName || session.displayName || session.name)) || "";
+    var email = (session && session.email) || (p && p.email) || "";
+    var fallback = email ? email.split("@")[0] : "—";
+    return String(fromProfile || fromSession || fallback).trim();
+  }
+function loadJSON(key, fallback){
     var raw=null; try{ raw=localStorage.getItem(key); }catch(_){ raw=null; }
     var v=safeJsonParse(raw);
     return (v==null ? (fallback==null?null:fallback) : v);
@@ -127,15 +135,7 @@ const el = (id) => document.getElementById(id);
     p.updatedAt = new Date().toISOString();
   }
 
-  function getDisplayName(p, session) {
-  const fromProfile = (p && (p.name || p.apoderadoName || (p.apoderado && p.apoderado.name))) || "";
-  const fromSession = (session && (session.apoderadoName || session.displayName || session.name)) || "";
-  const email = (session && session.email) || (p && p.email) || "";
-  const fallback = email ? email.split("@")[0] : "—";
-  return String(fromProfile || fromSession || fallback).trim();
-}
-
-function render(){
+  function render(){
     var root = document.getElementById("perfilRoot");
     if(!root) return;
 
@@ -389,109 +389,114 @@ function render(){
     `;
 
     // ---- Photo uploads (demo: store as dataURL in profile) ----
-    function wirePhoto(root, which, p, session) {
-  const btn = root.querySelector(`[data-photo-btn="${which}"]`);
-  const img = root.querySelector(`[data-photo-img="${which}"]`);
-  const hint = root.querySelector(`[data-photo-hint="${which}"]`);
-  if (!btn || !img) return;
+    function wirePhoto(root, which, p, session){
+    var btn = root.querySelector('[data-photo-btn="'+which+'"]');
+    var img = root.querySelector('[data-photo-img="'+which+'"]');
+    var hint = root.querySelector('[data-photo-hint="'+which+'"]');
+    if(!btn || !img) return;
 
-  let input = root.querySelector(`[data-photo-input="${which}"]`);
-  if (!input) {
-    input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.setAttribute("capture", "environment");
-    input.style.display = "none";
-    input.setAttribute("data-photo-input", which);
-    root.appendChild(input);
+    var input = root.querySelector('[data-photo-input="'+which+'"]');
+    if(!input){
+      input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.setAttribute("capture","environment");
+      input.style.display = "none";
+      input.setAttribute("data-photo-input", which);
+      root.appendChild(input);
+    }
+
+    var key = (which==="apoderado") ? "photoApoderado" : "photoAlumno";
+
+    function setUI(dataUrl){
+      if(dataUrl){
+        img.src = dataUrl;
+        img.classList.add("hasPhoto");
+        if(hint) hint.textContent = "Cambiar foto";
+      } else {
+        img.removeAttribute("src");
+        img.classList.remove("hasPhoto");
+        if(hint) hint.textContent = "Subir foto";
+      }
+    }
+
+    setUI(p && p[key]);
+
+    btn.onclick = function(){ input.click(); };
+
+    input.onchange = function(){
+      var file = input.files && input.files[0];
+      if(!file) return;
+
+      try{
+        var t = String(file.type||"");
+        if(t && !t.startsWith("image/")){
+          alert("Selecciona una imagen (JPG/PNG/HEIC).");
+          return;
+        }
+        var maxMB = 8;
+        if(file.size > maxMB*1024*1024){
+          alert("La imagen es muy pesada. Máximo "+maxMB+"MB.");
+          return;
+        }
+
+        fileToDataURL(file).then(function(dataUrl){
+          return compressImageDataURL(dataUrl, 720, 0.82);
+        }).then(function(compressed){
+          // persist profile
+          var storeKey="cursapp_profiles_v1";
+          var all = safeJsonParse(localStorage.getItem(storeKey)) || {};
+          var email = (session && (session.email||session.userEmail)) || (p && p.email) || "";
+          var courseKey = (session && session.courseKey) || (p && p.courseKey) || "";
+          var pid = (session && (session.profileId||session.profileID)) || (p && (p.profileId||p.profileID||p.id)) || null;
+          var realId = pid || (email ? ("pr_"+btoa(email).replace(/=/g,"").slice(0,12)) : ("pr_"+Date.now()));
+          var existing = all[realId] || {};
+          var next = Object.assign({}, existing, p||{}, { id: realId, profileId: realId, email: email, courseKey: courseKey });
+          next[key] = compressed;
+          next.updatedAt = new Date().toISOString();
+          all[realId]=next;
+          localStorage.setItem(storeKey, JSON.stringify(all));
+
+          // update in-memory and UI
+          if(p) p[key]=compressed;
+          setUI(compressed);
+          input.value = "";
+        }).catch(function(e){
+          alert("No se pudo cargar la foto: "+(e && e.message ? e.message : e));
+        });
+
+      }catch(e){
+        alert("No se pudo cargar la foto: "+(e && e.message ? e.message : e));
+      }
+    };
   }
 
-  const key = which === "apoderado" ? "photoApoderado" : "photoAlumno";
-  const setUI = (dataUrl) => {
-    if (dataUrl) {
+  function fileToDataURL(file){
+    return new Promise(function(resolve, reject){
+      var fr = new FileReader();
+      fr.onload = function(){ resolve(fr.result); };
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function compressImageDataURL(dataUrl, maxSide, quality){
+    return new Promise(function(resolve){
+      var img = new Image();
+      img.onload = function(){
+        var w = img.width || 1, h = img.height || 1;
+        var scale = Math.min(1, maxSide / Math.max(w, h));
+        var nw = Math.max(1, Math.round(w*scale));
+        var nh = Math.max(1, Math.round(h*scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = nw; canvas.height = nh;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, nw, nh);
+        var out="";
+        try { out = canvas.toDataURL("image/jpeg", quality); } catch(e){ out = canvas.toDataURL(); }
+        resolve(out);
+      };
+      img.onerror = function(){ resolve(dataUrl); };
       img.src = dataUrl;
-      img.classList.add("hasPhoto");
-      if (hint) hint.textContent = "Cambiar foto";
-    } else {
-      img.removeAttribute("src");
-      img.classList.remove("hasPhoto");
-      if (hint) hint.textContent = "Subir foto";
-    }
-  };
-
-  setUI(p && p[key]);
-
-  btn.onclick = () => input.click();
-
-  input.onchange = async () => {
-    try {
-      const file = input.files && input.files[0];
-      if (!file) return;
-
-      const t = String(file.type || "");
-      if (!t.startsWith("image/")) {
-        alert("Selecciona una imagen (JPG/PNG/HEIC).");
-        return;
-      }
-
-      const maxMB = 8;
-      if (file.size > maxMB * 1024 * 1024) {
-        alert("La imagen es muy pesada. Máximo " + maxMB + "MB.");
-        return;
-      }
-
-      const dataUrl = await fileToDataURL(file);
-      const compressed = await compressImageDataURL(dataUrl, 720, 0.82);
-
-      const storeKey = "cursapp_profiles_v1";
-      const email = (session && (session.email || session.userEmail)) || p?.email || "";
-      const courseKey = (session && session.courseKey) || p?.courseKey || "";
-      const pid = (session && (session.profileId || session.profileID)) || p?.profileId || p?.profileID || p?.id || null;
-
-      const all = safeJSONParse(localStorage.getItem(storeKey), {});
-      const realId = pid || (email ? ("pr_" + btoa(email).replace(/=/g,"").slice(0,12)) : ("pr_" + Date.now()));
-      const existing = all[realId] || {};
-
-      const next = { ...existing, ...p, id: realId, profileId: realId, email, courseKey, [key]: compressed, updatedAt: new Date().toISOString() };
-      all[realId] = next;
-      localStorage.setItem(storeKey, JSON.stringify(all));
-
-      p[key] = compressed;
-      setUI(compressed);
-
-      input.value = "";
-    } catch (e) {
-      alert("No se pudo cargar la foto: " + (e?.message || e));
-    }
-  };
-}
-
-function safeJSONParse(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }
-function fileToDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(file);
-  });
-}
-function compressImageDataURL(dataUrl, maxSide, quality) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const w = img.width || 1, h = img.height || 1;
-      const scale = Math.min(1, maxSide / Math.max(w, h));
-      const nw = Math.max(1, Math.round(w * scale));
-      const nh = Math.max(1, Math.round(h * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = nw; canvas.height = nh;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, nw, nh);
-      let out = "";
-      try { out = canvas.toDataURL("image/jpeg", quality); } catch { out = canvas.toDataURL(); }
-      resolve(out);
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-})();
+    });
+  })();
