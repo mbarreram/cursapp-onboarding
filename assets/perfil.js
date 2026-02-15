@@ -1,6 +1,15 @@
-// Perfil (Safari-safe, sin fotos/avatars por privacidad)
+/*
+  Perfil (Safari-safe)
+  - Sin fotos/avatars editables (privacidad)
+  - Header/menú y bottom nav consistentes con el resto
+  - No usa optional chaining ni sintaxis moderna que rompa Safari iOS
+*/
+
 (function () {
-  function qs(sel, root) { return (root || document).querySelector(sel); }
+  "use strict";
+
+  // ---------- helpers ----------
+  function qs(sel) { return document.querySelector(sel); }
   function esc(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;")
@@ -9,312 +18,348 @@
       .replace(/\"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
-  function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
+  function getJSON(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch (e) {
+      return fallback;
+    }
+  }
+  function setJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+  }
+  function fmtDateISO(d) {
+    // d can be Date or iso string
+    try {
+      var dt = (d instanceof Date) ? d : new Date(d);
+      if (isNaN(dt.getTime())) return "—";
+      var dd = String(dt.getDate()).padStart(2, "0");
+      var mm = String(dt.getMonth() + 1).padStart(2, "0");
+      var yy = dt.getFullYear();
+      return dd + "-" + mm + "-" + yy;
+    } catch (e) { return "—"; }
+  }
+  function titleCase(s) {
+    s = String(s || "").trim();
+    if (!s) return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function initials(nameOrEmail) {
+    var s = String(nameOrEmail || "").trim();
+    if (!s) return "C";
+    // if email, take before @
+    var beforeAt = s.split("@")[0];
+    var parts = beforeAt.replace(/[._-]+/g, " ").split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+    return (parts[0].slice(0, 1) + parts[1].slice(0, 1)).toUpperCase();
+  }
 
+  // ---------- session / data ----------
   function getSession() {
-    var s1 = safeJsonParse(localStorage.getItem("cursapp_session_v1"));
+    // Prefer v1
+    var s1 = getJSON("cursapp_session_v1", null);
     if (s1 && (s1.userId || s1.email)) return s1;
-    var s2 = safeJsonParse(localStorage.getItem("cursapp_demo_user"));
+    var s2 = getJSON("cursapp_demo_user", null);
     if (s2 && (s2.userId || s2.email)) return s2;
     return null;
   }
 
-  function getCourse() {
-    var c = safeJsonParse(localStorage.getItem("cursapp_course_v1"));
-    return c || null;
+  function getCourse(courseKey) {
+    // In demo, course data often stored in cursapp_course_v1
+    var c = getJSON("cursapp_course_v1", null);
+    if (c && (!courseKey || c.courseKey === courseKey || c.courseKey === (courseKey || ""))) return c;
+    // sometimes stored under active key
+    var active = localStorage.getItem("cursapp_active_course_v1");
+    if (active) {
+      var c2 = getJSON("cursapp_course_v1", null);
+      if (c2) return c2;
+    }
+    return c;
+  }
+
+  function getEnrollmentByEmailOrUser(courseKey, email, userId) {
+    var arr = getJSON("cursapp_enrollments_v1", []);
+    if (!Array.isArray(arr)) arr = [];
+    for (var i = 0; i < arr.length; i++) {
+      var e = arr[i] || {};
+      if (courseKey && e.courseKey && e.courseKey !== courseKey) continue;
+      if (email && e.email && String(e.email).toLowerCase() === String(email).toLowerCase()) return e;
+      // fallback: userId sometimes equals email; compare loosely
+      if (userId && e.email && String(e.email).toLowerCase() === String(userId).toLowerCase()) return e;
+    }
+    return null;
   }
 
   function getProfiles() {
-    var arr = safeJsonParse(localStorage.getItem("cursapp_profiles_v1"));
-    return Array.isArray(arr) ? arr : [];
+    var p = getJSON("cursapp_profiles_v1", []);
+    return Array.isArray(p) ? p : [];
   }
 
-  function resolveEmail(session) {
-    if (!session) return "";
-    if (session.email && String(session.email).indexOf("@") > -1) return String(session.email);
-    if (session.userId && String(session.userId).indexOf("@") > -1) return String(session.userId);
+  // ---------- header wiring ----------
+  function paintHeader(session, course) {
+    var logo = qs("#hdrLogo") || qs("#avatar");
+    var roleTitle = qs("#roleTitle");
+    var sub = qs("#perfilSubline");
 
-    // Fallback: buscar en cursapp_users_v1 por userId
-    var users = safeJsonParse(localStorage.getItem("cursapp_users_v1"));
-    if (Array.isArray(users) && session.userId) {
-      for (var i = 0; i < users.length; i++) {
-        if (users[i] && users[i].userId === session.userId && users[i].email) return String(users[i].email);
+    var email = (session && session.email) ? session.email : (session ? session.userId : "");
+    if (logo) logo.textContent = initials(email);
+
+    if (roleTitle) roleTitle.textContent = "Mi perfil";
+
+    // build subline: "Colegio · Curso · Año · Jornada"
+    var school = "";
+    var curso = "";
+    var jornada = "";
+    var anio = "";
+    try {
+      if (course && course.course) {
+        school = course.course.schoolName || course.course.school || course.course.schoolId || "";
+        curso = course.course.curso || course.course.course || "";
+        jornada = course.course.jornada || "";
+        anio = course.course.anio || course.course.year || "";
       }
+    } catch (e) {}
+    var bits = [];
+    if (school) bits.push(school);
+    // Some demos store courseKey like "sch-central|2°|B|Mañana|2026"
+    if ((!curso || !jornada || !anio) && session && session.courseKey) {
+      var ck = String(session.courseKey);
+      var parts = ck.split("|");
+      // [schoolId, curso, ?, jornada, anio]
+      if (!curso && parts.length >= 3) curso = (parts[1] || "") + (parts[2] ? parts[2] : "");
+      if (!jornada && parts.length >= 4) jornada = parts[3] || "";
+      if (!anio && parts.length >= 5) anio = parts[4] || "";
     }
-    return String(session.userId || "");
+    if (curso) bits.push(curso);
+    if (anio) bits.push(anio);
+    if (jornada) bits.push(jornada);
+    if (sub) sub.textContent = bits.length ? bits.join(" · ") : "—";
   }
 
-  function roleLabel(r) {
-    var x = String(r || "").toLowerCase();
-    if (x === "presidente") return "Presidente";
-    if (x === "tesorero") return "Tesorero";
-    if (x === "apoderado") return "Apoderado";
-    if (x === "admin") return "Admin";
-    return r ? (String(r).charAt(0).toUpperCase() + String(r).slice(1)) : "—";
-  }
-
-  function initials(name) {
-    var s = String(name || "").trim();
-    if (!s) return "C";
-    var parts = s.split(/\s+/);
-    var a = parts[0] ? parts[0].charAt(0) : "";
-    var b = parts.length > 1 ? parts[1].charAt(0) : "";
-    return (a + b).toUpperCase();
-  }
-
-  function setHeader(course, session) {
-    var titleText = qs("#titleText");
-    var titleSub = qs("#titleSub");
-
-    if (titleText) titleText.textContent = "Mi perfil";
-
-    // Subtítulo: Colegio · Curso · Año · Jornada (si existe)
-    var parts = [];
-    if (course && course.course && course.course.schoolName) parts.push(course.course.schoolName);
-    if (course && course.course && course.course.level) parts.push(course.course.level);
-    if (course && course.course && course.course.year) parts.push(String(course.course.year));
-    if (course && course.course && course.course.shift) parts.push(course.course.shift);
-    if (titleSub) titleSub.textContent = parts.length ? parts.join(" · ") : "—";
-  }
-
+  // ---------- render ----------
   function render() {
-    var host = qs("#perfilContent") || qs("#app");
-    if (!host) return;
+    var root = qs("#perfilContent");
+    if (!root) return;
 
     var session = getSession();
-    var course = getCourse();
-    setHeader(course, session);
-
     if (!session) {
-      host.innerHTML = "<div class='card' style='padding:16px'>No hay sesión activa.</div>";
+      root.innerHTML = "<div class='card'><div class='h2'>Mi perfil</div><div class='muted'>No hay sesión activa.</div></div>";
       return;
     }
 
-    var profiles = getProfiles();
-    var currentRole = session.currentRole || session.role || localStorage.getItem("cursapp_active_role_v1") || "";
-    currentRole = String(currentRole || "").toLowerCase();
+    var courseKey = session.courseKey || localStorage.getItem("cursapp_active_course_v1") || "";
+    var course = getCourse(courseKey);
+    paintHeader(session, course);
 
-    // Datos principales
-    var apoderadoName = "";
-    var alumnoName = "";
-    // Intentamos extraer desde enrolments si existe
-    var enrolments = safeJsonParse(localStorage.getItem("cursapp_enrolments_v1"));
-    if (Array.isArray(enrolments) && enrolments.length) {
-      // buscamos por email si coincide
-      var em = resolveEmail(session);
-      for (var i = 0; i < enrolments.length; i++) {
-        var e = enrolments[i];
-        if (!e) continue;
-        if (em && e.email === em) {
-          apoderadoName = e.apoderadoName || apoderadoName;
-          alumnoName = e.alumno || alumnoName;
-          break;
-        }
+    var email = session.email || session.userId || "";
+    var enrol = getEnrollmentByEmailOrUser(courseKey, email, session.userId);
+
+    var apoderadoName = (enrol && enrol.apoderadoName) ? enrol.apoderadoName : (session.name || "");
+    var alumnoName = (enrol && enrol.alumno) ? enrol.alumno : (session.alumno || "");
+    var phone = (enrol && enrol.phone) ? enrol.phone : (session.phone || "");
+    var status = (enrol && enrol.status) ? enrol.status : (session.status || "approved");
+    var statusLabel = (String(status).toLowerCase() === "approved") ? "Aprobado" : titleCase(status);
+
+    var role = session.currentRole || session.role || session.activeRole || "apoderado";
+    role = String(role || "apoderado").toLowerCase();
+
+    // Course details
+    var schoolName = "—";
+    var curso = "—";
+    var jornada = "—";
+    var anio = "—";
+    var joined = "—";
+    try {
+      if (course && course.course) {
+        schoolName = course.course.schoolName || "—";
+        curso = course.course.curso || "—";
+        jornada = course.course.jornada || "—";
+        anio = course.course.anio || "—";
       }
+    } catch (e) {}
+    if ((curso === "—" || jornada === "—" || anio === "—") && courseKey) {
+      var parts = String(courseKey).split("|");
+      if (parts.length >= 3 && curso === "—") curso = (parts[1] || "") + (parts[2] ? parts[2] : "");
+      if (parts.length >= 4 && jornada === "—") jornada = parts[3] || "—";
+      if (parts.length >= 5 && anio === "—") anio = parts[4] || "—";
     }
+    if (enrol && enrol.createdAt) joined = fmtDateISO(enrol.createdAt);
 
-    // Fallback: directiva_apoderado_by_role
-    if (!apoderadoName || !alumnoName) {
-      var byRole = safeJsonParse(localStorage.getItem("cursapp_directiva_apoderado_by_role_v1"));
-      if (byRole && currentRole && byRole[currentRole]) {
-        apoderadoName = apoderadoName || byRole[currentRole].apoderadoName;
-        alumnoName = alumnoName || byRole[currentRole].alumno;
-      }
-      if (byRole && byRole.presidente) {
-        apoderadoName = apoderadoName || byRole.presidente.apoderadoName;
-        alumnoName = alumnoName || byRole.presidente.alumno;
-      }
+    // Available roles: from session.roles (array)
+    var rolesArr = Array.isArray(session.roles) ? session.roles.slice() : [];
+    if (!rolesArr.length && session.role) rolesArr = [session.role];
+    // Ensure unique
+    var uniq = {};
+    var rolesClean = [];
+    for (var i = 0; i < rolesArr.length; i++) {
+      var r = String(rolesArr[i] || "").toLowerCase();
+      if (!r) continue;
+      if (uniq[r]) continue;
+      uniq[r] = 1;
+      rolesClean.push(r);
     }
+    var rolesHuman = rolesClean.length ? rolesClean.map(titleCase).join(", ") : titleCase(role);
 
-    apoderadoName = apoderadoName || "—";
-    alumnoName = alumnoName || "—";
-    var email = resolveEmail(session);
+    root.innerHTML = ""
+      + "<div class='card'>"
+      + "  <div style='display:flex; align-items:flex-start; justify-content:space-between; gap:12px;'>"
+      + "    <div>"
+      + "      <div class='h2' style='margin-bottom:2px;'>Mi perfil</div>"
+      + "      <div class='muted' style='font-size:12px; margin-top:0;'>" + esc(schoolName) + "</div>"
+      + "    </div>"
+      + "    <div class='pill' style='padding:10px 12px; font-weight:700;'>●&nbsp;Rol activo:&nbsp;" + esc(role) + "</div>"
+      + "  </div>"
+      + "  <div style='display:flex; gap:14px; margin-top:14px; align-items:flex-end;'>"
+      + "    <div style='text-align:center;'>"
+      + "      <div class='avatarBig'>" + esc(initials(apoderadoName || email)) + "</div>"
+      + "      <div class='muted' style='margin-top:6px;'>Apoderado</div>"
+      + "    </div>"
+      + "    <div style='text-align:center;'>"
+      + "      <div class='avatarBig'>" + esc(initials(alumnoName || "A")) + "</div>"
+      + "      <div class='muted' style='margin-top:6px;'>Alumno</div>"
+      + "    </div>"
+      + "    <div style='flex:1'></div>"
+      + "    <div class='pill' style='align-self:flex-start; margin-top:8px; font-weight:700;'>" + esc(statusLabel) + "</div>"
+      + "  </div>"
 
-    // Curso actual
-    var level = course && course.course ? (course.course.level || "—") : "—";
-    var shift = course && course.course ? (course.course.shift || "—") : "—";
-    var year = course && course.course ? (course.course.year || "—") : "—";
-    var schoolName = course && course.course ? (course.course.schoolName || "—") : "—";
-    var joinDate = (session.createdAt || session.created_at || session.loginAt || "");
+      + "  <div style='margin-top:14px;'>"
+      + "    <div class='h3' style='margin:0 0 4px 0;'>" + esc(apoderadoName || "—") + "</div>"
+      + "    <a href='mailto:" + esc(email) + "' class='muted' style='font-size:13px; word-break:break-all; text-decoration:underline; display:inline-block;'>" + esc(email) + "</a>"
+      + "  </div>"
 
-    // Estado: por ahora siempre "Aprobado" si existe sesión (MVP)
-    var statusLabel = "Aprobado";
+      + "  <div style='margin-top:14px;'>"
+      + "    <div class='label'>Nombre</div>"
+      + "    <input id='pfName' class='input' value='" + esc(apoderadoName) + "' placeholder='Nombre y apellido' />"
+      + "  </div>"
+      + "  <div style='margin-top:12px;'>"
+      + "    <div class='label'>Teléfono</div>"
+      + "    <input id='pfPhone' class='input' value='" + esc(phone) + "' placeholder='+56 9 1234 5678' />"
+      + "  </div>"
+      + "  <div style='margin-top:12px;'>"
+      + "    <div class='label'>Alumno/a</div>"
+      + "    <input id='pfAlumno' class='input' value='" + esc(alumnoName) + "' placeholder='Nombre del alumno/a' />"
+      + "  </div>"
+      + "  <div style='display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;'>"
+      + "    <button id='pfSave' class='btnPrimary'>Guardar cambios</button>"
+      + "    <button id='pfChangeRole' class='btnGhost'>Cambiar rol</button>"
+      + "  </div>"
+      + "</div>"
 
-    // Roles disponibles (desde sesión.roles o profiles)
-    var roles = session.roles;
-    if (!Array.isArray(roles) || !roles.length) {
-      roles = [];
-      for (var p = 0; p < profiles.length; p++) {
-        if (profiles[p] && profiles[p].role) roles.push(String(profiles[p].role));
-      }
-    }
-    // normalizar
-    var seen = {};
-    var rolesUniq = [];
-    for (var r = 0; r < roles.length; r++) {
-      var rr = String(roles[r] || "").toLowerCase();
-      if (!rr || seen[rr]) continue;
-      seen[rr] = true;
-      rolesUniq.push(rr);
-    }
+      + "<div class='card'>"
+      + "  <div class='cardTitle'><span class='icon'>🏫</span><b>Curso actual</b> <span class='pill' style='margin-left:auto;'>" + esc(schoolName) + "</span></div>"
+      + "  <div class='kv'>"
+      + "    <div class='k'>Curso</div><div class='v'>" + esc(curso) + "</div>"
+      + "    <div class='k'>Jornada</div><div class='v'>" + esc(jornada) + "</div>"
+      + "    <div class='k'>Año</div><div class='v'>" + esc(anio) + "</div>"
+      + "    <div class='k'>Fecha ingreso</div><div class='v'>" + esc(joined) + "</div>"
+      + "  </div>"
+      + "</div>"
 
-    // Render
-    host.innerHTML = "" +
-      "<div class='profileWrap'>" +
-        "<div class='card'>" +
-          "<div class='cardHeader'>" +
-            "<div>" +
-              "<h2>Mi perfil</h2>" +
-              "<div class='muted'>" + esc(schoolName) + "</div>" +
-            "</div>" +
-            "<span class='pill'>Rol activo: <b>" + esc(currentRole || "—") + "</b></span>" +
-          "</div>" +
-          "<div class='profileGrid'>" +
-            "<div class='avatars'>" +
-              "<div class='avatarBlock'>" +
-                "<div class='avatarCircle'>" + esc(initials(apoderadoName)) + "</div>" +
-                "<div class='avatarLabel'>Apoderado</div>" +
-              "</div>" +
-              "<div class='avatarBlock'>" +
-                "<div class='avatarCircle'>" + esc(initials(alumnoName)) + "</div>" +
-                "<div class='avatarLabel'>Alumno</div>" +
-              "</div>" +
-            "</div>" +
-            "<div>" +
-              "<p class='bigName'><b>" + esc(apoderadoName) + "</b> <span class='pill ok' style='margin-left:10px'>" + esc(statusLabel) + "</span></p>" +
-              (email ? ("<a class='bigEmail' href='mailto:" + esc(email) + "'>" + esc(email) + "</a>") : "") +
-              "<div class='formGrid'>" +
-                "<div>" +
-                  "<label>Nombre</label>" +
-                  "<input id='inpNombre' type='text' value='" + esc(apoderadoName) + "'>" +
-                "</div>" +
-                "<div>" +
-                  "<label>Teléfono</label>" +
-                  "<input id='inpTelefono' type='tel' placeholder='+56 9 1234 5678' value='">" +
-                "</div>" +
-                "<div style='grid-column:1 / -1'>" +
-                  "<label>Alumno/a</label>" +
-                  "<input id='inpAlumno' type='text' value='" + esc(alumnoName) + "'>" +
-                "</div>" +
-              "</div>" +
-              "<div class='actions'>" +
-                "<button id='btnGuardarPerfil' class='btnPrimary'>Guardar cambios</button>" +
-                "<button id='btnCambiarRol' class='btnGhost'>Cambiar rol</button>" +
-              "</div>" +
-              "<div id='perfilMsg' class='note'></div>" +
-            "</div>" +
-          "</div>" +
-        "</div>" +
+      + "<div class='card'>"
+      + "  <div class='cardTitle'><span class='icon'>🎯</span><b>Roles y estado</b> <span class='pill' style='margin-left:auto;'>Rol activo: <b>" + esc(role) + "</b></span></div>"
+      + "  <div class='kv'>"
+      + "    <div class='k'>Disponibles</div><div class='v'>" + esc(rolesHuman) + "</div>"
+      + "    <div class='k'>Estado</div><div class='v'>" + esc(statusLabel) + "</div>"
+      + "  </div>"
+      + "  <div style='margin-top:12px;'>"
+      + "    <button id='pfChangeRole2' class='btnGhost'>Cambiar rol</button>"
+      + "  </div>"
+      + "</div>"
 
-        "<div style='height:12px'></div>" +
+      + "<div class='card premiumCard'>"
+      + "  <div class='h3' style='margin:0;'>Desbloquea Cursapp Premium</div>"
+      + "  <div class='muted' style='margin-top:6px;'>Reportes avanzados, recordatorios automáticos, control de rendiciones y soporte prioritario.</div>"
+      + "  <div style='margin-top:12px;'>"
+      + "    <button class='btnGhost' id='pfPremium'>Ver Premium</button>"
+      + "  </div>"
+      + "</div>";
 
-        "<div class='card' style='padding:16px 18px'>" +
-          "<div class='sectionTitle' style='font-weight:900;font-size:18px;display:flex;align-items:center;gap:10px;margin:0 0 12px'>" +
-            "<span class='ico' style='width:26px;height:26px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e6ebf5;background:#f7f9ff'>🏫</span>" +
-            "<span>Curso actual</span>" +
-          "</div>" +
-          "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px'>" +
-            "<div class='muted' style='font-weight:800'>Curso</div><div style='text-align:right;font-weight:900'>" + esc(level) + "</div>" +
-            "<div class='muted' style='font-weight:800'>Jornada</div><div style='text-align:right;font-weight:900'>" + esc(shift) + "</div>" +
-            "<div class='muted' style='font-weight:800'>Año</div><div style='text-align:right;font-weight:900'>" + esc(year) + "</div>" +
-            "<div class='muted' style='font-weight:800'>Fecha ingreso</div><div style='text-align:right;font-weight:900'>" + esc(joinDate ? String(joinDate).slice(0,10) : "—") + "</div>" +
-          "</div>" +
-        "</div>" +
+    // Wire actions
+    var saveBtn = qs("#pfSave");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        var nameVal = (qs("#pfName") && qs("#pfName").value) ? qs("#pfName").value.trim() : "";
+        var phoneVal = (qs("#pfPhone") && qs("#pfPhone").value) ? qs("#pfPhone").value.trim() : "";
+        var alumnoVal = (qs("#pfAlumno") && qs("#pfAlumno").value) ? qs("#pfAlumno").value.trim() : "";
 
-        "<div style='height:12px'></div>" +
-
-        "<div class='card' style='padding:16px 18px'>" +
-          "<div class='sectionTitle' style='font-weight:900;font-size:18px;display:flex;align-items:center;gap:10px;margin:0 0 12px'>" +
-            "<span class='ico' style='width:26px;height:26px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #e6ebf5;background:#f7f9ff'>🎯</span>" +
-            "<span>Roles y estado</span>" +
-          "</div>" +
-          "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px'>" +
-            "<div class='muted' style='font-weight:800'>Disponibles</div><div style='text-align:right;font-weight:900'>" + esc(rolesUniq.join(", ") || roleLabel(currentRole)) + "</div>" +
-            "<div class='muted' style='font-weight:800'>Estado</div><div style='text-align:right;font-weight:900'>" + esc(statusLabel) + "</div>" +
-          "</div>" +
-        "</div>" +
-
-        "<div class='premiumCard'>" +
-          "<div>" +
-            "<h3>Desbloquea Cursapp Premium</h3>" +
-            "<p>Reportes avanzados, recordatorios automáticos, control de rendiciones y soporte prioritario.</p>" +
-          "</div>" +
-          "<button id='btnVerPremium' class='miniBtn'>Ver Premium</button>" +
-        "</div>" +
-      "</div>";
-
-    // Actions
-    var msg = qs("#perfilMsg");
-    function toast(t) {
-      if (msg) msg.textContent = t;
-    }
-
-    var btnGuardar = qs("#btnGuardarPerfil");
-    if (btnGuardar) {
-      btnGuardar.addEventListener("click", function () {
-        // MVP: guardamos en enrolments si existe matching email
-        var newName = (qs("#inpNombre") || {}).value || "";
-        var newTel = (qs("#inpTelefono") || {}).value || "";
-        var newAlu = (qs("#inpAlumno") || {}).value || "";
-
-        try {
-          var em = resolveEmail(session);
-          var arr = safeJsonParse(localStorage.getItem("cursapp_enrolments_v1"));
-          if (!Array.isArray(arr)) arr = [];
-          var updated = false;
-          for (var i = 0; i < arr.length; i++) {
-            if (arr[i] && em && arr[i].email === em) {
-              arr[i].apoderadoName = newName || arr[i].apoderadoName;
-              arr[i].phone = newTel || arr[i].phone;
-              arr[i].alumno = newAlu || arr[i].alumno;
-              updated = true;
-              break;
-            }
+        // Update enrollment if exists
+        var arr = getJSON("cursapp_enrollments_v1", []);
+        if (!Array.isArray(arr)) arr = [];
+        var updated = false;
+        for (var i = 0; i < arr.length; i++) {
+          var e = arr[i] || {};
+          if (courseKey && e.courseKey && e.courseKey !== courseKey) continue;
+          if (e.email && String(e.email).toLowerCase() === String(email).toLowerCase()) {
+            e.apoderadoName = nameVal || e.apoderadoName;
+            e.phone = phoneVal;
+            e.alumno = alumnoVal || e.alumno;
+            arr[i] = e;
+            updated = true;
+            break;
           }
-          if (!updated && em) {
-            arr.push({
-              enrollmentId: "enr_" + Date.now(),
-              courseKey: session.courseKey || (course && course.courseKey) || "",
-              apoderadoName: newName,
-              alumno: newAlu,
-              email: em,
-              phone: newTel,
-              status: "approved"
-            });
-          }
-          localStorage.setItem("cursapp_enrolments_v1", JSON.stringify(arr));
-          toast("✅ Datos guardados.");
-        } catch (e) {
-          toast("⚠️ No se pudo guardar.");
         }
+        if (updated) setJSON("cursapp_enrollments_v1", arr);
+
+        // Also keep light fields in session for convenience
+        session.name = nameVal || session.name;
+        session.phone = phoneVal;
+        session.alumno = alumnoVal;
+        setJSON("cursapp_session_v1", session);
+
+        alert("Guardado.");
+        render();
       });
     }
 
-    var btnCambiarRol = qs("#btnCambiarRol");
-    if (btnCambiarRol) {
-      btnCambiarRol.addEventListener("click", function () {
-        // reutilizamos la lógica del menú: simulamos click en el menú para evitar duplicar reglas
-        var dd = qs("#menuDropdown");
-        if (dd) dd.classList.add("open");
-        toast("Selecciona un rol desde el menú ☰");
-      });
+    function openRolePicker() {
+      // Use the same role picker modal from core/menu if exists, else fallback to redirect
+      if (typeof window.openRoleModal === "function") {
+        window.openRoleModal();
+        return;
+      }
+      alert("Cambia el rol desde el menú (☰).\n\nSi no te aparece, vuelve a Inicio y reintenta.");
     }
 
-    var btnPremium = qs("#btnVerPremium");
-    if (btnPremium) {
-      btnPremium.addEventListener("click", function () {
-        toast("Premium: pronto podrás habilitarlo desde aquí.");
-      });
-    }
+    var cr1 = qs("#pfChangeRole");
+    if (cr1) cr1.addEventListener("click", openRolePicker);
+    var cr2 = qs("#pfChangeRole2");
+    if (cr2) cr2.addEventListener("click", openRolePicker);
+
+    var prem = qs("#pfPremium");
+    if (prem) prem.addEventListener("click", function () {
+      alert("Premium (demo): aquí iría el detalle de planes y activación.");
+    });
   }
 
-  // Arranque
-  try {
+  // ---------- minimal CSS hooks (match presidente.css) ----------
+  function injectTinyCSS() {
+    // Only what perfil needs, without affecting other pages
+    var css = ""
+      + ".avatarBig{width:84px;height:84px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:28px;color:#1f73ff}"
+      + ".label{font-size:13px;color:#6b7280;font-weight:700;margin-bottom:6px}"
+      + ".input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:#fff;font-size:16px;outline:none}"
+      + ".btnPrimary{padding:12px 16px;border-radius:999px;border:0;background:#f6b300;color:#1b1b1b;font-weight:800}"
+      + ".btnGhost{padding:12px 16px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:#fff;color:#111827;font-weight:800}"
+      + ".h2{font-size:20px;font-weight:900}"
+      + ".h3{font-size:18px;font-weight:900}"
+      + ".cardTitle{display:flex;align-items:center;gap:8px;margin-bottom:12px}"
+      + ".cardTitle .icon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(31,115,255,.08)}"
+      + ".kv{display:grid;grid-template-columns:140px 1fr;row-gap:12px;column-gap:10px}"
+      + ".k{color:#6b7280;font-weight:800}"
+      + ".v{justify-self:end;font-weight:900;color:#111827}"
+      + ".premiumCard{background:linear-gradient(135deg,rgba(246,179,0,.10),rgba(31,115,255,.06));border:1px solid rgba(0,0,0,.06)}";
+    var style = document.createElement("style");
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  // Boot
+  try { injectTinyCSS(); } catch (e) {}
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", render);
+  } else {
     render();
-  } catch (e) {
-    var host = qs("#perfilContent") || qs("#app");
-    if (host) {
-      host.innerHTML = "<div class='card' style='padding:16px'>No se pudo cargar Mi perfil.</div>";
-    }
   }
 })();
