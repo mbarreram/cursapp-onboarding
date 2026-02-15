@@ -1,90 +1,13 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Mi perfil - debug 20260215022845</title>
 
-  <link rel="stylesheet" href="assets/styles.css?v=20260215025924">
-  <link rel="stylesheet" href="assets/login-pro.css?v=20260215025924">
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mi perfil</title>
+<script defer src="assets/perfil.js?v=20260215050000"></script>
 </head>
 <body>
-
-<!-- PERFIL_DEBUG_PERSISTENT -->
-<div id="debugEarly" style="margin:16px;background:#ffe7e7;border:1px solid #ffb3b3;padding:10px;border-radius:12px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial;">
-<strong>DEBUG PERFIL ACTIVO</strong><br/>
-Si ves este recuadro, el <code>perfil.html</code> se actualizó. (v20260215030346)
-</div>
-<div id="debugBanner" style="position:fixed;left:10px;right:10px;bottom:12px;z-index:99999;
-background:#111;color:#fff;padding:10px 12px;border-radius:12px;font:12px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial;">
-Perfil Debug: iniciando… (v20260215030346)
-</div>
-<script>
-(function(){
-  var banner = document.getElementById('debugBanner');
-  function set(msg){ if(banner) banner.textContent = msg; }
-  set("Perfil Debug: HTML OK, preparando JS… (v20260215030346)");
-  try {
-    alert("DEBUG PERFIL ACTIVO (v20260215030346)");
-  } catch(e) {}
-
-  window.onerror = function(message, source, lineno, colno, error){
-    var txt = "JS ERROR: " + message + " @ " + (source||"") + ":" + lineno + ":" + colno;
-    set("Perfil Debug: " + txt);
-    try { alert(txt); } catch(e) {}
-    return true;
-  };
-  window.addEventListener('unhandledrejection', function(ev){
-    var txt = "PROMISE ERROR: " + (ev.reason && (ev.reason.message||ev.reason) || "unknown");
-    set("Perfil Debug: " + txt);
-    try { alert(txt); } catch(e) {}
-  });
-
-  // We rely on existing script tags; still confirm perfil.js loads by fetching it
-  fetch("assets/perfil.js?v=20260215030346").then(function(r){
-    if(!r.ok) throw new Error("fetch perfil.js status "+r.status);
-    return r.text();
-  }).then(function(t){
-    set("Perfil Debug: perfil.js descargado ("+t.length+" chars) (v20260215030346)");
-  }).catch(function(err){
-    var txt="NO SE PUDO DESCARGAR perfil.js: "+(err && err.message||err);
-    set("Perfil Debug: "+txt);
-    try { alert(txt); } catch(e) {}
-  });
-})();
-</script>
-
-
-<header>
-  <div class="topbar" style="position:relative;">
-    <div class="brand">
-      <div class="logo">C</div>
-      <div>
-        <div id="whoRoleTitle" style="font-weight:950;">Mi perfil</div>
-        <div class="muted" style="font-weight:800;font-size:12px;" id="whoCourseLine">—</div>
-      </div>
-    </div>
-
-    <button class="btn ghost" id="menuBtn" type="button"
-      style="position:absolute;right:16px;top:10px;z-index:10001;">☰</button>
-
-    <div id="menuDropdown" style="display:none;"></div>
-  </div>
-</header>
-
-<main class="container" style="padding-bottom:24px;">
-  <div id="perfilRoot"></div>
-</main>
-
-<div id="modalRoot"></div>
-
-
-
-
-<script defer src="assets/config.js?v=20260215030346"></script>
-<script defer src="assets/core.js?v=20260215030346"></script>
-<script defer src="assets/menu.js?v=20260215030346"></script>
-<script defer src="assets/perfil.js?v=20260215030346"></script>
-
+<h1>Mi perfil</h1>
+<div id="perfil-root"></div>
 </body>
 </html>
