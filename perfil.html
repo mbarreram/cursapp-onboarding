@@ -10,36 +10,39 @@
 </head>
 <body>
 
-  <div id="app">
-    <!-- menú global lo maneja menu.js/core.js (mismos que dashboard) -->
-    
+  <!-- Header estándar (mismo patrón que presidente/tesorero/dashboard) -->
+  <header>
     <div class="topbar">
       <div class="brand">
         <div class="logo" id="perfilMiniAvatar">C</div>
         <div>
-          <div class="title" style="font-weight:950">Mi perfil</div>
-          <div class="sub" id="perfilSubline">—</div>
+          <div class="whoLine"><b>Mi perfil</b></div>
+          <div class="courseLine" id="perfilSubline">—</div>
         </div>
       </div>
 
-      <button class="btn ghost" id="menuBtn">☰</button>
-      <div class="dropdown" id="menuDropdown" style="display:none"></div>
+      <button class="btn ghost" id="menuBtn" aria-label="Menú">☰</button>
+      <div id="menuDropdown" style="display:none"></div>
     </div>
-<div class="page" id="perfilRoot" style="padding-bottom:80px;">
-      <div id="perfilContent"></div>
-    </div>
-  </div>
+  </header>
+
+  <main class="container" id="app" style="padding-bottom:88px;">
+    <div id="perfilContent"></div>
+  </main>
 
   <div id="modalRoot"></div>
-  <nav class="bottomNav" id="bottomNav" style="display:none"></nav>
 
-  <div id="debugBanner" style="display:none;position:fixed;left:12px;right:12px;bottom:12px;background:#111;color:#fff;padding:10px 12px;border-radius:12px;font-size:12px;z-index:99999;opacity:.92">
-    Perfil Debug: iniciando…
-  </div>
+  <!-- Bottom nav estándar -->
+  <nav class="bottomNav" aria-label="Navegación">
+    <button class="navItem active" data-tab="inicio"><span class="navIcon">🏠</span><span class="navLabel">Inicio</span></button>
+    <button class="navItem" data-tab="campanas"><span class="navIcon">📌</span><span class="navLabel">Campañas</span></button>
+    <button class="navItem" data-tab="deudores"><span class="navIcon">🧾</span><span class="navLabel">Deudores</span></button>
+    <button class="navItem" data-tab="informes"><span class="navIcon">📄</span><span class="navLabel">Informes</span></button>
+  </nav>
 
-  <script defer src="assets/config.js?v=20260216_v27"></script>
-  <script defer src="assets/menu.js?v=20260216_v27"></script>
-  <script defer src="assets/core.js?v=20260216_v27"></script>
-  <script defer src="assets/perfil.js?v=20260216_v27"></script>
+  <script defer src="assets/config.js?v=20260216_v30"></script>
+  <script defer src="assets/core.js?v=20260216_v30"></script>
+  <script defer src="assets/menu.js?v=20260216_v30"></script>
+  <script defer src="assets/perfil.js?v=20260216_v30"></script>
 </body>
 </html>
