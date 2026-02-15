@@ -292,55 +292,97 @@
       if (mini) mini.textContent = (initials(apoderadoName) || "C").charAt(0);
     } catch (e6) {}
 
-    // Build HTML (no template literals)
+    // Build HTML (premium, no template literals)
     var html = "";
-    html += "<div class='card' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'>Mi perfil</div></div>";
-    html += "  <div style='display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap'>";
-    html += "    <div style='display:flex;gap:14px;align-items:center'>";
-    html += "      <div style='text-align:center'>";
-    html += "        <div class='avatarBig' id='apoAvatar' style='width:72px;height:72px;border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08)'>";
-    if (avApo) html += "<img src='" + esc(avApo) + "' style='width:100%;height:100%;object-fit:cover'/>";
-    else html += "<div style='font-weight:900;font-size:22px;color:#2d6cdf'>" + esc(initials(apoderadoName) || "A") + "</div>";
+
+    // ---- IDENTIDAD ----
+    html += "<div class='card profileCard' style='margin:16px'>";
+    html += "  <div class='profileHead'>";
+    html += "    <div>";
+    html += "      <div class='profileTitle'>Mi perfil</div>";
+    html += "      <div class='profileSub'>" + esc(courseLabel || "—") + "</div>";
+    html += "    </div>";
+    html += "    <div class='profileBadges'>";
+    html += "      <span class='badgePill'><span class='badgeDot'></span> Rol activo: <b>" + esc(activeRole || "—") + "</b></span>";
+    html += "    </div>";
+    html += "  </div>";
+
+    html += "  <div class='profileGrid'>";
+
+    // avatars
+    html += "    <div class='avatarBlock'>";
+    html += "      <div class='avatarPair'>";
+    html += "        <div class='avatarItem'>";
+    html += "          <div class='avatarWrap'>";
+    html += "            <div class='avatarCircleXL' id='apoAvatar'>";
+    if (avApo) html += "              <img src='" + esc(avApo) + "' alt='Foto apoderado' />";
+    else html += "              <span class='avatarInitials'>" + esc(initials(apoderadoName) || "A") + "</span>";
+    html += "            </div>";
+    html += "            <label class='avatarAction' title='Cambiar foto'>";
+    html += "              📷<input id='apoFile' type='file' accept='image/*' style='display:none'/>";
+    html += "            </label>";
+    html += "          </div>";
+    html += "          <div class='avatarMeta'>";
+    html += "            <div class='avatarLabel'>Apoderado</div>";
+    html += "          </div>";
     html += "        </div>";
-    html += "        <div style='margin-top:6px;font-size:12px;opacity:.75'>Apoderado</div>";
-    html += "        <label class='btn' style='margin-top:8px;display:inline-block;cursor:pointer'>";
-    html += "          Cambiar foto<input id='apoFile' type='file' accept='image/*' style='display:none'/>";
-    html += "        </label>";
-    html += "      </div>";
-    html += "      <div style='text-align:center'>";
-    html += "        <div class='avatarBig' id='aluAvatar' style='width:72px;height:72px;border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;border:1px solid rgba(0,0,0,.08)'>";
-    if (avAlu) html += "<img src='" + esc(avAlu) + "' style='width:100%;height:100%;object-fit:cover'/>";
-    else html += "<div style='font-weight:900;font-size:22px;color:#2d6cdf'>" + esc(initials(alumnoName) || "N") + "</div>";
+
+    html += "        <div class='avatarItem'>";
+    html += "          <div class='avatarWrap'>";
+    html += "            <div class='avatarCircleXL' id='aluAvatar'>";
+    if (avAlu) html += "              <img src='" + esc(avAlu) + "' alt='Foto alumno' />";
+    else html += "              <span class='avatarInitials'>" + esc(initials(alumnoName) || "N") + "</span>";
+    html += "            </div>";
+    html += "            <label class='avatarAction' title='Cambiar foto'>";
+    html += "              📷<input id='aluFile' type='file' accept='image/*' style='display:none'/>";
+    html += "            </label>";
+    html += "          </div>";
+    html += "          <div class='avatarMeta'>";
+    html += "            <div class='avatarLabel'>Alumno</div>";
+    html += "          </div>";
     html += "        </div>";
-    html += "        <div style='margin-top:6px;font-size:12px;opacity:.75'>Alumno</div>";
-    html += "        <label class='btn' style='margin-top:8px;display:inline-block;cursor:pointer'>";
-    html += "          Cambiar foto<input id='aluFile' type='file' accept='image/*' style='display:none'/>";
-    html += "        </label>";
     html += "      </div>";
+    html += "      <button class='btn subtleBtn' id='btnClearPhotos' type='button'>Restablecer fotos</button>";
     html += "    </div>";
 
-    html += "    <div style='flex:1;min-width:220px'>";
-    html += "      <div style='font-size:20px;font-weight:900;margin-top:2px'>" + esc(apoderadoName || "—") + "</div>";
-    html += "      <div style='opacity:.75;margin-top:2px;word-break:break-word'><u>" + esc(email) + "</u></div>";
-    html += "      <div style='margin-top:10px;display:grid;grid-template-columns:1fr;gap:10px'>";
-    html += "        <div><div class='label'>Nombre</div><input id='inpName' class='input' placeholder='Nombre y apellido' value='" + esc(apoderadoName) + "'/></div>";
-    html += "        <div><div class='label'>Teléfono</div><input id='inpPhone' class='input' placeholder='+56 9 1234 5678' value='" + esc(phone) + "'/></div>";
-    html += "        <div><div class='label'>Alumno/a</div><input id='inpAlumno' class='input' placeholder='Nombre del alumno' value='" + esc(alumnoName) + "'/></div>";
+    // info editable
+    html += "    <div class='infoBlock'>";
+    html += "      <div class='nameRow'>";
+    html += "        <div class='nameBig'>" + esc(apoderadoName || "—") + "</div>";
+    html += "        <div class='statusPill'>" + esc((enr && enr.status) ? enr.status : "approved") + "</div>";
     html += "      </div>";
-    html += "      <div style='display:flex;gap:10px;margin-top:14px;flex-wrap:wrap'>";
-    html += "        <button class='btnPrimary' id='btnSave'>Guardar cambios</button>";
-    html += "        <button class='btn' id='btnClearPhotos'>Restablecer fotos</button>";
-    html += "        <button class='btn' id='btnSwitchRole'>Cambiar rol</button>";
+    html += "      <div class='emailLine'><a href='mailto:" + esc(email) + "'>" + esc(email) + "</a></div>";
+
+    html += "      <div class='formGrid'>";
+    html += "        <div class='field'>";
+    html += "          <div class='label'>Nombre</div>";
+    html += "          <input id='inpName' class='input' placeholder='Nombre y apellido' value='" + esc(apoderadoName) + "'/>";
+    html += "        </div>";
+    html += "        <div class='field'>";
+    html += "          <div class='label'>Teléfono</div>";
+    html += "          <input id='inpPhone' class='input' placeholder='+56 9 1234 5678' value='" + esc(phone) + "'/>";
+    html += "        </div>";
+    html += "        <div class='field'>";
+    html += "          <div class='label'>Alumno/a</div>";
+    html += "          <input id='inpAlumno' class='input' placeholder='Nombre del alumno' value='" + esc(alumnoName) + "'/>";
+    html += "        </div>";
+    html += "      </div>";
+
+    html += "      <div class='actionsRow'>";
+    html += "        <button class='btnPrimary' id='btnSave' type='button'>Guardar cambios</button>";
+    html += "        <button class='btn' id='btnSwitchRole' type='button'>Cambiar rol</button>";
     html += "      </div>";
     html += "      <div class='muted' id='saveMsg' style='margin-top:10px;display:none'></div>";
     html += "    </div>";
+
     html += "  </div>";
     html += "</div>";
 
-    // curso actual
-    html += "<div class='card' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'>Curso actual</div></div>";
+    // ---- CURSO ACTUAL ----
+    html += "<div class='card profileCard' style='margin:16px'>";
+    html += "  <div class='cardTitleRow'><div class='cardTitle'>Curso actual</div>";
+    html += "    <div class='chip'>" + esc(courseLabel || "—") + "</div>";
+    html += "  </div>";
     html += "  <div class='kvList'>";
     html += "    <div class='kvRow'><div class='kvKey'>Curso</div><div class='kvVal'>" + esc(curso) + "</div></div>";
     html += "    <div class='kvRow'><div class='kvKey'>Jornada</div><div class='kvVal'>" + esc(jornada) + "</div></div>";
@@ -349,17 +391,26 @@
     html += "  </div>";
     html += "</div>";
 
-    // roles y estado (ordenado estilo lista)
-    html += "<div class='card' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'>Roles y estado</div></div>";
+    // ---- ROLES ----
+    html += "<div class='card profileCard' style='margin:16px'>";
+    html += "  <div class='cardTitleRow'><div class='cardTitle'>Roles</div><div class='chip'>Activo: <b>" + esc(activeRole) + "</b></div></div>";
     html += "  <div class='kvList'>";
-    html += "    <div class='kvRow'><div class='kvKey'>Rol activo</div><div class='kvVal'><b>" + esc(activeRole) + "</b></div></div>";
-    html += "    <div class='kvRow'><div class='kvKey'>Roles disponibles</div><div class='kvVal'>" + esc(roles.join(", ")) + "</div></div>";
+    html += "    <div class='kvRow'><div class='kvKey'>Disponibles</div><div class='kvVal'>" + esc(roles.join(", ")) + "</div></div>";
     html += "    <div class='kvRow'><div class='kvKey'>Estado</div><div class='kvVal'>" + esc((enr && enr.status) ? enr.status : "approved") + "</div></div>";
     html += "  </div>";
     html += "</div>";
 
-    root.innerHTML = html;
+    // ---- PREMIUM ----
+    html += "<div class='card premiumCard' style='margin:16px'>";
+    html += "  <div class='premiumRow'>";
+    html += "    <div>";
+    html += "      <div class='premiumTitle'>Desbloquea Cursapp Premium</div>";
+    html += "      <div class='premiumText'>Reportes avanzados, recordatorios automáticos, control de rendiciones y soporte prioritario.</div>";
+    html += "    </div>";
+    html += "    <button class='btn premiumBtn' type='button' id='btnPremium'>Ver Premium</button>";
+    html += "  </div>";
+    html += "</div>";
+root.innerHTML = html;
     dbgSet("UI pintada");
 
     // ---------- events ----------
@@ -447,7 +498,18 @@
       };
     }
 
-    // avatar uploads
+    
+    // premium CTA
+    var btnPrem = document.getElementById("btnPremium");
+    if (btnPrem) {
+      btnPrem.onclick = function () {
+        try {
+          alert("Cursapp Premium: próximamente. Aquí mostraremos planes y beneficios.");
+        } catch (eP) {}
+      };
+    }
+
+// avatar uploads
     function bindAvatar(inputId, kind) {
       var inp = document.getElementById(inputId);
       if (!inp) return;
