@@ -1,0 +1,7 @@
+{
+  "name": "cursapp",
+  "private": true,
+  "dependencies": {
+    "transbank-sdk": "^6.1.0"
+  }
+}
