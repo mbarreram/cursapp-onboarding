@@ -13,19 +13,22 @@
 
   <!-- Header estándar (mismo patrón que presidente/tesorero/dashboard) -->
   <header>
+    <!-- Misma estructura visual que presidente/tesorero -->
     <div class="topbar">
       <div class="brand">
-        <div class="avatar" id="avatar">M</div>
+        <div class="logo" id="hdrLogo">C</div>
         <div>
-          <div class="whoLine"><b id="roleTitle">Mi perfil</b></div>
-          <div class="courseLine" id="perfilSubline">—</div>
+          <div style="font-weight:800" id="roleTitle">Mi perfil</div>
+          <div class="muted" style="font-size:12px" id="perfilSubline">—</div>
         </div>
       </div>
 
-      <button class="pill" id="menuBtn" aria-label="Menú">≡</button>
+      <button id="menuBtn" class="iconBtn" type="button" aria-label="Menú">☰</button>
       <div class="menuDropdown" id="menuDropdown" hidden>
-        <button class="menuItem" id="resetBtn">🧹 Reset demo</button>
-        <button class="menuItem" id="logoutBtn">🚪 Cerrar sesión</button>
+        <div class="dropdownPanel">
+          <button class="menuItem" id="resetBtn">🧹 Reset demo</button>
+          <button class="menuItem" id="logoutBtn">🚪 Cerrar sesión</button>
+        </div>
       </div>
     </div>
   </header>
