@@ -32,6 +32,17 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
+
+  function statusLabel(s) {
+    var v = (s === null || s === undefined) ? "" : String(s);
+    v = v.toLowerCase();
+    if (!v) return "—";
+    if (v === "approved" || v === "aprobado") return "Aprobado";
+    if (v === "pending" || v === "pendiente") return "Pendiente";
+    if (v === "rejected" || v === "rechazado") return "Rechazado";
+    if (v === "invited" || v === "invitado") return "Invitado";
+    return s;
+  }
   function readLS(key) {
     try { return localStorage.getItem(key); } catch (e) { return null; }
   }
@@ -349,7 +360,7 @@
     html += "    <div class='infoBlock'>";
     html += "      <div class='nameRow'>";
     html += "        <div class='nameBig'>" + esc(apoderadoName || "—") + "</div>";
-    html += "        <div class='statusPill'>" + esc((enr && enr.status) ? enr.status : "approved") + "</div>";
+    html += "        <div class='statusPill'>" + esc(statusLabel((enr && enr.status) ? enr.status : "approved")) + "</div>";
     html += "      </div>";
     html += "      <div class='emailLine'><a href='mailto:" + esc(email) + "'>" + esc(email) + "</a></div>";
 
@@ -393,10 +404,10 @@
 
     // ---- ROLES ----
     html += "<div class='card profileCard' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'>Roles</div><div class='chip'>Activo: <b>" + esc(activeRole) + "</b></div></div>";
+    html += "  <div class='cardTitleRow'><div class='cardTitle' style='font-weight:900'>Roles y estado</div><div class='chip'>Rol activo: <b>" + esc(activeRole) + "</b></div></div>";
     html += "  <div class='kvList'>";
     html += "    <div class='kvRow'><div class='kvKey'>Disponibles</div><div class='kvVal'>" + esc(roles.join(", ")) + "</div></div>";
-    html += "    <div class='kvRow'><div class='kvKey'>Estado</div><div class='kvVal'>" + esc((enr && enr.status) ? enr.status : "approved") + "</div></div>";
+    html += "    <div class='kvRow'><div class='kvKey'>Estado</div><div class='kvVal'>" + esc(statusLabel((enr && enr.status) ? enr.status : "approved")) + "</div></div>";
     html += "  </div>";
     html += "</div>";
 
