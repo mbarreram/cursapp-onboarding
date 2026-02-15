@@ -203,7 +203,7 @@
     var roles = getRoles(session);
 
     if (!session) {
-      root.innerHTML = "<div class='card' style='margin:16px'><div class='cardTitle'>Mi perfil</div><div class='muted'>No hay sesión activa.</div></div>";
+      root.innerHTML = "<div class='card' style='margin:16px'><div class='cardTitle'><span class='secIcon'>👤</span>Mi perfil</div><div class='muted'>No hay sesión activa.</div></div>";
       dbgSet("sin sesión");
       return;
     }
@@ -303,7 +303,7 @@
     html += "      <div class='profileSub'>" + esc(courseLabel || "—") + "</div>";
     html += "    </div>";
     html += "    <div class='profileBadges'>";
-    html += "      <span class='badgePill'><span class='badgeDot'></span> Rol activo: <b>" + esc(activeRole || "—") + "</b></span>";
+    html += "      <span class='badgePill'><span class='badgeDot'></span> 🔵 Rol activo: <b>" + esc(activeRole || "—") + "</b></span>";
     html += "    </div>";
     html += "  </div>";
 
@@ -380,7 +380,7 @@
 
     // ---- CURSO ACTUAL ----
     html += "<div class='card profileCard' style='margin:16px'>";
-    html += "  <div class='cardTitleRow'><div class='cardTitle'>Curso actual</div>";
+    html += "  <div class='cardTitleRow'><div class='cardTitle'><span class='secIcon'>🏫</span>Curso actual</div>";
     html += "    <div class='chip'>" + esc(courseLabel || "—") + "</div>";
     html += "  </div>";
     html += "  <div class='kvList'>";

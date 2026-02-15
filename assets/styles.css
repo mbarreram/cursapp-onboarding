@@ -624,3 +624,78 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
 .premiumTitle{font-weight:900;font-size:16px}
 .premiumText{opacity:.8;margin-top:4px;font-size:12px;max-width:520px}
 .premiumBtn{border:1px solid rgba(0,0,0,.12);background:#fff}
+
+
+/* =========================
+   Perfil Premium Header + Icons (v27)
+   ========================= */
+.topBar{
+  position:sticky; top:0; z-index:60;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 14px;
+  background:linear-gradient(90deg,var(--primary),var(--primary2));
+  color:#fff;
+  box-shadow:var(--shadow);
+  border-bottom:1px solid rgba(255,255,255,.18);
+}
+.brandLeft{ display:flex; align-items:center; gap:12px; min-width:0; }
+.avatarCircle{
+  width:40px; height:40px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.25);
+  font-weight:900;
+}
+.brandText{ min-width:0; }
+.brandTitle{
+  font-size:18px; font-weight:900; letter-spacing:.2px;
+  line-height:1.05;
+}
+.brandSub{
+  margin-top:2px;
+  font-size:12px;
+  opacity:.85;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:70vw;
+}
+.iconBtn{
+  width:40px; height:40px; border-radius:14px;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:none;
+}
+.iconBtn:active{ transform:scale(.98); }
+.iconBtn .icon{ font-size:18px; line-height:1; }
+
+.dropdown{
+  position:absolute;
+  top:62px; right:12px;
+  width:min(320px, calc(100vw - 24px));
+  background:#fff;
+  border:1px solid rgba(0,0,0,.08);
+  border-radius:16px;
+  box-shadow:var(--shadowStrong);
+  overflow:hidden;
+  display:none;
+}
+.dropdown.open{ display:block; }
+
+.cardTitleRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.cardTitle{
+  display:flex; align-items:center; gap:10px;
+}
+.secIcon{
+  width:26px; height:26px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(91,92,226,.10);
+  border:1px solid rgba(91,92,226,.18);
+  font-size:14px;
+}
+.chipIcon{
+  display:inline-flex; align-items:center; gap:8px;
+}
+.chipIcon .dot{
+  width:8px; height:8px; border-radius:999px; background:currentColor; opacity:.7;
+}
