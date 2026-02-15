@@ -89,7 +89,7 @@ function loadJSON(key, fallback){
   function getSession(){
     try{
       if(window.CURSAPP && typeof window.CURSAPP.getSessionSafe === "function"){
-        return window.(window.CURSAPP && CURSAPP.getSessionSafe ? CURSAPP.getSessionSafe() : getSessionSafeLocal()) || {};
+        return ((window.CURSAPP && typeof window.CURSAPP.getSessionSafe === "function") ? window.CURSAPP.getSessionSafe() : getSessionSafeLocal()) || {};
       }
       if(window.CURSAPP && typeof window.CURSAPP.getSession === "function"){
         return window.CURSAPP.getSession() || {};
