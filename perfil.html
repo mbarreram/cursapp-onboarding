@@ -12,21 +12,22 @@
 
   <div id="app">
     <!-- menú global lo maneja menu.js/core.js (mismos que dashboard) -->
-    <div class="topBar">
-      <div class="brandLeft">
-        <div class="avatarCircle" id="perfilMiniAvatar">C</div>
-        <div class="brandText">
-          <div class="brandTitle">Mi perfil</div>
-          <div class="brandSub" id="perfilSubline">—</div>
+    
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo" id="perfilMiniAvatar">C</div>
+        <div>
+          <div class="title" style="font-weight:950">Mi perfil</div>
+          <div class="sub" id="perfilSubline">—</div>
         </div>
       </div>
-      <button class="iconBtn" id="menuBtn" aria-label="Menú">
-        <span class="icon">≡</span>
+
+      <button class="menuBtn" id="menuBtn" aria-label="Menú">
+        ≡
       </button>
       <div class="dropdown" id="menuDropdown"></div>
     </div>
-
-    <div class="page" id="perfilRoot" style="padding-bottom:80px;">
+<div class="page" id="perfilRoot" style="padding-bottom:80px;">
       <div id="perfilContent"></div>
     </div>
   </div>
