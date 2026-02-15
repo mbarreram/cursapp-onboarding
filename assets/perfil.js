@@ -17,11 +17,28 @@ const el = (id) => document.getElementById(id);
 
 
 (function(){
+  try{
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, function(c){
       return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];
     });
   }
+  
+  function getSessionSafeLocal() {
+    var raw = localStorage.getItem("cursapp_session");
+    var s = raw ? (safeJsonParse(raw) || {}) : {};
+    var roles = Array.isArray(s.roles) ? s.roles : (s.role ? [s.role] : ["apoderado"]);
+    roles = roles.map(function(r){return String(r||"").toLowerCase().trim();}).filter(Boolean);
+    roles = Array.from(new Set(roles));
+    if (!roles.length) roles = ["apoderado"];
+    var cr = String((s.currentRole || s.role || roles[0] || "apoderado")).toLowerCase().trim();
+    s.roles = roles;
+    s.currentRole = roles.includes(cr) ? cr : roles[0];
+    s.role = s.currentRole;
+    localStorage.setItem("cursapp_session", JSON.stringify(s));
+    return s;
+  }
+
   function safeJsonParse(v){ try{ return JSON.parse(v); }catch(e){ return null; } }
   
   function getDisplayName(p, session){
@@ -72,7 +89,7 @@ function loadJSON(key, fallback){
   function getSession(){
     try{
       if(window.CURSAPP && typeof window.CURSAPP.getSessionSafe === "function"){
-        return window.CURSAPP.getSessionSafe() || {};
+        return window.(window.CURSAPP && CURSAPP.getSessionSafe ? CURSAPP.getSessionSafe() : getSessionSafeLocal()) || {};
       }
       if(window.CURSAPP && typeof window.CURSAPP.getSession === "function"){
         return window.CURSAPP.getSession() || {};
@@ -498,4 +515,22 @@ function loadJSON(key, fallback){
       img.onerror = function(){ resolve(dataUrl); };
       img.src = dataUrl;
     });
-  })();
+  
+  } catch (e) {
+    try {
+      var root = document.getElementById("perfilRoot") || document.body;
+      var msg = (e && (e.stack || e.message)) ? (e.stack || e.message) : String(e);
+      root.innerHTML = `
+        <div style="max-width:520px;margin:24px auto;padding:16px;border:1px solid rgba(0,0,0,.08);border-radius:16px;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.06)">
+          <div style="font-weight:800;font-size:16px;margin-bottom:6px">No se pudo cargar Mi perfil</div>
+          <div style="opacity:.75;margin-bottom:10px">Ocurrió un error en el script del perfil.</div>
+          <div style="font-size:12px;white-space:pre-wrap;background:#f7f7f8;border-radius:12px;padding:10px;border:1px solid rgba(0,0,0,.06)">` + msg.replace(/</g,"&lt;") + `</div>
+          <button style="margin-top:12px;padding:10px 14px;border-radius:12px;border:0;background:#eee;font-weight:700" onclick="location.reload()">Recargar</button>
+        </div>
+      `;
+    } catch (e2) {
+      alert("Error perfil: " + (e && e.message ? e.message : e));
+    }
+  }
+
+})();
