@@ -6,7 +6,8 @@
   <title>Mi perfil</title>
 
   <link rel="stylesheet" href="assets/styles.css?v=20260216_v27">
-  <link rel="stylesheet" href="assets/login-pro.css?v=20260216_v27">
+  <!-- Reutilizamos el estilo del dashboard para que header + nav inferior queden idénticos -->
+  <link rel="stylesheet" href="assets/presidente.css?v=20260216_profile">
 </head>
 <body>
 
@@ -14,15 +15,18 @@
   <header>
     <div class="topbar">
       <div class="brand">
-        <div class="logo" id="perfilMiniAvatar">C</div>
+        <div class="avatar" id="avatar">M</div>
         <div>
-          <div class="whoLine"><b>Mi perfil</b></div>
+          <div class="whoLine"><b id="roleTitle">Mi perfil</b></div>
           <div class="courseLine" id="perfilSubline">—</div>
         </div>
       </div>
 
-      <button class="btn ghost" id="menuBtn" aria-label="Menú">☰</button>
-      <div id="menuDropdown" style="display:none"></div>
+      <button class="pill" id="menuBtn" aria-label="Menú">≡</button>
+      <div class="menuDropdown" id="menuDropdown" hidden>
+        <button class="menuItem" id="resetBtn">🧹 Reset demo</button>
+        <button class="menuItem" id="logoutBtn">🚪 Cerrar sesión</button>
+      </div>
     </div>
   </header>
 
