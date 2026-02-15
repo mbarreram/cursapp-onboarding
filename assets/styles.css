@@ -594,13 +594,13 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
 
 .infoBlock{min-width:0}
 .nameRow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.nameBig{font-size:22px;font-weight:900;letter-spacing:-0.02em}
-.statusPill{
+.nameBig{font-size:18px;font-weight:850;letter-spacing:-0.02em}
+.statusPill{font-size:13px;
   display:inline-flex;align-items:center;
   background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.08);
   padding:6px 10px;border-radius:999px;font-size:12px;opacity:.85
 }
-.emailLine{margin-top:4px;opacity:.8;word-break:break-word}
+.emailLine{margin-top:4px;opacity:.85;word-break:break-word;font-size:14px}
 .emailLine a{text-decoration:underline}
 
 .formGrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
