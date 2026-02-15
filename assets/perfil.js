@@ -11,7 +11,6 @@ const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
 // --- esc helper (local) ---
-const esc = (s) => String(s ?? "").replace(/[&<>\'\"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));
 
 const el = (id) => document.getElementById(id);
 // --------------------------------------------------------------
