@@ -796,26 +796,6 @@ function dueBadge(iso){
 
   function reportSummaryCard(){
     const r = latestReport();
-
-
-    // Campaña principal (para contextualizar el total pendiente)
-    const taskById = new Map((tasks0||[]).map(t=>[String(t.id), t]));
-    const byCamp = {};
-    pending.forEach(p=>{
-      const cid = String(p.campaignId || p.fromTaskId || p.taskId || "");
-      const t = taskById.get(cid);
-      const name = t ? (t.title || t.name || t.label || `Campaña ${cid}`) : (cid ? `Campaña ${cid}` : "Campañas");
-      const key = cid || name;
-      if(!byCamp[key]) byCamp[key] = { key, cid, name, total:0 };
-      byCamp[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
-    });
-    const topCamp = Object.values(byCamp).sort((a,b)=>b.total-a.total)[0];
-    const topCampaignHtml = topCamp ? `
-      <div class="muted" style="margin-top:10px;">
-        Campaña: <b>${esc(topCamp.name)}</b> · Pendiente total campaña: <b>${formatCLP(topCamp.total)}</b>
-      </div>
-    ` : ``;
-
     if(!r){
       return `
         <div class="card">
@@ -933,51 +913,41 @@ function dueBadge(iso){
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-    // 💡 Para bajar la ansiedad: separar "lo de este mes" vs "total acumulado"
-    const today = new Date();
-    const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-    const thisMonthDueRaw = pending
-      .filter(p => p.dueDate && String(p.dueDate).slice(0,7) === ym)
-      .reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
-    let thisMonthDue = thisMonthDueRaw;
-    let monthHint = `Este mes (${ym})`;
+    const thisYM = (()=>{ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); return `${y}-${m}`; })();
 
+    const dueSorted = pending
+      .filter(p=>p.dueDate && !isPaymentOptedOut(p))
+      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate));
 
-    const nextDue = paysAll
-      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
-      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+    const nextDue = dueSorted[0];
 
+    const dueThisMonth = dueSorted.filter(p=>String(p.dueDate||"").startsWith(thisYM));
+    const alsoDueThisMonth = nextDue
+      ? dueThisMonth.filter(p=>String(p.id||p.taskId||p.title||"") !== String(nextDue.id||nextDue.taskId||nextDue.title||""))
+      : dueThisMonth;
 
-    if((!thisMonthDue || thisMonthDue<=0) && nextDue){
-      thisMonthDue = Number(nextDue.amountRemaining ?? nextDue.amount ?? 0);
-      monthHint = `Próximo vencimiento ${nextDue?.dueDate ? esc(nextDue.dueDate) : ""}`.trim();
+    const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
+
+    // desglosado por campaña (título)
+    const perCampaignMap = {};
+    for(const p of dueThisMonth){
+      const key = String(p.title || p.taskTitle || p.campaignTitle || p.taskId || "Campaña");
+      if(!perCampaignMap[key]) perCampaignMap[key] = { title:key, thisMonth:0, total:0 };
+      perCampaignMap[key].thisMonth += Number(p.amountRemaining ?? p.amount ?? 0);
     }
-
+    for(const p of pending){
+      const key = String(p.title || p.taskTitle || p.campaignTitle || p.taskId || "Campaña");
+      if(!perCampaignMap[key]) perCampaignMap[key] = { title:key, thisMonth:0, total:0 };
+      perCampaignMap[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
+    }
+    const perCampaignThisMonth = Object.values(perCampaignMap)
+      .filter(r=>r.thisMonth>0)
+      .sort((a,b)=>b.thisMonth-a.thisMonth);
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
 
     const r = latestReport();
-
-
-    // Campaña principal (para contextualizar el total pendiente)
-    const taskById = new Map((tasks0||[]).map(t=>[String(t.id), t]));
-    const byCamp = {};
-    pending.forEach(p=>{
-      const cid = String(p.campaignId || p.fromTaskId || p.taskId || "");
-      const t = taskById.get(cid);
-      const name = t ? (t.title || t.name || t.label || `Campaña ${cid}`) : (cid ? `Campaña ${cid}` : "Campañas");
-      const key = cid || name;
-      if(!byCamp[key]) byCamp[key] = { key, cid, name, total:0 };
-      byCamp[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
-    });
-    const topCamp = Object.values(byCamp).sort((a,b)=>b.total-a.total)[0];
-    const topCampaignHtml = topCamp ? `
-      <div class="muted" style="margin-top:10px;">
-        Campaña: <b>${esc(topCamp.name)}</b> · Pendiente total campaña: <b>${formatCLP(topCamp.total)}</b>
-      </div>
-    ` : ``;
-
 
     app.innerHTML = `
       <!-- 1) Próxima cuota -->
@@ -996,6 +966,23 @@ function dueBadge(iso){
           ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
         </div>
 
+        ${alsoDueThisMonth.length ? `
+          <div class="muted" style="margin-top:10px;font-size:13px;line-height:1.35;">
+            <div style="font-weight:900;margin-bottom:6px;">También vence este mes:</div>
+            ${alsoDueThisMonth.slice(0,3).map(p=>`
+              <div style="display:flex;justify-content:space-between;gap:10px;">
+                <div style="max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  ${esc(p.title || "Campaña")}
+                </div>
+                <div style="white-space:nowrap;font-weight:900;">
+                  ${formatCLP(p.amountRemaining ?? p.amount ?? 0)}
+                </div>
+              </div>
+            `).join("")}
+            ${alsoDueThisMonth.length>3 ? `<div style="margin-top:4px;">+ ${alsoDueThisMonth.length-3} más</div>` : ``}
+          </div>
+        ` : ``}
+
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
           <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
         </div>
@@ -1012,28 +999,45 @@ function dueBadge(iso){
           En total tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
         </div>
 
-        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;">
-          <div style="min-width:180px;">
-            <div class="muted" style="font-weight:900;">Este mes</div>
-            <div style="font-size:30px;font-weight:950;line-height:1.05;" id="homeThisMonth">${formatCLP(thisMonthDue)}</div>
-            <div class="muted" style="margin-top:4px;" id="homeMonthHint">${esc(monthHint)}</div>
-          </div>
-
-          <div style="text-align:right;min-width:160px;">
-            <div class="muted">Total pendiente</div>
-            <div style="font-weight:950;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
-            ${pendingTotal>thisMonthDue ? `<div class="muted" style="margin-top:4px;">Resto otros meses: <b>${formatCLP(pendingTotal-thisMonthDue)}</b></div>` : ``}
-          </div>
+        <div style="margin-top:12px;">
+          <div class="muted" style="font-weight:900;">Este mes</div>
+          <div style="margin-top:6px;font-size:28px;font-weight:950;" id="homeThisMonthTotal">${formatCLP(thisMonthTotal)}</div>
+          <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
         </div>
 
-        ${topCampaignHtml}
+        ${perCampaignThisMonth.length ? `
+          <div style="margin-top:10px;border-top:1px solid rgba(0,0,0,.06);padding-top:10px;">
+            ${perCampaignThisMonth.slice(0,3).map(row=>`
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:6px 0;">
+                <div style="max-width:65%;">
+                  <div style="font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.title)}</div>
+                  <div class="muted" style="font-size:12px;">Total campaña pendiente: ${formatCLP(row.total)}</div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                  <div class="muted" style="font-size:12px;">Este mes</div>
+                  <div style="font-weight:950;">${formatCLP(row.thisMonth)}</div>
+                </div>
+              </div>
+            `).join("")}
+            ${perCampaignThisMonth.length>3 ? `<div class="muted" style="margin-top:6px;font-size:12px;">+ ${perCampaignThisMonth.length-3} campañas más este mes</div>` : ``}
+          </div>
+        `: ``}
+
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;">
+          <div class="muted">Total pendiente</div>
+          <div style="font-weight:950;opacity:.75;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+        </div>
+
+        <div class="muted" style="margin-top:6px;font-size:12px;">
+          Resto otros meses: <b>${formatCLP(Math.max(0,pendingTotal - thisMonthTotal))}</b>
+        </div>
 
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
           <button class="btnx" id="btnGoPending" type="button">Ver detalle</button>
         </div>
       </div>
 
-<!-- 3) Estado del curso (más humano) -->
+      <!-- 3) Estado del curso (más humano) -->
       <div class="card" style="margin-top:12px;">
            <div class="kTitle">📊 Estado del curso</div>
         <div class="muted" style="margin-top:6px;line-height:1.45;">
@@ -1267,71 +1271,7 @@ function dueBadge(iso){
     function campaignMeta(t){
       const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
       const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
-      const template = String(t.template||"").toLowerCase();
-      return {
-        type,
-        part,
-        amount:Number(t.amount||0),
-        range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"",
-        template,
-        saldoPrev: Number(t.saldo_inicial||0),
-        cot: t.cotizacion || null
-      };
-    }
-
-    function giraExtras(t, rows){
-      const m = campaignMeta(t);
-      if(m.template !== "gira") return "";
-
-      const months = Math.max(1, Number(t.months||1));
-      const metaAlumno = Number(m.amount||0) * months;
-
-      // pagado por el apoderado en esta campaña
-      const paid = rows.reduce((acc,r)=>{
-        const amt = Number(r.amount ?? 0);
-        const rem = Number(r.amountRemaining ?? 0);
-        const st = String(r.status||"").toLowerCase();
-        if(st === "paid") return acc + amt;
-        if(st === "partial") return acc + Math.max(0, amt - rem);
-        return acc;
-      },0);
-
-      const reunido = paid; // para apoderado: lo que llevo pagado yo
-      const pct = metaAlumno>0 ? Math.min(100, Math.round((reunido/metaAlumno)*100)) : 0;
-
-      const cot = m.cot || {};
-      const cotHas = (cot.nombre||cot.url||cot.montoTotal||cot.descripcion);
-
-      return `
-        <div style="margin-top:10px;padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:12px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div class="muted" style="font-size:12px;">Monto meta alumno</div>
-            <div style="font-weight:950;">${formatCLP(metaAlumno)}</div>
-          </div>
-          <div style="margin-top:8px;">
-            <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;">
-              <span>Mi progreso</span>
-              <span><b>${pct}%</b> · ${formatCLP(reunido)} / ${formatCLP(metaAlumno)}</span>
-            </div>
-            <div style="height:10px;border-radius:999px;background:rgba(15,23,42,.10);overflow:hidden;margin-top:6px;">
-              <div style="height:10px;width:${pct}%;background:rgba(15,23,42,.75);"></div>
-            </div>
-          </div>
-          ${m.saldoPrev>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">Saldo años anteriores (curso): ${formatCLP(m.saldoPrev)}</div>` : ``}
-        </div>
-
-        ${cotHas ? `
-          <div style="margin-top:10px;padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:12px;">
-            <div style="font-weight:950;">Cotización</div>
-            <div class="muted" style="margin-top:6px;">
-              ${cot.nombre ? `<div><b>Nombre:</b> ${esc(cot.nombre)}</div>`:``}
-              ${cot.url ? `<div><b>URL:</b> <a href="${esc(cot.url)}" target="_blank" rel="noopener">Abrir</a></div>`:``}
-              ${cot.montoTotal ? `<div><b>Monto total:</b> ${formatCLP(Number(cot.montoTotal||0))}</div>`:``}
-              ${cot.descripcion ? `<div><b>Descripción:</b> ${esc(cot.descripcion)}</div>`:``}
-            </div>
-          </div>
-        `: ``}
-      `;
+      return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"" };
     }
 
     function emptyCampaignCard(t){
@@ -1341,7 +1281,6 @@ function dueBadge(iso){
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
           ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -1352,7 +1291,6 @@ function dueBadge(iso){
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
             Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
           </div>
-          ${m.template==="gira" ? giraExtras(t, []) : ``}
         </div>
       `;
     }
@@ -1389,13 +1327,10 @@ function dueBadge(iso){
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
               </div>
-
-              ${giraExtras(t, rows)}
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
@@ -1422,7 +1357,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
                 <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
               </div>
@@ -1434,8 +1368,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 </button>
               ` : ``}
             </div>
-
-            ${giraExtras(t, rows)}
             </div>
 
             ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
