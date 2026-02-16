@@ -1328,17 +1328,26 @@ function dueBadge(iso){
 
     // ---- Cotizaciones (Plantilla Gira) ----
     function normCotizaciones(t){
+      // soporta data vieja (cotizacion) y nueva (cotizaciones) + dedupe
       const arr = Array.isArray(t?.cotizaciones) ? t.cotizaciones : [];
-      const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total)
-        ? [t.cotizacion]
-        : [];
-      return [...arr, ...one]
-        .map(c=>({
-          nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
-          url: String(c?.url || c?.link || "").trim(),
-          monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
-          descripcion: String(c?.descripcion || c?.texto || c?.description || "").trim()
-        }))
+      const one = (t?.cotizacion && typeof t.cotizacion === "object") ? [t.cotizacion] : [];
+      const merged = [...arr, ...one].map(c=>({
+        nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
+        url: String(c?.url || c?.link || "").trim(),
+        monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+        descripcion: String(c?.descripcion || c?.comentario || c?.texto || c?.desc || c?.description || "").trim()
+      })).filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+
+      const seen = new Set();
+      const out = [];
+      merged.forEach(c=>{
+        const key = [c.nombre, c.monto_total, c.url, c.descripcion].join("|").toLowerCase();
+        if(seen.has(key)) return;
+        seen.add(key);
+        out.push(c);
+      });
+      return out;
+    }))
         .filter(c=>c.nombre || (c.url||c.link) || c.monto_total || (c.descripcion||c.comentario||c.texto||c.desc||c.description));
     }
 
@@ -1346,30 +1355,15 @@ function dueBadge(iso){
       if(!["gira","graduacion"].includes(String(t?.template||""))) return "";
       const cotz = normCotizaciones(t);
       if(!cotz.length) return "";
+      const total = cotz.reduce((a,c)=>a+Number(c.monto_total||0),0);
       return `
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div>
               <div style="font-weight:950;">Cotizaciones</div>
-              <div class="muted" style="margin-top:4px;">Referenciales (distintos ítems).</div>
+              <div class="muted" style="margin-top:4px;">${cotz.length} ítem(s) · Total ${formatCLP(total)}</div>
             </div>
-            <button class="btnx" onclick="ApoUI.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
-          </div>
-          <div style="margin-top:10px;display:grid;gap:10px;">
-            ${cotz.map((c,i)=>`
-                <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
-                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                    <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
-                    ${c.monto_total ? `<div style="font-weight:950;">${formatCLP(c.monto_total)}</div>` : ``}
-                  </div>
-                  <div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${(c.descripcion||c.comentario||c.texto||c.desc||c.description) ? esc((c.descripcion||c.comentario||c.texto||c.desc||c.description)) : '—'}</div>
-                  ${(c.url||c.link) ? `<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>` : ``}
-                  ${(c.url||c.link) ? `<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>
-                  <div style="margin-top:10px;">
-                    <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">Abrir URL</a>
-                  </div>` : `<div class="muted" style="margin-top:6px;line-height:1.35;"><b>URL:</b> —</div>`}
-                </div>
-              `).join("")}
+            <button class="btnx" style="padding:8px 10px;font-size:13px;" onclick="ApoUI.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
           </div>
         </div>
       `;
@@ -1412,7 +1406,7 @@ function dueBadge(iso){
                   ${(c.descripcion||c.comentario||c.texto||c.desc||c.description) ? `<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>` : `<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
                   ${(c.url||c.link) ? `<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>
                   <div style="margin-top:10px;">
-                    <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">Abrir URL</a>
+                    <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener" title="Abrir en nueva pestaña" style="padding:6px 10px;font-size:14px;">🔗</a>
                   </div>` : `<div class="muted" style="margin-top:6px;line-height:1.35;"><b>URL:</b> —</div>`}
                 </div>
               `).join("")}

@@ -23,6 +23,29 @@
     return "";
   }
 
+  // ---- Cotizaciones helpers (compat + dedupe) ----
+  function normalizeCot(c){
+    return {
+      nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
+      url: String(c?.url || c?.link || "").trim(),
+      monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+      descripcion: String(c?.descripcion || c?.comentario || c?.texto || c?.desc || c?.description || "").trim(),
+    };
+  }
+  function dedupeCotizaciones(list){
+    const arr = (Array.isArray(list) ? list : []).map(normalizeCot).filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+    const seen = new Set();
+    const out = [];
+    arr.forEach(c=>{
+      const key = [c.nombre, c.monto_total, c.url, c.descripcion].join("|").toLowerCase();
+      if(seen.has(key)) return;
+      seen.add(key);
+      out.push(c);
+    });
+    return out;
+  }
+
+
   // ✅ Use course-scoped tasks key if available; fallback to legacy keys for existing demos
   const SCOPED_TASKS = sk("tasks_v1");
   const KEY_TASKS =
@@ -424,6 +447,9 @@
       };
     }).filter(c=>c.nombre||(c.url||c.link)||c.monto_total||(c.descripcion||c.comentario||c.texto||c.desc||c.description));
 
+    const cotizaciones2 = dedupeCotizaciones(cotizaciones);
+
+
     const newTaskId = uid("t");
     const ts = load(KEY_TASKS, []);
     ts.unshift({
@@ -440,7 +466,7 @@
       createdAt: nowISO(),
       template,
       saldo_prev: saldoPrev,
-      cotizaciones,
+      cotizaciones: cotizaciones2,
     });
     save(KEY_TASKS, ts);
 
@@ -485,14 +511,7 @@
   function openQuotesDetail(task){
     if(!task) return;
     const title = String(task.title||"Campaña");
-    const items = (Array.isArray(task.cotizaciones)?task.cotizaciones:[])
-      .map((c)=>({
-        nombre: String(c?.nombre||c?.title||c?.name||"").trim(),
-        url: String(c?.url||c?.link||"").trim(),
-        monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
-        descripcion: String(c?.descripcion||c?.texto||c?.description||"").trim(),
-      }))
-      .filter(c=>c.nombre||(c.url||c.link)||c.monto_total||(c.descripcion||c.comentario||c.texto||c.desc||c.description));
+    const items = dedupeCotizaciones([...(Array.isArray(task.cotizaciones)?task.cotizaciones:[]), ...((task.cotizacion && typeof task.cotizacion==='object')?[task.cotizacion]:[])]);
     const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
 
     openModal(`
@@ -520,7 +539,7 @@
               </div>
               ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
               ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
-              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">Abrir URL</a></div>`:""}
+              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">🔗</a></div>`:""}
             </div>
           `).join("")}
         </div>
@@ -535,7 +554,7 @@
     const type = String(t.type||"single");
     const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
     const tpl = String(t.template||"");
-    const cotz = Array.isArray(t.cotizaciones) ? t.cotizaciones : [];
+    const cotz = dedupeCotizaciones([...(Array.isArray(t.cotizaciones)?t.cotizaciones:[]), ...((t.cotizacion && typeof t.cotizacion==='object')?[t.cotizacion]:[])]);
     const totalCot = cotz.reduce((a,x)=>a+Number(x?.monto_total??x?.monto??x?.total??0),0);
     const saldoPrev = Number(t.saldo_prev||0);
 
