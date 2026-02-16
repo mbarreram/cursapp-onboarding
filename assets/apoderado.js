@@ -796,6 +796,26 @@ function dueBadge(iso){
 
   function reportSummaryCard(){
     const r = latestReport();
+
+
+    // Campaña principal (para contextualizar el total pendiente)
+    const taskById = new Map((tasks0||[]).map(t=>[String(t.id), t]));
+    const byCamp = {};
+    pending.forEach(p=>{
+      const cid = String(p.campaignId || p.fromTaskId || p.taskId || "");
+      const t = taskById.get(cid);
+      const name = t ? (t.title || t.name || t.label || `Campaña ${cid}`) : (cid ? `Campaña ${cid}` : "Campañas");
+      const key = cid || name;
+      if(!byCamp[key]) byCamp[key] = { key, cid, name, total:0 };
+      byCamp[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
+    });
+    const topCamp = Object.values(byCamp).sort((a,b)=>b.total-a.total)[0];
+    const topCampaignHtml = topCamp ? `
+      <div class="muted" style="margin-top:10px;">
+        Campaña: <b>${esc(topCamp.name)}</b> · Pendiente total campaña: <b>${formatCLP(topCamp.total)}</b>
+      </div>
+    ` : ``;
+
     if(!r){
       return `
         <div class="card">
@@ -913,14 +933,51 @@ function dueBadge(iso){
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
+    // 💡 Para bajar la ansiedad: separar "lo de este mes" vs "total acumulado"
+    const today = new Date();
+    const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+    const thisMonthDueRaw = pending
+      .filter(p => p.dueDate && String(p.dueDate).slice(0,7) === ym)
+      .reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
+    let thisMonthDue = thisMonthDueRaw;
+    let monthHint = `Este mes (${ym})`;
+
+
     const nextDue = paysAll
       .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
       .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+
+
+    if((!thisMonthDue || thisMonthDue<=0) && nextDue){
+      thisMonthDue = Number(nextDue.amountRemaining ?? nextDue.amount ?? 0);
+      monthHint = `Próximo vencimiento ${nextDue?.dueDate ? esc(nextDue.dueDate) : ""}`.trim();
+    }
+
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
 
     const r = latestReport();
+
+
+    // Campaña principal (para contextualizar el total pendiente)
+    const taskById = new Map((tasks0||[]).map(t=>[String(t.id), t]));
+    const byCamp = {};
+    pending.forEach(p=>{
+      const cid = String(p.campaignId || p.fromTaskId || p.taskId || "");
+      const t = taskById.get(cid);
+      const name = t ? (t.title || t.name || t.label || `Campaña ${cid}`) : (cid ? `Campaña ${cid}` : "Campañas");
+      const key = cid || name;
+      if(!byCamp[key]) byCamp[key] = { key, cid, name, total:0 };
+      byCamp[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
+    });
+    const topCamp = Object.values(byCamp).sort((a,b)=>b.total-a.total)[0];
+    const topCampaignHtml = topCamp ? `
+      <div class="muted" style="margin-top:10px;">
+        Campaña: <b>${esc(topCamp.name)}</b> · Pendiente total campaña: <b>${formatCLP(topCamp.total)}</b>
+      </div>
+    ` : ``;
+
 
     app.innerHTML = `
       <!-- 1) Próxima cuota -->
@@ -952,20 +1009,31 @@ function dueBadge(iso){
         </div>
 
         <div class="muted" style="margin-top:6px;font-weight:900;" id="homePendingText">
-          Tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
+          En total tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
         </div>
 
-        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
-          <div class="muted">Total pendiente</div>
-          <div style="font-weight:950;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+          <div style="min-width:180px;">
+            <div class="muted" style="font-weight:900;">Este mes</div>
+            <div style="font-size:30px;font-weight:950;line-height:1.05;" id="homeThisMonth">${formatCLP(thisMonthDue)}</div>
+            <div class="muted" style="margin-top:4px;" id="homeMonthHint">${esc(monthHint)}</div>
+          </div>
+
+          <div style="text-align:right;min-width:160px;">
+            <div class="muted">Total pendiente</div>
+            <div style="font-weight:950;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+            ${pendingTotal>thisMonthDue ? `<div class="muted" style="margin-top:4px;">Resto otros meses: <b>${formatCLP(pendingTotal-thisMonthDue)}</b></div>` : ``}
+          </div>
         </div>
+
+        ${topCampaignHtml}
 
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx" id="btnGoPending" type="button">Ver todos</button>
+          <button class="btnx" id="btnGoPending" type="button">Ver detalle</button>
         </div>
       </div>
 
-      <!-- 3) Estado del curso (más humano) -->
+<!-- 3) Estado del curso (más humano) -->
       <div class="card" style="margin-top:12px;">
            <div class="kTitle">📊 Estado del curso</div>
         <div class="muted" style="margin-top:6px;line-height:1.45;">
