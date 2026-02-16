@@ -395,14 +395,23 @@ function dueBadge(iso){
 
   // -------- Modal --------
   function openModal(html){
+    // Fullscreen overlay + centered card (mobile friendly)
+    document.body.style.overflow = "hidden";
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
-           z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div style="width:min(820px,100%);margin-bottom:12px;">${html}</div>
+           z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px;">
+        <div style="width:min(820px,100%);background:#fff;border-radius:18px;
+             box-shadow:0 18px 60px rgba(0,0,0,.25);max-height:calc(100vh - 28px);
+             overflow:auto;-webkit-overflow-scrolling:touch;">
+          <div style="padding:16px;">${html}</div>
+        </div>
       </div>
     `;
   }
-  function closeModal(){ modalRoot.innerHTML=""; }
+  function closeModal(){
+    modalRoot.innerHTML="";
+    document.body.style.overflow = "";
+  }
   window.closeModal = closeModal;
   // ===== Ayuda (Apoderado) =====
   const HELP_TOPICS = {
@@ -1348,17 +1357,18 @@ function dueBadge(iso){
           </div>
           <div style="margin-top:10px;display:grid;gap:10px;">
             ${cotz.map((c,i)=>`
-              <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                  <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
-                  ${c.monto_total ? `<div style="font-weight:950;">${formatCLP(c.monto_total)}</div>` : ``}
+                <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                    <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                    ${c.monto_total ? `<div style="font-weight:950;">${formatCLP(c.monto_total)}</div>` : ``}
+                  </div>
+                  <div class="muted" style="margin-top:6px;line-height:1.35;"><b>Comentario:</b> ${c.descripcion ? esc(c.descripcion) : '—'}</div>
+                  ${c.url ? `<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc(c.url)}</div>` : ``}
+                  ${c.url ? `<div style="margin-top:10px;">
+                    <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a>
+                  </div>` : ``}
                 </div>
-                ${c.descripcion ? `<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>` : ``}
-                ${c.url ? `<div style="margin-top:10px;">
-                  <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Ver URL</a>
-                </div>` : ``}
-              </div>
-            `).join("")}
+              `).join("")}
           </div>
         </div>
       `;
@@ -1378,7 +1388,6 @@ function dueBadge(iso){
         const total = cotz.reduce((a,c)=>a+Number(c.monto_total||0),0);
 
         const html = `
-          <div class="modalCard" style="max-height:calc(100vh - 120px);overflow:auto;-webkit-overflow-scrolling:touch;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
               <div>
                 <div style="font-size:22px;font-weight:1000;">Cotizaciones</div>
@@ -1406,7 +1415,6 @@ function dueBadge(iso){
                 </div>
               `).join("")}
             </div>
-          </div>
         `;
         openModal(html);
       }catch(e){
@@ -1431,7 +1439,6 @@ function dueBadge(iso){
         const m = campaignMeta(t);
 
         const html = `
-          <div class="modalCard" style="max-height:calc(100vh - 120px);overflow:auto;-webkit-overflow-scrolling:touch;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
               <div>
                 <div style="font-size:22px;font-weight:1000;">${esc(t.title||"Campaña")}</div>
@@ -1445,7 +1452,6 @@ function dueBadge(iso){
             <div style="margin-top:12px;">
               ${rows.length ? rows.map(r=>renderPaymentRow(r)).join("") : `<div class="muted" style="margin-top:10px;">No hay pagos asignados para ti aún.</div>`}
             </div>
-          </div>
         `;
         openModal(html);
       }catch(e){
