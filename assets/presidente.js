@@ -253,11 +253,12 @@ async function copyTextToClipboard(text){
     const monto = Number(t.amount||0);
     const nApo = approvedCount(); // apoderados aprobados (fallback=1)
     const type = String(t.type||"single").toLowerCase();
+    const saldoInicial = Number(t.saldo_inicial||0);
     if(type==="monthly"){
       const months = Math.max(1, Number(t.months||1));
-      return monto * months * nApo;
+      return (monto * months * nApo) + saldoInicial;
     }
-    return monto * nApo;
+    return (monto * nApo) + saldoInicial;
   }
 
   function pendingTaskEstimated(t){
@@ -565,6 +566,13 @@ function cuotasPendientesTask(id){
       const tipo = campaignTypeLabel(t);
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
+      const tpl = String(t.template||"").toLowerCase();
+      const tplLabel = tpl === "gira" ? "Gira de estudio" : (tpl === "graduacion" ? "Graduación" : "");
+      const cuotasLabel = (tpl && (t.cuotas_mas_de_48 === true || String(t.cuotas_mas_de_48||"") === "true"))
+        ? "48+"
+        : (tpl ? String(t.cuotas_total || t.months || "") : "");
+      const saldoIni = Number(t.saldo_inicial||0);
+      const hasCot = !!(t.cotizacion && (t.cotizacion.link || t.cotizacion.texto));
 
       return `        <div class="campCard ${lineClassForCampaign(t)}">
           <div class="campHead">
@@ -579,6 +587,10 @@ function cuotasPendientesTask(id){
             <span class="chipInfo">💵 <strong>Monto</strong> ${clp(monto)}</span>
             <span class="chipInfo">🧾 <strong>Tipo</strong> ${esc(tipo)}</span>
             <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
+            ${tplLabel?`<span class="chipInfo">✨ <strong>Plantilla</strong> ${esc(tplLabel)}</span>`:""}
+            ${tplLabel?`<span class="chipInfo">🧮 <strong>Cuotas</strong> ${esc(cuotasLabel||"")}</span>`:""}
+            ${saldoIni>0?`<span class="chipInfo">📌 <strong>Arrastre 2026</strong> ${clp(saldoIni)}</span>`:""}
+            ${hasCot?`<span class="chipInfo">🔗 <strong>Cotizaciones</strong> Sí</span>`:""}
             ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
           </div>
 
@@ -630,6 +642,15 @@ function cuotasPendientesTask(id){
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <div style="font-weight:950;">✨ Plantillas destacadas</div>
+          <div class="muted" style="margin-top:6px;">Crea campañas rápidas con estructura predefinida.</div>
+          <div class="actionsRow" style="margin-top:10px;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="openCreateTemplate('graduacion')">🎓 Graduación</button>
+            <button class="btnx primary" onclick="openCreateTemplate('gira')">🚌 Gira de estudio</button>
           </div>
         </div>
 
@@ -1038,6 +1059,13 @@ function renderInformes(){
 
   // ----- Campaign actions (delegated to campaigns.js) -----
   window.openCreateCampaign = function () { Campaigns.openCreate(); };
+  window.openCreateTemplate = function (tpl) {
+    if(window.Campaigns && typeof Campaigns.openCreateTemplate === "function"){
+      Campaigns.openCreateTemplate(tpl);
+    } else {
+      Campaigns.openCreate();
+    }
+  };
   window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
   window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
 

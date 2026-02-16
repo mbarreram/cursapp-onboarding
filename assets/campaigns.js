@@ -187,6 +187,181 @@
     syncMonthly();
   }
 
+  // ---------- Templates (Presidente) ----------
+  // Solo agrega capacidades nuevas. No altera openCreate() para no afectar Tesorero u otros flujos.
+  function openCreateTemplate(template){
+    const tpl = String(template||"").toLowerCase();
+    if(tpl !== "gira" && tpl !== "graduacion") return openCreate();
+
+    const defaultStart = todayISO();
+    const isGira = tpl === "gira";
+    const titleDefault = isGira ? "Gira de estudio" : "Graduación";
+    const defaultMonths = 10;
+
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Plantilla destacada · ${esc(titleDefault)}</div>
+          <div class="muted" style="margin-top:6px;">Se crea una campaña con campos recomendados.</div>
+        </div>
+        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Nombre campaña</label>
+        <input id="tc_title" value="${esc(titleDefault)}" />
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Descripción (opcional)</label>
+        <input id="tc_desc" placeholder="Ej: Transporte, alojamiento, actividades" />
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Tipo</label>
+          <select id="tc_type" disabled>
+            <option value="monthly" selected>Mensual</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Participación</label>
+          <select id="tc_mandatory">
+            <option value="true" selected>Obligatoria</option>
+            <option value="false">No obligatoria</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Monto cuota</label>
+          <input id="tc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Cuotas</label>
+          <select id="tc_months">
+            ${[10,12,15,18,24,30,36,48].map(n=>`<option value="${n}" ${n===defaultMonths?"selected":""}>${n}</option>`).join("")}
+            <option value="48+">48+</option>
+          </select>
+          <div class="muted" style="margin-top:6px;font-size:12px;">Mínimo 10 · “48+” permite extender luego.</div>
+        </div>
+      </div>
+
+      ${isGira ? `
+        <div style="margin-top:12px;">
+          <label style="font-weight:900;">Saldo inicial (arrastre 2026)</label>
+          <input id="tc_saldo" inputmode="numeric" placeholder="Ej: 120000" />
+          <div class="muted" style="margin-top:6px;font-size:12px;">Se suma al pendiente estimado de la campaña.</div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label style="font-weight:900;">Cotizaciones (link + texto)</label>
+          <input id="tc_cot_link" placeholder="https://..." />
+          <textarea id="tc_cot_text" rows="3" style="margin-top:8px;" placeholder="Ej: Incluye bus + entradas + seguro"></textarea>
+        </div>
+      ` : ``}
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Inicio</label>
+          <input id="tc_start" type="date" value="${defaultStart}" />
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Fin</label>
+          <input id="tc_due" type="date" disabled />
+          <div class="muted" style="margin-top:6px;font-size:12px;">Se calcula automáticamente según cuotas.</div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+        <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear</button>
+      </div>
+    `);
+
+    const startEl = document.getElementById("tc_start");
+    const dueEl = document.getElementById("tc_due");
+    const monthsEl = document.getElementById("tc_months");
+
+    function syncEnd(){
+      const start = startEl.value || todayISO();
+      const mv = String(monthsEl.value||"");
+      const m = (mv === "48+") ? 48 : Number(mv||defaultMonths);
+      dueEl.value = calcMonthlyEndDate(start, m) || "";
+    }
+    startEl.onchange = syncEnd;
+    monthsEl.onchange = syncEnd;
+    syncEnd();
+  }
+
+  function saveCreateTemplate(template){
+    const tpl = String(template||"").toLowerCase();
+    const isGira = tpl === "gira";
+
+    const title = (document.getElementById("tc_title").value || "").trim();
+    const desc  = (document.getElementById("tc_desc").value || "").trim();
+    const mandatoryParticipation = (document.getElementById("tc_mandatory").value === "true");
+    const amount = Number(document.getElementById("tc_amount").value || 0);
+    const startDate = document.getElementById("tc_start").value || todayISO();
+
+    const mv = String((document.getElementById("tc_months").value || "")).trim();
+    const months = (mv === "48+") ? 48 : Number(mv||0);
+    const cuotasMas48 = (mv === "48+");
+    const dueDate = calcMonthlyEndDate(startDate, months);
+
+    const saldoInicial = isGira ? Number(document.getElementById("tc_saldo")?.value || 0) : 0;
+    const cotLink = isGira ? String(document.getElementById("tc_cot_link")?.value || "").trim() : "";
+    const cotText = isGira ? String(document.getElementById("tc_cot_text")?.value || "").trim() : "";
+
+    if(!title) { alert("Debes ingresar un nombre."); return; }
+    if(!amount || amount <= 0) { alert("Debes ingresar un monto válido."); return; }
+    if(!months || months < 10) { alert("La plantilla requiere mínimo 10 cuotas."); return; }
+    if(isGira && saldoInicial < 0) { alert("Saldo inicial inválido."); return; }
+    if(isGira && cotLink && !/^https?:\/\//i.test(cotLink)){
+      alert("El link de cotización debe comenzar con http:// o https://");
+      return;
+    }
+    if(!dueDate) { alert("No se pudo calcular la fecha fin."); return; }
+
+    const ts = load(KEY_TASKS, []);
+    ts.unshift({
+      id: uid("t"),
+      title,
+      description: desc,
+      startDate,
+      dueDate,
+      type: "monthly",
+      months,
+      amount,
+      goalTotal: null,
+      mandatoryParticipation,
+      // ---- template fields ----
+      template: tpl,
+      cuotas_total: months,
+      cuotas_mas_de_48: cuotasMas48,
+      saldo_inicial: isGira ? saldoInicial : 0,
+      cotizacion: isGira ? { link: cotLink, texto: cotText } : { link:"", texto:"" },
+      // ---- close fields ----
+      closed: false,
+      closeType: "",
+      closeReason: "",
+      closedAt: ""
+    });
+
+    save(KEY_TASKS, ts);
+    markDirty();
+    closeModal();
+    alert("Campaña creada ✅");
+
+    // 🔄 Re-render inmediato
+    try{ window.dispatchEvent(new Event("cursapp:dataChanged")); }catch(e){}
+    try{
+      const tab = localStorage.getItem("cursapp_current_tab") || "home";
+      if(typeof window.goTab === "function") window.goTab(tab);
+    }catch(e){}
+  }
+
   function saveCreate() {
     const title = (document.getElementById("cc_title").value || "").trim();
     const desc  = (document.getElementById("cc_desc").value || "").trim();
@@ -468,6 +643,8 @@ try{
   window.Campaigns = {
     openCreate,
     saveCreate,
+    openCreateTemplate,
+    saveCreateTemplate,
     openEdit,
     saveEdit,
     openClose,

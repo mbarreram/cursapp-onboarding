@@ -1199,7 +1199,34 @@ function dueBadge(iso){
     function campaignMeta(t){
       const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
       const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
-      return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"" };
+      const tpl = String(t.template||"").toLowerCase();
+      const tplLabel = tpl === "gira" ? "Gira de estudio" : (tpl === "graduacion" ? "Graduación" : "");
+      const cuotasLabel = (tpl && String(t.cuotas_mas_de_48||"") === "true") ? "48+" : (tpl ? String(t.cuotas_total || t.months || "") : "");
+      const saldoIni = Number(t.saldo_inicial||0);
+      const cot = (t.cotizacion && (t.cotizacion.link || t.cotizacion.texto)) ? t.cotizacion : null;
+      return {
+        type,
+        part,
+        amount:Number(t.amount||0),
+        range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"",
+        tplLabel,
+        cuotasLabel,
+        saldoIni,
+        cot
+      };
+    }
+
+    function renderCotizaciones(m){
+      if(!m || !m.cot) return "";
+      const link = String(m.cot.link||"").trim();
+      const texto = String(m.cot.texto||"").trim();
+      return `
+        <div style="margin-top:12px;padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(17,24,39,.03);">
+          <div style="font-weight:950;">🔎 Cotizaciones</div>
+          ${texto?`<div class="muted" style="margin-top:6px;line-height:1.45;white-space:pre-wrap;">${esc(texto)}</div>`:""}
+          ${link?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;text-decoration:none;" href="${esc(link)}" target="_blank" rel="noopener">Ver cotización</a></div>`:""}
+        </div>
+      `;
     }
 
     function emptyCampaignCard(t){
@@ -1209,16 +1236,20 @@ function dueBadge(iso){
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
+                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
                 </div>
           ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
             <span class="tag">Monto ${formatCLP(m.amount)}</span>
             <span class="tag">${esc(m.type)}</span>
             <span class="tag">${esc(m.part)}</span>
+            ${m.tplLabel?`<span class="tag">Cuotas ${esc(m.cuotasLabel||"")}</span>`:""}
+            ${m.saldoIni>0?`<span class="tag">Arrastre 2026 ${formatCLP(m.saldoIni)}</span>`:""}
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
             Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
           </div>
+          ${renderCotizaciones(m)}
         </div>
       `;
     }
@@ -1255,6 +1286,7 @@ function dueBadge(iso){
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
+                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
@@ -1264,6 +1296,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
               </div>
+              ${renderCotizaciones(m)}
             </div>
           `;
         }
@@ -1285,6 +1318,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
+                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
                 </div>
                 <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
               </div>
@@ -1317,6 +1351,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <button class="btnx" onclick="toggleCamp('${esc(campId)}')">${isOpen ? "Contraer" : `Ver todas (${rows.length})`}</button>
               </div>
             ` : ``}
+            ${renderCotizaciones(m)}
           </div>
         `;
 }).join("");
