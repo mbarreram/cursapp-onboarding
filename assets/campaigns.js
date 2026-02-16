@@ -422,7 +422,7 @@
         monto_total: Number(get("monto_total")||0),
         descripcion: String(get("descripcion")||"").trim(),
       };
-    }).filter(c=>c.nombre||c.url||c.monto_total||c.descripcion);
+    }).filter(c=>c.nombre||(c.url||c.link)||c.monto_total||(c.descripcion||c.comentario||c.texto||c.desc||c.description));
 
     const newTaskId = uid("t");
     const ts = load(KEY_TASKS, []);
@@ -492,7 +492,7 @@
         monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
         descripcion: String(c?.descripcion||c?.texto||c?.description||"").trim(),
       }))
-      .filter(c=>c.nombre||c.url||c.monto_total||c.descripcion);
+      .filter(c=>c.nombre||(c.url||c.link)||c.monto_total||(c.descripcion||c.comentario||c.texto||c.desc||c.description));
     const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
 
     openModal(`
@@ -518,9 +518,9 @@
                 <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
                 ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
               </div>
-              ${c.descripcion?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Comentario:</b> ${esc(c.descripcion)}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Comentario:</b> —</div>`}
-              ${c.url?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc(c.url)}</div>`:""}
-              ${c.url?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a></div>`:""}
+              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
+              ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
+              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">Abrir URL</a></div>`:""}
             </div>
           `).join("")}
         </div>
