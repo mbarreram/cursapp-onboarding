@@ -1331,13 +1331,18 @@ function dueBadge(iso){
     }
 
     function renderCotizacionesBlock(t){
-      if(String(t?.template||"") !== "gira") return "";
+      if(!["gira","graduacion"].includes(String(t?.template||""))) return "";
       const cotz = normCotizaciones(t);
       if(!cotz.length) return "";
       return `
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
-          <div style="font-weight:950;">Cotizaciones</div>
-          <div class="muted" style="margin-top:4px;">Referenciales (distintos ítems).</div>
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div>
+              <div style="font-weight:950;">Cotizaciones</div>
+              <div class="muted" style="margin-top:4px;">Referenciales (distintos ítems).</div>
+            </div>
+            <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+          </div>
           <div style="margin-top:10px;display:grid;gap:10px;">
             ${cotz.map((c,i)=>`
               <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
@@ -1412,6 +1417,9 @@ function dueBadge(iso){
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
+                <div>
+                  <button class="btnx" onclick="Campaigns.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
+                </div>
               </div>
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
@@ -1463,6 +1471,9 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
               </div>
               <div class="muted" style="margin-top:6px;font-weight:900;">
                 ${pendCount ? `Quedan ${pendCount} cuota(s) por pagar 😅` : `¡Listo! Campaña al día 🥳`}
+              </div>
+              <div>
+                <button class="btnx" onclick="Campaigns.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
               </div>
             </div>
 
@@ -1704,6 +1715,16 @@ window.payNow = function(id){
     if(tab==="informes") renderInformes();
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
+
+  // ---- Refresh UI when campaigns/payments change (no relog needed) ----
+  const __refresh = ()=>{
+    try{
+      const active = navItems.find(b=>b.classList.contains("active"))?.dataset?.tab || "home";
+      go(active);
+    }catch(e){}
+  };
+  window.addEventListener('cursapp:dataUpdated', __refresh);
+  window.addEventListener('cursapp:dataChanged', __refresh);
 
   // Menu
   function initMenu(){

@@ -377,7 +377,7 @@ function cuotasPendientesTask(id){
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
-  window.addEventListener('cursapp:dataChanged', ()=>{
+  const __refresh = ()=>{
     try{
       const tab = (state && state.tab) ? state.tab : 'home';
       if(tab==='home') renderHome();
@@ -385,7 +385,9 @@ function cuotasPendientesTask(id){
       else if(tab==='deudores') renderDeudores();
       else if(tab==='informes') renderInformes();
     }catch(e){}
-  });
+  };
+  window.addEventListener('cursapp:dataChanged', __refresh);
+  window.addEventListener('cursapp:dataUpdated', __refresh);
 
   
   // ----- Watcher: refrescar Campañas cuando cambian las tasks -----
@@ -559,13 +561,18 @@ function cuotasPendientesTask(id){
   }
 
   function renderCotizacionesInline(t){
-    if(String(t?.template||"") !== "gira") return "";
+    if(!["gira","graduacion"].includes(String(t?.template||""))) return "";
     const cotz = normCotizaciones(t);
     if(!cotz.length) return "";
     return `
       <div style="margin:12px 14px 0 14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
-        <div style="font-weight:950;">Cotizaciones</div>
-        <div class="muted" style="margin-top:4px;">Referenciales (varios ítems).</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <div>
+            <div style="font-weight:950;">Cotizaciones</div>
+            <div class="muted" style="margin-top:4px;">Referenciales (varios ítems).</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+        </div>
         <div style="margin-top:10px;display:grid;gap:10px;">
           ${cotz.map((c,i)=>`
             <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
@@ -654,6 +661,7 @@ function cuotasPendientesTask(id){
           </div>
 
           <div class="campActions">
+            <button class="btnx" onclick="Campaigns.openCampaignDetail('${t.id}','presidente')">🔎 Ver detalle</button>
             <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
           </div>
@@ -674,6 +682,26 @@ function cuotasPendientesTask(id){
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="sectionLabel" style="margin:0 0 8px 0;">Plantillas destacadas</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
+              <div style="font-weight:950;">🎒 Gira de estudio</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas + saldo años anteriores + cotizaciones.</div>
+              <div style="margin-top:10px;">
+                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('gira')">Usar plantilla</button>
+              </div>
+            </div>
+            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
+              <div style="font-weight:950;">🎓 Graduación</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">Cotizaciones por ítem + plan de cuotas.</div>
+              <div style="margin-top:10px;">
+                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('graduacion')">Usar plantilla</button>
+              </div>
+            </div>
           </div>
         </div>
 

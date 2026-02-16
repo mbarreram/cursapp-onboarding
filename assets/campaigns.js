@@ -83,7 +83,9 @@
   }
 
   function apoderadoEmailFromEnrollment(e){
-    return String(e?.apoderadoEmail || e?.email || e?.apoderado || "").toLowerCase().trim();
+    return String(
+      e?.apoderadoEmail || e?.email || e?.apoderado || e?.apoderado_email || e?.mail || e?.correo || ""
+    ).toLowerCase().trim();
   }
 
   function addMonthsKeepDay(isoDateStr, monthsToAdd) {
@@ -120,6 +122,15 @@
   function closeModal() {
     const root = document.getElementById("modalRoot");
     if (root) root.innerHTML = "";
+  }
+
+  // ---------- lightweight events (so UIs refresh without relog) ----------
+  function emitUpdated(kind){
+    try{
+      window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ kind:String(kind||"") }}));
+    }catch(e){
+      // ignore
+    }
   }
 
   // ---------- Shared forms ----------
@@ -192,15 +203,7 @@
         <input id="cc_months" inputmode="numeric" placeholder="Ej: 3" />
       </div>
 
-
-      ${t.template==="gira" ? `
-        <div style="margin-top:12px;">
-          <div style="font-weight:950;">Cotizaciones</div>
-          <div class="muted" style="margin-top:6px;font-size:12px;">Puedes agregar varias cotizaciones (transporte, alojamiento, entradas, etc.).</div>
-          <div id="ec_quotes" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
-          <button class="btnx" id="ec_add_quote" type="button" style="margin-top:10px;">+ Agregar cotización</button>
-        </div>
-      ` : ``}
+      <input id="cc_template" type="hidden" value="" />
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
         <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
@@ -230,6 +233,355 @@
     startEl.onchange = syncMonthly;
     monthsEl.oninput = syncMonthly;
     syncMonthly();
+  }
+
+  // ---------- Templates (Plantillas destacadas) ----------
+  // Gira / Graduación: cuotas abiertas, saldo años anteriores y múltiples cotizaciones.
+  function openCreateTemplate(template){
+    const tpl = String(template||"").toLowerCase();
+    const defaultStart = todayISO();
+    const titleDefault = tpl === "graduacion" ? "Graduación" : "Gira de estudio";
+    const descDefault  = tpl === "graduacion" ? "Cotizaciones + plan de cuotas" : "Cotizaciones + plan de cuotas";
+
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">${esc(titleDefault)}</div>
+          <div class="muted" style="margin-top:6px;">Plantilla destacada</div>
+        </div>
+        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Nombre</label>
+        <input id="tc_title" value="${esc(titleDefault)}" />
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Descripción</label>
+        <input id="tc_desc" value="${esc(descDefault)}" />
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Participación</label>
+          <select id="tc_mandatory">
+            <option value="false" selected>No obligatoria</option>
+            <option value="true">Obligatoria</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Monto cuota</label>
+          <input id="tc_amount" inputmode="numeric" placeholder="Ej: 25000" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Cuotas / meses</label>
+          <input id="tc_months" inputmode="numeric" min="1" value="10" />
+          <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas. Mínimo 1 (recomendado 10).</div>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Saldo años anteriores</label>
+          <input id="tc_prev" inputmode="numeric" placeholder="Ej: 120000" />
+          <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Inicio</label>
+          <input id="tc_start" type="date" value="${defaultStart}" />
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-weight:900;">Fin</label>
+          <input id="tc_due" type="date" />
+          <div class="muted" style="margin-top:6px;font-size:12px;">Se calcula automáticamente según cuotas.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
+        <div style="font-weight:950;">Monto meta alumno</div>
+        <div class="muted" style="margin-top:6px;">Monto cuota × cuotas. (Referencial)</div>
+        <div id="tc_meta_alumno" style="margin-top:8px;font-size:22px;font-weight:950;">$0</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="font-weight:950;">Cotizaciones</div>
+        <div class="muted" style="margin-top:6px;font-size:12px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
+        <div id="tc_quotes" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+        <button class="btnx" id="tc_add_quote" type="button" style="margin-top:10px;">+ Agregar cotización</button>
+      </div>
+
+      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+        <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear</button>
+      </div>
+    `);
+
+    // logic: auto-calc due + meta alumno
+    const startEl = document.getElementById("tc_start");
+    const dueEl   = document.getElementById("tc_due");
+    const monthsEl= document.getElementById("tc_months");
+    const amountEl= document.getElementById("tc_amount");
+    const metaEl  = document.getElementById("tc_meta_alumno");
+
+    function sync(){
+      const start = startEl.value || defaultStart;
+      const months = Math.max(1, Number(monthsEl.value||10));
+      dueEl.value = calcMonthlyEndDate(start, months) || "";
+      const amt = Number(amountEl.value||0);
+      const meta = amt * months;
+      metaEl.textContent = "$" + Number(meta||0).toLocaleString("es-CL");
+    }
+    startEl.onchange = sync;
+    monthsEl.oninput = sync;
+    amountEl.oninput = sync;
+    sync();
+
+    // quotes list
+    const qWrap = document.getElementById("tc_quotes");
+    const addBtn = document.getElementById("tc_add_quote");
+    function quoteRow(idx){
+      return `
+        <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.10);">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div style="font-weight:950;">Cotización ${idx+1}</div>
+            <button class="btnx danger" type="button" data-qrm="${idx}">Quitar</button>
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-weight:900;">Nombre cotización</label>
+            <input data-q="nombre" placeholder="Ej: Alojamiento" />
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-weight:900;">URL</label>
+            <input data-q="url" placeholder="https://..." />
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-weight:900;">Monto total</label>
+            <input data-q="monto_total" inputmode="numeric" placeholder="Ej: 2000000" />
+          </div>
+          <div style="margin-top:10px;">
+            <label style="font-weight:900;">Descripción</label>
+            <textarea data-q="descripcion" rows="2" placeholder="Detalle del ítem"></textarea>
+          </div>
+        </div>
+      `;
+    }
+    function rebindRemove(){
+      qWrap.querySelectorAll("[data-qrm]").forEach(btn=>{
+        btn.onclick = ()=>{
+          const i = Number(btn.getAttribute("data-qrm"));
+          const cards = Array.from(qWrap.children);
+          if(cards[i]) cards[i].remove();
+          // renumber
+          Array.from(qWrap.children).forEach((c,ix)=>{
+            const h = c.querySelector("div[style*='font-weight:950']");
+            if(h) h.textContent = `Cotización ${ix+1}`;
+            const rm = c.querySelector("[data-qrm]");
+            if(rm) rm.setAttribute("data-qrm", String(ix));
+          });
+          rebindRemove();
+        };
+      });
+    }
+    function addQuote(){
+      const idx = qWrap.children.length;
+      const temp = document.createElement("div");
+      temp.innerHTML = quoteRow(idx);
+      qWrap.appendChild(temp.firstElementChild);
+      rebindRemove();
+    }
+    addBtn.onclick = addQuote;
+    addQuote();
+  }
+
+  function saveCreateTemplate(tpl){
+    const template = String(tpl||"").toLowerCase();
+    const title = (document.getElementById("tc_title").value||"").trim();
+    const desc  = (document.getElementById("tc_desc").value||"").trim();
+    const mandatoryParticipation = document.getElementById("tc_mandatory").value === "true";
+    const amount = Number(document.getElementById("tc_amount").value||0);
+    const months = Math.max(1, Number(document.getElementById("tc_months").value||10));
+    const saldoPrev = Math.max(0, Number(document.getElementById("tc_prev").value||0));
+    const startDate = document.getElementById("tc_start").value || todayISO();
+    const dueDate = calcMonthlyEndDate(startDate, months);
+
+    if(!title){ alert("Debes ingresar un nombre."); return; }
+    if(!amount || amount<=0){ alert("Debes ingresar un monto cuota válido."); return; }
+
+    // read quotes
+    const qWrap = document.getElementById("tc_quotes");
+    const cards = Array.from(qWrap?.children||[]);
+    const cotizaciones = cards.map(card=>{
+      const get = (k)=> card.querySelector(`[data-q='${k}']`)?.value;
+      return {
+        nombre: String(get("nombre")||"").trim(),
+        url: String(get("url")||"").trim(),
+        monto_total: Number(get("monto_total")||0),
+        descripcion: String(get("descripcion")||"").trim(),
+      };
+    }).filter(c=>c.nombre||c.url||c.monto_total||c.descripcion);
+
+    const newTaskId = uid("t");
+    const ts = load(KEY_TASKS, []);
+    ts.unshift({
+      id: newTaskId,
+      title,
+      description: desc,
+      startDate,
+      dueDate,
+      type: "monthly",
+      months,
+      amount,
+      goalTotal: 0,
+      mandatoryParticipation,
+      createdAt: nowISO(),
+      template,
+      saldo_prev: saldoPrev,
+      cotizaciones,
+    });
+    save(KEY_TASKS, ts);
+
+    // Instantiate pending payments for mandatory templates (first month only)
+    if(mandatoryParticipation){
+      try{
+        const aps = approvedApoderados();
+        const ps = load(KEY_PAYMENTS, []);
+        const firstDue = calcMonthlyEndDate(startDate, 1);
+        aps.forEach(a=>{
+          const em = apoderadoEmailFromEnrollment(a);
+          if(!em) return;
+          ps.unshift({
+            id: uid("p"),
+            fromTaskId: newTaskId,
+            apoderadoEmail: em,
+            amount: amount,
+            amountRemaining: amount,
+            status: "pending",
+            dueDate: firstDue,
+            period: String(firstDue||"").slice(0,7),
+            createdAt: nowISO(),
+          });
+        });
+        save(KEY_PAYMENTS, ps);
+      }catch(e){}
+    }
+
+    markDirty();
+    emitUpdated("tasks");
+    closeModal();
+  }
+
+  // ---------- Read-only: cotizaciones y detalle ----------
+  function openQuotesDetailById(taskId){
+    const ts = load(KEY_TASKS, []);
+    const t = ts.find(x=>String(x.id)===String(taskId));
+    if(!t) return;
+    openQuotesDetail(t);
+  }
+
+  function openQuotesDetail(task){
+    if(!task) return;
+    const title = String(task.title||"Campaña");
+    const items = (Array.isArray(task.cotizaciones)?task.cotizaciones:[])
+      .map((c)=>({
+        nombre: String(c?.nombre||c?.title||c?.name||"").trim(),
+        url: String(c?.url||c?.link||"").trim(),
+        monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+        descripcion: String(c?.descripcion||c?.texto||c?.description||"").trim(),
+      }))
+      .filter(c=>c.nombre||c.url||c.monto_total||c.descripcion);
+    const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
+
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Cotizaciones</div>
+          <div class="muted" style="margin-top:6px;">${esc(title)} · ${items.length} ítem(s)</div>
+        </div>
+        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+      </div>
+
+      ${items.length ? `
+        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div style="font-weight:950;">Total cotizado</div>
+            <div style="font-weight:950;">$${Number(total||0).toLocaleString("es-CL")}</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:grid;gap:10px;">
+          ${items.map((c,i)=>`
+            <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
+              </div>
+              ${c.descripcion?`<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>`:""}
+              ${c.url?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a></div>`:""}
+            </div>
+          `).join("")}
+        </div>
+      ` : `<div class="muted" style="margin-top:12px;">Aún no hay cotizaciones registradas.</div>`}
+    `);
+  }
+
+  function openCampaignDetail(taskId, mode){
+    const ts = load(KEY_TASKS, []);
+    const t = ts.find(x=>String(x.id)===String(taskId));
+    if(!t) return;
+    const type = String(t.type||"single");
+    const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
+    const tpl = String(t.template||"");
+    const cotz = Array.isArray(t.cotizaciones) ? t.cotizaciones : [];
+    const totalCot = cotz.reduce((a,x)=>a+Number(x?.monto_total??x?.monto??x?.total??0),0);
+    const saldoPrev = Number(t.saldo_prev||0);
+
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Detalle campaña</div>
+          <div class="muted" style="margin-top:6px;">${esc(t.title||"")}</div>
+        </div>
+        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="chipInfoPill">📄 Tipo <b>${type==="monthly"?"Mensual":"Pago único"}</b></div>
+        <div class="chipInfoPill">🔒 Participación <b>${part}</b></div>
+        ${tpl?`<div class="chipInfoPill ok">✨ Plantilla <b>${esc(tpl)}</b></div>`:""}
+      </div>
+
+      <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
+        <div class="muted">Fechas</div>
+        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+        ${t.description?`<div class="muted" style="margin-top:10px;line-height:1.35;">${esc(t.description)}</div>`:""}
+      </div>
+
+      ${(saldoPrev>0)?`
+        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
+          <div class="muted">Saldo años anteriores (curso)</div>
+          <div style="margin-top:6px;font-weight:950;font-size:20px;">$${Number(saldoPrev).toLocaleString("es-CL")}</div>
+        </div>
+      `:""}
+
+      ${cotz.length?`
+        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div>
+              <div style="font-weight:950;">Cotizaciones</div>
+              <div class="muted" style="margin-top:4px;">Total cotizado: <b>$${Number(totalCot||0).toLocaleString("es-CL")}</b></div>
+            </div>
+            <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+          </div>
+        </div>
+      `:""}
+
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">✏️ Editar</button>` : ``}
+      </div>
+    `);
   }
 
   function saveCreate() {
@@ -290,9 +642,10 @@
           const emails = aps.map(apoderadoEmailFromEnrollment).filter(Boolean);
 
           // Fallback: if enrollments are missing, create a generic pending payment (keeps demo consistent)
-          const targets = emails.length ? emails : [""];
+          const targets = emails.length ? emails : ["demo@cursapp.local"];
 
           targets.forEach((mail, i)=>{
+            const safeEmail = mail || `unknown_${i+1}@cursapp.local`;
             pays.unshift({
               id: uid("p"),
               fromTaskId: newTaskId,
@@ -301,7 +654,7 @@
               status: "pending",
               dueDate,
               createdAt: nowISO(),
-              apoderadoEmail: mail || undefined
+              apoderadoEmail: safeEmail
             });
           });
           save(KEY_PAYMENTS, pays);
@@ -310,17 +663,9 @@
     }catch(e){ /* ignore */ }
 
     markDirty();
+    emitUpdated("tasks");
     closeModal();
     alert("Campaña creada ✅");
-  
-// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
-try{
-  window.dispatchEvent(new Event("cursapp:dataChanged"));
-}catch(e){}
-try{
-  const tab = localStorage.getItem("cursapp_current_tab") || "home";
-  if(typeof window.goTab === "function") window.goTab(tab);
-}catch(e){}
 }
 
   function openEdit(taskId) {
@@ -392,8 +737,13 @@ try{
         <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
       </div>
 
-      ${t.template === "gira" ? `
+      ${(t.template === "gira" || t.template === "graduacion") ? `
         <div style="margin-top:14px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
+          <div style="margin-bottom:10px;">
+            <label style="font-weight:900;">Saldo años anteriores</label>
+            <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
+            <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
+          </div>
           <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
           <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
           <div id="ec_quotes" style="display:grid;gap:10px;"></div>
@@ -531,8 +881,14 @@ try{
     ts[i].dueDate = dueDate;
     ts[i].months = months;
 
-    // Cotizaciones (solo plantilla Gira)
-    if (ts[i].template === "gira") {
+    // Saldo años anteriores (Plantillas)
+    if (ts[i].template === "gira" || ts[i].template === "graduacion") {
+      const prev = Math.max(0, Number(document.getElementById("ec_prev")?.value || ts[i].saldo_prev || 0));
+      ts[i].saldo_prev = prev;
+    }
+
+    // Cotizaciones (Plantillas: Gira / Graduación)
+    if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const quotes = Array.isArray(window.__ec_quotes) ? window.__ec_quotes : [];
       const cleaned = [];
       for (let idx=0; idx<quotes.length; idx++){
@@ -545,7 +901,7 @@ try{
         if (!any) continue;
 
         if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotización debe comenzar con http:// o https://"); return; }
-        cleaned.push({ name, url, total, desc });
+        cleaned.push({ nombre: name, url, monto_total: total, descripcion: desc });
       }
       ts[i].cotizaciones = cleaned;
       // compat opcional
@@ -554,17 +910,9 @@ try{
 
     save(KEY_TASKS, ts);
     markDirty();
+    emitUpdated("tasks");
     closeModal();
     alert("Campaña actualizada ✅");
-  
-// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
-try{
-  window.dispatchEvent(new Event("cursapp:dataChanged"));
-}catch(e){}
-try{
-  const tab = localStorage.getItem("cursapp_current_tab") || "home";
-  if(typeof window.goTab === "function") window.goTab(tab);
-}catch(e){}
 }
 
   function openClose(activeTasksProvider) {
@@ -626,27 +974,23 @@ try{
 
     save(KEY_TASKS, ts);
     markDirty();
+    emitUpdated("tasks");
     closeModal();
     alert("Campaña cerrada ✅");
-  
-// 🔄 Re-render inmediato (evita tener que cerrar sesión y volver a entrar)
-try{
-  window.dispatchEvent(new Event("cursapp:dataChanged"));
-}catch(e){}
-try{
-  const tab = localStorage.getItem("cursapp_current_tab") || "home";
-  if(typeof window.goTab === "function") window.goTab(tab);
-}catch(e){}
 }
 
   // expose API
   window.Campaigns = {
     openCreate,
+    openCreateTemplate,
     saveCreate,
+    saveCreateTemplate,
     openEdit,
     saveEdit,
     openClose,
     saveClose,
+    openQuotesDetailById,
+    openCampaignDetail,
     close: closeModal,
     calcMonthlyEndDate
   };
