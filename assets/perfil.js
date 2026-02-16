@@ -8,6 +8,8 @@
 (function () {
   "use strict";
 
+  var _navBound = false;
+
   // ---------- helpers ----------
   function qs(sel) { return document.querySelector(sel); }
   function esc(s) {
@@ -147,6 +149,12 @@
     if (!session) {
       root.innerHTML = "<div class='card'><div class='h2'>Mi perfil</div><div class='muted'>No hay sesión activa.</div></div>";
       return;
+    }
+
+    // Navegación desde Perfil (una sola vez)
+    if (!_navBound) {
+      try { bindNavigation(session); } catch (e) {}
+      _navBound = true;
     }
 
     var courseKey = session.courseKey || localStorage.getItem("cursapp_active_course_v1") || "";
@@ -319,6 +327,48 @@
     var prem = qs("#pfPremium");
     if (prem) prem.addEventListener("click", function () {
       alert("Premium (demo): aquí iría el detalle de planes y activación.");
+    });
+  }
+
+  // ------------------------------------------------------------
+  // Navegación (Perfil -> módulos)
+  function bindNavigation(session) {
+    var role = String(session.currentRole || session.role || "").toLowerCase();
+    var roleToPage = {
+      presidente: "presidente.html",
+      apoderado: "apoderado.html",
+      tesorero: "tesorero.html",
+      admin: "admin.html",
+      administrador: "admin.html"
+    };
+
+    function targetPage() {
+      return roleToPage[role] || "presidente.html";
+    }
+
+    function mapTab(tab) {
+      tab = String(tab || "home");
+      // Perfil usa tabs globales; en apoderado ajustamos al tab equivalente
+      if (role === "apoderado") {
+        if (tab === "campanas") return "payments";
+        if (tab === "deudores") return "payments";
+      }
+      return tab;
+    }
+
+    function go(tab) {
+      var next = mapTab(tab);
+      if (window.CURSAPP && typeof window.CURSAPP.setNextNavTab === "function") {
+        window.CURSAPP.setNextNavTab(next);
+      }
+      location.assign(targetPage());
+    }
+
+    // Bottom nav
+    qsa(".navItem").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        go(btn.getAttribute("data-tab") || "home");
+      });
     });
   }
 

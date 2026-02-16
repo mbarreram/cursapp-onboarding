@@ -1265,7 +1265,11 @@ window.deleteCampaign = function(taskId){
     const sig = __tasksSig();
     if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
   }, 800);
-  go("home");
+  // Si venimos desde Perfil, abrir el tab solicitado
+  var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
+    ? window.CURSAPP.consumeNextNavTab()
+    : null;
+  go(__nextTab || "home");
 })();
 
 window.openHelp = function(topic){

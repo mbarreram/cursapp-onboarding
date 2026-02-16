@@ -12,3 +12,67 @@
 
 /* Ajuste de pill de rol para que se alinee mejor en mobile */
 .cardHeader .pill{ max-width: 55%; }
+
+#menuBtn{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid #d9e3ff;
+  background: #eef3ff;
+  color: #2f5bff;
+  font-size: 22px;
+  line-height: 22px;
+  display: grid;
+  place-items: center;
+}
+
+#menuBtn:active{ transform: scale(0.98); }
+
+/* ------------------------------------------------------------
+   Bottom navigation (mismo look que otros módulos)
+   ------------------------------------------------------------ */
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 68px;
+  background: #ffffff;
+  border-top: 1px solid #e8ecf4;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+}
+
+.navItem {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 10px 6px;
+  font: inherit;
+  color: #77809a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.navItem .ic {
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.navItem .lb {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.navItem.active {
+  color: #0d1117;
+}
+
+/* Evitar que el contenido quede debajo del nav */
+.mainContent {
+  padding-bottom: 86px;
+}
