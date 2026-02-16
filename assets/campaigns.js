@@ -519,8 +519,8 @@
                 ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
               </div>
               ${c.descripcion?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Comentario:</b> ${esc(c.descripcion)}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Comentario:</b> —</div>`}
-              ${c.url?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc(c.url)}</div>`:}
-              ${c.url?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a></div>`:}
+              ${c.url?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc(c.url)}</div>`:""}
+              ${c.url?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a></div>`:""}
             </div>
           `).join("")}
         </div>
