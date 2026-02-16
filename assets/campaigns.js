@@ -788,7 +788,7 @@
       const normalize = (q) => ({
         name: (q?.name || q?.nombre || "").trim(),
         url: (q?.url || q?.link || "").trim(),
-        total: Number(q?.total || q?.montoTotal || q?.monto || 0) || 0,
+        total: Number(q?.total || q?.monto_total || q?.montoTotal || q?.monto || 0) || 0,
         desc: (q?.desc || q?.descripcion || q?.texto || "").trim()
       });
 
@@ -902,7 +902,7 @@
         if (!any) continue;
 
         if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotización debe comenzar con http:// o https://"); return; }
-        cleaned.push({ nombre: name, url, monto_total: total, descripcion: desc });
+        cleaned.push({ nombre: name, name, url, link: url, monto_total: total, total, descripcion: desc, desc, texto: desc });
       }
       ts[i].cotizaciones = cleaned;
       // compat opcional
