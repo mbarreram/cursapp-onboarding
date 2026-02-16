@@ -12,7 +12,6 @@ if (!session || !session.userId || !session.courseKey) {
   throw new Error("Contexto apoderado inválido");
 }
 
-try{
 (function(){
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -97,6 +96,7 @@ function isMinePayment(p){
     m[courseKey] = Array.from(arr);
     save(KEY_OPTOUT, m);
   }
+  window.openCotizacionesModal = openCotizacionesModal;
   window.toggleOptOut = function(taskId){
     const next = !isOptedOut(taskId);
     setOptedOut(taskId, next);
@@ -305,28 +305,27 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
-
   // ---------------- Cotizaciones (Gira / Graduación) ----------------
   function normStr(x){ return String(x??"").trim(); }
   function normalizeUrl(u){
     const s = normStr(u);
     if(!s) return "";
     if(/^https?:\/\//i.test(s)) return s;
-    return "https://"+s;
+    return "https://" + s;
   }
   function normalizeCotizaciones(task){
     const raw = [];
     try{
       if(Array.isArray(task?.cotizaciones)) raw.push(...task.cotizaciones);
       if(Array.isArray(task?.quotes)) raw.push(...task.quotes);
-      if(task?.cotizacion && typeof task.cotizacion === 'object') raw.push(task.cotizacion);
+      if(task?.cotizacion && typeof task.cotizacion === "object") raw.push(task.cotizacion);
     }catch(e){}
     const out = [];
     const seen = new Set();
     for(const it of raw){
       if(!it) continue;
       const nombre = normStr(it.nombre || it.name || it.titulo || it.item);
-      const descripcion = normStr(it.descripcion || it.desc || it.texto || it.comentario);
+      const descripcion = normStr(it.descripcion || it.desc || it.texto || it.comentario || it.comment);
       const url = normalizeUrl(it.url || it.link);
       const monto = Number(it.montoTotal ?? it.monto_total ?? it.total ?? it.monto ?? 0) || 0;
       const key = `${nombre.toLowerCase()}|${monto}|${url.toLowerCase()}|${descripcion.toLowerCase()}`;
@@ -338,7 +337,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   }
 
   function openModalSheet(title, subtitle, bodyHtml){
-    if(!modalRoot){ alert('Falta #modalRoot'); return; }
+    if(!modalRoot){ alert("Falta #modalRoot"); return; }
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
         <div class="card" style="width:min(820px,100%);max-height:calc(100vh - 28px);overflow:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;">
@@ -355,35 +354,37 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     `;
   }
 
-  window.openCotizacionesDetail = function(taskId){
-    const tasks = load(KEY_TASKS, []);
-    const t = (tasks||[]).find(x=>String(x.id)===String(taskId));
-    if(!t){ alert('No se encontró la campaña'); return; }
+  function openCotizacionesModal(taskId){
+    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+    const t = tasksAll.find(x=>String(x.id)===String(taskId));
+    if(!t){ toast("No se encontró la campaña", false); return; }
     const items = normalizeCotizaciones(t);
-    const total = items.reduce((a,x)=>a+Number(x.monto||0),0);
+    if(!items.length){ toast("No hay cotizaciones", false); return; }
+    const total = items.reduce((a,it)=>a+Number(it.monto||0),0);
     const body = `
-      <div class="card">
+      <div class="card" style="padding:12px 14px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div style="font-weight:950;">Total cotizado</div>
           <div style="font-weight:950;">${formatCLP(total)}</div>
         </div>
       </div>
       ${items.map(it=>`
-        <div class="card" style="margin-top:10px;">
+        <div class="card" style="padding:12px 14px;margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-            <div style="font-weight:950;">${esc(it.nombre||'Ítem')}</div>
+            <div style="font-weight:950;">${esc(it.nombre||"Ítem")}</div>
             <div style="font-weight:950;">${formatCLP(it.monto||0)}</div>
           </div>
-          <div class="muted" style="margin-top:6px;"><b>Descripción:</b> ${esc(it.descripcion||'—')}</div>
-          <div class="muted" style="margin-top:6px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="overflow-wrap:anywhere;"><b>URL:</b> ${it.url?esc(it.url):'—'}</div>
-            ${it.url ? `<button class="btnx" title="Abrir URL" onclick="window.open('${esc(it.url)}','_blank','noopener')" style="padding:8px 10px;border-radius:12px;">🔗</button>` : ``}
-          </div>
+          ${it.descripcion ? `<div class="muted" style="margin-top:6px;"><b>Descripción:</b> ${esc(it.descripcion)}</div>` : ``}
+          ${it.url ? `<div class="muted" style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+              <div style="word-break:break-all;"><b>URL:</b> ${esc(it.url)}</div>
+              <a class="btnx" style="padding:8px 10px;border:1px solid rgba(0,0,0,.12);" href="${esc(it.url)}" target="_blank" rel="noopener">🔗</a>
+            </div>` : ``}
         </div>
-      `).join('') || `<div class="card" style="margin-top:10px;"><div class="muted">Aún no hay cotizaciones.</div></div>`}
+      `).join("")}
     `;
-    openModalSheet('Cotizaciones', `${t.title||'Campaña'} · ${items.length} ítem(s)`, body);
-  };
+    openModalSheet("Cotizaciones", `${t.title||"Campaña"} · ${items.length} ítem(s)`, body);
+  }
+
 
   function uid(p="id"){ return `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`; }
 
@@ -993,9 +994,57 @@ function dueBadge(iso){
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-    const nextDue = paysAll
-      .filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && !isPaymentOptedOut(p))
-      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+    const thisYM = (()=>{ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); return `${y}-${m}`; })();
+
+    const dueSorted = pending
+      .filter(p=>p.dueDate && !isPaymentOptedOut(p))
+      .sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate));
+
+    const nextDue = dueSorted[0];
+
+    const dueThisMonth = dueSorted.filter(p=>String(p.dueDate||"").startsWith(thisYM));
+    // Agrupar por campaña (para mostrar varias campañas venciendo en el mes)
+    const taskTitleById = (tid)=>{
+      const t = tasks0.find(x=>String(x.id)===String(tid));
+      return (t?.title || t?.name || "").trim();
+    };
+    const dueMonthByCampaignMap = {};
+    for(const p of dueThisMonth){
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      if(!dueMonthByCampaignMap[tid]){
+        dueMonthByCampaignMap[tid] = { taskId: tid, title, amount:0, dueDate: p.dueDate, payId: p.id };
+      }
+      dueMonthByCampaignMap[tid].amount += Number(p.amountRemaining ?? p.amount ?? 0);
+      // mantener la fecha más próxima y el pago más próximo para el botón
+      if(p.dueDate && daysTo(p.dueDate) < daysTo(dueMonthByCampaignMap[tid].dueDate || p.dueDate)){
+        dueMonthByCampaignMap[tid].dueDate = p.dueDate;
+        dueMonthByCampaignMap[tid].payId = p.id;
+      }
+    }
+    const dueMonthByCampaign = Object.values(dueMonthByCampaignMap).sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate));
+    const multipleDueCampaigns = dueMonthByCampaign.length > 1;
+
+    const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
+
+    // Desglose por campaña (con ID para no mezclar títulos)
+    const perCampaignMap = {};
+    for(const p of pending){
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      if(!perCampaignMap[tid]) perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
+      perCampaignMap[tid].total += Number(p.amountRemaining ?? p.amount ?? 0);
+    }
+    for(const p of dueThisMonth){
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      if(!perCampaignMap[tid]){
+        const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+        perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
+      }
+      perCampaignMap[tid].thisMonth += Number(p.amountRemaining ?? p.amount ?? 0);
+    }
+    const perCampaignRows = Object.values(perCampaignMap)
+      .sort((a,b)=>(b.thisMonth - a.thisMonth) || (b.total - a.total));
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
@@ -1010,18 +1059,37 @@ function dueBadge(iso){
           <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
 
-        <div class="muted" style="margin-top:6px;font-weight:900;">
-          Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
-          · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
-        </div>
+        ${multipleDueCampaigns ? `
+          <div class="muted" style="margin-top:8px;font-weight:900;">Varias campañas vencen este mes. Elige cuál pagar:</div>
 
-        <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
-          ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
-        </div>
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${dueMonthByCampaign.map((c, idx)=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px;">
+                <div style="min-width:0;">
+                  <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.title)}</div>
+                  <div class="muted" style="font-size:12px;">Vence en <b>${daysTo(c.dueDate)}</b> días · ${esc(c.dueDate || "")}</div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                  <div style="font-weight:950;font-size:18px;">${formatCLP(c.amount)}</div>
+                  <button class="btnx primary" id="btnPayCamp_${esc(c.taskId)}" type="button" style="margin-top:6px;">Pagar ahora</button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="muted" style="margin-top:6px;font-weight:900;">
+            Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
+            · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
+          </div>
 
-        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
-        </div>
+          <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
+            ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
+          </div>
+
+          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+            <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
+          </div>
+        `}
       </div>
 
       <!-- 2) Pendientes -->
@@ -1032,16 +1100,45 @@ function dueBadge(iso){
         </div>
 
         <div class="muted" style="margin-top:6px;font-weight:900;" id="homePendingText">
-          Tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
+          En total tienes <b id="homePendingCount">${pending.length}</b> pagos pendientes
         </div>
 
-        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="margin-top:12px;">
+          <div class="muted" style="font-weight:900;">Este mes</div>
+          <div style="margin-top:6px;font-size:28px;font-weight:950;" id="homeThisMonthTotal">${formatCLP(thisMonthTotal)}</div>
+          <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
+
+        ${perCampaignRows.length ? `
+          <div style="margin-top:10px;border-top:1px solid rgba(0,0,0,.06);padding-top:10px;">
+            ${perCampaignRows.map(row=>`
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:8px 0;">
+                <div style="max-width:68%;">
+                  <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.title)}</div>
+                  <div class="muted" style="font-size:12px;">Total pendiente: <b>${formatCLP(row.total)}</b></div>
+                </div>
+                <div style="text-align:right;white-space:nowrap;">
+                  <div class="muted" style="font-size:12px;">Este mes</div>
+                  <div style="font-weight:950;">${formatCLP(row.thisMonth)}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `: ``}
+
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;">
           <div class="muted">Total pendiente</div>
-          <div style="font-weight:950;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+          <div style="font-weight:950;opacity:.75;" id="homePendingTotal">${formatCLP(pendingTotal)}</div>
+        </div>
+
+        <div class="muted" style="margin-top:6px;font-size:12px;">
+          Resto otros meses: <b>${formatCLP(Math.max(0,pendingTotal - thisMonthTotal))}</b>
         </div>
 
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx" id="btnGoPending" type="button">Ver todos</button>
+          <button class="btnx" id="btnGoPending" type="button">Ver detalle</button>
         </div>
       </div>
 
@@ -1076,12 +1173,28 @@ function dueBadge(iso){
     const goPending = document.getElementById("btnGoPending");
     if(goPending) goPending.onclick = ()=> go("payments");
 
+    // botón pagar ahora (caso 1 campaña)
     const payNext = document.getElementById("btnPayNext");
     if(payNext){
       payNext.onclick = ()=>{
         if(nextDue?.id) payNow(nextDue.id);
         else go("payments");
       };
+    }
+
+    // botones pagar por campaña (cuando hay varias venciendo este mes)
+    if(multipleDueCampaigns){
+      for(const c of dueMonthByCampaign){
+        const b = document.getElementById(`btnPayCamp_${c.taskId}`);
+        if(!b) continue;
+        b.onclick = ()=>{
+          // ir directo a pagos de esa campaña (y permitir pagar)
+          try{ window.__apoTaskFilter = c.taskId; }catch(e){}
+          try{ if(typeof window.setPayFilter === "function") window.setPayFilter("pending"); }catch(e){}
+          if(c.payId) payNow(c.payId);
+          else go("payments");
+        };
+      }
     }
 
     // Si está al día: copy divertido
@@ -1268,7 +1381,20 @@ function dueBadge(iso){
 
 
 
-    // agrupar pagos por campaña
+        function uniquePayments(arr){
+      const out = [];
+      const seen = new Set();
+      for(const r of (arr||[])){
+        if(!r) continue;
+        const k = `${r.fromTaskId||""}|${r.dueDate||""}|${Number(r.amountRemaining ?? r.amount ?? 0)}|${String(r.typeTag||"")}|${String(r.status||"")}`;
+        if(seen.has(k)) continue;
+        seen.add(k);
+        out.push(r);
+      }
+      return out;
+    }
+
+// agrupar pagos por campaña
     const paysByTask = {};
     paysFiltered.forEach(p=>{
       const tid = p.fromTaskId || "no_task";
@@ -1307,7 +1433,7 @@ function dueBadge(iso){
       .slice()
       .sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")))
       .map(t=>{
-        const rows = paysByTask[t.id] || [];
+        const rows = uniquePayments(paysByTask[t.id] || []);
         if(!rows.length){
           const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
           return hasAny
@@ -1328,8 +1454,6 @@ function dueBadge(iso){
         if(!isMonthly){
           const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
           const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
-          const cots = normalizeCotizaciones(t);
-          const cotsTotal = cots.reduce((a,x)=>a+Number(x.monto||0),0);
           return `
             <div class="card" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -1342,20 +1466,31 @@ function dueBadge(iso){
                 </div>
               </div>
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
-              <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
+                            <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
               </div>
-              ${cots.length ? `
-                <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-                  <div>
-                    <div style="font-weight:950;">Cotizaciones</div>
-                    <div class="muted" style="margin-top:4px;">${cots.length} ítem(s) · Total ${formatCLP(cotsTotal)}</div>
-                  </div>
-                  <button class="btnx" onclick="openCotizacionesDetail('${esc(t.id)}')" style="padding:10px 12px;border-radius:14px;">Ver detalle</button>
-                </div>
-              `:``}
             </div>
+              ${(()=>{
+                const items = normalizeCotizaciones(t);
+                if(!items.length) return ``;
+                const totalC = items.reduce((a,it)=>a+Number(it.monto||0),0);
+                return `
+                  <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.08);padding-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                      <div>
+                        <div style="font-weight:950;">Información</div>
+                        <div class="muted" style="margin-top:4px;">Cotizaciones referenciales (no es cobro).</div>
+                      </div>
+                      <button class="btnx" onclick="openCotizacionesModal('${esc(t.id)}')">Ver cotizaciones</button>
+                    </div>
+                    <div class="muted" style="margin-top:8px;font-weight:900;">
+                      Cotizaciones · ${items.length} ítem(s) · Total ${formatCLP(totalC)}
+                    </div>
+                  </div>
+                `;
+              })()}
+
           `;
         }
 
@@ -1400,11 +1535,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
               </div>
             </div>
 
-            <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
-              <div style="font-weight:950;">Cuotas</div>
-              <div class="muted" style="margin-top:4px;">Pagos pendientes y próximos.</div>
-            </div>
-
             <div class="kCampRail" style="margin-top:10px;">
               ${visibleRows.map(r=>renderPaymentRow(r)).join("")}
             </div>
@@ -1413,30 +1543,26 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <button class="btnx" onclick="toggleCamp('${esc(campId)}')">${isOpen ? "Contraer" : `Ver todas (${rows.length})`}</button>
               </div>
             ` : ``}
-
-            ${(() => {
-              const cots = normalizeCotizaciones(t);
-              if(!cots.length) return ``;
-              const cotsTotal = cots.reduce((a,x)=>a+Number(x.monto||0),0);
-              const top = cots.slice(0,2).map(it=>`
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-                  <div class="muted" style="font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px;">${esc(it.nombre||'Ítem')}</div>
-                  <div class="muted" style="font-weight:900;">${formatCLP(it.monto||0)}</div>
-                </div>
-              `).join('');
-              return `
-                <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
-                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-                    <div>
-                      <div class="muted" style="font-weight:950;">Información</div>
-                      <div class="muted" style="margin-top:4px;">Cotizaciones · ${cots.length} ítem(s) · Total ${formatCLP(cotsTotal)}</div>
+              ${(()=>{
+                const items = normalizeCotizaciones(t);
+                if(!items.length) return ``;
+                const totalC = items.reduce((a,it)=>a+Number(it.monto||0),0);
+                return `
+                  <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.08);padding-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+                      <div>
+                        <div style="font-weight:950;">Información</div>
+                        <div class="muted" style="margin-top:4px;">Cotizaciones referenciales (no es cobro).</div>
+                      </div>
+                      <button class="btnx" onclick="openCotizacionesModal('${esc(t.id)}')">Ver cotizaciones</button>
                     </div>
-                    <button class="btnx" onclick="openCotizacionesDetail('${esc(t.id)}')" title="Ver cotizaciones" style="padding:8px 10px;border-radius:12px;">🔗</button>
+                    <div class="muted" style="margin-top:8px;font-weight:900;">
+                      Cotizaciones · ${items.length} ítem(s) · Total ${formatCLP(totalC)}
+                    </div>
                   </div>
-                  <div style="margin-top:8px;display:grid;gap:6px;">${top}</div>
-                </div>
-              `;
-            })()}
+                `;
+              })()}
+
           </div>
         `;
 }).join("");
@@ -1828,17 +1954,3 @@ if(hash==="payments_paid"){
 }else if(hash==="payments") go("payments");
 else go("home"); // default seguro post-reset
 })();
-}catch(e){
-  try{
-    const app = document.getElementById('app');
-    if(app){
-      app.innerHTML = `
-        <div class="card" style="margin-top:12px;">
-          <div style="font-weight:950;font-size:18px;">Error en Apoderado</div>
-          <div class="muted" style="margin-top:6px;">${String(e&&e.message?e.message:e)}</div>
-        </div>
-      `;
-    }
-    console.error(e);
-  }catch(_e){}
-}
