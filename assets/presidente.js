@@ -263,11 +263,7 @@ async function copyTextToClipboard(text){
   function pendingTaskEstimated(t){
     // Pendiente estimado (aunque aún no existan cobros instanciados para apoderados)
     const expected = expectedTaskTotal(t);
-    let rec = collectedTask(t.id);
-    // Plantilla Gira: el saldo años anteriores cuenta como reunido
-    if(String(t.template||"").toLowerCase()==="gira"){
-      rec += Number(t.saldo_inicial||0);
-    }
+    const rec = collectedTask(t.id);
     return Math.max(0, expected - rec);
   }
 
@@ -546,6 +542,48 @@ function cuotasPendientesTask(id){
     return tasks();
   }
 
+  // ---- Cotizaciones visibles (Plantilla Gira) ----
+  function normCotizaciones(t){
+    const arr = Array.isArray(t?.cotizaciones) ? t.cotizaciones : [];
+    const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total)
+      ? [t.cotizacion]
+      : [];
+    return [...arr, ...one]
+      .map(c=>({
+        nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
+        url: String(c?.url || c?.link || "").trim(),
+        monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+        descripcion: String(c?.descripcion || c?.texto || c?.description || "").trim()
+      }))
+      .filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+  }
+
+  function renderCotizacionesInline(t){
+    if(String(t?.template||"") !== "gira") return "";
+    const cotz = normCotizaciones(t);
+    if(!cotz.length) return "";
+    return `
+      <div style="margin:12px 14px 0 14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
+        <div style="font-weight:950;">Cotizaciones</div>
+        <div class="muted" style="margin-top:4px;">Referenciales (varios ítems).</div>
+        <div style="margin-top:10px;display:grid;gap:10px;">
+          ${cotz.map((c,i)=>`
+            <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                ${c.monto_total ? `<div style="font-weight:950;">${clp(c.monto_total)}</div>` : ``}
+              </div>
+              ${c.descripcion ? `<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>` : ``}
+              ${c.url ? `<div style="margin-top:10px;">
+                <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Ver URL</a>
+              </div>` : ``}
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function renderCampanas(){
     const filtered = getFilteredCampaigns();
 
@@ -570,13 +608,6 @@ function cuotasPendientesTask(id){
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
-      const isGira = String(t.template||"").toLowerCase()==="gira";
-      const saldoPrev = isGira ? Number(t.saldo_inicial||0) : 0;
-      const reunido = rec + saldoPrev;
-      const metaAlumno = (monto>0 ? (monto * Math.max(1, Number(t.months||1))) : 0);
-      const expected = expectedTaskTotal(t);
-      const pct = expected>0 ? Math.min(100, Math.round((reunido/expected)*100)) : 0;
-
       return `        <div class="campCard ${lineClassForCampaign(t)}">
           <div class="campHead">
             <div class="campTitleRow">
@@ -590,15 +621,15 @@ function cuotasPendientesTask(id){
             <span class="chipInfo">💵 <strong>Monto</strong> ${clp(monto)}</span>
             <span class="chipInfo">🧾 <strong>Tipo</strong> ${esc(tipo)}</span>
             <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
-            ${isGira?`<span class="chipInfo">🎒 <strong>Plantilla</strong> Gira</span>`:""}
             ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
           </div>
 
+          ${renderCotizacionesInline(t)}
+
           <div class="campMetrics">
             <div class="metricBox">
-              <div class="metricLbl">${isGira?"Reunido":"Recaudado"}</div>
-              <div class="metricVal">${clp(isGira?reunido:rec)}</div>
-              ${isGira && saldoPrev>0 ? `<div class="muted" style="font-size:11px;margin-top:4px;">incluye ${clp(saldoPrev)} años anteriores</div>`:``}
+              <div class="metricLbl">Recaudado</div>
+              <div class="metricVal">${clp(rec)}</div>
             </div>
             <div class="metricBox">
               <div class="metricLbl">Gastado</div>
@@ -622,24 +653,6 @@ function cuotasPendientesTask(id){
             </div>
           </div>
 
-          ${isGira ? `
-            <div style="margin:10px 14px 0 14px;padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:12px;">
-              <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-                <div class="muted" style="font-size:12px;">Monto meta alumno</div>
-                <div style="font-weight:900;">${clp(metaAlumno)}</div>
-              </div>
-              <div style="margin-top:8px;">
-                <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;">
-                  <span>Progreso meta</span>
-                  <span><b>${pct}%</b> · ${clp(reunido)} / ${clp(expected)}</span>
-                </div>
-                <div style="height:10px;border-radius:999px;background:rgba(15,23,42,.10);overflow:hidden;margin-top:6px;">
-                  <div style="height:10px;width:${pct}%;background:rgba(15,23,42,.75);"></div>
-                </div>
-              </div>
-            </div>
-          `: ``}
-
           <div class="campActions">
             <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
@@ -661,17 +674,6 @@ function cuotasPendientesTask(id){
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
-          </div>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-          <div class="campCard" style="flex:1;min-width:220px;cursor:pointer;" onclick="Campaigns.openCreateTemplate('graduacion')">
-            <div style="font-weight:950;">🎓 Graduación</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;">Plantilla rápida para gastos de ceremonia.</div>
-          </div>
-          <div class="campCard" style="flex:1;min-width:220px;cursor:pointer;" onclick="Campaigns.openCreateTemplate('gira')">
-            <div style="font-weight:950;">🎒 Gira de estudio</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas + saldo años anteriores + cotización.</div>
           </div>
         </div>
 

@@ -1314,6 +1314,48 @@ function dueBadge(iso){
       return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"" };
     }
 
+    // ---- Cotizaciones (Plantilla Gira) ----
+    function normCotizaciones(t){
+      const arr = Array.isArray(t?.cotizaciones) ? t.cotizaciones : [];
+      const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total)
+        ? [t.cotizacion]
+        : [];
+      return [...arr, ...one]
+        .map(c=>({
+          nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
+          url: String(c?.url || c?.link || "").trim(),
+          monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+          descripcion: String(c?.descripcion || c?.texto || c?.description || "").trim()
+        }))
+        .filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+    }
+
+    function renderCotizacionesBlock(t){
+      if(String(t?.template||"") !== "gira") return "";
+      const cotz = normCotizaciones(t);
+      if(!cotz.length) return "";
+      return `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
+          <div style="font-weight:950;">Cotizaciones</div>
+          <div class="muted" style="margin-top:4px;">Referenciales (distintos ítems).</div>
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${cotz.map((c,i)=>`
+              <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                  <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                  ${c.monto_total ? `<div style="font-weight:950;">${formatCLP(c.monto_total)}</div>` : ``}
+                </div>
+                ${c.descripcion ? `<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>` : ``}
+                ${c.url ? `<div style="margin-top:10px;">
+                  <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Ver URL</a>
+                </div>` : ``}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
     function emptyCampaignCard(t){
       const m = campaignMeta(t);
       return `
@@ -1373,6 +1415,7 @@ function dueBadge(iso){
               </div>
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
+              ${renderCotizacionesBlock(t)}
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
               </div>
@@ -1411,6 +1454,8 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
             </div>
 
             ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
+
+            ${renderCotizacionesBlock(t)}
 
             <div style="margin-top:10px;">
               <div style="height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
