@@ -1199,33 +1199,70 @@ function dueBadge(iso){
     function campaignMeta(t){
       const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
       const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
-      const tpl = String(t.template||"").toLowerCase();
-      const tplLabel = tpl === "gira" ? "Gira de estudio" : (tpl === "graduacion" ? "Graduación" : "");
-      const cuotasLabel = (tpl && String(t.cuotas_mas_de_48||"") === "true") ? "48+" : (tpl ? String(t.cuotas_total || t.months || "") : "");
-      const saldoIni = Number(t.saldo_inicial||0);
-      const cot = (t.cotizacion && (t.cotizacion.link || t.cotizacion.texto)) ? t.cotizacion : null;
+      const template = String(t.template||"").toLowerCase();
       return {
         type,
         part,
         amount:Number(t.amount||0),
         range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"",
-        tplLabel,
-        cuotasLabel,
-        saldoIni,
-        cot
+        template,
+        saldoPrev: Number(t.saldo_inicial||0),
+        cot: t.cotizacion || null
       };
     }
 
-    function renderCotizaciones(m){
-      if(!m || !m.cot) return "";
-      const link = String(m.cot.link||"").trim();
-      const texto = String(m.cot.texto||"").trim();
+    function giraExtras(t, rows){
+      const m = campaignMeta(t);
+      if(m.template !== "gira") return "";
+
+      const months = Math.max(1, Number(t.months||1));
+      const metaAlumno = Number(m.amount||0) * months;
+
+      // pagado por el apoderado en esta campaña
+      const paid = rows.reduce((acc,r)=>{
+        const amt = Number(r.amount ?? 0);
+        const rem = Number(r.amountRemaining ?? 0);
+        const st = String(r.status||"").toLowerCase();
+        if(st === "paid") return acc + amt;
+        if(st === "partial") return acc + Math.max(0, amt - rem);
+        return acc;
+      },0);
+
+      const reunido = paid; // para apoderado: lo que llevo pagado yo
+      const pct = metaAlumno>0 ? Math.min(100, Math.round((reunido/metaAlumno)*100)) : 0;
+
+      const cot = m.cot || {};
+      const cotHas = (cot.nombre||cot.url||cot.montoTotal||cot.descripcion);
+
       return `
-        <div style="margin-top:12px;padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,.08);background:rgba(17,24,39,.03);">
-          <div style="font-weight:950;">🔎 Cotizaciones</div>
-          ${texto?`<div class="muted" style="margin-top:6px;line-height:1.45;white-space:pre-wrap;">${esc(texto)}</div>`:""}
-          ${link?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;text-decoration:none;" href="${esc(link)}" target="_blank" rel="noopener">Ver cotización</a></div>`:""}
+        <div style="margin-top:10px;padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:12px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div class="muted" style="font-size:12px;">Monto meta alumno</div>
+            <div style="font-weight:950;">${formatCLP(metaAlumno)}</div>
+          </div>
+          <div style="margin-top:8px;">
+            <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;">
+              <span>Mi progreso</span>
+              <span><b>${pct}%</b> · ${formatCLP(reunido)} / ${formatCLP(metaAlumno)}</span>
+            </div>
+            <div style="height:10px;border-radius:999px;background:rgba(15,23,42,.10);overflow:hidden;margin-top:6px;">
+              <div style="height:10px;width:${pct}%;background:rgba(15,23,42,.75);"></div>
+            </div>
+          </div>
+          ${m.saldoPrev>0 ? `<div class="muted" style="margin-top:8px;font-size:12px;">Saldo años anteriores (curso): ${formatCLP(m.saldoPrev)}</div>` : ``}
         </div>
+
+        ${cotHas ? `
+          <div style="margin-top:10px;padding:10px;border:1px solid rgba(15,23,42,.10);border-radius:12px;">
+            <div style="font-weight:950;">Cotización</div>
+            <div class="muted" style="margin-top:6px;">
+              ${cot.nombre ? `<div><b>Nombre:</b> ${esc(cot.nombre)}</div>`:``}
+              ${cot.url ? `<div><b>URL:</b> <a href="${esc(cot.url)}" target="_blank" rel="noopener">Abrir</a></div>`:``}
+              ${cot.montoTotal ? `<div><b>Monto total:</b> ${formatCLP(Number(cot.montoTotal||0))}</div>`:``}
+              ${cot.descripcion ? `<div><b>Descripción:</b> ${esc(cot.descripcion)}</div>`:``}
+            </div>
+          </div>
+        `: ``}
       `;
     }
 
@@ -1236,20 +1273,18 @@ function dueBadge(iso){
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
+                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
           ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
             <span class="tag">Monto ${formatCLP(m.amount)}</span>
             <span class="tag">${esc(m.type)}</span>
             <span class="tag">${esc(m.part)}</span>
-            ${m.tplLabel?`<span class="tag">Cuotas ${esc(m.cuotasLabel||"")}</span>`:""}
-            ${m.saldoIni>0?`<span class="tag">Arrastre 2026 ${formatCLP(m.saldoIni)}</span>`:""}
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
             Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
           </div>
-          ${renderCotizaciones(m)}
+          ${m.template==="gira" ? giraExtras(t, []) : ``}
         </div>
       `;
     }
@@ -1286,17 +1321,18 @@ function dueBadge(iso){
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
+                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
               </div>
+
+              ${giraExtras(t, rows)}
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
               </div>
-              ${renderCotizaciones(m)}
             </div>
           `;
         }
@@ -1318,7 +1354,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
-                  ${m.tplLabel?`<span class="tag">✨ ${esc(m.tplLabel)}</span>`:""}
+                  ${m.template==="gira"?`<span class="tag">Gira</span>`:``}
                 </div>
                 <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
               </div>
@@ -1330,6 +1366,8 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 </button>
               ` : ``}
             </div>
+
+            ${giraExtras(t, rows)}
             </div>
 
             ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
@@ -1351,7 +1389,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 <button class="btnx" onclick="toggleCamp('${esc(campId)}')">${isOpen ? "Contraer" : `Ver todas (${rows.length})`}</button>
               </div>
             ` : ``}
-            ${renderCotizaciones(m)}
           </div>
         `;
 }).join("");
