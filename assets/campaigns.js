@@ -324,6 +324,17 @@ try{
         <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
       </div>
 
+      ${t.template === "gira" ? `
+        <div style="margin-top:14px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
+          <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
+          <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
+          <div id="ec_quotes" style="display:grid;gap:10px;"></div>
+          <div style="margin-top:10px;">
+            <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotización</button>
+          </div>
+        </div>
+      ` : ``}
+
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
         <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
         <button class="btnx primary" onclick="Campaigns.saveEdit('${esc(t.id)}')">Guardar</button>
@@ -417,7 +428,6 @@ try{
       window.__ec_quotes = quotes;
       window.__ec_renderQuotes = renderQuotes;
     }
-  }
   }
 
   function saveEdit(taskId) {

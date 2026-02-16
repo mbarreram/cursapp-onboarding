@@ -922,27 +922,48 @@ function dueBadge(iso){
     const nextDue = dueSorted[0];
 
     const dueThisMonth = dueSorted.filter(p=>String(p.dueDate||"").startsWith(thisYM));
-    const alsoDueThisMonth = nextDue
-      ? dueThisMonth.filter(p=>String(p.id||p.taskId||p.title||"") !== String(nextDue.id||nextDue.taskId||nextDue.title||""))
-      : dueThisMonth;
+    // Agrupar por campaña (para mostrar varias campañas venciendo en el mes)
+    const taskTitleById = (tid)=>{
+      const t = tasks0.find(x=>String(x.id)===String(tid));
+      return (t?.title || t?.name || "").trim();
+    };
+    const dueMonthByCampaignMap = {};
+    for(const p of dueThisMonth){
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      if(!dueMonthByCampaignMap[tid]){
+        dueMonthByCampaignMap[tid] = { taskId: tid, title, amount:0, dueDate: p.dueDate, payId: p.id };
+      }
+      dueMonthByCampaignMap[tid].amount += Number(p.amountRemaining ?? p.amount ?? 0);
+      // mantener la fecha más próxima y el pago más próximo para el botón
+      if(p.dueDate && daysTo(p.dueDate) < daysTo(dueMonthByCampaignMap[tid].dueDate || p.dueDate)){
+        dueMonthByCampaignMap[tid].dueDate = p.dueDate;
+        dueMonthByCampaignMap[tid].payId = p.id;
+      }
+    }
+    const dueMonthByCampaign = Object.values(dueMonthByCampaignMap).sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate));
+    const multipleDueCampaigns = dueMonthByCampaign.length > 1;
 
     const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-    // desglosado por campaña (título)
+    // Desglose por campaña (con ID para no mezclar títulos)
     const perCampaignMap = {};
-    for(const p of dueThisMonth){
-      const key = String(p.title || p.taskTitle || p.campaignTitle || p.taskId || "Campaña");
-      if(!perCampaignMap[key]) perCampaignMap[key] = { title:key, thisMonth:0, total:0 };
-      perCampaignMap[key].thisMonth += Number(p.amountRemaining ?? p.amount ?? 0);
-    }
     for(const p of pending){
-      const key = String(p.title || p.taskTitle || p.campaignTitle || p.taskId || "Campaña");
-      if(!perCampaignMap[key]) perCampaignMap[key] = { title:key, thisMonth:0, total:0 };
-      perCampaignMap[key].total += Number(p.amountRemaining ?? p.amount ?? 0);
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      if(!perCampaignMap[tid]) perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
+      perCampaignMap[tid].total += Number(p.amountRemaining ?? p.amount ?? 0);
     }
-    const perCampaignThisMonth = Object.values(perCampaignMap)
-      .filter(r=>r.thisMonth>0)
-      .sort((a,b)=>b.thisMonth-a.thisMonth);
+    for(const p of dueThisMonth){
+      const tid = String(p.fromTaskId || p.taskId || "no_task");
+      if(!perCampaignMap[tid]){
+        const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+        perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
+      }
+      perCampaignMap[tid].thisMonth += Number(p.amountRemaining ?? p.amount ?? 0);
+    }
+    const perCampaignRows = Object.values(perCampaignMap)
+      .sort((a,b)=>(b.thisMonth - a.thisMonth) || (b.total - a.total));
 
     const lastSeen = localStorage.getItem(KEY_LAST_SEEN_PAYMENTS) || "1970-01-01T00:00:00.000Z";
     const hasNew = paysAll.some(p => (p.createdAt || "1970-01-01T00:00:00.000Z") > lastSeen);
@@ -957,35 +978,37 @@ function dueBadge(iso){
           <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
 
-        <div class="muted" style="margin-top:6px;font-weight:900;">
-          Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
-          · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
-        </div>
+        ${multipleDueCampaigns ? `
+          <div class="muted" style="margin-top:8px;font-weight:900;">Varias campañas vencen este mes. Elige cuál pagar:</div>
 
-        <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
-          ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
-        </div>
-
-        ${alsoDueThisMonth.length ? `
-          <div class="muted" style="margin-top:10px;font-size:13px;line-height:1.35;">
-            <div style="font-weight:900;margin-bottom:6px;">También vence este mes:</div>
-            ${alsoDueThisMonth.slice(0,3).map(p=>`
-              <div style="display:flex;justify-content:space-between;gap:10px;">
-                <div style="max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                  ${esc(p.title || "Campaña")}
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${dueMonthByCampaign.map((c, idx)=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px;">
+                <div style="min-width:0;">
+                  <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.title)}</div>
+                  <div class="muted" style="font-size:12px;">Vence en <b>${daysTo(c.dueDate)}</b> días · ${esc(c.dueDate || "")}</div>
                 </div>
-                <div style="white-space:nowrap;font-weight:900;">
-                  ${formatCLP(p.amountRemaining ?? p.amount ?? 0)}
+                <div style="text-align:right;white-space:nowrap;">
+                  <div style="font-weight:950;font-size:18px;">${formatCLP(c.amount)}</div>
+                  <button class="btnx primary" id="btnPayCamp_${esc(c.taskId)}" type="button" style="margin-top:6px;">Pagar ahora</button>
                 </div>
               </div>
             `).join("")}
-            ${alsoDueThisMonth.length>3 ? `<div style="margin-top:4px;">+ ${alsoDueThisMonth.length-3} más</div>` : ``}
           </div>
-        ` : ``}
+        ` : `
+          <div class="muted" style="margin-top:6px;font-weight:900;">
+            Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
+            · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
+          </div>
 
-        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
-        </div>
+          <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
+            ${nextDue ? formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}
+          </div>
+
+          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+            <button class="btnx primary" id="btnPayNext" type="button">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
+          </div>
+        `}
       </div>
 
       <!-- 2) Pendientes -->
@@ -1005,13 +1028,15 @@ function dueBadge(iso){
           <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
         </div>
 
-        ${perCampaignThisMonth.length ? `
+        <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
+
+        ${perCampaignRows.length ? `
           <div style="margin-top:10px;border-top:1px solid rgba(0,0,0,.06);padding-top:10px;">
-            ${perCampaignThisMonth.slice(0,3).map(row=>`
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:6px 0;">
-                <div style="max-width:65%;">
-                  <div style="font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.title)}</div>
-                  <div class="muted" style="font-size:12px;">Total campaña pendiente: ${formatCLP(row.total)}</div>
+            ${perCampaignRows.map(row=>`
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:8px 0;">
+                <div style="max-width:68%;">
+                  <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.title)}</div>
+                  <div class="muted" style="font-size:12px;">Total pendiente: <b>${formatCLP(row.total)}</b></div>
                 </div>
                 <div style="text-align:right;white-space:nowrap;">
                   <div class="muted" style="font-size:12px;">Este mes</div>
@@ -1019,7 +1044,6 @@ function dueBadge(iso){
                 </div>
               </div>
             `).join("")}
-            ${perCampaignThisMonth.length>3 ? `<div class="muted" style="margin-top:6px;font-size:12px;">+ ${perCampaignThisMonth.length-3} campañas más este mes</div>` : ``}
           </div>
         `: ``}
 
@@ -1068,12 +1092,28 @@ function dueBadge(iso){
     const goPending = document.getElementById("btnGoPending");
     if(goPending) goPending.onclick = ()=> go("payments");
 
+    // botón pagar ahora (caso 1 campaña)
     const payNext = document.getElementById("btnPayNext");
     if(payNext){
       payNext.onclick = ()=>{
         if(nextDue?.id) payNow(nextDue.id);
         else go("payments");
       };
+    }
+
+    // botones pagar por campaña (cuando hay varias venciendo este mes)
+    if(multipleDueCampaigns){
+      for(const c of dueMonthByCampaign){
+        const b = document.getElementById(`btnPayCamp_${c.taskId}`);
+        if(!b) continue;
+        b.onclick = ()=>{
+          // ir directo a pagos de esa campaña (y permitir pagar)
+          try{ window.__apoTaskFilter = c.taskId; }catch(e){}
+          try{ if(typeof window.setPayFilter === "function") window.setPayFilter("pending"); }catch(e){}
+          if(c.payId) payNow(c.payId);
+          else go("payments");
+        };
+      }
     }
 
     // Si está al día: copy divertido
