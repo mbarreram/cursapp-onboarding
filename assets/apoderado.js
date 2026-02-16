@@ -1308,6 +1308,9 @@ function dueBadge(iso){
       paysByTask[tid].push(p);
     });
 
+    // cache para modales de detalle
+    window.__apoCache = { tasksAll, paysAll, paysByTask };
+
     function campaignMeta(t){
       const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
       const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
@@ -1341,7 +1344,7 @@ function dueBadge(iso){
               <div style="font-weight:950;">Cotizaciones</div>
               <div class="muted" style="margin-top:4px;">Referenciales (distintos ítems).</div>
             </div>
-            <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+            <button class="btnx" onclick="ApoUI.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
           </div>
           <div style="margin-top:10px;display:grid;gap:10px;">
             ${cotz.map((c,i)=>`
@@ -1360,6 +1363,95 @@ function dueBadge(iso){
         </div>
       `;
     }
+
+
+    // Exponer helpers de detalle (sin depender de campaigns.js en apoderado.html)
+    window.ApoUI = window.ApoUI || {};
+
+    window.ApoUI.openQuotesDetailById = function(taskId){
+      try{
+        const cache = window.__apoCache || {};
+        const tasks = cache.tasksAll || [];
+        const t = tasks.find(x=>String(x.id)===String(taskId));
+        if(!t) return;
+        const cotz = normCotizaciones(t);
+        const total = cotz.reduce((a,c)=>a+Number(c.monto_total||0),0);
+
+        const html = `
+          <div class="modalCard" style="max-height:calc(100vh - 120px);overflow:auto;-webkit-overflow-scrolling:touch;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+              <div>
+                <div style="font-size:22px;font-weight:1000;">Cotizaciones</div>
+                <div class="muted" style="margin-top:4px;">${esc(t.title||"Campaña")} · ${cotz.length} ítem(s)</div>
+              </div>
+              <button class="btnx" onclick="closeModal()">Cerrar</button>
+            </div>
+
+            <div style="margin-top:12px;border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;display:flex;justify-content:space-between;gap:10px;">
+              <div style="font-weight:950;">Total cotizado</div>
+              <div style="font-weight:950;">${formatCLP(total)}</div>
+            </div>
+
+            <div style="margin-top:12px;display:grid;gap:10px;">
+              ${cotz.map((c,i)=>`
+                <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                    <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                    ${c.monto_total ? `<div style="font-weight:950;">${formatCLP(c.monto_total)}</div>` : ``}
+                  </div>
+                  ${c.descripcion ? `<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>` : ``}
+                  ${c.url ? `<div style="margin-top:10px;">
+                    <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Abrir URL</a>
+                  </div>` : ``}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+        openModal(html);
+      }catch(e){
+        console.error(e);
+      }
+    };
+
+    window.ApoUI.openCampaignDetail = function(taskId){
+      try{
+        const cache = window.__apoCache || {};
+        const tasks = cache.tasksAll || [];
+        const paysByTask = cache.paysByTask || {};
+        const t = tasks.find(x=>String(x.id)===String(taskId));
+        if(!t) return;
+
+        const rows = (paysByTask[t.id] || []).slice().sort((a,b)=>{
+          const da = a.dueDate ? daysTo(a.dueDate) : 99999;
+          const db = b.dueDate ? daysTo(b.dueDate) : 99999;
+          return da-db;
+        });
+
+        const m = campaignMeta(t);
+
+        const html = `
+          <div class="modalCard" style="max-height:calc(100vh - 120px);overflow:auto;-webkit-overflow-scrolling:touch;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+              <div>
+                <div style="font-size:22px;font-weight:1000;">${esc(t.title||"Campaña")}</div>
+                <div class="muted" style="margin-top:4px;">${esc(m.type)} · ${esc(m.part)}</div>
+              </div>
+              <button class="btnx" onclick="closeModal()">Cerrar</button>
+            </div>
+
+            ${renderCotizacionesBlock(t).replace('onclick="ApoUI.openQuotesDetailById', 'onclick="ApoUI.openQuotesDetailById')}
+
+            <div style="margin-top:12px;">
+              ${rows.length ? rows.map(r=>renderPaymentRow(r)).join("") : `<div class="muted" style="margin-top:10px;">No hay pagos asignados para ti aún.</div>`}
+            </div>
+          </div>
+        `;
+        openModal(html);
+      }catch(e){
+        console.error(e);
+      }
+    };
 
     function emptyCampaignCard(t){
       const m = campaignMeta(t);
@@ -1418,7 +1510,7 @@ function dueBadge(iso){
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
                 <div>
-                  <button class="btnx" onclick="Campaigns.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
+                  <button class="btnx" onclick="ApoUI.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
                 </div>
               </div>
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
@@ -1473,7 +1565,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                 ${pendCount ? `Quedan ${pendCount} cuota(s) por pagar 😅` : `¡Listo! Campaña al día 🥳`}
               </div>
               <div>
-                <button class="btnx" onclick="Campaigns.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
+                <button class="btnx" onclick="ApoUI.openCampaignDetail('${esc(t.id)}','apoderado')">Ver detalle</button>
               </div>
             </div>
 
