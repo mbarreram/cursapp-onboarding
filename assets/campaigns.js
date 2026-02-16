@@ -32,6 +32,17 @@
   const KEY_DIRTY =
     detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
+  // Payments key (shared) — used to instantiate pending payments for mandatory campaigns
+  const SCOPED_PAYMENTS = sk("payments_v1");
+  const KEY_PAYMENTS =
+    (localStorage.getItem(SCOPED_PAYMENTS) != null
+      ? SCOPED_PAYMENTS
+      : (detectKey(["cursapp_payments_v1", "payments", "cobros", "cursapp_pagos_v1"]) || SCOPED_PAYMENTS));
+
+  // Enrollments (approved apoderados) — to pre-create pending payments per apoderado
+  const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
+  const KEY_ENROLL = "cursapp_enrollments_v1";
+
   const esc = (s) =>
     String(s ?? "").replace(/[&<>'"]/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])
@@ -50,6 +61,29 @@
   function todayISO() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+
+  function nowISO(){
+    const d = new Date();
+    return d.toISOString();
+  }
+
+  function activeCourseKey(){
+    return localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+  }
+
+  function approvedApoderados(){
+    const ck = activeCourseKey();
+    try{
+      const list = JSON.parse(localStorage.getItem(KEY_ENROLL) || "[]");
+      return list.filter(e => (!ck || e.courseKey===ck) && e.status==="approved");
+    }catch(e){
+      return [];
+    }
+  }
+
+  function apoderadoEmailFromEnrollment(e){
+    return String(e?.apoderadoEmail || e?.email || e?.apoderado || "").toLowerCase().trim();
   }
 
   function addMonthsKeepDay(isoDateStr, monthsToAdd) {
@@ -73,9 +107,10 @@
       alert("Falta #modalRoot en el HTML.");
       return;
     }
+    // ✅ Mobile-safe modal: ensure full visibility + internal scroll (iOS)
     root.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:14px;">
+        <div class="card" style="width:min(820px,100%);max-height:calc(100vh - 28px);overflow:auto;-webkit-overflow-scrolling:touch;">
           ${html}
         </div>
       </div>
@@ -222,9 +257,11 @@
       if (!dueDate) { alert("Debes seleccionar una fecha fin."); return; }
     }
 
+    const newTaskId = uid("t");
+
     const ts = load(KEY_TASKS, []);
     ts.unshift({
-      id: uid("t"),
+      id: newTaskId,
       title,
       description: desc,
       startDate,
@@ -241,6 +278,37 @@
     });
 
     save(KEY_TASKS, ts);
+
+    // ✅ Mandatory campaigns: pre-create pending payments per approved apoderado.
+    // This improves UX/consistency (deudores + cuotas) without waiting for each apoderado to enter.
+    try{
+      if (mandatoryParticipation) {
+        const pays = load(KEY_PAYMENTS, []);
+        const already = pays.some(p => String(p.fromTaskId||"") === String(newTaskId));
+        if (!already) {
+          const aps = approvedApoderados();
+          const emails = aps.map(apoderadoEmailFromEnrollment).filter(Boolean);
+
+          // Fallback: if enrollments are missing, create a generic pending payment (keeps demo consistent)
+          const targets = emails.length ? emails : [""];
+
+          targets.forEach((mail, i)=>{
+            pays.unshift({
+              id: uid("p"),
+              fromTaskId: newTaskId,
+              concept: type === "monthly" ? `${title} · Cuota 1/${Math.max(1, Number(months||1))}` : "Pago único",
+              amount: Number(amount||0),
+              status: "pending",
+              dueDate,
+              createdAt: nowISO(),
+              apoderadoEmail: mail || undefined
+            });
+          });
+          save(KEY_PAYMENTS, pays);
+        }
+      }
+    }catch(e){ /* ignore */ }
+
     markDirty();
     closeModal();
     alert("Campaña creada ✅");
