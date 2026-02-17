@@ -312,6 +312,61 @@ function normalizePaymentIds(){
   if(changed) savePayments(pays);
 }
 
+
+
+function paymentSemanticKey(p){
+  // Stable key to detect duplicates across sessions/roles
+  const course = String(p.courseKey||"");
+  const task = String(p.fromTaskId||"");
+  const apo  = String(p.apoderadoKey||p.apoderadoId||p.apoderadoEmail||p.email||"");
+  const alumno = String(p.alumnoId||p.alumno||"");
+  const due = String(p.dueDate||"").trim();
+  const concept = String(p.concept||"").trim();
+  const amount = String(p.amount||p.monto||"");
+  const type = String(p.type||"");
+  const inst = String(p.installmentIndex||p.cuotaNumero||"");
+  const period = String(p.period||"");
+  return [course, task, apo, alumno, period, inst, due, concept, amount, type].join("|");
+}
+
+function dedupeSemanticPayments(){
+  const pays = loadPayments();
+  if(!Array.isArray(pays) || !pays.length) return;
+  const byKey = new Map();
+
+  for(const p of pays){
+    const k = paymentSemanticKey(p);
+    if(!byKey.has(k)){
+      byKey.set(k, p);
+      continue;
+    }
+    const keep = byKey.get(k);
+
+    // Prefer paid over pending/opted_out
+    const score = (x)=>{
+      if(x.status==="paid") return 3;
+      if(x.status==="pending") return 2;
+      if(x.status==="overdue") return 2;
+      if(x.status==="opted_out") return 1;
+      return 0;
+    };
+    const a = score(keep), b = score(p);
+    if(b > a){
+      byKey.set(k, p);
+    }else if(b === a){
+      // Prefer older createdAt to keep stability
+      const ka = Date.parse(keep.createdAt||keep.created_at||"") || 0;
+      const kb = Date.parse(p.createdAt||p.created_at||"") || 0;
+      if(kb && (!ka || kb < ka)) byKey.set(k, p);
+    }
+  }
+
+  const deduped = Array.from(byKey.values());
+  if(deduped.length !== pays.length){
+    savePayments(deduped);
+  }
+}
+
 function loadReceipts(){ return JSON.parse(localStorage.getItem(KEY_RECEIPTS) || "[]"); }
 function saveReceipts(r){ localStorage.setItem(KEY_RECEIPTS, JSON.stringify(r)); }
 
@@ -1593,7 +1648,7 @@ function generatePaymentsForTask(task){
     const exists = payments.some(p =>
       p.alumno === a.alumno &&
       p.concept === concept &&
-      p.dueDate === task.dueDate
+      String(p.dueDate||"") === String(task.dueDate||"")
     );
     if(exists) return;
 
@@ -3148,6 +3203,7 @@ document.addEventListener("DOMContentLoaded", () => {
 }
 
   normalizePaymentIds();
+  dedupeSemanticPayments();
   renderHeader();
   renderByRole(user.role, "home");
 });
