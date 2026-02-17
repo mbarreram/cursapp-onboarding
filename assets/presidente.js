@@ -93,7 +93,9 @@ async function copyTextToClipboard(text){
 function paymentStableKey(p){
   const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
   const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
-  const cuota = String(p.cuotaNumero || p.installment || p.cuota || "");
+  // Si no existe cuota/índice (legacy), asumimos 1 (pago único) para evitar duplicados.
+  const cuotaRaw = (p.installmentIndex!=null && p.installmentIndex!=="") ? p.installmentIndex : (p.cuotaNumero || p.installment || p.cuota);
+  const cuota = String((cuotaRaw==null || cuotaRaw==="") ? 1 : cuotaRaw);
   const due = String(p.dueDate || "");
   const amt = String(Number(p.amountRemaining ?? p.amount ?? p.monto ?? 0));
   const typ = String(p.type || p.kind || "");
@@ -1046,7 +1048,8 @@ function renderDeudores(){
       tmp.remove();
       toast("Copiado ✅");
     }catch(e){
-      alert("No pude copiar automáticamente. Selecciona y copia manualmente.");
+      // En iOS a veces copia igual pero lanza excepción. Evitamos alertas invasivas.
+      toast("Si no se copió, selecciona y copia manualmente.");
     }
   }
 
@@ -1192,51 +1195,13 @@ function renderInformes(){
 
   // Mantener ELIMINAR campaña (activa) en Presidente
   
-  // ✅ Publicar cobros: genera pagos pendientes para apoderados (para que Apoderado vea la campaña)
+  // ✅ Publicar cobros (canónico): evita generar pagos "globales" que luego duplican montos.
+  // Algunos handlers antiguos llamaban a window.publishCobros, por eso lo mantenemos como puente.
   window.publishCobros = function(taskId){
-    const t = tasks().find(x=>x.id===taskId);
-    if(!t) return alert("Campaña no encontrada.");
-
-    // Evitar duplicados
-    const ps = payments().slice();
-
-    function addPayment(dueDate, concept){
-      const exists = ps.some(p=>p.fromTaskId===taskId && String(p.dueDate||"")===String(dueDate||"") && String(p.concept||"")===String(concept||""));
-      if(exists) return;
-      ps.unshift({
-        id: uid("pay"),
-        fromTaskId: taskId,
-        concept,
-        amount: Number(t.amount||0),
-        status: "pending",
-        dueDate,
-        createdAt: new Date().toISOString()
-      });
+    if(typeof window.publishCobrosForTask === "function"){
+      return window.publishCobrosForTask(taskId);
     }
-
-    function addMonths(dateStr, n){
-      const d = new Date(dateStr + "T12:00:00");
-      if(isNaN(d.getTime())) return dateStr;
-      d.setMonth(d.getMonth()+n);
-      return d.toISOString().slice(0,10);
-    }
-
-    const type = String(t.type||"single").toLowerCase();
-    if(type === "monthly"){
-      const months = Math.max(1, Number(t.months||1));
-      const base = t.startDate || todayISO();
-      for(let i=0;i<months;i++){
-        const due = addMonths(base, i);
-        addPayment(due, `${t.title} · Cuota ${i+1}/${months}`);
-      }
-    }else{
-      addPayment(t.dueDate || todayISO(), t.title);
-    }
-
-    save(KEY_PAYMENTS, ps);
-    markDirty();
-    alert("Cobros publicados ✅");
-    go("campanas");
+    alert("No se pudo publicar (función no disponible).");
   };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);

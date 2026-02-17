@@ -237,13 +237,15 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
     const out = (paysAll||[]).slice();
 
+    // Normaliza claves legacy (sin period / installmentIndex) para evitar duplicados
     const byKey = new Set(out.map(p=>{
       if(p && p.paymentKey) return String(p.paymentKey);
       const ck = String(p.courseKey||"").trim();
       const aid = String(p.apoderadoKey||p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
       const tid = String(p.fromTaskId||"");
       const per = String(p.period||ymFromISO(p.dueDate)||"");
-      const idx = String(p.installmentIndex||"");
+      // ⚠️ si no existe installmentIndex, asumimos 1 (pago único o legacy)
+      const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
       const alu = String(p.alumnoId||"");
       return paymentKeyOf(ck, tid, aid, alu, per, idx);
     }));
@@ -297,6 +299,65 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       save(KEY_PAYMENTS, out);
     }
     return out;
+  }
+
+  // --- Limpieza global de pagos duplicados (legacy) ---
+  function normalizeAndDedupePaymentsFor(ident){
+    ident = ident || {};
+    const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+    if(!courseKey) return;
+    const email = String(ident.email||"").toLowerCase().trim();
+    const apoderadoId = String(ident.apoderadoId||"").trim();
+    const aidStrong = (apoderadoId || email || "unknown_apoderado");
+    const alumnoLabel = String(ident.alumnoId||"").trim();
+    const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+
+    const paysAll = load(KEY_PAYMENTS, []);
+    const map = new Map();
+    for(const p0 of (paysAll||[])){
+      if(!p0) continue;
+      const p = { ...p0 };
+      // Normaliza campos
+      p.courseKey = String(p.courseKey||courseKey).trim();
+      p.fromTaskId = String(p.fromTaskId||"");
+      p.period = String(p.period||ymFromISO(p.dueDate)||"");
+      if(p.installmentIndex==null || p.installmentIndex==="") p.installmentIndex = 1;
+
+      // Si es de este apoderado pero está incompleto, complétalo
+      const apEmail = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const apKey = String(p.apoderadoKey||p.apoderadoId||"").trim();
+      const looksMine = (apKey && apKey===aidStrong) || (apEmail && apEmail===aidStrong);
+      if(looksMine){
+        if(!p.apoderadoKey) p.apoderadoKey = aidStrong;
+        if(!p.apoderadoId) p.apoderadoId = aidStrong;
+        if(!p.apoderadoEmail) p.apoderadoEmail = aidStrong;
+        if(!p.alumnoId) p.alumnoId = alumnoId;
+      }
+
+      const keyAid = String(p.apoderadoKey||p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+      const keyAlu = String(p.alumnoId||"");
+      const pk = paymentKeyOf(p.courseKey, p.fromTaskId, keyAid, keyAlu, p.period, p.installmentIndex);
+      p.paymentKey = pk;
+
+      const prev = map.get(pk);
+      if(!prev){ map.set(pk, p); continue; }
+      // Preferimos el más "completo" y/o pagado
+      const score = (x)=>{
+        let s=0;
+        if(String(x.status||"")==="paid") s+=100;
+        if(x.alumnoId) s+=10;
+        if(x.apoderadoKey) s+=5;
+        if(x.period) s+=2;
+        if(x.installmentIndex) s+=1;
+        if(x.paymentKey) s+=1;
+        return s;
+      };
+      if(score(p) > score(prev)) map.set(pk, p);
+    }
+    const cleaned = Array.from(map.values());
+    if(JSON.stringify(cleaned) !== JSON.stringify(paysAll)){
+      save(KEY_PAYMENTS, cleaned);
+    }
   }
 
 
@@ -1031,6 +1092,9 @@ function dedupePaymentsAll(list){
     if(dd0.changed) save(KEY_PAYMENTS, dd0.list);
     paysAll = dd0.list;
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
+    // Limpieza extra: normaliza claves legacy y elimina duplicados por cambios de rol
+    try { normalizeAndDedupePaymentsFor(ident0); } catch(e) {}
+    paysAll = load(KEY_PAYMENTS, []);
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
