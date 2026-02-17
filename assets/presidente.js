@@ -377,7 +377,7 @@ function cuotasPendientesTask(id){
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
-  window.addEventListener('cursapp:dataChanged', ()=>{
+  const __refresh = ()=>{
     try{
       const tab = (state && state.tab) ? state.tab : 'home';
       if(tab==='home') renderHome();
@@ -385,7 +385,9 @@ function cuotasPendientesTask(id){
       else if(tab==='deudores') renderDeudores();
       else if(tab==='informes') renderInformes();
     }catch(e){}
-  });
+  };
+  window.addEventListener('cursapp:dataChanged', __refresh);
+  window.addEventListener('cursapp:dataUpdated', __refresh);
 
   
   // ----- Watcher: refrescar Campañas cuando cambian las tasks -----
@@ -415,6 +417,38 @@ function cuotasPendientesTask(id){
     if(pend > 0 && t.closed) return "isWarn";
     if(isExpired(t)) return "isWarn";
     return "isOk";
+  }
+
+  // ---- Plantillas destacadas (estilo suave) ----
+  let __tplStylesInjected = false;
+  function templateKind(t){
+    const k = String(t?.template || t?.templateKey || t?.templateId || "").toLowerCase();
+    if(k.includes("gira")) return "gira";
+    if(k.includes("gradu")) return "graduacion";
+    const title = String(t?.title || t?.name || "").toLowerCase();
+    if(title.includes("gira")) return "gira";
+    if(title.includes("gradu")) return "graduacion";
+    return "";
+  }
+  function templateClassForCampaign(t){
+    const k = templateKind(t);
+    return k ? `tplCamp tplCamp-${k}` : "";
+  }
+  function ensureTemplateStyles(){
+    if(__tplStylesInjected) return;
+    __tplStylesInjected = true;
+    const css = `
+      .campLine{ position:relative; overflow:hidden; padding-left:10px; border-radius:18px; }
+      .campLine:before{ content:""; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; background: rgba(148,163,184,.55); }
+      .tplCamp:before{ background: rgba(59,130,246,.65); }
+      .tplCamp.tplCamp-graduacion:before{ background: rgba(139,92,246,.65); }
+      .tplCamp{ background: rgba(59,130,246,.05); }
+      .tplCamp.tplCamp-graduacion{ background: rgba(139,92,246,.05); }
+    `;
+    const style = document.createElement("style");
+    style.setAttribute("data-cursapp-tpl","1");
+    style.textContent = css;
+    document.head.appendChild(style);
   }
 
   function campaignTypeLabel(t){
@@ -542,7 +576,60 @@ function cuotasPendientesTask(id){
     return tasks();
   }
 
+  // ---- Cotizaciones visibles (Plantilla Gira) ----
+  function normCotizaciones(t){
+    const arr = Array.isArray(t?.cotizaciones) ? t.cotizaciones : [];
+    const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total || t.cotizacion.descripcion)
+      ? [t.cotizacion]
+      : [];
+    const merged = [...arr, ...one]
+      .map(c=>({
+        nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
+        url: String(c?.url || c?.link || "").trim(),
+        monto_total: Number(c?.monto_total ?? c?.monto ?? c?.total ?? 0),
+        descripcion: String(c?.descripcion || c?.texto || c?.description || "").trim()
+      }))
+      .filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+
+    // Dedupe (cuando viene tanto cotizacion como cotizaciones[])
+    const seen = new Set();
+    const out = [];
+    for(const c of merged){
+      const key = [c.nombre.toLowerCase(), c.url.toLowerCase(), String(c.monto_total||0), c.descripcion.toLowerCase()].join("|");
+      if(seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+    return out;
+  }
+
+  function renderCotizacionesInfo(t){
+    const kind = String(t?.template||"");
+    if(!["gira","graduacion"].includes(kind)) return "";
+    const cotz = normCotizaciones(t);
+    if(!cotz.length) return "";
+    const total = cotz.reduce((s,c)=>s + (Number(c.monto_total)||0), 0);
+    const first = cotz.slice(0,2);
+
+    return `
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+          <div>
+            <div style="font-weight:950;">Información</div>
+            <div class="muted" style="margin-top:4px;">Cotizaciones · ${cotz.length} ítem(s)${total?` · Total ${clp(total)}`:""}</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+        </div>
+        <div class="muted" style="margin-top:10px;display:grid;gap:6px;">
+          ${first.map(c=>`<div>• ${esc(c.nombre || "Cotización")} ${c.monto_total?`· <b>${clp(c.monto_total)}</b>`:""}${c.descripcion?` · ${esc(c.descripcion)}`:""}</div>`).join("")}
+          ${cotz.length>2 ? `<div>… y ${cotz.length-2} más</div>` : ``}
+        </div>
+      </div>
+    `;
+  }
+
   function renderCampanas(){
+    ensureTemplateStyles();
     const filtered = getFilteredCampaigns();
 
     const chips = `
@@ -566,7 +653,7 @@ function cuotasPendientesTask(id){
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
-      return `        <div class="campCard ${lineClassForCampaign(t)}">
+      return `        <div class="campCard campLine ${lineClassForCampaign(t)} ${templateClassForCampaign(t)}">
           <div class="campHead">
             <div class="campTitleRow">
               <div class="campTitle">${esc(t.title)}</div>
@@ -610,6 +697,7 @@ function cuotasPendientesTask(id){
           </div>
 
           <div class="campActions">
+            <button class="btnx" onclick="Campaigns.openCampaignDetail('${t.id}','presidente')">🔎 Ver detalle</button>
             <button class="btnx" onclick="openEditCampaign('${t.id}')">✏️ Editar</button>
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
           </div>
@@ -630,6 +718,26 @@ function cuotasPendientesTask(id){
           </div>
           <div class="actions">
             <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="sectionLabel" style="margin:0 0 8px 0;">Plantillas destacadas</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
+              <div style="font-weight:950;">🎒 Gira de estudio</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas + saldo años anteriores + cotizaciones.</div>
+              <div style="margin-top:10px;">
+                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('gira')">Usar plantilla</button>
+              </div>
+            </div>
+            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
+              <div style="font-weight:950;">🎓 Graduación</div>
+              <div class="muted" style="margin-top:6px;font-size:12px;">Cotizaciones por ítem + plan de cuotas.</div>
+              <div style="margin-top:10px;">
+                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('graduacion')">Usar plantilla</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -661,9 +769,8 @@ function taskById(id){
   return tasks().find(t => String(t.id) === String(id));
 }
 function apoderadoKey(p){
-    // Prefer explicit apoderado identifiers; DO NOT fall back to generic `email` (often the creator/presidente).
-    return String((p.apoderadoKey || p.apoderadoEmail || p.apoderadoId || "")).toLowerCase();
-  }
+  return String((p.apoderadoEmail||p.email||"")).toLowerCase();
+}
 function money(n){ return clp(Number(n||0)); }
 
 function debtorRowsFor(email){
@@ -888,36 +995,17 @@ function renderDeudores(){
   const btn = document.getElementById("debtorSearchBtn");
   const out = document.getElementById("debtorResults");
 
-  function fallbackCopy(taOrText){
+  function fallbackCopy(txt){
     try{
-      // iOS Safari: focus + selection range helps `execCommand('copy')`.
-      let ta = taOrText && taOrText.tagName === "TEXTAREA" ? taOrText : null;
-
-      if(!ta){
-        ta = document.createElement("textarea");
-        ta.value = String(taOrText||"");
-        ta.setAttribute("readonly","");
-        ta.style.position = "fixed";
-        ta.style.top = "0";
-        ta.style.left = "0";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-      }
-
-      ta.focus({ preventScroll:true });
-      ta.select();
-      try{ ta.setSelectionRange(0, ta.value.length); }catch(_e){}
-
-      const ok = document.execCommand("copy");
-      if(ta.parentNode === document.body) ta.remove();
-
-      if(ok){
-        toast("Copiado ✅");
-      }else{
-        throw new Error("copy failed");
-      }
+      const tmp = document.createElement("textarea");
+      tmp.value = txt;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      tmp.remove();
+      toast("Copiado ✅");
     }catch(e){
-      alert("No pude copiar automáticamente. Mantén presionado el texto y copia manualmente.");
+      alert("No pude copiar automáticamente. Selecciona y copia manualmente.");
     }
   }
 
@@ -994,9 +1082,9 @@ function renderDeudores(){
         const ta = out.querySelectorAll("textarea")[idx];
         const txt = ta?.value || "";
         if(navigator.clipboard?.writeText){
-          navigator.clipboard.writeText(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(ta || txt));
+          copyTextToClipboard(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(txt));
         }else{
-          fallbackCopy(ta || txt);
+          fallbackCopy(txt);
         }
       };
     });

@@ -41,7 +41,7 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
   }
   function meKey(){
     const s = getSession();
-    return String(s?.userId||"").toLowerCase().trim();
+    return String(s?.userId || s?.email || s?.userEmail || s?.correo || "").toLowerCase().trim();
   }
 
   
@@ -79,6 +79,22 @@ function isMinePayment(p){
 
   
   // ---- Opt-out campañas no obligatorias (por curso) ----
+  function dedupePayments(list){
+    const seen = new Set();
+    return (list||[]).filter((p)=>{
+      const k = String(p?.id || "") || [
+        p?.fromTaskId||"",
+        p?.apoderadoEmail||p?.payerEmail||"",
+        p?.campaignId||"",
+        p?.dueDate||"",
+        p?.amount||""
+      ].join("|");
+      if(seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
   function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
   function isOptedOut(taskId){
     const p = getActiveProfile();
@@ -1022,7 +1038,7 @@ function dueBadge(iso){
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
-    paysAll = paysAll.filter(isMinePayment);
+    paysAll = dedupePayments(paysAll.filter(isMinePayment));
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
