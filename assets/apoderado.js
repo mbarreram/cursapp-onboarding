@@ -303,6 +303,38 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
 
+  // ---- Plantillas destacadas (estilo suave) ----
+  let __tplStylesInjected = false;
+  function templateKind(t){
+    const k = String(t?.template || t?.templateKey || t?.templateId || "").toLowerCase();
+    if(k.includes("gira")) return "gira";
+    if(k.includes("gradu")) return "graduacion";
+    const title = String(t?.title || t?.name || "").toLowerCase();
+    if(title.includes("gira")) return "gira";
+    if(title.includes("gradu")) return "graduacion";
+    return "";
+  }
+  function templateClassForCampaign(t){
+    const k = templateKind(t);
+    return k ? `tplCamp tplCamp-${k}` : "";
+  }
+  function ensureTemplateStyles(){
+    if(__tplStylesInjected) return;
+    __tplStylesInjected = true;
+    const css = `
+      .campLine{ position:relative; overflow:hidden; padding-left:10px; border-radius:18px; }
+      .campLine:before{ content:""; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; background: rgba(148,163,184,.55); }
+      .tplCamp:before{ background: rgba(59,130,246,.65); }
+      .tplCamp.tplCamp-graduacion:before{ background: rgba(139,92,246,.65); }
+      .tplCamp{ background: rgba(59,130,246,.05); }
+      .tplCamp.tplCamp-graduacion{ background: rgba(139,92,246,.05); }
+    `;
+    const style = document.createElement("style");
+    style.setAttribute("data-cursapp-tpl","1");
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
   // ---------------- Cotizaciones (Gira / Graduación) ----------------
@@ -983,6 +1015,7 @@ function dueBadge(iso){
 
   // -------- Pages --------
   function renderHome(){
+    ensureTemplateStyles();
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
@@ -1226,6 +1259,7 @@ function dueBadge(iso){
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
+    ensureTemplateStyles();
     let paysAll = load(KEY_PAYMENTS, []);
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     // pago recién efectuado (para banner por campaña)
@@ -1411,7 +1445,7 @@ function dueBadge(iso){
     function emptyCampaignCard(t){
       const m = campaignMeta(t);
       return `
-        <div class="card" style="margin-top:12px;">
+        <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
@@ -1437,7 +1471,7 @@ function dueBadge(iso){
         if(!rows.length){
           const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
           return hasAny
-            ? `<div class="card" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
+            ? `<div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
             : emptyCampaignCard(t);
         }
 
@@ -1455,7 +1489,7 @@ function dueBadge(iso){
           const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
           const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
           return `
-            <div class="card" style="margin-top:12px;">
+            <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div>
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1505,7 +1539,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
         return `
-          <div class="card" style="margin-top:12px;">
+          <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
               <div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1611,7 +1645,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
             if(payFilter==="credit") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">No tienes saldo a favor por ahora.</div></div>`;
             return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no hay campañas ni cobros publicados. Te avisaremos cuando haya novedades 😊</div></div>`;
           })()
-          : (campaignCards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
+          : (campaignCards || `<div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
       }
 
       ${others}

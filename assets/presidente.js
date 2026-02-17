@@ -419,6 +419,38 @@ function cuotasPendientesTask(id){
     return "isOk";
   }
 
+  // ---- Plantillas destacadas (estilo suave) ----
+  let __tplStylesInjected = false;
+  function templateKind(t){
+    const k = String(t?.template || t?.templateKey || t?.templateId || "").toLowerCase();
+    if(k.includes("gira")) return "gira";
+    if(k.includes("gradu")) return "graduacion";
+    const title = String(t?.title || t?.name || "").toLowerCase();
+    if(title.includes("gira")) return "gira";
+    if(title.includes("gradu")) return "graduacion";
+    return "";
+  }
+  function templateClassForCampaign(t){
+    const k = templateKind(t);
+    return k ? `tplCamp tplCamp-${k}` : "";
+  }
+  function ensureTemplateStyles(){
+    if(__tplStylesInjected) return;
+    __tplStylesInjected = true;
+    const css = `
+      .campLine{ position:relative; overflow:hidden; padding-left:10px; border-radius:18px; }
+      .campLine:before{ content:""; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; background: rgba(148,163,184,.55); }
+      .tplCamp:before{ background: rgba(59,130,246,.65); }
+      .tplCamp.tplCamp-graduacion:before{ background: rgba(139,92,246,.65); }
+      .tplCamp{ background: rgba(59,130,246,.05); }
+      .tplCamp.tplCamp-graduacion{ background: rgba(139,92,246,.05); }
+    `;
+    const style = document.createElement("style");
+    style.setAttribute("data-cursapp-tpl","1");
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
   function campaignTypeLabel(t){
     const type = String(t.type||"single");
     if(type==="monthly"){
@@ -547,10 +579,10 @@ function cuotasPendientesTask(id){
   // ---- Cotizaciones visibles (Plantilla Gira) ----
   function normCotizaciones(t){
     const arr = Array.isArray(t?.cotizaciones) ? t.cotizaciones : [];
-    const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total)
+    const one = t?.cotizacion && (t.cotizacion.texto || t.cotizacion.link || t.cotizacion.nombre || t.cotizacion.monto_total || t.cotizacion.descripcion)
       ? [t.cotizacion]
       : [];
-    return [...arr, ...one]
+    const merged = [...arr, ...one]
       .map(c=>({
         nombre: String(c?.nombre || c?.title || c?.name || "").trim(),
         url: String(c?.url || c?.link || "").trim(),
@@ -558,40 +590,46 @@ function cuotasPendientesTask(id){
         descripcion: String(c?.descripcion || c?.texto || c?.description || "").trim()
       }))
       .filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+
+    // Dedupe (cuando viene tanto cotizacion como cotizaciones[])
+    const seen = new Set();
+    const out = [];
+    for(const c of merged){
+      const key = [c.nombre.toLowerCase(), c.url.toLowerCase(), String(c.monto_total||0), c.descripcion.toLowerCase()].join("|");
+      if(seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+    return out;
   }
 
-  function renderCotizacionesInline(t){
-    if(!["gira","graduacion"].includes(String(t?.template||""))) return "";
+  function renderCotizacionesInfo(t){
+    const kind = String(t?.template||"");
+    if(!["gira","graduacion"].includes(kind)) return "";
     const cotz = normCotizaciones(t);
     if(!cotz.length) return "";
+    const total = cotz.reduce((s,c)=>s + (Number(c.monto_total)||0), 0);
+    const first = cotz.slice(0,2);
+
     return `
-      <div style="margin:12px 14px 0 14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
           <div>
-            <div style="font-weight:950;">Cotizaciones</div>
-            <div class="muted" style="margin-top:4px;">Referenciales (varios ítems).</div>
+            <div style="font-weight:950;">Información</div>
+            <div class="muted" style="margin-top:4px;">Cotizaciones · ${cotz.length} ítem(s)${total?` · Total ${clp(total)}`:""}</div>
           </div>
           <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
         </div>
-        <div style="margin-top:10px;display:grid;gap:10px;">
-          ${cotz.map((c,i)=>`
-            <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
-                ${c.monto_total ? `<div style="font-weight:950;">${clp(c.monto_total)}</div>` : ``}
-              </div>
-              ${c.descripcion ? `<div class="muted" style="margin-top:6px;line-height:1.35;">${esc(c.descripcion)}</div>` : ``}
-              ${c.url ? `<div style="margin-top:10px;">
-                <a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;" href="${esc(c.url)}" target="_blank" rel="noopener">Ver URL</a>
-              </div>` : ``}
-            </div>
-          `).join("")}
+        <div class="muted" style="margin-top:10px;display:grid;gap:6px;">
+          ${first.map(c=>`<div>• ${esc(c.nombre || "Cotización")} ${c.monto_total?`· <b>${clp(c.monto_total)}</b>`:""}${c.descripcion?` · ${esc(c.descripcion)}`:""}</div>`).join("")}
+          ${cotz.length>2 ? `<div>… y ${cotz.length-2} más</div>` : ``}
         </div>
       </div>
     `;
   }
 
   function renderCampanas(){
+    ensureTemplateStyles();
     const filtered = getFilteredCampaigns();
 
     const chips = `
@@ -615,7 +653,7 @@ function cuotasPendientesTask(id){
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
 
-      return `        <div class="campCard ${lineClassForCampaign(t)}">
+      return `        <div class="campCard campLine ${lineClassForCampaign(t)} ${templateClassForCampaign(t)}">
           <div class="campHead">
             <div class="campTitleRow">
               <div class="campTitle">${esc(t.title)}</div>
@@ -630,8 +668,6 @@ function cuotasPendientesTask(id){
             <span class="chipInfo">🔒 <strong>Participación</strong> ${esc(part)}</span>
             ${meta?`<span class="chipInfo">🎯 <strong>Meta</strong> ${clp(meta)}</span>`:""}
           </div>
-
-          ${renderCotizacionesInline(t)}
 
           <div class="campMetrics">
             <div class="metricBox">
