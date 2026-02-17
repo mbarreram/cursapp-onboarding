@@ -16,35 +16,41 @@
 
 // ---------- clipboard helper (iOS Safari friendly) ----------
 async function copyTextToClipboard(text){
-  const s = String(text||"");
-  // Prefer modern API (HTTPS + user gesture)
+  const t = String(text||"");
   try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(s);
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(t);
+      toast("Copiado ✅");
       return true;
     }
   }catch(e){}
-  // Fallback: temporary textarea + execCommand('copy')
-  try{
-    const ta = document.createElement("textarea");
-    ta.value = s;
-    ta.setAttribute("readonly","");
-    ta.style.position = "fixed";
-    ta.style.top = "0";
-    ta.style.left = "0";
-    ta.style.width = "1px";
-    ta.style.height = "1px";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    ta.setSelectionRange(0, ta.value.length);
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return !!ok;
-  }catch(e){}
-  return false;
+  const ok = fallbackCopyToClipboard(t);
+  if(ok) toast("Copiado ✅");
+  else toast("Mantén presionado el texto para copiar");
+  return ok;
 }
+
+function toast(msg){
+  try{
+    const el=document.createElement("div");
+    el.textContent=String(msg||"");
+    el.style.position="fixed";
+    el.style.left="50%";
+    el.style.bottom="16px";
+    el.style.transform="translateX(-50%)";
+    el.style.background="rgba(0,0,0,0.75)";
+    el.style.color="#fff";
+    el.style.padding="10px 12px";
+    el.style.borderRadius="12px";
+    el.style.fontSize="14px";
+    el.style.zIndex="99999";
+    el.style.maxWidth="90vw";
+    el.style.textAlign="center";
+    document.body.appendChild(el);
+    setTimeout(()=>{ try{el.remove();}catch(e){} }, 1800);
+  }catch(e){}
+}
+
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
   function detectKey(candidates) {
@@ -996,17 +1002,31 @@ function renderDeudores(){
   const out = document.getElementById("debtorResults");
 
   function fallbackCopy(txt){
+    const text = String(txt||"" );
     try{
       const tmp = document.createElement("textarea");
-      tmp.value = txt;
+      tmp.value = text;
+      tmp.setAttribute("readonly", "");
+      tmp.style.position = "fixed";
+      tmp.style.top = "0";
+      tmp.style.left = "0";
+      tmp.style.width = "2em";
+      tmp.style.height = "2em";
+      tmp.style.padding = "0";
+      tmp.style.border = "none";
+      tmp.style.outline = "none";
+      tmp.style.boxShadow = "none";
+      tmp.style.background = "transparent";
       document.body.appendChild(tmp);
+      tmp.focus();
       tmp.select();
-      document.execCommand("copy");
-      tmp.remove();
-      toast("Copiado ✅");
-    }catch(e){
-      alert("No pude copiar automáticamente. Selecciona y copia manualmente.");
-    }
+      tmp.setSelectionRange(0, tmp.value.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(tmp);
+      if(ok){ toast("Copiado ✅"); return true; }
+    }catch(e){}
+    toast("Mantén presionado el texto para copiar");
+    return false;
   }
 
   function doSearch(){

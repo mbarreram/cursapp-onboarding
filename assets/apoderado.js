@@ -41,7 +41,7 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
   }
   function meKey(){
     const s = getSession();
-    return String(s?.userId || s?.email || s?.userEmail || s?.correo || "").toLowerCase().trim();
+    return String(s?.userId||"").toLowerCase().trim();
   }
 
   
@@ -79,22 +79,6 @@ function isMinePayment(p){
 
   
   // ---- Opt-out campañas no obligatorias (por curso) ----
-  function dedupePayments(list){
-    const seen = new Set();
-    return (list||[]).filter((p)=>{
-      const k = String(p?.id || "") || [
-        p?.fromTaskId||"",
-        p?.apoderadoEmail||p?.payerEmail||"",
-        p?.campaignId||"",
-        p?.dueDate||"",
-        p?.amount||""
-      ].join("|");
-      if(seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }
-
   function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
   function isOptedOut(taskId){
     const p = getActiveProfile();
@@ -886,7 +870,10 @@ function dueBadge(iso){
   
   // -------- Comprobantes --------
   window.openReceipt = function(id){
-    const pays = load(KEY_PAYMENTS, []);
+    let pays = load(KEY_PAYMENTS, []);
+    const _uniqPays = dedupePayments(pays);
+    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
+    else { pays = _uniqPays; }
     const p = pays.find(x=>x.id===id);
     if(!p) return;
 
@@ -1034,11 +1021,14 @@ function dueBadge(iso){
     ensureTemplateStyles();
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
+    const _uniqPaysAll = dedupePayments(paysAll);
+    if(_uniqPaysAll.length !== paysAll.length){ paysAll = _uniqPaysAll; save(KEY_PAYMENTS, paysAll); }
+    else { paysAll = _uniqPaysAll; }
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
-    paysAll = dedupePayments(paysAll.filter(isMinePayment));
+    paysAll = paysAll.filter(isMinePayment);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -1277,6 +1267,9 @@ function dueBadge(iso){
   function renderPayments(){
     ensureTemplateStyles();
     let paysAll = load(KEY_PAYMENTS, []);
+    const _uniqPaysAll = dedupePayments(paysAll);
+    if(_uniqPaysAll.length !== paysAll.length){ paysAll = _uniqPaysAll; save(KEY_PAYMENTS, paysAll); }
+    else { paysAll = _uniqPaysAll; }
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     // pago recién efectuado (para banner por campaña)
     let justPaidId = "";
@@ -1710,7 +1703,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
-    const pays = load(KEY_PAYMENTS, []);
+    let pays = load(KEY_PAYMENTS, []);
+    const _uniqPays = dedupePayments(pays);
+    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
+    else { pays = _uniqPays; }
     const ids = pays
       .map((p,idx)=>({p,idx}))
       .filter(o=>o.p.fromTaskId===taskId && (o.p.status==="pending" || o.p.status==="partial"))
@@ -1761,7 +1757,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 window.payNow = function(id){
     // Checkout Webpay (Transbank): ir a pantalla de pago
-    const pays = load(KEY_PAYMENTS, []);
+    let pays = load(KEY_PAYMENTS, []);
+    const _uniqPays = dedupePayments(pays);
+    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
+    else { pays = _uniqPays; }
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
 
