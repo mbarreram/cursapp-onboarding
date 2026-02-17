@@ -58,13 +58,33 @@ async function copyTextToClipboard(text){
   const KEY_PAYMENTS = sk("payments_v1");
   const KEY_EXPENSES = sk("expenses_v1");
   const KEY_MONTHLY_REPORTS = sk("monthly_reports_v1");
+  const KEY_ENROLLMENTS = sk("enrollments_v1");
   const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
+
+  // ---- notifier: refrescar indicadores cuando se actualiza storage (misma sesión) ----
+  // Esto evita que al aprobar un apoderado en Presidente los indicadores queden desfasados hasta re-login.
+  (function patchLocalStorageSetItem(){
+    try{
+      if(window.__cursapp_setItemPatched) return;
+      const _orig = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function(k, v){
+        _orig(k, v);
+        try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
+      };
+      window.__cursapp_setItemPatched = true;
+    }catch(e){}
+  })();
 
   const load = (k, def) => {
     try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }
     catch { return def; }
   };
-  const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const save = (k, v) => {
+    localStorage.setItem(k, JSON.stringify(v));
+    // localStorage.setItem ya emite cursapp:dataChanged (ver patchLocalStorageSetItem),
+    // pero mantenemos este try por compatibilidad si el patch no aplica.
+    try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
+  };
 
   const markDirty = () => localStorage.setItem(KEY_DIRTY, "1");
   const clearDirty = () => localStorage.removeItem(KEY_DIRTY);

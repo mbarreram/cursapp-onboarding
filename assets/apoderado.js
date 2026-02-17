@@ -74,8 +74,24 @@ function isMinePayment(p){
   // ✅ Sin identidad fuerte no es 'mío' (evita cruces)
   return false;
 }
+  // ---- notifier: refrescar cuando se actualiza storage (misma sesión) ----
+  (function patchLocalStorageSetItem(){
+    try{
+      if(window.__cursapp_setItemPatched) return;
+      const _orig = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function(k, v){
+        _orig(k, v);
+        try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
+      };
+      window.__cursapp_setItemPatched = true;
+    }catch(e){}
+  })();
+
   const load = (k, def)=>{ try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(def)); }catch{ return def; } };
-  const save = (k, v)=> localStorage.setItem(k, JSON.stringify(v));
+  const save = (k, v)=>{
+    localStorage.setItem(k, JSON.stringify(v));
+    try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
+  };
 
   
   // ---- Opt-out campañas no obligatorias (por curso) ----
