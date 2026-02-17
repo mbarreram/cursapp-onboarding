@@ -857,7 +857,7 @@ function activeCourse(){
   }catch(e){ return null; }
 }
 
-function buildWhatsappText(profile, summary){
+function buildWhatsappText(profile, summary, monthMand){
   const name = (profile.apoderadoName||profile.name||"").trim() || "Apoderado/a";
   const alumno = (profile.alumno||"").trim();
   const c = activeCourse() || {};
@@ -869,23 +869,29 @@ function buildWhatsappText(profile, summary){
   lines.push(`Te comparto el resumen de cobros del curso ${courseLine} al ${today}:`);
   lines.push("");
 
+  // Resumen para evitar "shock" por el total
+  const mm = Number(monthMand||0);
+  if(mm>0) lines.push(`📌 Este mes (obligatorio): ${money(mm)}.`);
+  lines.push(`📌 Total pendiente acumulado: ${money(summary.totalAll)}.`);
+  if(summary.totalOverdue>0) lines.push(`⚠️ Vencido: ${money(summary.totalOverdue)}.`);
+  lines.push("");
+
   if(summary.campaigns.length===0){
     lines.push("✅ No registras deudas pendientes.");
   }else{
+    lines.push("Detalle por campaña:");
     summary.campaigns.forEach(ca=>{
       const tag = ca.mandatory ? "Obligatoria" : "Voluntaria";
-      lines.push(`• ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}.`);
       const det = [];
       if(ca.overdueAmount>0) det.push(`vencido ${money(ca.overdueAmount)}`);
       if(ca.upcomingAmount>0) det.push(`por vencer ${money(ca.upcomingAmount)}`);
-      if(det.length) lines.push(`  (${det.join(" · ")})`);
+      const detLine = det.length ? ` (${det.join(" · ")})` : "";
+      lines.push(`• ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}${detLine}.`);
     });
-    lines.push("");
-    lines.push(`Total pendiente: ${money(summary.totalAll)}.`);
   }
 
   lines.push("");
-  lines.push("Gracias.");
+  lines.push("Si ya pagaste, puedes ignorar este mensaje.");
   return lines.join("\n");
 }
 
@@ -1000,7 +1006,9 @@ function renderDeudores(){
       const tmp = document.createElement("textarea");
       tmp.value = txt;
       document.body.appendChild(tmp);
+      tmp.focus();
       tmp.select();
+      tmp.setSelectionRange(0, tmp.value.length);
       document.execCommand("copy");
       tmp.remove();
       toast("Copiado ✅");
@@ -1029,7 +1037,7 @@ function renderDeudores(){
     out.innerHTML = matches.map(profile=>{
       const sum = summarizeDebts(profile.email);
       const monthMand = mandatoryPendingByEmail.get(profile.email) || 0;
-      const wa = buildWhatsappText(profile, sum);
+      const wa = buildWhatsappText(profile, sum, monthMand);
       return `
         <div class="resultRow">
           <div class="resultTop">
@@ -1068,7 +1076,7 @@ function renderDeudores(){
           <div style="margin-top:12px;">
             <div style="font-weight:950;">Resumen para WhatsApp</div>
             <div class="muted" style="margin-top:6px;">Copia y pega este texto.</div>
-            <textarea readonly>${esc(wa)}</textarea>
+            <textarea readonly onclick="this.focus();this.select();this.setSelectionRange(0,this.value.length);">${esc(wa)}</textarea>
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
               <button class="btn primary" type="button" data-copy="1">Copiar texto</button>
             </div>
@@ -1081,6 +1089,7 @@ function renderDeudores(){
       b.onclick = ()=>{
         const ta = out.querySelectorAll("textarea")[idx];
         const txt = ta?.value || "";
+        try{ ta && (ta.focus(), ta.select(), ta.setSelectionRange(0, txt.length)); }catch(e){}
         if(navigator.clipboard?.writeText){
           copyTextToClipboard(txt).then(()=> toast("Copiado ✅")).catch(()=> fallbackCopy(txt));
         }else{
