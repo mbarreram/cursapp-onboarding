@@ -303,38 +303,6 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
 
-  // ---- Plantillas destacadas (estilo suave) ----
-  let __tplStylesInjected = false;
-  function templateKind(t){
-    const k = String(t?.template || t?.templateKey || t?.templateId || "").toLowerCase();
-    if(k.includes("gira")) return "gira";
-    if(k.includes("gradu")) return "graduacion";
-    const title = String(t?.title || t?.name || "").toLowerCase();
-    if(title.includes("gira")) return "gira";
-    if(title.includes("gradu")) return "graduacion";
-    return "";
-  }
-  function templateClassForCampaign(t){
-    const k = templateKind(t);
-    return k ? `tplCamp tplCamp-${k}` : "";
-  }
-  function ensureTemplateStyles(){
-    if(__tplStylesInjected) return;
-    __tplStylesInjected = true;
-    const css = `
-      .campLine{ position:relative; overflow:hidden; padding-left:10px; border-radius:18px; }
-      .campLine:before{ content:""; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:18px 0 0 18px; background: rgba(148,163,184,.55); }
-      .tplCamp:before{ background: rgba(59,130,246,.65); }
-      .tplCamp.tplCamp-graduacion:before{ background: rgba(139,92,246,.65); }
-      .tplCamp{ background: rgba(59,130,246,.05); }
-      .tplCamp.tplCamp-graduacion{ background: rgba(139,92,246,.05); }
-    `;
-    const style = document.createElement("style");
-    style.setAttribute("data-cursapp-tpl","1");
-    style.textContent = css;
-    document.head.appendChild(style);
-  }
-
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
   // ---------------- Cotizaciones (Gira / Graduación) ----------------
@@ -425,24 +393,6 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   function todayISO(){
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  }
-
-  // ---- payments dedupe (prevents duplicated cuotas/pagos when arrays are merged/rehydrated) ----
-  function paymentKey(p){
-    const id = p?.id ?? p?.paymentId ?? p?._id ?? p?.pid;
-    if(id) return String(id);
-    const who = String(p?.apoderadoEmail ?? p?.email ?? p?.payerEmail ?? "").toLowerCase();
-    const camp = String(p?.campaignId ?? p?.campId ?? p?.campaign ?? "");
-    const inst = String(p?.installmentIndex ?? p?.installmentNo ?? p?.installment ?? p?.cuotaIndex ?? "");
-    const due  = String(p?.dueDate ?? p?.vencimiento ?? p?.due ?? p?.date ?? "");
-    const amt  = String(p?.amount ?? p?.monto ?? p?.value ?? 0);
-    return [who, camp, inst, due, amt].join("|");
-  }
-
-  function dedupePayments(arr){
-    const map = new Map();
-    (arr||[]).forEach(p=>{ map.set(paymentKey(p), p); });
-    return Array.from(map.values());
   }
   function daysTo(iso){
     if(!iso) return null;
@@ -888,10 +838,7 @@ function dueBadge(iso){
   
   // -------- Comprobantes --------
   window.openReceipt = function(id){
-    let pays = load(KEY_PAYMENTS, []);
-    const _uniqPays = dedupePayments(pays);
-    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
-    else { pays = _uniqPays; }
+    const pays = load(KEY_PAYMENTS, []);
     const p = pays.find(x=>x.id===id);
     if(!p) return;
 
@@ -1034,14 +981,55 @@ function dueBadge(iso){
     return {changed:false};
   }
 
+
+// -------- Deduplicación de pagos (estabilidad) --------
+function paymentStableKey(p){
+  const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
+  const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
+  const cuota = String(p.cuotaNumero || p.installment || p.cuota || "");
+  const due = String(p.dueDate || "");
+  const amt = String(Number(p.amountRemaining ?? p.amount ?? p.monto ?? 0));
+  const typ = String(p.type || p.kind || "");
+  return [cid, who, cuota, due, amt, typ].join("|");
+}
+
+function dedupePaymentsAll(list){
+  const map = new Map();
+  let changed = false;
+
+  (list || []).forEach(p=>{
+    if(!p) return;
+    const k = paymentStableKey(p);
+    const prev = map.get(k);
+    if(!prev){
+      map.set(k, p);
+      return;
+    }
+    // Preferimos "paid" sobre "pending" y el que tenga menor amountRemaining
+    const prevPaid = String(prev.status||"").toLowerCase()==="paid";
+    const curPaid  = String(p.status||"").toLowerCase()==="paid";
+    if(curPaid && !prevPaid){
+      map.set(k, p); changed = true; return;
+    }
+    const prevRem = Number(prev.amountRemaining ?? prev.amount ?? 0);
+    const curRem  = Number(p.amountRemaining ?? p.amount ?? 0);
+    if(curRem < prevRem){
+      map.set(k, p); changed = true; return;
+    }
+    // si son iguales, mantenemos el primero
+    changed = true;
+  });
+
+  return { list: Array.from(map.values()), changed };
+}
+
   // -------- Pages --------
   function renderHome(){
-    ensureTemplateStyles();
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
-    const _uniqPaysAll = dedupePayments(paysAll);
-    if(_uniqPaysAll.length !== paysAll.length){ paysAll = _uniqPaysAll; save(KEY_PAYMENTS, paysAll); }
-    else { paysAll = _uniqPaysAll; }
+    const dd0 = dedupePaymentsAll(paysAll);
+    if(dd0.changed) save(KEY_PAYMENTS, dd0.list);
+    paysAll = dd0.list;
     const ident0 = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
@@ -1283,11 +1271,10 @@ function dueBadge(iso){
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
   function renderPayments(){
-    ensureTemplateStyles();
     let paysAll = load(KEY_PAYMENTS, []);
-    const _uniqPaysAll = dedupePayments(paysAll);
-    if(_uniqPaysAll.length !== paysAll.length){ paysAll = _uniqPaysAll; save(KEY_PAYMENTS, paysAll); }
-    else { paysAll = _uniqPaysAll; }
+    const ddP = dedupePaymentsAll(paysAll);
+    if(ddP.changed) save(KEY_PAYMENTS, ddP.list);
+    paysAll = ddP.list;
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     // pago recién efectuado (para banner por campaña)
     let justPaidId = "";
@@ -1472,7 +1459,7 @@ function dueBadge(iso){
     function emptyCampaignCard(t){
       const m = campaignMeta(t);
       return `
-        <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
+        <div class="card" style="margin-top:12px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
                   <span class="tag">Campaña</span>
@@ -1498,7 +1485,7 @@ function dueBadge(iso){
         if(!rows.length){
           const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
           return hasAny
-            ? `<div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
+            ? `<div class="card" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
             : emptyCampaignCard(t);
         }
 
@@ -1516,7 +1503,7 @@ function dueBadge(iso){
           const pend = rows.filter(r=>["pending","partial"].includes(String(r.status||"").toLowerCase()));
           const totalPend = pend.reduce((a,r)=>a+Number(r.amountRemaining ?? r.amount ?? 0),0);
           return `
-            <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
+            <div class="card" style="margin-top:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div>
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1566,7 +1553,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
         return `
-          <div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;">
+          <div class="card" style="margin-top:12px;">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
               <div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1672,7 +1659,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
             if(payFilter==="credit") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">No tienes saldo a favor por ahora.</div></div>`;
             return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no hay campañas ni cobros publicados. Te avisaremos cuando haya novedades 😊</div></div>`;
           })()
-          : (campaignCards || `<div class="card campLine ${templateClassForCampaign(t)}" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
+          : (campaignCards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
       }
 
       ${others}
@@ -1721,10 +1708,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   
   // Pagar campaña single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
-    let pays = load(KEY_PAYMENTS, []);
-    const _uniqPays = dedupePayments(pays);
-    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
-    else { pays = _uniqPays; }
+    const pays = load(KEY_PAYMENTS, []);
     const ids = pays
       .map((p,idx)=>({p,idx}))
       .filter(o=>o.p.fromTaskId===taskId && (o.p.status==="pending" || o.p.status==="partial"))
@@ -1775,10 +1759,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 window.payNow = function(id){
     // Checkout Webpay (Transbank): ir a pantalla de pago
-    let pays = load(KEY_PAYMENTS, []);
-    const _uniqPays = dedupePayments(pays);
-    if(_uniqPays.length !== pays.length){ pays = _uniqPays; save(KEY_PAYMENTS, pays); }
-    else { pays = _uniqPays; }
+    const pays = load(KEY_PAYMENTS, []);
     const i = pays.findIndex(p=>p.id===id);
     if(i<0) return;
 

@@ -16,114 +16,35 @@
 
 // ---------- clipboard helper (iOS Safari friendly) ----------
 async function copyTextToClipboard(text){
-  const t = String(text||"");
+  const s = String(text||"");
+  // Prefer modern API (HTTPS + user gesture)
   try{
-    if(navigator.clipboard && window.isSecureContext){
-      await navigator.clipboard.writeText(t);
-      toast("Copiado ✅");
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(s);
       return true;
     }
   }catch(e){}
-  // Fallback: execCommand (works in many iOS Safari cases)
+  // Fallback: temporary textarea + execCommand('copy')
   try{
-    const ta=document.createElement('textarea');
-    ta.value=t;
-    ta.setAttribute('readonly','');
-    ta.style.position='fixed';
-    ta.style.left='-9999px';
+    const ta = document.createElement("textarea");
+    ta.value = s;
+    ta.setAttribute("readonly","");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.width = "1px";
+    ta.style.height = "1px";
+    ta.style.opacity = "0";
     document.body.appendChild(ta);
     ta.focus();
+    ta.select();
     ta.setSelectionRange(0, ta.value.length);
-    const ok=document.execCommand('copy');
+    const ok = document.execCommand("copy");
     document.body.removeChild(ta);
-    if(ok){ toast('Copiado ✅'); return true; }
+    return !!ok;
   }catch(e){}
-
-  // Last resort: show a modal with selectable text (no alert)
-  showManualCopyModal(t);
   return false;
 }
-
-function toast(msg){
-  try{
-    const el=document.createElement("div");
-    el.textContent=String(msg||"");
-    el.style.position="fixed";
-    el.style.left="50%";
-    el.style.bottom="16px";
-    el.style.transform="translateX(-50%)";
-    el.style.background="rgba(0,0,0,0.75)";
-    el.style.color="#fff";
-    el.style.padding="10px 12px";
-    el.style.borderRadius="12px";
-    el.style.fontSize="14px";
-    el.style.zIndex="99999";
-    el.style.maxWidth="90vw";
-    el.style.textAlign="center";
-    document.body.appendChild(el);
-    setTimeout(()=>{ try{el.remove();}catch(e){} }, 1800);
-  }catch(e){}
-}
-
-// ---- payments dedupe (prevents duplicated cuotas/pagos when arrays are merged/rehydrated) ----
-function paymentKey(p){
-  const id = p?.id ?? p?.paymentId ?? p?._id ?? p?.pid;
-  if(id) return String(id);
-  const who = String(p?.apoderadoEmail ?? p?.email ?? p?.payerEmail ?? "").toLowerCase();
-  const camp = String(p?.campaignId ?? p?.campId ?? p?.campaign ?? "");
-  const inst = String(p?.installmentIndex ?? p?.installmentNo ?? p?.installment ?? p?.cuotaIndex ?? "");
-  const due  = String(p?.dueDate ?? p?.vencimiento ?? p?.due ?? p?.date ?? "");
-  const amt  = String(p?.amount ?? p?.monto ?? p?.value ?? 0);
-  return [who, camp, inst, due, amt].join("|");
-}
-
-function dedupePayments(arr){
-  const map = new Map();
-  (arr||[]).forEach(p=>{ map.set(paymentKey(p), p); });
-  return Array.from(map.values());
-}
-
-function paymentsDeduped(){
-  try{ return dedupePayments(payments()); }catch(e){ return payments(); }
-}
-
-// ---- Manual copy modal (iOS-friendly) ----
-function showManualCopyModal(text){
-  const modalRoot = document.getElementById("modalRoot");
-  if(!modalRoot){ alert("Selecciona y copia manualmente."); return; }
-  const esc = (s)=>String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  modalRoot.innerHTML = `
-    <div class="modalOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999;">
-      <div class="modalCard" style="background:#fff;border-radius:18px;max-width:520px;width:92%;padding:16px 16px 12px;box-shadow:0 10px 40px rgba(0,0,0,.18)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
-          <div style="font-weight:800;font-size:18px">Copiar texto</div>
-          <button id="mcClose" class="btn" style="padding:8px 12px;border-radius:999px">Cerrar</button>
-        </div>
-        <textarea id="mcText" readonly style="width:100%;min-height:180px;resize:none;border:1px solid #e6e6ef;border-radius:14px;padding:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;font-size:13px;line-height:1.35;">${esc(text)}</textarea>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
-          <button id="mcSelect" class="btn" style="padding:10px 14px;border-radius:999px">Seleccionar</button>
-          <button id="mcCopy" class="btn primary" style="padding:10px 14px;border-radius:999px">Copiar</button>
-        </div>
-      </div>
-    </div>`;
-  const close = ()=>{ modalRoot.innerHTML=""; };
-  modalRoot.querySelector("#mcClose")?.addEventListener("click", close);
-  modalRoot.querySelector(".modalOverlay")?.addEventListener("click", (e)=>{ if(e.target.classList.contains("modalOverlay")) close(); });
-  const ta = modalRoot.querySelector("#mcText");
-  const selectAll = ()=>{ ta.focus(); ta.setSelectionRange(0, ta.value.length); };
-  modalRoot.querySelector("#mcSelect")?.addEventListener("click", selectAll);
-  modalRoot.querySelector("#mcCopy")?.addEventListener("click", ()=>{
-    try{
-      selectAll();
-      const ok = document.execCommand("copy");
-      toast(ok ? "Copiado ✅" : "Selecciona y copia manualmente");
-    }catch(_){
-      toast("Selecciona y copia manualmente");
-    }
-  });
-  setTimeout(selectAll, 60);
-}
-
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
   function detectKey(candidates) {
@@ -168,9 +89,50 @@ function showManualCopyModal(text){
   const isCredit = (p) => p.status === "credit";
   const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
 
+// -------- Deduplicación de pagos (estabilidad) --------
+function paymentStableKey(p){
+  const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
+  const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
+  const cuota = String(p.cuotaNumero || p.installment || p.cuota || "");
+  const due = String(p.dueDate || "");
+  const amt = String(Number(p.amountRemaining ?? p.amount ?? p.monto ?? 0));
+  const typ = String(p.type || p.kind || "");
+  return [cid, who, cuota, due, amt, typ].join("|");
+}
+
+function dedupePaymentsAll(list){
+  const map = new Map();
+  let changed = false;
+
+  (list || []).forEach(p=>{
+    if(!p) return;
+    const k = paymentStableKey(p);
+    const prev = map.get(k);
+    if(!prev){ map.set(k,p); return; }
+
+    const prevPaid = String(prev.status||"").toLowerCase()==="paid";
+    const curPaid  = String(p.status||"").toLowerCase()==="paid";
+    if(curPaid && !prevPaid){ map.set(k,p); changed=true; return; }
+
+    const prevRem = Number(prev.amountRemaining ?? prev.amount ?? 0);
+    const curRem  = Number(p.amountRemaining ?? p.amount ?? 0);
+    if(curRem < prevRem){ map.set(k,p); changed=true; return; }
+
+    changed = true;
+  });
+
+  return { list: Array.from(map.values()), changed };
+}
+
+
   // data access
   const tasks = () => load(KEY_TASKS, []);
-  const payments = () => load(KEY_PAYMENTS, []);
+  const payments = () => {
+    const raw = load(KEY_PAYMENTS, []);
+    const dd = dedupePaymentsAll(raw);
+    if(dd.changed) save(KEY_PAYMENTS, dd.list);
+    return dd.list;
+  };
   const expenses = () => load(KEY_EXPENSES, []);
   const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
@@ -854,7 +816,7 @@ function money(n){ return clp(Number(n||0)); }
 
 function debtorRowsFor(email){
   const em = String(email||"").toLowerCase();
-  const pays = paymentsDeduped().filter(p => apoderadoKey(p) === em);
+  const pays = payments().filter(p => apoderadoKey(p) === em);
   const pending = pays.filter(isPendingLike);
 
   return pending.map(p=>{
@@ -1075,31 +1037,17 @@ function renderDeudores(){
   const out = document.getElementById("debtorResults");
 
   function fallbackCopy(txt){
-    const text = String(txt||"" );
     try{
       const tmp = document.createElement("textarea");
-      tmp.value = text;
-      tmp.setAttribute("readonly", "");
-      tmp.style.position = "fixed";
-      tmp.style.top = "0";
-      tmp.style.left = "0";
-      tmp.style.width = "2em";
-      tmp.style.height = "2em";
-      tmp.style.padding = "0";
-      tmp.style.border = "none";
-      tmp.style.outline = "none";
-      tmp.style.boxShadow = "none";
-      tmp.style.background = "transparent";
+      tmp.value = txt;
       document.body.appendChild(tmp);
-      tmp.focus();
       tmp.select();
-      tmp.setSelectionRange(0, tmp.value.length);
-      const ok = document.execCommand("copy");
-      document.body.removeChild(tmp);
-      if(ok){ toast("Copiado ✅"); return true; }
-    }catch(e){}
-    toast("Mantén presionado el texto para copiar");
-    return false;
+      document.execCommand("copy");
+      tmp.remove();
+      toast("Copiado ✅");
+    }catch(e){
+      alert("No pude copiar automáticamente. Selecciona y copia manualmente.");
+    }
   }
 
   function doSearch(){
