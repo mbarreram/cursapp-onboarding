@@ -426,6 +426,24 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
+
+  // ---- payments dedupe (prevents duplicated cuotas/pagos when arrays are merged/rehydrated) ----
+  function paymentKey(p){
+    const id = p?.id ?? p?.paymentId ?? p?._id ?? p?.pid;
+    if(id) return String(id);
+    const who = String(p?.apoderadoEmail ?? p?.email ?? p?.payerEmail ?? "").toLowerCase();
+    const camp = String(p?.campaignId ?? p?.campId ?? p?.campaign ?? "");
+    const inst = String(p?.installmentIndex ?? p?.installmentNo ?? p?.installment ?? p?.cuotaIndex ?? "");
+    const due  = String(p?.dueDate ?? p?.vencimiento ?? p?.due ?? p?.date ?? "");
+    const amt  = String(p?.amount ?? p?.monto ?? p?.value ?? 0);
+    return [who, camp, inst, due, amt].join("|");
+  }
+
+  function dedupePayments(arr){
+    const map = new Map();
+    (arr||[]).forEach(p=>{ map.set(paymentKey(p), p); });
+    return Array.from(map.values());
+  }
   function daysTo(iso){
     if(!iso) return null;
     const d = new Date(iso+"T23:59:59");

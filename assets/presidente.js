@@ -24,10 +24,24 @@ async function copyTextToClipboard(text){
       return true;
     }
   }catch(e){}
-  const ok = fallbackCopyToClipboard(t);
-  if(ok) toast("Copiado ✅");
-  else toast("Mantén presionado el texto para copiar");
-  return ok;
+  // Fallback: execCommand (works in many iOS Safari cases)
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=t;
+    ta.setAttribute('readonly','');
+    ta.style.position='fixed';
+    ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    if(ok){ toast('Copiado ✅'); return true; }
+  }catch(e){}
+
+  // Last resort: show a modal with selectable text (no alert)
+  showManualCopyModal(t);
+  return false;
 }
 
 function toast(msg){
@@ -49,6 +63,65 @@ function toast(msg){
     document.body.appendChild(el);
     setTimeout(()=>{ try{el.remove();}catch(e){} }, 1800);
   }catch(e){}
+}
+
+// ---- payments dedupe (prevents duplicated cuotas/pagos when arrays are merged/rehydrated) ----
+function paymentKey(p){
+  const id = p?.id ?? p?.paymentId ?? p?._id ?? p?.pid;
+  if(id) return String(id);
+  const who = String(p?.apoderadoEmail ?? p?.email ?? p?.payerEmail ?? "").toLowerCase();
+  const camp = String(p?.campaignId ?? p?.campId ?? p?.campaign ?? "");
+  const inst = String(p?.installmentIndex ?? p?.installmentNo ?? p?.installment ?? p?.cuotaIndex ?? "");
+  const due  = String(p?.dueDate ?? p?.vencimiento ?? p?.due ?? p?.date ?? "");
+  const amt  = String(p?.amount ?? p?.monto ?? p?.value ?? 0);
+  return [who, camp, inst, due, amt].join("|");
+}
+
+function dedupePayments(arr){
+  const map = new Map();
+  (arr||[]).forEach(p=>{ map.set(paymentKey(p), p); });
+  return Array.from(map.values());
+}
+
+function paymentsDeduped(){
+  try{ return dedupePayments(payments()); }catch(e){ return payments(); }
+}
+
+// ---- Manual copy modal (iOS-friendly) ----
+function showManualCopyModal(text){
+  const modalRoot = document.getElementById("modalRoot");
+  if(!modalRoot){ alert("Selecciona y copia manualmente."); return; }
+  const esc = (s)=>String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  modalRoot.innerHTML = `
+    <div class="modalOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999;">
+      <div class="modalCard" style="background:#fff;border-radius:18px;max-width:520px;width:92%;padding:16px 16px 12px;box-shadow:0 10px 40px rgba(0,0,0,.18)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+          <div style="font-weight:800;font-size:18px">Copiar texto</div>
+          <button id="mcClose" class="btn" style="padding:8px 12px;border-radius:999px">Cerrar</button>
+        </div>
+        <textarea id="mcText" readonly style="width:100%;min-height:180px;resize:none;border:1px solid #e6e6ef;border-radius:14px;padding:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;font-size:13px;line-height:1.35;">${esc(text)}</textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+          <button id="mcSelect" class="btn" style="padding:10px 14px;border-radius:999px">Seleccionar</button>
+          <button id="mcCopy" class="btn primary" style="padding:10px 14px;border-radius:999px">Copiar</button>
+        </div>
+      </div>
+    </div>`;
+  const close = ()=>{ modalRoot.innerHTML=""; };
+  modalRoot.querySelector("#mcClose")?.addEventListener("click", close);
+  modalRoot.querySelector(".modalOverlay")?.addEventListener("click", (e)=>{ if(e.target.classList.contains("modalOverlay")) close(); });
+  const ta = modalRoot.querySelector("#mcText");
+  const selectAll = ()=>{ ta.focus(); ta.setSelectionRange(0, ta.value.length); };
+  modalRoot.querySelector("#mcSelect")?.addEventListener("click", selectAll);
+  modalRoot.querySelector("#mcCopy")?.addEventListener("click", ()=>{
+    try{
+      selectAll();
+      const ok = document.execCommand("copy");
+      toast(ok ? "Copiado ✅" : "Selecciona y copia manualmente");
+    }catch(_){
+      toast("Selecciona y copia manualmente");
+    }
+  });
+  setTimeout(selectAll, 60);
 }
 
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
@@ -781,7 +854,7 @@ function money(n){ return clp(Number(n||0)); }
 
 function debtorRowsFor(email){
   const em = String(email||"").toLowerCase();
-  const pays = payments().filter(p => apoderadoKey(p) === em);
+  const pays = paymentsDeduped().filter(p => apoderadoKey(p) === em);
   const pending = pays.filter(isPendingLike);
 
   return pending.map(p=>{
