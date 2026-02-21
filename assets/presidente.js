@@ -448,11 +448,24 @@ function dedupePaymentsAll(list){
   }
 
   function pendingTaskEstimated(t){
-    // Pendiente estimado (aunque aún no existan cobros instanciados para apoderados)
+    // Pendiente estimado:
+    // - Si existen cobros instanciados (payments_v1), usamos esos montos restantes (excluyendo opted_out).
+    // - Si aún no existen (escenario antiguo), caemos al estimado por campaña (expectedTaskTotal - recaudado).
+    const id = String(t?.id||"");
+    const ps = payments().filter(p=>{
+      if(String(p.fromTaskId||"") !== id) return false;
+      if(!isPendingLike(p)) return false;
+      if(String(p.status||"").toLowerCase()==="opted_out") return false;
+      return true;
+    });
+    if(ps.length){
+      return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
+    }
     const expected = expectedTaskTotal(t);
-    const rec = collectedTask(t.id);
+    const rec = collectedTask(id);
     return Math.max(0, expected - rec);
   }
+
 
   function deudoresTask(id){
   // Regla: X cuotas pendientes = 1 deudor (apoderado único)
