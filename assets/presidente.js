@@ -1269,7 +1269,78 @@ window.deleteCampaign = function(taskId){
     return `${ny}-${String(nm).padStart(2,'0')}`;
   }
 
-  function paymentsForTask(taskId){
+  
+  // ---- Ensure payments exist for all approved apoderados (evita desface sin re-login) ----
+  // Apoderado.js materializa pagos al entrar; acá replicamos lo mínimo para que Presidente
+  // tenga indicadores correctos apenas se crea una campaña o se aprueba un apoderado.
+  function ensurePaymentsForAllApproved(){
+    try{
+      const ts = tasks().filter(t=>t && !t.closed);
+      if(!ts.length) return;
+      const people = approvedApoderados();
+      if(!people.length) return;
+
+      const out = payments().slice();
+      const byKey = new Set(out.map(p=>{
+        const email = String(p.apoderadoEmail || p.email || "").toLowerCase();
+        const tid = String(p.fromTaskId || p.taskId || "");
+        const per = String(p.period || ymFromISO(p.dueDate) || "");
+        const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
+        return [email, tid, per, idx].join("||");
+      }));
+
+      let changed = false;
+
+      function pushPay(t, e, period, installmentIndex, dueDate, concept){
+        const email = String(e.email || "").toLowerCase();
+        const key = [email, String(t.id), String(period||""), String(installmentIndex||1)].join("||");
+        if(byKey.has(key)) return;
+
+        out.unshift({
+          id: uid("pay"),
+          fromTaskId: t.id,
+          concept,
+          amount: Number(t.amount||0),
+          status: "pending",
+          dueDate,
+          period,
+          installmentIndex,
+          apoderadoEmail: email,
+          apoderadoName: e.apoderadoName||"",
+          alumno: e.alumno||"",
+          createdAt: new Date().toISOString()
+        });
+        byKey.add(key);
+        changed = true;
+      }
+
+      ts.forEach(t=>{
+        const type = String(t.type||"single").toLowerCase();
+        if(type==="monthly"){
+          const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
+          const months = Math.max(1, Number(t.months||1));
+          for(let i=0;i<months;i++){
+            const period = addMonthsYM(startYM, i);
+            const dueDate = endOfMonthISO(period);
+            const idx = i+1;
+            people.forEach(e=> pushPay(t, e, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`));
+          }
+        }else{
+          const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
+          const dueDate = t.dueDate || endOfMonthISO(period);
+          people.forEach(e=> pushPay(t, e, period, 1, dueDate, t.title));
+        }
+      });
+
+      if(changed){
+        save(KEY_PAYMENTS, out);
+        // markDirty no es estrictamente necesario acá, pero mantiene consistencia del informe
+        markDirty();
+      }
+    }catch(e){}
+  }
+
+function paymentsForTask(taskId){
     return payments().filter(p=>p.fromTaskId===taskId);
   }
 
@@ -1403,6 +1474,7 @@ window.deleteCampaign = function(taskId){
   var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
     ? window.CURSAPP.consumeNextNavTab()
     : null;
+  try{ ensurePaymentsForAllApproved(); }catch(e){}
   go(__nextTab || "home");
 })();
 
