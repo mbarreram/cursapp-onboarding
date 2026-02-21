@@ -86,6 +86,130 @@ async function copyTextToClipboard(text){
     try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
   };
 
+
+  // ---- Payments materialization (para que indicadores no queden en 0) ----
+function hash32(str){
+    let h = 5381;
+    const s = String(str||"");
+    for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
+    return (h>>>0).toString(16);
+  }
+  function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
+    return "alu_" + hash32([courseKey, apoderadoEmail, alumnoLabel].join("|"));
+  }
+  function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
+    return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
+  }
+  function normalizeTasks(list){
+    return (list || []).map(normalizeTask).filter(t=>t && t.id);
+  }
+  function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
+      ident = ident || {};
+      const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+      if(!courseKey) return paysAll || [];
+      const apoderadoId = String(ident.apoderadoId||"").trim();
+      const alumnoLabel = String(ident.alumnoId||"").trim();
+      const email = String(ident.email||"").toLowerCase().trim();
+      const aidStrong = (apoderadoId || email || "unknown_apoderado");
+      const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+  
+      const out = (paysAll||[]).slice();
+  
+      // Normaliza claves legacy (sin period / installmentIndex) para evitar duplicados
+      const byKey = new Set(out.map(p=>{
+        if(p && p.paymentKey) return String(p.paymentKey);
+        const ck = String(p.courseKey||"").trim();
+        const aid = String(p.apoderadoKey||p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
+        const tid = String(p.fromTaskId||"");
+        const per = String(p.period||ymFromISO(p.dueDate)||"");
+        // ⚠️ si no existe installmentIndex, asumimos 1 (pago único o legacy)
+        const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
+        const alu = String(p.alumnoId||"");
+        return paymentKeyOf(ck, tid, aid, alu, per, idx);
+      }));
+  
+      function pushPay(t, period, installmentIndex, dueDate, concept){
+        const pk = paymentKeyOf(courseKey, t.id, aidStrong, alumnoId, period, installmentIndex);
+        if(byKey.has(pk)) return;
+  
+        out.unshift({
+          id: uid("pay"),
+          paymentKey: pk,
+          courseKey,
+          apoderadoKey: aidStrong,
+          apoderadoId: aidStrong,
+          alumnoId: alumnoId,
+          apoderadoEmail: aidStrong,
+          fromTaskId: t.id,
+          concept,
+          amount: Number(t.amount||0),
+          status: "pending",
+          dueDate,
+          period,
+          installmentIndex,
+          createdAt: nowISO()
+        });
+        byKey.add(pk);
+      }
+  
+      (tasksAll||[]).forEach(t=>{
+        if(!t) return;
+        if(t.closed) return;
+  
+        const type = String(t.type||"single").toLowerCase();
+        if(type==="monthly"){
+          const startYM = ymFromISO(t.startDate||t.dueDate||todayISO());
+          const months = Math.max(1, Number(t.months||1));
+          for(let i=0;i<months;i++){
+            const period = addMonthsYM(startYM, i);
+            const dueDate = endOfMonthISO(period);
+            const idx = i+1;
+            pushPay(t, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
+          }
+        }else{
+          const period = ymFromISO(t.dueDate||t.startDate||todayISO());
+          const dueDate = t.dueDate || endOfMonthISO(period);
+          pushPay(t, period, 1, dueDate, t.title);
+        }
+      });
+  
+      if(out.length !== (paysAll||[]).length){
+        save(KEY_PAYMENTS, out);
+      }
+      return out;
+    }
+
+  const ENROLL_KEY = "cursapp_enrollments_v1";
+
+  function ensurePaymentsForAllApproved(){
+    try{
+      const courseKey = String(localStorage.getItem("cursapp_active_course_v1") || "");
+      if(!courseKey) return;
+
+      const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+      if(!tasksAll.length) return;
+
+      const enrolls = load(ENROLL_KEY, []).filter(e => String(e?.courseKey||"")===courseKey && String(e?.status||"").toLowerCase()==="approved");
+      if(!enrolls.length) return;
+
+      let paysAll = load(KEY_PAYMENTS, []);
+      const beforeLen = paysAll.length;
+
+      for(const e of enrolls){
+        const ident = {
+          courseKey,
+          apoderadoEmail: String(e.email||"").trim().toLowerCase(),
+          alumnoLabel: String(e.alumno||"").trim()
+        };
+        paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+      }
+
+      if(paysAll.length !== beforeLen){
+        save(KEY_PAYMENTS, paysAll);
+      }
+    }catch(e){}
+  }
+
   const markDirty = () => localStorage.setItem(KEY_DIRTY, "1");
   const clearDirty = () => localStorage.removeItem(KEY_DIRTY);
   const isDirty = () => localStorage.getItem(KEY_DIRTY) === "1";
@@ -442,6 +566,9 @@ function cuotasPendientesTask(id){
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
   const __refresh = ()=>{
     try{
+      // materializa pagos faltantes (sin depender de entrar como apoderado)
+      ensurePaymentsForAllApproved();
+
       const tab = (state && state.tab) ? state.tab : 'home';
       if(tab==='home') renderHome();
       else if(tab==='campanas') renderCampanas();
@@ -1269,78 +1396,7 @@ window.deleteCampaign = function(taskId){
     return `${ny}-${String(nm).padStart(2,'0')}`;
   }
 
-  
-  // ---- Ensure payments exist for all approved apoderados (evita desface sin re-login) ----
-  // Apoderado.js materializa pagos al entrar; acá replicamos lo mínimo para que Presidente
-  // tenga indicadores correctos apenas se crea una campaña o se aprueba un apoderado.
-  function ensurePaymentsForAllApproved(){
-    try{
-      const ts = tasks().filter(t=>t && !t.closed);
-      if(!ts.length) return;
-      const people = approvedApoderados();
-      if(!people.length) return;
-
-      const out = payments().slice();
-      const byKey = new Set(out.map(p=>{
-        const email = String(p.apoderadoEmail || p.email || "").toLowerCase();
-        const tid = String(p.fromTaskId || p.taskId || "");
-        const per = String(p.period || ymFromISO(p.dueDate) || "");
-        const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
-        return [email, tid, per, idx].join("||");
-      }));
-
-      let changed = false;
-
-      function pushPay(t, e, period, installmentIndex, dueDate, concept){
-        const email = String(e.email || "").toLowerCase();
-        const key = [email, String(t.id), String(period||""), String(installmentIndex||1)].join("||");
-        if(byKey.has(key)) return;
-
-        out.unshift({
-          id: uid("pay"),
-          fromTaskId: t.id,
-          concept,
-          amount: Number(t.amount||0),
-          status: "pending",
-          dueDate,
-          period,
-          installmentIndex,
-          apoderadoEmail: email,
-          apoderadoName: e.apoderadoName||"",
-          alumno: e.alumno||"",
-          createdAt: new Date().toISOString()
-        });
-        byKey.add(key);
-        changed = true;
-      }
-
-      ts.forEach(t=>{
-        const type = String(t.type||"single").toLowerCase();
-        if(type==="monthly"){
-          const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
-          const months = Math.max(1, Number(t.months||1));
-          for(let i=0;i<months;i++){
-            const period = addMonthsYM(startYM, i);
-            const dueDate = endOfMonthISO(period);
-            const idx = i+1;
-            people.forEach(e=> pushPay(t, e, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`));
-          }
-        }else{
-          const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
-          const dueDate = t.dueDate || endOfMonthISO(period);
-          people.forEach(e=> pushPay(t, e, period, 1, dueDate, t.title));
-        }
-      });
-
-      if(changed){
-        save(KEY_PAYMENTS, out);
-        // markDirty no es estrictamente necesario acá, pero mantiene consistencia del informe
-        markDirty();
-      }
-    }catch(e){}
-  }
-
-function paymentsForTask(taskId){
+  function paymentsForTask(taskId){
     return payments().filter(p=>p.fromTaskId===taskId);
   }
 
@@ -1474,7 +1530,6 @@ function paymentsForTask(taskId){
   var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
     ? window.CURSAPP.consumeNextNavTab()
     : null;
-  try{ ensurePaymentsForAllApproved(); }catch(e){}
   go(__nextTab || "home");
 })();
 

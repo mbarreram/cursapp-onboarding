@@ -94,95 +94,101 @@ function isMinePayment(p){
   };
 
   
-  // ---- Opt-out campañas no obligatorias (por apoderado, por curso) ----
-  // Estructura:
-  //   { [courseKey]: { [apoderadoEmailLower]: [taskId, ...] } }
-  // Compat legacy: si m[courseKey] es Array, se interpreta como opt-out "global" del curso.
-  function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
-  function getOptOutList(courseKey, emailLower){
-    const m = getOptOutMap();
-    const node = m[courseKey];
-    if(Array.isArray(node)) return node; // legacy (global)
-    if(node && typeof node === "object"){
-      const arr = node[emailLower] || [];
-      return Array.isArray(arr) ? arr : [];
-    }
-    return [];
-  }
-  function setOptOutList(courseKey, emailLower, list){
-    const m = getOptOutMap();
-    const node = m[courseKey];
-    if(Array.isArray(node)){
-      // migrate legacy -> per-email
-      m[courseKey] = { [emailLower]: Array.from(new Set(node)) };
-    }else if(!node || typeof node !== "object"){
-      m[courseKey] = {};
-    }
-    m[courseKey][emailLower] = Array.from(new Set(list||[]));
-    save(KEY_OPTOUT, m);
+  // ---- Opt-out campañas no obligatorias (por apoderado) ----
+// Estructura: { [courseKey]: { [apoderadoKey]: [taskId, ...] } }
+function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
+
+function getCourseKeyForOpt(){
+  const p = getActiveProfile && getActiveProfile();
+  return (p && p.courseKey) ? String(p.courseKey) : String(localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
+}
+function getApoderadoKeyForOpt(){
+  // Usa identidad de sesión (userId/email) para evitar cruces
+  const mk = meKey();
+  return mk || "unknown";
+}
+
+function isOptedOut(taskId){
+  const courseKey = getCourseKeyForOpt();
+  const ak = getApoderadoKeyForOpt();
+  const m = getOptOutMap();
+  const byCourse = m[courseKey] || {};
+
+  // Back-compat: formato antiguo era array por curso
+  if(Array.isArray(byCourse)){
+    return byCourse.includes(taskId);
   }
 
-  function isOptedOut(taskId){
-    const p = getActiveProfile() || {};
-    const courseKey = (p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
-    const emailLower = String(p.apoderadoId || p.email || "").toLowerCase().trim();
-    if(!emailLower) return false;
-    const arr = getOptOutList(courseKey, emailLower);
-    return arr.includes(String(taskId));
-  }
-  function setOptedOut(taskId, value){
-    const p = getActiveProfile() || {};
-    const courseKey = (p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
-    const emailLower = String(p.apoderadoId || p.email || "").toLowerCase().trim();
-    if(!emailLower) return;
-    const arr = new Set(getOptOutList(courseKey, emailLower));
-    if(value) arr.add(String(taskId)); else arr.delete(String(taskId));
-    setOptOutList(courseKey, emailLower, Array.from(arr));
-  }
-  window.openCotizacionesModal = openCotizacionesModal;
-  window.toggleOptOut = function(taskId){
-    const next = !isOptedOut(taskId);
-    setOptedOut(taskId, next);
+  const arr = byCourse[ak] || [];
+  return Array.isArray(arr) ? arr.includes(taskId) : false;
+}
 
-    // ✅ Persistir opt-out a nivel de pagos (impacta indicadores de Presidente / Deudores)
-    try{
-      const ident = getActiveProfile() || {};
-      const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-      const emailLower = String(ident.apoderadoId || ident.email || "").toLowerCase().trim();
-      if(courseKey && emailLower){
-        const pays = load(KEY_PAYMENTS, []);
-        let changed = false;
-        (pays||[]).forEach(p=>{
-          if(!p) return;
-          const pCourse = String(p.courseKey || "").trim();
-          if(pCourse && pCourse !== courseKey) return;
-          const pEmail = String(p.apoderadoKey || p.apoderadoId || p.apoderadoEmail || p.email || "").toLowerCase().trim();
-          if(pEmail !== emailLower) return;
-          const tid = String(p.fromTaskId || p.taskId || p.campaignId || "");
-          if(tid !== String(taskId)) return;
+function setOptedOut(taskId, value){
+  const courseKey = getCourseKeyForOpt();
+  const ak = getApoderadoKeyForOpt();
+  const m = getOptOutMap();
+  let byCourse = m[courseKey] || {};
 
-          const st = String(p.status||"").toLowerCase();
-          const isPaid = (st === "paid" || st === "credit");
-          if(next){
-            if(!isPaid && st !== "opted_out"){
-              p.status = "opted_out";
-              if(p.amountRemaining != null) p.amountRemaining = 0;
-              changed = true;
-            }
-          }else{
-            if(st === "opted_out"){
-              p.status = "pending";
-              if(p.amountRemaining != null) p.amountRemaining = Number(p.amount||0);
-              changed = true;
-            }
-          }
-        });
-        if(changed) save(KEY_PAYMENTS, pays);
+  // Migración suave desde formato antiguo (array)
+  if(Array.isArray(byCourse)){
+    byCourse = { "_legacy_all": byCourse };
+  }
+
+  const set = new Set(Array.isArray(byCourse[ak]) ? byCourse[ak] : []);
+  if(value) set.add(taskId); else set.delete(taskId);
+  byCourse[ak] = Array.from(set);
+  m[courseKey] = byCourse;
+  save(KEY_OPTOUT, m);
+}
+
+// Aplica opt-out a pagos (para que Presidente descuente "por cobrar" y deudores)
+function applyOptOutToPayments(taskId, optedOut){
+  try{
+    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+    const t = tasksAll.find(x=>String(x.id)===String(taskId));
+    if(!t) return;
+
+    // Solo campañas NO obligatorias
+    if(t.mandatoryParticipation !== false) return;
+
+    let paysAll = load(KEY_PAYMENTS, []);
+    const mine = paysAll.filter(isMinePayment);
+    const now = new Date();
+
+    const upd = paysAll.map(p=>{
+      if(!isMinePayment(p)) return p;
+      const tid = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
+      if(tid !== String(taskId)) return p;
+
+      // No tocar pagos ya pagados / rendidos
+      const st = String(p?.status||"").toLowerCase();
+      if(st === "paid" || st === "settled" || st === "refunded") return p;
+
+      if(optedOut){
+        return { ...p, status: "opted_out" };
+      }else{
+        // volver a pendiente o vencida según fecha
+        const due = p?.dueDate ? new Date(p.dueDate) : null;
+        const nextStatus = (due && due < now) ? "overdue" : "pending";
+        // si estaba opted_out lo reactivamos; si ya estaba pending/overdue lo dejamos
+        if(st === "opted_out") return { ...p, status: nextStatus };
+        return p;
       }
-    }catch(e){}
+    });
 
-    renderPayments();
-  };
+    save(KEY_PAYMENTS, upd);
+  }catch(e){
+    // silencio: no bloquear UI por esto
+  }
+}
+
+window.openCotizacionesModal = openCotizacionesModal;
+window.toggleOptOut = function(taskId){
+  const next = !isOptedOut(taskId);
+  setOptedOut(taskId, next);
+  applyOptOutToPayments(taskId, next);
+  renderPayments();
+};
 
   // ---- Helper: pagos excluidos por opt-out (solo campañas NO obligatorias) ----
   // Compat con fixes anteriores: algunos lugares usan isPaymentOptedOut().
