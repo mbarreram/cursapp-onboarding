@@ -1636,7 +1636,22 @@ function dedupePaymentsAll(list){
         if(!rows.length){
           const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
           return hasAny
-            ? `<div class="card" style="margin-top:12px;"><div style="font-weight:950;">${esc(t.title||"Campaña")}</div><div class="muted" style="margin-top:6px;">No hay pagos para este filtro en esta campaña.</div></div>`
+            ? (()=>{
+                const oo = (t.mandatoryParticipation===false) ? isOptedOut(t.id) : false;
+                return `
+                  <div class="card" style="margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                      <div style="font-weight:950;">${esc(t.title||"Campaña")}</div>
+                      ${oo ? `
+                        <button class="btnx" style="border:1px solid rgba(0,0,0,.14);" onclick="toggleOptOut('${esc(t.id)}')">Participar</button>
+                      ` : ``}
+                    </div>
+                    <div class="muted" style="margin-top:6px;">
+                      ${oo ? `Marcaste <b>No participo</b>. Puedes volver a participar aquí.` : `No hay pagos para este filtro en esta campaña.`}
+                    </div>
+                  </div>
+                `;
+              })()
             : emptyCampaignCard(t);
         }
 
