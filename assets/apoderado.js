@@ -1470,14 +1470,21 @@ function dedupePaymentsAll(list){
     const creditTotal = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
 
 
+    const __byTask = (arr)=> (selectedTask!=="all") ? arr.filter(p => (p.fromTaskId || "no_task") === selectedTask) : arr;
+    const __countPending = __byTask(paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p))).length;
+    const __countUpcoming = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7 && !isPaymentOptedOut(p))).length;
+    const __countPaid = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid")).length;
+    const __countCredit = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit")).length;
+
     const chips = `
       <div class="chips">
-        <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
-        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
-        <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
-        <button class="chip ${payFilter==="credit"?"active":""} ${creditTotal>0?"":"disabled"}" ${creditTotal>0?`onclick="setPayFilter(\'credit\')"`:""}>${creditTotal>0?"💰 Saldo a favor":"Saldo a favor"}</button>
+        <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes ${__countPending?`(${__countPending})`:``}</button>
+        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas ${__countUpcoming?`(${__countUpcoming})`:``}</button>
+        <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas ${__countPaid?`(${__countPaid})`:``}</button>
+        <button class="chip ${payFilter==="credit"?"active":""} ${__countCredit>0?"":"disabled"}" ${__countCredit>0?`onclick="setPayFilter(\'credit\')"`:""}>${__countCredit>0?`💰 Saldo a favor (${__countCredit})`:"Saldo a favor"}</button>
       </div>
     `;
+
 
     const taskOptions = (tasksAll.length>1 || (paysAll||[]).some(p=>!p.fromTaskId)) ? `
       <div style="margin-top:12px;">
@@ -1562,14 +1569,15 @@ function dedupePaymentsAll(list){
 
     const nextCard = nextDue ? `
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
-        <div style="font-weight:950;">Próxima cuota</div>
+        <div style="font-weight:950;">Tu próxima acción</div>
         <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"—")}</b></div>
+        <div class="muted" style="margin-top:6px;">Paga ahora para mantener tus cuotas al día.</div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
           Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
         </div>
         <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div style="font-weight:950;font-size:18px;">${formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0)}</div>
-          <button class="btnx primary" onclick="payNow('${esc(nextDue.id)}')">Pagar</button>
+          <button class="btnx primary" style="min-width:140px;padding:12px 18px;" onclick="payNow('${esc(nextDue.id)}')">Pagar ahora</button>
         </div>
       </div>
     ` : ``;

@@ -1303,13 +1303,34 @@ function renderDeudores(){
 }
 
 function renderInformes(){
-    const reps = reports();
+    const reps = reports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
+    const allTasks = tasks();
+    const ps = payments();
+    const ex = expenses();
+
+    // Live executive numbers (current state, not snapshot)
+    const recTotal = collectedCourse();
+    const gasTotal = spentCourse();
+    const saldo = recTotal - gasTotal;
+
+    const ym = currentYM();
+    const recMes = collectedMonth(ym);
+    const gasMes = spentMonth(ym);
+    const porCobrarMes = pendingMonth(ym);
+    const deudMes = deudoresMonth(ym);
+
+    // Recent expenses (approved + submitted, newest first)
+    const recentEx = ex.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,8);
+
+    function hasAttachment(e){
+      return !!(e && Array.isArray(e.attachments) && e.attachments[0] && e.attachments[0].dataUrl);
+    }
 
     app.innerHTML = `
       ${isDirty()?`
         <div class="warnBox">
           <div style="font-weight:950;">Informe desactualizado</div>
-          <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al último informe. Publica uno nuevo.</div>
+          <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al último informe. Publica uno nuevo para dejar un corte oficial.</div>
           <div class="actions" style="margin-top:10px;">
             <button class="btnx primary" onclick="confirmGenerateReport()">Actualizar y publicar</button>
           </div>
@@ -1319,7 +1340,75 @@ function renderInformes(){
       <div class="card">
         <div class="row">
           <div>
-            <div class="kTitle">Informes mensuales</div>
+            <div class="kTitle">Informe ejecutivo del curso</div>
+            <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
+          </div>
+          <div class="actions">
+            <button class="btnx" onclick="printExecutive()">Descargar PDF</button>
+            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">
+          <div class="miniCard">
+            <div class="muted">Cobrado este mes</div>
+            <div style="font-weight:950;font-size:20px;">${clp(recMes)}</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted">Cobrado total</div>
+            <div style="font-weight:950;font-size:20px;">${clp(recTotal)}</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted">Gastado este mes</div>
+            <div style="font-weight:950;font-size:20px;">${clp(gasMes)}</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted">Gastado total</div>
+            <div style="font-weight:950;font-size:20px;">${clp(gasTotal)}</div>
+          </div>
+          <div class="miniCard">
+            <div class="muted">Saldo disponible</div>
+            <div style="font-weight:950;font-size:20px;">${clp(saldo)}</div>
+          </div>
+          <div class="miniCard warn">
+            <div class="muted">Por cobrar este mes</div>
+            <div style="font-weight:950;font-size:20px;">${clp(porCobrarMes)}</div>
+            <div class="muted" style="margin-top:4px;">Deudores (mes): <b>${Number(deudMes||0)}</b></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="font-weight:950;">Gastos recientes</div>
+          <div class="muted" style="margin-top:6px;">Últimas rendiciones (curso/campaña). Incluye comprobantes si fueron adjuntados.</div>
+          <div class="listLines" style="margin-top:10px;">
+            ${recentEx.length ? recentEx.map(e=>{
+              const scope = e.scope==="campaign" ? (allTasks.find(t=>t.id===e.campaignId)?.title||"Campaña") : "Curso";
+              const att = hasAttachment(e);
+              return `
+                <div class="lineItem">
+                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+                    <div>
+                      <b>${esc(e.title||"Gasto")}</b> · <span class="muted">${esc(scope)}</span>
+                      <div class="muted" style="margin-top:6px;">${esc(e.date||"")}</div>
+                    </div>
+                    <div style="text-align:right;">
+                      <div style="font-weight:950;">${clp(e.amount||0)}</div>
+                      <div style="margin-top:8px;">
+                        ${att ? `<button class="btnx" onclick="viewExpenseAttachment('${esc(e.id)}')">Ver comprobante</button>` : `<span class="pill">Sin boleta</span>`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("") : `<div class="muted">Aún no hay rendiciones.</div>`}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="row">
+          <div>
+            <div class="kTitle">Informes mensuales publicados</div>
             <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
           </div>
           <div class="actions">
@@ -1327,12 +1416,19 @@ function renderInformes(){
           </div>
         </div>
 
-        <div class="listLines">
+        <div class="listLines" style="margin-top:10px;">
           ${reps.length
             ? reps.map(r=>`
               <div class="lineItem">
-                <b>${esc(r.period)}</b> · Emitido ${esc(r.generatedAt)}
-                <div class="muted" style="margin-top:6px;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+                  <div>
+                    <b>${esc(r.period)}</b>
+                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAt)}</div>
+                  </div>
+                  <button class="btnx" onclick="printSnapshot('${esc(r.id||r.period||"")}', '${esc(r.period||"")}')">PDF</button>
+                </div>
+
+                <div class="muted" style="margin-top:8px;line-height:1.45;">
                   Recaudado ${clp(r.recaudadoCurso||0)}
                   · Rendido ${clp(r.gastadoCurso||0)}
                   · Saldo ${clp(r.disponibleCurso||0)}
@@ -1347,6 +1443,152 @@ function renderInformes(){
       </div>
     `;
   }
+
+  // ---- Informe: utilidades (PDF/print) ----
+  window.viewExpenseAttachment = function(expenseId){
+    const ex = expenses();
+    const e = ex.find(x=>String(x.id)===String(expenseId));
+    if(!e || !e.attachments || !e.attachments.length || !e.attachments[0].dataUrl){
+      alert("No hay comprobante adjunto.");
+      return;
+    }
+    const f = e.attachments[0];
+    const w = window.open();
+    const isImg = String(f.type||"").includes("image");
+    w.document.write(`
+      <html><head><title>Comprobante</title></head>
+      <body style="margin:0;">
+        ${isImg ? `<img src="${f.dataUrl}" style="width:100%;height:auto;display:block;" />`
+               : `<iframe src="${f.dataUrl}" style="width:100%;height:100vh;border:0;"></iframe>`}
+      </body></html>
+    `);
+  };
+
+  window.printExecutive = function(){
+    const ym = currentYM();
+    const html = buildExecutivePrintHTML(ym);
+    openPrintWindow(html);
+  };
+
+  window.printSnapshot = function(idOrPeriod, period){
+    const reps = reports();
+    const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
+    if(!r){ alert("No se encontró el informe."); return; }
+    const html = buildSnapshotPrintHTML(r);
+    openPrintWindow(html);
+  };
+
+  function openPrintWindow(html){
+    const w = window.open("", "_blank");
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    // imprimir al cargar
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+  }
+
+  function buildExecutivePrintHTML(ym){
+    const recTotal = collectedCourse();
+    const gasTotal = spentCourse();
+    const saldo = recTotal - gasTotal;
+
+    const recMes = collectedMonth(ym);
+    const gasMes = spentMonth(ym);
+    const porCobrarMes = pendingMonth(ym);
+    const deudMes = deudoresMonth(ym);
+
+    const course = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    const ex = expenses().slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,10);
+    const ts = tasks();
+
+    const rowsEx = ex.map(e=>{
+      const scope = e.scope==="campaign" ? (ts.find(t=>t.id===e.campaignId)?.title||"Campaña") : "Curso";
+      return `<tr>
+        <td>${esc(e.date||"")}</td>
+        <td>${esc(scope)}</td>
+        <td>${esc(e.title||"")}</td>
+        <td style="text-align:right;">${clp(e.amount||0)}</td>
+      </tr>`;
+    }).join("");
+
+    return `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Informe Ejecutivo ${esc(ym)}</title>
+          <style>
+            body{ font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; margin:24px; color:#0f172a; }
+            h1{ font-size:20px; margin:0; }
+            .sub{ color:#475569; margin-top:6px; }
+            .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; margin-top:14px; }
+            .k{ border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
+            .k .t{ color:#64748b; font-size:12px; }
+            .k .v{ font-weight:800; font-size:18px; margin-top:6px; }
+            table{ width:100%; border-collapse:collapse; margin-top:16px; }
+            th,td{ border-bottom:1px solid #e2e8f0; padding:8px 6px; font-size:12px; }
+            th{ text-align:left; color:#475569; }
+          </style>
+        </head>
+        <body>
+          <h1>Informe Ejecutivo del Curso</h1>
+          <div class="sub">Periodo: <b>${esc(ym)}</b> · Emitido: ${esc(new Date().toLocaleString("es-CL"))}</div>
+
+          <div class="grid">
+            <div class="k"><div class="t">Cobrado este mes</div><div class="v">${clp(recMes)}</div></div>
+            <div class="k"><div class="t">Cobrado total</div><div class="v">${clp(recTotal)}</div></div>
+            <div class="k"><div class="t">Gastado este mes</div><div class="v">${clp(gasMes)}</div></div>
+            <div class="k"><div class="t">Gastado total</div><div class="v">${clp(gasTotal)}</div></div>
+            <div class="k"><div class="t">Saldo disponible</div><div class="v">${clp(saldo)}</div></div>
+            <div class="k"><div class="t">Por cobrar este mes</div><div class="v">${clp(porCobrarMes)}</div><div class="t" style="margin-top:6px;">Deudores (mes): <b>${Number(deudMes||0)}</b></div></div>
+          </div>
+
+          <h1 style="margin-top:18px;font-size:16px;">Gastos recientes</h1>
+          <table>
+            <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+            <tbody>${rowsEx || `<tr><td colspan="4" style="color:#64748b;">Sin rendiciones</td></tr>`}</tbody>
+          </table>
+
+          <div class="sub" style="margin-top:16px;">Generado por Cursapp</div>
+        </body>
+      </html>
+    `;
+  }
+
+  function buildSnapshotPrintHTML(r){
+    return `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Informe ${esc(r.period||"")}</title>
+          <style>
+            body{ font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; margin:24px; color:#0f172a; }
+            h1{ font-size:20px; margin:0; }
+            .sub{ color:#475569; margin-top:6px; }
+            .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; margin-top:14px; }
+            .k{ border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
+            .k .t{ color:#64748b; font-size:12px; }
+            .k .v{ font-weight:800; font-size:18px; margin-top:6px; }
+          </style>
+        </head>
+        <body>
+          <h1>Informe del Curso · ${esc(r.period||"")}</h1>
+          <div class="sub">Emitido: ${esc(r.generatedAt||"")}</div>
+
+          <div class="grid">
+            <div class="k"><div class="t">Recaudado</div><div class="v">${clp(r.recaudadoCurso||0)}</div></div>
+            <div class="k"><div class="t">Rendido</div><div class="v">${clp(r.gastadoCurso||0)}</div></div>
+            <div class="k"><div class="t">Saldo</div><div class="v">${clp(r.disponibleCurso||0)}</div></div>
+            <div class="k"><div class="t">Pendiente</div><div class="v">${clp(r.pendienteCurso||0)}</div></div>
+            <div class="k"><div class="t">Deudores</div><div class="v">${Number(r.deudores||0)}</div></div>
+          </div>
+
+          <div class="sub" style="margin-top:16px;">Generado por Cursapp</div>
+        </body>
+      </html>
+    `;
+  }
+
 
   // ----- Campaign actions (delegated to campaigns.js) -----
   window.openCreateCampaign = function () { Campaigns.openCreate(); };
