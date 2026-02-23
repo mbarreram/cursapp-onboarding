@@ -1008,10 +1008,24 @@
         <input id="cl_reason" placeholder="Ej: Actividad cancelada / Cambio de plan" />
       </div>
 
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveClose()">Cerrar campaña</button>
-      </div>
+      <div style="height:16px;"></div>
+
+<div style="
+  position:sticky;
+  bottom:0;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:saturate(180%) blur(10px);
+  -webkit-backdrop-filter:saturate(180%) blur(10px);
+  padding:12px 8px calc(12px + env(safe-area-inset-bottom)) 8px;
+  border-top:1px solid rgba(0,0,0,.08);
+  box-shadow:0 -8px 18px rgba(15,23,42,.06);
+  z-index:2;
+">
+  <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+    <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+    <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
+  </div>
+</div>
     `);
   }
 
