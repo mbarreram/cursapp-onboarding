@@ -1,15 +1,10 @@
 /* =========================================================
-   Cursapp · Campaigns (Shared) — v1.0
-   Fuente de verdad para:
-   - Crear campaña (FULL): tipo, monto, cuotas/meses, participación, fechas
-   - Editar campaña (FULL)
-   - Cerrar campaña (tipo + motivo)
-   - Cálculo automático de fecha fin para mensual (cuotas)
-   - Marca "requiere nuevo informe" (dirty) automáticamente
-
-   Diseñado para ser usado por Presidente y Tesorero (y otros).
-   Requiere:
-   - <div id="modalRoot"></div> en el HTML
+   Cursapp · Campaigns (Shared) — v1.1 (UX Premium iOS)
+   Mejora UX:
+   - Modal tipo bottom-sheet en móvil (iOS friendly)
+   - Footer fijo sticky con safe-area
+   - Inputs date que no se rompen en Safari iOS
+   - Mantiene lógica/keys intactas
 ========================================================= */
 
 (function () {
@@ -33,7 +28,9 @@
     };
   }
   function dedupeCotizaciones(list){
-    const arr = (Array.isArray(list) ? list : []).map(normalizeCot).filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
+    const arr = (Array.isArray(list) ? list : [])
+      .map(normalizeCot)
+      .filter(c=>c.nombre || c.url || c.monto_total || c.descripcion);
     const seen = new Set();
     const out = [];
     arr.forEach(c=>{
@@ -44,7 +41,6 @@
     });
     return out;
   }
-
 
   // ✅ Use course-scoped tasks key if available; fallback to legacy keys for existing demos
   const SCOPED_TASKS = sk("tasks_v1");
@@ -126,16 +122,78 @@
     return addMonthsKeepDay(startISO, m - 1);
   }
 
+  // ---------- Modal UX (iOS-safe) ----------
   function openModal(html) {
     const root = document.getElementById("modalRoot");
     if (!root) {
       alert("Falta #modalRoot en el HTML.");
       return;
     }
-    // ✅ Mobile-safe modal: ensure full visibility + internal scroll (iOS)
+
+    // Bottom-sheet on mobile + large card on desktop
     root.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);max-height:calc(100vh - 28px);overflow:auto;-webkit-overflow-scrolling:touch;">
+      <div style="
+        position:fixed; inset:0;
+        background:rgba(15,23,42,.45);
+        z-index:10000;
+        display:flex;
+        align-items:flex-end;
+        justify-content:center;
+        padding:
+          12px
+          calc(12px + env(safe-area-inset-right))
+          calc(12px + env(safe-area-inset-bottom))
+          calc(12px + env(safe-area-inset-left));
+      ">
+        <style>
+          /* Inputs iOS: evita que date se rompa */
+          #modalRoot input, #modalRoot select, #modalRoot textarea{
+            width:100%;
+            box-sizing:border-box;
+            font-size:16px;        /* iOS: evita zoom raro */
+            line-height:1.25;
+          }
+          #modalRoot input[type="date"]{
+            appearance:auto;
+            -webkit-appearance:auto;
+          }
+          #modalRoot .modalCard{
+            width:min(820px, 100%);
+            max-height:calc(92dvh);
+            overflow:auto;
+            -webkit-overflow-scrolling:touch;
+            border-radius:16px;
+          }
+          @media (min-width: 860px){
+            #modalRoot > div{
+              align-items:center;
+            }
+            #modalRoot .modalCard{
+              max-height:calc(100dvh - 28px);
+              border-radius:16px;
+            }
+          }
+          #modalRoot .sectionCard{
+            margin-top:16px;
+            padding:16px;
+            border:1px solid rgba(0,0,0,.08);
+            border-radius:16px;
+          }
+          #modalRoot .mutedSmall{ font-size:12px; opacity:.75; margin-top:6px; }
+          #modalRoot .stickyFooter{
+            position:sticky;
+            bottom:0;
+            background:rgba(255,255,255,.92);
+            backdrop-filter:saturate(180%) blur(10px);
+            -webkit-backdrop-filter:saturate(180%) blur(10px);
+            padding:12px 10px calc(12px + env(safe-area-inset-bottom)) 10px;
+            border-top:1px solid rgba(0,0,0,.08);
+            box-shadow:0 -10px 22px rgba(15,23,42,.08);
+            z-index:5;
+          }
+        </style>
+
+        <div class="card modalCard">
           ${html}
         </div>
       </div>
@@ -158,146 +216,167 @@
 
   // ---------- Shared forms ----------
   function openCreate() {
-  const defaultStart = todayISO();
+    const defaultStart = todayISO();
 
-  openModal(`
-    <div style="padding:4px 4px 0 4px;">
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:20px;">Nueva campaña</div>
-          <div class="muted" style="margin-top:4px;">
-            Define el cobro y participación del curso.
+    openModal(`
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">Nueva campaña</div>
+            <div class="muted" style="margin-top:4px;">
+              Crea un cobro único o mensual y define si es obligatorio.
+            </div>
           </div>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">✕</button>
-      </div>
 
-      <!-- BLOQUE 1 -->
-      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
-        <div style="font-weight:950;margin-bottom:12px;">Información básica</div>
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Información básica</div>
 
-        <label style="font-weight:900;">Nombre campaña</label>
-        <input id="cc_title" placeholder="Ej: Cuota paseo" />
+          <label style="font-weight:900;">Nombre campaña</label>
+          <input id="cc_title" placeholder="Ej: Cuota paseo" />
 
-        <div style="margin-top:12px;">
-          <label style="font-weight:900;">Descripción (opcional)</label>
-          <input id="cc_desc" placeholder="Ej: Transporte y entradas" />
-        </div>
-      </div>
-
-      <!-- BLOQUE 2 -->
-      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
-        <div style="font-weight:950;margin-bottom:12px;">Configuración de cobro</div>
-
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Tipo</label>
-            <select id="cc_type">
-              <option value="single">Pago único</option>
-              <option value="monthly">Mensual</option>
-            </select>
-          </div>
-
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Participación</label>
-            <select id="cc_mandatory">
-              <option value="true">Obligatoria</option>
-              <option value="false">Voluntaria</option>
-            </select>
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Descripción (opcional)</label>
+            <input id="cc_desc" placeholder="Ej: Transporte y entradas" />
           </div>
         </div>
 
-        <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Monto</label>
-            <input id="cc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Configuración de cobro</div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Tipo</label>
+              <select id="cc_type">
+                <option value="single">Pago único</option>
+                <option value="monthly">Mensual</option>
+              </select>
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Participación</label>
+              <select id="cc_mandatory">
+                <option value="true">Obligatoria</option>
+                <option value="false">Voluntaria</option>
+              </select>
+              <div id="cc_part_help" class="mutedSmall">Los apoderados deben pagar.</div>
+            </div>
           </div>
 
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Cuotas (si mensual)</label>
-            <input id="cc_months" inputmode="numeric" placeholder="Ej: 10" />
-          </div>
-        </div>
-      </div>
+          <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Monto</label>
+              <input id="cc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+              <div class="mutedSmall">Monto por apoderado.</div>
+            </div>
 
-      <!-- BLOQUE 3 -->
-      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
-        <div style="font-weight:950;margin-bottom:12px;">Fechas</div>
-
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Inicio</label>
-            <input id="cc_start" type="date" value="${defaultStart}" />
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Cuotas (si mensual)</label>
+              <input id="cc_months" inputmode="numeric" placeholder="Ej: 10" />
+              <div class="mutedSmall">Para mensual: número de cuotas.</div>
+            </div>
           </div>
 
-          <div style="flex:1;min-width:160px;">
-            <label style="font-weight:900;">Fin</label>
-            <input id="cc_due" type="date" />
-            <div class="muted" style="margin-top:6px;font-size:12px;">
-              Se calcula automáticamente si es mensual.
+          <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Meta total (opcional)</label>
+              <input id="cc_goal" inputmode="numeric" placeholder="Ej: 150000" />
+              <div class="mutedSmall">Referencial para seguimiento.</div>
             </div>
           </div>
         </div>
+
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Fechas</div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Inicio</label>
+              <input id="cc_start" type="date" value="${defaultStart}" />
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Fin</label>
+              <input id="cc_due" type="date" />
+              <div class="mutedSmall">Mensual: se calcula automáticamente.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sectionCard" style="background:#f8fafc;border:1px solid rgba(0,0,0,.06);">
+          <div style="font-weight:950;margin-bottom:8px;">Resumen</div>
+          <div id="cc_preview" class="muted">Completa datos para ver resumen.</div>
+        </div>
+
+        <!-- spacer so content never hides behind sticky footer -->
+        <div style="height:18px;"></div>
+
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
+          </div>
+        </div>
       </div>
+    `);
 
-      <!-- RESUMEN -->
-      <div class="card" style="margin-top:16px;padding:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);">
-        <div style="font-weight:950;margin-bottom:8px;">Resumen</div>
-        <div id="cc_preview" class="muted">Completa los datos para ver resumen.</div>
-      </div>
+    const typeEl = document.getElementById("cc_type");
+    const startEl = document.getElementById("cc_start");
+    const dueEl = document.getElementById("cc_due");
+    const monthsEl = document.getElementById("cc_months");
+    const amountEl = document.getElementById("cc_amount");
+    const goalEl = document.getElementById("cc_goal");
+    const mandatoryEl = document.getElementById("cc_mandatory");
+    const previewEl = document.getElementById("cc_preview");
+    const partHelp = document.getElementById("cc_part_help");
 
-      <div class="actions" style="margin-top:20px;justify-content:flex-end;">
-        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
-      </div>
-    </div>
-  `);
+    function sync() {
+      const type = typeEl.value;
+      const start = startEl.value || todayISO();
+      const months = Number(monthsEl.value || 0);
+      const amount = Number(amountEl.value || 0);
+      const goal = Number(goalEl.value || 0);
+      const mandatory = mandatoryEl.value === "true";
 
-  const typeEl = document.getElementById("cc_type");
-  const startEl = document.getElementById("cc_start");
-  const dueEl = document.getElementById("cc_due");
-  const monthsEl = document.getElementById("cc_months");
-  const amountEl = document.getElementById("cc_amount");
-  const previewEl = document.getElementById("cc_preview");
+      if (mandatory) {
+        partHelp.textContent = "Los apoderados deben pagar.";
+      } else {
+        partHelp.textContent = "Los apoderados pueden marcar “No participo”.";
+      }
 
-  function sync() {
-    const type = typeEl.value;
-    const start = startEl.value || todayISO();
-    const months = Number(monthsEl.value || 0);
-    const amount = Number(amountEl.value || 0);
+      if (type === "monthly") {
+        dueEl.disabled = true;
+        const end = calcMonthlyEndDate(start, months > 0 ? months : 0);
+        dueEl.value = end || "";
+      } else {
+        dueEl.disabled = false;
+      }
 
-    if (type === "monthly") {
-      dueEl.disabled = true;
-      const end = calcMonthlyEndDate(start, months > 0 ? months : 0);
-      dueEl.value = end || "";
-    } else {
-      dueEl.disabled = false;
+      const cuotas = (type === "monthly" ? (months || 0) : 1);
+      const total = (type === "monthly" ? (amount * (months || 0)) : amount);
+
+      previewEl.innerHTML = `
+        Tipo: <b>${type === "monthly" ? "Mensual" : "Pago único"}</b><br>
+        Participación: <b>${mandatory ? "Obligatoria" : "Voluntaria"}</b><br>
+        Cuotas: <b>${cuotas}</b><br>
+        Monto por cuota: <b>$${Number(amount||0).toLocaleString("es-CL")}</b><br>
+        Total proyectado: <b>$${Number(total||0).toLocaleString("es-CL")}</b>
+        ${goal>0 ? `<br>Meta total: <b>$${Number(goal||0).toLocaleString("es-CL")}</b>` : ``}
+      `;
     }
 
-    const total = type === "monthly" ? amount * months : amount;
+    typeEl.onchange = sync;
+    startEl.onchange = sync;
+    monthsEl.oninput = sync;
+    amountEl.oninput = sync;
+    goalEl.oninput = sync;
+    mandatoryEl.onchange = sync;
 
-    previewEl.innerHTML = `
-      Tipo: <b>${type === "monthly" ? "Mensual" : "Pago único"}</b><br>
-      Cuotas: <b>${type === "monthly" ? months || 0 : 1}</b><br>
-      Monto por cuota: <b>$${Number(amount||0).toLocaleString("es-CL")}</b><br>
-      Total proyectado: <b>$${Number(total||0).toLocaleString("es-CL")}</b>
-    `;
+    sync();
   }
 
-  typeEl.onchange = sync;
-  startEl.onchange = sync;
-  monthsEl.oninput = sync;
-  amountEl.oninput = sync;
-
-  sync();
-}
-
-
-
-   
-
   // ---------- Templates (Plantillas destacadas) ----------
-  // Gira / Graduación: cuotas abiertas, saldo años anteriores y múltiples cotizaciones.
   function openCreateTemplate(template){
     const tpl = String(template||"").toLowerCase();
     const defaultStart = todayISO();
@@ -305,79 +384,96 @@
     const descDefault  = tpl === "graduacion" ? "Cotizaciones + plan de cuotas" : "Cotizaciones + plan de cuotas";
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">${esc(titleDefault)}</div>
-          <div class="muted" style="margin-top:6px;">Plantilla destacada</div>
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">${esc(titleDefault)}</div>
+            <div class="muted" style="margin-top:4px;">Plantilla destacada</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
-      </div>
 
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Nombre</label>
-        <input id="tc_title" value="${esc(titleDefault)}" />
-      </div>
+        <div class="sectionCard">
+          <label style="font-weight:900;">Nombre</label>
+          <input id="tc_title" value="${esc(titleDefault)}" />
 
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Descripción</label>
-        <input id="tc_desc" value="${esc(descDefault)}" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Participación</label>
-          <select id="tc_mandatory">
-            <option value="false" selected>No obligatoria</option>
-            <option value="true">Obligatoria</option>
-          </select>
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Descripción</label>
+            <input id="tc_desc" value="${esc(descDefault)}" />
+          </div>
         </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Monto cuota</label>
-          <input id="tc_amount" inputmode="numeric" placeholder="Ej: 25000" />
-        </div>
-      </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Cuotas / meses</label>
-          <input id="tc_months" inputmode="numeric" min="1" value="10" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas. Mínimo 1 (recomendado 10).</div>
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Saldo años anteriores</label>
-          <input id="tc_prev" inputmode="numeric" placeholder="Ej: 120000" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
-        </div>
-      </div>
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Configuración</div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Inicio</label>
-          <input id="tc_start" type="date" value="${defaultStart}" />
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Participación</label>
+              <select id="tc_mandatory">
+                <option value="false" selected>No obligatoria</option>
+                <option value="true">Obligatoria</option>
+              </select>
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Monto cuota</label>
+              <input id="tc_amount" inputmode="numeric" placeholder="Ej: 25000" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Cuotas / meses</label>
+              <input id="tc_months" inputmode="numeric" min="1" value="10" />
+              <div class="mutedSmall">Cuotas abiertas. Mínimo 1 (recomendado 10).</div>
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Saldo años anteriores</label>
+              <input id="tc_prev" inputmode="numeric" placeholder="Ej: 120000" />
+              <div class="mutedSmall">Se considera como reunido (curso).</div>
+            </div>
+          </div>
         </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Fin</label>
-          <input id="tc_due" type="date" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">Se calcula automáticamente según cuotas.</div>
+
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Fechas</div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Inicio</label>
+              <input id="tc_start" type="date" value="${defaultStart}" />
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Fin</label>
+              <input id="tc_due" type="date" />
+              <div class="mutedSmall">Se calcula automáticamente según cuotas.</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-        <div style="font-weight:950;">Monto meta alumno</div>
-        <div class="muted" style="margin-top:6px;">Monto cuota × cuotas. (Referencial)</div>
-        <div id="tc_meta_alumno" style="margin-top:8px;font-size:22px;font-weight:950;">$0</div>
-      </div>
+        <div class="sectionCard" style="background:#f8fafc;border:1px solid rgba(0,0,0,.06);">
+          <div style="font-weight:950;">Monto meta alumno</div>
+          <div class="mutedSmall">Monto cuota × cuotas. (Referencial)</div>
+          <div id="tc_meta_alumno" style="margin-top:8px;font-size:22px;font-weight:950;">$0</div>
+        </div>
 
-      <div style="margin-top:12px;">
-        <div style="font-weight:950;">Cotizaciones</div>
-        <div class="muted" style="margin-top:6px;font-size:12px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
-        <div id="tc_quotes" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
-        <button class="btnx" id="tc_add_quote" type="button" style="margin-top:10px;">+ Agregar cotización</button>
-      </div>
+        <div class="sectionCard">
+          <div style="font-weight:950;">Cotizaciones</div>
+          <div class="mutedSmall">Puedes agregar varias cotizaciones (distintos ítems).</div>
+          <div id="tc_quotes" style="margin-top:10px;display:flex;flex-direction:column;gap:10px;"></div>
+          <button class="btnx" id="tc_add_quote" type="button" style="margin-top:10px;">+ Agregar cotización</button>
+        </div>
 
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear</button>
+        <div style="height:18px;"></div>
+
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear</button>
+          </div>
+        </div>
       </div>
     `);
 
@@ -406,7 +502,7 @@
     const addBtn = document.getElementById("tc_add_quote");
     function quoteRow(idx){
       return `
-        <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.10);">
+        <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.10);border-radius:14px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div style="font-weight:950;">Cotización ${idx+1}</div>
             <button class="btnx danger" type="button" data-qrm="${idx}">Quitar</button>
@@ -487,7 +583,6 @@
 
     const cotizaciones2 = dedupeCotizaciones(cotizaciones);
 
-
     const newTaskId = uid("t");
     const ts = load(KEY_TASKS, []);
     ts.unshift({
@@ -553,35 +648,44 @@
     const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Cotizaciones</div>
-          <div class="muted" style="margin-top:6px;">${esc(title)} · ${items.length} ítem(s)</div>
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">Cotizaciones</div>
+            <div class="muted" style="margin-top:4px;">${esc(title)} · ${items.length} ítem(s)</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
-      </div>
 
-      ${items.length ? `
-        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="font-weight:950;">Total cotizado</div>
-            <div style="font-weight:950;">$${Number(total||0).toLocaleString("es-CL")}</div>
+        ${items.length ? `
+          <div class="sectionCard">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+              <div style="font-weight:950;">Total cotizado</div>
+              <div style="font-weight:950;">$${Number(total||0).toLocaleString("es-CL")}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:grid;gap:10px;">
+            ${items.map((c,i)=>`
+              <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                  <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                  ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
+                </div>
+                ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
+                ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
+                ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">🔗 Abrir</a></div>`:""}
+              </div>
+            `).join("")}
+          </div>
+        ` : `<div class="muted" style="margin-top:12px;">Aún no hay cotizaciones registradas.</div>`}
+
+        <div style="height:14px;"></div>
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;">
+            <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
           </div>
         </div>
-        <div style="margin-top:12px;display:grid;gap:10px;">
-          ${items.map((c,i)=>`
-            <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
-                ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
-              </div>
-              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
-              ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
-              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">🔗</a></div>`:""}
-            </div>
-          `).join("")}
-        </div>
-      ` : `<div class="muted" style="margin-top:12px;">Aún no hay cotizaciones registradas.</div>`}
+      </div>
     `);
   }
 
@@ -597,47 +701,54 @@
     const saldoPrev = Number(t.saldo_prev||0);
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Detalle campaña</div>
-          <div class="muted" style="margin-top:6px;">${esc(t.title||"")}</div>
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">Detalle campaña</div>
+            <div class="muted" style="margin-top:4px;">${esc(t.title||"")}</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
-      </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div class="chipInfoPill">📄 Tipo <b>${type==="monthly"?"Mensual":"Pago único"}</b></div>
-        <div class="chipInfoPill">🔒 Participación <b>${part}</b></div>
-        ${tpl?`<div class="chipInfoPill ok">✨ Plantilla <b>${esc(tpl)}</b></div>`:""}
-      </div>
-
-      <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-        <div class="muted">Fechas</div>
-        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
-        ${t.description?`<div class="muted" style="margin-top:10px;line-height:1.35;">${esc(t.description)}</div>`:""}
-      </div>
-
-      ${(saldoPrev>0)?`
-        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-          <div class="muted">Saldo años anteriores (curso)</div>
-          <div style="margin-top:6px;font-weight:950;font-size:20px;">$${Number(saldoPrev).toLocaleString("es-CL")}</div>
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <div class="chipInfoPill">📄 Tipo <b>${type==="monthly"?"Mensual":"Pago único"}</b></div>
+          <div class="chipInfoPill">🔒 Participación <b>${part}</b></div>
+          ${tpl?`<div class="chipInfoPill ok">✨ Plantilla <b>${esc(tpl)}</b></div>`:""}
         </div>
-      `:""}
 
-      ${cotz.length?`
-        <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div>
-              <div style="font-weight:950;">Cotizaciones</div>
-              <div class="muted" style="margin-top:4px;">Total cotizado: <b>$${Number(totalCot||0).toLocaleString("es-CL")}</b></div>
+        <div class="sectionCard">
+          <div class="muted">Fechas</div>
+          <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+          ${t.description?`<div class="muted" style="margin-top:10px;line-height:1.35;">${esc(t.description)}</div>`:""}
+        </div>
+
+        ${(saldoPrev>0)?`
+          <div class="sectionCard">
+            <div class="muted">Saldo años anteriores (curso)</div>
+            <div style="margin-top:6px;font-weight:950;font-size:20px;">$${Number(saldoPrev).toLocaleString("es-CL")}</div>
+          </div>
+        `:""}
+
+        ${cotz.length?`
+          <div class="sectionCard">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+              <div>
+                <div style="font-weight:950;">Cotizaciones</div>
+                <div class="mutedSmall">Total cotizado: <b>$${Number(totalCot||0).toLocaleString("es-CL")}</b></div>
+              </div>
+              <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
             </div>
-            <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
+          </div>
+        `:""}
+
+        <div style="height:14px;"></div>
+
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+            ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">✏️ Editar</button>` : ``}
+            <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
           </div>
         </div>
-      `:""}
-
-      <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">✏️ Editar</button>` : ``}
       </div>
     `);
   }
@@ -690,7 +801,6 @@
     save(KEY_TASKS, ts);
 
     // ✅ Mandatory campaigns: pre-create pending payments per approved apoderado.
-    // This improves UX/consistency (deudores + cuotas) without waiting for each apoderado to enter.
     try{
       if (mandatoryParticipation) {
         const pays = load(KEY_PAYMENTS, []);
@@ -699,7 +809,7 @@
           const aps = approvedApoderados();
           const emails = aps.map(apoderadoEmailFromEnrollment).filter(Boolean);
 
-          // Fallback: if enrollments are missing, create a generic pending payment (keeps demo consistent)
+          // Fallback: if enrollments are missing, create a generic pending payment
           const targets = emails.length ? emails : ["demo@cursapp.local"];
 
           targets.forEach((mail, i)=>{
@@ -724,7 +834,7 @@
     emitUpdated("tasks");
     closeModal();
     alert("Campaña creada ✅");
-}
+  }
 
   function openEdit(taskId) {
     const ts = load(KEY_TASKS, []);
@@ -732,88 +842,103 @@
     if (!t) return;
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Editar campaña</div>
-          <div class="muted" style="margin-top:6px;">Mensual: fin se recalcula según cuotas.</div>
-        </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Nombre</label>
-        <input id="ec_title" value="${esc(t.title)}" />
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Descripción</label>
-        <input id="ec_desc" value="${esc(t.description || "")}" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Tipo</label>
-          <select id="ec_type">
-            <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
-            <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Participación</label>
-          <select id="ec_mandatory">
-            <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
-            <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Monto</label>
-          <input id="ec_amount" inputmode="numeric" value="${Number(t.amount||0)}" />
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Meta total</label>
-          <input id="ec_goal" inputmode="numeric" value="${Number(t.goalTotal||0)}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Inicio</label>
-          <input id="ec_start" type="date" value="${esc(t.startDate||todayISO())}" />
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Fin</label>
-          <input id="ec_due" type="date" value="${esc(t.dueDate||"")}" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">(Mensual: se calcula automáticamente)</div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Cuotas / Meses (solo mensual)</label>
-        <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
-      </div>
-
-      ${(t.template === "gira" || t.template === "graduacion") ? `
-        <div style="margin-top:14px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
-          <div style="margin-bottom:10px;">
-            <label style="font-weight:900;">Saldo años anteriores</label>
-            <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
-            <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">Editar campaña</div>
+            <div class="muted" style="margin-top:4px;">Mensual: fin se recalcula según cuotas.</div>
           </div>
-          <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
-          <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
-          <div id="ec_quotes" style="display:grid;gap:10px;"></div>
-          <div style="margin-top:10px;">
-            <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotización</button>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
+        </div>
+
+        <div class="sectionCard">
+          <label style="font-weight:900;">Nombre</label>
+          <input id="ec_title" value="${esc(t.title)}" />
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Descripción</label>
+            <input id="ec_desc" value="${esc(t.description || "")}" />
           </div>
         </div>
-      ` : ``}
 
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveEdit('${esc(t.id)}')">Guardar</button>
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Configuración</div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Tipo</label>
+              <select id="ec_type">
+                <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
+                <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
+              </select>
+            </div>
+
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Participación</label>
+              <select id="ec_mandatory">
+                <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
+                <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Monto</label>
+              <input id="ec_amount" inputmode="numeric" value="${Number(t.amount||0)}" />
+            </div>
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Meta total</label>
+              <input id="ec_goal" inputmode="numeric" value="${Number(t.goalTotal||0)}" />
+            </div>
+          </div>
+        </div>
+
+        <div class="sectionCard">
+          <div style="font-weight:950;margin-bottom:12px;">Fechas</div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Inicio</label>
+              <input id="ec_start" type="date" value="${esc(t.startDate||todayISO())}" />
+            </div>
+            <div style="flex:1;min-width:220px;">
+              <label style="font-weight:900;">Fin</label>
+              <input id="ec_due" type="date" value="${esc(t.dueDate||"")}" />
+              <div class="mutedSmall">Mensual: se calcula automáticamente.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Cuotas / Meses (solo mensual)</label>
+            <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
+          </div>
+        </div>
+
+        ${(t.template === "gira" || t.template === "graduacion") ? `
+          <div class="sectionCard">
+            <div style="margin-bottom:10px;">
+              <label style="font-weight:900;">Saldo años anteriores</label>
+              <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
+              <div class="mutedSmall">Se considera como reunido (curso).</div>
+            </div>
+            <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
+            <div class="mutedSmall">Puedes agregar varias cotizaciones (distintos ítems).</div>
+            <div id="ec_quotes" style="display:grid;gap:10px;margin-top:10px;"></div>
+            <div style="margin-top:10px;">
+              <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotización</button>
+            </div>
+          </div>
+        ` : ``}
+
+        <div style="height:18px;"></div>
+
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary" onclick="Campaigns.saveEdit('${esc(t.id)}')">Guardar</button>
+          </div>
+        </div>
       </div>
     `);
 
@@ -840,8 +965,8 @@
     monthsEl.oninput = sync;
     sync();
 
-    // Cotizaciones (solo plantilla Gira)
-    if (t.template === "gira") {
+    // Cotizaciones (Plantillas)
+    if (t.template === "gira" || t.template === "graduacion") {
       const normalize = (q) => ({
         name: (q?.name || q?.nombre || "").trim(),
         url: (q?.url || q?.link || "").trim(),
@@ -945,7 +1070,7 @@
       ts[i].saldo_prev = prev;
     }
 
-    // Cotizaciones (Plantillas: Gira / Graduación)
+    // Cotizaciones (Plantillas)
     if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const quotes = Array.isArray(window.__ec_quotes) ? window.__ec_quotes : [];
       const cleaned = [];
@@ -962,7 +1087,6 @@
         cleaned.push({ nombre: name, name, url, link: url, monto_total: total, total, descripcion: desc, desc, texto: desc });
       }
       ts[i].cotizaciones = cleaned;
-      // compat opcional
       ts[i].cotizacion = cleaned[0] || null;
     }
 
@@ -971,61 +1095,53 @@
     emitUpdated("tasks");
     closeModal();
     alert("Campaña actualizada ✅");
-}
+  }
 
   function openClose(activeTasksProvider) {
     const ts = activeTasksProvider ? activeTasksProvider() : load(KEY_TASKS, []).filter(t=>!t.closed);
     if (!ts.length) { alert("No hay campañas activas para cerrar."); return; }
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Cerrar campaña</div>
-          <div class="muted" style="margin-top:6px;">Indica tipo y motivo (obligatorio).</div>
+      <div style="padding:6px 6px 0 6px;">
+        <div class="row">
+          <div>
+            <div style="font-weight:950;font-size:20px;">Cerrar campaña</div>
+            <div class="muted" style="margin-top:4px;">Indica tipo y motivo (obligatorio).</div>
+          </div>
+          <button class="btnx" onclick="Campaigns.close()">✕</button>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+
+        <div class="sectionCard">
+          <label style="font-weight:900;">Campaña</label>
+          <select id="cl_task">
+            ${ts.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("")}
+          </select>
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Tipo de cierre</label>
+            <select id="cl_type">
+              <option value="Meta cumplida">Meta cumplida</option>
+              <option value="Cancelada">Cancelada</option>
+              <option value="Manual">Manual</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label style="font-weight:900;">Motivo (obligatorio)</label>
+            <input id="cl_reason" placeholder="Ej: Actividad cancelada / Cambio de plan" />
+          </div>
+        </div>
+
+        <div style="height:18px;"></div>
+
+        <div class="stickyFooter">
+          <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary" onclick="Campaigns.saveClose()">Cerrar campaña</button>
+          </div>
+        </div>
       </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Campaña</label>
-        <select id="cl_task">
-          ${ts.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("")}
-        </select>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Tipo de cierre</label>
-        <select id="cl_type">
-          <option value="Meta cumplida">Meta cumplida</option>
-          <option value="Cancelada">Cancelada</option>
-          <option value="Manual">Manual</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Motivo (obligatorio)</label>
-        <input id="cl_reason" placeholder="Ej: Actividad cancelada / Cambio de plan" />
-      </div>
-
-      <div style="height:16px;"></div>
-
-<div style="
-  position:sticky;
-  bottom:0;
-  background:rgba(255,255,255,.92);
-  backdrop-filter:saturate(180%) blur(10px);
-  -webkit-backdrop-filter:saturate(180%) blur(10px);
-  padding:12px 8px calc(12px + env(safe-area-inset-bottom)) 8px;
-  border-top:1px solid rgba(0,0,0,.08);
-  box-shadow:0 -8px 18px rgba(15,23,42,.06);
-  z-index:2;
-">
-  <div class="actions" style="justify-content:flex-end;gap:10px;flex-wrap:wrap;">
-    <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-    <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
-  </div>
-</div>
     `);
   }
 
@@ -1049,7 +1165,7 @@
     emitUpdated("tasks");
     closeModal();
     alert("Campaña cerrada ✅");
-}
+  }
 
   // expose API
   window.Campaigns = {
