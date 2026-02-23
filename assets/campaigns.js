@@ -158,105 +158,143 @@
 
   // ---------- Shared forms ----------
   function openCreate() {
-    const defaultStart = todayISO();
+  const defaultStart = todayISO();
 
-    openModal(`
+  openModal(`
+    <div style="padding:4px 4px 0 4px;">
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Crear campaña</div>
-          <div class="muted" style="margin-top:6px;">
-            Si es mensual, la fecha fin se calcula automáticamente según cuotas.
+          <div style="font-weight:950;font-size:20px;">Nueva campaña</div>
+          <div class="muted" style="margin-top:4px;">
+            Define el cobro y participación del curso.
           </div>
         </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+        <button class="btnx" onclick="Campaigns.close()">✕</button>
       </div>
 
-      <div style="margin-top:12px;">
+      <!-- BLOQUE 1 -->
+      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
+        <div style="font-weight:950;margin-bottom:12px;">Información básica</div>
+
         <label style="font-weight:900;">Nombre campaña</label>
         <input id="cc_title" placeholder="Ej: Cuota paseo" />
-      </div>
 
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Descripción (opcional)</label>
-        <input id="cc_desc" placeholder="Ej: Transporte y entradas" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Tipo</label>
-          <select id="cc_type">
-            <option value="single">Pago único</option>
-            <option value="monthly">Mensual</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Participación</label>
-          <select id="cc_mandatory">
-            <option value="true">Obligatoria</option>
-            <option value="false">No obligatoria</option>
-          </select>
+        <div style="margin-top:12px;">
+          <label style="font-weight:900;">Descripción (opcional)</label>
+          <input id="cc_desc" placeholder="Ej: Transporte y entradas" />
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Monto (obligatorio)</label>
-          <input id="cc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+      <!-- BLOQUE 2 -->
+      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
+        <div style="font-weight:950;margin-bottom:12px;">Configuración de cobro</div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Tipo</label>
+            <select id="cc_type">
+              <option value="single">Pago único</option>
+              <option value="monthly">Mensual</option>
+            </select>
+          </div>
+
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Participación</label>
+            <select id="cc_mandatory">
+              <option value="true">Obligatoria</option>
+              <option value="false">Voluntaria</option>
+            </select>
+          </div>
         </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Meta total (opcional)</label>
-          <input id="cc_goal" inputmode="numeric" placeholder="Ej: 150000" />
+
+        <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Monto</label>
+            <input id="cc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+          </div>
+
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Cuotas (si mensual)</label>
+            <input id="cc_months" inputmode="numeric" placeholder="Ej: 10" />
+          </div>
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Inicio</label>
-          <input id="cc_start" type="date" value="${defaultStart}" />
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Fin</label>
-          <input id="cc_due" type="date" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">(Mensual: se calcula automáticamente)</div>
+      <!-- BLOQUE 3 -->
+      <div class="card" style="margin-top:16px;padding:16px;border:1px solid rgba(0,0,0,.08);">
+        <div style="font-weight:950;margin-bottom:12px;">Fechas</div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Inicio</label>
+            <input id="cc_start" type="date" value="${defaultStart}" />
+          </div>
+
+          <div style="flex:1;min-width:160px;">
+            <label style="font-weight:900;">Fin</label>
+            <input id="cc_due" type="date" />
+            <div class="muted" style="margin-top:6px;font-size:12px;">
+              Se calcula automáticamente si es mensual.
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Cuotas / Meses (solo mensual)</label>
-        <input id="cc_months" inputmode="numeric" placeholder="Ej: 3" />
+      <!-- RESUMEN -->
+      <div class="card" style="margin-top:16px;padding:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);">
+        <div style="font-weight:950;margin-bottom:8px;">Resumen</div>
+        <div id="cc_preview" class="muted">Completa los datos para ver resumen.</div>
       </div>
 
-      <input id="cc_template" type="hidden" value="" />
-
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+      <div class="actions" style="margin-top:20px;justify-content:flex-end;">
         <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear</button>
+        <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
       </div>
-    `);
+    </div>
+  `);
 
-    const typeEl = document.getElementById("cc_type");
-    const startEl = document.getElementById("cc_start");
-    const dueEl = document.getElementById("cc_due");
-    const monthsEl = document.getElementById("cc_months");
+  const typeEl = document.getElementById("cc_type");
+  const startEl = document.getElementById("cc_start");
+  const dueEl = document.getElementById("cc_due");
+  const monthsEl = document.getElementById("cc_months");
+  const amountEl = document.getElementById("cc_amount");
+  const previewEl = document.getElementById("cc_preview");
 
-    function syncMonthly() {
-      const type = typeEl.value;
-      const start = startEl.value || todayISO();
-      const months = Number(monthsEl.value || 0);
+  function sync() {
+    const type = typeEl.value;
+    const start = startEl.value || todayISO();
+    const months = Number(monthsEl.value || 0);
+    const amount = Number(amountEl.value || 0);
 
-      if (type === "monthly") {
-        dueEl.disabled = true;
-        const end = calcMonthlyEndDate(start, months > 0 ? months : 0);
-        dueEl.value = end || "";
-      } else {
-        dueEl.disabled = false;
-      }
+    if (type === "monthly") {
+      dueEl.disabled = true;
+      const end = calcMonthlyEndDate(start, months > 0 ? months : 0);
+      dueEl.value = end || "";
+    } else {
+      dueEl.disabled = false;
     }
-    typeEl.onchange = syncMonthly;
-    startEl.onchange = syncMonthly;
-    monthsEl.oninput = syncMonthly;
-    syncMonthly();
+
+    const total = type === "monthly" ? amount * months : amount;
+
+    previewEl.innerHTML = `
+      Tipo: <b>${type === "monthly" ? "Mensual" : "Pago único"}</b><br>
+      Cuotas: <b>${type === "monthly" ? months || 0 : 1}</b><br>
+      Monto por cuota: <b>$${Number(amount||0).toLocaleString("es-CL")}</b><br>
+      Total proyectado: <b>$${Number(total||0).toLocaleString("es-CL")}</b>
+    `;
   }
+
+  typeEl.onchange = sync;
+  startEl.onchange = sync;
+  monthsEl.oninput = sync;
+  amountEl.oninput = sync;
+
+  sync();
+}
+
+
+
+   
 
   // ---------- Templates (Plantillas destacadas) ----------
   // Gira / Graduación: cuotas abiertas, saldo años anteriores y múltiples cotizaciones.
