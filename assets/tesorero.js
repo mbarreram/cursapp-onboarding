@@ -16,6 +16,40 @@
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
   const uid = (p="id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
   const todayISO = () => new Date().toISOString().slice(0,10);
+  // file helpers (boletas)
+  function pickBoletaFile(onPicked){
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*,application/pdf";
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+
+    inp.onchange = ()=>{
+      const file = inp.files && inp.files[0];
+      document.body.removeChild(inp);
+      if(!file) return;
+
+      if(file.size > 3 * 1024 * 1024){
+        alert("Archivo muy pesado (máx 3MB).");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e)=>{
+        onPicked({
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          size: file.size,
+          dataUrl: e.target.result
+        });
+      };
+      reader.onerror = ()=> alert("No se pudo leer el archivo.");
+      reader.readAsDataURL(file);
+    };
+
+    inp.click();
+  }
+
 
   function sum(arr, fn) { return (arr || []).reduce((a, x) => a + Number(fn ? fn(x) : x || 0), 0); }
 
@@ -470,8 +504,8 @@
 
       <div class="card" style="background:#f8fafc;">
         <div style="font-weight:950;">📎 Boleta</div>
-        <div class="muted" style="margin-top:6px;">Si no adjuntas, quedará como pendiente.</div>
-        <button class="btnMini" id="btn_attach" style="margin-top:10px;">Adjuntar boleta (demo)</button>
+        <div class="muted" style="margin-top:6px;">Adjunta imagen o PDF (máx 3MB). Si no adjuntas, quedará como pendiente.</div>
+        <input type="file" id="ex_file" accept="image/*,application/pdf" style="margin-top:10px;" />
         <div id="attach_state" class="muted" style="margin-top:6px;font-size:12px;">Sin boleta</div>
       </div>
 
@@ -485,10 +519,34 @@
       const v = $("ex_scope").value;
       $("ex_campaign_wrap").style.display = (v==="campaign")?"block":"none";
     };
-    $("btn_attach").onclick = ()=>{
-      draft.attached = true;
-      $("attach_state").textContent = "Boleta adjunta (demo)";
-    };
+    // Boleta real (imagen/PDF) -> se guarda como dataURL (base64) en attachments[0]
+    const fileEl = $("ex_file");
+    if(fileEl){
+      fileEl.onchange = (ev)=>{
+        const file = ev.target.files && ev.target.files[0];
+        if(!file) return;
+
+        // límite 3MB para evitar reventar localStorage
+        if(file.size > 3 * 1024 * 1024){
+          alert("Archivo muy pesado (máx 3MB).");
+          fileEl.value = "";
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e)=>{
+          draft.fileData = {
+            name: file.name,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+            dataUrl: e.target.result
+          };
+          $("attach_state").textContent = "Boleta adjunta: " + file.name;
+        };
+        reader.onerror = ()=> alert("No se pudo leer el archivo.");
+        reader.readAsDataURL(file);
+      };
+    }
   }
 
   function saveExpense(){
@@ -508,7 +566,7 @@
       date: $("ex_date").value||todayISO(),
       amount,
       note: "",
-      attachments: draft && draft.attached ? [{name:"boleta.jpg"}] : []
+      attachments: (draft && draft.fileData) ? [draft.fileData] : []
     });
 
     save(KEY_EXPENSES, ex);
@@ -596,28 +654,57 @@
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
-    ex[i].attachments = [{name:"boleta.jpg"}];
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    renderRendiciones(ex[i].campaignId || "");
+
+    pickBoletaFile((fileData)=>{
+      ex[i].attachments = [fileData];
+      save(KEY_EXPENSES, ex);
+      markDirty();
+      renderRendiciones(ex[i].campaignId || "");
+    });
   }
 
   function replaceBoleta(expenseId){
     const ex = expensesAll();
     const i = ex.findIndex(x=>x.id===expenseId);
     if(i<0) return;
-    ex[i].attachments = [{name:"boleta_reemplazada.jpg"}];
-    save(KEY_EXPENSES, ex);
-    markDirty();
-    alert("Boleta reemplazada ✅ (demo)");
-    renderRendiciones(ex[i].campaignId || "");
+
+    pickBoletaFile((fileData)=>{
+      ex[i].attachments = [fileData];
+      save(KEY_EXPENSES, ex);
+      markDirty();
+      alert("Boleta reemplazada ✅");
+      renderRendiciones(ex[i].campaignId || "");
+    });
   }
 
   function viewBoleta(expenseId){
     const ex = expensesAll();
     const e = ex.find(x=>x.id===expenseId);
     if(!e || !hasBoleta(e)){ alert("No hay boleta adjunta."); return; }
-    alert("Ver boleta (demo). Aquí se abriría la imagen/PDF.");
+
+    // soporta tanto attachments[] como receipt legacy
+    const file = (Array.isArray(e.attachments) && e.attachments.length) ? e.attachments[0] : (e.receipt || null);
+    if(!file || !file.dataUrl){ alert("Boleta no disponible."); return; }
+
+    const w = window.open("", "_blank");
+    if(!w){ alert("Bloqueo de popups: permite abrir ventanas para ver la boleta."); return; }
+
+    const isImg = String(file.type||"").startsWith("image/");
+    w.document.open();
+    w.document.write(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boleta</title>
+  <style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial} .wrap{padding:10px}</style>
+</head>
+<body>
+  ${isImg ? `<img src="${file.dataUrl}" style="max-width:100%;height:auto;display:block;margin:0 auto;" />`
+          : `<iframe src="${file.dataUrl}" style="width:100%;height:100vh;border:0;"></iframe>`}
+</body>
+</html>`);
+    w.document.close();
   }
 
   // ---------- Informes ----------
