@@ -364,6 +364,29 @@ function dedupePaymentsAll(list){
     }), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
+
+  // Deudores del mes (personas únicas con al menos 1 cuota/pago pendiente del mes)
+  function deudoresMonth(ym){
+    const set = new Set();
+    payments().forEach(p=>{
+      if(!isPendingLike(p)) return;
+      if(String(p.status||"").toLowerCase()==="opted_out") return;
+      const due = p.dueDate || "";
+      if(!withinMonth(due, ym)) return;
+      const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
+      if(k) set.add(k);
+    });
+    // Fallback: si no hay cobros instanciados, estimar por apoderados aprobados
+    if(set.size===0){
+      try{
+        const n = approvedApoderados().length;
+        return n || 0;
+      }catch(e){ return 0; }
+    }
+    return set.size;
+  }
+
+
   // Pendiente operacional del mes (dashboard):
   // - Usa proyección máxima del mes (campañas) menos lo recaudado.
   // - Evita depender de que los cobros existan ya en payments_v1.
