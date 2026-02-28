@@ -1360,7 +1360,244 @@ function renderInformes(){
     const deudMes = deudoresMonth(ym);
 
     // Recent expenses (approved + submitted, newest first)
-    const recentEx = ex.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,8);
+    const recentEx = ex.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,8)
+    // Report view toggle (apoderados vs directiva)
+    const reportView = localStorage.getItem("cursapp_report_view") || "apoderados";
+    window.setReportView = window.setReportView || function(v){
+      try{ localStorage.setItem("cursapp_report_view", v); }catch(e){}
+      renderInformes();
+    };
+
+    const projMaxMes = (typeof projectionMaxMonth==="function") ? projectionMaxMonth(ym) : (recMes + porCobrarMes);
+    const cumplimientoMes = projMaxMes>0 ? Math.round((recMes/projMaxMes)*100) : 0;
+
+    function pct(n){ n=Number(n||0); if(!isFinite(n)) n=0; return Math.max(0, Math.min(100, n)); }
+    function bar(p, label){
+      const pp = pct(p);
+      return `
+        <div style="margin-top:8px;">
+          ${label?`<div class="muted" style="font-size:12px;margin-bottom:6px;">${label}</div>`:""}
+          <div style="height:10px;border-radius:999px;background:#eef2ff;overflow:hidden;">
+            <div style="height:10px;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#34d399);width:${pp}%"></div>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:6px;">${pp}%</div>
+        </div>
+      `;
+    }
+
+    function statusChip(){
+      // Semáforo simple por cumplimiento mes y deudores
+      if(cumplimientoMes>=85 && deudMes<=2) return `<span class="chipInfoPill ok">🟢 En buen camino</span>`;
+      if(cumplimientoMes>=55) return `<span class="chipInfoPill warn">🟡 Atención</span>`;
+      return `<span class="chipInfoPill danger">🔴 Urgente</span>`;
+    }
+
+    function gastosPorCategoria(){
+      const map = {};
+      ex.forEach(e=>{
+        const st = String(e.status||"submitted");
+        if(st==="rejected") return;
+        const cat = String(e.category||e.tipo||e.type||"Otro").trim() || "Otro";
+        map[cat] = (map[cat]||0) + Number(e.amount||0);
+      });
+      const arr = Object.entries(map).map(([k,v])=>({cat:k, total:v})).sort((a,b)=>b.total-a.total);
+      return arr;
+    }
+
+    function informeApoderadosHTML(){
+      const cats = gastosPorCategoria().slice(0,3);
+      const cards = `
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">💰 Recaudado este mes</div><div class="big">${clp(recMes)}</div></div>
+          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">🧾 Gastado este mes</div><div class="big">${clp(gasMes)}</div></div>
+          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">🏦 Saldo disponible</div><div class="big">${clp(saldo)}</div></div>
+          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">⏳ Por cobrar este mes</div><div class="big">${clp(porCobrarMes)}</div></div>
+        </div>
+      `;
+
+      const catsHtml = cats.length ? `
+        <div class="card" style="margin-top:14px;padding:14px;">
+          <div style="font-weight:950;">¿En qué se ha gastado?</div>
+          <div class="muted" style="margin-top:6px;">Top categorías (monto total)</div>
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${cats.map(c=>`
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <div style="font-weight:900;">${esc(c.cat)}</div>
+                <div style="font-weight:950;">${clp(c.total)}</div>
+              </div>
+            `).join("")}
+          </div>
+          <div style="margin-top:10px;">
+            ${bar(cumplimientoMes, "Cumplimiento del mes (recaudado vs proyección)")}
+          </div>
+        </div>
+      ` : "";
+
+      const recentHtml = recentEx.length ? `
+        <div class="card" style="margin-top:14px;padding:14px;">
+          <div style="font-weight:950;">Últimos gastos</div>
+          <div class="muted" style="margin-top:6px;">Transparencia con comprobantes</div>
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${recentEx.slice(0,3).map(e=>`
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div style="min-width:0;">
+                  <div style="font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.title||e.concept||"Gasto")}</div>
+                  <div class="muted" style="font-size:12px;margin-top:2px;">${esc(e.date||"")} · ${esc(e.category||"")}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:950;">${clp(e.amount||0)}</div>
+                  ${hasAttachment(e)?`<button style="margin-top:6px;border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:800;" onclick="viewExpenseAttachment('${esc(e.id)}')">Ver boleta</button>`:`<div class="muted" style="font-size:12px;margin-top:2px;">Sin boleta</div>`}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+          <div class="muted" style="margin-top:10px;font-size:12px;">Consejo: si no corresponde una campaña voluntaria, marca “No participo”.</div>
+        </div>
+      ` : "";
+
+      return `
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div>
+              <div style="font-weight:950;font-size:18px;">Informe para Apoderados</div>
+              <div class="muted" style="margin-top:4px;">Sencillo, visual y transparente.</div>
+            </div>
+            ${statusChip()}
+          </div>
+          ${cards}
+          ${catsHtml}
+          ${recentHtml}
+          <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+            <button class="btnx" onclick="go('pagos')">Ir a Pagos</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function informeDirectivaHTML(){
+      const saldoPrev = sum(allTasks.filter(t=>Number(t.saldo_prev||0)>0), t=>Number(t.saldo_prev||0));
+      const saldoInicial = saldoPrev; // en este MVP usamos saldo_prev como base; si no existe, 0
+      const ingresosPeriodo = recMes;
+      const gastosPeriodo = gasMes;
+      const saldoFinal = saldoInicial + ingresosPeriodo - gastosPeriodo;
+
+      const campRows = allTasks
+        .slice()
+        .filter(t=>!t.closed)
+        .map(t=>{
+          const rec = collectedTask(t.id);
+          const gas = spentTask(t.id);
+          const sal = rec - gas;
+          const pend = pendingTask(t.id);
+          const meta = Number(t.goalTotal||0);
+          const av = meta>0 ? Math.round((rec/meta)*100) : null;
+          return {t, rec, gas, sal, pend, meta, av};
+        })
+        .sort((a,b)=> (b.rec - a.rec));
+
+      const cumplimientoBar = bar(cumplimientoMes, "Cumplimiento del mes (recaudado vs proyección)");
+      const cats = gastosPorCategoria().slice(0,6);
+      const catsBars = cats.length ? `
+        <div class="card" style="margin-top:14px;padding:14px;">
+          <div style="font-weight:950;">Gastos por categoría</div>
+          <div class="muted" style="margin-top:6px;">Distribución total (no solo mes)</div>
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            ${cats.map(c=>{
+              const total = sum(cats, x=>x.total);
+              const p = total>0 ? Math.round((c.total/total)*100) : 0;
+              return `
+                <div>
+                  <div style="display:flex;justify-content:space-between;gap:10px;">
+                    <div style="font-weight:900;">${esc(c.cat)}</div>
+                    <div style="font-weight:950;">${clp(c.total)}</div>
+                  </div>
+                  <div style="height:8px;border-radius:999px;background:#eef2ff;overflow:hidden;margin-top:6px;">
+                    <div style="height:8px;border-radius:999px;background:#60a5fa;width:${pct(p)}%"></div>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `:"";
+
+      const table = campRows.length ? `
+        <div class="card" style="margin-top:14px;padding:14px;">
+          <div style="font-weight:950;">Campañas activas (cuadratura)</div>
+          <div style="margin-top:10px;overflow:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr class="muted">
+                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Campaña</th>
+                  <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Recaudado</th>
+                  <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Gastado</th>
+                  <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Saldo</th>
+                  <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Pendiente</th>
+                  <th style="text-align:center;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Meta</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${campRows.map(r=>`
+                  <tr>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);">
+                      <div style="font-weight:900;">${esc(r.t.title||"")}</div>
+                      <div class="muted" style="font-size:12px;">${esc(r.t.type==="monthly"?"Mensual":"Único")} · ${r.t.mandatoryParticipation===false?"Voluntaria":"Obligatoria"}</div>
+                    </td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.rec)}</td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.gas)}</td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;font-weight:950;">${clp(r.sal)}</td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.pend)}</td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:center;">${r.av==null?"—":(pct(r.av)+"%")}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : "";
+
+      const cuadOK = (Math.abs((recTotal - gasTotal) - saldo) < 0.5); // always true but keeps concept
+      return `
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div>
+              <div style="font-weight:950;font-size:18px;">Informe para Directiva</div>
+              <div class="muted" style="margin-top:4px;">Cuadratura, control y seguimiento.</div>
+            </div>
+            <span class="chipInfoPill ${cuadOK?"ok":"warn"}">🧮 Cuadratura ${cuadOK?"OK":"Revisar"}</span>
+          </div>
+
+          <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">Cobrado mes</div><div class="big">${clp(recMes)}</div></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">Por cobrar mes</div><div class="big">${clp(porCobrarMes)}</div></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">Gastado mes</div><div class="big">${clp(gasMes)}</div></div>
+            <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">Deudores mes</div><div class="big">${Number(deudMes||0)}</div></div>
+          </div>
+
+          <div class="card" style="margin-top:14px;padding:14px;">
+            <div style="font-weight:950;">Cuadratura del periodo (mes actual)</div>
+            <div style="margin-top:10px;display:grid;gap:8px;">
+              <div style="display:flex;justify-content:space-between;"><span>Saldo inicial</span><b>${clp(saldoInicial)}</b></div>
+              <div style="display:flex;justify-content:space-between;"><span>+ Ingresos del mes</span><b>${clp(ingresosPeriodo)}</b></div>
+              <div style="display:flex;justify-content:space-between;"><span>- Gastos del mes</span><b>${clp(gastosPeriodo)}</b></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(0,0,0,.15);padding-top:8px;"><span><b>Saldo final</b></span><b>${clp(saldoFinal)}</b></div>
+            </div>
+            ${cumplimientoBar}
+          </div>
+
+          ${table}
+          ${catsBars}
+        </div>
+      `;
+    }
+
+    const toggleHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
+        <button class="btnx ${reportView==='apoderados'?'primary':''}" onclick="window.setReportView('apoderados')">👨‍👩‍👧‍👦 Apoderados</button>
+        <button class="btnx ${reportView==='directiva'?'primary':''}" onclick="window.setReportView('directiva')">🏛️ Directiva</button>
+      </div>
+    `;
+;
 
     function hasAttachment(e){
       return !!(e && Array.isArray(e.attachments) && e.attachments[0] && e.attachments[0].dataUrl);
@@ -1421,68 +1658,10 @@ function viewExpenseAttachment(expenseId){
             <button class="btnx" onclick="printExecutive()">Descargar PDF</button>
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">
-          <div class="miniCard">
-            <div class="muted">Cobrado este mes</div>
-            <div style="font-weight:950;font-size:20px;">${clp(recMes)}</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted">Cobrado total</div>
-            <div style="font-weight:950;font-size:20px;">${clp(recTotal)}</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted">Gastado este mes</div>
-            <div style="font-weight:950;font-size:20px;">${clp(gasMes)}</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted">Gastado total</div>
-            <div style="font-weight:950;font-size:20px;">${clp(gasTotal)}</div>
-          </div>
-          <div class="miniCard">
-            <div class="muted">Saldo disponible</div>
-            <div style="font-weight:950;font-size:20px;">${clp(saldo)}</div>
-          </div>
-          <div class="miniCard warn">
-            <div class="muted">Por cobrar este mes</div>
-            <div style="font-weight:950;font-size:20px;">${clp(porCobrarMes)}</div>
-            <div class="muted" style="margin-top:4px;">Deudores (mes): <b>${Number(deudMes||0)}</b></div>
-          </div>
-        </div>
-
-        <div style="margin-top:16px;">
-          <div style="font-weight:950;">Gastos recientes</div>
-          <div class="muted" style="margin-top:6px;">Últimas rendiciones (curso/campaña). Incluye comprobantes si fueron adjuntados.</div>
-          <div class="listLines" style="margin-top:10px;">
-            ${recentEx.length ? recentEx.map(e=>{
-              const scope = e.scope==="campaign" ? (allTasks.find(t=>t.id===e.campaignId)?.title||"Campaña") : "Curso";
-              const att = hasAttachment(e);
-              return `
-                <div class="lineItem">
-                  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-                    <div>
-                      <b>${esc(e.title||"Gasto")}</b> · <span class="muted">${esc(scope)}</span>
-                      <div class="muted" style="margin-top:6px;">${esc(e.date||"")}</div>
-                    </div>
-                    <div style="text-align:right;">
-                      <div style="font-weight:950;">${clp(e.amount||0)}</div>
-                      <div style="margin-top:8px;">
-                        ${att ? `<button class="btnx" onclick="viewExpenseAttachment('${esc(e.id)}')">Ver comprobante</button>` : `<span class="pill">Sin boleta</span>`}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join("") : `<div class="muted">Aún no hay rendiciones.</div>`}
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:14px;">
-        <div class="row">
-          <div>
-            <div class="kTitle">Informes mensuales publicados</div>
+        
+        ${toggleHTML}
+        ${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}
+<div class="kTitle">Informes mensuales publicados</div>
             <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
           </div>
           <div class="actions">
