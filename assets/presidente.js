@@ -1337,6 +1337,40 @@ function renderInformes(){
       return !!(e && Array.isArray(e.attachments) && e.attachments[0] && e.attachments[0].dataUrl);
     }
 
+
+function viewExpenseAttachment(expenseId){
+  try{
+    const e = expenses().find(x=>String(x.id)===String(expenseId));
+    if(!e || !Array.isArray(e.attachments) || !e.attachments.length){
+      alert("No hay comprobante adjunto.");
+      return;
+    }
+    const file = e.attachments[0];
+    const dataUrl = file.dataUrl || file.dataURL || file.url || "";
+    const type = String(file.type||"");
+    if(!dataUrl){
+      alert("Comprobante no disponible.");
+      return;
+    }
+    const win = window.open();
+    if(!win){ alert("Bloqueado por el navegador. Permite pop-ups para ver el comprobante."); return; }
+    win.document.write(`
+      <html>
+        <head><title>Comprobante</title></head>
+        <body style="margin:0;">
+          ${
+            type.includes("image")
+              ? `<img src="${dataUrl}" style="width:100%;height:auto;display:block;" />`
+              : `<iframe src="${dataUrl}" style="width:100%;height:100vh;border:0;"></iframe>`
+          }
+        </body>
+      </html>
+    `);
+  }catch(err){
+    alert("No se pudo abrir el comprobante.");
+  }
+}
+
     app.innerHTML = `
       ${isDirty()?`
         <div class="warnBox">
@@ -1455,8 +1489,24 @@ function renderInformes(){
     `;
 
     }catch(e){
-      console.error('Informe error:', e);
-      app.innerHTML = `<div class="warnBox"><div style="font-weight:950;">Error en Informe</div><div class="muted" style="margin-top:6px;">Se produjo un error al construir el informe. Revisa la consola del navegador para ver el detalle (F12).</div><div class="actions" style="margin-top:10px;"><button class="btnx" onclick="go('home')">Volver</button></div></div>`;
+      try{ console.error('Informe error:', e); }catch(_){}
+      const msg = (e && (e.message||e.toString())) ? (e.message||e.toString()) : "Error desconocido";
+      const stack = (e && e.stack) ? String(e.stack) : "";
+      try{ localStorage.setItem("cursapp_last_informe_error", JSON.stringify({msg, stack, at: new Date().toISOString()})); }catch(_){}
+      app.innerHTML = `
+        <div class="warnBox">
+          <div style="font-weight:950;">Error en Informe</div>
+          <div class="muted" style="margin-top:6px;">En celular no existe F12. Copia el detalle de abajo y pégamelo aquí.</div>
+          <div class="card" style="margin-top:12px;border:1px dashed rgba(0,0,0,.18);">
+            <div style="font-weight:900;margin-bottom:8px;">Detalle</div>
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;">${esc(msg)}${stack?`\n\n${esc(stack)}`:""}</div>
+          </div>
+          <div class="actions" style="margin-top:12px;gap:10px;flex-wrap:wrap;">
+            <button class="btnx" onclick="(function(){try{const x=localStorage.getItem('cursapp_last_informe_error')||''; if(navigator.clipboard){navigator.clipboard.writeText(x);} else {prompt('Copia esto:', x);} }catch(_){}})()">Copiar detalle</button>
+            <button class="btnx primary" onclick="go('home')">Volver</button>
+          </div>
+        </div>
+      `;
     }
 
   }
