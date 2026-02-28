@@ -221,6 +221,12 @@ function hash32(str){
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
 
+  function currentYM(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  }
+
+
   function isExpired(t){
     if(!t.dueDate) return false;
     const due = new Date(t.dueDate + "T23:59:59");
