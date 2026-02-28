@@ -455,7 +455,7 @@
         <div class="cursappModalFooter">
           <div class="actions" style="justify-content:flex-end;gap:10px;">
             <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-            <button class="btnx primary" onclick="Campaigns.saveTemplate()">Crear campaña</button>
+            <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear campaña</button>
           </div>
         </div>
       </div>
@@ -468,6 +468,13 @@
     const monthsEl= document.getElementById("tc_months");
     const amountEl= document.getElementById("tc_amount");
     const metaEl  = document.getElementById("tc_meta_alumno");
+
+    // Prefill defaults so the template can be created with fewer steps
+    try{
+      if(!amountEl.value){ amountEl.value = (tpl==="graduacion" ? "10000" : "20000"); }
+      if(!monthsEl.value){ monthsEl.value = "10"; }
+    }catch(e){}
+
 
     function sync(){
       const start = startEl.value || defaultStart;

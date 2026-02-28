@@ -560,17 +560,27 @@ function cuotasPendientesTask(id){
   let state = { tab:"home" };
   let campaignFilter = "active"; // active | expired | closed | all
 
-  function setActive(tab){
+  
+  function normalizeTab(tab){
+    const t = String(tab||"").toLowerCase().trim();
+    // Compat: algunos builds usan 'informe' (singular) en el dataset del menú
+    if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
+    if(t === "campaña" || t === "campana") return "campanas";
+    return t;
+  }
+
+function setActive(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
   }
 
   function go(tab){
-    state.tab = tab;
-    setActive(tab);
-    if(tab==="home") renderHome();
-    if(tab==="campanas") renderCampanas();
-    if(tab==="informes") renderInformes();
-    if(tab==="deudores") renderDeudores();
+    const norm = normalizeTab(tab);
+    state.tab = norm;
+    setActive(norm);
+    if(norm==="home") renderHome();
+    if(norm==="campanas") renderCampanas();
+    if(norm==="informes") renderInformes();
+    if(norm==="deudores") renderDeudores();
   }
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
@@ -1303,6 +1313,7 @@ function renderDeudores(){
 }
 
 function renderInformes(){
+    try{
     const reps = reports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
     const allTasks = tasks();
     const ps = payments();
@@ -1442,6 +1453,12 @@ function renderInformes(){
         </div>
       </div>
     `;
+
+    }catch(e){
+      console.error('Informe error:', e);
+      app.innerHTML = `<div class="warnBox"><div style="font-weight:950;">Error en Informe</div><div class="muted" style="margin-top:6px;">Se produjo un error al construir el informe. Revisa la consola del navegador para ver el detalle (F12).</div><div class="actions" style="margin-top:10px;"><button class="btnx" onclick="go('home')">Volver</button></div></div>`;
+    }
+
   }
 
   // ---- Informe: utilidades (PDF/print) ----
