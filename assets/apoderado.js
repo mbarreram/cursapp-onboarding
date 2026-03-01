@@ -1052,29 +1052,127 @@ function dueBadge(iso){
   }
 
   window.openReport = function(period){
-    const reps = reports();
-    const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
-    if(!r) return;
+  const reps = reports();
+  const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
+  if(!r) return;
 
-    openModal(`
-      <div class="card">
-        <div class="row">
-          <div>
-            <div class="kTitle">Informe del curso</div>
-            <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
-          </div>
+  // defensivo
+  const recCurso = Number(r.recaudadoCurso ?? r.recCurso ?? r.collectedCourse ?? 0);
+  const gasCurso = Number(r.gastadoCurso ?? r.gasCurso ?? r.spentCourse ?? 0);
+  const saldoCurso = Number(r.disponibleCurso ?? r.saldoCurso ?? (recCurso-gasCurso) ?? 0);
+
+  const recMes = Number(r.recaudadoMes ?? r.recMes ?? 0);
+  const gasMes = Number(r.gastadoMes ?? r.gasMes ?? 0);
+  const porCobrarMes = Number(r.porCobrarMes ?? r.pendingMes ?? 0);
+  const deudMes = Number(r.deudoresMes ?? r.deudMes ?? 0);
+  const projMaxMes = Number(r.proyeccionMaxMes ?? r.projMaxMes ?? (recMes + porCobrarMes) ?? 0);
+  const cumplimiento = projMaxMes>0 ? Math.round((recMes/projMaxMes)*100) : 0;
+
+  function clampPct(p){ p=Number(p||0); if(!isFinite(p)) p=0; return Math.max(0, Math.min(100, p)); }
+  function pill(){
+    const ok = (cumplimiento>=85 && deudMes<=2);
+    const warn = (cumplimiento>=55 && !ok);
+    const bg = ok ? "#dcfce7" : (warn ? "#fef9c3" : "#fee2e2");
+    const fg = ok ? "#166534" : (warn ? "#854d0e" : "#991b1b");
+    const txt = ok ? "🟢 En buen camino" : (warn ? "🟡 Atención" : "🔴 Urgente");
+    return `<span style="background:${bg};color:${fg};padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;white-space:nowrap;">${txt}</span>`;
+  }
+  function kcard(icon, label, value){
+    return `
+      <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="font-size:18px;line-height:1">${icon}</div>
+          <div class="muted" style="font-weight:800">${label}</div>
+        </div>
+        <div style="font-size:22px;font-weight:950;margin-top:6px;">${value}</div>
+      </div>
+    `;
+  }
+  function bar(p){
+    const pp = clampPct(p);
+    return `
+      <div style="height:10px;border-radius:999px;background:#eef2ff;overflow:hidden;">
+        <div style="height:10px;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#34d399);width:${pp}%"></div>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:6px;display:flex;justify-content:space-between;">
+        <span>${pp}%</span>
+        <span>${clp(recMes)} de ${clp(projMaxMes||0)}</span>
+      </div>
+    `;
+  }
+
+  const topCats = Array.isArray(r.gastosTop) ? r.gastosTop : (Array.isArray(r.categoriasGasto) ? r.categoriasGasto : []);
+  const cats = topCats.slice(0,4);
+
+  const catsHtml = cats.length ? `
+    <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
+      <div style="font-weight:950;">¿En qué se gastó?</div>
+      <div class="muted" style="margin-top:6px;font-size:12px;">Top categorías</div>
+      <div style="margin-top:10px;display:grid;gap:8px;">
+        ${cats.map(c=>{
+          const name = esc(c.cat||c.categoria||c.name||"Otro");
+          const total = Number(c.total||c.monto||0);
+          return `
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+              <div style="font-weight:900;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+              <div style="font-weight:950;">${clp(total)}</div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  ` : "";
+
+  openModal(`
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+        <div style="min-width:0;">
+          <div class="kTitle">Informe del curso</div>
+          <div class="muted" style="margin-top:4px;">Resumen visual (no personal)</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${pill()}
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
-        <div class="listLines" style="margin-top:12px;">
-          <div class="lineItem"><b>Periodo:</b> ${esc(r.period||"")}</div>
-          <div class="lineItem"><b>Recaudado:</b> ${clp(r.recaudadoCurso||0)}</div>
-          <div class="lineItem"><b>Gastado:</b> ${clp(r.gastadoCurso||0)}</div>
-          <div class="lineItem"><b>Saldo:</b> ${clp(r.disponibleCurso||0)}</div>
-          <div class="lineItem"><b>Emitido:</b> ${esc(r.generatedAt||"")}</div>
+      </div>
+
+      <div style="margin-top:12px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
+        <div class="muted" style="font-size:12px;">Periodo</div>
+        <div style="font-weight:950;font-size:18px;margin-top:4px;">${esc(r.period||"")}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px;">Emitido: ${esc(r.generatedAt||"")}</div>
+      </div>
+
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+        ${kcard("💰","Recaudado mes", clp(recMes))}
+        ${kcard("🧾","Gastado mes", clp(gasMes))}
+        ${kcard("🏦","Saldo disponible", clp(saldoCurso))}
+        ${kcard("⏳","Por cobrar mes", clp(porCobrarMes))}
+      </div>
+
+      <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div style="font-weight:950;">Cumplimiento del mes</div>
+          <div class="muted" style="font-size:12px;">Deudores mes: <b>${esc(deudMes)}</b></div>
+        </div>
+        <div style="margin-top:10px;">
+          ${bar(cumplimiento)}
         </div>
       </div>
-    `);
-  };
+
+      ${catsHtml}
+
+      <div style="margin-top:14px;border:1px dashed rgba(0,0,0,.18);border-radius:16px;padding:12px;background:#fafafa;">
+        <div style="font-weight:950;">Total del curso</div>
+        <div class="muted" style="margin-top:6px;font-size:12px;">Transparencia global (desde el inicio)</div>
+        <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
+          <div><div class="muted" style="font-size:12px;">Recaudado</div><div style="font-weight:950;">${clp(recCurso)}</div></div>
+          <div><div class="muted" style="font-size:12px;">Gastado</div><div style="font-weight:950;">${clp(gasCurso)}</div></div>
+          <div><div class="muted" style="font-size:12px;">Saldo</div><div style="font-weight:950;">${clp(saldoCurso)}</div></div>
+        </div>
+      </div>
+    </div>
+  `);
+};
 
   // -------- Credits apply --------
   function applyCreditsToPayment(pays, paymentIndex){
@@ -1470,21 +1568,14 @@ function dedupePaymentsAll(list){
     const creditTotal = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit").reduce((a,p)=>a+Number(p.amount||0),0);
 
 
-    const __byTask = (arr)=> (selectedTask!=="all") ? arr.filter(p => (p.fromTaskId || "no_task") === selectedTask) : arr;
-    const __countPending = __byTask(paysAll.filter(p=>["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p))).length;
-    const __countUpcoming = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7 && !isPaymentOptedOut(p))).length;
-    const __countPaid = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid")).length;
-    const __countCredit = __byTask(paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit")).length;
-
     const chips = `
       <div class="chips">
-        <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes ${__countPending?`(${__countPending})`:``}</button>
-        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas ${__countUpcoming?`(${__countUpcoming})`:``}</button>
-        <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas ${__countPaid?`(${__countPaid})`:``}</button>
-        <button class="chip ${payFilter==="credit"?"active":""} ${__countCredit>0?"":"disabled"}" ${__countCredit>0?`onclick="setPayFilter(\'credit\')"`:""}>${__countCredit>0?`💰 Saldo a favor (${__countCredit})`:"Saldo a favor"}</button>
+        <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
+        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
+        <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
+        <button class="chip ${payFilter==="credit"?"active":""} ${creditTotal>0?"":"disabled"}" ${creditTotal>0?`onclick="setPayFilter(\'credit\')"`:""}>${creditTotal>0?"💰 Saldo a favor":"Saldo a favor"}</button>
       </div>
     `;
-
 
     const taskOptions = (tasksAll.length>1 || (paysAll||[]).some(p=>!p.fromTaskId)) ? `
       <div style="margin-top:12px;">
@@ -1569,15 +1660,14 @@ function dedupePaymentsAll(list){
 
     const nextCard = nextDue ? `
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
-        <div style="font-weight:950;">Tu próxima acción</div>
+        <div style="font-weight:950;">Próxima cuota</div>
         <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"—")}</b></div>
-        <div class="muted" style="margin-top:6px;">Paga ahora para mantener tus cuotas al día.</div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
           Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
         </div>
         <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div style="font-weight:950;font-size:18px;">${formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0)}</div>
-          <button class="btnx primary" style="min-width:140px;padding:12px 18px;" onclick="payNow('${esc(nextDue.id)}')">Pagar ahora</button>
+          <button class="btnx primary" onclick="payNow('${esc(nextDue.id)}')">Pagar</button>
         </div>
       </div>
     ` : ``;
