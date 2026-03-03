@@ -494,7 +494,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
               <div style="font-weight:950;font-size:22px;">${esc(title)}</div>
               <div class="muted" style="margin-top:6px;">${esc(subtitle||"")}</div>
             </div>
-            <button class="btnx" onclick="(function(){document.getElementById('modalRoot').innerHTML='';})();">Cerrar</button>
+            <button class="btnx" onclick="closeModal()">Cerrar</button>
           </div>
           <div style="margin-top:12px;">${bodyHtml}</div>
         </div>
@@ -624,14 +624,54 @@ function dueBadge(iso){
 
   // -------- Modal --------
   function openModal(html){
-    modalRoot.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.55);
-           z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div style="width:min(820px,100%);margin-bottom:12px;">${html}</div>
+    const root = modalRoot || document.getElementById("modalRoot");
+    if(!root){ alert("Falta #modalRoot"); return; }
+
+    root.innerHTML = `
+      <div style="
+        position:fixed;
+        inset:0;
+        background:rgba(15,23,42,.55);
+        z-index:99999;
+        display:flex;
+        align-items:flex-end;
+        justify-content:center;
+        padding:14px;
+      " onclick="closeModal(event)">
+
+        <div id="modalCard" style="
+          background:#ffffff;
+          width:100%;
+          max-width:820px;
+          max-height:85vh;
+          border-top-left-radius:24px;
+          border-top-right-radius:24px;
+          box-shadow:0 -10px 40px rgba(0,0,0,.25);
+          overflow:auto;
+          -webkit-overflow-scrolling:touch;
+          padding:0;
+          margin-bottom:12px;
+        " onclick="event.stopPropagation()">
+          ${html}
+        </div>
+
       </div>
     `;
+
+    // Bloquea scroll del body para que el sticky dentro del modal funcione en iOS
+    try{ document.body.style.overflow = "hidden"; }catch(e){}
   }
-  function closeModal(){ modalRoot.innerHTML=""; }
+
+  function closeModal(e){
+    // si se hace click dentro del modalCard, no cerrar
+    if(e && e.target && e.currentTarget && e.target !== e.currentTarget) return;
+
+    const root = modalRoot || document.getElementById("modalRoot");
+    if(root) root.innerHTML = "";
+
+    try{ document.body.style.overflow = ""; }catch(err){}
+  }
+
   window.closeModal = closeModal;
   // ===== Ayuda (Apoderado) =====
   const HELP_TOPICS = {
