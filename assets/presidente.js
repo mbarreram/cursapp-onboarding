@@ -1649,22 +1649,28 @@ function viewExpenseAttachment(expenseId){
       `:""}
 
       <div class="card">
-        <div class="row">
-          <div>
+        <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
+          <div style="min-width:220px;flex:1;">
             <div class="kTitle">Informe ejecutivo del curso</div>
             <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
           </div>
-          <div class="actions">
+          <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
-        
+        </div>
+
         ${toggleHTML}
         <div id="informeRoot">${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}</div>
-<div class="kTitle">Informes mensuales publicados</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
+          <div style="min-width:220px;flex:1;">
+            <div class="kTitle">Informes mensuales publicados</div>
             <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
           </div>
-          <div class="actions">
+          <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
         </div>
@@ -1682,11 +1688,8 @@ function viewExpenseAttachment(expenseId){
                 </div>
 
                 <div class="muted" style="margin-top:8px;line-height:1.45;">
-                  Recaudado ${clp(r.recaudadoCurso||0)}
-                  · Rendido ${clp(r.gastadoCurso||0)}
-                  · Saldo ${clp(r.disponibleCurso||0)}
-                  · Pendiente ${clp(r.pendienteCurso||0)}
-                  · Deudores ${Number(r.deudores||0)}
+                  Recaudado ${clp(r.recaudadoCurso||0)} · Rendido ${clp(r.gastadoCurso||0)} · Saldo ${clp(r.disponibleCurso||0)}
+                  · Pendiente ${clp(r.pendienteCurso||0)} · Deudores ${Number(r.deudores||0)}
                 </div>
               </div>
             `).join("")
@@ -1875,34 +1878,52 @@ window.printExecutive = function(){
   }
 
   function buildSnapshotPrintHTML(r){
+    // Mantiene un look consistente con el PDF actual (simple, 1 página)
+    const esc = (s)=>String(s??"").replace(/[&<>'"]/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
+    const clp = (n)=>"$"+Number(n||0).toLocaleString("es-CL");
+    const period = r.period || "";
+    const genAt = r.generatedAt || "";
+    const rec = Number(r.recaudadoCurso||0);
+    const gas = Number(r.gastadoCurso||0);
+    const sal = Number(r.disponibleCurso||0);
+    const pen = Number(r.pendienteCurso||0);
+    const deu = Number(r.deudores||0);
+
     return `
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Informe ${esc(r.period||"")}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Informe del Curso</title>
           <style>
-            body{ font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; margin:24px; color:#0f172a; }
-            h1{ font-size:20px; margin:0; }
-            .sub{ color:#475569; margin-top:6px; }
-            .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; margin-top:14px; }
-            .k{ border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
-            .k .t{ color:#64748b; font-size:12px; }
-            .k .v{ font-weight:800; font-size:18px; margin-top:6px; }
+            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:20px; color:#111827;}
+            .muted{color:#6b7280;}
+            .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+            .card{border:1px solid #eef2f7; border-radius:12px; padding:12px;}
+            .k{font-size:12px; color:#6b7280;}
+            .v{font-size:18px; font-weight:900; margin-top:4px;}
+            .h{font-size:16px; font-weight:950;}
+            @media (max-width:520px){ .grid{grid-template-columns:1fr;} }
           </style>
         </head>
         <body>
-          <h1>Informe del Curso · ${esc(r.period||"")}</h1>
-          <div class="sub">Emitido: ${esc(r.generatedAt||"")}</div>
+          <div class="h">Informe del Curso · ${esc(period)}</div>
+          <div class="muted" style="margin-top:6px;">Emitido: ${esc(genAt)}</div>
 
           <div class="grid">
-            <div class="k"><div class="t">Recaudado</div><div class="v">${clp(r.recaudadoCurso||0)}</div></div>
-            <div class="k"><div class="t">Rendido</div><div class="v">${clp(r.gastadoCurso||0)}</div></div>
-            <div class="k"><div class="t">Saldo</div><div class="v">${clp(r.disponibleCurso||0)}</div></div>
-            <div class="k"><div class="t">Pendiente</div><div class="v">${clp(r.pendienteCurso||0)}</div></div>
-            <div class="k"><div class="t">Deudores</div><div class="v">${Number(r.deudores||0)}</div></div>
+            <div class="card"><div class="k">Cobrado total</div><div class="v">${clp(rec)}</div></div>
+            <div class="card"><div class="k">Gastado total</div><div class="v">${clp(gas)}</div></div>
+            <div class="card"><div class="k">Saldo disponible</div><div class="v">${clp(sal)}</div></div>
+            <div class="card"><div class="k">Pendiente</div><div class="v">${clp(pen)}</div></div>
           </div>
 
-          <div class="sub" style="margin-top:16px;">Generado por Cursapp</div>
+          <div class="card" style="margin-top:12px;">
+            <div class="k">Deudores</div>
+            <div class="v">${deu}</div>
+            <div class="muted" style="margin-top:6px;font-size:12px;">*Este PDF es un snapshot (corte) del periodo publicado.</div>
+          </div>
+
+          <div class="muted" style="margin-top:18px;">Generado por Cursapp</div>
         </body>
       </html>
     `;
@@ -2230,5 +2251,4 @@ window.openHelp = function(topic){
     document.head.appendChild(style);
   })();
 })();
-
 
