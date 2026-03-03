@@ -1181,7 +1181,36 @@ function dueBadge(iso){
         })
         .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
 
-      const objetivo = meta>0 ? meta : (type==="monthly" ? (amount*months) : amount);
+      // Objetivo (total curso):
+      // - Si el usuario definió goalTotal/meta => lo respetamos como total de curso.
+      // - Si no, lo calculamos como (monto por apoderado) x (participantes) x (cuotas si mensual)
+      //   Esto evita el bug de ver 100% con 1 pago cuando hay 2 apoderados.
+      let objetivo;
+      if(meta>0){
+        objetivo = meta;
+      }else{
+        const base = (type==="monthly" ? (amount*months) : amount);
+        const mandatory = (t.mandatoryParticipation !== undefined) ? !!t.mandatoryParticipation : true;
+        let n = 0;
+
+        if(!mandatory){
+          // voluntaria: contamos participantes reales (excluye opted_out)
+          const s = new Set();
+          for(const x of ps){
+            if(!x) continue;
+            if(x.opted_out || String(x.status||"")==="opted_out") continue;
+            const k = String(x.apoderadoKey||x.apoderadoEmail||x.payerProfileId||x.profileId||x.userId||x.email||"").toLowerCase().trim();
+            if(k) s.add(k);
+          }
+          n = s.size;
+        }
+        if(!n){
+          // fallback: apoderados del curso (evita 0 / y cubre obligatorias)
+          n = apoderadosCountInCourse ? apoderadosCountInCourse() : 0;
+        }
+        if(!n) n = 1;
+        objetivo = base * n;
+      }
       const p = pct(recaudado, objetivo);
 
       return `
