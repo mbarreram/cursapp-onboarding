@@ -1163,15 +1163,25 @@ window.openReport = function(period){
   `;
 
   openModal(`
-    <div style="max-width:900px;margin:auto;">
-      <div style="background:#fff;border-radius:22px;border:1px solid rgba(0,0,0,.08);padding:16px;">
-        <div class="row" style="align-items:flex-start;">
-          <div>
-            <div class="kTitle" style="margin:0;">Informe del curso</div>
-            <div class="muted" style="margin-top:6px;">Resumen de cómo va el curso (montos globales, no personales)</div>
-          </div>
-          <button class="btnx" onclick="closeModal()">Cerrar</button>
-        </div>
+    <div style="
+  position:sticky; top:0; z-index:5;
+  background:#fff;
+  padding:6px 0 12px 0;
+  border-bottom:1px solid rgba(0,0,0,.06);
+">
+  <div class="row" style="align-items:flex-start;">
+    <div>
+      <div class="kTitle" style="margin:0;">Informe del curso</div>
+      <div class="muted" style="margin-top:6px;">
+        Resumen de cómo va el curso (montos globales, no personales)
+      </div>
+    </div>
+    <button class="btnx" onclick="closeModal()">Cerrar</button>
+  </div>
+</div>
+
+
+        
 
         <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
