@@ -238,10 +238,6 @@ function hash32(str){
   const isPaid = (p) => p.status === "paid";
   const isCredit = (p) => p.status === "credit";
   const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
-const isOptedOut = (p) => {
-    const st = String(p?.status || "").toLowerCase();
-    return st === "opted_out" || st === "optedout" || p?.optedOut === true || p?.noParticipo === true;
-  };
 
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
@@ -362,7 +358,7 @@ function dedupePaymentsAll(list){
   function pendingMonthReal(ym){
     return sum(payments().filter(p=>{
       if(!isPendingLike(p)) return false;
-      if(isOptedOut(p)) return false;
+      if(String(p.status||"").toLowerCase()==="opted_out") return false;
       const due = p.dueDate || "";
       return withinMonth(due, ym);
     }), p => (p.amountRemaining ?? p.amount ?? 0));
@@ -374,7 +370,7 @@ function dedupePaymentsAll(list){
     const set = new Set();
     payments().forEach(p=>{
       if(!isPendingLike(p)) return;
-      if(isOptedOut(p)) return;
+      if(String(p.status||"").toLowerCase()==="opted_out") return;
       const due = p.dueDate || "";
       if(!withinMonth(due, ym)) return;
       const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
@@ -429,7 +425,7 @@ function dedupePaymentsAll(list){
         // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && isOptedOut(p) && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -443,7 +439,7 @@ function dedupePaymentsAll(list){
 
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && isOptedOut(p) && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -455,7 +451,7 @@ function dedupePaymentsAll(list){
 
   function debtorsMonthCount(ym){
     // count unique apoderados with pending in month (if we have email); else count pending items
-    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && !isOptedOut(p));
+    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
     const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
     return emails.size ? emails.size : pend.length;
   }
@@ -465,7 +461,7 @@ function dedupePaymentsAll(list){
   }
   function pendingTask(id){
     // pendiente operacional (solo cobros instanciados)
-    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p) && !isOptedOut(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
   function expectedTaskTotal(t){
@@ -488,7 +484,7 @@ function dedupePaymentsAll(list){
     const ps = payments().filter(p=>{
       if(String(p.fromTaskId||"") !== id) return false;
       if(!isPendingLike(p)) return false;
-      if(isOptedOut(p)) return false;
+      if(String(p.status||"").toLowerCase()==="opted_out") return false;
       return true;
     });
     if(ps.length){
@@ -501,28 +497,22 @@ function dedupePaymentsAll(list){
 
 
   function deudoresTask(id){
-  // Regla: X cuotas pendientes = 1 deudor (apoderado único) — excluye "no participo"
+  // Regla: X cuotas pendientes = 1 deudor (apoderado único)
   const set = new Set();
   payments().forEach(p=>{
     if(p.fromTaskId!==id) return;
     if(!isPendingLike(p)) return;
-    if(isOptedOut(p)) return;
     const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
     if(k) set.add(k);
   });
-  // fallback si no hay pagos instanciados: estimar por aprobados menos opt-out (si aplica)
-  if(set.size===0){
-    try{
-      return approvedApoderados().length || 0;
-    }catch(e){ return 0; }
-  }
   return set.size;
 }
 
 function cuotasPendientesTask(id){
-  // Total de cuotas/pagos pendientes (sin agrupar por persona) — excluye "no participo"
-  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p) && !isOptedOut(p)).length;
+  // Total de cuotas/pagos pendientes (sin agrupar por persona)
+  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
 }
+
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
@@ -535,7 +525,7 @@ function cuotasPendientesTask(id){
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);margin-bottom:12px;max-height:calc(100vh - 120px);overflow:auto;background:#fff;">
+        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
           ${html}
         </div>
       </div>
@@ -1665,12 +1655,12 @@ function viewExpenseAttachment(expenseId){
             <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
           </div>
           <div class="actions">
-            <button class="btnx" onclick="printExecutive()">Descargar PDF</button>
+            <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
         
         ${toggleHTML}
-        ${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}
+        <div id="informeRoot">${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}</div>
 <div class="kTitle">Informes mensuales publicados</div>
             <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
           </div>
@@ -1749,7 +1739,50 @@ function viewExpenseAttachment(expenseId){
     `);
   };
 
-  window.printExecutive = function(){
+  
+  // Imprime el informe actualmente visible (Apoderados/Directiva) tal como se ve en pantalla
+  window.printCurrentInforme = function(){
+    try{
+      const root = document.getElementById("informeRoot");
+      if(!root){ alert("No se encontró el informe en pantalla."); return; }
+      const html = buildPrintShell(root.innerHTML);
+      openPrintWindow(html);
+    }catch(e){
+      console.error(e);
+      alert("No se pudo generar el PDF.");
+    }
+  };
+
+  function buildPrintShell(inner){
+    return `
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Informe Cursapp</title>
+        <style>
+          body{ font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial; margin: 24px; color:#111827; }
+          .card{ border:1px solid rgba(0,0,0,.08); border-radius:18px; padding:14px; background:#fff; }
+          .muted{ color:rgba(17,24,39,.6); }
+          .big{ font-size:22px; font-weight:900; margin-top:6px; }
+          .chipInfoPill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; border:1px solid rgba(0,0,0,.08); }
+          .chipInfoPill.ok{ background:#ecfdf5; }
+          .chipInfoPill.warn{ background:#fffbeb; }
+          .chipInfoPill.danger{ background:#fef2f2; }
+          .btnx{ display:none !important; } /* en PDF no mostramos botones */
+          table{ width:100%; border-collapse:collapse; }
+          th,td{ border-bottom:1px solid rgba(0,0,0,.08); padding:8px 6px; font-size:12px; text-align:left; }
+          h1,h2,h3{ margin:0; }
+          @media print{ body{ margin:0; } }
+        </style>
+      </head>
+      <body>
+        ${inner}
+      </body>
+      </html>
+    `;
+  }
+window.printExecutive = function(){
     const ym = currentYM();
     const html = buildExecutivePrintHTML(ym);
     openPrintWindow(html);
@@ -1764,15 +1797,16 @@ function viewExpenseAttachment(expenseId){
   };
 
   function openPrintWindow(html){
-    const w = window.open("", "_blank");
+    // Reutiliza la misma ventana para evitar PDFs duplicados
+    const w = window.open("", "cursapp_print");
+    if(!w){ alert("No se pudo abrir la ventana de impresión. Revisa el bloqueador de popups."); return; }
     w.document.open();
     w.document.write(html);
     w.document.close();
     w.focus();
-    // imprimir al cargar
-    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+    // imprimir al cargar (una sola vez)
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
   }
-
   function buildExecutivePrintHTML(ym){
     const recTotal = collectedCourse();
     const gasTotal = spentCourse();
