@@ -1051,15 +1051,11 @@ function dueBadge(iso){
     `;
   }
 
-  
-  
-  
-window.openReport = function(period){
+  window.openReport = function(period){
   const reps = reports();
   const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
   if(!r) return;
 
-  // --- build visual metrics (defensive) ---
   const currentYM = ()=>{
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
@@ -1074,7 +1070,7 @@ window.openReport = function(period){
   const tasks = load(KEY_TASKS, []);
   const pays = load(KEY_PAYMENTS, []);
 
-  // Totales del mes (proyección y cobrado)
+  // Totales del mes (proyección y cobrado) + deudores únicos
   let cobradoMes=0, proyeccionMes=0;
   const deudoresSet = new Set();
 
@@ -1106,10 +1102,19 @@ window.openReport = function(period){
   // Agrupar pagos por campaña
   const byTask = {};
   (pays||[]).forEach(p=>{
-    const tid = String(p.fromTaskId || "");
+    const tid = String((p && p.fromTaskId) || "");
     if(!tid || p.opted_out) return;
     (byTask[tid] ||= []).push(p);
   });
+
+  const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
+
+  const kpi = (icon, label, val)=>`
+    <div style="${cardStyle}">
+      <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
+      <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
+    </div>
+  `;
 
   const campRows = (tasks||[])
     .filter(t=>t && !t.closed)
@@ -1122,7 +1127,10 @@ window.openReport = function(period){
       const meta = Number(t.goalTotal || 0);
 
       const ps = (byTask[tid] || []);
-      const recaudado = ps.filter(x=>String(x.status||"")==="paid").reduce((a,x)=>a+Number(x.amount||0),0);
+
+      const recaudado = ps
+        .filter(x=>String(x.status||"")==="paid")
+        .reduce((a,x)=>a+Number(x.amount||0),0);
 
       const pendienteMes = ps
         .filter(x=>String(x.status||"")!=="paid")
@@ -1137,14 +1145,16 @@ window.openReport = function(period){
       const p = pct(recaudado, objetivo);
 
       return `
-        <div style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;">
+        <div style="${cardStyle}">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
             <div style="font-weight:950;">${esc(title)}</div>
             <div style="font-weight:950;">${p}%</div>
           </div>
+
           <div style="margin-top:8px;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;">
             <div style="height:100%;width:${p}%;background:#4f46e5;border-radius:999px;"></div>
           </div>
+
           <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
             <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
             <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
@@ -1154,64 +1164,90 @@ window.openReport = function(period){
       `;
     }).join("");
 
-  const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
-  const kpi = (icon, label, val)=>`
-    <div style="${cardStyle}">
-      <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
-      <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
-    </div>
-  `;
-
   openModal(`
-  <div style="max-width:900px;margin:auto;">
-    <div style="
-      background:#ffffff;
-      border-radius:22px;
-      border:1px solid rgba(0,0,0,.10);
-      box-shadow:0 20px 60px rgba(0,0,0,.25);
-      padding:0;
-      overflow:hidden;
-    ">
-
-      <!-- Header sticky sólido -->
+    <div style="max-width:900px;margin:auto;">
       <div style="
-        position:sticky;
-        top:0;
-        z-index:20;
         background:#ffffff;
-        padding:12px 16px;
-        border-bottom:1px solid rgba(0,0,0,.08);
+        border-radius:22px;
+        border:1px solid rgba(0,0,0,.10);
+        box-shadow:0 20px 60px rgba(0,0,0,.25);
+        padding:0;
+        overflow:hidden;
       ">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-          <div>
-            <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
-            <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
-              Resumen de cómo va el curso (montos globales, no personales)
+
+        <div style="
+          position:sticky;
+          top:0;
+          z-index:20;
+          background:#ffffff;
+          padding:12px 16px;
+          border-bottom:1px solid rgba(0,0,0,.08);
+        ">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div>
+              <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
+              <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
+                Resumen de cómo va el curso (montos globales, no personales)
+              </div>
+            </div>
+            <button onclick="closeModal()"
+              style="
+                border:1px solid rgba(0,0,0,.12);
+                background:#fff;
+                border-radius:999px;
+                padding:8px 14px;
+                font-weight:800;
+                cursor:pointer;
+                flex:0 0 auto;
+              ">
+              Cerrar
+            </button>
+          </div>
+        </div>
+
+        <div style="padding:16px;">
+
+          <div style="margin-top:2px;${cardStyle}background:#f8fafc;">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+              <div>
+                <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
+                <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+              </div>
+              <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
+            </div>
+
+            <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+              <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
+            </div>
+
+            <div style="margin-top:8px;font-size:13px;opacity:.9;">
+              💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
             </div>
           </div>
-          <button onclick="closeModal()"
-            style="
-              border:1px solid rgba(0,0,0,.12);
-              background:#fff;
-              border-radius:999px;
-              padding:8px 14px;
-              font-weight:800;
-              cursor:pointer;
-              flex:0 0 auto;
-            ">
-            Cerrar
-          </button>
+
+          <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
+            ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
+            ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
+            ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
+          </div>
+
+          <div style="margin-top:16px;">
+            <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+            <div style="display:grid;gap:10px;">
+              ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+            </div>
+          </div>
+
+          <div class="muted" style="margin-top:14px;font-size:12px;">
+            Emitido: ${esc(r.generatedAt||"")}
+          </div>
+
         </div>
       </div>
-
-      <!-- Contenido scrolleable -->
-      <div style="padding:16px;">
-`);
-
-
-
-
-  
+    </div>
+  `);
+};
 
   // -------- Credits apply --------
   function applyCreditsToPayment(pays, paymentIndex){
