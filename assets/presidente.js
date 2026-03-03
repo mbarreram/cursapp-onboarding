@@ -238,6 +238,10 @@ function hash32(str){
   const isPaid = (p) => p.status === "paid";
   const isCredit = (p) => p.status === "credit";
   const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
+const isOptedOut = (p) => {
+    const st = String(p?.status || "").toLowerCase();
+    return st === "opted_out" || st === "optedout" || p?.optedOut === true || p?.noParticipo === true;
+  };
 
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
@@ -358,7 +362,7 @@ function dedupePaymentsAll(list){
   function pendingMonthReal(ym){
     return sum(payments().filter(p=>{
       if(!isPendingLike(p)) return false;
-      if(String(p.status||"").toLowerCase()==="opted_out") return false;
+      if(isOptedOut(p)) return false;
       const due = p.dueDate || "";
       return withinMonth(due, ym);
     }), p => (p.amountRemaining ?? p.amount ?? 0));
@@ -370,7 +374,7 @@ function dedupePaymentsAll(list){
     const set = new Set();
     payments().forEach(p=>{
       if(!isPendingLike(p)) return;
-      if(String(p.status||"").toLowerCase()==="opted_out") return;
+      if(isOptedOut(p)) return;
       const due = p.dueDate || "";
       if(!withinMonth(due, ym)) return;
       const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
@@ -425,7 +429,7 @@ function dedupePaymentsAll(list){
         // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && isOptedOut(p) && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -439,7 +443,7 @@ function dedupePaymentsAll(list){
 
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && isOptedOut(p) && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -451,7 +455,7 @@ function dedupePaymentsAll(list){
 
   function debtorsMonthCount(ym){
     // count unique apoderados with pending in month (if we have email); else count pending items
-    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
+    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && !isOptedOut(p));
     const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
     return emails.size ? emails.size : pend.length;
   }
@@ -461,7 +465,7 @@ function dedupePaymentsAll(list){
   }
   function pendingTask(id){
     // pendiente operacional (solo cobros instanciados)
-    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p) && !isOptedOut(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
   function expectedTaskTotal(t){
@@ -484,7 +488,7 @@ function dedupePaymentsAll(list){
     const ps = payments().filter(p=>{
       if(String(p.fromTaskId||"") !== id) return false;
       if(!isPendingLike(p)) return false;
-      if(String(p.status||"").toLowerCase()==="opted_out") return false;
+      if(isOptedOut(p)) return false;
       return true;
     });
     if(ps.length){
@@ -497,22 +501,28 @@ function dedupePaymentsAll(list){
 
 
   function deudoresTask(id){
-  // Regla: X cuotas pendientes = 1 deudor (apoderado único)
+  // Regla: X cuotas pendientes = 1 deudor (apoderado único) — excluye "no participo"
   const set = new Set();
   payments().forEach(p=>{
     if(p.fromTaskId!==id) return;
     if(!isPendingLike(p)) return;
+    if(isOptedOut(p)) return;
     const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
     if(k) set.add(k);
   });
+  // fallback si no hay pagos instanciados: estimar por aprobados menos opt-out (si aplica)
+  if(set.size===0){
+    try{
+      return approvedApoderados().length || 0;
+    }catch(e){ return 0; }
+  }
   return set.size;
 }
 
 function cuotasPendientesTask(id){
-  // Total de cuotas/pagos pendientes (sin agrupar por persona)
-  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+  // Total de cuotas/pagos pendientes (sin agrupar por persona) — excluye "no participo"
+  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p) && !isOptedOut(p)).length;
 }
-
   function spentTask(id){
     return sum(expenses().filter(e=>e.scope==="campaign" && e.campaignId===id), e=>e.amount);
   }
@@ -525,7 +535,7 @@ function cuotasPendientesTask(id){
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
+        <div class="card" style="width:min(820px,100%);margin-bottom:12px;max-height:calc(100vh - 120px);overflow:auto;background:#fff;">
           ${html}
         </div>
       </div>
