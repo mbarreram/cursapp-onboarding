@@ -1051,128 +1051,171 @@ function dueBadge(iso){
     `;
   }
 
-  window.openReport = function(period){
+  
+  
+  
+window.openReport = function(period){
   const reps = reports();
   const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
   if(!r) return;
 
-  // defensivo
-  const recCurso = Number(r.recaudadoCurso ?? r.recCurso ?? r.collectedCourse ?? 0);
-  const gasCurso = Number(r.gastadoCurso ?? r.gasCurso ?? r.spentCourse ?? 0);
-  const saldoCurso = Number(r.disponibleCurso ?? r.saldoCurso ?? (recCurso-gasCurso) ?? 0);
+  // --- build visual metrics (defensive) ---
+  const currentYM = ()=>{
+    const d=new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  };
+  const pct = (a,b)=>{
+    const A=Number(a||0), B=Number(b||0);
+    if(B<=0) return 0;
+    return Math.max(0, Math.min(100, Math.round((A/B)*100)));
+  };
 
-  const recMes = Number(r.recaudadoMes ?? r.recMes ?? 0);
-  const gasMes = Number(r.gastadoMes ?? r.gasMes ?? 0);
-  const porCobrarMes = Number(r.porCobrarMes ?? r.pendingMes ?? 0);
-  const deudMes = Number(r.deudoresMes ?? r.deudMes ?? 0);
-  const projMaxMes = Number(r.proyeccionMaxMes ?? r.projMaxMes ?? (recMes + porCobrarMes) ?? 0);
-  const cumplimiento = projMaxMes>0 ? Math.round((recMes/projMaxMes)*100) : 0;
+  const ym = currentYM();
+  const tasks = load(KEY_TASKS, []);
+  const pays = load(KEY_PAYMENTS, []);
 
-  function clampPct(p){ p=Number(p||0); if(!isFinite(p)) p=0; return Math.max(0, Math.min(100, p)); }
-  function pill(){
-    const ok = (cumplimiento>=85 && deudMes<=2);
-    const warn = (cumplimiento>=55 && !ok);
-    const bg = ok ? "#dcfce7" : (warn ? "#fef9c3" : "#fee2e2");
-    const fg = ok ? "#166534" : (warn ? "#854d0e" : "#991b1b");
-    const txt = ok ? "🟢 En buen camino" : (warn ? "🟡 Atención" : "🔴 Urgente");
-    return `<span style="background:${bg};color:${fg};padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;white-space:nowrap;">${txt}</span>`;
-  }
-  function kcard(icon, label, value){
-    return `
-      <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="font-size:18px;line-height:1">${icon}</div>
-          <div class="muted" style="font-weight:800">${label}</div>
+  // Totales del mes (proyección y cobrado)
+  let cobradoMes=0, proyeccionMes=0;
+  const deudoresSet = new Set();
+
+  (pays||[]).forEach(p=>{
+    if(!p || p.opted_out) return;
+
+    const dueYM = String(p.dueDate||"").slice(0,7);
+    const perYM = String(p.period||"").slice(0,7);
+    const matchYM = (dueYM===ym) || (perYM===ym);
+    if(!matchYM) return;
+
+    const amt = Number(p.amount || p.amountRemaining || 0);
+    proyeccionMes += amt;
+
+    if(String(p.status||"")==="paid"){
+      cobradoMes += Number(p.amount||0);
+    }else{
+      const pid = String(p.payerProfileId || p.profileId || p.userId || "");
+      if(pid) deudoresSet.add(pid);
+    }
+  });
+
+  const cursoPct = pct(cobradoMes, proyeccionMes);
+  const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
+  const semMsg = (cursoPct>=80)
+    ? "Vamos muy bien este mes"
+    : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
+
+  // Agrupar pagos por campaña
+  const byTask = {};
+  (pays||[]).forEach(p=>{
+    const tid = String(p.fromTaskId || "");
+    if(!tid || p.opted_out) return;
+    (byTask[tid] ||= []).push(p);
+  });
+
+  const campRows = (tasks||[])
+    .filter(t=>t && !t.closed)
+    .map(t=>{
+      const tid = String(t.id);
+      const title = String(t.title || "Campaña");
+      const type = String(t.type || "single");
+      const months = Number(t.months || 1);
+      const amount = Number(t.amount || 0);
+      const meta = Number(t.goalTotal || 0);
+
+      const ps = (byTask[tid] || []);
+      const recaudado = ps.filter(x=>String(x.status||"")==="paid").reduce((a,x)=>a+Number(x.amount||0),0);
+
+      const pendienteMes = ps
+        .filter(x=>String(x.status||"")!=="paid")
+        .filter(x=>{
+          const dym = String(x.dueDate||"").slice(0,7);
+          const pym = String(x.period||"").slice(0,7);
+          return (dym===ym)||(pym===ym);
+        })
+        .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
+
+      const objetivo = meta>0 ? meta : (type==="monthly" ? (amount*months) : amount);
+      const p = pct(recaudado, objetivo);
+
+      return `
+        <div style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+            <div style="font-weight:950;">${esc(title)}</div>
+            <div style="font-weight:950;">${p}%</div>
+          </div>
+          <div style="margin-top:8px;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${p}%;background:#4f46e5;border-radius:999px;"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
+            <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
+            <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+            <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
+          </div>
         </div>
-        <div style="font-size:22px;font-weight:950;margin-top:6px;">${value}</div>
-      </div>
-    `;
-  }
-  function bar(p){
-    const pp = clampPct(p);
-    return `
-      <div style="height:10px;border-radius:999px;background:#eef2ff;overflow:hidden;">
-        <div style="height:10px;border-radius:999px;background:linear-gradient(90deg,#60a5fa,#34d399);width:${pp}%"></div>
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:6px;display:flex;justify-content:space-between;">
-        <span>${pp}%</span>
-        <span>${clp(recMes)} de ${clp(projMaxMes||0)}</span>
-      </div>
-    `;
-  }
+      `;
+    }).join("");
 
-  const topCats = Array.isArray(r.gastosTop) ? r.gastosTop : (Array.isArray(r.categoriasGasto) ? r.categoriasGasto : []);
-  const cats = topCats.slice(0,4);
-
-  const catsHtml = cats.length ? `
-    <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
-      <div style="font-weight:950;">¿En qué se gastó?</div>
-      <div class="muted" style="margin-top:6px;font-size:12px;">Top categorías</div>
-      <div style="margin-top:10px;display:grid;gap:8px;">
-        ${cats.map(c=>{
-          const name = esc(c.cat||c.categoria||c.name||"Otro");
-          const total = Number(c.total||c.monto||0);
-          return `
-            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-              <div style="font-weight:900;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-              <div style="font-weight:950;">${clp(total)}</div>
-            </div>
-          `;
-        }).join("")}
-      </div>
+  const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
+  const kpi = (icon, label, val)=>`
+    <div style="${cardStyle}">
+      <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
+      <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
     </div>
-  ` : "";
+  `;
 
   openModal(`
-    <div class="card" style="padding:14px;">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-        <div style="min-width:0;">
-          <div class="kTitle">Informe del curso</div>
-          <div class="muted" style="margin-top:4px;">Resumen visual (no personal)</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          ${pill()}
+    <div style="max-width:900px;margin:auto;">
+      <div style="background:#fff;border-radius:22px;border:1px solid rgba(0,0,0,.08);padding:16px;">
+        <div class="row" style="align-items:flex-start;">
+          <div>
+            <div class="kTitle" style="margin:0;">Informe del curso</div>
+            <div class="muted" style="margin-top:6px;">Resumen de cómo va el curso (montos globales, no personales)</div>
+          </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
-      </div>
 
-      <div style="margin-top:12px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
-        <div class="muted" style="font-size:12px;">Periodo</div>
-        <div style="font-weight:950;font-size:18px;margin-top:4px;">${esc(r.period||"")}</div>
-        <div class="muted" style="font-size:12px;margin-top:4px;">Emitido: ${esc(r.generatedAt||"")}</div>
-      </div>
-
-      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-        ${kcard("💰","Recaudado mes", clp(recMes))}
-        ${kcard("🧾","Gastado mes", clp(gasMes))}
-        ${kcard("🏦","Saldo disponible", clp(saldoCurso))}
-        ${kcard("⏳","Por cobrar mes", clp(porCobrarMes))}
-      </div>
-
-      <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-          <div style="font-weight:950;">Cumplimiento del mes</div>
-          <div class="muted" style="font-size:12px;">Deudores mes: <b>${esc(deudMes)}</b></div>
+        <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+            <div>
+              <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
+              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+            </div>
+            <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
+          </div>
+          <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
+          </div>
+          <div style="margin-top:8px;font-size:13px;opacity:.9;">
+            💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
+          </div>
         </div>
-        <div style="margin-top:10px;">
-          ${bar(cumplimiento)}
+
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
+          ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
+          ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
+          ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
         </div>
-      </div>
 
-      ${catsHtml}
+        <div style="margin-top:16px;">
+          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+          <div style="display:grid;gap:10px;">
+            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+          </div>
+        </div>
 
-      <div style="margin-top:14px;border:1px dashed rgba(0,0,0,.18);border-radius:16px;padding:12px;background:#fafafa;">
-        <div style="font-weight:950;">Total del curso</div>
-        <div class="muted" style="margin-top:6px;font-size:12px;">Transparencia global (desde el inicio)</div>
-        <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">
-          <div><div class="muted" style="font-size:12px;">Recaudado</div><div style="font-weight:950;">${clp(recCurso)}</div></div>
-          <div><div class="muted" style="font-size:12px;">Gastado</div><div style="font-weight:950;">${clp(gasCurso)}</div></div>
-          <div><div class="muted" style="font-size:12px;">Saldo</div><div style="font-weight:950;">${clp(saldoCurso)}</div></div>
+        <div class="muted" style="margin-top:14px;font-size:12px;">
+          Emitido: ${esc(r.generatedAt||"")}
         </div>
       </div>
     </div>
   `);
 };
+
+
+
+
+
+  
 
   // -------- Credits apply --------
   function applyCreditsToPayment(pays, paymentIndex){
