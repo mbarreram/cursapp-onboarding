@@ -1163,64 +1163,50 @@ window.openReport = function(period){
   `;
 
   openModal(`
+  <div style="max-width:900px;margin:auto;">
     <div style="
-  position:sticky; top:0; z-index:5;
-  background:#fff;
-  padding:6px 0 12px 0;
-  border-bottom:1px solid rgba(0,0,0,.06);
-">
-  <div class="row" style="align-items:flex-start;">
-    <div>
-      <div class="kTitle" style="margin:0;">Informe del curso</div>
-      <div class="muted" style="margin-top:6px;">
-        Resumen de cómo va el curso (montos globales, no personales)
-      </div>
-    </div>
-    <button class="btnx" onclick="closeModal()">Cerrar</button>
-  </div>
-</div>
+      background:#ffffff;
+      border-radius:22px;
+      border:1px solid rgba(0,0,0,.10);
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      padding:0;
+      overflow:hidden;
+    ">
 
-
-        
-
-        <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-            <div>
-              <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
-              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+      <!-- Header sticky sólido -->
+      <div style="
+        position:sticky;
+        top:0;
+        z-index:20;
+        background:#ffffff;
+        padding:12px 16px;
+        border-bottom:1px solid rgba(0,0,0,.08);
+      ">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div>
+            <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
+            <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
+              Resumen de cómo va el curso (montos globales, no personales)
             </div>
-            <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
           </div>
-          <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
-            <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
-          </div>
-          <div style="margin-top:8px;font-size:13px;opacity:.9;">
-            💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
-          ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
-          ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
-          ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
-        </div>
-
-        <div style="margin-top:16px;">
-          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
-          <div style="display:grid;gap:10px;">
-            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
-          </div>
-        </div>
-
-        <div class="muted" style="margin-top:14px;font-size:12px;">
-          Emitido: ${esc(r.generatedAt||"")}
+          <button onclick="closeModal()"
+            style="
+              border:1px solid rgba(0,0,0,.12);
+              background:#fff;
+              border-radius:999px;
+              padding:8px 14px;
+              font-weight:800;
+              cursor:pointer;
+              flex:0 0 auto;
+            ">
+            Cerrar
+          </button>
         </div>
       </div>
-    </div>
-  `);
-};
 
+      <!-- Contenido scrolleable -->
+      <div style="padding:16px;">
+`);
 
 
 
