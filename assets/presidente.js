@@ -1877,50 +1877,107 @@ window.printExecutive = function(){
     `;
   }
 
-  function buildSnapshotPrintHTML(r){
-    // Mantiene un look consistente con el PDF actual (simple, 1 página)
+  
+function buildSnapshotPrintHTML(r){
+    // Snapshot PDF (publicado): más completo y consistente con Directiva.
     const esc = (s)=>String(s??"").replace(/[&<>'"]/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
     const clp = (n)=>"$"+Number(n||0).toLocaleString("es-CL");
+
     const period = r.period || "";
     const genAt = r.generatedAt || "";
-    const rec = Number(r.recaudadoCurso||0);
-    const gas = Number(r.gastadoCurso||0);
-    const sal = Number(r.disponibleCurso||0);
-    const pen = Number(r.pendienteCurso||0);
-    const deu = Number(r.deudores||0);
+
+    // Totales
+    const recTotal = Number(r.recaudadoCurso||0);
+    const gasTotal = Number(r.gastadoCurso||0);
+    const salTotal = Number(r.disponibleCurso||0);
+    const penTotal = Number(r.pendienteCurso||0);
+    const deuTotal = Number(r.deudores||0);
+
+    // Si el snapshot trae métricas del mes, las mostramos (si no, se ocultan)
+    const cobMes = Number(r.cobradoMes ?? r.recaudadoMes ?? 0);
+    const proyMes = Number(r.proyeccionMes ?? r.porCobrarMesTarget ?? 0);
+    const porCobMes = Number(r.porCobrarMes ?? (proyMes ? (proyMes - cobMes) : 0));
+    const deuMes = Number(r.deudoresMes ?? r.deudoresMonth ?? 0);
+
+    // Campañas (si el snapshot las guarda)
+    const camps = Array.isArray(r.campaigns) ? r.campaigns : (Array.isArray(r.byCampaign) ? r.byCampaign : []);
+    const campRows = camps.length ? camps.map(c=>{
+      const title = esc(c.title||c.name||"Campaña");
+      const pct = Math.max(0, Math.min(100, Number(c.pct ?? c.progress ?? 0)));
+      const rec = Number(c.recaudado ?? c.collected ?? 0);
+      const pen = Number(c.pendienteMes ?? c.pendingMonth ?? c.pendiente ?? 0);
+      const goal = Number(c.objetivo ?? c.goal ?? c.target ?? 0);
+      return `
+        <div class="camp">
+          <div class="row">
+            <div class="ct">${title}</div>
+            <div class="pct">${pct}%</div>
+          </div>
+          <div class="bar"><div class="fill" style="width:${pct}%;"></div></div>
+          <div class="meta">Recaudado: <b>${clp(rec)}</b> · Pendiente mes: <b>${clp(pen)}</b> · Objetivo: <b>${clp(goal)}</b></div>
+        </div>
+      `;
+    }).join("") : `<div class="muted" style="margin-top:8px;">Sin detalle por campaña en este snapshot.</div>`;
+
+    const showMonth = !!(r.cobradoMes || r.recaudadoMes || r.proyeccionMes || r.porCobrarMes || r.deudoresMes);
 
     return `
       <html>
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Informe del Curso</title>
+          <title>Informe del Curso ${esc(period)}</title>
           <style>
-            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:0; padding:20px; color:#111827;}
-            .muted{color:#6b7280;}
-            .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
-            .card{border:1px solid #eef2f7; border-radius:12px; padding:12px;}
-            .k{font-size:12px; color:#6b7280;}
-            .v{font-size:18px; font-weight:900; margin-top:4px;}
-            .h{font-size:16px; font-weight:950;}
+            body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; margin:24px; color:#0f172a;}
+            h1{font-size:20px; margin:0;}
+            .sub{color:#475569; margin-top:6px;}
+            .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;}
+            .k{border:1px solid #e2e8f0; border-radius:14px; padding:12px;}
+            .k .t{color:#64748b; font-size:12px;}
+            .k .v{font-weight:900; font-size:18px; margin-top:6px;}
+            .section{margin-top:18px;}
+            .st{font-weight:950; font-size:15px; margin-bottom:10px;}
+            .muted{color:#64748b;}
+            .camp{border:1px solid #e2e8f0; border-radius:14px; padding:12px; margin-top:10px;}
+            .row{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+            .ct{font-weight:900;}
+            .pct{font-weight:950;}
+            .bar{margin-top:10px; height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden;}
+            .fill{height:100%; background:#1d4ed8; border-radius:999px;}
+            .meta{margin-top:8px; font-size:12px; color:#334155;}
             @media (max-width:520px){ .grid{grid-template-columns:1fr;} }
           </style>
         </head>
         <body>
-          <div class="h">Informe del Curso · ${esc(period)}</div>
-          <div class="muted" style="margin-top:6px;">Emitido: ${esc(genAt)}</div>
+          <h1>Informe del Curso · ${esc(period)}</h1>
+          <div class="sub">Emitido: ${esc(genAt || new Date().toLocaleString("es-CL"))}</div>
 
-          <div class="grid">
-            <div class="card"><div class="k">Cobrado total</div><div class="v">${clp(rec)}</div></div>
-            <div class="card"><div class="k">Gastado total</div><div class="v">${clp(gas)}</div></div>
-            <div class="card"><div class="k">Saldo disponible</div><div class="v">${clp(sal)}</div></div>
-            <div class="card"><div class="k">Pendiente</div><div class="v">${clp(pen)}</div></div>
+          ${showMonth ? `
+          <div class="section">
+            <div class="st">Mes publicado</div>
+            <div class="grid">
+              <div class="k"><div class="t">Cobrado mes</div><div class="v">${clp(cobMes)}</div></div>
+              <div class="k"><div class="t">Proyección mes</div><div class="v">${clp(proyMes)}</div></div>
+              <div class="k"><div class="t">Por cobrar mes</div><div class="v">${clp(porCobMes)}</div></div>
+              <div class="k"><div class="t">Deudores mes</div><div class="v">${Number(deuMes||0)}</div></div>
+            </div>
+          </div>` : ``}
+
+          <div class="section">
+            <div class="st">Totales del curso</div>
+            <div class="grid">
+              <div class="k"><div class="t">Recaudado total</div><div class="v">${clp(recTotal)}</div></div>
+              <div class="k"><div class="t">Gastado total</div><div class="v">${clp(gasTotal)}</div></div>
+              <div class="k"><div class="t">Saldo disponible</div><div class="v">${clp(salTotal)}</div></div>
+              <div class="k"><div class="t">Pendiente total</div><div class="v">${clp(penTotal)}</div></div>
+              <div class="k"><div class="t">Deudores</div><div class="v">${Number(deuTotal)}</div></div>
+            </div>
+            <div class="muted" style="margin-top:8px;font-size:12px;">*Este PDF es un snapshot (corte) del periodo publicado.</div>
           </div>
 
-          <div class="card" style="margin-top:12px;">
-            <div class="k">Deudores</div>
-            <div class="v">${deu}</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;">*Este PDF es un snapshot (corte) del periodo publicado.</div>
+          <div class="section">
+            <div class="st">Indicadores por campaña</div>
+            ${campRows}
           </div>
 
           <div class="muted" style="margin-top:18px;">Generado por Cursapp</div>
