@@ -1106,7 +1106,12 @@ function dueBadge(iso){
     return Math.max(0, Math.min(100, Math.round((A/B)*100)));
   };
 
-  const ym = currentYM();
+  
+  const isExcludedStatus = (p)=>{
+    const st = String(p?.status||"").toLowerCase();
+    return st==="opted_out" || st==="void" || st==="cancelled";
+  };
+const ym = currentYM();
   const tasks = load(KEY_TASKS, []);
   const pays = load(KEY_PAYMENTS, []);
 
@@ -1115,7 +1120,8 @@ function dueBadge(iso){
   const deudoresSet = new Set();
 
   (pays||[]).forEach(p=>{
-    if(!p || p.opted_out) return;
+    if(!p) return;
+    if(isExcludedStatus(p)) return;
 
     const dueYM = String(p.dueDate||"").slice(0,7);
     const perYM = String(p.period||"").slice(0,7);
@@ -1143,7 +1149,8 @@ function dueBadge(iso){
   const byTask = {};
   (pays||[]).forEach(p=>{
     const tid = String((p && p.fromTaskId) || "");
-    if(!tid || p.opted_out) return;
+    if(!tid) return;
+    if(isExcludedStatus(p)) return;
     (byTask[tid] ||= []).push(p);
   });
 
@@ -1198,7 +1205,7 @@ function dueBadge(iso){
           const s = new Set();
           for(const x of ps){
             if(!x) continue;
-            if(x.opted_out || String(x.status||"")==="opted_out") continue;
+            if(isExcludedStatus(x)) continue;
             const k = String(x.apoderadoKey||x.apoderadoEmail||x.payerProfileId||x.profileId||x.userId||x.email||"").toLowerCase().trim();
             if(k) s.add(k);
           }
