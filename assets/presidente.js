@@ -1795,7 +1795,7 @@ window.printExecutive = function(){
     const reps = reports();
     const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
     if(!r){ alert("No se encontró el informe."); return; }
-    const html = buildSnapshotPrintHTML(r);
+    const html = (r && r.version>=3) ? buildSnapshotExecutivePrintHTML(r) : buildSnapshotPrintHTML(r);
     openPrintWindow(html);
   };
 
@@ -1878,6 +1878,91 @@ window.printExecutive = function(){
   }
 
   
+function buildSnapshotExecutivePrintHTML(rep){
+    const ym = rep.period || "";
+    const recTotal = Number((rep.recaudadoCurso ?? rep.recaudado) || 0);
+    const gasTotal = Number(rep.gastadoCurso || 0);
+    const saldo = Number((rep.disponibleCurso ?? (recTotal - gasTotal)) || 0);
+    const pendTotal = Number((rep.pendienteCurso ?? rep.pendiente) || 0);
+
+    const recMes = Number(rep.cobradoMes || 0);
+    const gasMes = Number(rep.gastadoMes || 0);
+    const porCobrarMes = Number(rep.porCobrarMes || 0);
+    const deudMes = Number((rep.deudoresMes ?? rep.deudores) || 0);
+
+    const ex = Array.isArray(rep.expenses) ? rep.expenses : [];
+    const camps = Array.isArray(rep.campaigns) ? rep.campaigns : [];
+
+    const rowsEx = ex.length ? ex.map(e=>{
+      const scope = (e.scope==="campaign") ? (camps.find(c=>c.id===e.campaignId)?.title || "Campaña") : "Curso";
+      return `<tr>
+        <td>${esc(e.date||"")}</td>
+        <td>${esc(scope)}</td>
+        <td>${esc(e.title||"")}</td>
+        <td style="text-align:right;">${clp(e.amount||0)}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin rendiciones</td></tr>`;
+
+    const rowsCamp = camps.length ? camps.map(c=>{
+      const sal = (Number(c.recaudado||0) - Number(c.gastado||0));
+      return `<tr>
+        <td>
+          <div style="font-weight:800;">${esc(c.title||"")}</div>
+          <div style="opacity:.75;font-size:12px;">${(c.kind==="monthly"?"Mensual":"Único")} · ${(c.participation==="mandatory"?"Obligatoria":"Voluntaria")}</div>
+        </td>
+        <td style="text-align:right;">${clp(c.recaudado||0)}</td>
+        <td style="text-align:right;">${clp(c.gastado||0)}</td>
+        <td style="text-align:right;font-weight:900;">${clp(sal)}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin campañas activas</td></tr>`;
+
+    const css = `
+      body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; padding:18px; color:#0f172a;}
+      h1{margin:0 0 6px 0; font-size:22px;}
+      .muted{color:#64748b;}
+      .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;}
+      .card{border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:12px;}
+      .label{font-size:12px; color:#6b7280;}
+      .val{font-size:22px; font-weight:900; margin-top:6px;}
+      table{width:100%; border-collapse:collapse; margin-top:10px;}
+      th,td{padding:10px; border-bottom:1px solid rgba(0,0,0,.08); font-size:13px; text-align:left;}
+      th{color:#6b7280; font-weight:800;}
+    `;
+
+    return `
+      <html>
+      <head><meta charset="utf-8"><style>${css}</style></head>
+      <body>
+        <h1>Informe Ejecutivo del Curso • ${esc(ym)}</h1>
+        <div class="muted">Emitido: ${esc(rep.generatedAt||"")}</div>
+
+        <div class="grid">
+          <div class="card"><div class="label">Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
+          <div class="card"><div class="label">Por cobrar este mes</div><div class="val">${clp(porCobrarMes)}</div><div class="muted" style="margin-top:6px;">Deudores (mes): ${esc(deudMes)}</div></div>
+          <div class="card"><div class="label">Gastado este mes</div><div class="val">${clp(gasMes)}</div></div>
+          <div class="card"><div class="label">Saldo disponible</div><div class="val">${clp(saldo)}</div></div>
+          <div class="card"><div class="label">Cobrado total</div><div class="val">${clp(recTotal)}</div></div>
+          <div class="card"><div class="label">Gastado total</div><div class="val">${clp(gasTotal)}</div></div>
+          <div class="card"><div class="label">Pendiente total</div><div class="val">${clp(pendTotal)}</div></div>
+          <div class="card"><div class="label">Generado por</div><div class="val" style="font-size:18px;">Cursapp</div></div>
+        </div>
+
+        <h2 style="margin-top:22px;font-size:16px;">Campañas activas (cuadratura)</h2>
+        <table>
+          <thead><tr><th>Campaña</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th></tr></thead>
+          <tbody>${rowsCamp}</tbody>
+        </table>
+
+        <h2 style="margin-top:22px;font-size:16px;">Gastos recientes</h2>
+        <table>
+          <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+          <tbody>${rowsEx}</tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  }
+
 function buildSnapshotPrintHTML(r){
     // Snapshot PDF (publicado): más completo y consistente con Directiva.
     const esc = (s)=>String(s??"").replace(/[&<>'"]/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
@@ -2142,29 +2227,102 @@ window.deleteCampaign = function(taskId){
   };
 
   function publishMonthly(){
-    const period = prompt("Mes (YYYY-MM)", "2026-01");
+    const period = prompt("¿Qué periodo publicar? (YYYY-MM)", currentYM());
     if(!period) return;
-    if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
+    if(!/^\d{4}-\d{2}$/.test(period)){
+      alert("Formato inválido. Usa YYYY-MM");
+      return;
+    }
+
+    const people = approvedCount();
+    const allPays = pays();
+    const list = tasks().filter(t => t && t.id);
+
+    const campDetails = list.map(t => {
+      const isMonthly = t.kind === "monthly";
+      const amt = Number(t.amount || 0);
+      const months = Number(t.months || 1);
+      const title = t.title || "Campaña";
+      const participation = t.participation || "mandatory";
+
+      const opted = new Set(
+        allPays
+          .filter(p => p.fromTaskId === t.id && p.status === "opted_out")
+          .map(p => p.who || "")
+          .filter(Boolean)
+      );
+      const activePeople = participation === "mandatory" ? people : Math.max(0, people - opted.size);
+
+      const goal = amt * activePeople * (isMonthly ? months : 1);
+
+      const rec = allPays
+        .filter(p => p.fromTaskId === t.id && (p.status === "paid" || p.status === "success"))
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      const projMes = allPays
+        .filter(p => p.fromTaskId === t.id && p.ym === period && (p.status === "pending" || p.status === "paid" || p.status === "success"))
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      const pendMes = allPays
+        .filter(p => p.fromTaskId === t.id && p.ym === period && p.status === "pending")
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      const pct = goal > 0 ? Math.min(100, Math.round((rec / goal) * 100)) : 0;
+
+      return {
+        id: t.id,
+        title,
+        kind: t.kind || (isMonthly ? "monthly" : "single"),
+        participation,
+        amount: amt,
+        months,
+        activePeople,
+        goal,
+        recaudado: rec,
+        proyeccionMes: projMes,
+        pendienteMes: pendMes,
+        pct,
+        optedOut: opted.size
+      };
+    }).filter(c => (c.goal > 0) || (c.proyeccionMes > 0) || (c.recaudado > 0));
+
+    const cobradoMes = collectedMonth(period);
+    const gastadoMes = spentMonth(period);
+    const porCobrarMes = pendingMonth(period);
+    const deudMes = deudoresMonth(period);
+
+    const exMes = expenses().filter(e => String(e.date||"").startsWith(period)).slice(0, 25);
 
     const rep = {
-      id: uid("repM"),
+      version: 3,
       period,
       generatedAt: new Date().toLocaleString("es-CL"),
+
+      recaudado: collectedCourse(),
+      rendido: 0,
+      saldo: collectedCourse() - spentCourse(),
+      pendiente: pendingTotal(),
+      deudores: deudMes,
+
       recaudadoCurso: collectedCourse(),
       gastadoCurso: spentCourse(),
-      disponibleCurso: saldoCourse(),
+      disponibleCurso: collectedCourse() - spentCourse(),
       pendienteCurso: pendingTotal(),
-      deudores: deudoresCount(),
-      saldoFavor: creditTotal()
+
+      cobradoMes,
+      gastadoMes,
+      porCobrarMes,
+      deudoresMes: deudMes,
+
+      campaigns: campDetails,
+      expenses: exMes
     };
 
-    const reps = reports();
-    reps.unshift(rep);
-    save(KEY_MONTHLY_REPORTS, reps);
-
-    clearDirty();
-    alert("Informe publicado ✅");
-    go("informes");
+    const arr = readLS(KEY_MONTHLY_REPORTS, []);
+    arr.unshift(rep);
+    writeLS(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
+    toast("Informe publicado (" + period + ")");
+    renderMonthlyReports();
   }
 
   // ----- boot -----
