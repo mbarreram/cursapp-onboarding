@@ -1346,6 +1346,8 @@ function renderInformes(){
     const reps = reports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
     const allTasks = tasks();
     const ps = payments();
+    // alias for backward-compat (some helpers expect pays())
+    const pays = () => ps;
     const ex = expenses();
 
     // Live executive numbers (current state, not snapshot)
