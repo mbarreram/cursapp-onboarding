@@ -1463,7 +1463,7 @@ const ym = currentYM();
     const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
 
     const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
-    const chip = statusChip; // ya viene calculado arriba
+    const chip = statusChip(); // ya viene calculado arriba
     const semMsg = pct>=90 ? "¡Vamos excelente!" : (pct>=50 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
 
     const campRows = camps.map(t=>{
