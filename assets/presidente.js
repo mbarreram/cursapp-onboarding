@@ -1428,6 +1428,38 @@ function renderInformes(){
 const ym = currentYM();
     const people = approvedCount();
     const allPays = paysArr;
+
+    // --- metrics (defensive, month-scoped; excludes opted_out) ---
+    const isExcludedPay = (p) => {
+      const st = String(p?.status || "").toLowerCase();
+      return st === "opted_out" || st === "void" || st === "cancelled";
+    };
+    const payYM = (p) => (String(p?.dueDate || "").slice(0,7) || String(p?.period || "").slice(0,7));
+    const expYM = (e) => String(e?.date || e?.createdAt || e?.ts || e?.at || "").slice(0,7);
+
+    const recMes = (allPays||[])
+      .filter(p => p && !isExcludedPay(p) && String(p.status||"").toLowerCase()==="paid" && payYM(p)===ym)
+      .reduce((a,p)=>a+Number(p.amount||0),0);
+
+    const proyMes = (allPays||[])
+      .filter(p => p && !isExcludedPay(p) && payYM(p)===ym)
+      .reduce((a,p)=>a+Number(p.amount || p.amountRemaining || 0),0);
+
+    const porCobrarMes = Math.max(0, proyMes - recMes);
+
+    const gastoMes = (typeof expenses === "function" ? expenses() : [])
+      .filter(e => e && expYM(e)===ym)
+      .reduce((a,e)=>a+Number(e.amount||e.monto||0),0);
+
+    const recTotal = (allPays||[])
+      .filter(p => p && !isExcludedPay(p) && String(p.status||"").toLowerCase()==="paid")
+      .reduce((a,p)=>a+Number(p.amount||0),0);
+
+    const gastoTotal = (typeof expenses === "function" ? expenses() : [])
+      .reduce((a,e)=>a+Number(e?.amount||e?.monto||0),0);
+
+    const saldo = recTotal - gastoTotal;
+
     const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
 
     const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
