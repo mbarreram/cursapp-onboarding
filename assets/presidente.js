@@ -1407,7 +1407,25 @@ function renderInformes(){
     }
 
     function informeApoderadosHTML(){
-    const ym = currentYM();
+        // payments data (defensive)
+  const pays = (typeof getPayments === 'function')
+    ? (getPayments() || [])
+    : (Array.isArray((window||{}).pays) ? window.pays : []);
+
+// --- visual helpers (local scope to avoid reference errors) ---
+  const cardStyle = 'border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:14px 14px;box-shadow:0 10px 30px rgba(2,6,23,.06);';
+  const kpi = (ico, label, val) => `
+    <div style="${cardStyle}background:#fff;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="font-size:18px;line-height:1;">${ico}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;opacity:.75;">${label}</div>
+          <div style="font-weight:950;font-size:22px;margin-top:4px;">${val}</div>
+        </div>
+      </div>
+    </div>`;
+
+const ym = currentYM();
     const people = approvedCount();
     const allPays = pays();
     const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
