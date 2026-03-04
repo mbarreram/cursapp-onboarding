@@ -1408,7 +1408,7 @@ function renderInformes(){
 
     function informeApoderadosHTML(){
         // payments data (defensive)
-  const pays = (typeof getPayments === 'function')
+  const paysArr = (typeof getPayments === 'function')
     ? (getPayments() || [])
     : (Array.isArray((window||{}).pays) ? window.pays : []);
 
@@ -1427,7 +1427,7 @@ function renderInformes(){
 
 const ym = currentYM();
     const people = approvedCount();
-    const allPays = pays();
+    const allPays = paysArr;
     const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
 
     const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
@@ -2300,7 +2300,7 @@ window.deleteCampaign = function(taskId){
     }
 
     const people = approvedCount();
-    const allPays = pays();
+    const allPays = paysArr;
     const list = tasks().filter(t => t && t.id);
 
     const campDetails = list.map(t => {
