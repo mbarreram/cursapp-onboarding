@@ -1405,74 +1405,110 @@ function renderInformes(){
     }
 
     function informeApoderadosHTML(){
-      const cats = gastosPorCategoria().slice(0,3);
-      const cards = `
-        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">💰 Recaudado este mes</div><div class="big">${clp(recMes)}</div></div>
-          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">🧾 Gastado este mes</div><div class="big">${clp(gasMes)}</div></div>
-          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">🏦 Saldo disponible</div><div class="big">${clp(saldo)}</div></div>
-          <div style="border:1px solid rgba(0,0,0,.08);border-radius:16px;padding:12px;background:#fff;"><div class="muted">⏳ Por cobrar este mes</div><div class="big">${clp(porCobrarMes)}</div></div>
-        </div>
-      `;
+    const ym = currentYM();
+    const people = approvedCount();
+    const allPays = pays();
+    const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
 
-      const catsHtml = cats.length ? `
-        <div class="card" style="margin-top:14px;padding:14px;">
-          <div style="font-weight:950;">¿En qué se ha gastado?</div>
-          <div class="muted" style="margin-top:6px;">Top categorías (monto total)</div>
-          <div style="margin-top:10px;display:grid;gap:10px;">
-            ${cats.map(c=>`
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                <div style="font-weight:900;">${esc(c.cat)}</div>
-                <div style="font-weight:950;">${clp(c.total)}</div>
-              </div>
-            `).join("")}
-          </div>
-          <div style="margin-top:10px;">
-            ${bar(cumplimientoMes, "Cumplimiento del mes (recaudado vs proyección)")}
-          </div>
-        </div>
-      ` : "";
+    const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
+    const chip = statusChip; // ya viene calculado arriba
+    const semMsg = pct>=90 ? "¡Vamos excelente!" : (pct>=50 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
 
-      const recentHtml = recentEx.length ? `
-        <div class="card" style="margin-top:14px;padding:14px;">
-          <div style="font-weight:950;">Últimos gastos</div>
-          <div class="muted" style="margin-top:6px;">Transparencia con comprobantes</div>
-          <div style="margin-top:10px;display:grid;gap:10px;">
-            ${recentEx.slice(0,3).map(e=>`
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div style="min-width:0;">
-                  <div style="font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.title||e.concept||"Gasto")}</div>
-                  <div class="muted" style="font-size:12px;margin-top:2px;">${esc(e.date||"")} · ${esc(e.category||"")}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-weight:950;">${clp(e.amount||0)}</div>
-                  ${hasAttachment(e)?`<button style="margin-top:6px;border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:800;" onclick="viewExpenseAttachment('${esc(e.id)}')">Ver boleta</button>`:`<div class="muted" style="font-size:12px;margin-top:2px;">Sin boleta</div>`}
-                </div>
-              </div>
-            `).join("")}
-          </div>
-          <div class="muted" style="margin-top:10px;font-size:12px;">Consejo: si no corresponde una campaña voluntaria, marca “No participo”.</div>
-        </div>
-      ` : "";
+    const campRows = camps.map(t=>{
+      const title = esc(t.title || t.name || "Campaña");
+      const icon = esc(t.icon || "");
+      const isMonthly = !!t.isMonthly;
+      const isVol = t.isMandatory===false || t.mandatory===false || t.obligatoria===false;
+      const mode = isMonthly ? "Mensual" : "Único";
+      const mand = isVol ? "Voluntaria" : "Obligatoria";
+
+      // Solo pagos del mes (si existen dueYm). Si no existen, cae a estimación.
+      const rel = allPays.filter(p => p && (p.fromTaskId===t.id || p.taskId===t.id));
+      const relYm = rel.filter(p => (p.dueYm||p.ym||"")===ym);
+
+      const monthProjected = relYm.length
+        ? relYm.filter(p=>p.status!=="opted_out").reduce((a,p)=>a+Number(p.amount||0),0)
+        : (isMonthly ? Number(t.amountPerStudent||t.amount||0)*people : 0);
+
+      const monthPaid = relYm.length
+        ? relYm.filter(p=>p.status==="paid").reduce((a,p)=>a+Number(p.amount||0),0)
+        : 0;
+
+      // pendiente estimado total (considera opt-out si es voluntaria)
+      const totalExpected = expectedTaskTotal(t);
+      const totalCollected = collectedTask(t.id);
+      const totalPendingEst = pendingTaskEstimated(t);
+
+      const campPct = totalExpected>0 ? Math.round((totalCollected/totalExpected)*100) : 0;
+      const campPctClamped = Math.max(0, Math.min(100, campPct));
 
       return `
-        <div class="card" style="padding:14px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+        <div style="${cardStyle}">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
             <div>
-              <div style="font-weight:950;font-size:18px;">Informe para Apoderados</div>
-              <div class="muted" style="margin-top:4px;">Sencillo, visual y transparente.</div>
+              <div style="font-weight:950;font-size:18px;">${title} ${icon}</div>
+              <div class="muted" style="margin-top:2px;font-size:13px;">${mode} · ${mand}</div>
             </div>
-            ${statusChip()}
+            <div style="font-weight:950;font-size:18px;">${campPctClamped}%</div>
           </div>
-          ${cards}
-          ${catsHtml}
-          ${recentHtml}
-          <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-            <button class="btnx" onclick="go('pagos')">Ir a Pagos</button>
+          <div style="margin-top:10px;height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${campPctClamped}%;background:#4f46e5;border-radius:999px;"></div>
+          </div>
+          <div style="margin-top:10px;font-size:13px;opacity:.92;display:grid;gap:4px;">
+            <div>💰 Recaudado: <b>${clp(totalCollected)}</b></div>
+            <div>⏳ Pendiente mes: <b>${clp(Math.max(0, monthProjected - monthPaid))}</b></div>
+            <div>🎯 Objetivo: <b>${clp(totalExpected)}</b></div>
           </div>
         </div>
       `;
-    }
+    }).join("");
+
+    return `
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+          <div>
+            <div class="kTitle" style="margin:0;">Informe para Apoderados</div>
+            <div class="muted" style="margin-top:6px;">Sencillo, visual y transparente.</div>
+          </div>
+          ${chip}
+        </div>
+
+        <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+            <div>
+              <div style="font-weight:950;font-size:16px;">🟡 Cumplimiento del mes</div>
+              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+            </div>
+            <div style="font-weight:950;font-size:18px;">${pct}%</div>
+          </div>
+          <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:999px;"></div>
+          </div>
+          <div style="margin-top:8px;font-size:13px;opacity:.9;">
+            💵 Cobrado mes: <b>${clp(recMes)}</b> · ⏳ Proyección mes: <b>${clp(projMaxMes)}</b> · 👥 Deudores mes: <b>${deudMes}</b>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          ${kpi("💰","Recaudado este mes", clp(recMes))}
+          ${kpi("🧾","Gastado este mes", clp(gastoMes))}
+          ${kpi("🏦","Saldo disponible", clp(saldo))}
+          ${kpi("⏳","Por cobrar este mes", clp(Math.max(0, porCobrarMes)))}
+        </div>
+
+        <div style="margin-top:16px;">
+          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+          <div style="display:grid;gap:10px;">
+            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+          <button class="btn" onclick="go('pagos')">Ir a pagos</button>
+        </div>
+      </div>
+    `;
+  }
 
     function informeDirectivaHTML(){
       const saldoPrev = sum(allTasks.filter(t=>Number(t.saldo_prev||0)>0), t=>Number(t.saldo_prev||0));
@@ -2327,7 +2363,10 @@ window.deleteCampaign = function(taskId){
       expenses: exMes
     };
 
-    const arr = readLS(KEY_MONTHLY_REPORTS, []);
+    const arr0 = readLS(KEY_MONTHLY_REPORTS, []);
+    // ID estable para evitar duplicados
+    rep.id = (rep.courseId||'course') + '::' + rep.period;
+    const arr = arr0.filter(x => !(x && (x.id === rep.id || ((x.courseId||'')===(rep.courseId||'') && x.period===rep.period))));
     arr.unshift(rep);
     writeLS(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
     toast("Informe publicado (" + period + ")");
