@@ -1879,19 +1879,28 @@ window.printExecutive = function(){
     openPrintWindow(html);
   };
 
+  // PDF de informes publicados: reutiliza el mismo layout del "Informe Ejecutivo del Curso"
+  // para que no existan diferencias entre el PDF y lo que se ve arriba.
   window.printSnapshot = function(idOrPeriod, period){
     const reps = reports();
     const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
     if(!r){ alert("No se encontró el informe."); return; }
+    const p = r.period || period;
     let html = "";
     try{
-      if(typeof buildSnapshotExecutivePrintHTML==="function"){
+      if(typeof buildExecutivePrintHTML === "function"){
+        html = buildExecutivePrintHTML(p);
+      }else if(typeof buildSnapshotExecutivePrintHTML === "function"){
         html = buildSnapshotExecutivePrintHTML(r);
       }else{
         html = buildSnapshotPrintHTML(r);
       }
     }catch(e){
-      html = buildSnapshotPrintHTML(r);
+      try{
+        html = buildExecutivePrintHTML(p);
+      }catch(_e2){
+        html = buildSnapshotPrintHTML(r);
+      }
     }
     openPrintWindow(html);
   };
