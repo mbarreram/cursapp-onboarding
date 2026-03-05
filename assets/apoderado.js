@@ -1060,23 +1060,7 @@ function dueBadge(iso){
   };
 
 // -------- Reports --------
-  function reports(){
-    const a = load(KEY_REPORTS, []);
-    if(Array.isArray(a) && a.length) return a;
-    // fallback legacy (sin scopedKey)
-    const b = load("cursapp_monthly_reports_v1", []);
-    if(Array.isArray(b) && b.length) return b;
-    // fallback por curso (si existe)
-    try{
-      const ck = String(localStorage.getItem("cursapp_active_course_v1")||"").trim();
-      if(ck){
-        const k = "cursapp_"+ck.replace(/[^a-z0-9_\-]/gi,"_")+"_monthly_reports_v1";
-        const c = load(k, []);
-        if(Array.isArray(c) && c.length) return c;
-      }
-    }catch(e){}
-    return [];
-  }
+  function reports(){ return load(KEY_REPORTS, []); }
   function latestReport(){ const r = reports(); return r.length ? r[0] : null; }
 
   function reportSummaryCard(){

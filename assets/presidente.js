@@ -115,6 +115,40 @@ function hash32(str){
   function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
     return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
   }
+    function normalizeTask(t){
+    t = t || {};
+    const title = t.title || t.name || t.nombre || "Campaña";
+    const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
+    const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
+    const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
+    const mandatoryParticipation = (t.mandatoryParticipation !== undefined)
+      ? !!t.mandatoryParticipation
+      : (String(partRaw).toLowerCase().includes("oblig") || String(partRaw).toLowerCase()==="mandatory" || String(partRaw).toLowerCase()==="si");
+
+    const status = String(t.status || t.estado || "").toLowerCase();
+    const closed = (t.closed !== undefined) ? !!t.closed : (status==="closed" || status==="cerrada" || status==="canceled" || status==="cancelada");
+
+    const typeRaw = String(t.type || t.tipo || "single").toLowerCase();
+    const type = (typeRaw.includes("mens") || typeRaw==="monthly") ? "monthly" : "single";
+
+    const months = Number(t.months || t.cuotas || t.meses || 1) || 1;
+    const amount = Number(t.amount || t.monto || 0) || 0;
+
+    return {
+      ...t,
+      id: t.id || t.taskId || t.campaignId,
+      title,
+      startDate,
+      dueDate,
+      endDate: dueDate,
+      mandatoryParticipation,
+      type,
+      months,
+      amount,
+      closed
+    };
+  }
+
   function normalizeTasks(list){
     return (list || []).map(normalizeTask).filter(t=>t && t.id);
   }
@@ -452,7 +486,7 @@ function dedupePaymentsAll(list){
         `;
       }).join("");
   
-    const __html = `
+    openModal(`
       <div style="max-width:900px;margin:auto;">
         <div style="
           background:#ffffff;
@@ -534,33 +568,8 @@ function dedupePaymentsAll(list){
           </div>
         </div>
       </div>
-    `;
-    openModal(__html);
-  }
-
-
-  window.printApoderadoPDF = function(period){
-    try{
-      const html = (function(){
-        // reuse openReportApoderado renderer without opening modal
-        const _openModal = window.openModal;
-        let captured = "";
-        window.openModal = function(h){ captured = h; };
-        try{ window.openReportApoderado(period); }finally{ window.openModal = _openModal; }
-        return captured;
-      })();
-      if(!html){ alert("No se pudo generar el informe apoderado (HTML vacío)"); return; }
-      const w = window.open("", "_blank");
-      if(!w){ alert("Bloqueado por el navegador: habilita popups para imprimir"); return; }
-      w.document.open();
-      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Informe Apoderado</title></head><body>${html}</body></html>`);
-      w.document.close();
-      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 250);
-    }catch(e){
-      alert("Error al imprimir PDF apoderado: " + (e.message||e));
-    }
+    `);
   };
-;
 const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
@@ -2582,14 +2591,8 @@ window.deleteCampaign = function(taskId){
       return;
     }
 
-    try{
-
     // ✅ Snapshot: corte oficial (no cambia después)
-    const s0 = (typeof readSession === "function")
-      ? readSession()
-      : ((window.CURSAPP && typeof window.CURSAPP.getSession === "function")
-          ? window.CURSAPP.getSession()
-          : (function(){ try{ return JSON.parse(localStorage.getItem("cursapp_session_v1")||"null"); }catch(e){ return null; } })());
+    const s0 = readSession && readSession();
     const courseKey = activeCourseKey() || String(s0?.courseKey||"").trim() || "course";
     const id = `${courseKey}::${period}`;
 
@@ -2706,49 +2709,16 @@ window.deleteCampaign = function(taskId){
     };
 
     // Guardar sin duplicados (mismo id/period)
-    const keys = (function(){
-      const out = [KEY_MONTHLY_REPORTS, "cursapp_monthly_reports_v1"];
-      try{
-        const ck = String(courseKey||localStorage.getItem("cursapp_active_course_v1")||"").trim();
-        if(ck){
-          out.push("cursapp_"+ck.replace(/[^a-z0-9_\-]/gi,"_")+"_monthly_reports_v1");
-        }
-      }catch(e){}
-      // unique
-      return Array.from(new Set(out.filter(Boolean)));
-    })();
-
-    // toma la primera key con data o la principal
-    let arr0 = [];
-    for(const k of keys){
-      const tmp = load(k, []);
-      if(Array.isArray(tmp) && tmp.length){ arr0 = tmp; break; }
-    }
+    const arr0 = load(KEY_MONTHLY_REPORTS, []);
     const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
-    const nextArr = arr.slice(0, 3);
-    keys.forEach(k=>{ try{ save(k, nextArr); }catch(e){} });
-
-    // debug visible si no aparece
-    try{
-      localStorage.setItem("cursapp_last_publish_debug", JSON.stringify({ keys, count: nextArr.length, period }));
-    }catch(e){}
+    save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
 
     clearDirty();
     try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
 
     // refrescar vista
     renderInformes();
-  }catch(e){
-    try{
-      const payload = { at: new Date().toISOString(), message: String(e && (e.message||e) || "error"), stack: String(e && e.stack || "") };
-      localStorage.setItem("cursapp_last_publish_error", JSON.stringify(payload));
-    }catch(_){}
-    try{ console.error("Publish report error:", e); }catch(_){}
-    alert("❌ No se pudo publicar el informe.\n\n" +
-          "Revisa: localStorage.cursapp_last_publish_error\n\n" +
-          ((e && (e.message||e.toString())) ? (e.message||e.toString()) : "Error desconocido"));
-  }
   }
   // ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
