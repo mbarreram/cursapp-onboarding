@@ -115,40 +115,6 @@ function hash32(str){
   function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
     return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
   }
-    function normalizeTask(t){
-    t = t || {};
-    const title = t.title || t.name || t.nombre || "Campaña";
-    const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
-    const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
-    const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
-    const mandatoryParticipation = (t.mandatoryParticipation !== undefined)
-      ? !!t.mandatoryParticipation
-      : (String(partRaw).toLowerCase().includes("oblig") || String(partRaw).toLowerCase()==="mandatory" || String(partRaw).toLowerCase()==="si");
-
-    const status = String(t.status || t.estado || "").toLowerCase();
-    const closed = (t.closed !== undefined) ? !!t.closed : (status==="closed" || status==="cerrada" || status==="canceled" || status==="cancelada");
-
-    const typeRaw = String(t.type || t.tipo || "single").toLowerCase();
-    const type = (typeRaw.includes("mens") || typeRaw==="monthly") ? "monthly" : "single";
-
-    const months = Number(t.months || t.cuotas || t.meses || 1) || 1;
-    const amount = Number(t.amount || t.monto || 0) || 0;
-
-    return {
-      ...t,
-      id: t.id || t.taskId || t.campaignId,
-      title,
-      startDate,
-      dueDate,
-      endDate: dueDate,
-      mandatoryParticipation,
-      type,
-      months,
-      amount,
-      closed
-    };
-  }
-
   function normalizeTasks(list){
     return (list || []).map(normalizeTask).filter(t=>t && t.id);
   }
@@ -2025,7 +1991,7 @@ function viewExpenseAttachment(expenseId){
             <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
+            <button class="btnx" onclick="printCurrentInforme()">📊 Descargar PDF directiva</button>
             
           </div>
         </div>
@@ -2053,7 +2019,7 @@ function viewExpenseAttachment(expenseId){
                     <b>${esc(r.period)}</b>
                     <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
-                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">Ver</button>
+                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">👁 Ver informe apoderados</button>
                 </div>
 </div>
             `).join("")
