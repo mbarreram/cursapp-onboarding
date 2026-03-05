@@ -73,6 +73,46 @@ async function copyTextToClipboard(text){
   const KEY_PAYMENTS = sk("payments_v1");
   const KEY_EXPENSES = sk("expenses_v1");
   const KEY_MONTHLY_REPORTS = sk("monthly_reports_v1");
+  // ---- Reports storage (robusto: scoped + legacy + compat por curso) ----
+  const _sanitizeKey = (k)=> String(k||"").replace(/[^a-zA-Z0-9_-]/g, "_");
+  function _getCourseKey(){
+    try{
+      const s = (window.CURSAPP && typeof window.CURSAPP.getSession==="function") ? window.CURSAPP.getSession() : null;
+      if(s && s.courseKey) return String(s.courseKey);
+    }catch(e){}
+    try{
+      const s2 = JSON.parse(localStorage.getItem("cursapp_session_v1")||"null");
+      if(s2 && s2.courseKey) return String(s2.courseKey);
+    }catch(e){}
+    try{
+      const ck = localStorage.getItem("cursapp_active_course_v1") || "";
+      if(ck) return String(ck);
+    }catch(e){}
+    return "";
+  }
+  function _reportKeys(){
+    const ck = _getCourseKey();
+    const compat = ck ? `cursapp_${_sanitizeKey(ck)}_monthly_reports_v1` : "";
+    const scoped = KEY_MONTHLY_REPORTS;
+    return [scoped, "cursapp_monthly_reports_v1", compat].filter(Boolean);
+  }
+  function loadReportsAny(){
+    const keys = _reportKeys();
+    for(const k of keys){
+      try{
+        const v = JSON.parse(localStorage.getItem(k)||"[]");
+        if(Array.isArray(v) && v.length) return { key:k, data:v };
+      }catch(e){}
+    }
+    return { key: keys[0], data: [] };
+  }
+  function saveReportsAll(arr){
+    const keys = _reportKeys();
+    for(const k of keys){
+      try{ localStorage.setItem(k, JSON.stringify(arr||[])); }catch(e){}
+    }
+  }
+
   const KEY_ENROLLMENTS = sk("enrollments_v1");
   const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
@@ -536,7 +576,7 @@ function dedupePaymentsAll(list){
       </div>
     `);
   };
-const reports = () => load(KEY_MONTHLY_REPORTS, []);
+const reports = () => loadReportsAny().data;
 
   const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
@@ -797,6 +837,8 @@ function cuotasPendientesTask(id){
         localStorage.removeItem(KEY_PAYMENTS);
         localStorage.removeItem(KEY_EXPENSES);
         localStorage.removeItem(KEY_MONTHLY_REPORTS);
+        try{ localStorage.removeItem("cursapp_monthly_reports_v1"); }catch(e){}
+        try{ const ck=_getCourseKey(); if(ck) localStorage.removeItem(`cursapp_${_sanitizeKey(ck)}_monthly_reports_v1`); }catch(e){}
         localStorage.removeItem(KEY_DIRTY);
         alert("Datos reseteados.");
         // ✅ CAMBIO 2: NO re-sembrar demo automáticamente
@@ -831,7 +873,7 @@ function cuotasPendientesTask(id){
       {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
     ]);
 
-    save(KEY_MONTHLY_REPORTS, []);
+    saveReportsAll([]);
     clearDirty();
   }
 
@@ -2675,10 +2717,10 @@ window.deleteCampaign = function(taskId){
     };
 
     // Guardar sin duplicados (mismo id/period)
-    const arr0 = load(KEY_MONTHLY_REPORTS, []);
+    const arr0 = loadReportsAny().data;
     const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
-    save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
+    saveReportsAll(arr.slice(0, 3));
 
     clearDirty();
     try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
