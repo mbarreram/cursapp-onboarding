@@ -7,6 +7,21 @@
   const resetBtn = document.getElementById("resetBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
+
+  // ---- session bootstrap (evita courseKey vacío tras borrar data) ----
+  function readSession(){
+    try{ return JSON.parse(localStorage.getItem("cursapp_session_v1") || "null"); }catch(e){ return null; }
+  }
+  (function ensureActiveCourseFromSession(){
+    try{
+      const s = readSession();
+      if(s && s.courseKey){
+        const cur = localStorage.getItem("cursapp_active_course_v1") || "";
+        if(!cur) localStorage.setItem("cursapp_active_course_v1", String(s.courseKey));
+      }
+    }catch(e){}
+  })();
+
   // ---- helpers ----
   const esc = (s) =>
     String(s ?? "").replace(/[&<>'"]/g, (c) =>
@@ -1602,7 +1617,7 @@ function renderInformes(){
     const reportView = localStorage.getItem("cursapp_report_view") || "apoderados";
     window.setReportView = window.setReportView || function(v){
       try{ localStorage.setItem("cursapp_report_view", v); }catch(e){}
-      renderInformes();
+      try{ if(state && state.tab){ go(state.tab); } else { renderInformes(); } }catch(e){ try{ renderInformes(); }catch(_e){} }
     };
 
     const projMaxMes = (typeof projectionMaxMonth==="function") ? projectionMaxMonth(ym) : (recMes + porCobrarMes);
@@ -1977,7 +1992,7 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
-            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
+            
           </div>
         </div>
 
@@ -1991,7 +2006,7 @@ function viewExpenseAttachment(expenseId){
             <div class="muted" style="margin-top:6px;">Últimos informes publicados (cortes oficiales).</div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
+            
           </div>
         </div>
 
@@ -2535,16 +2550,16 @@ window.deleteCampaign = function(taskId){
     publishMonthly();
   };
 
-  function publishMonthly(){
-    const period = prompt("¿Qué periodo publicar? (YYYY-MM)", currentYM());
-    if(!period) return;
+  function publishMonthly(period){
+    period = period || currentYM();
     if(!/^\d{4}-\d{2}$/.test(period)){
       alert("Formato inválido. Usa YYYY-MM");
       return;
     }
 
     // ✅ Snapshot: corte oficial (no cambia después)
-    const courseKey = activeCourseKey() || "course";
+    const s0 = readSession && readSession();
+    const courseKey = activeCourseKey() || String(s0?.courseKey||"").trim() || "course";
     const id = `${courseKey}::${period}`;
 
     const list = normalizeTasks(tasks());
