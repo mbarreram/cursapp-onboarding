@@ -7,6 +7,21 @@
   const resetBtn = document.getElementById("resetBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
+
+  // ---- session bootstrap (evita courseKey vacío tras borrar data) ----
+  function readSession(){
+    try{ return JSON.parse(localStorage.getItem("cursapp_session_v1") || "null"); }catch(e){ return null; }
+  }
+  (function ensureActiveCourseFromSession(){
+    try{
+      const s = readSession();
+      if(s && s.courseKey){
+        const cur = localStorage.getItem("cursapp_active_course_v1") || "";
+        if(!cur) localStorage.setItem("cursapp_active_course_v1", String(s.courseKey));
+      }
+    }catch(e){}
+  })();
+
   // ---- helpers ----
   const esc = (s) =>
     String(s ?? "").replace(/[&<>'"]/g, (c) =>
@@ -286,7 +301,267 @@ function dedupePaymentsAll(list){
     return dd.list;
   };
   const expenses = () => load(KEY_EXPENSES, []);
-  const reports = () => load(KEY_MONTHLY_REPORTS, []);
+  
+  // -------- Informe Apoderado (idéntico al rol apoderado) --------
+  window.openReportApoderado = function(period){
+    const reps = reports();
+    const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
+    if(!r) return;
+  
+    const currentYM = ()=>{
+      const d=new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    };
+    const pct = (a,b)=>{
+      const A=Number(a||0), B=Number(b||0);
+      if(B<=0) return 0;
+      return Math.max(0, Math.min(100, Math.round((A/B)*100)));
+    };
+  
+    
+    const isExcludedStatus = (p)=>{
+      const st = String(p?.status||"").toLowerCase();
+      return st==="opted_out" || st==="void" || st==="cancelled";
+    };
+  const ym = currentYM();
+    const tasksArr = tasks();
+    const pays = payments();
+  
+    // Totales del mes (proyección y cobrado) + deudores únicos
+    let cobradoMes=0, proyeccionMes=0;
+    const deudoresSet = new Set();
+  
+    (pays||[]).forEach(p=>{
+      if(!p) return;
+      if(isExcludedStatus(p)) return;
+  
+      const dueYM = String(p.dueDate||"").slice(0,7);
+      const perYM = String(p.period||"").slice(0,7);
+      const matchYM = (dueYM===ym) || (perYM===ym);
+      if(!matchYM) return;
+  
+      const amt = Number(p.amount || p.amountRemaining || 0);
+      proyeccionMes += amt;
+  
+      if(String(p.status||"")==="paid"){
+        cobradoMes += Number(p.amount||0);
+      }else{
+        const pid = String(p.payerProfileId || p.profileId || p.userId || "");
+        if(pid) deudoresSet.add(pid);
+      }
+    });
+  
+    const cursoPct = pct(cobradoMes, proyeccionMes);
+    const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
+    const semMsg = (cursoPct>=80)
+      ? "Vamos muy bien este mes"
+      : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
+  
+    // Agrupar pagos por campaña
+    const byTask = {};
+    (pays||[]).forEach(p=>{
+      const tid = String((p && p.fromTaskId) || "");
+      if(!tid) return;
+      if(isExcludedStatus(p)) return;
+      (byTask[tid] ||= []).push(p);
+    });
+  
+    const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
+  
+    const kpi = (icon, label, val)=>`
+      <div style="${cardStyle}">
+        <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
+        <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
+      </div>
+    `;
+  
+    const campRows = (tasksArr||[])
+      .filter(t=>t && !t.closed)
+      .map(t=>{
+        const tid = String(t.id);
+        const title = String(t.title || "Campaña");
+        const type = String(t.type || "single");
+        const months = Number(t.months || 1);
+        const amount = Number(t.amount || 0);
+        const meta = Number(t.goalTotal || 0);
+  
+        const ps = (byTask[tid] || []);
+  
+        const recaudado = ps
+          .filter(x=>String(x.status||"")==="paid")
+          .reduce((a,x)=>a+Number(x.amount||0),0);
+  
+        const pendienteMes = ps
+          .filter(x=>String(x.status||"")!=="paid")
+          .filter(x=>{
+            const dym = String(x.dueDate||"").slice(0,7);
+            const pym = String(x.period||"").slice(0,7);
+            return (dym===ym)||(pym===ym);
+          })
+          .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
+  
+        // Objetivo (total curso):
+        // - Si el usuario definió goalTotal/meta => lo respetamos como total de curso.
+        // - Si no, lo calculamos como (monto por apoderado) x (participantes) x (cuotas si mensual)
+        //   Esto evita el bug de ver 100% con 1 pago cuando hay 2 apoderados.
+        let objetivo;
+        if(meta>0){
+          objetivo = meta;
+        }else{
+          const base = (type==="monthly" ? (amount*months) : amount);
+          const mandatory = (t.mandatoryParticipation !== undefined) ? !!t.mandatoryParticipation : true;
+          let n = 0;
+  
+          if(!mandatory){
+            // voluntaria: contamos participantes reales (excluye opted_out)
+            const s = new Set();
+            for(const x of ps){
+              if(!x) continue;
+              if(isExcludedStatus(x)) continue;
+              const k = String(x.apoderadoKey||x.apoderadoEmail||x.payerProfileId||x.profileId||x.userId||x.email||"").toLowerCase().trim();
+              if(k) s.add(k);
+            }
+            n = s.size;
+          }
+          if(!n){
+            // fallback: apoderados del curso (evita 0 / y cubre obligatorias)
+            n = (typeof approvedCount==='function' ? approvedCount() : 0);
+          }
+          if(!n) n = 1;
+          objetivo = base * n;
+        }
+        const p = pct(recaudado, objetivo);
+  
+        return `
+          <div style="${cardStyle}">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+              <div style="font-weight:950;">${esc(title)}</div>
+              <div style="font-weight:950;">${p}%</div>
+            </div>
+  
+            <div style="margin-top:8px;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;">
+              <div style="height:100%;width:${p}%;background:#4f46e5;border-radius:999px;"></div>
+            </div>
+  
+            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
+              <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
+              <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+              <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+  
+    const __html = `
+      <div style="max-width:900px;margin:auto;">
+        <div style="
+          background:#ffffff;
+          border-radius:22px;
+          border:1px solid rgba(0,0,0,.10);
+          box-shadow:0 20px 60px rgba(0,0,0,.25);
+          padding:0;
+          overflow:hidden;
+        ">
+  
+          <div style="
+            position:sticky;
+            top:0;
+            z-index:20;
+            background:#ffffff;
+            padding:12px 16px;
+            border-bottom:1px solid rgba(0,0,0,.08);
+          ">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+              <div>
+                <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
+                <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
+                  Resumen de cómo va el curso (montos globales, no personales)
+                </div>
+              </div>
+              <button onclick="closeModal()"
+                style="
+                  border:1px solid rgba(0,0,0,.12);
+                  background:#fff;
+                  border-radius:999px;
+                  padding:8px 14px;
+                  font-weight:800;
+                  cursor:pointer;
+                  flex:0 0 auto;
+                ">
+                Cerrar
+              </button>
+            </div>
+          </div>
+  
+          <div style="padding:16px;">
+  
+            <div style="margin-top:2px;${cardStyle}background:#f8fafc;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div>
+                  <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
+                  <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+                </div>
+                <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
+              </div>
+  
+              <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
+              </div>
+  
+              <div style="margin-top:8px;font-size:13px;opacity:.9;">
+                💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
+              </div>
+            </div>
+  
+            <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
+              ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
+              ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
+              ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
+            </div>
+  
+            <div style="margin-top:16px;">
+              <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+              <div style="display:grid;gap:10px;">
+                ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+              </div>
+            </div>
+  
+            <div class="muted" style="margin-top:14px;font-size:12px;">
+              Emitido: ${esc(r.generatedAt||"")}
+            </div>
+  
+          </div>
+        </div>
+      </div>
+    `;
+    openModal(__html);
+  }
+
+
+  window.printApoderadoPDF = function(period){
+    try{
+      const html = (function(){
+        // reuse openReportApoderado renderer without opening modal
+        const _openModal = window.openModal;
+        let captured = "";
+        window.openModal = function(h){ captured = h; };
+        try{ window.openReportApoderado(period); }finally{ window.openModal = _openModal; }
+        return captured;
+      })();
+      if(!html){ alert("No se pudo generar el informe apoderado (HTML vacío)"); return; }
+      const w = window.open("", "_blank");
+      if(!w){ alert("Bloqueado por el navegador: habilita popups para imprimir"); return; }
+      w.document.open();
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Informe Apoderado</title></head><body>${html}</body></html>`);
+      w.document.close();
+      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 250);
+    }catch(e){
+      alert("Error al imprimir PDF apoderado: " + (e.message||e));
+    }
+  };
+;
+const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
@@ -741,7 +1016,7 @@ function setActive(tab){
           <div class="row">
             <div>
               <div class="kTitle">Último informe publicado</div>
-              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAt||"")}</div>
+              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</div>
             </div>
             <div class="actions">
               <button class="btnx" onclick="go('informes')">Ver informes</button>
@@ -1343,9 +1618,7 @@ function renderDeudores(){
 
 function renderInformes(){
     try{
-    let reps = reports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
-    // ✅ Mantener solo los últimos 3 cortes oficiales (evita buffer lleno / duplicados)
-    if(reps.length>3){ try{ save(KEY_MONTHLY_REPORTS, reps.slice(0,3)); }catch(e){} reps = reps.slice(0,3); }
+    const reps = reports().slice().sort((a,b)=>String(b.period||"").localeCompare(String(a.period||"")));
     const allTasks = tasks();
     const ps = payments();
     // alias for backward-compat (some helpers expect pays())
@@ -1369,7 +1642,7 @@ function renderInformes(){
     const reportView = localStorage.getItem("cursapp_report_view") || "apoderados";
     window.setReportView = window.setReportView || function(v){
       try{ localStorage.setItem("cursapp_report_view", v); }catch(e){}
-      renderInformes();
+      try{ if(state && state.tab){ go(state.tab); } else { renderInformes(); } }catch(e){ try{ renderInformes(); }catch(_e){} }
     };
 
     const projMaxMes = (typeof projectionMaxMonth==="function") ? projectionMaxMonth(ym) : (recMes + porCobrarMes);
@@ -1410,9 +1683,7 @@ function renderInformes(){
 
     function informeApoderadosHTML(){
         // payments data (defensive)
-  const paysArr = (typeof getPayments === 'function')
-    ? (getPayments() || [])
-    : (Array.isArray((window||{}).pays) ? window.pays : []);
+  const paysArr = (typeof payments === 'function') ? (payments() || []) : [];
 
 // --- visual helpers (local scope to avoid reference errors) ---
   const cardStyle = 'border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:14px 14px;box-shadow:0 10px 30px rgba(2,6,23,.06);';
@@ -1732,7 +2003,9 @@ function viewExpenseAttachment(expenseId){
         <div class="warnBox">
           <div style="font-weight:950;">Informe desactualizado</div>
           <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al último informe. Publica uno nuevo para dejar un corte oficial.</div>
-          
+          <div class="actions" style="margin-top:10px;">
+            <button class="btnx primary" onclick="confirmGenerateReport()">Actualizar y publicar</button>
+          </div>
         </div>
       `:""}
 
@@ -1744,22 +2017,21 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
-            <button class="btnx primary" onclick="confirmGenerateReport()">${isDirty() ? "Actualizar y publicar" : "Publicar informe"}</button>
+            
           </div>
         </div>
 
-        ${toggleHTML}
-        <div id="informeRoot">${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}</div>
+        <div id="informeRoot">${informeDirectivaHTML()}</div>
       </div>
 
       <div class="card" style="margin-top:14px;">
         <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
           <div style="min-width:220px;flex:1;">
             <div class="kTitle">Informes mensuales publicados</div>
-            <div class="muted" style="margin-top:6px;">Cortes oficiales del curso (no personales).</div>
+            <div class="muted" style="margin-top:6px;">Últimos informes publicados (cortes oficiales).</div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx primary" onclick="confirmGenerateReport()">${isDirty() ? "Actualizar y publicar" : "Publicar informe"}</button>
+            
           </div>
         </div>
 
@@ -1770,16 +2042,11 @@ function viewExpenseAttachment(expenseId){
                 <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
                   <div>
                     <b>${esc(r.period)}</b>
-                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAt)}</div>
+                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
-                  <button class="btnx" onclick="printSnapshot('${esc(r.id||r.period||"")}', '${esc(r.period||"")}')">PDF</button>
+                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">Ver</button>
                 </div>
-
-                <div class="muted" style="margin-top:8px;line-height:1.45;">
-                  Recaudado ${clp(r.recaudadoCurso||0)} · Rendido ${clp(r.gastadoCurso||0)} · Saldo ${clp(r.disponibleCurso||0)}
-                  · Pendiente ${clp(r.pendienteCurso||0)} · Deudores ${Number(r.deudores||0)}
-                </div>
-              </div>
+</div>
             `).join("")
             : `<div class="muted">Sin informes publicados.</div>`
           }
@@ -1881,30 +2148,6 @@ window.printExecutive = function(){
 
   // PDF de informes publicados: reutiliza el mismo layout del "Informe Ejecutivo del Curso"
   // para que no existan diferencias entre el PDF y lo que se ve arriba.
-  window.printSnapshot = function(idOrPeriod, period){
-    const reps = reports();
-    const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
-    if(!r){ alert("No se encontró el informe."); return; }
-    const p = r.period || period;
-    let html = "";
-    try{
-      if(typeof buildExecutivePrintHTML === "function"){
-        html = buildExecutivePrintHTML(p);
-      }else if(typeof buildSnapshotExecutivePrintHTML === "function"){
-        html = buildSnapshotExecutivePrintHTML(r);
-      }else{
-        html = buildSnapshotPrintHTML(r);
-      }
-    }catch(e){
-      try{
-        html = buildExecutivePrintHTML(p);
-      }catch(_e2){
-        html = buildSnapshotPrintHTML(r);
-      }
-    }
-    openPrintWindow(html);
-  };
-
   function openPrintWindow(html){
     // Reutiliza la misma ventana para evitar PDFs duplicados
     const w = window.open("", "cursapp_print");
@@ -2040,7 +2283,7 @@ function buildSnapshotExecutivePrintHTML(rep){
       <head><meta charset="utf-8"><style>${css}</style></head>
       <body>
         <h1>Informe Ejecutivo del Curso • ${esc(ym)}</h1>
-        <div class="muted">Emitido: ${esc(rep.generatedAt||"")}</div>
+        <div class="muted">Emitido: ${esc(rep.generatedAtHuman||rep.generatedAt||"")}</div>
 
         <div class="grid">
           <div class="card"><div class="label">Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
@@ -2332,108 +2575,181 @@ window.deleteCampaign = function(taskId){
     publishMonthly();
   };
 
-  function publishMonthly(){
-    const period = prompt("¿Qué periodo publicar? (YYYY-MM)", currentYM());
-    if(!period) return;
+  function publishMonthly(period){
+    period = period || currentYM();
     if(!/^\d{4}-\d{2}$/.test(period)){
       alert("Formato inválido. Usa YYYY-MM");
       return;
     }
 
-    const people = approvedCount();
-    const allPays = paysArr;
-    const list = tasks().filter(t => t && t.id);
+    try{
 
-    const campDetails = list.map(t => {
-      const isMonthly = t.kind === "monthly";
-      const amt = Number(t.amount || 0);
-      const months = Number(t.months || 1);
-      const title = t.title || "Campaña";
-      const participation = t.participation || "mandatory";
+    // ✅ Snapshot: corte oficial (no cambia después)
+    const s0 = (typeof readSession === "function")
+      ? readSession()
+      : ((window.CURSAPP && typeof window.CURSAPP.getSession === "function")
+          ? window.CURSAPP.getSession()
+          : (function(){ try{ return JSON.parse(localStorage.getItem("cursapp_session_v1")||"null"); }catch(e){ return null; } })());
+    const courseKey = activeCourseKey() || String(s0?.courseKey||"").trim() || "course";
+    const id = `${courseKey}::${period}`;
 
-      const opted = new Set(
-        allPays
-          .filter(p => p.fromTaskId === t.id && p.status === "opted_out")
-          .map(p => p.who || "")
-          .filter(Boolean)
-      );
-      const activePeople = participation === "mandatory" ? people : Math.max(0, people - opted.size);
+    const list = normalizeTasks(tasks());
+    const exAll = expenses();
+    const paysAll = payments();
 
-      const goal = amt * activePeople * (isMonthly ? months : 1);
-
-      const rec = allPays
-        .filter(p => p.fromTaskId === t.id && (p.status === "paid" || p.status === "success"))
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const projMes = allPays
-        .filter(p => p.fromTaskId === t.id && p.ym === period && (p.status === "pending" || p.status === "paid" || p.status === "success"))
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const pendMes = allPays
-        .filter(p => p.fromTaskId === t.id && p.ym === period && p.status === "pending")
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const pct = goal > 0 ? Math.min(100, Math.round((rec / goal) * 100)) : 0;
-
-      return {
-        id: t.id,
-        title,
-        kind: t.kind || (isMonthly ? "monthly" : "single"),
-        participation,
-        amount: amt,
-        months,
-        activePeople,
-        goal,
-        recaudado: rec,
-        proyeccionMes: projMes,
-        pendienteMes: pendMes,
-        pct,
-        optedOut: opted.size
-      };
-    }).filter(c => (c.goal > 0) || (c.proyeccionMes > 0) || (c.recaudado > 0));
-
+    // Métricas del mes (periodo publicado)
     const cobradoMes = collectedMonth(period);
     const gastadoMes = spentMonth(period);
     const porCobrarMes = pendingMonth(period);
-    const deudMes = deudoresMonth(period);
+    const deudoresMes = deudoresMonth(period);
 
-    const exMes = expenses().filter(e => String(e.date||"").startsWith(period)).slice(0, 25);
+    // Totales del curso (al momento de publicar)
+    const recaudadoCurso = collectedCourse();
+    const gastadoCurso = spentCourse();
+    const disponibleCurso = recaudadoCurso - gastadoCurso;
+    const pendienteCurso = pendingTotal();
+    const deudores = deudoresCount();
+
+    // Detalle por campañas (para PDF ejecutivo del snapshot)
+    const campaigns = list.map(t=>{
+      const kind = String(t.type||"single").toLowerCase()==="monthly" ? "monthly" : "single";
+      const participation = (t.mandatoryParticipation === false) ? "voluntary" : "mandatory";
+
+      const rec = collectedTask(t.id);
+      const gas = spentTask(t.id);
+      const sal = rec - gas;
+
+      // Pendiente del mes (si aplica)
+      let pendienteMes = 0;
+      if(kind==="monthly"){
+        // cuota del mes si el periodo cae dentro del rango
+        const startYM = ymFromISO(t.startDate||t.dueDate||"");
+        if(startYM){
+          const months = Math.max(1, Number(t.months||1));
+          // calcula índice relativo
+          const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
+          const cy = parseInt(period.slice(0,4),10), cm = parseInt(period.slice(5,7),10);
+          const idx = (cy - sy)*12 + (cm - sm) + 1;
+          if(idx>=1 && idx<=months){
+            // usa proyección del mes (ajustada por opted_out si existe)
+            const people = approvedCount();
+            let expected = Number(t.amount||0) * people;
+            if(t.mandatoryParticipation === false){
+              const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+              expected -= Math.min(opted, people) * Number(t.amount||0);
+            }
+            const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+            pendienteMes = Math.max(0, expected - paid);
+          }
+        }
+      }else{
+        const dueYM = ymFromISO(t.dueDate||"");
+        if(dueYM===period){
+          const people = approvedCount();
+          let expected = Number(t.amount||0) * people;
+          if(t.mandatoryParticipation === false){
+            const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+            expected -= Math.min(opted, people) * Number(t.amount||0);
+          }
+          const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+          pendienteMes = Math.max(0, expected - paid);
+        }
+      }
+
+      const objetivo = expectedTaskTotal(t);
+      const pct = objetivo>0 ? Math.max(0, Math.min(100, Math.round((rec/objetivo)*100))) : 0;
+
+      return {
+        id: t.id,
+        title: t.title || "Campaña",
+        kind,
+        participation,
+        amount: Number(t.amount||0),
+        months: Math.max(1, Number(t.months||1)),
+        objetivo,
+        recaudado: rec,
+        gastado: gas,
+        saldo: sal,
+        pendienteMes,
+        pct,
+        deudores: deudoresTask(t.id)
+      };
+    });
+
+    // Gastos del mes (para PDF snapshot)
+    const expensesMonth = exAll.filter(e=>String(e.date||"").startsWith(period)).slice(0, 40);
 
     const rep = {
-      version: 3,
+      version: 4,
+      id,
+      courseKey,
       period,
-      generatedAt: new Date().toLocaleString("es-CL"),
 
-      recaudado: collectedCourse(),
-      rendido: 0,
-      saldo: collectedCourse() - spentCourse(),
-      pendiente: pendingTotal(),
-      deudores: deudMes,
+      generatedAt: new Date().toISOString(),
+      generatedAtHuman: new Date().toLocaleString("es-CL"),
 
-      recaudadoCurso: collectedCourse(),
-      gastadoCurso: spentCourse(),
-      disponibleCurso: collectedCourse() - spentCourse(),
-      pendienteCurso: pendingTotal(),
+      // Totales del curso (corte)
+      recaudadoCurso,
+      gastadoCurso,
+      disponibleCurso,
+      pendienteCurso,
+      deudores,
 
+      // Métricas del mes publicado
       cobradoMes,
       gastadoMes,
       porCobrarMes,
-      deudoresMes: deudMes,
+      deudoresMes,
 
-      campaigns: campDetails,
-      expenses: exMes
+      campaigns,
+      expenses: expensesMonth
     };
 
-    const arr0 = readLS(KEY_MONTHLY_REPORTS, []);
-    // ID estable para evitar duplicados
-    rep.id = (rep.courseId||'course') + '::' + rep.period;
-    const arr = arr0.filter(x => !(x && (x.id === rep.id || ((x.courseId||'')===(rep.courseId||'') && x.period===rep.period))));
-    arr.unshift(rep);
-    writeLS(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
-    toast("Informe publicado (" + period + ")");
-    renderMonthlyReports();
-  }
+    // Guardar sin duplicados (mismo id/period)
+    const keys = (function(){
+      const out = [KEY_MONTHLY_REPORTS, "cursapp_monthly_reports_v1"];
+      try{
+        const ck = String(courseKey||localStorage.getItem("cursapp_active_course_v1")||"").trim();
+        if(ck){
+          out.push("cursapp_"+ck.replace(/[^a-z0-9_\-]/gi,"_")+"_monthly_reports_v1");
+        }
+      }catch(e){}
+      // unique
+      return Array.from(new Set(out.filter(Boolean)));
+    })();
 
+    // toma la primera key con data o la principal
+    let arr0 = [];
+    for(const k of keys){
+      const tmp = load(k, []);
+      if(Array.isArray(tmp) && tmp.length){ arr0 = tmp; break; }
+    }
+    const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
+    arr.unshift(rep);
+    const nextArr = arr.slice(0, 3);
+    keys.forEach(k=>{ try{ save(k, nextArr); }catch(e){} });
+
+    // debug visible si no aparece
+    try{
+      localStorage.setItem("cursapp_last_publish_debug", JSON.stringify({ keys, count: nextArr.length, period }));
+    }catch(e){}
+
+    clearDirty();
+    try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
+
+    // refrescar vista
+    renderInformes();
+  }catch(e){
+    try{
+      const payload = { at: new Date().toISOString(), message: String(e && (e.message||e) || "error"), stack: String(e && e.stack || "") };
+      localStorage.setItem("cursapp_last_publish_error", JSON.stringify(payload));
+    }catch(_){}
+    try{ console.error("Publish report error:", e); }catch(_){}
+    alert("❌ No se pudo publicar el informe.\n\n" +
+          "Revisa: localStorage.cursapp_last_publish_error\n\n" +
+          ((e && (e.message||e.toString())) ? (e.message||e.toString()) : "Error desconocido"));
+  }
+  }
   // ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
   const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
