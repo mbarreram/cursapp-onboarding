@@ -741,7 +741,7 @@ function setActive(tab){
           <div class="row">
             <div>
               <div class="kTitle">Último informe publicado</div>
-              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAt||"")}</div>
+              <div class="muted" style="margin-top:6px;">Periodo ${esc(last.period)} · Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</div>
             </div>
             <div class="actions">
               <button class="btnx" onclick="go('informes')">Ver informes</button>
@@ -1408,9 +1408,7 @@ function renderInformes(){
 
     function informeApoderadosHTML(){
         // payments data (defensive)
-  const paysArr = (typeof getPayments === 'function')
-    ? (getPayments() || [])
-    : (Array.isArray((window||{}).pays) ? window.pays : []);
+  const paysArr = (typeof payments === 'function') ? (payments() || []) : [];
 
 // --- visual helpers (local scope to avoid reference errors) ---
   const cardStyle = 'border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:14px 14px;box-shadow:0 10px 30px rgba(2,6,23,.06);';
@@ -1770,7 +1768,7 @@ function viewExpenseAttachment(expenseId){
                 <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
                   <div>
                     <b>${esc(r.period)}</b>
-                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAt)}</div>
+                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
                   <button class="btnx" onclick="printSnapshot('${esc(r.id||r.period||"")}', '${esc(r.period||"")}')">PDF</button>
                 </div>
@@ -1885,26 +1883,30 @@ window.printExecutive = function(){
     const reps = reports();
     const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
     if(!r){ alert("No se encontró el informe."); return; }
-    const p = r.period || period;
+
+    // ✅ Opción A: el PDF de un informe publicado SIEMPRE usa el snapshot ejecutivo (corte),
+    // para que lo publicado no cambie con el estado actual.
     let html = "";
     try{
-      if(typeof buildExecutivePrintHTML === "function"){
-        html = buildExecutivePrintHTML(p);
-      }else if(typeof buildSnapshotExecutivePrintHTML === "function"){
+      if(typeof buildSnapshotExecutivePrintHTML === "function"){
         html = buildSnapshotExecutivePrintHTML(r);
-      }else{
+      }else if(typeof buildSnapshotPrintHTML === "function"){
         html = buildSnapshotPrintHTML(r);
+      }else{
+        // último recurso: ejecutivo vivo del periodo
+        const p = r.period || period || currentYM();
+        html = buildExecutivePrintHTML(p);
       }
     }catch(e){
       try{
+        const p = r.period || period || currentYM();
         html = buildExecutivePrintHTML(p);
       }catch(_e2){
-        html = buildSnapshotPrintHTML(r);
+        html = buildPrintShell('<div class="card"><b>No se pudo generar el PDF.</b></div>');
       }
     }
     openPrintWindow(html);
   };
-
   function openPrintWindow(html){
     // Reutiliza la misma ventana para evitar PDFs duplicados
     const w = window.open("", "cursapp_print");
@@ -2040,7 +2042,7 @@ function buildSnapshotExecutivePrintHTML(rep){
       <head><meta charset="utf-8"><style>${css}</style></head>
       <body>
         <h1>Informe Ejecutivo del Curso • ${esc(ym)}</h1>
-        <div class="muted">Emitido: ${esc(rep.generatedAt||"")}</div>
+        <div class="muted">Emitido: ${esc(rep.generatedAtHuman||rep.generatedAt||"")}</div>
 
         <div class="grid">
           <div class="card"><div class="label">Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
@@ -2340,100 +2342,134 @@ window.deleteCampaign = function(taskId){
       return;
     }
 
-    const people = approvedCount();
-    const allPays = paysArr;
-    const list = tasks().filter(t => t && t.id);
+    // ✅ Snapshot: corte oficial (no cambia después)
+    const courseKey = activeCourseKey() || "course";
+    const id = `${courseKey}::${period}`;
 
-    const campDetails = list.map(t => {
-      const isMonthly = t.kind === "monthly";
-      const amt = Number(t.amount || 0);
-      const months = Number(t.months || 1);
-      const title = t.title || "Campaña";
-      const participation = t.participation || "mandatory";
+    const list = normalizeTasks(tasks());
+    const exAll = expenses();
+    const paysAll = payments();
 
-      const opted = new Set(
-        allPays
-          .filter(p => p.fromTaskId === t.id && p.status === "opted_out")
-          .map(p => p.who || "")
-          .filter(Boolean)
-      );
-      const activePeople = participation === "mandatory" ? people : Math.max(0, people - opted.size);
-
-      const goal = amt * activePeople * (isMonthly ? months : 1);
-
-      const rec = allPays
-        .filter(p => p.fromTaskId === t.id && (p.status === "paid" || p.status === "success"))
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const projMes = allPays
-        .filter(p => p.fromTaskId === t.id && p.ym === period && (p.status === "pending" || p.status === "paid" || p.status === "success"))
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const pendMes = allPays
-        .filter(p => p.fromTaskId === t.id && p.ym === period && p.status === "pending")
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-
-      const pct = goal > 0 ? Math.min(100, Math.round((rec / goal) * 100)) : 0;
-
-      return {
-        id: t.id,
-        title,
-        kind: t.kind || (isMonthly ? "monthly" : "single"),
-        participation,
-        amount: amt,
-        months,
-        activePeople,
-        goal,
-        recaudado: rec,
-        proyeccionMes: projMes,
-        pendienteMes: pendMes,
-        pct,
-        optedOut: opted.size
-      };
-    }).filter(c => (c.goal > 0) || (c.proyeccionMes > 0) || (c.recaudado > 0));
-
+    // Métricas del mes (periodo publicado)
     const cobradoMes = collectedMonth(period);
     const gastadoMes = spentMonth(period);
     const porCobrarMes = pendingMonth(period);
-    const deudMes = deudoresMonth(period);
+    const deudoresMes = deudoresMonth(period);
 
-    const exMes = expenses().filter(e => String(e.date||"").startsWith(period)).slice(0, 25);
+    // Totales del curso (al momento de publicar)
+    const recaudadoCurso = collectedCourse();
+    const gastadoCurso = spentCourse();
+    const disponibleCurso = recaudadoCurso - gastadoCurso;
+    const pendienteCurso = pendingTotal();
+    const deudores = deudoresCount();
+
+    // Detalle por campañas (para PDF ejecutivo del snapshot)
+    const campaigns = list.map(t=>{
+      const kind = String(t.type||"single").toLowerCase()==="monthly" ? "monthly" : "single";
+      const participation = (t.mandatoryParticipation === false) ? "voluntary" : "mandatory";
+
+      const rec = collectedTask(t.id);
+      const gas = spentTask(t.id);
+      const sal = rec - gas;
+
+      // Pendiente del mes (si aplica)
+      let pendienteMes = 0;
+      if(kind==="monthly"){
+        // cuota del mes si el periodo cae dentro del rango
+        const startYM = ymFromISO(t.startDate||t.dueDate||"");
+        if(startYM){
+          const months = Math.max(1, Number(t.months||1));
+          // calcula índice relativo
+          const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
+          const cy = parseInt(period.slice(0,4),10), cm = parseInt(period.slice(5,7),10);
+          const idx = (cy - sy)*12 + (cm - sm) + 1;
+          if(idx>=1 && idx<=months){
+            // usa proyección del mes (ajustada por opted_out si existe)
+            const people = approvedCount();
+            let expected = Number(t.amount||0) * people;
+            if(t.mandatoryParticipation === false){
+              const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+              expected -= Math.min(opted, people) * Number(t.amount||0);
+            }
+            const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+            pendienteMes = Math.max(0, expected - paid);
+          }
+        }
+      }else{
+        const dueYM = ymFromISO(t.dueDate||"");
+        if(dueYM===period){
+          const people = approvedCount();
+          let expected = Number(t.amount||0) * people;
+          if(t.mandatoryParticipation === false){
+            const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+            expected -= Math.min(opted, people) * Number(t.amount||0);
+          }
+          const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+          pendienteMes = Math.max(0, expected - paid);
+        }
+      }
+
+      const objetivo = expectedTaskTotal(t);
+      const pct = objetivo>0 ? Math.max(0, Math.min(100, Math.round((rec/objetivo)*100))) : 0;
+
+      return {
+        id: t.id,
+        title: t.title || "Campaña",
+        kind,
+        participation,
+        amount: Number(t.amount||0),
+        months: Math.max(1, Number(t.months||1)),
+        objetivo,
+        recaudado: rec,
+        gastado: gas,
+        saldo: sal,
+        pendienteMes,
+        pct,
+        deudores: deudoresTask(t.id)
+      };
+    });
+
+    // Gastos del mes (para PDF snapshot)
+    const expensesMonth = exAll.filter(e=>String(e.date||"").startsWith(period)).slice(0, 40);
 
     const rep = {
-      version: 3,
+      version: 4,
+      id,
+      courseKey,
       period,
-      generatedAt: new Date().toLocaleString("es-CL"),
 
-      recaudado: collectedCourse(),
-      rendido: 0,
-      saldo: collectedCourse() - spentCourse(),
-      pendiente: pendingTotal(),
-      deudores: deudMes,
+      generatedAt: new Date().toISOString(),
+      generatedAtHuman: new Date().toLocaleString("es-CL"),
 
-      recaudadoCurso: collectedCourse(),
-      gastadoCurso: spentCourse(),
-      disponibleCurso: collectedCourse() - spentCourse(),
-      pendienteCurso: pendingTotal(),
+      // Totales del curso (corte)
+      recaudadoCurso,
+      gastadoCurso,
+      disponibleCurso,
+      pendienteCurso,
+      deudores,
 
+      // Métricas del mes publicado
       cobradoMes,
       gastadoMes,
       porCobrarMes,
-      deudoresMes: deudMes,
+      deudoresMes,
 
-      campaigns: campDetails,
-      expenses: exMes
+      campaigns,
+      expenses: expensesMonth
     };
 
-    const arr0 = readLS(KEY_MONTHLY_REPORTS, []);
-    // ID estable para evitar duplicados
-    rep.id = (rep.courseId||'course') + '::' + rep.period;
-    const arr = arr0.filter(x => !(x && (x.id === rep.id || ((x.courseId||'')===(rep.courseId||'') && x.period===rep.period))));
+    // Guardar sin duplicados (mismo id/period)
+    const arr0 = load(KEY_MONTHLY_REPORTS, []);
+    const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
-    writeLS(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
-    toast("Informe publicado (" + period + ")");
-    renderMonthlyReports();
-  }
+    save(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
 
+    clearDirty();
+    try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
+
+    // refrescar vista
+    renderInformes();
+  }
   // ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
   const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
