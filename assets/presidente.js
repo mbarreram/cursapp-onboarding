@@ -286,7 +286,242 @@ function dedupePaymentsAll(list){
     return dd.list;
   };
   const expenses = () => load(KEY_EXPENSES, []);
-  const reports = () => load(KEY_MONTHLY_REPORTS, []);
+  
+  // -------- Informe Apoderado (idéntico al rol apoderado) --------
+  window.openReportApoderado = function(period){
+    const reps = reports();
+    const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
+    if(!r) return;
+  
+    const currentYM = ()=>{
+      const d=new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    };
+    const pct = (a,b)=>{
+      const A=Number(a||0), B=Number(b||0);
+      if(B<=0) return 0;
+      return Math.max(0, Math.min(100, Math.round((A/B)*100)));
+    };
+  
+    
+    const isExcludedStatus = (p)=>{
+      const st = String(p?.status||"").toLowerCase();
+      return st==="opted_out" || st==="void" || st==="cancelled";
+    };
+  const ym = currentYM();
+    const tasksArr = tasks();
+    const pays = payments();
+  
+    // Totales del mes (proyección y cobrado) + deudores únicos
+    let cobradoMes=0, proyeccionMes=0;
+    const deudoresSet = new Set();
+  
+    (pays||[]).forEach(p=>{
+      if(!p) return;
+      if(isExcludedStatus(p)) return;
+  
+      const dueYM = String(p.dueDate||"").slice(0,7);
+      const perYM = String(p.period||"").slice(0,7);
+      const matchYM = (dueYM===ym) || (perYM===ym);
+      if(!matchYM) return;
+  
+      const amt = Number(p.amount || p.amountRemaining || 0);
+      proyeccionMes += amt;
+  
+      if(String(p.status||"")==="paid"){
+        cobradoMes += Number(p.amount||0);
+      }else{
+        const pid = String(p.payerProfileId || p.profileId || p.userId || "");
+        if(pid) deudoresSet.add(pid);
+      }
+    });
+  
+    const cursoPct = pct(cobradoMes, proyeccionMes);
+    const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
+    const semMsg = (cursoPct>=80)
+      ? "Vamos muy bien este mes"
+      : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
+  
+    // Agrupar pagos por campaña
+    const byTask = {};
+    (pays||[]).forEach(p=>{
+      const tid = String((p && p.fromTaskId) || "");
+      if(!tid) return;
+      if(isExcludedStatus(p)) return;
+      (byTask[tid] ||= []).push(p);
+    });
+  
+    const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
+  
+    const kpi = (icon, label, val)=>`
+      <div style="${cardStyle}">
+        <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
+        <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
+      </div>
+    `;
+  
+    const campRows = (tasksArr||[])
+      .filter(t=>t && !t.closed)
+      .map(t=>{
+        const tid = String(t.id);
+        const title = String(t.title || "Campaña");
+        const type = String(t.type || "single");
+        const months = Number(t.months || 1);
+        const amount = Number(t.amount || 0);
+        const meta = Number(t.goalTotal || 0);
+  
+        const ps = (byTask[tid] || []);
+  
+        const recaudado = ps
+          .filter(x=>String(x.status||"")==="paid")
+          .reduce((a,x)=>a+Number(x.amount||0),0);
+  
+        const pendienteMes = ps
+          .filter(x=>String(x.status||"")!=="paid")
+          .filter(x=>{
+            const dym = String(x.dueDate||"").slice(0,7);
+            const pym = String(x.period||"").slice(0,7);
+            return (dym===ym)||(pym===ym);
+          })
+          .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
+  
+        // Objetivo (total curso):
+        // - Si el usuario definió goalTotal/meta => lo respetamos como total de curso.
+        // - Si no, lo calculamos como (monto por apoderado) x (participantes) x (cuotas si mensual)
+        //   Esto evita el bug de ver 100% con 1 pago cuando hay 2 apoderados.
+        let objetivo;
+        if(meta>0){
+          objetivo = meta;
+        }else{
+          const base = (type==="monthly" ? (amount*months) : amount);
+          const mandatory = (t.mandatoryParticipation !== undefined) ? !!t.mandatoryParticipation : true;
+          let n = 0;
+  
+          if(!mandatory){
+            // voluntaria: contamos participantes reales (excluye opted_out)
+            const s = new Set();
+            for(const x of ps){
+              if(!x) continue;
+              if(isExcludedStatus(x)) continue;
+              const k = String(x.apoderadoKey||x.apoderadoEmail||x.payerProfileId||x.profileId||x.userId||x.email||"").toLowerCase().trim();
+              if(k) s.add(k);
+            }
+            n = s.size;
+          }
+          if(!n){
+            // fallback: apoderados del curso (evita 0 / y cubre obligatorias)
+            n = (typeof approvedCount==='function' ? approvedCount() : 0);
+          }
+          if(!n) n = 1;
+          objetivo = base * n;
+        }
+        const p = pct(recaudado, objetivo);
+  
+        return `
+          <div style="${cardStyle}">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+              <div style="font-weight:950;">${esc(title)}</div>
+              <div style="font-weight:950;">${p}%</div>
+            </div>
+  
+            <div style="margin-top:8px;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;">
+              <div style="height:100%;width:${p}%;background:#4f46e5;border-radius:999px;"></div>
+            </div>
+  
+            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
+              <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
+              <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+              <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+  
+    openModal(`
+      <div style="max-width:900px;margin:auto;">
+        <div style="
+          background:#ffffff;
+          border-radius:22px;
+          border:1px solid rgba(0,0,0,.10);
+          box-shadow:0 20px 60px rgba(0,0,0,.25);
+          padding:0;
+          overflow:hidden;
+        ">
+  
+          <div style="
+            position:sticky;
+            top:0;
+            z-index:20;
+            background:#ffffff;
+            padding:12px 16px;
+            border-bottom:1px solid rgba(0,0,0,.08);
+          ">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+              <div>
+                <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
+                <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
+                  Resumen de cómo va el curso (montos globales, no personales)
+                </div>
+              </div>
+              <button onclick="closeModal()"
+                style="
+                  border:1px solid rgba(0,0,0,.12);
+                  background:#fff;
+                  border-radius:999px;
+                  padding:8px 14px;
+                  font-weight:800;
+                  cursor:pointer;
+                  flex:0 0 auto;
+                ">
+                Cerrar
+              </button>
+            </div>
+          </div>
+  
+          <div style="padding:16px;">
+  
+            <div style="margin-top:2px;${cardStyle}background:#f8fafc;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div>
+                  <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
+                  <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+                </div>
+                <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
+              </div>
+  
+              <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
+              </div>
+  
+              <div style="margin-top:8px;font-size:13px;opacity:.9;">
+                💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
+              </div>
+            </div>
+  
+            <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
+              ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
+              ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
+              ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
+            </div>
+  
+            <div style="margin-top:16px;">
+              <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+              <div style="display:grid;gap:10px;">
+                ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+              </div>
+            </div>
+  
+            <div class="muted" style="margin-top:14px;font-size:12px;">
+              Emitido: ${esc(r.generatedAt||"")}
+            </div>
+  
+          </div>
+        </div>
+      </div>
+    `);
+  };
+const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
@@ -1746,15 +1981,14 @@ function viewExpenseAttachment(expenseId){
           </div>
         </div>
 
-        ${toggleHTML}
-        <div id="informeRoot">${reportView==='apoderados' ? informeApoderadosHTML() : informeDirectivaHTML()}</div>
+        <div id="informeRoot">${informeDirectivaHTML()}</div>
       </div>
 
       <div class="card" style="margin-top:14px;">
         <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
           <div style="min-width:220px;flex:1;">
             <div class="kTitle">Informes mensuales publicados</div>
-            <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
+            <div class="muted" style="margin-top:6px;">Últimos informes publicados (cortes oficiales).</div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
@@ -1770,14 +2004,9 @@ function viewExpenseAttachment(expenseId){
                     <b>${esc(r.period)}</b>
                     <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
-                  <button class="btnx" onclick="printSnapshot('${esc(r.id||r.period||"")}', '${esc(r.period||"")}')">PDF</button>
+                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">Ver</button>
                 </div>
-
-                <div class="muted" style="margin-top:8px;line-height:1.45;">
-                  Recaudado ${clp(r.recaudadoCurso||0)} · Rendido ${clp(r.gastadoCurso||0)} · Saldo ${clp(r.disponibleCurso||0)}
-                  · Pendiente ${clp(r.pendienteCurso||0)} · Deudores ${Number(r.deudores||0)}
-                </div>
-              </div>
+</div>
             `).join("")
             : `<div class="muted">Sin informes publicados.</div>`
           }
@@ -1879,34 +2108,6 @@ window.printExecutive = function(){
 
   // PDF de informes publicados: reutiliza el mismo layout del "Informe Ejecutivo del Curso"
   // para que no existan diferencias entre el PDF y lo que se ve arriba.
-  window.printSnapshot = function(idOrPeriod, period){
-    const reps = reports();
-    const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
-    if(!r){ alert("No se encontró el informe."); return; }
-
-    // ✅ Opción A: el PDF de un informe publicado SIEMPRE usa el snapshot ejecutivo (corte),
-    // para que lo publicado no cambie con el estado actual.
-    let html = "";
-    try{
-      if(typeof buildSnapshotExecutivePrintHTML === "function"){
-        html = buildSnapshotExecutivePrintHTML(r);
-      }else if(typeof buildSnapshotPrintHTML === "function"){
-        html = buildSnapshotPrintHTML(r);
-      }else{
-        // último recurso: ejecutivo vivo del periodo
-        const p = r.period || period || currentYM();
-        html = buildExecutivePrintHTML(p);
-      }
-    }catch(e){
-      try{
-        const p = r.period || period || currentYM();
-        html = buildExecutivePrintHTML(p);
-      }catch(_e2){
-        html = buildPrintShell('<div class="card"><b>No se pudo generar el PDF.</b></div>');
-      }
-    }
-    openPrintWindow(html);
-  };
   function openPrintWindow(html){
     // Reutiliza la misma ventana para evitar PDFs duplicados
     const w = window.open("", "cursapp_print");
@@ -2462,7 +2663,7 @@ window.deleteCampaign = function(taskId){
     const arr0 = load(KEY_MONTHLY_REPORTS, []);
     const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
-    save(KEY_MONTHLY_REPORTS, arr.slice(0, 24));
+    save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
 
     clearDirty();
     try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
