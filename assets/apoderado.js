@@ -1096,6 +1096,15 @@ function dueBadge(iso){
   const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
   if(!r) return;
 
+  const pPrev = (function(prev){
+    const m = String(prev||"").match(/^(\d{4})-(\d{2})$/);
+    if(!m) return "";
+    let y = parseInt(m[1],10), mm = parseInt(m[2],10)-1;
+    if(mm<=0){ mm=12; y-=1; }
+    return String(y)+"-"+String(mm).padStart(2,"0");
+  })(String(period||""));
+  const prev = pPrev ? reps.find(x=>String(x.period||"")===pPrev) : null;
+
   const currentYM = ()=>{
     const d=new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
@@ -1111,7 +1120,7 @@ function dueBadge(iso){
     const st = String(p?.status||"").toLowerCase();
     return st==="opted_out" || st==="void" || st==="cancelled";
   };
-const ym = currentYM();
+const ym = (String(period||"").match(/^\d{4}-\d{2}$/) ? String(period) : currentYM());
   const tasks = load(KEY_TASKS, []);
   const pays = load(KEY_PAYMENTS, []);
 
