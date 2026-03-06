@@ -809,7 +809,7 @@ function cuotasPendientesTask(id){
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);max-height:85vh;overflow:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px;padding:0;">
+        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
           ${html}
         </div>
       </div>
@@ -2025,7 +2025,7 @@ function viewExpenseAttachment(expenseId){
             <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx" onclick="printExecutive()">📊 Descargar PDF directiva</button>
+            <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
             
           </div>
         </div>
@@ -2053,9 +2053,9 @@ function viewExpenseAttachment(expenseId){
                     <b>${esc(r.period)}</b>
                     <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
-                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">👁 Informe apoderados</button>
+                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">Ver</button>
                 </div>
-              </div>
+</div>
             `).join("")
             : `<div class="muted">Sin informes publicados.</div>`
           }
@@ -2169,147 +2169,644 @@ window.printExecutive = function(){
     setTimeout(()=>{ try{ w.print(); }catch(e){} }, 350);
   }
   function buildExecutivePrintHTML(ym){
+    const recMes = collectedMonth(ym);
+    const gasMes = spentMonth(ym);
+    const porCobrarMes = pendingMonth(ym);
+    const deudMes = deudoresMonth(ym);
 
-  const recMes = collectedMonth(ym);
-  const gasMes = spentMonth(ym);
-  const porCobrarMes = pendingMonth(ym);
-  const deudMes = deudoresMonth(ym);
+    const recTotal = collectedCourse();
+    const gasTotal = spentCourse();
+    const saldo = recTotal - gasTotal;
 
-  const recTotal = collectedCourse();
-  const gasTotal = spentCourse();
-  const saldo = recTotal - gasTotal;
+    const cumplimientoBase = recMes + porCobrarMes;
+    const cumplimientoPct = cumplimientoBase > 0 ? Math.round((recMes / cumplimientoBase) * 100) : 0;
 
-  const cumplimientoBase = recMes + porCobrarMes;
-  const cumplimientoPct = cumplimientoBase > 0 ? Math.round((recMes / cumplimientoBase) * 100) : 0;
+    const health = (() => {
+      if (saldo > 0 && cumplimientoPct >= 70) return { label: "🟢 Salud financiera: Buena", cls: "good" };
+      if (saldo >= 0 && cumplimientoPct >= 40) return { label: "🟡 Salud financiera: Atención", cls: "warn" };
+      return { label: "🔴 Salud financiera: Riesgo", cls: "risk" };
+    })();
 
-  const health = (() => {
-    if (saldo > 0 && cumplimientoPct >= 70) return { label: "🟢 Salud financiera: Buena", cls: "good" };
-    if (saldo >= 0 && cumplimientoPct >= 40) return { label: "🟡 Salud financiera: Atención", cls: "warn" };
-    return { label: "🔴 Salud financiera: Riesgo", cls: "risk" };
-  })();
+    const campRows = tasks()
+      .filter(t=>t)
+      .map(t=>{
+        const rec = collectedTask(t.id);
+        const gas = spentTask(t.id);
+        const sal = rec - gas;
+        const pend = pendingTaskEstimated(t);
+        const meta = Number(t.goalTotal || 0);
+        const tipo = String(t.type || "") === "monthly" ? "Mensual" : "Único";
+        const part = t.mandatoryParticipation === false ? "Voluntaria" : "Obligatoria";
+        return `
+          <tr>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">
+              <div style="font-weight:900;">${esc(t.title || "")}</div>
+              <div class="small">${tipo} · ${part}</div>
+            </td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(rec)}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(gas)}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:900;">${clp(sal)}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(pend)}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${meta ? clp(meta) : "—"}</td>
+          </tr>
+        `;
+      }).join("");
 
-  const campRows = tasks().map(t=>{
-    const rec = collectedTask(t.id);
-    const gas = spentTask(t.id);
-    const pend = pendingTaskEstimated(t);
-    const meta = Number(t.goalTotal || 0);
+    const gastos = expenses()
+      .slice()
+      .sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")))
+      .slice(0, 10)
+      .map(g=>{
+        const ambito = g.scope === "campaign"
+          ? (tasks().find(t => t.id === g.campaignId)?.title || "Campaña")
+          : "Curso";
+        return `
+          <tr>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">${esc(g.date || "")}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">${esc(ambito)}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">${esc(g.title || "")}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(g.amount || 0)}</td>
+          </tr>
+        `;
+      }).join("");
+
+    const saldoInicial = 0;
+    const saldoFinal = saldoInicial + recMes - gasMes;
 
     return `
-      <tr>
-        <td>${esc(t.title||"")}</td>
-        <td style="text-align:right">${clp(rec)}</td>
-        <td style="text-align:right">${clp(gas)}</td>
-        <td style="text-align:right">${clp(rec-gas)}</td>
-        <td style="text-align:right">${clp(pend)}</td>
-        <td style="text-align:right">${meta?clp(meta):"—"}</td>
-      </tr>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Informe Directiva ${esc(ym)}</title>
+          <style>
+            body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:24px;color:#0f172a;background:#fff;}
+            .page{max-width:980px;margin:0 auto;}
+            h1{margin:0;font-size:24px;} h2{margin:0 0 10px 0;font-size:18px;}
+            .sub{color:#64748b;margin-top:6px;}
+            .badge{display:inline-flex;align-items:center;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #d1d5db;background:#f8fafc;}
+            .badge.good{background:#ecfdf5;border-color:#bbf7d0;} .badge.warn{background:#fffbeb;border-color:#fde68a;} .badge.risk{background:#fef2f2;border-color:#fecaca;}
+            .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px;}
+            .card{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;}
+            .label{font-size:12px;color:#6b7280;} .value{font-size:28px;font-weight:900;margin-top:6px;}
+            .section{margin-top:18px;} .small{font-size:12px;color:#64748b;margin-top:2px;}
+            .rowline{display:flex;justify-content:space-between;gap:12px;padding:6px 0;}
+            table{width:100%;border-collapse:collapse;margin-top:10px;} th{text-align:left;color:#64748b;padding:10px 8px;border-bottom:1px solid #cbd5e1;font-size:13px;} td{font-size:13px;}
+            @media print{body{margin:0;}.page{max-width:none;}}
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+              <div>
+                <h1>Informe Ejecutivo del Curso</h1>
+                <div class="sub">Periodo: <b>${esc(ym)}</b> · Emitido: ${esc(new Date().toLocaleString("es-CL"))}</div>
+              </div>
+              <div class="badge ${health.cls}">${health.label}</div>
+            </div>
+
+            <div class="grid">
+              <div class="card"><div class="label">Cobrado este mes</div><div class="value">${clp(recMes)}</div></div>
+              <div class="card"><div class="label">Por cobrar este mes</div><div class="value">${clp(porCobrarMes)}</div><div class="small">Deudores del mes: <b>${Number(deudMes || 0)}</b></div></div>
+              <div class="card"><div class="label">Cobrado total</div><div class="value">${clp(recTotal)}</div></div>
+              <div class="card"><div class="label">Gastado total</div><div class="value">${clp(gasTotal)}</div></div>
+              <div class="card"><div class="label">Saldo disponible</div><div class="value">${clp(saldo)}</div></div>
+              <div class="card"><div class="label">Cumplimiento del mes</div><div class="value">${Math.max(0, Math.min(100, cumplimientoPct))}%</div></div>
+            </div>
+
+            <div class="section card">
+              <h2>Cuadratura del periodo</h2>
+              <div class="rowline"><span>Saldo inicial</span><b>${clp(saldoInicial)}</b></div>
+              <div class="rowline"><span>+ Ingresos del mes</span><b>${clp(recMes)}</b></div>
+              <div class="rowline"><span>- Gastos del mes</span><b>${clp(gasMes)}</b></div>
+              <div class="rowline" style="margin-top:6px;padding-top:10px;border-top:1px dashed #cbd5e1;"><span><b>Saldo final</b></span><b>${clp(saldoFinal)}</b></div>
+            </div>
+
+            <div class="section card">
+              <h2>Campañas</h2>
+              <table>
+                <thead>
+                  <tr><th>Campaña</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th><th style="text-align:right;">Pendiente</th><th style="text-align:right;">Meta</th></tr>
+                </thead>
+                <tbody>${campRows || `<tr><td colspan="6" style="padding:12px 8px;" class="small">Sin campañas registradas.</td></tr>`}</tbody>
+              </table>
+            </div>
+
+            <div class="section card">
+              <h2>Gastos recientes</h2>
+              <table>
+                <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+                <tbody>${gastos || `<tr><td colspan="4" style="padding:12px 8px;" class="small">Sin gastos registrados.</td></tr>`}</tbody>
+              </table>
+            </div>
+
+            <div class="sub" style="margin-top:18px;">Generado por Cursapp</div>
+          </div>
+        </body>
+      </html>
     `;
-  }).join("");
+  }
 
-  const gastos = expenses().slice(0,10).map(g=>`
-    <tr>
-      <td>${esc(g.date||"")}</td>
-      <td>${esc(g.title||"")}</td>
-      <td style="text-align:right">${clp(g.amount||0)}</td>
-    </tr>
-  `).join("");
+  
+function buildSnapshotExecutivePrintHTML(rep){
+    const ym = rep.period || "";
+    const recTotal = Number((rep.recaudadoCurso ?? rep.recaudado) || 0);
+    const gasTotal = Number(rep.gastadoCurso || 0);
+    const saldo = Number((rep.disponibleCurso ?? (recTotal - gasTotal)) || 0);
+    const pendTotal = Number((rep.pendienteCurso ?? rep.pendiente) || 0);
 
-  return `
-  <html>
-  <head>
-  <meta charset="utf-8">
-  <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;margin:28px;color:#0f172a}
-  h1{margin-bottom:4px}
-  .sub{color:#64748b;margin-bottom:20px}
-  .badge{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
-  .good{background:#ecfdf5;border:1px solid #bbf7d0}
-  .warn{background:#fffbeb;border:1px solid #fde68a}
-  .risk{background:#fef2f2;border:1px solid #fecaca}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-  .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-  .label{font-size:12px;color:#6b7280}
-  .value{font-size:22px;font-weight:700;margin-top:4px}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px}
-  th{text-align:left;color:#64748b}
-  </style>
-  </head>
+    const recMes = Number(rep.cobradoMes || 0);
+    const gasMes = Number(rep.gastadoMes || 0);
+    const porCobrarMes = Number(rep.porCobrarMes || 0);
+    const deudMes = Number((rep.deudoresMes ?? rep.deudores) || 0);
 
-  <body>
+    const ex = Array.isArray(rep.expenses) ? rep.expenses : [];
+    const camps = Array.isArray(rep.campaigns) ? rep.campaigns : [];
 
-  <h1>Informe Ejecutivo del Curso</h1>
-  <div class="sub">Periodo ${ym}</div>
+    const rowsEx = ex.length ? ex.map(e=>{
+      const scope = (e.scope==="campaign") ? (camps.find(c=>c.id===e.campaignId)?.title || "Campaña") : "Curso";
+      return `<tr>
+        <td>${esc(e.date||"")}</td>
+        <td>${esc(scope)}</td>
+        <td>${esc(e.title||"")}</td>
+        <td style="text-align:right;">${clp(e.amount||0)}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin rendiciones</td></tr>`;
 
-  <div class="badge ${health.cls}">${health.label}</div>
+    const rowsCamp = camps.length ? camps.map(c=>{
+      const sal = (Number(c.recaudado||0) - Number(c.gastado||0));
+      return `<tr>
+        <td>
+          <div style="font-weight:800;">${esc(c.title||"")}</div>
+          <div style="opacity:.75;font-size:12px;">${(c.kind==="monthly"?"Mensual":"Único")} · ${(c.participation==="mandatory"?"Obligatoria":"Voluntaria")}</div>
+        </td>
+        <td style="text-align:right;">${clp(c.recaudado||0)}</td>
+        <td style="text-align:right;">${clp(c.gastado||0)}</td>
+        <td style="text-align:right;font-weight:900;">${clp(sal)}</td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin campañas activas</td></tr>`;
 
-  <div class="grid">
+    const css = `
+      body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; padding:18px; color:#0f172a;}
+      h1{margin:0 0 6px 0; font-size:22px;}
+      .muted{color:#64748b;}
+      .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;}
+      .card{border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:12px;}
+      .label{font-size:12px; color:#6b7280;}
+      .val{font-size:22px; font-weight:900; margin-top:6px;}
+      table{width:100%; border-collapse:collapse; margin-top:10px;}
+      th,td{padding:10px; border-bottom:1px solid rgba(0,0,0,.08); font-size:13px; text-align:left;}
+      th{color:#6b7280; font-weight:800;}
+    `;
 
-  <div class="card">
-  <div class="label">Cobrado este mes</div>
-  <div class="value">${clp(recMes)}</div>
-  </div>
+    return `
+      <html>
+      <head><meta charset="utf-8"><style>${css}</style></head>
+      <body>
+        <h1>Informe Ejecutivo del Curso • ${esc(ym)}</h1>
+        <div class="muted">Emitido: ${esc(rep.generatedAtHuman||rep.generatedAt||"")}</div>
 
-  <div class="card">
-  <div class="label">Por cobrar este mes</div>
-  <div class="value">${clp(porCobrarMes)}</div>
-  <div style="font-size:12px">Deudores: ${deudMes}</div>
-  </div>
+        <div class="grid">
+          <div class="card"><div class="label">Cobrado este mes</div><div class="val">${clp(recMes)}</div></div>
+          <div class="card"><div class="label">Por cobrar este mes</div><div class="val">${clp(porCobrarMes)}</div><div class="muted" style="margin-top:6px;">Deudores (mes): ${esc(deudMes)}</div></div>
+          <div class="card"><div class="label">Gastado este mes</div><div class="val">${clp(gasMes)}</div></div>
+          <div class="card"><div class="label">Saldo disponible</div><div class="val">${clp(saldo)}</div></div>
+          <div class="card"><div class="label">Cobrado total</div><div class="val">${clp(recTotal)}</div></div>
+          <div class="card"><div class="label">Gastado total</div><div class="val">${clp(gasTotal)}</div></div>
+          <div class="card"><div class="label">Pendiente total</div><div class="val">${clp(pendTotal)}</div></div>
+          <div class="card"><div class="label">Generado por</div><div class="val" style="font-size:18px;">Cursapp</div></div>
+        </div>
 
-  <div class="card">
-  <div class="label">Cobrado total</div>
-  <div class="value">${clp(recTotal)}</div>
-  </div>
+        <h2 style="margin-top:22px;font-size:16px;">Campañas activas (cuadratura)</h2>
+        <table>
+          <thead><tr><th>Campaña</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th></tr></thead>
+          <tbody>${rowsCamp}</tbody>
+        </table>
 
-  <div class="card">
-  <div class="label">Saldo disponible</div>
-  <div class="value">${clp(saldo)}</div>
-  </div>
+        <h2 style="margin-top:22px;font-size:16px;">Gastos recientes</h2>
+        <table>
+          <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+          <tbody>${rowsEx}</tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  }
 
-  </div>
+function buildSnapshotPrintHTML(r){
+    // Snapshot PDF (publicado): más completo y consistente con Directiva.
+    const esc = (s)=>String(s??"").replace(/[&<>'"]/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
+    const clp = (n)=>"$"+Number(n||0).toLocaleString("es-CL");
 
-  <h2>Campañas</h2>
+    const period = r.period || "";
+    const genAt = r.generatedAt || "";
 
-  <table>
-  <thead>
-  <tr>
-  <th>Campaña</th>
-  <th>Recaudado</th>
-  <th>Gastado</th>
-  <th>Saldo</th>
-  <th>Pendiente</th>
-  <th>Meta</th>
-  </tr>
-  </thead>
+    // Totales
+    const recTotal = Number(r.recaudadoCurso||0);
+    const gasTotal = Number(r.gastadoCurso||0);
+    const salTotal = Number(r.disponibleCurso||0);
+    const penTotal = Number(r.pendienteCurso||0);
+    const deuTotal = Number(r.deudores||0);
 
-  <tbody>
-  ${campRows || `<tr><td colspan="6">Sin campañas</td></tr>`}
-  </tbody>
-  </table>
+    // Si el snapshot trae métricas del mes, las mostramos (si no, se ocultan)
+    const cobMes = Number(r.cobradoMes ?? r.recaudadoMes ?? 0);
+    const proyMes = Number(r.proyeccionMes ?? r.porCobrarMesTarget ?? 0);
+    const porCobMes = Number(r.porCobrarMes ?? (proyMes ? (proyMes - cobMes) : 0));
+    const deuMes = Number(r.deudoresMes ?? r.deudoresMonth ?? 0);
 
-  <h2>Gastos recientes</h2>
+    // Campañas (si el snapshot las guarda)
+    const camps = Array.isArray(r.campaigns) ? r.campaigns : (Array.isArray(r.byCampaign) ? r.byCampaign : []);
+    const campRows = camps.length ? camps.map(c=>{
+      const title = esc(c.title||c.name||"Campaña");
+      const pct = Math.max(0, Math.min(100, Number(c.pct ?? c.progress ?? 0)));
+      const rec = Number(c.recaudado ?? c.collected ?? 0);
+      const pen = Number(c.pendienteMes ?? c.pendingMonth ?? c.pendiente ?? 0);
+      const goal = Number(c.objetivo ?? c.goal ?? c.target ?? 0);
+      return `
+        <div class="camp">
+          <div class="row">
+            <div class="ct">${title}</div>
+            <div class="pct">${pct}%</div>
+          </div>
+          <div class="bar"><div class="fill" style="width:${pct}%;"></div></div>
+          <div class="meta">Recaudado: <b>${clp(rec)}</b> · Pendiente mes: <b>${clp(pen)}</b> · Objetivo: <b>${clp(goal)}</b></div>
+        </div>
+      `;
+    }).join("") : `<div class="muted" style="margin-top:8px;">Sin detalle por campaña en este snapshot.</div>`;
 
-  <table>
-  <thead>
-  <tr>
-  <th>Fecha</th>
-  <th>Concepto</th>
-  <th>Monto</th>
-  </tr>
-  </thead>
+    const showMonth = !!(r.cobradoMes || r.recaudadoMes || r.proyeccionMes || r.porCobrarMes || r.deudoresMes);
 
-  <tbody>
-  ${gastos || `<tr><td colspan="3">Sin gastos registrados</td></tr>`}
-  </tbody>
-  </table>
+    return `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Informe del Curso ${esc(period)}</title>
+          <style>
+            body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; margin:24px; color:#0f172a;}
+            h1{font-size:20px; margin:0;}
+            .sub{color:#475569; margin-top:6px;}
+            .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px;}
+            .k{border:1px solid #e2e8f0; border-radius:14px; padding:12px;}
+            .k .t{color:#64748b; font-size:12px;}
+            .k .v{font-weight:900; font-size:18px; margin-top:6px;}
+            .section{margin-top:18px;}
+            .st{font-weight:950; font-size:15px; margin-bottom:10px;}
+            .muted{color:#64748b;}
+            .camp{border:1px solid #e2e8f0; border-radius:14px; padding:12px; margin-top:10px;}
+            .row{display:flex; justify-content:space-between; gap:10px; align-items:flex-start;}
+            .ct{font-weight:900;}
+            .pct{font-weight:950;}
+            .bar{margin-top:10px; height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden;}
+            .fill{height:100%; background:#1d4ed8; border-radius:999px;}
+            .meta{margin-top:8px; font-size:12px; color:#334155;}
+            @media (max-width:520px){ .grid{grid-template-columns:1fr;} }
+          </style>
+        </head>
+        <body>
+          <h1>Informe del Curso · ${esc(period)}</h1>
+          <div class="sub">Emitido: ${esc(genAt || new Date().toLocaleString("es-CL"))}</div>
 
-  <div style="margin-top:20px;color:#64748b">
-  Generado por Cursapp
-  </div>
+          ${showMonth ? `
+          <div class="section">
+            <div class="st">Mes publicado</div>
+            <div class="grid">
+              <div class="k"><div class="t">Cobrado mes</div><div class="v">${clp(cobMes)}</div></div>
+              <div class="k"><div class="t">Proyección mes</div><div class="v">${clp(proyMes)}</div></div>
+              <div class="k"><div class="t">Por cobrar mes</div><div class="v">${clp(porCobMes)}</div></div>
+              <div class="k"><div class="t">Deudores mes</div><div class="v">${Number(deuMes||0)}</div></div>
+            </div>
+          </div>` : ``}
 
-  </body>
-  </html>
-  `;
+          <div class="section">
+            <div class="st">Totales del curso</div>
+            <div class="grid">
+              <div class="k"><div class="t">Recaudado total</div><div class="v">${clp(recTotal)}</div></div>
+              <div class="k"><div class="t">Gastado total</div><div class="v">${clp(gasTotal)}</div></div>
+              <div class="k"><div class="t">Saldo disponible</div><div class="v">${clp(salTotal)}</div></div>
+              <div class="k"><div class="t">Pendiente total</div><div class="v">${clp(penTotal)}</div></div>
+              <div class="k"><div class="t">Deudores</div><div class="v">${Number(deuTotal)}</div></div>
+            </div>
+            <div class="muted" style="margin-top:8px;font-size:12px;">*Este PDF es un snapshot (corte) del periodo publicado.</div>
+          </div>
+
+          <div class="section">
+            <div class="st">Indicadores por campaña</div>
+            ${campRows}
+          </div>
+
+          <div class="muted" style="margin-top:18px;">Generado por Cursapp</div>
+        </body>
+      </html>
+    `;
+  }
+
+
+  // ----- Campaign actions (delegated to campaigns.js) -----
+  window.openCreateCampaign = function () { Campaigns.openCreate(); };
+  window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
+  window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
+
+  // Mantener ELIMINAR campaña (activa) en Presidente
+  
+  // ✅ Publicar cobros (canónico): evita generar pagos "globales" que luego duplican montos.
+  // Algunos handlers antiguos llamaban a window.publishCobros, por eso lo mantenemos como puente.
+  window.publishCobros = function(taskId){
+    if(typeof window.publishCobrosForTask === "function"){
+      return window.publishCobrosForTask(taskId);
+    }
+    alert("No se pudo publicar (función no disponible).");
+  };
+window.deleteCampaign = function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
+
+    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
+      `Regla: pagos pagados pasan a saldo a favor.\n` +
+      `Los pendientes se eliminan del ciclo de cobro.\n\n` +
+      `Esto marcará “requiere nuevo informe”.`;
+
+    if(!confirm(msg)) return;
+
+    // eliminar campaña
+    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
+
+    // eliminar rendiciones asociadas
+    save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
+
+    // pagos: paid -> credit, pending-like -> remove
+    const ps = payments()
+      .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
+      .map(p=>{
+        if(p.fromTaskId===taskId && isPaid(p)){
+          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
+
+  // ----- Publicar cobros (genera pagos por apoderado aprobado) -----
+  function endOfMonthISO(ym){
+    const d = endOfMonthDate(ym);
+    if(!d) return "";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function addMonthsYM(ym, add){
+    const y = parseInt(ym.slice(0,4),10);
+    const m = parseInt(ym.slice(5,7),10);
+    const base = (y*12 + (m-1)) + add;
+    const ny = Math.floor(base/12);
+    const nm = (base%12)+1;
+    return `${ny}-${String(nm).padStart(2,'0')}`;
+  }
+
+  function paymentsForTask(taskId){
+    return payments().filter(p=>p.fromTaskId===taskId);
+  }
+
+  function publishCobrosForTask(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+    const people = approvedApoderados();
+    if(!people.length){
+      alert('No hay apoderados aprobados para generar cobros.');
+      return;
+    }
+    const existing = paymentsForTask(taskId);
+    const byKey = new Set(existing.map(p=>`${p.apoderadoEmail||p.email||''}||${p.period||ymFromISO(p.dueDate)||''}||${p.installmentIndex||''}`));
+    const out = payments().slice();
+    const type = String(t.type||'single').toLowerCase();
+    if(type==='monthly'){
+      const startYM = ymFromISO(t.startDate||t.dueDate||currentYYYYMM());
+      const months = Math.max(1, Number(t.months||1));
+      for(let i=0;i<months;i++){
+        const period = addMonthsYM(startYM, i);
+        const dueDate = endOfMonthISO(period);
+        const idx = i+1;
+        people.forEach(e=>{
+          const email = e.email || '';
+          const key = `${email}||${period}||${idx}`;
+          if(byKey.has(key)) return;
+          out.unshift({
+            id: uid('pay'),
+            fromTaskId: t.id,
+            concept: `${t.title} · Cuota ${idx}/${months}`,
+            amount: Number(t.amount||0),
+            status: 'pending',
+            dueDate,
+            period,
+            installmentIndex: idx,
+            apoderadoEmail: email,
+            apoderadoName: e.apoderadoName||'',
+            alumno: e.alumno||'',
+            createdAt: new Date().toISOString()
+          });
+          byKey.add(key);
+        });
+      }
+    } else {
+      const period = ymFromISO(t.dueDate||t.startDate||currentYYYYMM());
+      const dueDate = t.dueDate||endOfMonthISO(period);
+      people.forEach(e=>{
+        const email = e.email || '';
+        const key = `${email}||${period}||1`;
+        if(byKey.has(key)) return;
+        out.unshift({
+          id: uid('pay'),
+          fromTaskId: t.id,
+          concept: t.title,
+          amount: Number(t.amount||0),
+          status: 'pending',
+          dueDate,
+          period,
+          installmentIndex: 1,
+          apoderadoEmail: email,
+          apoderadoName: e.apoderadoName||'',
+          alumno: e.alumno||'',
+          createdAt: new Date().toISOString()
+        });
+        byKey.add(key);
+      });
+    }
+    save(KEY_PAYMENTS, out);
+    markDirty();
+    alert('Cobros publicados ✅');
+    go('campanas');
+  }
+
+  window.publishCobrosForTask = publishCobrosForTask;
+  window.publishCobros = publishCobrosForTask;
+
+        }
+        return p;
+      });
+    save(KEY_PAYMENTS, ps);
+
+    markDirty();
+    alert("Campaña eliminada ✅ (saldo a favor generado si aplica)");
+    go("campanas");
+  };
+
+  // ----- Publish report (monthly) -----
+  window.confirmGenerateReport = function(){
+    if(!confirm("¿Publicar informe mensual del curso?")) return;
+    publishMonthly();
+  };
+
+  function publishMonthly(period){
+    period = period || currentYM();
+    if(!/^\d{4}-\d{2}$/.test(period)){
+      alert("Formato inválido. Usa YYYY-MM");
+      return;
+    }
+
+    // ✅ Snapshot: corte oficial (no cambia después)
+    const s0 = readSession && readSession();
+    const courseKey = activeCourseKey() || String(s0?.courseKey||"").trim() || "course";
+    const id = `${courseKey}::${period}`;
+
+    const list = normalizeTasks(tasks());
+    const exAll = expenses();
+    const paysAll = payments();
+
+    // Métricas del mes (periodo publicado)
+    const cobradoMes = collectedMonth(period);
+    const gastadoMes = spentMonth(period);
+    const porCobrarMes = pendingMonth(period);
+    const deudoresMes = deudoresMonth(period);
+
+    // Totales del curso (al momento de publicar)
+    const recaudadoCurso = collectedCourse();
+    const gastadoCurso = spentCourse();
+    const disponibleCurso = recaudadoCurso - gastadoCurso;
+    const pendienteCurso = pendingTotal();
+    const deudores = deudoresCount();
+
+    // Detalle por campañas (para PDF ejecutivo del snapshot)
+    const campaigns = list.map(t=>{
+      const kind = String(t.type||"single").toLowerCase()==="monthly" ? "monthly" : "single";
+      const participation = (t.mandatoryParticipation === false) ? "voluntary" : "mandatory";
+
+      const rec = collectedTask(t.id);
+      const gas = spentTask(t.id);
+      const sal = rec - gas;
+
+      // Pendiente del mes (si aplica)
+      let pendienteMes = 0;
+      if(kind==="monthly"){
+        // cuota del mes si el periodo cae dentro del rango
+        const startYM = ymFromISO(t.startDate||t.dueDate||"");
+        if(startYM){
+          const months = Math.max(1, Number(t.months||1));
+          // calcula índice relativo
+          const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
+          const cy = parseInt(period.slice(0,4),10), cm = parseInt(period.slice(5,7),10);
+          const idx = (cy - sy)*12 + (cm - sm) + 1;
+          if(idx>=1 && idx<=months){
+            // usa proyección del mes (ajustada por opted_out si existe)
+            const people = approvedCount();
+            let expected = Number(t.amount||0) * people;
+            if(t.mandatoryParticipation === false){
+              const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+              expected -= Math.min(opted, people) * Number(t.amount||0);
+            }
+            const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+            pendienteMes = Math.max(0, expected - paid);
+          }
+        }
+      }else{
+        const dueYM = ymFromISO(t.dueDate||"");
+        if(dueYM===period){
+          const people = approvedCount();
+          let expected = Number(t.amount||0) * people;
+          if(t.mandatoryParticipation === false){
+            const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+            expected -= Math.min(opted, people) * Number(t.amount||0);
+          }
+          const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
+          pendienteMes = Math.max(0, expected - paid);
+        }
+      }
+
+      const objetivo = expectedTaskTotal(t);
+      const pct = objetivo>0 ? Math.max(0, Math.min(100, Math.round((rec/objetivo)*100))) : 0;
+
+      return {
+        id: t.id,
+        title: t.title || "Campaña",
+        kind,
+        participation,
+        amount: Number(t.amount||0),
+        months: Math.max(1, Number(t.months||1)),
+        objetivo,
+        recaudado: rec,
+        gastado: gas,
+        saldo: sal,
+        pendienteMes,
+        pct,
+        deudores: deudoresTask(t.id)
+      };
+    });
+
+    // Gastos del mes (para PDF snapshot)
+    const expensesMonth = exAll.filter(e=>String(e.date||"").startsWith(period)).slice(0, 40);
+
+    const rep = {
+      version: 4,
+      id,
+      courseKey,
+      period,
+
+      generatedAt: new Date().toISOString(),
+      generatedAtHuman: new Date().toLocaleString("es-CL"),
+
+      // Totales del curso (corte)
+      recaudadoCurso,
+      gastadoCurso,
+      disponibleCurso,
+      pendienteCurso,
+      deudores,
+
+      // Métricas del mes publicado
+      cobradoMes,
+      gastadoMes,
+      porCobrarMes,
+      deudoresMes,
+
+      campaigns,
+      expenses: expensesMonth
+    };
+
+    // Guardar sin duplicados (mismo id/period)
+    const arr0 = load(KEY_MONTHLY_REPORTS, []);
+    const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
+    arr.unshift(rep);
+    save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
+
+    clearDirty();
+    try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
+
+    // refrescar vista
+    renderInformes();
+  }
+  // ----- boot -----
+  // ✅ DEMO seed solo si está activado globalmente
+  const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
+  if (DEMO_SEED) ensureDemo();
+
+  initMenu();
+  setInterval(()=>{
+    if(state.tab!=="campanas") return;
+    const sig = __tasksSig();
+    if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
+  }, 800);
+  // Si venimos desde Perfil, abrir el tab solicitado
+  var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
+    ? window.CURSAPP.consumeNextNavTab()
+    : null;
+  go(__nextTab || "home");
 })();
 
 window.openHelp = function(topic){
