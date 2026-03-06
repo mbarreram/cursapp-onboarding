@@ -525,7 +525,7 @@ function cuotasPendientesTask(id){
   function openModal(html){
     modalRoot.innerHTML = `
       <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(820px,100%);margin-bottom:12px;max-height:88vh;overflow:auto;">
+        <div class="card" style="width:min(820px,100%);margin-bottom:12px;">
           ${html}
         </div>
       </div>
@@ -534,28 +534,7 @@ function cuotasPendientesTask(id){
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-  
-  // ---- period helpers (comparación mensual) ----
-  function prevYM(ym){
-    const m = String(ym||"").match(/^(\d{4})-(\d{2})$/);
-    if(!m) return "";
-    let y = parseInt(m[1],10), mm = parseInt(m[2],10);
-    mm -= 1;
-    if(mm<=0){ mm=12; y-=1; }
-    return String(y) + "-" + String(mm).padStart(2,"0");
-  }
-  function fmtDeltaMoney(n){
-    const v = Number(n||0);
-    const s = (v>0?"+":(v<0?"−":""));
-    const a = Math.abs(v);
-    return s + "$" + a.toLocaleString("es-CL");
-  }
-  function fmtDeltaInt(n){
-    const v = Number(n||0);
-    const s = (v>0?"+":(v<0?"−":""));
-    return s + Math.abs(v).toLocaleString("es-CL");
-  }
-// ----- menu -----
+  // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
       if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
@@ -1427,161 +1406,170 @@ function renderInformes(){
       return arr;
     }
 
-    function informeApoderadosHTML(){
-        // payments data (defensive)
-  const paysArr = (typeof getPayments === 'function')
-    ? (getPayments() || [])
-    : (Array.isArray((window||{}).pays) ? window.pays : []);
+    function informeApoderadosHTML(period){
+      const ymView = String(period || ym || currentYM());
+      const paysArr = payments();
+      const tasksArr = tasks();
 
-// --- visual helpers (local scope to avoid reference errors) ---
-  const cardStyle = 'border:1px solid rgba(0,0,0,.06);border-radius:18px;padding:14px 14px;box-shadow:0 10px 30px rgba(2,6,23,.06);';
-  const kpi = (ico, label, val) => `
-    <div style="${cardStyle}background:#fff;">
-      <div style="display:flex;gap:10px;align-items:flex-start;">
-        <div style="font-size:18px;line-height:1;">${ico}</div>
-        <div style="flex:1;">
-          <div style="font-size:13px;opacity:.75;">${label}</div>
-          <div style="font-weight:950;font-size:22px;margin-top:4px;">${val}</div>
+      const pct = (a,b)=>{
+        const A=Number(a||0), B=Number(b||0);
+        if(B<=0) return 0;
+        return Math.max(0, Math.min(100, Math.round((A/B)*100)));
+      };
+      const isExcludedStatus = (p)=>{
+        const st = String(p?.status||"").toLowerCase();
+        return st==="opted_out" || st==="void" || st==="cancelled";
+      };
+
+      let cobradoMes=0, proyeccionMes=0;
+      const deudoresSet = new Set();
+      (paysArr||[]).forEach(p=>{
+        if(!p || isExcludedStatus(p)) return;
+        const dueYM = String(p.dueDate||"").slice(0,7);
+        const perYM = String(p.period||"").slice(0,7);
+        const matchYM = (dueYM===ymView) || (perYM===ymView);
+        if(!matchYM) return;
+        const amt = Number(p.amount || p.amountRemaining || 0);
+        proyeccionMes += amt;
+        if(String(p.status||"")==="paid") cobradoMes += Number(p.amount||0);
+        else {
+          const pid = String(p.apoderadoEmail || p.email || p.apoderadoKey || p.userId || p.profileId || "");
+          if(pid) deudoresSet.add(pid);
+        }
+      });
+
+      const cursoPct = pct(cobradoMes, proyeccionMes);
+      const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
+      const semMsg = (cursoPct>=80)
+        ? "Vamos muy bien este mes"
+        : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
+
+      const byTask = {};
+      (paysArr||[]).forEach(p=>{
+        const tid = String((p && p.fromTaskId) || "");
+        if(!tid || isExcludedStatus(p)) return;
+        (byTask[tid] ||= []).push(p);
+      });
+
+      const cardStyle = "background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:14px;";
+      const kpi = (icon, label, val)=>`
+        <div style="${cardStyle}">
+          <div style="font-size:13px;opacity:.75;">${icon} ${esc(label)}</div>
+          <div style="font-size:22px;font-weight:950;margin-top:6px;">${val}</div>
         </div>
-      </div>
-    </div>`;
+      `;
 
-const ym = currentYM();
-    const people = approvedCount();
-    const allPays = paysArr;
+      const campRows = (tasksArr||[])
+        .filter(t=>t && !t.closed)
+        .map(t=>{
+          const tid = String(t.id);
+          const title = String(t.title || "Campaña");
+          const type = String(t.type || "single");
+          const months = Number(t.months || 1);
+          const amount = Number(t.amount || 0);
+          const meta = Number(t.goalTotal || 0);
+          const ps = (byTask[tid] || []);
+          const recaudado = ps.filter(x=>String(x.status||"")==="paid").reduce((a,x)=>a+Number(x.amount||0),0);
+          const pendienteMes = ps
+            .filter(x=>String(x.status||"")!=="paid")
+            .filter(x=>{
+              const dym = String(x.dueDate||"").slice(0,7);
+              const pym = String(x.period||"").slice(0,7);
+              return (dym===ymView)||(pym===ymView);
+            })
+            .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
 
-    // --- metrics (defensive, month-scoped; excludes opted_out) ---
-    const isExcludedPay = (p) => {
-      const st = String(p?.status || "").toLowerCase();
-      return st === "opted_out" || st === "void" || st === "cancelled";
-    };
-    const payYM = (p) => (String(p?.dueDate || "").slice(0,7) || String(p?.period || "").slice(0,7));
-    const expYM = (e) => String(e?.date || e?.createdAt || e?.ts || e?.at || "").slice(0,7);
-
-    const recMes = (allPays||[])
-      .filter(p => p && !isExcludedPay(p) && String(p.status||"").toLowerCase()==="paid" && payYM(p)===ym)
-      .reduce((a,p)=>a+Number(p.amount||0),0);
-
-    const proyMes = (allPays||[])
-      .filter(p => p && !isExcludedPay(p) && payYM(p)===ym)
-      .reduce((a,p)=>a+Number(p.amount || p.amountRemaining || 0),0);
-
-    const porCobrarMes = Math.max(0, proyMes - recMes);
-
-    const gastoMes = (typeof expenses === "function" ? expenses() : [])
-      .filter(e => e && expYM(e)===ym)
-      .reduce((a,e)=>a+Number(e.amount||e.monto||0),0);
-
-    const recTotal = (allPays||[])
-      .filter(p => p && !isExcludedPay(p) && String(p.status||"").toLowerCase()==="paid")
-      .reduce((a,p)=>a+Number(p.amount||0),0);
-
-    const gastoTotal = (typeof expenses === "function" ? expenses() : [])
-      .reduce((a,e)=>a+Number(e?.amount||e?.monto||0),0);
-
-    const saldo = recTotal - gastoTotal;
-
-    const camps = tasks().filter(t => t && t.kind==="campaign" && t.id && (t.status||"open")!=="closed");
-
-    const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
-    const chip = statusChip(); // ya viene calculado arriba
-    const semMsg = pct>=90 ? "¡Vamos excelente!" : (pct>=50 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
-
-    const campRows = camps.map(t=>{
-      const title = esc(t.title || t.name || "Campaña");
-      const icon = esc(t.icon || "");
-      const isMonthly = !!t.isMonthly;
-      const isVol = t.isMandatory===false || t.mandatory===false || t.obligatoria===false;
-      const mode = isMonthly ? "Mensual" : "Único";
-      const mand = isVol ? "Voluntaria" : "Obligatoria";
-
-      // Solo pagos del mes (si existen dueYm). Si no existen, cae a estimación.
-      const rel = allPays.filter(p => p && (p.fromTaskId===t.id || p.taskId===t.id));
-      const relYm = rel.filter(p => (p.dueYm||p.ym||"")===ym);
-
-      const monthProjected = relYm.length
-        ? relYm.filter(p=>p.status!=="opted_out").reduce((a,p)=>a+Number(p.amount||0),0)
-        : (isMonthly ? Number(t.amountPerStudent||t.amount||0)*people : 0);
-
-      const monthPaid = relYm.length
-        ? relYm.filter(p=>p.status==="paid").reduce((a,p)=>a+Number(p.amount||0),0)
-        : 0;
-
-      // pendiente estimado total (considera opt-out si es voluntaria)
-      const totalExpected = expectedTaskTotal(t);
-      const totalCollected = collectedTask(t.id);
-      const totalPendingEst = pendingTaskEstimated(t);
-
-      const campPct = totalExpected>0 ? Math.round((totalCollected/totalExpected)*100) : 0;
-      const campPctClamped = Math.max(0, Math.min(100, campPct));
+          let objetivo;
+          if(meta>0){
+            objetivo = meta;
+          }else{
+            const base = (type==="monthly" ? (amount*months) : amount);
+            const mandatory = (t.mandatoryParticipation !== undefined) ? !!t.mandatoryParticipation : true;
+            let n = 0;
+            if(!mandatory){
+              const s = new Set();
+              for(const x of ps){
+                if(!x || isExcludedStatus(x)) continue;
+                const k = String(x.apoderadoKey||x.apoderadoEmail||x.payerProfileId||x.profileId||x.userId||x.email||"").toLowerCase().trim();
+                if(k) s.add(k);
+              }
+              n = s.size;
+            }
+            if(!n) n = approvedCount ? approvedCount() : 0;
+            if(!n) n = 1;
+            objetivo = base * n;
+          }
+          const p = pct(recaudado, objetivo);
+          return `
+            <div style="${cardStyle}">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <div style="font-weight:950;">${esc(title)}</div>
+                <div style="font-weight:950;">${p}%</div>
+              </div>
+              <div style="margin-top:8px;height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;">
+                <div style="height:100%;width:${p}%;background:#4f46e5;border-radius:999px;"></div>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
+                <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
+                <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+                <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
+              </div>
+            </div>
+          `;
+        }).join("");
 
       return `
-        <div style="${cardStyle}">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-            <div>
-              <div style="font-weight:950;font-size:18px;">${title} ${icon}</div>
-              <div class="muted" style="margin-top:2px;font-size:13px;">${mode} · ${mand}</div>
+        <div style="max-width:900px;margin:auto;">
+          <div style="background:#ffffff;border-radius:22px;border:1px solid rgba(0,0,0,.10);box-shadow:0 20px 60px rgba(0,0,0,.25);padding:0;overflow:hidden;">
+            <div style="position:sticky;top:0;z-index:20;background:#ffffff;padding:12px 16px;border-bottom:1px solid rgba(0,0,0,.08);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                <div>
+                  <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
+                  <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
+                    Resumen de cómo va el curso (montos globales, no personales)
+                  </div>
+                </div>
+                <button onclick="closeModal()" style="border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:999px;padding:8px 14px;font-weight:800;cursor:pointer;flex:0 0 auto;">Cerrar</button>
+              </div>
             </div>
-            <div style="font-weight:950;font-size:18px;">${campPctClamped}%</div>
-          </div>
-          <div style="margin-top:10px;height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
-            <div style="height:100%;width:${campPctClamped}%;background:#4f46e5;border-radius:999px;"></div>
-          </div>
-          <div style="margin-top:10px;font-size:13px;opacity:.92;display:grid;gap:4px;">
-            <div>💰 Recaudado: <b>${clp(totalCollected)}</b></div>
-            <div>⏳ Pendiente mes: <b>${clp(Math.max(0, monthProjected - monthPaid))}</b></div>
-            <div>🎯 Objetivo: <b>${clp(totalExpected)}</b></div>
+            <div style="padding:16px;">
+              <div style="margin-top:2px;${cardStyle}background:#f8fafc;">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                  <div>
+                    <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
+                    <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ymView)}</b></div>
+                  </div>
+                  <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
+                </div>
+                <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                  <div style="height:100%;width:${cursoPct}%;background:#16a34a;border-radius:999px;"></div>
+                </div>
+                <div style="margin-top:8px;font-size:13px;opacity:.9;">
+                  💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
+                </div>
+              </div>
+              <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                ${kpi("💰","Recaudado total", clp(recTotal))}
+                ${kpi("🧾","Gastado total", clp(gasTotal))}
+                ${kpi("🏦","Saldo disponible", clp(saldo))}
+                ${kpi("⏳","Por cobrar este mes", clp(Math.max(0, proyeccionMes - cobradoMes)))}
+              </div>
+              <div style="margin-top:16px;">
+                <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+                <div style="display:grid;gap:10px;">
+                  ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+                </div>
+              </div>
+              <div class="muted" style="margin-top:14px;font-size:12px;">Emitido: ${esc((reports().find(x=>String(x.period||'')===String(ymView||''))||{}).generatedAt||'')}</div>
+            </div>
           </div>
         </div>
       `;
-    }).join("");
+    }
 
-    return `
-      <div class="card" style="padding:16px;">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-          <div>
-            <div class="kTitle" style="margin:0;">Informe para Apoderados</div>
-            <div class="muted" style="margin-top:6px;">Sencillo, visual y transparente.</div>
-          </div>
-          ${chip}
-        </div>
-
-        <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-            <div>
-              <div style="font-weight:950;font-size:16px;">🟡 Cumplimiento del mes</div>
-              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
-            </div>
-            <div style="font-weight:950;font-size:18px;">${pct}%</div>
-          </div>
-          <div style="margin-top:10px;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:999px;"></div>
-          </div>
-          <div style="margin-top:8px;font-size:13px;opacity:.9;">
-            💵 Cobrado mes: <b>${clp(recMes)}</b> · ⏳ Proyección mes: <b>${clp(projMaxMes)}</b> · 👥 Deudores mes: <b>${deudMes}</b>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${kpi("💰","Recaudado este mes", clp(recMes))}
-          ${kpi("🧾","Gastado este mes", clp(gastoMes))}
-          ${kpi("🏦","Saldo disponible", clp(saldo))}
-          ${kpi("⏳","Por cobrar este mes", clp(Math.max(0, porCobrarMes)))}
-        </div>
-
-        <div style="margin-top:16px;">
-          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
-          <div style="display:grid;gap:10px;">
-            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
-          </div>
-        </div>
-
-        <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-          <button class="btn" onclick="go('pagos')">Ir a pagos</button>
-        </div>
-      </div>
-    `;
-  }
+    window.openReportApoderado = function(period){
+      openModal(informeApoderadosHTML(period));
+    };
 
     function informeDirectivaHTML(){
       const saldoPrev = sum(allTasks.filter(t=>Number(t.saldo_prev||0)>0), t=>Number(t.saldo_prev||0));
@@ -1764,7 +1752,7 @@ function viewExpenseAttachment(expenseId){
             <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
           </div>
           <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx" onclick="printCurrentInforme()">📊 Descargar PDF directiva</button>
+            <button class="btnx" onclick="printExecutive()">📊 Descargar PDF directiva</button>
             <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
           </div>
         </div>
@@ -1777,11 +1765,9 @@ function viewExpenseAttachment(expenseId){
         <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
           <div style="min-width:220px;flex:1;">
             <div class="kTitle">Informes mensuales publicados</div>
-            <div class="muted" style="margin-top:6px;">Snapshots del curso (no personales).</div>
+            <div class="muted" style="margin-top:6px;">Informe apoderados publicado (corte oficial).</div>
           </div>
-          <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx primary" onclick="confirmGenerateReport()">Publicar informe</button>
-          </div>
+          <div class="actions" style="flex-wrap:wrap;"></div>
         </div>
 
         <div class="listLines" style="margin-top:10px;">
@@ -1791,9 +1777,9 @@ function viewExpenseAttachment(expenseId){
                 <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
                   <div>
                     <b>${esc(r.period)}</b>
-                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAt)}</div>
+                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
                   </div>
-                  <button class="btnx" onclick="viewSnapshotModal('${esc(r.id||r.period||"")}', '${esc(r.period||"")}')">👁 Ver informe apoderados</button>
+                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">👁 Informe apoderados</button>
                 </div>
 
                 <div class="muted" style="margin-top:8px;line-height:1.45;">
@@ -1902,77 +1888,7 @@ window.printExecutive = function(){
 
   // PDF de informes publicados: reutiliza el mismo layout del "Informe Ejecutivo del Curso"
   // para que no existan diferencias entre el PDF y lo que se ve arriba.
-  
-  // Ver informe apoderados publicado (snapshot) en modal, con comparación vs mes anterior
-  window.viewSnapshotModal = function(idOrPeriod, period){
-    const reps = reports();
-    const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
-    if(!r){ alert("No se encontró el informe."); return; }
-    const p = String(r.period||period||"");
-    const pPrev = prevYM(p);
-    const prev = pPrev ? reps.find(x=>String(x.period||"")===pPrev) : null;
-
-    const dCob = prev ? (Number(r.cobradoMes||0) - Number(prev.cobradoMes||0)) : null;
-    const dDeu = prev ? (Number(r.deudoresMes||0) - Number(prev.deudoresMes||0)) : null;
-
-    const header = `
-      <div style="position:sticky;top:0;background:#fff;z-index:5;border-bottom:1px solid rgba(0,0,0,.06);padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
-        <div>
-          <div style="font-weight:800;">Informe Apoderados</div>
-          <div class="muted" style="margin-top:4px;">Periodo: <b>${esc(p)}</b> · Emitido: ${esc(r.generatedAt||"")}</div>
-          <div class="muted" style="margin-top:4px;">🔒 Corte oficial publicado</div>
-          ${prev ? `<div class="muted" style="margin-top:6px;">Comparación vs ${esc(pPrev)}: Cobrado mes ${fmtDeltaMoney(dCob)} · Deudores ${fmtDeltaInt(dDeu)}</div>` : ``}
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-          <button class="btnx" onclick="printSnapshot('${esc(r.id||p)}','${esc(p)}')">Imprimir</button>
-          <button class="btnx primary" onclick="closeModal()">Cerrar</button>
-        </div>
-      </div>
-    `;
-
-    const body = `
-      <div style="padding:14px;">
-        <div class="row" style="gap:10px;flex-wrap:wrap;">
-          <div class="pill">Cobrado mes: <b>${clp(r.cobradoMes||0)}</b></div>
-          <div class="pill">Por cobrar mes: <b>${clp(r.porCobrarMes||0)}</b></div>
-          <div class="pill">Deudores mes: <b>${esc(r.deudoresMes||0)}</b></div>
-        </div>
-
-        <div class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap;">
-          <div class="pill">Recaudado total: <b>${clp(r.recaudadoCurso||0)}</b></div>
-          <div class="pill">Gastado total: <b>${clp(r.gastadoCurso||0)}</b></div>
-          <div class="pill">Saldo: <b>${clp(r.disponibleCurso||0)}</b></div>
-        </div>
-
-        ${(Array.isArray(r.campaigns) && r.campaigns.length) ? `
-          <div style="margin-top:14px;font-weight:800;">Campañas</div>
-          <div style="margin-top:8px;display:grid;gap:10px;">
-            ${r.campaigns.map(c=>{
-              const title = esc(c.title||c.name||"Campaña");
-              const pct = Math.max(0, Math.min(100, Number(c.pct||0)));
-              return `
-                <div style="border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:12px;">
-                  <div style="display:flex;justify-content:space-between;gap:10px;">
-                    <b>${title}</b>
-                    <span class="muted">${pct}%</span>
-                  </div>
-                  <div style="margin-top:8px;height:10px;border-radius:999px;background:rgba(0,0,0,.08);overflow:hidden;">
-                    <div style="height:100%;width:${pct}%;background:#0ea5e9;"></div>
-                  </div>
-                  <div class="muted" style="margin-top:8px;line-height:1.35;">
-                    Cobrado: ${clp(c.recaudado||0)} · Pendiente mes: ${clp(c.pendienteMes||0)}
-                  </div>
-                </div>
-              `;
-            }).join("")}
-          </div>
-        ` : `<div class="muted" style="margin-top:12px;">Sin campañas registradas en este corte.</div>`}
-      </div>
-    `;
-    openModal(header + body);
-  };
-
-window.printSnapshot = function(idOrPeriod, period){
+  window.printSnapshot = function(idOrPeriod, period){
     const reps = reports();
     const r = reps.find(x=>String(x.id)===String(idOrPeriod)) || reps.find(x=>String(x.period)===String(period));
     if(!r){ alert("No se encontró el informe."); return; }
