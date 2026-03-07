@@ -62,32 +62,6 @@ async function copyTextToClipboard(text){
 }
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
-  function shareWhatsApp(text){
-    const msg = String(text||"").trim();
-    if(!msg){ alert("No hay contenido para compartir."); return; }
-    const url = "https://wa.me/?text=" + encodeURIComponent(msg);
-    window.open(url, "_blank");
-  }
-  function buildExecutiveWhatsAppText(period){
-    const cobrado = collectedCourse();
-    const gastado = spentCourse();
-    const saldo = cobrado - gastado;
-    const porCobrar = pendingMonth(period || currentYM());
-    return [
-      `Informe ejecutivo · ${period || currentYM()}`,
-      ``,
-      `Cobrado total: ${clp(cobrado)}`,
-      `Gastado total: ${clp(gastado)}`,
-      `Saldo disponible: ${clp(saldo)}`,
-      `Por cobrar mes: ${clp(porCobrar)}`,
-      ``,
-      `Detalle completo disponible en Cursapp.`
-    ].join("\n");
-  }
-  window.shareExecutiveWhatsApp = function(period){
-    shareWhatsApp(buildExecutiveWhatsAppText(period || currentYM()));
-  };
-
   function detectKey(candidates) {
     for (const k of candidates) if (localStorage.getItem(k) != null) return k;
     return "";
@@ -2052,7 +2026,6 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
-            <button class="btnx" onclick="shareExecutiveWhatsApp(ym)">📤 Compartir por WhatsApp</button>
             
           </div>
         </div>
