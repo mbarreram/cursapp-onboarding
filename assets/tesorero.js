@@ -16,6 +16,43 @@
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
   const uid = (p="id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
   const todayISO = () => new Date().toISOString().slice(0,10);
+
+  function shareWhatsApp(text){
+    const msg = String(text||"").trim();
+    if(!msg){ alert("No hay contenido para compartir."); return; }
+    const url = "https://wa.me/?text=" + encodeURIComponent(msg);
+    window.open(url, "_blank");
+  }
+  function buildTreasuryWhatsAppText(rep){
+    const lines = [];
+    lines.push(`📊 Informe Tesorería`);
+    lines.push(`Periodo: ${rep.period}`);
+    lines.push("");
+    lines.push(`💰 Cobrado mes: ${clp(rep.collectedMes)}`);
+    lines.push(`🧾 Gastado mes: ${clp(rep.spentMes)}`);
+    lines.push(`⚖️ Saldo mes: ${clp(rep.saldoMes)}`);
+    lines.push("");
+    lines.push(`🏦 Saldo acumulado: ${clp(rep.saldoTotal)}`);
+    if(Array.isArray(rep.campaignRows) && rep.campaignRows.length){
+      lines.push("");
+      lines.push("🎯 Estado campañas");
+      rep.campaignRows.slice(0,4).forEach(c=>{
+        lines.push(`• ${c.title}`);
+        lines.push(`Recaudado: ${clp(c.rec)}`);
+        lines.push(`Gastado: ${clp(c.gas)}`);
+        lines.push(`Saldo: ${clp(c.sal)}`);
+        lines.push("");
+      });
+    }
+    lines.push("Informe generado en Cursapp");
+    return lines.join("\n").trim();
+  }
+  function shareTreasuryReport(id){
+    const reps = load(KEY_MONTHLY_REPORTS, []);
+    const rep = reps.find(r=>String(r.id)===String(id));
+    if(!rep) return alert("No se encontró el informe.");
+    shareWhatsApp(buildTreasuryWhatsAppText(rep));
+  }
   // file helpers (boletas)
   function pickBoletaFile(onPicked){
     const inp = document.createElement("input");
@@ -865,6 +902,7 @@
           </div>
           <div class="actions actionsRow">
             <button class="btnMini" onclick="downloadTreasuryReport('${esc(rep.id)}')">📄 PDF</button>
+            <button class="btnMini" onclick="shareTreasuryReport('${esc(rep.id)}')">📤 WhatsApp</button>
             <button class="btnPrimaryMini" onclick="closeModal()">Cerrar</button>
           </div>
         </div>
@@ -963,6 +1001,7 @@
                   <div class="actions actionsRow">
                     <button class="btnMini" onclick="openTreasuryReport('${esc(r.id)}')">👁 Ver informe</button>
                     <button class="btnPrimaryMini" onclick="downloadTreasuryReport('${esc(r.id)}')">📄 Descargar PDF</button>
+                    <button class="btnMini" onclick="shareTreasuryReport('${esc(r.id)}')">📤 WhatsApp</button>
                   </div>
                 </div>
               </div>`).join("")
@@ -1002,6 +1041,7 @@
   window.generateMonthly = generateMonthly;
   window.openTreasuryReport = openTreasuryReport;
   window.downloadTreasuryReport = downloadTreasuryReport;
+  window.shareTreasuryReport = shareTreasuryReport;
 
   // ---------- Boot ----------
   // ----- boot -----
