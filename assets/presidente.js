@@ -29,6 +29,37 @@
     );
   const clp = (n) => "$" + Number(n || 0).toLocaleString("es-CL");
 
+function shareWhatsApp(text){
+  const msg = String(text || "").trim();
+  if(!msg){ alert("No hay contenido para compartir."); return; }
+  const url = "https://wa.me/?text=" + encodeURIComponent(msg);
+  window.open(url, "_blank");
+}
+
+function shareExecutiveWhatsApp(){
+  const ym = currentYM();
+  const cobradoMes = collectedMonth(ym);
+  const gastadoMes = spentMonth(ym);
+  const saldoMes = cobradoMes - gastadoMes;
+  const saldoDisponible = saldoCourse();
+
+  const msg = [
+    `📊 Informe Ejecutivo del Curso`,
+    ``,
+    `Periodo: ${ym}`,
+    ``,
+    `💰 Cobrado mes: ${clp(cobradoMes)}`,
+    `🧾 Gastado mes: ${clp(gastadoMes)}`,
+    `⚖️ Saldo mes: ${clp(saldoMes)}`,
+    ``,
+    `🏦 Saldo disponible: ${clp(saldoDisponible)}`,
+    ``,
+    `Informe generado en Cursapp`
+  ].join("\n");
+
+  shareWhatsApp(msg);
+}
+
 // ---------- clipboard helper (iOS Safari friendly) ----------
 async function copyTextToClipboard(text){
   const s = String(text||"");
@@ -2026,7 +2057,7 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
-<button class="btnx" onclick="shareExecutiveWhatsApp()">📤 Enviar informe al grupo</button>
+            <button class="btnx" onclick="shareExecutiveWhatsApp()">📤 Enviar informe al grupo</button>
             
           </div>
         </div>
