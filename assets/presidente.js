@@ -2026,6 +2026,7 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="flex-wrap:wrap;">
             <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
+<button class="btnx" onclick="shareExecutiveWhatsApp()">📤 Enviar informe al grupo</button>
             
           </div>
         </div>
