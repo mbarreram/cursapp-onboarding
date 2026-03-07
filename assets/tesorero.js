@@ -707,23 +707,265 @@
     w.document.close();
   }
 
+  function currentYM(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+  }
+  function withinMonth(iso, ym){
+    return String(iso||"").slice(0,7) === String(ym||"");
+  }
+  function monthCollected(ym){
+    return sum(paymentsAll().filter(p=>{
+      if(String(p.status||"").toLowerCase()!=="paid") return false;
+      const dt = p.paidAt || p.createdAt || p.date || "";
+      return withinMonth(dt, ym);
+    }), p=>p.amount);
+  }
+  function monthSpent(ym){
+    return sum(expensesAll().filter(e=>withinMonth(e.date||"", ym)), e=>e.amount);
+  }
+  function campaignRowsForReport(){
+    return tasksActive().map(t=>{
+      const rec = collectedForTask(t.id);
+      const gas = sum(expensesForTask(t.id), e=>e.amount);
+      const sal = rec - gas;
+      return { title: t.title || "Campaña", rec, gas, sal };
+    });
+  }
+  function buildTreasuryReport(period){
+    const exp = expensesAll();
+    const collectedMes = monthCollected(period);
+    const spentMes = monthSpent(period);
+    const saldoMes = collectedMes - spentMes;
+    const collectedTotal = collectedCourse();
+    const spentTotal = sum(exp, e=>e.amount);
+    const saldoTotal = collectedTotal - spentTotal;
+    const gastosMes = exp
+      .filter(e=>withinMonth(e.date||"", period))
+      .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
+      .map(e=>({
+        date: e.date || "",
+        title: e.title || "",
+        category: e.category || "Otros",
+        amount: Number(e.amount||0),
+        scope: e.scope==="campaign"
+          ? (tasksAll().find(t=>t.id===e.campaignId)?.title || "Campaña")
+          : "Fondo del curso"
+      }));
+    return {
+      id: uid("trep"),
+      period,
+      generatedAt: new Date().toLocaleString("es-CL"),
+      collectedMes,
+      spentMes,
+      saldoMes,
+      saldoTotal,
+      gastosMes,
+      campaignRows: campaignRowsForReport()
+    };
+  }
+  function treasuryHealth(rep){
+    if(rep.saldoTotal > 0 && rep.saldoMes >= 0) return { text:"🟢 Salud financiera buena", cls:"ok" };
+    if(rep.saldoTotal >= 0) return { text:"🟡 Atención", cls:"warn" };
+    return { text:"🔴 Riesgo", cls:"danger" };
+  }
+  function treasuryReportBodyHTML(rep){
+    const health = treasuryHealth(rep);
+    return `
+      <div class="row" style="align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div class="kTitle">📊 Informe Tesorería</div>
+          <div class="muted" style="margin-top:6px;">Periodo <b>${esc(rep.period)}</b> · Emitido ${esc(rep.generatedAt)}</div>
+        </div>
+        <div class="pill ${health.cls}">${esc(health.text)}</div>
+      </div>
+
+      <div class="kpiGrid" style="margin-top:12px;">
+        <div class="kpi"><div class="lbl">💰 Cobrado mes</div><div class="val">${clp(rep.collectedMes)}</div></div>
+        <div class="kpi"><div class="lbl">🧾 Gastado mes</div><div class="val">${clp(rep.spentMes)}</div></div>
+        <div class="kpi"><div class="lbl">⚖️ Saldo mes</div><div class="val">${clp(rep.saldoMes)}</div></div>
+        <div class="kpi"><div class="lbl">🏦 Saldo acumulado</div><div class="val">${clp(rep.saldoTotal)}</div></div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kTitle">Control de caja</div>
+        <div style="margin-top:10px;display:grid;gap:8px;">
+          <div style="display:flex;justify-content:space-between;"><span>Saldo inicial mes</span><b>${clp(0)}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span>+ Cobros del mes</span><b>${clp(rep.collectedMes)}</b></div>
+          <div style="display:flex;justify-content:space-between;"><span>- Gastos del mes</span><b>${clp(rep.spentMes)}</b></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(0,0,0,.12);padding-top:8px;"><span><b>Saldo final del mes</b></span><b>${clp(rep.saldoMes)}</b></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kTitle">Estado de campañas</div>
+        <div style="overflow:auto;margin-top:10px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr class="muted">
+                <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Campaña</th>
+                <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Recaudado</th>
+                <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Gastado</th>
+                <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rep.campaignRows.length ? rep.campaignRows.map(r=>`
+                <tr>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);">${esc(r.title)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);text-align:right;">${clp(r.rec)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);text-align:right;">${clp(r.gas)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);text-align:right;font-weight:900;">${clp(r.sal)}</td>
+                </tr>
+              `).join("") : `<tr><td colspan="4" style="padding:8px;">Sin campañas activas.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="kTitle">Detalle de rendiciones del mes</div>
+        <div style="overflow:auto;margin-top:10px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr class="muted">
+                <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Fecha</th>
+                <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Ámbito</th>
+                <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Concepto</th>
+                <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Categoría</th>
+                <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rep.gastosMes.length ? rep.gastosMes.map(g=>`
+                <tr>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);">${esc(g.date)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);">${esc(g.scope)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);">${esc(g.title)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);">${esc(g.category)}</td>
+                  <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.06);text-align:right;">${clp(g.amount)}</td>
+                </tr>
+              `).join("") : `<tr><td colspan="5" style="padding:8px;">Sin rendiciones en este periodo.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+  function openTreasuryReport(id){
+    const reps = load(KEY_MONTHLY_REPORTS, []);
+    const rep = reps.find(r=>String(r.id)===String(id));
+    if(!rep) return alert("No se encontró el informe.");
+    openModal(`
+      <div style="position:sticky;top:0;background:#fff;padding:14px;border-bottom:1px solid rgba(0,0,0,.08);z-index:5;">
+        <div class="row" style="align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:950;font-size:18px;">Vista del informe</div>
+            <div class="muted" style="margin-top:6px;">Tesorería · ${esc(rep.period)}</div>
+          </div>
+          <div class="actions actionsRow">
+            <button class="btnMini" onclick="downloadTreasuryReport('${esc(rep.id)}')">📄 PDF</button>
+            <button class="btnPrimaryMini" onclick="closeModal()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+      <div style="padding:14px;">
+        ${treasuryReportBodyHTML(rep)}
+      </div>
+    `);
+  }
+  function buildTreasuryPrintHTML(rep){
+    return `
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Informe Tesorería ${esc(rep.period)}</title>
+        <style>
+          body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;margin:24px;color:#0f172a;background:#fff;}
+          .page{max-width:980px;margin:0 auto;}
+          .muted{color:#64748b;}
+          .pill{display:inline-flex;padding:6px 10px;border-radius:999px;border:1px solid #d1d5db;font-weight:800;font-size:12px;background:#f8fafc;}
+          .pill.ok{background:#ecfdf5;border-color:#bbf7d0;}
+          .pill.warn{background:#fffbeb;border-color:#fde68a;}
+          .pill.danger{background:#fef2f2;border-color:#fecaca;}
+          .kpiGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;}
+          .kpi,.card{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fff;}
+          .lbl{font-size:12px;color:#6b7280;}
+          .val{font-size:28px;font-weight:900;margin-top:6px;}
+          table{width:100%;border-collapse:collapse;}
+          th{font-size:13px;color:#64748b;text-align:left;padding:8px;border-bottom:1px solid #cbd5e1;}
+          td{font-size:13px;padding:8px;border-bottom:1px solid #e5e7eb;}
+          @media print{body{margin:0}.page{max-width:none}}
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          ${treasuryReportBodyHTML(rep)}
+          <div class="muted" style="margin-top:18px;">Generado por Cursapp</div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+  function downloadTreasuryReport(id){
+    const reps = load(KEY_MONTHLY_REPORTS, []);
+    const rep = reps.find(r=>String(r.id)===String(id));
+    if(!rep) return alert("No se encontró el informe.");
+    const w = window.open("", "cursapp_tes_pdf");
+    if(!w){ alert("No se pudo abrir la impresión."); return; }
+    w.document.open();
+    w.document.write(buildTreasuryPrintHTML(rep));
+    w.document.close();
+    w.focus();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 250);
+  }
+
+
   // ---------- Informes ----------
   function renderInformes(){
     const reps = load(KEY_MONTHLY_REPORTS, []);
+    const ym = currentYM();
+    const draftRep = buildTreasuryReport(ym);
+
     app.innerHTML = `
       ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
+
       <div class="card">
-        <div class="kTitle">📊 Informes</div>
-        <div class="muted" style="margin-top:6px;">Si editas o eliminas rendiciones, debes emitir un nuevo informe.</div>
+        <div class="kTitle">📊 Informe Tesorería</div>
+        <div class="muted" style="margin-top:6px;">Control financiero, rendiciones y estado de campañas.</div>
+
+        <div class="kpiGrid" style="margin-top:12px;">
+          <div class="kpi"><div class="lbl">💰 Cobrado mes</div><div class="val">${clp(draftRep.collectedMes)}</div></div>
+          <div class="kpi"><div class="lbl">🧾 Gastado mes</div><div class="val">${clp(draftRep.spentMes)}</div></div>
+          <div class="kpi"><div class="lbl">⚖️ Saldo mes</div><div class="val">${clp(draftRep.saldoMes)}</div></div>
+          <div class="kpi"><div class="lbl">🏦 Saldo acumulado</div><div class="val">${clp(draftRep.saldoTotal)}</div></div>
+        </div>
 
         <div class="actions" style="margin-top:12px;">
-          <button class="btnPrimaryMini" onclick="generateMonthly()">Generar informe mensual (demo)</button>
+          <button class="btnPrimaryMini" onclick="generateMonthly()">Generar informe mensual</button>
           <button class="btnMini" onclick="clearDirty();renderInformes()">Marcar como resuelto</button>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="kTitle">Historial de informes</div>
+        <div class="muted" style="margin-top:6px;">Versión profesional para ver y descargar PDF.</div>
 
         <div style="margin-top:12px;">
           ${reps.length
-            ? reps.map(r=>`<div class="card" style="margin-top:10px;"><b>${esc(r.period)}</b><div class="muted">Emitido ${esc(r.generatedAt)}</div></div>`).join("")
+            ? reps.map(r=>`
+              <div class="card" style="margin-top:10px;">
+                <div class="row">
+                  <div>
+                    <b>${esc(r.period)}</b>
+                    <div class="muted">Emitido ${esc(r.generatedAt)}</div>
+                  </div>
+                  <div class="actions actionsRow">
+                    <button class="btnMini" onclick="openTreasuryReport('${esc(r.id)}')">👁 Ver informe</button>
+                    <button class="btnPrimaryMini" onclick="downloadTreasuryReport('${esc(r.id)}')">📄 Descargar PDF</button>
+                  </div>
+                </div>
+              </div>`).join("")
             : `<div class="muted">Sin informes generados.</div>`
           }
         </div>
@@ -732,29 +974,17 @@
   }
 
   function generateMonthly(){
-    const period = prompt("Mes (YYYY-MM)", "2026-01");
+    const period = prompt("Mes (YYYY-MM)", currentYM());
     if(!period) return;
     if(!/^\d{4}-\d{2}$/.test(period)){ alert("Formato inválido (YYYY-MM)"); return; }
 
-    const expAll = expensesAll();
-    const collected = collectedCourse();
-    const spent = sum(expAll, e=>e.amount);
-
-    const rep = {
-      id: uid("repM"),
-      period,
-      generatedAt: new Date().toLocaleString("es-CL"),
-      recaudadoCurso: collected,
-      gastadoCurso: spent,
-      disponibleCurso: collected - spent
-    };
-
+    const rep = buildTreasuryReport(period);
     const reps = load(KEY_MONTHLY_REPORTS, []);
     reps.unshift(rep);
     save(KEY_MONTHLY_REPORTS, reps);
 
     clearDirty();
-    alert("Informe generado ✅ (demo)");
+    alert("Informe generado ✅");
     renderInformes();
   }
 
@@ -770,6 +1000,8 @@
   window.openEditCampaign = openEditCampaign;
   window.saveEditCampaign = saveEditCampaign;
   window.generateMonthly = generateMonthly;
+  window.openTreasuryReport = openTreasuryReport;
+  window.downloadTreasuryReport = downloadTreasuryReport;
 
   // ---------- Boot ----------
   // ----- boot -----
