@@ -170,22 +170,28 @@
     let changed = false;
     const next = arr.map(p=>{
       const np = { ...p };
-      if(!np.paymentMethod){
-        np.paymentMethod = "transbank";
-        changed = true;
-      }
-      if(!np.conciliationStatus){
-        np.conciliationStatus = "pendiente";
-        changed = true;
-      }
+      if(!np.paymentMethod){ np.paymentMethod = "transbank"; changed = true; }
+      if(!np.conciliationStatus){ np.conciliationStatus = "pendiente"; changed = true; }
+      if(!np.createdAt){ np.createdAt = new Date().toISOString(); changed = true; }
       return np;
     });
     if(changed) save(KEY_PAYMENTS, next);
     return next;
   }
 
+  function currentCourseContacts(){
+    try{
+      const u = (window.CURSAPP && window.CURSAPP.currentUser) ? window.CURSAPP.currentUser() : null;
+      const courseName = u?.courseName || "Curso";
+      const guardians = load(sk("guardians_v1"), []);
+      return { courseName, guardians: Array.isArray(guardians) ? guardians : [] };
+    }catch(e){
+      return { courseName:"Curso", guardians:[] };
+    }
+  }
+
   function conciliationStats(){
-    const payments = paymentsNormalized().filter(p=>String(p.status||"").toLowerCase()==="paid");
+    const payments = paymentsNormalized().filter(p=>String(p.status||"").toLowerCase()==="paid" && p.conciliationStatus!=="anulado");
     const byMethod = (m)=>payments.filter(p=>p.paymentMethod===m);
     const byStatus = (s)=>payments.filter(p=>p.conciliationStatus===s);
     return {
@@ -219,6 +225,126 @@
       anulado:"🚫 Anulado"
     })[s] || "—";
   }
+
+  function openManualPayment(){
+    const tasks = tasksAll();
+    const ctx = currentCourseContacts();
+    const guardianOptions = (ctx.guardians||[]).map(g=>{
+      const label = g.displayName || g.name || g.studentName || g.email || "Apoderado";
+      return `<option value="${esc(label)}">${esc(label)}</option>`;
+    }).join("");
+
+    const taskOptions = tasks.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("");
+
+    openModal(`
+      <div class="row">
+        <div>
+          <div style="font-weight:950;font-size:18px;">Registrar pago manual</div>
+          <div class="muted" style="margin-top:6px;">Para pagos recibidos fuera de Transbank.</div>
+        </div>
+        <button class="btnMini" onclick="closeModal()">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Apoderado</label>
+        <select id="mp_guardian">
+          <option value="">Seleccionar</option>
+          ${guardianOptions}
+        </select>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Campaña</label>
+        <select id="mp_task">
+          <option value="">Curso / sin campaña</option>
+          ${taskOptions}
+        </select>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Concepto</label>
+        <input id="mp_concept" placeholder="Ej: Cuota marzo" />
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Monto</label>
+          <input id="mp_amount" inputmode="numeric" placeholder="10000" />
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Fecha</label>
+          <input id="mp_date" type="date" value="${todayISO()}" />
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Medio de pago</label>
+          <select id="mp_method">
+            <option value="transferencia">🏦 Transferencia</option>
+            <option value="efectivo">💵 Efectivo</option>
+            <option value="saldo_favor">🔁 Saldo a favor</option>
+            <option value="transbank">💳 Transbank</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:140px;">
+          <label style="font-weight:900;">Estado conciliación</label>
+          <select id="mp_status">
+            <option value="conciliado">✅ Conciliado</option>
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="observado">⚠️ Observado</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-weight:900;">Observación</label>
+        <input id="mp_note" placeholder="Opcional" />
+      </div>
+
+      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
+        <button class="btnMini" onclick="closeModal()">Cancelar</button>
+        <button class="btnPrimaryMini" onclick="registerManualPayment()">Guardar pago</button>
+      </div>
+    `);
+  }
+
+  function registerManualPayment(){
+    const guardian = ($("mp_guardian")?.value || "").trim();
+    const fromTaskId = ($("mp_task")?.value || "").trim();
+    const concept = ($("mp_concept")?.value || "").trim();
+    const amount = Number(($("mp_amount")?.value || "0").replace(/[^\d.-]/g,""));
+    const paidAt = $("mp_date")?.value || todayISO();
+    const paymentMethod = $("mp_method")?.value || "transferencia";
+    const conciliationStatus = $("mp_status")?.value || "conciliado";
+    const note = ($("mp_note")?.value || "").trim();
+
+    if(!concept || !amount){
+      alert("Completa concepto y monto.");
+      return;
+    }
+
+    const payments = paymentsNormalized();
+    payments.unshift({
+      id: uid("p"),
+      fromTaskId: fromTaskId || null,
+      concept,
+      amount,
+      status: "paid",
+      paymentMethod,
+      conciliationStatus,
+      guardianName: guardian || "",
+      note,
+      source: "manual",
+      createdAt: new Date().toISOString(),
+      paidAt
+    });
+    save(KEY_PAYMENTS, payments);
+    markDirty();
+    closeModal();
+    renderConciliacion();
+  }
+
   function expensesAll(){ return load(KEY_EXPENSES, []); }
   function expensesGeneral(){ return expensesAll().filter(e => e.scope==="general"); }
   function expensesForTask(taskId){ return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId); }
@@ -255,7 +381,7 @@
           const beforeNode = menuDropdown.querySelector("#resetBtn") || null;
           menuDropdown.insertBefore(btn, beforeNode);
         }
-      }catch(e){};
+      }catch(e){}
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
@@ -1050,10 +1176,14 @@
     const payments = stats.payments;
 
     app.innerHTML = `
+      ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
+
       <div class="card">
         <div class="row">
           <div class="kTitle">✅ Conciliación de pagos</div>
-          <div class="muted" style="font-weight:900;">${payments.length} pagos</div>
+          <div class="actions actionsRow">
+            <button class="btnPrimaryMini" onclick="openManualPayment()">+ Registrar pago manual</button>
+          </div>
         </div>
         <div class="muted" style="margin-top:6px;">Recaudado por medio de pago y estado de conciliación.</div>
 
@@ -1070,10 +1200,8 @@
       </div>
 
       <div class="card">
-        <div class="row">
-          <div class="kTitle">Pagos registrados</div>
-          <div class="muted" style="font-weight:900;">Editar medio y estado</div>
-        </div>
+        <div class="kTitle">Pagos registrados</div>
+        <div class="muted" style="margin-top:6px;">Editar medio y estado de conciliación.</div>
         <div style="margin-top:10px;">
           ${payments.length ? payments.map(renderPaymentConciliationCard).join("") : `<div class="muted">Sin pagos registrados.</div>`}
         </div>
@@ -1083,16 +1211,20 @@
 
   function renderPaymentConciliationCard(p){
     const camp = tasksAll().find(t=>t.id===p.fromTaskId)?.title || "Curso";
+    const guardian = p.guardianName ? ` · ${p.guardianName}` : "";
+    const source = p.source==="manual" ? "Manual" : "Sistema";
     return `
       <div class="expenseCard">
         <div class="expenseHeader">
-          <div class="expenseTitle">${esc(p.concept || "Pago")} · ${esc(camp)}</div>
+          <div class="expenseTitle">${esc(p.concept || "Pago")} · ${esc(camp)}${esc(guardian)}</div>
           <div style="font-weight:950;">${clp(p.amount)}</div>
         </div>
 
         <div class="expenseBody">
+          <div class="expenseMeta">Origen: <b>${esc(source)}</b></div>
           <div class="expenseMeta">Método actual: <b>${esc(paymentMethodLabel(p.paymentMethod))}</b></div>
           <div class="expenseMeta">Estado conciliación: <b>${esc(conciliationStatusLabel(p.conciliationStatus))}</b></div>
+          <div class="expenseMeta">Fecha pago: <b>${esc((p.paidAt||p.createdAt||"").slice(0,10))}</b></div>
         </div>
 
         <div class="actions actionsRow" style="margin-top:10px;flex-wrap:wrap;">
@@ -1217,6 +1349,8 @@
   window.openTreasuryReport = openTreasuryReport;
   window.downloadTreasuryReport = downloadTreasuryReport;
   window.shareTreasuryReport = shareTreasuryReport;
+  window.openManualPayment = openManualPayment;
+  window.registerManualPayment = registerManualPayment;
   window.updatePaymentMethod = updatePaymentMethod;
   window.updatePaymentConciliationStatus = updatePaymentConciliationStatus;
 
