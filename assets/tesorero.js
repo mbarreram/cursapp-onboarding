@@ -1057,3 +1057,102 @@ initMenu();
 go("home");
 
 })();
+
+
+
+// ============================
+// MODULO CONCILIACION PAGOS
+// ============================
+
+function renderConciliacion(){
+
+  const payments = paymentsAll();
+
+  const transbank = payments.filter(p=>p.paymentMethod==="transbank");
+  const transferencia = payments.filter(p=>p.paymentMethod==="transferencia");
+  const efectivo = payments.filter(p=>p.paymentMethod==="efectivo");
+  const saldoFavor = payments.filter(p=>p.paymentMethod==="saldo_favor");
+
+  const totalTransbank = sum(transbank,p=>p.amount);
+  const totalTransfer = sum(transferencia,p=>p.amount);
+  const totalEfectivo = sum(efectivo,p=>p.amount);
+  const totalSaldo = sum(saldoFavor,p=>p.amount);
+
+  app.innerHTML = `
+  <div class="card">
+    <div class="kTitle">Conciliación de pagos</div>
+
+    <div class="kpiGrid">
+      <div class="kpi">
+        <div class="lbl">💳 Transbank</div>
+        <div class="val">${clp(totalTransbank)}</div>
+      </div>
+
+      <div class="kpi">
+        <div class="lbl">🏦 Transferencia</div>
+        <div class="val">${clp(totalTransfer)}</div>
+      </div>
+
+      <div class="kpi">
+        <div class="lbl">💵 Efectivo</div>
+        <div class="val">${clp(totalEfectivo)}</div>
+      </div>
+
+      <div class="kpi">
+        <div class="lbl">🔁 Saldo a favor</div>
+        <div class="val">${clp(totalSaldo)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kTitle">Pagos registrados</div>
+    ${payments.map(p=>renderPaymentRow(p)).join("")}
+  </div>
+  `;
+}
+
+function renderPaymentRow(p){
+
+  return `
+  <div class="expenseCard">
+
+    <div class="expenseHeader">
+      <div>${esc(p.concept||"Pago")}</div>
+      <div>${clp(p.amount)}</div>
+    </div>
+
+    <div class="expenseMeta">
+      Método:
+      <select onchange="updatePaymentMethod('${p.id}',this.value)">
+        <option value="">Seleccionar</option>
+        <option value="transbank" ${p.paymentMethod==="transbank"?"selected":""}>Transbank</option>
+        <option value="transferencia" ${p.paymentMethod==="transferencia"?"selected":""}>Transferencia</option>
+        <option value="efectivo" ${p.paymentMethod==="efectivo"?"selected":""}>Efectivo</option>
+        <option value="saldo_favor" ${p.paymentMethod==="saldo_favor"?"selected":""}>Saldo a favor</option>
+      </select>
+    </div>
+
+  </div>
+  `;
+}
+
+function updatePaymentMethod(id,method){
+
+  const payments = paymentsAll();
+
+  const i = payments.findIndex(p=>p.id===id);
+
+  if(i<0) return;
+
+  payments[i].paymentMethod = method;
+  payments[i].conciliationStatus = "conciliado";
+
+  save(KEY_PAYMENTS,payments);
+
+  renderConciliacion();
+}
+
+window.renderConciliacion = renderConciliacion;
+window.updatePaymentMethod = updatePaymentMethod;
+
