@@ -531,6 +531,14 @@ function registerManualPayment(){
 
       <div class="card">
         <div class="row">
+          <div class="kTitle">✅ Conciliación</div>
+          <button class="btnPrimaryMini" onclick="go('conciliacion')">Ir a conciliación</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">Revisa y registra pagos por Transbank, transferencia, efectivo y saldo a favor.</div>
+      </div>
+
+      <div class="card">
+        <div class="row">
           <div class="kTitle">📌 Campañas activas</div>
           <div class="muted" style="font-weight:900;">${t.length} activas</div>
         </div>
@@ -1248,7 +1256,7 @@ function renderConciliacion(){
 
     <div class="card">
       <div class="kTitle">Pagos registrados</div>
-      <div class="muted" style="margin-top:6px;">Lista de cada pago por campaña, fecha, medio y estado conciliado.</div>
+      <div class="muted" style="margin-top:6px;">Lista de cada pago por campaña, fecha, método de pago y estado de conciliación.</div>
       <div style="margin-top:10px;">
         ${payments.length ? payments.map(renderPaymentConciliationCard).join("") : `<div class="muted">Sin pagos registrados.</div>`}
       </div>
