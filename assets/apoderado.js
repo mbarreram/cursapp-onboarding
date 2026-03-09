@@ -312,6 +312,54 @@ function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
 function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
   return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
 }
+
+function inferredInstallmentIndex(p, task){
+  const raw = Number(p?.installmentIndex || 0);
+  if(raw > 0) return raw;
+
+  const c = String(p?.concept || "");
+  let m = c.match(/cuota\s*(\d+)\s*\/\s*\d+/i);
+  if(m) return Number(m[1] || 0) || 0;
+
+  m = c.match(/cuota\s*(\d+)/i);
+  if(m) return Number(m[1] || 0) || 0;
+
+  if(String(task?.type||"") !== "monthly") return 1;
+  return 0;
+}
+
+function paymentEquivKey(p, tasksAll){
+  const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
+  const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
+  const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "");
+  const who = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const alumnoId = String(p?.alumnoId || "");
+  let inst = inferredInstallmentIndex(p, task);
+
+  if(!inst){
+    const per = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+    inst = per ? `ym:${per}` : "single";
+  }
+
+  return [courseKey, taskId, who, alumnoId, String(inst)].join("|");
+}
+
+function suppressPendingCoveredByPaid(payments, tasksAll){
+  const list = Array.isArray(payments) ? payments.slice() : [];
+  const paidKeys = new Set(
+    list
+      .filter(p => String(p?.status||"").toLowerCase() === "paid")
+      .map(p => paymentEquivKey(p, tasksAll))
+  );
+
+  return list.filter(p => {
+    const st = String(p?.status||"").toLowerCase();
+    if(!["pending","partial","overdue"].includes(st)) return true;
+    const key = paymentEquivKey(p, tasksAll);
+    return !paidKeys.has(key);
+  });
+}
+
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -1032,29 +1080,32 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || p.paymentMethod || "—";
+    const method = p.paidWith || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
 
     openModal(`
       <div class="card">
         <div class="row">
           <div>
             <div class="kTitle">🧾 Comprobante</div>
-            <div class="muted" style="margin-top:6px;">Pago ${esc(p.status||"")}</div>
+            <div class="muted" style="margin-top:6px;">${esc(p.source==="manual" ? "Pago manual registrado" : `Pago ${p.status||""}`)}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
 
         <div class="listLines" style="margin-top:12px;">
+          <div class="lineItem"><b>Campaña:</b> ${esc((load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""))?.title) || "—")}</div>
+          <div class="lineItem"><b>Concepto:</b> ${esc(p.concept||"—")}</div>
+          <div class="lineItem"><b>Alumno:</b> ${esc(p.studentName || "—")}</div>
+          <div class="lineItem"><b>Apoderado:</b> ${esc(p.guardianName || "—")}</div>
           <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
           <div class="lineItem"><b>Fecha:</b> ${esc(paidAt)}</div>
           <div class="lineItem"><b>Método:</b> ${esc(method)}</div>
           <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
           <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
           <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
-          <div class="lineItem"><b>Origen:</b> ${esc(p.source==="manual" ? "Registro manual (Tesorero)" : "Transbank / sistema")}</div>
         </div>
       </div>
     `);
@@ -1436,6 +1487,7 @@ function dedupePaymentsAll(list){
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
+    paysAll = suppressPendingCoveredByPaid(paysAll, tasks0);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -1702,7 +1754,7 @@ function dedupePaymentsAll(list){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
-
+    paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll);
 
     try{
       if(window.__apoForcePaid){
