@@ -26,19 +26,32 @@
   function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
     return "alu_" + hash32([courseKey, apoderadoEmail, alumnoLabel].join("|"));
   }
-  function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
-    return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
-  }
   function ymFromISO(iso){
     const s = String(iso||"");
     return s.length>=7 ? s.slice(0,7) : "";
+  }
+  function paymentMethodLabel(m){
+    return ({
+      transbank:"💳 Transbank",
+      transferencia:"🏦 Transferencia",
+      efectivo:"💵 Efectivo",
+      saldo_favor:"🔁 Saldo a favor"
+    })[m] || "—";
+  }
+  function conciliationStatusLabel(s){
+    return ({
+      pendiente:"⏳ Pendiente",
+      conciliado:"✅ Conciliado",
+      observado:"⚠️ Observado",
+      anulado:"🚫 Anulado"
+    })[s] || "—";
   }
   function activeCourseKey(){
     try{ return String(localStorage.getItem("cursapp_active_course_v1") || "").trim(); }catch(e){ return ""; }
   }
   function allProfiles(){
     try{
-      const arr = load("cursapp_profiles_v1", []);
+      const arr = JSON.parse(localStorage.getItem("cursapp_profiles_v1") || "[]");
       return Array.isArray(arr) ? arr : [];
     }catch(e){ return []; }
   }
@@ -100,21 +113,28 @@
     }
     return { amount, concept };
   }
-  function paymentMethodLabel(m){
-    return ({
-      transbank:"💳 Transbank",
-      transferencia:"🏦 Transferencia",
-      efectivo:"💵 Efectivo",
-      saldo_favor:"🔁 Saldo a favor"
-    })[m] || "—";
+  function sameText(a,b){
+    return String(a||"").toLowerCase().trim() === String(b||"").toLowerCase().trim();
   }
-  function conciliationStatusLabel(s){
-    return ({
-      pendiente:"⏳ Pendiente",
-      conciliado:"✅ Conciliado",
-      observado:"⚠️ Observado",
-      anulado:"🚫 Anulado"
-    })[s] || "—";
+  function matchesPendingForProfile(p, prof, taskId){
+    const st = String(p?.status||"").toLowerCase();
+    if(String(p?.fromTaskId||"") !== String(taskId||"")) return false;
+    if(!["pending","partial","overdue"].includes(st)) return false;
+
+    const pEmail = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+    const pGuardian = String(p?.guardianName || p?.apoderadoName || "").trim();
+    const pStudent = String(p?.studentName || p?.alumno || "").trim();
+    const pAlumnoId = String(p?.alumnoId || "").trim();
+
+    const emailMatch = pEmail && sameText(pEmail, prof.email);
+    const alumnoHashMatch = pAlumnoId && sameText(pAlumnoId, prof.alumnoId);
+    const studentNameMatch = pStudent && sameText(pStudent, prof.student);
+    const guardianNameMatch = pGuardian && sameText(pGuardian, prof.guardian);
+
+    if(emailMatch && (alumnoHashMatch || studentNameMatch || !pAlumnoId)) return true;
+    if(guardianNameMatch && studentNameMatch) return true;
+    if(emailMatch) return true;
+    return false;
   }
   function conciliationStats(){
     const payments = paymentsNormalized()
@@ -240,17 +260,9 @@
     if(!concept || !amount) return alert("No se pudo cargar el monto de la campaña.");
 
     const payments = paymentsNormalized();
-    const period = ymFromISO(paidAt);
+    const pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
     const receiptId = uid("manual");
     const transactionId = "MANUAL-" + Date.now();
-
-    const pendingIdx = payments.findIndex(p=>{
-      const st = String(p.status||"").toLowerCase();
-      return String(p.fromTaskId||"")===String(fromTaskId)
-        && (st==="pending" || st==="partial" || st==="overdue")
-        && String(p.apoderadoKey||p.apoderadoId||p.apoderadoEmail||"").toLowerCase().trim()===String(prof.email).toLowerCase().trim()
-        && String(p.alumnoId||"")===String(prof.alumnoId);
-    });
 
     if(pendingIdx >= 0){
       const prev = payments[pendingIdx];
@@ -264,18 +276,16 @@
         conciliationStatus,
         guardianName: prof.guardian,
         studentName: prof.student,
-        apoderadoKey: prof.email,
-        apoderadoId: prof.email,
-        apoderadoEmail: prof.email,
-        alumnoId: prof.alumnoId,
+        apoderadoKey: prev.apoderadoKey || prof.email,
+        apoderadoId: prev.apoderadoId || prof.email,
+        apoderadoEmail: prev.apoderadoEmail || prof.email,
+        alumnoId: prev.alumnoId || prof.alumnoId,
         paidAt,
         paidWith: paymentMethod,
         source: "manual",
         note,
         transactionId,
-        receiptId,
-        courseKey: prev.courseKey || prof.courseKey,
-        paymentKey: prev.paymentKey || paymentKeyOf(prof.courseKey, fromTaskId, prof.email, prof.alumnoId, prev.period || period, prev.installmentIndex || 1)
+        receiptId
       };
     }else{
       payments.unshift({
@@ -299,11 +309,7 @@
         note,
         transactionId,
         receiptId,
-        createdAt: new Date().toISOString(),
-        courseKey: prof.courseKey,
-        period,
-        installmentIndex: 1,
-        paymentKey: paymentKeyOf(prof.courseKey, fromTaskId, prof.email, prof.alumnoId, period, 1)
+        createdAt: new Date().toISOString()
       });
     }
 
@@ -481,7 +487,6 @@
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
-
   function ensureBottomConciliationTab(){
     try{
       const existing = Array.from(document.querySelectorAll(".navItem")).find(b => String(b.dataset.tab||"")==="conciliacion");
@@ -493,18 +498,12 @@
       btn.dataset.tab = "conciliacion";
       btn.classList.remove("active");
 
-      // Intentar mantener la estructura del botón
-      const txt = "Conciliación";
-      const iconTxt = "✅";
-      const labelNode = btn.querySelector(".label, .navLabel, span:last-child");
-      const firstSpan = btn.querySelector("span");
-      if(labelNode){
-        labelNode.textContent = txt;
+      const spans = btn.querySelectorAll("span");
+      if(spans.length >= 2){
+        spans[0].textContent = "✅";
+        spans[1].textContent = "Conciliación";
       }else{
-        btn.textContent = `${iconTxt} ${txt}`;
-      }
-      if(firstSpan && firstSpan !== labelNode){
-        firstSpan.textContent = iconTxt;
+        btn.textContent = "✅ Conciliación";
       }
 
       btn.onclick = ()=> go("conciliacion");
@@ -518,6 +517,18 @@
     if(menuBtn && menuDropdown){
       if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{ e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block"); };
       document.addEventListener("click", ()=> menuDropdown.style.display="none");
+      try{
+        if(menuDropdown && !menuDropdown.querySelector('[data-menu-item="conciliacion"]')){
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "menuItem";
+          btn.setAttribute("data-menu-item","conciliacion");
+          btn.textContent = "✅ Conciliación";
+          btn.onclick = ()=>{ menuDropdown.style.display="none"; go("conciliacion"); };
+          const beforeNode = menuDropdown.querySelector("#resetBtn") || null;
+          menuDropdown.insertBefore(btn, beforeNode);
+        }
+      }catch(e){}
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
@@ -618,7 +629,7 @@
           <div class="kTitle">✅ Conciliación</div>
           <button class="btnPrimaryMini" onclick="go('conciliacion')">Ir a conciliación</button>
         </div>
-        <div class="muted" style="margin-top:6px;">Acceso rápido a pagos manuales y conciliación por medio de pago.</div>
+        <div class="muted" style="margin-top:6px;">Registra pagos manuales y revisa ingresos por campaña.</div>
       </div>
 
       <div class="card">
@@ -670,6 +681,14 @@
         <div style="margin-top:10px;">
           ${expGen.length?expGen.map(renderExpenseCard).join(""):`<div class="muted">Sin gastos generales.</div>`}
         </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div class="kTitle">✅ Conciliación de ingresos</div>
+          <button class="btnPrimaryMini" onclick="go('conciliacion')">Ir a conciliación</button>
+        </div>
+        <div class="muted" style="margin-top:6px;">Pagos agrupados por campaña, apoderado, alumno, método y estado.</div>
       </div>
 
       <div class="card">
@@ -1369,7 +1388,6 @@
   function renderConciliacion(){
     const stats = conciliationStats();
     const payments = stats.payments.slice().sort((a,b)=>String(b.paidAt||b.createdAt||"").localeCompare(String(a.paidAt||a.createdAt||"")));
-
     const groups = {};
     payments.forEach(p=>{
       const tid = String(p.fromTaskId || "no_task");
