@@ -256,42 +256,34 @@
     const paidAt = $("mp_date")?.value || todayISO();
     const paymentMethod = $("mp_method")?.value || "transferencia";
     const conciliationStatus = $("mp_status")?.value || "conciliado";
-    const note = ($("mp_note")?.value || "").trim();
-
+    const note = $("mp_note")?.value || "";
     if(!prof) return alert("Debes seleccionar apoderado · alumno.");
     if(!fromTaskId) return alert("Debes seleccionar campaña.");
     if(!concept || !amount) return alert("No se pudo cargar el monto de la campaña.");
-
     const payments = paymentsNormalized();
     const task = tasksAll().find(t=>String(t.id)===String(fromTaskId));
     const courseKey = String(prof.courseKey || activeCourseKey() || "").trim();
     const period = ymFromISO(task?.dueDate || task?.startDate || paidAt);
     const installmentIndex = 1;
     const desiredPaymentKey = paymentKeyOf(courseKey, fromTaskId, prof.email, prof.alumnoId, period, installmentIndex);
-
     let pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
-
     if(pendingIdx < 0){
       pendingIdx = payments.findIndex(p=>{
         const st = String(p?.status||"").toLowerCase();
         if(!["pending","partial","overdue"].includes(st)) return false;
-        const sameTask = String(p?.fromTaskId||"") === String(fromTaskId);
-        const sameStudent = sameText(p?.studentName || p?.alumno || "", prof.student);
-        const sameGuardian = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian);
-        return sameTask && sameStudent && sameGuardian;
+        return String(p?.fromTaskId||"")===String(fromTaskId)
+          && sameText(p?.studentName || p?.alumno || "", prof.student)
+          && sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian);
       });
     }
-
     if(pendingIdx < 0){
       pendingIdx = payments.findIndex(p=>{
         const st = String(p?.status||"").toLowerCase();
-        return ["pending","partial","overdue"].includes(st) && String(p?.paymentKey||"") === String(desiredPaymentKey);
+        return ["pending","partial","overdue"].includes(st) && String(p?.paymentKey||"")===String(desiredPaymentKey);
       });
     }
-
     const receiptId = uid("manual");
     const transactionId = "MANUAL-" + Date.now();
-
     if(pendingIdx >= 0){
       const prev = payments[pendingIdx];
       payments[pendingIdx] = {
@@ -350,7 +342,6 @@
         createdAt: new Date().toISOString()
       });
     }
-
     save(KEY_PAYMENTS, payments);
     markDirty();
     closeModal();

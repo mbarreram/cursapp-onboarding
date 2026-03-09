@@ -379,24 +379,19 @@ function suppressPendingCoveredByPaidLoose(payments, tasksAll){
   const list = Array.isArray(payments) ? payments.slice() : [];
   const paidStrict = new Set();
   const paidLoose = new Set();
-
   list.forEach(p=>{
     if(String(p?.status||"").toLowerCase() !== "paid") return;
     paidStrict.add(paymentEquivKey(p, tasksAll));
     paidLoose.add(installmentLooseKey(p, tasksAll));
   });
-
   return list.filter(p=>{
     const st = String(p?.status||"").toLowerCase();
     if(!["pending","partial","overdue"].includes(st)) return true;
-    const strictKey = paymentEquivKey(p, tasksAll);
-    const looseKey = installmentLooseKey(p, tasksAll);
-    if(paidStrict.has(strictKey)) return false;
-    if(paidLoose.has(looseKey)) return false;
+    if(paidStrict.has(paymentEquivKey(p, tasksAll))) return false;
+    if(paidLoose.has(installmentLooseKey(p, tasksAll))) return false;
     return true;
   });
 }
-
 function reconcileVisiblePayments(payments, tasksAll){
   let out = Array.isArray(payments) ? payments.slice() : [];
   out = suppressPendingCoveredByPaid(out, tasksAll);
