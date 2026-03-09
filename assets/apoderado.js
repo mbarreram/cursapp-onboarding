@@ -1032,10 +1032,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || "—";
+    const method = p.paidWith || p.paymentMethod || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
 
     openModal(`
       <div class="card">
@@ -1054,6 +1054,7 @@ function dueBadge(iso){
           <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
           <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
           <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
+          <div class="lineItem"><b>Origen:</b> ${esc(p.source==="manual" ? "Registro manual (Tesorero)" : "Transbank / sistema")}</div>
         </div>
       </div>
     `);
