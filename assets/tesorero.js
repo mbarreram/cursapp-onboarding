@@ -26,6 +26,9 @@
   function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
     return "alu_" + hash32([courseKey, apoderadoEmail, alumnoLabel].join("|"));
   }
+  function paymentKeyOf(courseKey, taskId, apoderadoEmail, alumnoId, period, installmentIndex){
+    return [courseKey, taskId, apoderadoEmail, alumnoId, (period||""), String(installmentIndex||"")].join("|");
+  }
   function ymFromISO(iso){
     const s = String(iso||"");
     return s.length>=7 ? s.slice(0,7) : "";
@@ -260,7 +263,32 @@
     if(!concept || !amount) return alert("No se pudo cargar el monto de la campaña.");
 
     const payments = paymentsNormalized();
-    const pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
+    const task = tasksAll().find(t=>String(t.id)===String(fromTaskId));
+    const courseKey = String(prof.courseKey || activeCourseKey() || "").trim();
+    const period = ymFromISO(task?.dueDate || task?.startDate || paidAt);
+    const installmentIndex = 1;
+    const desiredPaymentKey = paymentKeyOf(courseKey, fromTaskId, prof.email, prof.alumnoId, period, installmentIndex);
+
+    let pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
+
+    if(pendingIdx < 0){
+      pendingIdx = payments.findIndex(p=>{
+        const st = String(p?.status||"").toLowerCase();
+        if(!["pending","partial","overdue"].includes(st)) return false;
+        const sameTask = String(p?.fromTaskId||"") === String(fromTaskId);
+        const sameStudent = sameText(p?.studentName || p?.alumno || "", prof.student);
+        const sameGuardian = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian);
+        return sameTask && sameStudent && sameGuardian;
+      });
+    }
+
+    if(pendingIdx < 0){
+      pendingIdx = payments.findIndex(p=>{
+        const st = String(p?.status||"").toLowerCase();
+        return ["pending","partial","overdue"].includes(st) && String(p?.paymentKey||"") === String(desiredPaymentKey);
+      });
+    }
+
     const receiptId = uid("manual");
     const transactionId = "MANUAL-" + Date.now();
 
@@ -274,12 +302,17 @@
         status: "paid",
         paymentMethod,
         conciliationStatus,
-        guardianName: prof.guardian,
-        studentName: prof.student,
+        guardianName: prev.guardianName || prof.guardian,
+        studentName: prev.studentName || prof.student,
         apoderadoKey: prev.apoderadoKey || prof.email,
         apoderadoId: prev.apoderadoId || prof.email,
         apoderadoEmail: prev.apoderadoEmail || prof.email,
         alumnoId: prev.alumnoId || prof.alumnoId,
+        courseKey: prev.courseKey || courseKey,
+        paymentKey: prev.paymentKey || desiredPaymentKey,
+        period: prev.period || period,
+        installmentIndex: prev.installmentIndex || installmentIndex,
+        dueDate: prev.dueDate || task?.dueDate || paidAt,
         paidAt,
         paidWith: paymentMethod,
         source: "manual",
@@ -303,6 +336,11 @@
         apoderadoId: prof.email,
         apoderadoEmail: prof.email,
         alumnoId: prof.alumnoId,
+        courseKey,
+        paymentKey: desiredPaymentKey,
+        period,
+        installmentIndex,
+        dueDate: task?.dueDate || paidAt,
         paidAt,
         paidWith: paymentMethod,
         source: "manual",

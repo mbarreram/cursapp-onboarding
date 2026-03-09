@@ -360,6 +360,50 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
+function normLooseText(x){
+  return String(x||"").toLowerCase().trim();
+}
+function installmentLooseKey(p, tasksAll){
+  const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
+  const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
+  const student = normLooseText(p?.studentName || p?.alumno || "");
+  const guardian = normLooseText(p?.guardianName || p?.apoderadoName || "");
+  let inst = inferredInstallmentIndex(p, task);
+  if(!inst){
+    const per = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+    inst = per ? `ym:${per}` : "single";
+  }
+  return [taskId, student, guardian, String(inst)].join("|");
+}
+function suppressPendingCoveredByPaidLoose(payments, tasksAll){
+  const list = Array.isArray(payments) ? payments.slice() : [];
+  const paidStrict = new Set();
+  const paidLoose = new Set();
+
+  list.forEach(p=>{
+    if(String(p?.status||"").toLowerCase() !== "paid") return;
+    paidStrict.add(paymentEquivKey(p, tasksAll));
+    paidLoose.add(installmentLooseKey(p, tasksAll));
+  });
+
+  return list.filter(p=>{
+    const st = String(p?.status||"").toLowerCase();
+    if(!["pending","partial","overdue"].includes(st)) return true;
+    const strictKey = paymentEquivKey(p, tasksAll);
+    const looseKey = installmentLooseKey(p, tasksAll);
+    if(paidStrict.has(strictKey)) return false;
+    if(paidLoose.has(looseKey)) return false;
+    return true;
+  });
+}
+
+function reconcileVisiblePayments(payments, tasksAll){
+  let out = Array.isArray(payments) ? payments.slice() : [];
+  out = suppressPendingCoveredByPaid(out, tasksAll);
+  out = suppressPendingCoveredByPaidLoose(out, tasksAll);
+  return out;
+}
+
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -1080,10 +1124,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || "—";
+    const method = p.paidWith || p.paymentMethod || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
 
     openModal(`
       <div class="card">
@@ -1106,6 +1150,7 @@ function dueBadge(iso){
           <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
           <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
           <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
+          <div class="lineItem"><b>Origen:</b> ${esc(p.source==="manual" ? "Registro manual (Tesorero)" : "Transbank / sistema")}</div>
         </div>
       </div>
     `);
@@ -1487,7 +1532,7 @@ function dedupePaymentsAll(list){
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = suppressPendingCoveredByPaid(paysAll, tasks0);
+    paysAll = reconcileVisiblePayments(paysAll, tasks0);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -1754,7 +1799,7 @@ function dedupePaymentsAll(list){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll);
+    paysAll = reconcileVisiblePayments(paysAll, tasksAll);
 
     try{
       if(window.__apoForcePaid){
