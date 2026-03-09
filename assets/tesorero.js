@@ -256,34 +256,54 @@
     const paidAt = $("mp_date")?.value || todayISO();
     const paymentMethod = $("mp_method")?.value || "transferencia";
     const conciliationStatus = $("mp_status")?.value || "conciliado";
-    const note = $("mp_note")?.value || "";
+    const note = ($("mp_note")?.value || "").trim();
+
     if(!prof) return alert("Debes seleccionar apoderado · alumno.");
     if(!fromTaskId) return alert("Debes seleccionar campaña.");
     if(!concept || !amount) return alert("No se pudo cargar el monto de la campaña.");
+
     const payments = paymentsNormalized();
     const task = tasksAll().find(t=>String(t.id)===String(fromTaskId));
     const courseKey = String(prof.courseKey || activeCourseKey() || "").trim();
     const period = ymFromISO(task?.dueDate || task?.startDate || paidAt);
     const installmentIndex = 1;
     const desiredPaymentKey = paymentKeyOf(courseKey, fromTaskId, prof.email, prof.alumnoId, period, installmentIndex);
+
+    // 1) Si ya existe pagado para esta cuota/campaña/apoderado, no duplicar
+    const alreadyPaidIdx = payments.findIndex(p=>{
+      if(String(p?.status||"").toLowerCase() !== "paid") return false;
+      if(String(p?.fromTaskId||"") !== String(fromTaskId)) return false;
+      const sameKey = String(p?.paymentKey||"") === String(desiredPaymentKey);
+      const sameIdentity =
+        String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || "").toLowerCase().trim() === String(prof.email).toLowerCase().trim()
+        && (String(p?.alumnoId||"") === String(prof.alumnoId) || !String(p?.alumnoId||"").trim());
+      const sameNames =
+        sameText(p?.studentName || p?.alumno || "", prof.student)
+        && sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian);
+      return sameKey || sameIdentity || sameNames;
+    });
+    if(alreadyPaidIdx >= 0){
+      return alert("Esta cuota/campaña ya figura como pagada para este apoderado.");
+    }
+
+    // 2) Buscar pendiente existente para convertirlo a paid
     let pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
     if(pendingIdx < 0){
       pendingIdx = payments.findIndex(p=>{
         const st = String(p?.status||"").toLowerCase();
         if(!["pending","partial","overdue"].includes(st)) return false;
-        return String(p?.fromTaskId||"")===String(fromTaskId)
-          && sameText(p?.studentName || p?.alumno || "", prof.student)
+        if(String(p?.fromTaskId||"") !== String(fromTaskId)) return false;
+        const sameNames =
+          sameText(p?.studentName || p?.alumno || "", prof.student)
           && sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian);
+        const sameKey = String(p?.paymentKey||"") === String(desiredPaymentKey);
+        return sameNames || sameKey;
       });
     }
-    if(pendingIdx < 0){
-      pendingIdx = payments.findIndex(p=>{
-        const st = String(p?.status||"").toLowerCase();
-        return ["pending","partial","overdue"].includes(st) && String(p?.paymentKey||"")===String(desiredPaymentKey);
-      });
-    }
+
     const receiptId = uid("manual");
     const transactionId = "MANUAL-" + Date.now();
+
     if(pendingIdx >= 0){
       const prev = payments[pendingIdx];
       payments[pendingIdx] = {
@@ -342,6 +362,7 @@
         createdAt: new Date().toISOString()
       });
     }
+
     save(KEY_PAYMENTS, payments);
     markDirty();
     closeModal();

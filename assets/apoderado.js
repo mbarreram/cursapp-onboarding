@@ -360,43 +360,40 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
-function normLooseText(x){
-  return String(x||"").toLowerCase().trim();
-}
-function installmentLooseKey(p, tasksAll){
-  const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
-  const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
-  const student = normLooseText(p?.studentName || p?.alumno || "");
-  const guardian = normLooseText(p?.guardianName || p?.apoderadoName || "");
-  let inst = inferredInstallmentIndex(p, task);
-  if(!inst){
-    const per = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
-    inst = per ? `ym:${per}` : "single";
-  }
-  return [taskId, student, guardian, String(inst)].join("|");
-}
-function suppressPendingCoveredByPaidLoose(payments, tasksAll){
-  const list = Array.isArray(payments) ? payments.slice() : [];
-  const paidStrict = new Set();
-  const paidLoose = new Set();
-  list.forEach(p=>{
-    if(String(p?.status||"").toLowerCase() !== "paid") return;
-    paidStrict.add(paymentEquivKey(p, tasksAll));
-    paidLoose.add(installmentLooseKey(p, tasksAll));
-  });
-  return list.filter(p=>{
-    const st = String(p?.status||"").toLowerCase();
-    if(!["pending","partial","overdue"].includes(st)) return true;
-    if(paidStrict.has(paymentEquivKey(p, tasksAll))) return false;
-    if(paidLoose.has(installmentLooseKey(p, tasksAll))) return false;
-    return true;
-  });
-}
-function reconcileVisiblePayments(payments, tasksAll){
-  let out = Array.isArray(payments) ? payments.slice() : [];
-  out = suppressPendingCoveredByPaid(out, tasksAll);
-  out = suppressPendingCoveredByPaidLoose(out, tasksAll);
-  return out;
+
+function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
+    const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+    const apoderadoId = String(ident.apoderadoId||"").trim();
+    const alumnoLabel = String(ident.alumnoId||"").trim();
+    const email = String(ident.email||"").toLowerCase().trim();
+    const aidStrong = (apoderadoId || email || "unknown_apoderado");
+    const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+
+    const wantedTaskId = String(task?.id || "");
+    const wantedPeriod = String(period || "");
+    const wantedIdx = String(installmentIndex || 1);
+
+    return (out || []).some(p => {
+      if(String(p?.status||"").toLowerCase() !== "paid") return false;
+      if(String(p?.fromTaskId||"") !== wantedTaskId) return false;
+
+      const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+      const pIdx = String(p?.installmentIndex || 1);
+
+      const sameSlot = (pPeriod === wantedPeriod && pIdx === wantedIdx) || (!wantedPeriod && pIdx === wantedIdx);
+      if(!sameSlot) return false;
+
+      const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+      const pAlu = String(p?.alumnoId || "");
+      const pGuardian = String(p?.guardianName || p?.apoderadoName || "").toLowerCase().trim();
+      const pStudent = String(p?.studentName || p?.alumno || "").toLowerCase().trim();
+
+      const strictMatch = return (
+        (pAid && pAid === aidStrong.toLowerCase() && (!pAlu || pAlu === alumnoId))
+        || (pGuardian && pGuardian === String(ident.email||"").toLowerCase().trim())
+        || (pStudent && alumnoLabel && pStudent === alumnoLabel.toLowerCase().trim())
+      );
+    });
 }
 
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
@@ -427,6 +424,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     function pushPay(t, period, installmentIndex, dueDate, concept){
       const pk = paymentKeyOf(courseKey, t.id, aidStrong, alumnoId, period, installmentIndex);
       if(byKey.has(pk)) return;
+      if(hasCoveredPaymentForSlot(out, ident, t, period, installmentIndex)) return;
 
       out.unshift({
         id: uid("pay"),
@@ -1119,10 +1117,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || p.paymentMethod || "—";
+    const method = p.paidWith || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
 
     openModal(`
       <div class="card">
@@ -1145,7 +1143,6 @@ function dueBadge(iso){
           <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
           <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
           <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
-          <div class="lineItem"><b>Origen:</b> ${esc(p.source==="manual" ? "Registro manual (Tesorero)" : "Transbank / sistema")}</div>
         </div>
       </div>
     `);
@@ -1527,7 +1524,7 @@ function dedupePaymentsAll(list){
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = reconcileVisiblePayments(paysAll, tasks0);
+    paysAll = suppressPendingCoveredByPaid(paysAll, tasks0);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -1794,7 +1791,7 @@ function dedupePaymentsAll(list){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = reconcileVisiblePayments(paysAll, tasksAll);
+    paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll);
 
     try{
       if(window.__apoForcePaid){
