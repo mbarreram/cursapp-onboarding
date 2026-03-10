@@ -360,42 +360,6 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
-
-function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
-    const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-    const apoderadoId = String(ident.apoderadoId||"").trim();
-    const alumnoLabel = String(ident.alumnoId||"").trim();
-    const email = String(ident.email||"").toLowerCase().trim();
-    const aidStrong = (apoderadoId || email || "unknown_apoderado");
-    const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
-
-    const wantedTaskId = String(task?.id || "");
-    const wantedPeriod = String(period || "");
-    const wantedIdx = String(installmentIndex || 1);
-
-    return (out || []).some(p => {
-      if(String(p?.status||"").toLowerCase() !== "paid") return false;
-      if(String(p?.fromTaskId||"") !== wantedTaskId) return false;
-
-      const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
-      const pIdx = String(p?.installmentIndex || 1);
-
-      const sameSlot = (pPeriod === wantedPeriod && pIdx === wantedIdx) || (!wantedPeriod && pIdx === wantedIdx);
-      if(!sameSlot) return false;
-
-      const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
-      const pAlu = String(p?.alumnoId || "");
-      const pGuardian = String(p?.guardianName || p?.apoderadoName || "").toLowerCase().trim();
-      const pStudent = String(p?.studentName || p?.alumno || "").toLowerCase().trim();
-
-      const strictMatch = return (
-        (pAid && pAid === aidStrong.toLowerCase() && (!pAlu || pAlu === alumnoId))
-        || (pGuardian && pGuardian === String(ident.email||"").toLowerCase().trim())
-        || (pStudent && alumnoLabel && pStudent === alumnoLabel.toLowerCase().trim())
-      );
-    });
-}
-
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -424,7 +388,6 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     function pushPay(t, period, installmentIndex, dueDate, concept){
       const pk = paymentKeyOf(courseKey, t.id, aidStrong, alumnoId, period, installmentIndex);
       if(byKey.has(pk)) return;
-      if(hasCoveredPaymentForSlot(out, ident, t, period, installmentIndex)) return;
 
       out.unshift({
         id: uid("pay"),
