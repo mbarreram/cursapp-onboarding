@@ -360,7 +360,6 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
-
 function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
   const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
   const apoderadoId = String(ident?.apoderadoId||"").trim();
@@ -379,6 +378,7 @@ function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
 
     const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
     const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+
     if(!(pPeriod === wantedPeriod && pIdx === wantedIdx)) return false;
 
     const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
@@ -1113,10 +1113,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || p.paymentMethod || "—";
+    const method = p.paidWith || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
 
     openModal(`
       <div class="card">
