@@ -360,6 +360,38 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
+
+function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
+  const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  const apoderadoId = String(ident?.apoderadoId||"").trim();
+  const alumnoLabel = String(ident?.alumnoId||"").trim();
+  const email = String(ident?.email||"").toLowerCase().trim();
+  const aidStrong = (apoderadoId || email || "unknown_apoderado");
+  const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+
+  const wantedTaskId = String(task?.id || "");
+  const wantedPeriod = String(period || "");
+  const wantedIdx = String(installmentIndex || 1);
+
+  return (out || []).some(p => {
+    if(String(p?.status||"").toLowerCase() !== "paid") return false;
+    if(String(p?.fromTaskId||"") !== wantedTaskId) return false;
+
+    const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+    const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+    if(!(pPeriod === wantedPeriod && pIdx === wantedIdx)) return false;
+
+    const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+    const pAlu = String(p?.alumnoId || "");
+    const pGuardian = String(p?.guardianName || p?.apoderadoName || "").toLowerCase().trim();
+    const pStudent = String(p?.studentName || p?.alumno || "").toLowerCase().trim();
+
+    if(pAid && pAid === aidStrong.toLowerCase() && (!pAlu || pAlu === alumnoId)) return true;
+    if(pGuardian && pStudent && pGuardian === aidStrong.toLowerCase() && pStudent === alumnoLabel.toLowerCase().trim()) return true;
+    return false;
+  });
+}
+
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -388,6 +420,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     function pushPay(t, period, installmentIndex, dueDate, concept){
       const pk = paymentKeyOf(courseKey, t.id, aidStrong, alumnoId, period, installmentIndex);
       if(byKey.has(pk)) return;
+      if(hasCoveredPaymentForSlot(out, ident, t, period, installmentIndex)) return;
 
       out.unshift({
         id: uid("pay"),
@@ -1080,10 +1113,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || "—";
+    const method = p.paidWith || p.paymentMethod || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
 
     openModal(`
       <div class="card">
