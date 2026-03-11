@@ -269,6 +269,7 @@
     const installmentIndex = 1;
     const wantedKey = paymentKeyOf(courseKey, fromTaskId, prof.email, prof.alumnoId, period, installmentIndex);
 
+    // 1) Bloquear duplicado si ya existe un paid para la misma campaña/cuota/apoderado
     const samePaid = payments.findIndex(p=>{
       const st = String(p?.status||"").toLowerCase();
       if(st !== "paid") return false;
@@ -282,7 +283,8 @@
       const pAlumnoId = String(p?.alumnoId || "").trim();
       const sameIdentity = pEmail === String(prof.email).toLowerCase().trim() && (!pAlumnoId || pAlumnoId === String(prof.alumnoId));
 
-      const sameNames = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian) && sameText(p?.studentName || p?.alumno || "", prof.student);
+      const sameNames = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian) &&
+                        sameText(p?.studentName || p?.alumno || "", prof.student);
       const sameKey = String(p?.paymentKey || "") === wantedKey;
 
       return (sameSlot && (sameIdentity || sameNames)) || sameKey;
@@ -291,26 +293,37 @@
       return alert("Esta cuota/campaña ya figura como pagada para este apoderado.");
     }
 
-    let pendingIdx = payments.findIndex(p => matchesPendingForProfile(p, prof, fromTaskId));
+    // 2) Buscar pendiente existente para convertirlo a paid
+    let pendingIdx = payments.findIndex(p=>{
+      const st = String(p?.status||"").toLowerCase();
+      if(!["pending","partial","overdue"].includes(st)) return false;
+      if(String(p?.fromTaskId||"") !== String(fromTaskId)) return false;
 
+      const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || "");
+      const pIdx = String(p?.installmentIndex==null || p?.installmentIndex==="" ? 1 : p?.installmentIndex);
+      const sameSlot = (pPeriod === period && pIdx === String(installmentIndex));
+
+      const pEmail = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+      const pAlumnoId = String(p?.alumnoId || "").trim();
+      const sameIdentity = pEmail === String(prof.email).toLowerCase().trim() && (!pAlumnoId || pAlumnoId === String(prof.alumnoId));
+
+      const sameNames = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian) &&
+                        sameText(p?.studentName || p?.alumno || "", prof.student);
+      const sameKey = String(p?.paymentKey || "") === wantedKey;
+
+      return (sameSlot && (sameIdentity || sameNames)) || sameKey;
+    });
+
+    // fallback legacy: cualquier pending de esa campaña+apoderado+alumno
     if(pendingIdx < 0){
       pendingIdx = payments.findIndex(p=>{
         const st = String(p?.status||"").toLowerCase();
         if(!["pending","partial","overdue"].includes(st)) return false;
         if(String(p?.fromTaskId||"") !== String(fromTaskId)) return false;
 
-        const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || "");
-        const pIdx = String(p?.installmentIndex==null || p?.installmentIndex==="" ? 1 : p?.installmentIndex);
-        const sameSlot = (pPeriod === period && pIdx === String(installmentIndex));
-
         const pEmail = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
         const pAlumnoId = String(p?.alumnoId || "").trim();
-        const sameIdentity = pEmail === String(prof.email).toLowerCase().trim() && (!pAlumnoId || pAlumnoId === String(prof.alumnoId));
-
-        const sameNames = sameText(p?.guardianName || p?.apoderadoName || "", prof.guardian) && sameText(p?.studentName || p?.alumno || "", prof.student);
-        const sameKey = String(p?.paymentKey || "") === wantedKey;
-
-        return (sameSlot && (sameIdentity || sameNames)) || sameKey;
+        return pEmail === String(prof.email).toLowerCase().trim() && (!pAlumnoId || pAlumnoId === String(prof.alumnoId));
       });
     }
 
@@ -321,6 +334,12 @@
       const prev = payments[pendingIdx];
       payments[pendingIdx] = {
         ...prev,
+        fromTaskId: prev.fromTaskId || fromTaskId,
+        courseKey: prev.courseKey || courseKey,
+        paymentKey: prev.paymentKey || wantedKey,
+        period: prev.period || period,
+        installmentIndex: prev.installmentIndex || installmentIndex,
+        dueDate: prev.dueDate || (task?.dueDate || paidAt),
         concept,
         amount,
         amountRemaining: 0,
@@ -333,11 +352,6 @@
         apoderadoId: prev.apoderadoId || prof.email,
         apoderadoEmail: prev.apoderadoEmail || prof.email,
         alumnoId: prev.alumnoId || prof.alumnoId,
-        courseKey: prev.courseKey || courseKey,
-        paymentKey: prev.paymentKey || wantedKey,
-        period: prev.period || period,
-        installmentIndex: prev.installmentIndex || installmentIndex,
-        dueDate: prev.dueDate || (task?.dueDate || paidAt),
         paidAt,
         paidWith: paymentMethod,
         source: "manual",
@@ -349,6 +363,11 @@
       payments.unshift({
         id: uid("p"),
         fromTaskId,
+        courseKey,
+        paymentKey: wantedKey,
+        period,
+        installmentIndex,
+        dueDate: task?.dueDate || paidAt,
         concept,
         amount,
         amountRemaining: 0,
@@ -361,11 +380,6 @@
         apoderadoId: prof.email,
         apoderadoEmail: prof.email,
         alumnoId: prof.alumnoId,
-        courseKey,
-        paymentKey: wantedKey,
-        period,
-        installmentIndex,
-        dueDate: task?.dueDate || paidAt,
         paidAt,
         paidWith: paymentMethod,
         source: "manual",
