@@ -392,6 +392,69 @@ function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
   });
 }
 
+function _currentProfileLoose(){
+  try{
+    const p = getActiveProfile && getActiveProfile();
+    const s = getSession && getSession();
+    return {
+      email: String(s?.userId || s?.email || p?.apoderado?.email || p?.user?.email || "").toLowerCase().trim(),
+      guardian: String(p?.apoderado?.name || p?.user?.name || "").toLowerCase().trim(),
+      student: String(p?.apoderado?.alumno || "").toLowerCase().trim()
+    };
+  }catch(e){
+    return { email:"", guardian:"", student:"" };
+  }
+}
+
+function _isSameIdentityLoose(p, ident, prof){
+  const pEmail = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const pGuardian = String(p?.guardianName || p?.apoderadoName || "").toLowerCase().trim();
+  const pStudent = String(p?.studentName || p?.alumno || "").toLowerCase().trim();
+  const pAlumnoId = String(p?.alumnoId || "").trim();
+
+  const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  const aidStrong = String(ident?.apoderadoId || ident?.email || "").toLowerCase().trim();
+  const alumnoLabel = String(ident?.alumnoId || "").trim();
+  const alumnoStable = alumnoIdOf(courseKey, aidStrong || prof.email || "unknown_apoderado", alumnoLabel);
+
+  if(pEmail && prof.email && pEmail === prof.email) return true;
+  if(pAlumnoId && alumnoStable && pAlumnoId === alumnoStable) return true;
+  if(pGuardian && pStudent && prof.guardian && prof.student && pGuardian === prof.guardian && pStudent === prof.student) return true;
+  return false;
+}
+
+function suppressPendingForCurrentIdentity(payments, tasksAll, ident){
+  const list = Array.isArray(payments) ? payments.slice() : [];
+  const prof = _currentProfileLoose();
+
+  return list.filter(p=>{
+    const st = String(p?.status||"").toLowerCase();
+    if(!["pending","partial","overdue"].includes(st)) return true;
+
+    const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
+    const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
+    const isMonthly = String(task?.type||"single") === "monthly";
+    const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || "");
+    const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+
+    const covered = list.some(x=>{
+      if(String(x?.status||"").toLowerCase() !== "paid") return false;
+      if(String(x?.fromTaskId || x?.taskId || x?.campaignId || "") !== taskId) return false;
+      if(!_isSameIdentityLoose(x, ident, prof)) return false;
+
+      if(isMonthly){
+        const xPeriod = String(x?.period || ymFromISO(x?.dueDate) || ymFromISO(x?.paidAt) || "");
+        const xIdx = String((x?.installmentIndex==null || x?.installmentIndex==="") ? 1 : x?.installmentIndex);
+        return xPeriod === pPeriod && xIdx === pIdx;
+      }
+      return true; // single campaign: any paid for same campaign hides pending
+    });
+
+    return !covered;
+  });
+}
+
+
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -459,6 +522,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       }else{
         const period = ymFromISO(t.dueDate||t.startDate||todayISO());
         const dueDate = t.dueDate || endOfMonthISO(period);
+        if(hasCoveredPaymentForSlot(out, ident, t, period, 1)) return;
         pushPay(t, period, 1, dueDate, t.title);
       }
     });
@@ -1521,6 +1585,7 @@ function dedupePaymentsAll(list){
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
     paysAll = suppressPendingCoveredByPaid(paysAll, tasks0);
+    paysAll = suppressPendingForCurrentIdentity(paysAll, tasks0, ident0);
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -1788,6 +1853,7 @@ function dedupePaymentsAll(list){
 
     paysAll = paysAll.filter(isMinePayment);
     paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll);
+    paysAll = suppressPendingForCurrentIdentity(paysAll, tasksAll, ident);
 
     try{
       if(window.__apoForcePaid){
