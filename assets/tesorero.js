@@ -68,7 +68,7 @@
         const student = String(p?.apoderado?.alumno || p?.studentName || "").trim();
         const email = String(p?.apoderado?.email || p?.user?.email || p?.userId || "").trim().toLowerCase();
         const profileId = String(p?.profileId || p?.id || email).trim();
-        const alumnoId = alumnoIdOf(String(p?.courseKey||courseKey||""), email, student);
+        const alumnoId = (p?.apoderado?.alumnoId || p?.studentId || p?.alumnoId || alumnoIdOf(String(p?.courseKey||courseKey||""), email, student));
         const label = [guardian, student].filter(Boolean).join(" · ") || email || "Apoderado";
         return { profileId, guardian, student, email, alumnoId, courseKey: String(p?.courseKey||courseKey||""), label };
       });
