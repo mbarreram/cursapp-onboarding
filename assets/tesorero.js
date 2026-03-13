@@ -66,9 +66,21 @@
       .map(p=>{
         const guardian = String(p?.apoderado?.name || p?.user?.name || "").trim();
         const student = String(p?.apoderado?.alumno || p?.studentName || "").trim();
-        const email = String(p?.apoderado?.email || p?.user?.email || p?.userId || "").trim().toLowerCase();
-        const profileId = String(p?.profileId || p?.id || email).trim();
-        const alumnoId = (p?.apoderado?.alumnoId || p?.studentId || p?.alumnoId || alumnoIdOf(String(p?.courseKey||courseKey||""), email, student));
+        const email = String(
+          p?.apoderado?.email ||
+          p?.email ||
+          p?.guardianEmail ||
+          p?.contactEmail ||
+          p?.user?.email ||
+          ""
+        ).trim().toLowerCase();
+        const profileId = String(p?.profileId || p?.id || email || p?.userId || "").trim();
+        const alumnoId = String(
+          p?.apoderado?.alumnoId ||
+          p?.studentId ||
+          p?.alumnoId ||
+          alumnoIdOf(String(p?.courseKey||courseKey||""), email, student)
+        ).trim();
         const label = [guardian, student].filter(Boolean).join(" · ") || email || "Apoderado";
         return { profileId, guardian, student, email, alumnoId, courseKey: String(p?.courseKey||courseKey||""), label };
       });
@@ -348,10 +360,11 @@
         conciliationStatus,
         guardianName: prev.guardianName || prof.guardian,
         studentName: prev.studentName || prof.student,
-        apoderadoKey: prev.apoderadoKey || prof.email,
-        apoderadoId: prev.apoderadoId || prof.email,
-        apoderadoEmail: prev.apoderadoEmail || prof.email,
-        alumnoId: prev.alumnoId || prof.alumnoId,
+        apoderadoKey: prof.email,
+        apoderadoId: prof.email,
+        apoderadoEmail: prof.email,
+        email: prof.email,
+        alumnoId: prof.alumnoId,
         paidAt,
         paidWith: paymentMethod,
         source: "manual",
@@ -379,6 +392,7 @@
         apoderadoKey: prof.email,
         apoderadoId: prof.email,
         apoderadoEmail: prof.email,
+        email: prof.email,
         alumnoId: prof.alumnoId,
         paidAt,
         paidWith: paymentMethod,
@@ -389,40 +403,6 @@
         createdAt: new Date().toISOString()
       });
     }
-
-    try{
-      const debugPayload = {
-        titulo: "ALERTA DEBUG PAGO MANUAL",
-        profileId,
-        guardian: prof?.guardian || "",
-        student: prof?.student || "",
-        email: prof?.email || "",
-        alumnoId: prof?.alumnoId || "",
-        fromTaskId,
-        concept,
-        amount,
-        paidAt,
-        paymentMethod,
-        conciliationStatus,
-        courseKey: (typeof courseKey!=="undefined" ? courseKey : ""),
-        period: (typeof period!=="undefined" ? period : ""),
-        installmentIndex: (typeof installmentIndex!=="undefined" ? installmentIndex : ""),
-        wantedKey: (typeof wantedKey!=="undefined" ? wantedKey : ""),
-        samePaid: (typeof samePaid!=="undefined" ? samePaid : ""),
-        pendingIdx: (typeof pendingIdx!=="undefined" ? pendingIdx : ""),
-        matchedPending: (typeof pendingIdx!=="undefined" && pendingIdx >= 0) ? {
-          id: payments[pendingIdx]?.id || "",
-          status: payments[pendingIdx]?.status || "",
-          fromTaskId: payments[pendingIdx]?.fromTaskId || "",
-          paymentKey: payments[pendingIdx]?.paymentKey || "",
-          apoderadoEmail: payments[pendingIdx]?.apoderadoEmail || payments[pendingIdx]?.apoderadoKey || "",
-          alumnoId: payments[pendingIdx]?.alumnoId || "",
-          period: payments[pendingIdx]?.period || "",
-          installmentIndex: payments[pendingIdx]?.installmentIndex || ""
-        } : null
-      };
-      alert(JSON.stringify(debugPayload, null, 2));
-    }catch(e){}
     save(KEY_PAYMENTS, payments);
     markDirty();
     closeModal();

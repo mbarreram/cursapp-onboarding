@@ -62,10 +62,11 @@ function isMinePayment(p){
   if(!mk) return true;
 
   // Prefer explicit identity fields
+  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
+  if(ae) return ae === mk;
+
   const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
   if(ak) return ak === mk;
-
-  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
   if(ae) return ae === mk;
 
   const aid = String(p?.apoderadoId||"").toLowerCase().trim();
@@ -262,12 +263,36 @@ function normalizeTasks(list){
 function getActiveIdentity(){
   const p = getActiveProfile();
   const s = getSession();
-  const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+
+  const email = String(
+    p?.apoderado?.email ||
+    p?.email ||
+    p?.user?.email ||
+    s?.email ||
+    s?.userId ||
+    ""
+  ).toLowerCase().trim();
+
+  const alumnoLabel = String(
+    p?.apoderado?.alumno ||
+    p?.studentName ||
+    s?.alumno ||
+    ""
+  ).trim();
+
+  const alumnoIdReal = String(
+    p?.apoderado?.alumnoId ||
+    p?.studentId ||
+    p?.alumnoId ||
+    ""
+  ).trim();
 
   return {
     courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
     apoderadoId: email || "unknown_apoderado",
-    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
+    alumnoId: alumnoIdReal || alumnoLabel,
+    alumnoLabel,
+    realAlumnoId: alumnoIdReal,
     email
   };
 }
@@ -332,7 +357,7 @@ function paymentEquivKey(p, tasksAll){
   const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
   const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
   const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "");
-  const who = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const who = String(p?.apoderadoEmail || p?.apoderadoKey || p?.apoderadoId || p?.email || "").toLowerCase().trim();
   const alumnoId = String(p?.alumnoId || "");
   let inst = inferredInstallmentIndex(p, task);
 
@@ -362,11 +387,11 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
 
 function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
   const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-  const apoderadoId = String(ident?.apoderadoId||"").trim();
-  const alumnoLabel = String(ident?.alumnoId||"").trim();
   const email = String(ident?.email||"").toLowerCase().trim();
-  const aidStrong = (apoderadoId || email || "unknown_apoderado");
-  const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+  const apoderadoId = String(ident?.apoderadoId||email||"").trim();
+  const alumnoLabel = String(ident?.alumnoLabel || ident?.studentName || ident?.alumnoName || ident?.alumnoId || "").trim();
+  const aidStrong = (email || apoderadoId || "unknown_apoderado");
+  const alumnoId = String(ident?.realAlumnoId || ident?.alumnoId || alumnoIdOf(courseKey, aidStrong, alumnoLabel)).trim();
 
   const wantedTaskId = String(task?.id || "");
   const wantedPeriod = String(period || "");
@@ -396,11 +421,11 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
     if(!courseKey) return paysAll || [];
-    const apoderadoId = String(ident.apoderadoId||"").trim();
-    const alumnoLabel = String(ident.alumnoId||"").trim();
     const email = String(ident.email||"").toLowerCase().trim();
-    const aidStrong = (apoderadoId || email || "unknown_apoderado");
-    const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+    const apoderadoId = String(ident.apoderadoId||email||"").trim();
+    const alumnoLabel = String(ident.alumnoLabel || ident.studentName || ident.alumnoName || ident.alumnoId || "").trim();
+    const aidStrong = (email || apoderadoId || "unknown_apoderado");
+    const alumnoId = String(ident.realAlumnoId || ident.alumnoId || alumnoIdOf(courseKey, aidStrong, alumnoLabel)).trim();
 
     const out = (paysAll||[]).slice();
 
@@ -1505,55 +1530,6 @@ function dedupePaymentsAll(list){
   return { list: Array.from(map.values()), changed };
 }
 
-
-  function debugAlertApoderadoState(stage, ident, paysAll, tasksAll, pending){
-    try{
-      const onceKey = "cursapp_debug_alert_" + String(stage || "home");
-      if(sessionStorage.getItem(onceKey)==="1") return;
-      sessionStorage.setItem(onceKey,"1");
-
-      const paid = (paysAll||[]).filter(p=>String(p?.status||"").toLowerCase()==="paid");
-      const pendingList = (pending||[]).map(p=>({
-        id: p?.id || "",
-        fromTaskId: p?.fromTaskId || "",
-        concept: p?.concept || "",
-        amount: Number(p?.amountRemaining ?? p?.amount ?? 0),
-        dueDate: p?.dueDate || "",
-        period: p?.period || "",
-        installmentIndex: p?.installmentIndex || "",
-        paymentKey: p?.paymentKey || "",
-        apoderadoEmail: p?.apoderadoEmail || p?.apoderadoKey || "",
-        alumnoId: p?.alumnoId || ""
-      }));
-
-      const paidList = paid.map(p=>({
-        id: p?.id || "",
-        fromTaskId: p?.fromTaskId || "",
-        concept: p?.concept || "",
-        amount: Number(p?.amountRemaining ?? p?.amount ?? 0),
-        paidAt: p?.paidAt || "",
-        period: p?.period || "",
-        installmentIndex: p?.installmentIndex || "",
-        paymentKey: p?.paymentKey || "",
-        apoderadoEmail: p?.apoderadoEmail || p?.apoderadoKey || "",
-        alumnoId: p?.alumnoId || ""
-      }));
-
-      const payload = {
-        titulo: "ALERTA DEBUG APODERADO",
-        stage: stage || "",
-        ident: ident || {},
-        tasksCount: (tasksAll||[]).length,
-        paymentsMineCount: (paysAll||[]).length,
-        paidCount: paid.length,
-        pendingCount: (pending||[]).length,
-        paidList,
-        pendingList
-      };
-      alert(JSON.stringify(payload, null, 2));
-    }catch(e){}
-  }
-
   // -------- Pages --------
   function renderHome(){
     // datos para home
@@ -1573,7 +1549,6 @@ function dedupePaymentsAll(list){
 
     const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
-    debugAlertApoderadoState("home", ident0, paysAll, tasks0, pending);
 
     const thisYM = (()=>{ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); return `${y}-${m}`; })();
 
