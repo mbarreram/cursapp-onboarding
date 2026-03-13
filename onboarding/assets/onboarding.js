@@ -167,6 +167,12 @@ function uid(prefix = "id") {
     for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
     return "h_"+(h>>>0).toString(16);
   }
+  function alumnoIdOf(courseKey, apoderadoEmail, alumnoLabel){
+    let h=5381;
+    const s = [courseKey, apoderadoEmail, alumnoLabel].join("|");
+    for(let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
+    return "alu_"+(h>>>0).toString(16);
+  }
 
   function makeCourseKey(schoolId, level, letter, jornada, year){
     return [schoolId, level, letter, jornada, year].join("|");
@@ -945,7 +951,13 @@ if(d.alsoApoderado){
             role: "apoderado",
             courseKey,
             course: courseObj.course,
-            apoderado: { name: d.name, alumno: d.alumno, phone: d.dPhone || "" },
+            apoderado: {
+              name: d.name,
+              alumno: d.alumno,
+              alumnoId: alumnoIdOf(courseKey, pEmailNorm, d.alumno),
+              email: pEmailNorm,
+              phone: d.dPhone || ""
+            },
             activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
             createdAt: nowISO()
           });
@@ -1024,7 +1036,13 @@ if(d.alsoApoderado){
             letter: d.letter,
             year: d.year
           },
-          apoderado: { name: d.name, alumno: d.alumno, phone: d.phone || "" },
+          apoderado: {
+            name: d.name,
+            alumno: d.alumno,
+            alumnoId: alumnoIdOf(courseKey, d.email, d.alumno),
+            email: d.email,
+            phone: d.phone || ""
+          },
           activation: { required:true, amount:7990, status: activation.status, createdAt: nowISO(), paidAt: activation.paidAt },
           createdAt: nowISO()
         });
