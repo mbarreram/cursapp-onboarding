@@ -4,6 +4,14 @@
 
 const session = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null");
 
+if (!session || !session.userId || !session.courseKey) {
+  alert(
+    "❌ CONTEXTO INVÁLIDO EN APODERADO\n\n" +
+    JSON.stringify(session, null, 2)
+  );
+  throw new Error("Contexto apoderado inválido");
+}
+
 (function(){
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -31,25 +39,9 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
       ? window.CURSAPP.getSession()
       : (function(){ try{ return JSON.parse(localStorage.getItem("cursapp_session_v1")||"null"); }catch(e){ return null; } })();
   }
-  function allUsers(){
-    try{
-      const arr = JSON.parse(localStorage.getItem("cursapp_users_v1") || "[]");
-      return Array.isArray(arr) ? arr : [];
-    }catch(e){ return []; }
-  }
-  function resolveUserEmailById(userId){
-    const uid = String(userId||"").trim();
-    if(!uid) return "";
-    const u = allUsers().find(x => String(x?.userId||"").trim() === uid);
-    return String(u?.email || "").trim().toLowerCase();
-  }
   function meKey(){
     const s = getSession();
     return String(s?.userId||"").toLowerCase().trim();
-  }
-  function meEmail(){
-    const s = getSession() || {};
-    return String(resolveUserEmailById(s?.userId) || s?.email || "").toLowerCase().trim();
   }
 
   
@@ -67,19 +59,20 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
 
 function isMinePayment(p){
   const mk = meKey();
-  const me = meEmail();
-  const candidates = [me, mk].filter(Boolean);
-  if(!candidates.length) return true;
+  if(!mk) return true;
 
+  // Prefer explicit identity fields
   const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
-  if(ae && candidates.includes(ae)) return true;
+  if(ae) return ae === mk;
 
   const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
-  if(ak && candidates.includes(ak)) return true;
+  if(ak) return ak === mk;
+  if(ae) return ae === mk;
 
   const aid = String(p?.apoderadoId||"").toLowerCase().trim();
-  if(aid && candidates.includes(aid)) return true;
+  if(aid) return aid === mk;
 
+  // ✅ Sin identidad fuerte no es 'mío' (evita cruces)
   return false;
 }
   // ---- notifier: refrescar cuando se actualiza storage (misma sesión) ----
@@ -275,9 +268,8 @@ function getActiveIdentity(){
     p?.apoderado?.email ||
     p?.email ||
     p?.user?.email ||
-    resolveUserEmailById(p?.userId || p?.user?.userId) ||
-    resolveUserEmailById(s?.userId) ||
     s?.email ||
+    s?.userId ||
     ""
   ).toLowerCase().trim();
 
