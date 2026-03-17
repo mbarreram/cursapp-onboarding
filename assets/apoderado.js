@@ -681,6 +681,7 @@ function dueBadge(iso){
     let saldoFavor = 0;
 
     list.forEach(p=>{
+      if(typeof isPaymentOptedOut==='function' && isPaymentOptedOut(p)) return;
       const st = normalizePaymentStatus(p);
       const amt = Number(p?.amount ?? 0);
       const rem = Number(p?.amountRemaining ?? amt ?? 0);
