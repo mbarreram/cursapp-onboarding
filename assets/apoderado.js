@@ -662,50 +662,6 @@ function dueBadge(iso){
   if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
   return `<span class="tag warn">Quedan ${d} días</span>`;
 }
-
-  function normalizePaymentStatus(p){
-    const st = String(p?.status || "").toLowerCase();
-    if(st === "paid" || st === "partial" || st === "overdue" || st === "credit" || st==="credit_used") return st;
-    const due = String(p?.dueDate || "").slice(0,10);
-    const today = new Date().toISOString().slice(0,10);
-    if(due && due < today) return "overdue";
-    return "pending";
-  }
-
-  function dashboardFinancieroApoderado(pays){
-    const list = Array.isArray(pays) ? pays.slice() : [];
-    let pagado = 0;
-    let pendiente = 0;
-    let vencido = 0;
-    let parcial = 0;
-    let saldoFavor = 0;
-
-    list.forEach(p=>{
-      const st = normalizePaymentStatus(p);
-      const amt = Number(p?.amount ?? 0);
-      const rem = Number(p?.amountRemaining ?? amt ?? 0);
-      const paidAmt = Number(
-        st === "paid"
-          ? (p?.amount ?? p?.amountPaid ?? 0)
-          : (p?.amountPaid ?? Math.max(0, amt - rem))
-      );
-
-      if(st === "paid") pagado += paidAmt || amt;
-      else if(st === "overdue") vencido += rem || amt;
-      else if(st === "partial"){
-        parcial += rem;
-        pendiente += rem;
-      }
-      else if(st === "credit" || st === "credit_used") saldoFavor += Number(p?.amount || 0);
-      else pendiente += rem || amt;
-    });
-
-    const totalGestionado = pagado + pendiente + vencido;
-    const cumplimiento = totalGestionado > 0 ? Math.round((pagado / totalGestionado) * 100) : 0;
-
-    return { pagado, pendiente, vencido, parcial, saldoFavor, cumplimiento };
-  }
-
   function dueLabelFromDays(d){
     if(d==null) return "";
     if(d<0) return "Vencida";
@@ -1627,8 +1583,6 @@ function dedupePaymentsAll(list){
 
     const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
-    const resumenFin = dashboardFinancieroApoderado(paysAll);
-
     // Desglose por campaña (con ID para no mezclar títulos)
     const perCampaignMap = {};
     for(const p of pending){
@@ -1694,47 +1648,6 @@ function dedupePaymentsAll(list){
         `}
       </div>
 
-      <!-- 1.5) Dashboard financiero pro -->
-      <div class="card" style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">📊 Estado financiero</div>
-          <span class="tag">${resumenFin.cumplimiento}% al día</span>
-        </div>
-
-        <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
-          Resumen de tus pagos en este curso.
-        </div>
-
-        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div style="border:1px solid rgba(16,185,129,.18);background:rgba(16,185,129,.06);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🟢 Pagado</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pagado)}</div>
-          </div>
-          <div style="border:1px solid rgba(245,158,11,.18);background:rgba(245,158,11,.08);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🟡 Pendiente</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pendiente)}</div>
-          </div>
-          <div style="border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.07);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🔴 Vencido</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.vencido)}</div>
-          </div>
-          <div style="border:1px solid rgba(59,130,246,.18);background:rgba(59,130,246,.06);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">💰 Saldo a favor</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.saldoFavor)}</div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-size:12px;font-weight:900;">Cumplimiento financiero</div>
-          <div style="margin-top:8px;height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
-            <div style="height:100%;width:${resumenFin.cumplimiento}%;background:rgba(91,92,226,.85);border-radius:999px;"></div>
-          </div>
-          <div class="muted" style="margin-top:6px;font-size:12px;">
-            Has cubierto el <b>${resumenFin.cumplimiento}%</b> de tus cobros gestionados.
-          </div>
-        </div>
-      </div>
-
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1750,12 +1663,6 @@ function dedupePaymentsAll(list){
           <div class="muted" style="font-weight:900;">Este mes</div>
           <div style="margin-top:6px;font-size:28px;font-weight:950;" id="homeThisMonthTotal">${formatCLP(thisMonthTotal)}</div>
           <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span class="tag ok">🟢 Pagado ${formatCLP(resumenFin.pagado)}</span>
-          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
-          <span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>
         </div>
 
         <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
