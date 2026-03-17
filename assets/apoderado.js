@@ -62,10 +62,11 @@ function isMinePayment(p){
   if(!mk) return true;
 
   // Prefer explicit identity fields
+  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
+  if(ae) return ae === mk;
+
   const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
   if(ak) return ak === mk;
-
-  const ae = String(p?.apoderadoEmail||p?.email||"").toLowerCase().trim();
   if(ae) return ae === mk;
 
   const aid = String(p?.apoderadoId||"").toLowerCase().trim();
@@ -262,12 +263,36 @@ function normalizeTasks(list){
 function getActiveIdentity(){
   const p = getActiveProfile();
   const s = getSession();
-  const email = String(s?.userId || s?.email || "").toLowerCase().trim();
+
+  const email = String(
+    p?.apoderado?.email ||
+    p?.email ||
+    p?.user?.email ||
+    s?.email ||
+    s?.userId ||
+    ""
+  ).toLowerCase().trim();
+
+  const alumnoLabel = String(
+    p?.apoderado?.alumno ||
+    p?.studentName ||
+    s?.alumno ||
+    ""
+  ).trim();
+
+  const alumnoIdReal = String(
+    p?.apoderado?.alumnoId ||
+    p?.studentId ||
+    p?.alumnoId ||
+    ""
+  ).trim();
 
   return {
     courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
     apoderadoId: email || "unknown_apoderado",
-    alumnoId: String(p?.apoderado?.alumno || s?.alumno || "").trim(),
+    alumnoId: alumnoIdReal || alumnoLabel,
+    alumnoLabel,
+    realAlumnoId: alumnoIdReal,
     email
   };
 }
@@ -332,7 +357,7 @@ function paymentEquivKey(p, tasksAll){
   const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
   const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
   const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "");
-  const who = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const who = String(p?.apoderadoEmail || p?.apoderadoKey || p?.apoderadoId || p?.email || "").toLowerCase().trim();
   const alumnoId = String(p?.alumnoId || "");
   let inst = inferredInstallmentIndex(p, task);
 
@@ -360,14 +385,13 @@ function suppressPendingCoveredByPaid(payments, tasksAll){
   });
 }
 
-
 function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
   const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
-  const apoderadoId = String(ident?.apoderadoId||"").trim();
-  const alumnoLabel = String(ident?.alumnoId||"").trim();
   const email = String(ident?.email||"").toLowerCase().trim();
-  const aidStrong = (apoderadoId || email || "unknown_apoderado");
-  const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+  const apoderadoId = String(ident?.apoderadoId||email||"").trim();
+  const alumnoLabel = String(ident?.alumnoLabel || ident?.studentName || ident?.alumnoName || ident?.alumnoId || "").trim();
+  const aidStrong = (email || apoderadoId || "unknown_apoderado");
+  const alumnoId = String(ident?.realAlumnoId || ident?.alumnoId || alumnoIdOf(courseKey, aidStrong, alumnoLabel)).trim();
 
   const wantedTaskId = String(task?.id || "");
   const wantedPeriod = String(period || "");
@@ -379,6 +403,7 @@ function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
 
     const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
     const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+
     if(!(pPeriod === wantedPeriod && pIdx === wantedIdx)) return false;
 
     const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
@@ -396,11 +421,11 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
     if(!courseKey) return paysAll || [];
-    const apoderadoId = String(ident.apoderadoId||"").trim();
-    const alumnoLabel = String(ident.alumnoId||"").trim();
     const email = String(ident.email||"").toLowerCase().trim();
-    const aidStrong = (apoderadoId || email || "unknown_apoderado");
-    const alumnoId = alumnoIdOf(courseKey, aidStrong, alumnoLabel);
+    const apoderadoId = String(ident.apoderadoId||email||"").trim();
+    const alumnoLabel = String(ident.alumnoLabel || ident.studentName || ident.alumnoName || ident.alumnoId || "").trim();
+    const aidStrong = (email || apoderadoId || "unknown_apoderado");
+    const alumnoId = String(ident.realAlumnoId || ident.alumnoId || alumnoIdOf(courseKey, aidStrong, alumnoLabel)).trim();
 
     const out = (paysAll||[]).slice();
 
@@ -637,6 +662,50 @@ function dueBadge(iso){
   if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
   return `<span class="tag warn">Quedan ${d} días</span>`;
 }
+
+  function normalizePaymentStatus(p){
+    const st = String(p?.status || "").toLowerCase();
+    if(st === "paid" || st === "partial" || st === "overdue" || st === "credit" || st==="credit_used") return st;
+    const due = String(p?.dueDate || "").slice(0,10);
+    const today = new Date().toISOString().slice(0,10);
+    if(due && due < today) return "overdue";
+    return "pending";
+  }
+
+  function dashboardFinancieroApoderado(pays){
+    const list = Array.isArray(pays) ? pays.slice() : [];
+    let pagado = 0;
+    let pendiente = 0;
+    let vencido = 0;
+    let parcial = 0;
+    let saldoFavor = 0;
+
+    list.forEach(p=>{
+      const st = normalizePaymentStatus(p);
+      const amt = Number(p?.amount ?? 0);
+      const rem = Number(p?.amountRemaining ?? amt ?? 0);
+      const paidAmt = Number(
+        st === "paid"
+          ? (p?.amount ?? p?.amountPaid ?? 0)
+          : (p?.amountPaid ?? Math.max(0, amt - rem))
+      );
+
+      if(st === "paid") pagado += paidAmt || amt;
+      else if(st === "overdue") vencido += rem || amt;
+      else if(st === "partial"){
+        parcial += rem;
+        pendiente += rem;
+      }
+      else if(st === "credit" || st === "credit_used") saldoFavor += Number(p?.amount || 0);
+      else pendiente += rem || amt;
+    });
+
+    const totalGestionado = pagado + pendiente + vencido;
+    const cumplimiento = totalGestionado > 0 ? Math.round((pagado / totalGestionado) * 100) : 0;
+
+    return { pagado, pendiente, vencido, parcial, saldoFavor, cumplimiento };
+  }
+
   function dueLabelFromDays(d){
     if(d==null) return "";
     if(d<0) return "Vencida";
@@ -1113,10 +1182,10 @@ function dueBadge(iso){
 
     const amount = Number(p.amountRemaining ?? p.amount ?? 0);
     const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || p.paymentMethod || "—";
+    const method = p.paidWith || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
 
     openModal(`
       <div class="card">
@@ -1558,6 +1627,8 @@ function dedupePaymentsAll(list){
 
     const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
+    const resumenFin = dashboardFinancieroApoderado(paysAll);
+
     // Desglose por campaña (con ID para no mezclar títulos)
     const perCampaignMap = {};
     for(const p of pending){
@@ -1623,6 +1694,47 @@ function dedupePaymentsAll(list){
         `}
       </div>
 
+      <!-- 1.5) Dashboard financiero pro -->
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="kTitle">📊 Estado financiero</div>
+          <span class="tag">${resumenFin.cumplimiento}% al día</span>
+        </div>
+
+        <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
+          Resumen de tus pagos en este curso.
+        </div>
+
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="border:1px solid rgba(16,185,129,.18);background:rgba(16,185,129,.06);border-radius:16px;padding:12px;">
+            <div class="muted" style="font-size:12px;font-weight:900;">🟢 Pagado</div>
+            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pagado)}</div>
+          </div>
+          <div style="border:1px solid rgba(245,158,11,.18);background:rgba(245,158,11,.08);border-radius:16px;padding:12px;">
+            <div class="muted" style="font-size:12px;font-weight:900;">🟡 Pendiente</div>
+            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pendiente)}</div>
+          </div>
+          <div style="border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.07);border-radius:16px;padding:12px;">
+            <div class="muted" style="font-size:12px;font-weight:900;">🔴 Vencido</div>
+            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.vencido)}</div>
+          </div>
+          <div style="border:1px solid rgba(59,130,246,.18);background:rgba(59,130,246,.06);border-radius:16px;padding:12px;">
+            <div class="muted" style="font-size:12px;font-weight:900;">💰 Saldo a favor</div>
+            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.saldoFavor)}</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="muted" style="font-size:12px;font-weight:900;">Cumplimiento financiero</div>
+          <div style="margin-top:8px;height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
+            <div style="height:100%;width:${resumenFin.cumplimiento}%;background:rgba(91,92,226,.85);border-radius:999px;"></div>
+          </div>
+          <div class="muted" style="margin-top:6px;font-size:12px;">
+            Has cubierto el <b>${resumenFin.cumplimiento}%</b> de tus cobros gestionados.
+          </div>
+        </div>
+      </div>
+
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1638,6 +1750,12 @@ function dedupePaymentsAll(list){
           <div class="muted" style="font-weight:900;">Este mes</div>
           <div style="margin-top:6px;font-size:28px;font-weight:950;" id="homeThisMonthTotal">${formatCLP(thisMonthTotal)}</div>
           <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="tag ok">🟢 Pagado ${formatCLP(resumenFin.pagado)}</span>
+          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
+          <span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>
         </div>
 
         <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
