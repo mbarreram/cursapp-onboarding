@@ -616,8 +616,62 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const saldoCourse = () => collectedCourse() - spentCourse();
 
   const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
-  const pendingTotal = () => sum(payments().filter(isPendingLike), p => (p.amountRemaining ?? p.amount ?? 0));
-  const deudoresCount = () => payments().filter(isPendingLike).length;
+  const pendingTotal = () => sum(payments().filter(isPendingFinancialStatus), p => (p.amountRemaining ?? p.amount ?? 0));
+  const deudoresCount = () => {
+    const set = new Set();
+    payments().filter(isPendingFinancialStatus).forEach(p=>{
+      const k = String(p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || "").toLowerCase().trim()
+        || String(p?.alumnoId || "").trim();
+      if(k) set.add(k);
+    });
+    return set.size;
+  };
+
+
+  // ---- Single source of truth financiero (campañas / dashboard / deudores) ----
+  function isExcludedFinancialStatus(p){
+    const st = String(p?.status || "").toLowerCase();
+    return st === "opted_out" || st === "void" || st === "cancelled" || st === "credit_used";
+  }
+
+  function isPendingFinancialStatus(p){
+    if(!p) return false;
+    if(isExcludedFinancialStatus(p)) return false;
+    return isPendingLike(p);
+  }
+
+  function campaignPayments(taskId){
+    return payments().filter(p => String(p?.fromTaskId || "") === String(taskId || ""));
+  }
+
+  function campaignPendingPayments(taskId){
+    return campaignPayments(taskId).filter(isPendingFinancialStatus);
+  }
+
+  function campaignPaidPayments(taskId){
+    return campaignPayments(taskId).filter(p => !isExcludedFinancialStatus(p) && isPaid(p));
+  }
+
+  function campaignUniqueDebtors(taskId){
+    const set = new Set();
+    campaignPendingPayments(taskId).forEach(p=>{
+      const k =
+        String(p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || "")
+          .toLowerCase()
+          .trim()
+        || String(p?.alumnoId || "").trim();
+      if(k) set.add(k);
+    });
+    return set.size;
+  }
+
+  function campaignPendingAmount(taskId){
+    return sum(campaignPendingPayments(taskId), p => (p.amountRemaining ?? p.amount ?? 0));
+  }
+
+  function campaignPendingInstallments(taskId){
+    return campaignPendingPayments(taskId).length;
+  }
 
   // ---- curso / apoderados aprobados ----
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
@@ -676,8 +730,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   function pendingMonthReal(ym){
     return sum(payments().filter(p=>{
-      if(!isPendingLike(p)) return false;
-      if(String(p.status||"").toLowerCase()==="opted_out") return false;
+      if(!isPendingFinancialStatus(p)) return false;
       const due = p.dueDate || "";
       return withinMonth(due, ym);
     }), p => (p.amountRemaining ?? p.amount ?? 0));
@@ -688,8 +741,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   function deudoresMonth(ym){
     const set = new Set();
     payments().forEach(p=>{
-      if(!isPendingLike(p)) return;
-      if(String(p.status||"").toLowerCase()==="opted_out") return;
+      if(!isPendingFinancialStatus(p)) return;
       const due = p.dueDate || "";
       if(!withinMonth(due, ym)) return;
       const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
@@ -770,7 +822,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   function debtorsMonthCount(ym){
     // count unique apoderados with pending in month (if we have email); else count pending items
-    const pend = payments().filter(p=>isPendingLike(p) && withinMonth(p.dueDate||"", ym) && String(p.status||"").toLowerCase()!=="opted_out");
+    const pend = payments().filter(p=>isPendingFinancialStatus(p) && withinMonth(p.dueDate||"", ym));
     const emails = new Set(pend.map(p=>p.apoderadoEmail||p.email||"").filter(Boolean));
     return emails.size ? emails.size : pend.length;
   }
@@ -796,16 +848,10 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function pendingTaskEstimated(t){
-    // Pendiente estimado:
-    // - Si existen cobros instanciados (payments_v1), usamos esos montos restantes (excluyendo opted_out).
-    // - Si aún no existen (escenario antiguo), caemos al estimado por campaña (expectedTaskTotal - recaudado).
+    // Fuente única: si existen cobros instanciados, usamos solo pendientes financieros reales.
+    // Excluye opted_out / void / cancelled para no inflar el pendiente.
     const id = String(t?.id||"");
-    const ps = payments().filter(p=>{
-      if(String(p.fromTaskId||"") !== id) return false;
-      if(!isPendingLike(p)) return false;
-      if(String(p.status||"").toLowerCase()==="opted_out") return false;
-      return true;
-    });
+    const ps = campaignPendingPayments(id);
     if(ps.length){
       return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
     }
@@ -816,20 +862,11 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
 
   function deudoresTask(id){
-  // Regla: X cuotas pendientes = 1 deudor (apoderado único)
-  const set = new Set();
-  payments().forEach(p=>{
-    if(p.fromTaskId!==id) return;
-    if(!isPendingLike(p)) return;
-    const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
-    if(k) set.add(k);
-  });
-  return set.size;
+  return campaignUniqueDebtors(id);
 }
 
 function cuotasPendientesTask(id){
-  // Total de cuotas/pagos pendientes (sin agrupar por persona)
-  return payments().filter(p=>p.fromTaskId===id && isPendingLike(p)).length;
+  return campaignPendingInstallments(id);
 }
 
   function spentTask(id){
@@ -1263,6 +1300,7 @@ function setActive(tab){
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
           </div>
 
+          ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>String(p?.status||"").toLowerCase()==="opted_out")) ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;font-weight:900;">No participan apoderados en esta campaña por ahora.</div>` : ``}
           ${t.closed && pend>0 ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;">
             Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
           </div>` : ``}
@@ -1337,7 +1375,7 @@ function money(n){ return clp(Number(n||0)); }
 function debtorRowsFor(email){
   const em = String(email||"").toLowerCase();
   const pays = payments().filter(p => apoderadoKey(p) === em);
-  const pending = pays.filter(isPendingLike);
+  const pending = pays.filter(isPendingFinancialStatus);
 
   return pending.map(p=>{
     const t = taskById(p.fromTaskId);
