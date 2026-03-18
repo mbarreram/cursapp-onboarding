@@ -681,7 +681,6 @@ function dueBadge(iso){
     let saldoFavor = 0;
 
     list.forEach(p=>{
-      if(typeof isPaymentOptedOut==='function' && isPaymentOptedOut(p)) return;
       const st = normalizePaymentStatus(p);
       const amt = Number(p?.amount ?? 0);
       const rem = Number(p?.amountRemaining ?? amt ?? 0);
@@ -1629,6 +1628,9 @@ function dedupePaymentsAll(list){
     const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
     const resumenFin = dashboardFinancieroApoderado(paysAll);
+    const estadoTitulo = (resumenFin.vencido>0) ? "⚠️ Atención" : (resumenFin.pendiente>0 ? "🟡 Tienes pagos pendientes" : "😊 Todo al día");
+    const estadoTexto = (resumenFin.vencido>0) ? "Tienes pagos vencidos o urgentes." : (resumenFin.pendiente>0 ? "Revisa tus pagos del curso." : "No tienes pagos urgentes por ahora.");
+    const estadoCTA = (resumenFin.vencido>0 || resumenFin.pendiente>0) ? "Ver pagos" : "Revisar pagos";
 
     // Desglose por campaña (con ID para no mezclar títulos)
     const perCampaignMap = {};
@@ -1735,6 +1737,27 @@ function dedupePaymentsAll(list){
           </div>
         </div>
       </div>
+
+      <!-- 1.25) Estado general amigable -->
+      <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.18);background:rgba(91,92,226,.04);">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div class="kTitle">${estadoTitulo}</div>
+            <div class="muted" style="margin-top:6px;font-weight:800;">${estadoTexto}</div>
+          </div>
+          <span class="tag">${resumenFin.vencido>0 ? "🔴 Prioridad" : (resumenFin.pendiente>0 ? "🟡 Con pagos" : "🟢 Al día")}</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="tag ok">🟢 Pagado ${formatCLP(resumenFin.pagado)}</span>
+          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
+          <span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>
+        </div>
+        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+          <button class="btnx" onclick="go('payments')">${estadoCTA}</button>
+        </div>
+      </div>
+
+      ${typeof renderAvisosCursoCard === 'function' ? renderAvisosCursoCard(3) : ``}
 
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">

@@ -1165,6 +1165,7 @@ function setActive(tab){
         <div class="actionsRow" style="margin-top:10px;">
           <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
           <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
+          <button class="btnx" onclick="openAvisosConfig()">📢 Avisos</button>
           <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
         </div>
       </div>
