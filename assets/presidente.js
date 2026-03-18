@@ -848,13 +848,24 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function pendingTaskEstimated(t){
-    // Fuente única: si existen cobros instanciados, usamos solo pendientes financieros reales.
-    // Excluye opted_out / void / cancelled para no inflar el pendiente.
-    const id = String(t?.id||"");
+    const id = String(t?.id || "");
+    const all = campaignPayments(id);
     const ps = campaignPendingPayments(id);
+
     if(ps.length){
       return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
     }
+
+    // Si es campaña voluntaria y los cobros existentes están todos en opted_out/void/cancelled,
+    // no hay pendiente real aunque exista objetivo teórico.
+    if(t?.mandatoryParticipation === false && all.length){
+      const hasOnlyOptedOut = all.every(p => {
+        const st = String(p?.status || "").toLowerCase();
+        return st === "opted_out" || st === "void" || st === "cancelled";
+      });
+      if(hasOnlyOptedOut) return 0;
+    }
+
     const expected = expectedTaskTotal(t);
     const rec = collectedTask(id);
     return Math.max(0, expected - rec);
