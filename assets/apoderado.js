@@ -1628,9 +1628,6 @@ function dedupePaymentsAll(list){
     const thisMonthTotal = dueThisMonth.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
     const resumenFin = dashboardFinancieroApoderado(paysAll);
-    const estadoTitulo = (resumenFin.vencido>0) ? "⚠️ Atención" : (resumenFin.pendiente>0 ? "🟡 Tienes pagos pendientes" : "😊 Todo al día");
-    const estadoTexto = (resumenFin.vencido>0) ? "Tienes pagos vencidos o urgentes." : (resumenFin.pendiente>0 ? "Revisa tus pagos del curso." : "No tienes pagos urgentes por ahora.");
-    const estadoCTA = (resumenFin.vencido>0 || resumenFin.pendiente>0) ? "Ver pagos" : "Revisar pagos";
 
     // Desglose por campaña (con ID para no mezclar títulos)
     const perCampaignMap = {};
@@ -1697,63 +1694,27 @@ function dedupePaymentsAll(list){
         `}
       </div>
 
-      <!-- 1.5) Dashboard financiero pro -->
-      <div class="card" style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">📊 Estado financiero</div>
-          <span class="tag">${resumenFin.cumplimiento}% al día</span>
-        </div>
-
-        <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
-          Resumen de tus pagos en este curso.
-        </div>
-
-        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div style="border:1px solid rgba(16,185,129,.18);background:rgba(16,185,129,.06);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🟢 Pagado</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pagado)}</div>
-          </div>
-          <div style="border:1px solid rgba(245,158,11,.18);background:rgba(245,158,11,.08);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🟡 Pendiente</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.pendiente)}</div>
-          </div>
-          <div style="border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.07);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">🔴 Vencido</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.vencido)}</div>
-          </div>
-          <div style="border:1px solid rgba(59,130,246,.18);background:rgba(59,130,246,.06);border-radius:16px;padding:12px;">
-            <div class="muted" style="font-size:12px;font-weight:900;">💰 Saldo a favor</div>
-            <div style="font-weight:950;font-size:22px;margin-top:6px;">${formatCLP(resumenFin.saldoFavor)}</div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-size:12px;font-weight:900;">Cumplimiento financiero</div>
-          <div style="margin-top:8px;height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
-            <div style="height:100%;width:${resumenFin.cumplimiento}%;background:rgba(91,92,226,.85);border-radius:999px;"></div>
-          </div>
-          <div class="muted" style="margin-top:6px;font-size:12px;">
-            Has cubierto el <b>${resumenFin.cumplimiento}%</b> de tus cobros gestionados.
-          </div>
-        </div>
-      </div>
-
-      <!-- 1.25) Estado general amigable -->
+      <!-- 1.5) Estado simple -->
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.18);background:rgba(91,92,226,.04);">
-        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-          <div>
-            <div class="kTitle">${estadoTitulo}</div>
-            <div class="muted" style="margin-top:6px;font-weight:800;">${estadoTexto}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div class="kTitle">
+            ${resumenFin.vencido>0 ? "🔴 Tienes pagos vencidos" : (resumenFin.pendiente>0 ? "🟡 Tienes pagos pendientes" : "😊 Todo al día")}
           </div>
           <span class="tag">${resumenFin.vencido>0 ? "🔴 Prioridad" : (resumenFin.pendiente>0 ? "🟡 Con pagos" : "🟢 Al día")}</span>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span class="tag ok">🟢 Pagado ${formatCLP(resumenFin.pagado)}</span>
-          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
-          <span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>
+
+        <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
+          ${resumenFin.vencido>0 ? "Revisa tus pagos urgentes del curso." : (resumenFin.pendiente>0 ? "Revisa tus pagos del curso." : "No tienes pagos urgentes por ahora.")}
         </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          ${resumenFin.vencido>0 ? `<span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>` : ``}
+          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
+          ${resumenFin.pendiente<=0 && resumenFin.vencido<=0 ? `<span class="tag ok">🟢 Sin urgencias</span>` : ``}
+        </div>
+
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx" onclick="go('payments')">${estadoCTA}</button>
+          <button class="btnx" id="btnGoPaymentsSimple" type="button">Ver pagos</button>
         </div>
       </div>
 
@@ -1774,12 +1735,6 @@ function dedupePaymentsAll(list){
           <div class="muted" style="font-weight:900;">Este mes</div>
           <div style="margin-top:6px;font-size:28px;font-weight:950;" id="homeThisMonthTotal">${formatCLP(thisMonthTotal)}</div>
           <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-          <span class="tag ok">🟢 Pagado ${formatCLP(resumenFin.pagado)}</span>
-          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
-          <span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>
         </div>
 
         <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
