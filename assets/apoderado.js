@@ -1219,6 +1219,7 @@ function dueBadge(iso){
 
   function reportSummaryCard(){
     const r = latestReport();
+    try{ if(window.runAutoAvisosContext) window.runAutoAvisosContext({ payments: paysAll, tasks: tasks0, reports: reports() }); }catch(e){}
     if(!r){
       return `
         <div class="card">
@@ -2412,6 +2413,7 @@ window.payNow = function(id){
     if(tab==="home") renderHome();
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
+    try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 

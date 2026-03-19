@@ -1165,8 +1165,8 @@ function setActive(tab){
         <div class="actionsRow" style="margin-top:10px;">
           <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
           <button class="btnx" onclick="go('campanas')">📌 Ver campañas</button>
-          <button class="btnx" onclick="openAvisosConfig()">📢 Avisos</button>
           <button class="btnx" onclick="openCloseCampaign()">🔒 Cerrar campaña</button>
+          <button class="btnx" onclick="openAvisosConfig()">📢 Avisos</button>
         </div>
       </div>
     `;
@@ -2871,6 +2871,7 @@ window.deleteCampaign = function(taskId){
     const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
     save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
+    try{ if(window.createAviso){ window.createAviso({ type:"auto", category:"report", title:"📊 Nuevo informe disponible", message:`Ya puedes revisar el informe ${period}.`, createdAt:new Date().toISOString(), actionType:"open_report", dedupeKey:`report:${id||period}` }); } }catch(e){}
 
     clearDirty();
     try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
