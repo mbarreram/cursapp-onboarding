@@ -1693,29 +1693,6 @@ function dedupePaymentsAll(list){
           </div>
         `}
       </div>
-
-      <!-- 1.5) Estado simple -->
-      <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.18);background:rgba(91,92,226,.04);">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">
-            ${resumenFin.vencido>0 ? "🔴 Tienes pagos vencidos" : (resumenFin.pendiente>0 ? "🟡 Tienes pagos pendientes" : "😊 Todo al día")}
-          </div>
-          
-        </div>
-
-        <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
-          ${resumenFin.vencido>0 ? "Revisa tus pagos urgentes del curso." : (resumenFin.pendiente>0 ? "Revisa tus pagos del curso." : "No tienes pagos urgentes por ahora.")}
-        </div>
-
-        <div style="margin-top:12px;font-weight:950;font-size:18px;">
-          ${resumenFin.vencido>0 ? `🔴 Vencido ${formatCLP(resumenFin.vencido)}` : (resumenFin.pendiente>0 ? `🟡 Pendiente ${formatCLP(resumenFin.pendiente)}` : `🟢 Sin urgencias`)}
-        </div>
-
-        <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-          <button class="btnx" id="btnGoPaymentsSimple" type="button">Ver pagos</button>
-        </div>
-      </div>
-
       ${typeof renderAvisosCursoCard === 'function' ? renderAvisosCursoCard(3) : ``}
 
       <!-- 2) Pendientes -->

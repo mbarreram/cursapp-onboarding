@@ -32,10 +32,15 @@
     return "ℹ️";
   }
 
-  window.renderAvisosCursoCard = function(limit=4){
+  window.renderAvisosCursoCard = function(limit=3){
     const all = loadAvisos().slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
-    const avisos = all.slice(0, limit);
-    const extra = Math.max(0, all.length - limit);
+    const now = new Date();
+    const curYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    const current = all.filter(a => String(a.createdAt||"").slice(0,7) === curYM);
+    const older = all.filter(a => String(a.createdAt||"").slice(0,7) !== curYM);
+    const avisos = current.slice(0, limit);
+    const extraCurrent = Math.max(0, current.length - limit);
+
     return `
       <div class="card" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -50,8 +55,89 @@
               <div class="muted" style="margin-top:4px;line-height:1.35;">${esc(a.message||"")}</div>
               <div class="muted" style="margin-top:8px;font-size:12px;text-align:right;">${formatAvisoDate(a.createdAt)}</div>
             </div>
-          `).join("") : `<div class="muted">No hay avisos nuevos por ahora.</div>`}
-          ${extra>0 ? `<div class="muted" style="font-size:12px;text-align:right;">y ${extra} aviso(s) más…</div>` : ``}
+          `).join("") : `<div class="muted">No hay avisos nuevos de este mes.</div>`}
+        </div>
+        ${(extraCurrent>0 || older.length>0) ? `
+          <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+            ${extraCurrent>0 ? `<button class="btnx" onclick="openAvisosMesActual()">Ver más de este mes</button>` : ``}
+            ${older.length>0 ? `<button class="btnx" onclick="openAvisosAnteriores()">Ver avisos anteriores</button>` : ``}
+          </div>
+        ` : ``}
+      </div>
+    `;
+  };
+
+
+  function monthLabel(ym){
+    try{
+      const [y,m] = String(ym||"").split("-").map(Number);
+      const d = new Date(y, (m||1)-1, 1);
+      return d.toLocaleString("es-CL", { month:"long", year:"numeric" });
+    }catch(e){ return ym||""; }
+  }
+
+  function renderAvisoCard(a){
+    return `
+      <div style="border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:10px;background:#fff;">
+        <div style="font-weight:900;">${tagForType(a.type)} ${esc(a.title||"Aviso")}</div>
+        <div class="muted" style="margin-top:4px;line-height:1.35;">${esc(a.message||"")}</div>
+        <div class="muted" style="margin-top:8px;font-size:12px;text-align:right;">${formatAvisoDate(a.createdAt)}</div>
+      </div>
+    `;
+  }
+
+  window.openAvisosMesActual = function(){
+    const all = loadAvisos().slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const now = new Date();
+    const curYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    const current = all.filter(a => String(a.createdAt||"").slice(0,7) === curYM);
+    const mr = document.getElementById("modalRoot");
+    if(!mr){ alert("No se encontró modalRoot."); return; }
+    mr.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div class="kTitle">📢 Avisos de ${monthLabel(curYM)}</div>
+            <button class="btnx" onclick="closeAvisosModal()">Cerrar</button>
+          </div>
+          <div style="margin-top:12px;display:grid;gap:10px;">
+            ${current.length ? current.map(renderAvisoCard).join("") : `<div class="muted">No hay avisos de este mes.</div>`}
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  window.openAvisosAnteriores = function(){
+    const all = loadAvisos().slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const now = new Date();
+    const curYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    const older = all.filter(a => String(a.createdAt||"").slice(0,7) !== curYM);
+    const grouped = {};
+    older.forEach(a=>{
+      const ym = String(a.createdAt||"").slice(0,7) || "Sin fecha";
+      (grouped[ym] ||= []).push(a);
+    });
+    const months = Object.keys(grouped).sort((a,b)=>b.localeCompare(a));
+    const mr = document.getElementById("modalRoot");
+    if(!mr){ alert("No se encontró modalRoot."); return; }
+    mr.innerHTML = `
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+            <div class="kTitle">📚 Avisos anteriores</div>
+            <button class="btnx" onclick="closeAvisosModal()">Cerrar</button>
+          </div>
+          <div style="margin-top:12px;display:grid;gap:14px;">
+            ${months.length ? months.map(ym=>`
+              <div>
+                <div style="font-weight:900;margin-bottom:8px;text-transform:capitalize;">${monthLabel(ym)}</div>
+                <div style="display:grid;gap:10px;">
+                  ${grouped[ym].map(renderAvisoCard).join("")}
+                </div>
+              </div>
+            `).join("") : `<div class="muted">No hay avisos anteriores.</div>`}
+          </div>
         </div>
       </div>
     `;
