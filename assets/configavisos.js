@@ -5,10 +5,23 @@
   const esc = (s)=>String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const uid = (p="id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
-  function loadAvisos(){ try{ const arr = JSON.parse(localStorage.getItem(KEY_AVISOS)||"[]"); return Array.isArray(arr) ? arr : []; }catch(e){ return []; } }
+  function loadAvisos(){
+    try{
+      const arr = JSON.parse(localStorage.getItem(KEY_AVISOS)||"[]");
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  }
   function saveAvisos(arr){
     localStorage.setItem(KEY_AVISOS, JSON.stringify(arr||[]));
     try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: KEY_AVISOS } })); }catch(e){}
+  }
+  function formatAvisoDate(iso){
+    try{
+      if(!iso) return "";
+      const d = new Date(iso);
+      if(isNaN(d.getTime())) return "";
+      return "Enviado " + d.toLocaleString("es-CL", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+    }catch(e){ return ""; }
   }
   function tagForType(type){
     const t = String(type||"info");
@@ -19,13 +32,15 @@
     return "ℹ️";
   }
 
-  window.renderAvisosCursoCard = function(limit=3){
-    const avisos = loadAvisos().slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||""))).slice(0,limit);
+  window.renderAvisosCursoCard = function(limit=4){
+    const all = loadAvisos().slice().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const avisos = all.slice(0, limit);
+    const extra = Math.max(0, all.length - limit);
     return `
       <div class="card" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
           <div class="kTitle">📢 Avisos del curso</div>
-          <span class="tag">${avisos.length ? `${avisos.length} aviso(s)` : `Sin avisos`}</span>
+          <span class="tag">${all.length ? `${all.length} aviso(s)` : `Sin avisos`}</span>
         </div>
         <div class="muted" style="margin-top:6px;">Información importante del curso y de la directiva.</div>
         <div style="margin-top:10px;display:grid;gap:10px;">
@@ -33,8 +48,10 @@
             <div style="border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:10px;background:#fff;">
               <div style="font-weight:900;">${tagForType(a.type)} ${esc(a.title||"Aviso")}</div>
               <div class="muted" style="margin-top:4px;line-height:1.35;">${esc(a.message||"")}</div>
+              <div class="muted" style="margin-top:8px;font-size:12px;text-align:right;">${formatAvisoDate(a.createdAt)}</div>
             </div>
           `).join("") : `<div class="muted">No hay avisos nuevos por ahora.</div>`}
+          ${extra>0 ? `<div class="muted" style="font-size:12px;text-align:right;">y ${extra} aviso(s) más…</div>` : ``}
         </div>
       </div>
     `;
@@ -82,6 +99,7 @@
                     <div>
                       <div style="font-weight:900;">${tagForType(a.type)} ${esc(a.title||"Aviso")}</div>
                       <div class="muted" style="margin-top:4px;">${esc(a.message||"")}</div>
+                      <div class="muted" style="margin-top:8px;font-size:12px;">${formatAvisoDate(a.createdAt)}</div>
                     </div>
                     <button class="btnx danger" onclick="deleteAvisoCurso('${esc(a.id)}')">Eliminar</button>
                   </div>

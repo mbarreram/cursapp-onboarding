@@ -1700,17 +1700,15 @@ function dedupePaymentsAll(list){
           <div class="kTitle">
             ${resumenFin.vencido>0 ? "🔴 Tienes pagos vencidos" : (resumenFin.pendiente>0 ? "🟡 Tienes pagos pendientes" : "😊 Todo al día")}
           </div>
-          <span class="tag">${resumenFin.vencido>0 ? "🔴 Prioridad" : (resumenFin.pendiente>0 ? "🟡 Con pagos" : "🟢 Al día")}</span>
+          
         </div>
 
         <div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">
           ${resumenFin.vencido>0 ? "Revisa tus pagos urgentes del curso." : (resumenFin.pendiente>0 ? "Revisa tus pagos del curso." : "No tienes pagos urgentes por ahora.")}
         </div>
 
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-          ${resumenFin.vencido>0 ? `<span class="tag danger">🔴 Vencido ${formatCLP(resumenFin.vencido)}</span>` : ``}
-          <span class="tag pending">🟡 Pendiente ${formatCLP(resumenFin.pendiente)}</span>
-          ${resumenFin.pendiente<=0 && resumenFin.vencido<=0 ? `<span class="tag ok">🟢 Sin urgencias</span>` : ``}
+        <div style="margin-top:12px;font-weight:950;font-size:18px;">
+          ${resumenFin.vencido>0 ? `🔴 Vencido ${formatCLP(resumenFin.vencido)}` : (resumenFin.pendiente>0 ? `🟡 Pendiente ${formatCLP(resumenFin.pendiente)}` : `🟢 Sin urgencias`)}
         </div>
 
         <div class="actions" style="margin-top:12px;justify-content:flex-end;">
