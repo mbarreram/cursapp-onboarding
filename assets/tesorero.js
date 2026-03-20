@@ -421,6 +421,30 @@
       });
     }
     save(KEY_PAYMENTS, payments);
+
+    try{
+      if(typeof window.createAviso === "function"){
+        const paidPayment = pendingIdx >= 0 ? payments[pendingIdx] : payments[0];
+        const campaignTitle = String(task?.title || concept || "Pago").trim();
+        const avisoAmount = Number(paidPayment?.amount || amount || 0);
+
+        window.createAviso({
+          type: "auto",
+          category: "payment",
+          priority: "normal",
+          title: "✅ Se registró tu pago",
+          message: `${campaignTitle} · ${clp(avisoAmount)}`,
+          targetEmail: String(prof.email || paidPayment?.apoderadoEmail || paidPayment?.email || "").toLowerCase().trim(),
+          createdAt: new Date().toISOString(),
+          actionType: "open_receipt",
+          actionPayload: { paymentId: String(paidPayment?.id || "") },
+          dedupeKey: `payreg:${String(paidPayment?.id || receiptId)}`
+        });
+      }
+    }catch(e){
+      console.error("No se pudo crear aviso automático de pago", e);
+    }
+
     markDirty();
     closeModal();
     renderConciliacion();
