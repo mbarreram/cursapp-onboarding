@@ -61,6 +61,8 @@
     saveAvisos(avisos.slice(0, 300));
     return next;
   }
+
+  window.createAviso = createAviso;
   function markAvisoRead(id){
     const ident = currentIdentity();
     const avisos = loadAvisos().map(normalizeAviso);
