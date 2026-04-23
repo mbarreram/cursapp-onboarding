@@ -287,12 +287,15 @@ function getActiveIdentity(){
     ""
   ).trim();
 
+  const courseKey = (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||"");
+  const stableAlumnoId = alumnoIdReal || alumnoIdOf(String(courseKey||""), email || "unknown_apoderado", alumnoLabel);
+
   return {
-    courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
+    courseKey,
     apoderadoId: email || "unknown_apoderado",
-    alumnoId: alumnoIdReal || alumnoLabel,
+    alumnoId: stableAlumnoId,
     alumnoLabel,
-    realAlumnoId: alumnoIdReal,
+    realAlumnoId: stableAlumnoId,
     email
   };
 }
@@ -357,16 +360,16 @@ function paymentEquivKey(p, tasksAll){
   const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
   const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
   const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "");
-  const who = String(p?.apoderadoEmail || p?.apoderadoKey || p?.apoderadoId || p?.email || "").toLowerCase().trim();
-  const alumnoId = String(p?.alumnoId || "");
+  const who = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const alumnoId = String(p?.alumnoId || p?.studentName || p?.alumno || "").toLowerCase().trim();
+  const per = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
   let inst = inferredInstallmentIndex(p, task);
 
   if(!inst){
-    const per = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
     inst = per ? `ym:${per}` : "single";
   }
 
-  return [courseKey, taskId, who, alumnoId, String(inst)].join("|");
+  return [courseKey, taskId, who, alumnoId, per, String(inst)].join("|");
 }
 
 function suppressPendingCoveredByPaid(payments, tasksAll){
@@ -417,6 +420,48 @@ function hasCoveredPaymentForSlot(out, ident, task, period, installmentIndex){
   });
 }
 
+
+function sameIdentityForSlotPayment(p, ident, alumnoId, alumnoLabel){
+  const email = String(ident?.email || ident?.apoderadoId || "").toLowerCase().trim();
+  const pAid = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+  const pAlu = String(p?.alumnoId || "").trim();
+  const pGuardian = String(p?.guardianName || p?.apoderadoName || "").toLowerCase().trim();
+  const pStudent = String(p?.studentName || p?.alumno || "").toLowerCase().trim();
+  const wantStudent = String(alumnoLabel || "").toLowerCase().trim();
+
+  if(pAid && email && pAid === email){
+    if(!pAlu || !alumnoId) return true;
+    if(pAlu === alumnoId) return true;
+  }
+  if(pGuardian && pStudent){
+    if(pGuardian === email && (!wantStudent || pStudent === wantStudent)) return true;
+  }
+  return false;
+}
+
+function hasExistingPaymentForSlot(out, ident, task, period, installmentIndex){
+  const alumnoLabel = String(ident?.alumnoLabel || ident?.studentName || ident?.alumnoName || ident?.alumnoId || "").trim();
+  const courseKey = String(ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  const email = String(ident?.email||"").toLowerCase().trim();
+  const apoderadoId = String(ident?.apoderadoId||email||"").trim();
+  const aidStrong = (email || apoderadoId || "unknown_apoderado");
+  const alumnoId = String(ident?.realAlumnoId || ident?.alumnoId || alumnoIdOf(courseKey, aidStrong, alumnoLabel)).trim();
+
+  const wantedTaskId = String(task?.id || "");
+  const wantedPeriod = String(period || "");
+  const wantedIdx = String(installmentIndex || 1);
+
+  return (out || []).some(p => {
+    const st = String(p?.status||"").toLowerCase();
+    if(["void","cancelled"].includes(st)) return false;
+    if(String(p?.fromTaskId||"") !== wantedTaskId) return false;
+    const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+    const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+    if(!(pPeriod === wantedPeriod && pIdx === wantedIdx)) return false;
+    return sameIdentityForSlotPayment(p, ident, alumnoId, alumnoLabel);
+  });
+}
+
 function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     ident = ident || {};
     const courseKey = String(ident.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
@@ -446,6 +491,28 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       const pk = paymentKeyOf(courseKey, t.id, aidStrong, alumnoId, period, installmentIndex);
       if(byKey.has(pk)) return;
       if(hasCoveredPaymentForSlot(out, ident, t, period, installmentIndex)) return;
+      if(hasExistingPaymentForSlot(out, ident, t, period, installmentIndex)){
+        for(const p of out){
+          const st = String(p?.status||"").toLowerCase();
+          if(["void","cancelled"].includes(st)) continue;
+          if(String(p?.fromTaskId||"") !== String(t?.id||"")) continue;
+          const pPeriod = String(p?.period || ymFromISO(p?.dueDate) || ymFromISO(p?.paidAt) || "");
+          const pIdx = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+          if(!(pPeriod === String(period||"") && pIdx === String(installmentIndex||1))) continue;
+          if(!sameIdentityForSlotPayment(p, ident, alumnoId, alumnoLabel)) continue;
+
+          if(!p.paymentKey) p.paymentKey = pk;
+          if(!p.courseKey) p.courseKey = courseKey;
+          if(!p.apoderadoKey) p.apoderadoKey = aidStrong;
+          if(!p.apoderadoId) p.apoderadoId = aidStrong;
+          if(!p.apoderadoEmail) p.apoderadoEmail = aidStrong;
+          if(!p.alumnoId) p.alumnoId = alumnoId;
+          if(!p.guardianName && email) p.guardianName = email;
+          if(!p.studentName && alumnoLabel) p.studentName = alumnoLabel;
+        }
+        byKey.add(pk);
+        return;
+      }
 
       out.unshift({
         id: uid("pay"),
@@ -455,9 +522,13 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
         apoderadoId: aidStrong,
         alumnoId: alumnoId,
         apoderadoEmail: aidStrong,
+        guardianName: aidStrong,
+        studentName: alumnoLabel,
         fromTaskId: t.id,
         concept,
         amount: Number(t.amount||0),
+        amountOriginal: Number(t.amount||0),
+        amountPaid: 0,
         status: "pending",
         dueDate,
         period,
@@ -967,7 +1038,6 @@ function dueBadge(iso){
   }
 
   ensureAlumnoActivo();
-  window.getActiveProfile = getActiveProfile;
 
   function setHeader(){
     if(!whoCourseLine) return;
@@ -1181,96 +1251,34 @@ function dueBadge(iso){
     const p = pays.find(x=>x.id===id);
     if(!p) return;
 
-    const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
-    const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
-    const student = p.studentName || p.alumno || "—";
-    const guardian = p.guardianName || p.apoderadoName || "—";
-
-    const amountPaid = Number(
-      p.amountPaid ??
-      p.amount ??
-      ((Number(p.amountOriginal ?? p.amount ?? 0) - Number(p.amountRemaining ?? 0)) || 0)
-    );
-    const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
-
-    const paidAtDate = p.paidAt ? new Date(p.paidAt) : null;
-    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "—";
-    const paidDateShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
-      ? paidAtDate.toLocaleDateString("es-CL", { day:"2-digit", month:"short", year:"numeric" })
-      : "—";
-    const paidTimeShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
-      ? paidAtDate.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })
-      : "";
-
-    const rawMethod = String(p.paymentMethod || p.paidWith || "—").toLowerCase();
-    const methodLabel = ({
-      transbank:"💳 Transbank",
-      transferencia:"🏦 Transferencia",
-      efectivo:"💵 Efectivo",
-      saldo_favor:"🔁 Saldo a favor",
-      credit:"🔁 Saldo a favor"
-    })[rawMethod] || (p.paymentMethod || p.paidWith || "—");
-
+    const amount = Number(p.amountRemaining ?? p.amount ?? 0);
+    const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
+    const method = p.paidWith || "—";
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "—";
-
-    const folioBase = String(p.receiptId || p.transactionId || p.id || "0")
-      .replace(/[^a-zA-Z0-9]/g,"")
-      .slice(-8)
-      .toUpperCase() || "00000000";
-    const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
-
-    const isManual = String(p.source||"").toLowerCase()==="manual";
-    const isConciliated = String(p.conciliationStatus||"").toLowerCase()==="conciliado";
-    const statusLabel = isManual || isConciliated ? "✔ Registrado por tesorería" : "✔ Pago confirmado";
+    const op = p.transactionId || p.webpay?.buyOrder || "—";
 
     openModal(`
-      <div style="background:#fff;border-radius:28px;overflow:hidden;">
-        <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+      <div class="card">
+        <div class="row">
           <div>
-            <div style="font-weight:950;font-size:12px;letter-spacing:.08em;color:#64748b;">CURSAPP</div>
-            <div style="font-weight:950;font-size:26px;margin-top:4px;">🧾 Comprobante de pago</div>
-            <div class="muted" style="margin-top:6px;">${esc(isManual ? "Pago manual registrado correctamente" : "Pago procesado correctamente")}</div>
+            <div class="kTitle">🧾 Comprobante</div>
+            <div class="muted" style="margin-top:6px;">${esc(p.source==="manual" ? "Pago manual registrado" : `Pago ${p.status||""}`)}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
 
-        <div style="padding:18px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">● PAGADO</span>
-            <span class="muted" style="font-weight:900;">Folio ${esc(folio)}</span>
-          </div>
-
-          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:22px;padding:20px;background:linear-gradient(180deg,#f8fafc,#ffffff);text-align:center;">
-            <div class="muted" style="font-weight:900;font-size:12px;letter-spacing:.05em;">MONTO PAGADO</div>
-            <div style="font-size:38px;font-weight:950;margin-top:6px;line-height:1;">${clp(amountPaid)}</div>
-            <div class="muted" style="margin-top:8px;">${amountPending>0 ? `Saldo pendiente ${clp(amountPending)}` : `Sin saldo pendiente`}</div>
-          </div>
-
-          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;overflow:hidden;background:#fff;">
-            ${[
-              ["Campaña", campaign],
-              ["Concepto", p.concept || "—"],
-              ["Alumno", student],
-              ["Apoderado", guardian],
-              ["Fecha", paidDateShort !== "—" ? `${paidDateShort}${paidTimeShort ? " · " + paidTimeShort : ""}` : "—"],
-              ["Método", methodLabel],
-              ["Operación", op],
-              ["Autorización", auth],
-              ["Resp. code", resp],
-            ].map((row, idx)=>`
-              <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 14px;${idx<8?'border-bottom:1px solid rgba(0,0,0,.06);':''}">
-                <div class="muted" style="font-weight:800;">${esc(row[0])}</div>
-                <div style="font-weight:900;text-align:right;max-width:62%;">${esc(row[1])}</div>
-              </div>
-            `).join("")}
-          </div>
-
-          <div style="margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-weight:900;color:#0f766e;">${esc(statusLabel)}</div>
-            <div class="muted" style="font-size:12px;">Emitido ${esc(paidAtFull)}</div>
-          </div>
+        <div class="listLines" style="margin-top:12px;">
+          <div class="lineItem"><b>Campaña:</b> ${esc((load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""))?.title) || "—")}</div>
+          <div class="lineItem"><b>Concepto:</b> ${esc(p.concept||"—")}</div>
+          <div class="lineItem"><b>Alumno:</b> ${esc(p.studentName || "—")}</div>
+          <div class="lineItem"><b>Apoderado:</b> ${esc(p.guardianName || "—")}</div>
+          <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
+          <div class="lineItem"><b>Fecha:</b> ${esc(paidAt)}</div>
+          <div class="lineItem"><b>Método:</b> ${esc(method)}</div>
+          <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
+          <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
+          <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
         </div>
       </div>
     `);
@@ -1600,12 +1608,12 @@ const ym = currentYM();
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
   const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
-  const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
-  const cuota = String(p.cuotaNumero || p.installment || p.cuota || "");
-  const due = String(p.dueDate || "");
-  const amt = String(Number(p.amountRemaining ?? p.amount ?? p.monto ?? 0));
-  const typ = String(p.type || p.kind || "");
-  return [cid, who, cuota, due, amt, typ].join("|");
+  const who = String(p.apoderadoKey || p.apoderadoId || p.apoderadoEmail || p.email || p.userId || p.payerId || p.payerEmail || "").toLowerCase().trim();
+  const student = String(p.alumnoId || p.studentName || p.alumno || "").toLowerCase().trim();
+  const period = String(p.period || ymFromISO(p.dueDate) || ymFromISO(p.paidAt) || "");
+  const cuotaRaw = (p.installmentIndex!=null && p.installmentIndex!=="") ? p.installmentIndex : (p.cuotaNumero || p.installment || p.cuota || 1);
+  const cuota = String(cuotaRaw || 1);
+  return [cid, who, student, period, cuota].join("|");
 }
 
 function dedupePaymentsAll(list){

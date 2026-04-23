@@ -372,7 +372,7 @@
         concept,
         amount,
         amountPaid: amount,
-        amountOriginal: amount,
+        amountOriginal: Number(prev?.amountOriginal ?? prev?.amount ?? amount),
         amountRemaining: 0,
         status: "paid",
         paymentMethod,
@@ -403,7 +403,7 @@
         concept,
         amount,
         amountPaid: amount,
-        amountOriginal: amount,
+        amountOriginal: Number(prev?.amountOriginal ?? prev?.amount ?? amount),
         amountRemaining: 0,
         status: "paid",
         paymentMethod,
@@ -425,6 +425,7 @@
       });
     }
     save(KEY_PAYMENTS, payments);
+    try{ if(window.CURSAPP && typeof window.CURSAPP.normalizePaymentsLedger === "function") window.CURSAPP.normalizePaymentsLedger(); }catch(e){}
 
     try{
       if(typeof window.createAviso === "function"){

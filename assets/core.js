@@ -299,6 +299,72 @@
     return changed;
   }
 
+
+  // ------------------------------------------------------------
+  // 3) Blindaje ledger de pagos: un pago pendiente por apoderado/cuota
+  // ------------------------------------------------------------
+  function paymentLedgerKey(p){
+    const courseKey = String(p?.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
+    const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "").trim();
+    const who = String(p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
+    const student = String(p?.alumnoId || p?.studentName || p?.alumno || "").toLowerCase().trim();
+    const period = String(p?.period || (p?.dueDate ? String(p.dueDate).slice(0,7) : "") || (p?.paidAt ? String(p.paidAt).slice(0,7) : "")).trim();
+    const installmentIndex = String((p?.installmentIndex==null || p?.installmentIndex==="") ? 1 : p?.installmentIndex);
+    return [courseKey, taskId, who, student, period, installmentIndex].join("|");
+  }
+
+  function normalizePaymentsLedger(){
+    const payments = load(KEY_PAYMENTS, []);
+    if(!Array.isArray(payments) || !payments.length) return false;
+
+    const map = new Map();
+    let changed = false;
+
+    for(const p0 of payments){
+      if(!p0) continue;
+      const p = { ...p0 };
+      if(p.amountPaid == null && String(p.status||"").toLowerCase()==="paid"){
+        p.amountPaid = Number(p.amount || p.amountRemaining || 0);
+        changed = true;
+      }
+      if(p.amountOriginal == null && p.amount != null){
+        p.amountOriginal = Number(p.amount || 0);
+        changed = true;
+      }
+      if(p.amountRemaining == null){
+        p.amountRemaining = String(p.status||"").toLowerCase()==="paid" ? 0 : Number(p.amount || 0);
+        changed = true;
+      }
+
+      const key = paymentLedgerKey(p);
+      const prev = map.get(key);
+      if(!prev){
+        map.set(key, p);
+        continue;
+      }
+
+      const prevPaid = String(prev.status||"").toLowerCase()==="paid";
+      const curPaid = String(p.status||"").toLowerCase()==="paid";
+      if(curPaid && !prevPaid){ map.set(key, p); changed = true; continue; }
+
+      const prevRem = Number(prev.amountRemaining ?? prev.amount ?? 0);
+      const curRem = Number(p.amountRemaining ?? p.amount ?? 0);
+      if(curRem < prevRem){ map.set(key, p); changed = true; continue; }
+
+      changed = true;
+    }
+
+    const next = Array.from(map.values());
+    if(changed){
+      save(KEY_PAYMENTS, next);
+      emitChanged(KEY_PAYMENTS);
+    }
+    return changed;
+  }
+
+  window.CURSAPP = window.CURSAPP || {};
+  window.CURSAPP.normalizePaymentsLedger = normalizePaymentsLedger;
+
   // ---- listeners: reaccionar a cambios relevantes ----
   let __syncTimer = null;
   function scheduleSync(){
@@ -306,6 +372,7 @@
     __syncTimer = setTimeout(()=>{
       try{ ensureMandatoryPaymentsForApproved(); }catch(e){}
       try{ applyOptOutToPayments(); }catch(e){}
+      try{ normalizePaymentsLedger(); }catch(e){}
     }, 80);
   }
 
@@ -317,48 +384,4 @@
 
   // Primer sync al cargar página (por si vienes de aprobar / cambiar optout)
   try{ scheduleSync(); }catch(e){}
-})();
-
-
-/* ============================================================
-   Cursapp · payments normalization layer (SaaS-ready, non-breaking)
-   Preserva Transbank y pagos manuales, solo completa campos faltantes.
-   ============================================================ */
-(function(){
-  function sk(base){
-    try{
-      if(window.CURSAPP && typeof window.CURSAPP.scopedKey === 'function') return window.CURSAPP.scopedKey(base);
-    }catch(e){}
-    return `cursapp_${base}`;
-  }
-  const KEY_PAYMENTS = sk('payments_v1');
-
-  function normalizePayment(p){
-    const src = p || {};
-    const amount = Number(src.amount ?? 0);
-    const amountRemaining = Number(src.amountRemaining ?? (String(src.status||'').toLowerCase()==='paid' ? 0 : amount));
-    const amountPaid = Number(src.amountPaid ?? (String(src.status||'').toLowerCase()==='paid' ? amount : Math.max(0, amount - amountRemaining)));
-    return {
-      ...src,
-      amount,
-      amountRemaining,
-      amountPaid,
-      amountOriginal: Number(src.amountOriginal ?? amount),
-      paymentMethod: src.paymentMethod || src.paidWith || (String(src.status||'').toLowerCase()==='paid' ? 'transbank' : 'pending'),
-      conciliationStatus: src.conciliationStatus || (String(src.status||'').toLowerCase()==='paid' ? 'conciliado' : 'pendiente')
-    };
-  }
-
-  window.CURSAPP = window.CURSAPP || {};
-  window.CURSAPP.normalizePayment = normalizePayment;
-
-  try{
-    const raw = JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]");
-    if(Array.isArray(raw)){
-      const next = raw.map(normalizePayment);
-      if(JSON.stringify(next) !== JSON.stringify(raw)){
-        localStorage.setItem(KEY_PAYMENTS, JSON.stringify(next));
-      }
-    }
-  }catch(e){}
 })();
