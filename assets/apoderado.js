@@ -967,6 +967,7 @@ function dueBadge(iso){
   }
 
   ensureAlumnoActivo();
+  window.getActiveProfile = getActiveProfile;
 
   function setHeader(){
     if(!whoCourseLine) return;
@@ -1180,34 +1181,96 @@ function dueBadge(iso){
     const p = pays.find(x=>x.id===id);
     if(!p) return;
 
-    const amount = Number(p.amountRemaining ?? p.amount ?? 0);
-    const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = p.paidWith || "—";
+    const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
+    const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
+    const student = p.studentName || p.alumno || "—";
+    const guardian = p.guardianName || p.apoderadoName || "—";
+
+    const amountPaid = Number(
+      p.amountPaid ??
+      p.amount ??
+      ((Number(p.amountOriginal ?? p.amount ?? 0) - Number(p.amountRemaining ?? 0)) || 0)
+    );
+    const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
+
+    const paidAtDate = p.paidAt ? new Date(p.paidAt) : null;
+    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "—";
+    const paidDateShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
+      ? paidAtDate.toLocaleDateString("es-CL", { day:"2-digit", month:"short", year:"numeric" })
+      : "—";
+    const paidTimeShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
+      ? paidAtDate.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })
+      : "";
+
+    const rawMethod = String(p.paymentMethod || p.paidWith || "—").toLowerCase();
+    const methodLabel = ({
+      transbank:"💳 Transbank",
+      transferencia:"🏦 Transferencia",
+      efectivo:"💵 Efectivo",
+      saldo_favor:"🔁 Saldo a favor",
+      credit:"🔁 Saldo a favor"
+    })[rawMethod] || (p.paymentMethod || p.paidWith || "—");
+
     const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
     const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "—";
+
+    const folioBase = String(p.receiptId || p.transactionId || p.id || "0")
+      .replace(/[^a-zA-Z0-9]/g,"")
+      .slice(-8)
+      .toUpperCase() || "00000000";
+    const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
+
+    const isManual = String(p.source||"").toLowerCase()==="manual";
+    const isConciliated = String(p.conciliationStatus||"").toLowerCase()==="conciliado";
+    const statusLabel = isManual || isConciliated ? "✔ Registrado por tesorería" : "✔ Pago confirmado";
 
     openModal(`
-      <div class="card">
-        <div class="row">
+      <div style="background:#fff;border-radius:28px;overflow:hidden;">
+        <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
           <div>
-            <div class="kTitle">🧾 Comprobante</div>
-            <div class="muted" style="margin-top:6px;">${esc(p.source==="manual" ? "Pago manual registrado" : `Pago ${p.status||""}`)}</div>
+            <div style="font-weight:950;font-size:12px;letter-spacing:.08em;color:#64748b;">CURSAPP</div>
+            <div style="font-weight:950;font-size:26px;margin-top:4px;">🧾 Comprobante de pago</div>
+            <div class="muted" style="margin-top:6px;">${esc(isManual ? "Pago manual registrado correctamente" : "Pago procesado correctamente")}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
 
-        <div class="listLines" style="margin-top:12px;">
-          <div class="lineItem"><b>Campaña:</b> ${esc((load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""))?.title) || "—")}</div>
-          <div class="lineItem"><b>Concepto:</b> ${esc(p.concept||"—")}</div>
-          <div class="lineItem"><b>Alumno:</b> ${esc(p.studentName || "—")}</div>
-          <div class="lineItem"><b>Apoderado:</b> ${esc(p.guardianName || "—")}</div>
-          <div class="lineItem"><b>Monto:</b> ${clp(amount)}</div>
-          <div class="lineItem"><b>Fecha:</b> ${esc(paidAt)}</div>
-          <div class="lineItem"><b>Método:</b> ${esc(method)}</div>
-          <div class="lineItem"><b>Operación:</b> ${esc(op)}</div>
-          <div class="lineItem"><b>Autorización:</b> ${esc(auth)}</div>
-          <div class="lineItem"><b>Resp. code:</b> ${esc(resp)}</div>
+        <div style="padding:18px;">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">● PAGADO</span>
+            <span class="muted" style="font-weight:900;">Folio ${esc(folio)}</span>
+          </div>
+
+          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:22px;padding:20px;background:linear-gradient(180deg,#f8fafc,#ffffff);text-align:center;">
+            <div class="muted" style="font-weight:900;font-size:12px;letter-spacing:.05em;">MONTO PAGADO</div>
+            <div style="font-size:38px;font-weight:950;margin-top:6px;line-height:1;">${clp(amountPaid)}</div>
+            <div class="muted" style="margin-top:8px;">${amountPending>0 ? `Saldo pendiente ${clp(amountPending)}` : `Sin saldo pendiente`}</div>
+          </div>
+
+          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;overflow:hidden;background:#fff;">
+            ${[
+              ["Campaña", campaign],
+              ["Concepto", p.concept || "—"],
+              ["Alumno", student],
+              ["Apoderado", guardian],
+              ["Fecha", paidDateShort !== "—" ? `${paidDateShort}${paidTimeShort ? " · " + paidTimeShort : ""}` : "—"],
+              ["Método", methodLabel],
+              ["Operación", op],
+              ["Autorización", auth],
+              ["Resp. code", resp],
+            ].map((row, idx)=>`
+              <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 14px;${idx<8?'border-bottom:1px solid rgba(0,0,0,.06);':''}">
+                <div class="muted" style="font-weight:800;">${esc(row[0])}</div>
+                <div style="font-weight:900;text-align:right;max-width:62%;">${esc(row[1])}</div>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="font-weight:900;color:#0f766e;">${esc(statusLabel)}</div>
+            <div class="muted" style="font-size:12px;">Emitido ${esc(paidAtFull)}</div>
+          </div>
         </div>
       </div>
     `);

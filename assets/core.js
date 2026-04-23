@@ -318,3 +318,47 @@
   // Primer sync al cargar página (por si vienes de aprobar / cambiar optout)
   try{ scheduleSync(); }catch(e){}
 })();
+
+
+/* ============================================================
+   Cursapp · payments normalization layer (SaaS-ready, non-breaking)
+   Preserva Transbank y pagos manuales, solo completa campos faltantes.
+   ============================================================ */
+(function(){
+  function sk(base){
+    try{
+      if(window.CURSAPP && typeof window.CURSAPP.scopedKey === 'function') return window.CURSAPP.scopedKey(base);
+    }catch(e){}
+    return `cursapp_${base}`;
+  }
+  const KEY_PAYMENTS = sk('payments_v1');
+
+  function normalizePayment(p){
+    const src = p || {};
+    const amount = Number(src.amount ?? 0);
+    const amountRemaining = Number(src.amountRemaining ?? (String(src.status||'').toLowerCase()==='paid' ? 0 : amount));
+    const amountPaid = Number(src.amountPaid ?? (String(src.status||'').toLowerCase()==='paid' ? amount : Math.max(0, amount - amountRemaining)));
+    return {
+      ...src,
+      amount,
+      amountRemaining,
+      amountPaid,
+      amountOriginal: Number(src.amountOriginal ?? amount),
+      paymentMethod: src.paymentMethod || src.paidWith || (String(src.status||'').toLowerCase()==='paid' ? 'transbank' : 'pending'),
+      conciliationStatus: src.conciliationStatus || (String(src.status||'').toLowerCase()==='paid' ? 'conciliado' : 'pendiente')
+    };
+  }
+
+  window.CURSAPP = window.CURSAPP || {};
+  window.CURSAPP.normalizePayment = normalizePayment;
+
+  try{
+    const raw = JSON.parse(localStorage.getItem(KEY_PAYMENTS) || "[]");
+    if(Array.isArray(raw)){
+      const next = raw.map(normalizePayment);
+      if(JSON.stringify(next) !== JSON.stringify(raw)){
+        localStorage.setItem(KEY_PAYMENTS, JSON.stringify(next));
+      }
+    }
+  }catch(e){}
+})();

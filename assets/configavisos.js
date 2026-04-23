@@ -19,7 +19,22 @@
   }
   function currentIdentity(){
     const s = getSessionSafe() || {};
-    const p = getActiveProfileSafe() || {};
+    let p = getActiveProfileSafe() || {};
+    try{
+      if((!p || !p.apoderado)){
+        const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1")||"[]");
+        const activeProfileId = String(localStorage.getItem("cursapp_active_profile_v1") || "").trim();
+        const activeCourse = String(localStorage.getItem("cursapp_active_course_v1") || "").trim();
+        const sessionUserId = String(s?.userId || "").trim();
+        const sessionEmail = String(s?.email || s?.userId || "").toLowerCase().trim();
+        p =
+          profiles.find(x => String(x?.profileId || x?.id || "") === activeProfileId) ||
+          profiles.find(x => String(x?.courseKey || "") === activeCourse && (
+            String(x?.userId || x?.user?.userId || "") === sessionUserId ||
+            String(x?.apoderado?.email || x?.user?.email || "").toLowerCase().trim() === sessionEmail
+          )) || p;
+      }
+    }catch(e){}
     const email = String(p?.apoderado?.email || p?.user?.email || s?.email || s?.userId || "").toLowerCase().trim();
     const userKey = String(s?.userId || p?.userId || p?.user?.userId || email || "").toLowerCase().trim();
     const role = String(p?.role || p?.user?.role || s?.role || "").toLowerCase().trim();
