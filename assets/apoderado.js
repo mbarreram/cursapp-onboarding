@@ -1688,8 +1688,14 @@ function dedupePaymentsAll(list){
 
   // -------- Pages --------
 
-  function apoderadoProHero(paysMine){
-    const resumen = dashboardFinancieroApoderado(paysMine || []);
+  function apoderadoProHero(){
+    let list = [];
+    try{
+      const all = load(KEY_PAYMENTS, []);
+      list = Array.isArray(all) ? all.filter(isMinePayment).filter(p=>!isPaymentOptedOut(p)) : [];
+    }catch(e){ list = []; }
+
+    const resumen = dashboardFinancieroApoderado(list || []);
     const urgent = Number(resumen.vencido||0);
     const pending = Number(resumen.pendiente||0);
     const ok = urgent<=0 && pending<=0;
@@ -1779,7 +1785,7 @@ function dedupePaymentsAll(list){
     const r = latestReport();
 
     app.innerHTML = `
-      ${apoderadoProHero(paysMine)}
+      ${apoderadoProHero()}
 
       <!-- 1) Próxima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
