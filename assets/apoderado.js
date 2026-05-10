@@ -1696,17 +1696,75 @@ function dedupePaymentsAll(list){
     }catch(e){ list = []; }
 
     const resumen = dashboardFinancieroApoderado(list || []);
-    const urgent = Number(resumen.vencido||0);
-    const pending = Number(resumen.pendiente||0);
-    const ok = urgent<=0 && pending<=0;
-    const cls = urgent>0 ? "danger" : (pending>0 ? "warn" : "ok");
-    const label = urgent>0 ? "Revisar vencidos" : (pending>0 ? "Pagos por revisar" : "Todo al día");
-    const title = ok ? "Hola, estás al día 😊" : (urgent>0 ? "Tienes una cuota vencida" : "Tienes pagos por revisar");
-    const text = ok ? "No hay pagos urgentes por ahora. Te avisaremos si la directiva publica novedades." : "Revisa tus cuotas y avisos del curso en un solo lugar.";
-    return `<div class="cpHero" style="margin-bottom:12px;"><div class="cpHeroTop"><div><div class="cpEyebrow">Inicio apoderado</div><div class="cpHeroTitle">${title}</div><div class="cpHeroText">${text}</div></div><span class="cpStatusDot ${cls}">${label}</span></div><div class="cpQuickGrid"><div class="cpQuickCard"><div class="cpQuickLbl">Pendiente</div><div class="cpQuickVal">${clp(pending)}</div></div><div class="cpQuickCard"><div class="cpQuickLbl">Vencido</div><div class="cpQuickVal">${clp(urgent)}</div></div></div></div>`;
+    const vencido = Number(resumen.vencido||0);
+    const pendiente = Number(resumen.pendiente||0);
+    const cls = vencido>0 ? "danger" : (pendiente>0 ? "warn" : "ok");
+    const label = vencido>0 ? "Revisar" : (pendiente>0 ? "Pendiente" : "Al día");
+    const title = vencido>0 ? "Hay una cuota que necesita atención" : (pendiente>0 ? "Tienes pagos por revisar" : "Todo en orden");
+    const text = vencido>0
+      ? "Revisa tus pagos cuando puedas. La información está ordenada por campaña."
+      : (pendiente>0 ? "Puedes revisar el detalle por campaña o pagar desde la sección Pagos." : "No hay acciones urgentes por ahora.");
+
+    return `
+      <div class="cpHero" style="margin-bottom:12px;">
+        <div class="cpHeroTop">
+          <div>
+            <div class="cpEyebrow">Resumen personal</div>
+            <div class="cpHeroTitle">${title}</div>
+            <div class="cpHeroText">${text}</div>
+          </div>
+          <span class="cpStatusDot ${cls}">${label}</span>
+        </div>
+
+        <details class="cpDisclosure" style="margin:12px 0 0 0;box-shadow:none;">
+          <summary>Ver resumen de pagos</summary>
+          <div class="cpDisclosureBody">
+            <div class="cpMiniMetric"><span class="label">Pendiente</span><span class="value">${clp(pendiente)}</span></div>
+            <div class="cpMiniMetric"><span class="label">Vencido</span><span class="value">${clp(vencido)}</span></div>
+            <div class="cpMiniText" style="margin-top:10px;">Los montos detallados quedan en “Pagos pendientes” para no saturar el inicio.</div>
+          </div>
+        </details>
+      </div>
+    `;
   }
 
-  function renderHome(){
+
+  function enhanceApoderadoHomeProgressive(){
+    try{
+      const cards = Array.from(app.querySelectorAll(".card"));
+      cards.forEach(card=>{
+        const txt = (card.textContent||"").trim();
+        if(txt.includes("Pagos pendientes") && !card.closest("details")){
+          const det = document.createElement("details");
+          det.className = "cpDisclosure";
+          det.open = false;
+          const sum = document.createElement("summary");
+          sum.innerHTML = "💳 Pagos pendientes";
+          const body = document.createElement("div");
+          body.className = "cpDisclosureBody";
+          card.parentNode.insertBefore(det, card);
+          det.appendChild(sum);
+          det.appendChild(body);
+          body.appendChild(card);
+        }
+        if(txt.includes("Estado del curso") && !card.closest("details")){
+          const det = document.createElement("details");
+          det.className = "cpDisclosure";
+          det.open = false;
+          const sum = document.createElement("summary");
+          sum.innerHTML = "📊 Estado del curso";
+          const body = document.createElement("div");
+          body.className = "cpDisclosureBody";
+          card.parentNode.insertBefore(det, card);
+          det.appendChild(sum);
+          det.appendChild(body);
+          body.appendChild(card);
+        }
+      });
+    }catch(e){}
+  }
+
+function renderHome(){
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
     const dd0 = dedupePaymentsAll(paysAll);
