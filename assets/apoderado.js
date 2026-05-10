@@ -1221,6 +1221,41 @@ function dueBadge(iso){
     return better || base;
   }
 
+
+  window.downloadReceiptPDF = function(id){
+    const p = (typeof resolveReceiptPayment === "function") ? resolveReceiptPayment(id) : load(KEY_PAYMENTS, []).find(x=>String(x.id)===String(id));
+    if(!p){ alert("No se encontró el comprobante."); return; }
+    const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
+    const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
+    const amountPaid = (typeof receiptAmountPaid === "function") ? receiptAmountPaid(p) : Number(p.amountPaid ?? p.amount ?? 0);
+    const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
+    const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
+    const method = p.paymentMethod || p.paidWith || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "—";
+    const folioBase = String(p.receiptId || p.transactionId || p.id || "0").replace(/[^a-zA-Z0-9]/g,"").slice(-8).toUpperCase() || "00000000";
+    const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
+    const safe = (s)=>String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Comprobante Cursapp</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f3f6fb;color:#0f172a;margin:0;padding:28px}
+.sheet{max-width:760px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:24px;overflow:hidden;box-shadow:0 18px 55px rgba(15,23,42,.12)}
+.head{padding:24px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:18px}
+.brand{font-size:12px;font-weight:900;letter-spacing:.12em;color:#64748b}h1{font-size:28px;margin:6px 0}.muted{color:#64748b}
+.badge{display:inline-flex;padding:9px 14px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900}
+.body{padding:24px}.amount{border:1px solid #e5e7eb;border-radius:24px;padding:26px;text-align:center;background:linear-gradient(180deg,#f8fafc,#fff)}
+.amount .lbl{font-weight:900;letter-spacing:.08em;color:#64748b;font-size:12px}.amount .val{font-size:46px;font-weight:950;margin-top:8px}
+.grid{margin-top:20px;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden}.row{display:flex;justify-content:space-between;gap:20px;padding:14px 16px;border-bottom:1px solid #eef2f7}.row:last-child{border-bottom:0}
+.label{font-weight:800;color:#64748b}.value{font-weight:900;text-align:right;max-width:60%;word-break:break-word}.foot{margin-top:18px;padding:14px 16px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:14px}.ok{font-weight:900;color:#0f766e}
+.actions{max-width:760px;margin:14px auto 0;text-align:right}button{background:#0f172a;color:#fff;border:0;border-radius:14px;padding:12px 18px;font-weight:900}
+@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0;border:0}.actions{display:none}}
+</style></head><body><div class="sheet"><div class="head"><div><div class="brand">CURSAPP</div><h1>Comprobante de pago</h1><div class="muted">Pago registrado correctamente</div></div><div><div class="badge">● PAGADO</div><div class="muted" style="margin-top:10px;font-weight:800;text-align:right;">${safe(folio)}</div></div></div><div class="body"><div class="amount"><div class="lbl">MONTO PAGADO</div><div class="val">${clp(amountPaid)}</div><div class="muted">${amountPending>0 ? `Saldo pendiente ${clp(amountPending)}` : "Sin saldo pendiente"}</div></div><div class="grid">${[
+["Campaña", campaign],["Concepto", p.concept||"—"],["Alumno", p.studentName||p.alumno||"—"],["Apoderado", p.guardianName||p.apoderadoName||p.apoderadoEmail||p.email||"—"],["Fecha", paidAt],["Método", method],["Operación", op]
+].map(r=>`<div class="row"><div class="label">${safe(r[0])}</div><div class="value">${safe(r[1])}</div></div>`).join("")}</div><div class="foot"><div class="ok">✔ Registrado por tesorería</div><div class="muted">Emitido desde Cursapp</div></div></div></div><div class="actions"><button onclick="window.print()">Descargar / imprimir PDF</button></div><script>setTimeout(()=>{try{window.print()}catch(e){}},400)</script></body></html>`;
+    const w = window.open("", "_blank");
+    if(!w){ alert("El navegador bloqueó la ventana del PDF."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  };
+
   window.openReceipt = function(id){
     const p = resolveReceiptPayment(id);
     if(!p) return;
@@ -1303,6 +1338,9 @@ function dueBadge(iso){
           <div style="margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
             <div style="font-weight:900;color:#0f766e;">${esc(statusLabel)}</div>
             <div class="muted" style="font-size:12px;">Emitido ${esc(paidAtFull)}</div>
+          </div>
+          <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+            <button class="btnx primary" onclick="downloadReceiptPDF('${esc(p.id)}')">📄 Descargar PDF</button>
           </div>
         </div>
       </div>
@@ -2510,7 +2548,7 @@ window.payNow = function(id){
     if(tab==="home") renderHome();
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
-    try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
+    try{ if(window.runSmartAvisos) window.runSmartAvisos(); if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 

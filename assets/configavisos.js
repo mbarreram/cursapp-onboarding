@@ -438,4 +438,36 @@
       console.error("runAutoAvisosContext", e);
     }
   };
+  window.runSmartAvisos = function(){
+    try{
+      const payments = JSON.parse(localStorage.getItem(sk("payments_v1"))||"[]");
+      const tasks = JSON.parse(localStorage.getItem(sk("tasks_v1"))||"[]");
+      const today = new Date(new Date().toISOString().slice(0,10)+"T00:00:00");
+      const money = (n)=>{ try{return new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0}).format(Number(n||0));}catch(e){return "$"+Number(n||0).toLocaleString("es-CL");} };
+      (payments||[]).forEach(p=>{
+        const st = String(p?.status||"").toLowerCase();
+        if(!["pending","partial","overdue"].includes(st)) return;
+        const due = String(p?.dueDate||"").slice(0,10);
+        if(!due) return;
+        const d = new Date(due+"T00:00:00");
+        if(isNaN(d.getTime())) return;
+        const days = Math.round((d.getTime()-today.getTime())/86400000);
+        const email = String(p?.apoderadoEmail || p?.email || p?.apoderadoKey || p?.apoderadoId || "").toLowerCase().trim();
+        const task = (tasks||[]).find(t=>String(t?.id||"")===String(p?.fromTaskId||""));
+        const title = task?.title || p?.concept || "Pago";
+        const amount = Number(p?.amountRemaining ?? p?.amount ?? 0);
+        if([7,3,1].includes(days)){
+          createAviso({type:"auto",category:"financial",priority:"normal",title:"⏰ Tu cuota vence pronto",message:`${title} · ${money(amount)} · vence en ${days} día(s)`,targetEmail:email,createdAt:new Date().toISOString(),actionType:"open_payments",actionPayload:{paymentId:p.id},dedupeKey:`due-soon:${p.id}:${days}`});
+        }
+        if(days===0){
+          createAviso({type:"auto",category:"urgent",priority:"high",title:"⚠️ Tu cuota vence hoy",message:`${title} · ${money(amount)}`,targetEmail:email,createdAt:new Date().toISOString(),actionType:"open_payments",actionPayload:{paymentId:p.id},dedupeKey:`due-today:${p.id}`});
+        }
+        if(days<0){
+          createAviso({type:"auto",category:"urgent",priority:"high",title:"🔴 Tienes una cuota vencida",message:`${title} · ${money(amount)} · vencida hace ${Math.abs(days)} día(s)`,targetEmail:email,createdAt:new Date().toISOString(),actionType:"open_payments",actionPayload:{paymentId:p.id},dedupeKey:`overdue:${p.id}:${Math.abs(days)}`});
+        }
+      });
+      if(typeof window.renderAvisosBell==="function") window.renderAvisosBell();
+    }catch(e){ console.error("runSmartAvisos", e); }
+  };
+
 })();
