@@ -371,8 +371,6 @@
         dueDate: prev.dueDate || (task?.dueDate || paidAt),
         concept,
         amount,
-        amountPaid: amount,
-        amountOriginal: Number(prev?.amountOriginal ?? prev?.amount ?? amount),
         amountRemaining: 0,
         status: "paid",
         paymentMethod,
@@ -402,8 +400,6 @@
         dueDate: task?.dueDate || paidAt,
         concept,
         amount,
-        amountPaid: amount,
-        amountOriginal: Number(prev?.amountOriginal ?? prev?.amount ?? amount),
         amountRemaining: 0,
         status: "paid",
         paymentMethod,
@@ -425,7 +421,6 @@
       });
     }
     save(KEY_PAYMENTS, payments);
-    try{ if(window.CURSAPP && typeof window.CURSAPP.normalizePaymentsLedger === "function") window.CURSAPP.normalizePaymentsLedger(); }catch(e){}
 
     try{
       if(typeof window.createAviso === "function"){
@@ -704,6 +699,15 @@
   navItems.forEach(b=> b.onclick = ()=> go(b.dataset.tab));
 
   // ---------- Render: Home ----------
+
+  function tesoreroProHero(){
+    const stats = conciliationStats();
+    const pendientes = Number(stats.pendiente||0);
+    const observados = Number(stats.observado||0);
+    const caja = Number(stats.cajaReal||0);
+    return `<div class="cpHero" style="margin-bottom:12px;"><div class="cpHeroTop"><div><div class="cpEyebrow">Tesorería</div><div class="cpHeroTitle">Control financiero del curso</div><div class="cpHeroText">Conciliación, rendiciones y caja real en una vista más clara.</div></div><span class="cpStatusDot ${observados>0 ? "danger" : (pendientes>0 ? "warn" : "ok")}">${observados>0 ? "Observados" : (pendientes>0 ? "Pendientes" : "Conciliado")}</span></div><div class="cpQuickGrid"><div class="cpQuickCard"><div class="cpQuickLbl">Caja real</div><div class="cpQuickVal">${clp(caja)}</div></div><div class="cpQuickCard"><div class="cpQuickLbl">Pendiente conciliación</div><div class="cpQuickVal">${clp(pendientes)}</div></div></div></div>`;
+  }
+
   function renderHome(){
     const exp = expensesAll();
     const collected = collectedCourse();
@@ -748,6 +752,8 @@
     }).join("");
 
     app.innerHTML = `
+      ${tesoreroProHero()}
+
       ${isDirty()?`<div class="alertBox">📄 Cambios detectados: requiere nuevo informe</div>`:""}
 
       <div class="card">
