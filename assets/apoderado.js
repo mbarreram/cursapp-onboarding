@@ -967,7 +967,6 @@ function dueBadge(iso){
   }
 
   ensureAlumnoActivo();
-  window.getActiveProfile = getActiveProfile;
 
   function setHeader(){
     if(!whoCourseLine) return;
@@ -1198,6 +1197,7 @@ function dueBadge(iso){
     const ba = String(b?.alumnoId || "").trim();
     const as = String(a?.studentName || a?.alumno || "").toLowerCase().trim();
     const bs = String(b?.studentName || b?.alumno || "").toLowerCase().trim();
+
     if(ae && be && ae !== be) return false;
     if(aa && ba && aa !== ba) return false;
     if(as && bs && as !== bs) return false;
@@ -1208,61 +1208,18 @@ function dueBadge(iso){
     const pays = load(KEY_PAYMENTS, []);
     const base = pays.find(x=>String(x.id)===String(id));
     if(!base) return null;
+
+    // Si por datos legacy el id apunta a un registro antiguo con monto 0,
+    // buscamos el pago pagado más reciente de la misma campaña/apoderado/alumno.
     const candidates = pays
       .filter(p=>String(p?.status||"").toLowerCase()==="paid")
       .filter(p=>String(p?.fromTaskId||"")===String(base?.fromTaskId||""))
       .filter(p=>sameReceiptOwner(p, base))
       .sort((a,b)=> receiptSortDate(b) - receiptSortDate(a));
+
     const better = candidates.find(p=>receiptAmountPaid(p)>0);
     return better || base;
   }
-
-  function receiptFolio(p){
-    const folioBase = String(p?.receiptId || p?.transactionId || p?.id || "0").replace(/[^a-zA-Z0-9]/g,"").slice(-8).toUpperCase() || "00000000";
-    return `CP-${new Date().getFullYear()}-${folioBase}`;
-  }
-
-  function methodLabelReceipt(p){
-    const raw = String(p?.paymentMethod || p?.paidWith || "—").toLowerCase();
-    return ({
-      transbank:"💳 Transbank",
-      transferencia:"🏦 Transferencia",
-      efectivo:"💵 Efectivo",
-      saldo_favor:"🔁 Saldo a favor",
-      credit:"🔁 Saldo a favor"
-    })[raw] || (p?.paymentMethod || p?.paidWith || "—");
-  }
-
-  window.downloadReceiptPDF = function(id){
-    const p = resolveReceiptPayment(id);
-    if(!p){ alert("No se encontró el comprobante."); return; }
-    const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
-    const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
-    const amountPaid = receiptAmountPaid(p);
-    const paidAt = p.paidAt ? new Date(p.paidAt).toLocaleString("es-CL") : "—";
-    const method = methodLabelReceipt(p);
-    const folio = receiptFolio(p);
-    const safe = (s)=>String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
-    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Comprobante Cursapp</title>
-<style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f3f6fb;color:#0f172a;margin:0;padding:28px}
-.sheet{max-width:640px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:24px;overflow:hidden;box-shadow:0 18px 55px rgba(15,23,42,.12)}
-.head{padding:22px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:18px}
-.brand{font-size:12px;font-weight:900;letter-spacing:.12em;color:#64748b}h1{font-size:26px;margin:6px 0}.muted{color:#64748b}
-.badge{display:inline-flex;padding:8px 13px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900}
-.body{padding:22px}.amount{border:1px solid #e5e7eb;border-radius:22px;padding:24px;text-align:center;background:linear-gradient(180deg,#f8fafc,#fff)}
-.lbl{font-size:12px;font-weight:900;letter-spacing:.08em;color:#64748b}.val{font-size:44px;font-weight:950;margin-top:8px}
-.row{display:flex;justify-content:space-between;gap:18px;padding:13px 0;border-bottom:1px solid #eef2f7}.label{font-weight:800;color:#64748b}.value{font-weight:900;text-align:right}
-.foot{margin-top:16px;padding:13px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb;color:#0f766e;font-weight:900}
-.actions{max-width:640px;margin:14px auto 0;text-align:right}button{background:#0f172a;color:#fff;border:0;border-radius:14px;padding:12px 18px;font-weight:900}
-@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0;border:0}.actions{display:none}}
-</style></head><body><div class="sheet"><div class="head"><div><div class="brand">CURSAPP</div><h1>Comprobante de pago</h1><div class="muted">Pago registrado correctamente</div></div><div><div class="badge">● PAGADO</div><div class="muted" style="margin-top:10px;font-weight:800;text-align:right;">${safe(folio)}</div></div></div><div class="body"><div class="amount"><div class="lbl">MONTO PAGADO</div><div class="val">${clp(amountPaid)}</div></div>${[
-["Campaña", campaign],["Alumno", p.studentName||p.alumno||"—"],["Fecha", paidAt],["Método", method],["Folio", folio]
-].map(r=>`<div class="row"><div class="label">${safe(r[0])}</div><div class="value">${safe(r[1])}</div></div>`).join("")}<div class="foot">✔ Registrado por tesorería</div></div></div><div class="actions"><button onclick="window.print()">Descargar / imprimir PDF</button></div><script>setTimeout(()=>{try{window.print()}catch(e){}},400)</script></body></html>`;
-    const w = window.open("", "_blank");
-    if(!w){ alert("El navegador bloqueó la ventana del PDF."); return; }
-    w.document.open(); w.document.write(html); w.document.close();
-  };
 
   window.openReceipt = function(id){
     const p = resolveReceiptPayment(id);
@@ -1271,52 +1228,81 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;ba
     const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
     const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
     const amountPaid = receiptAmountPaid(p);
+    const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
+
     const paidAtDate = p.paidAt ? new Date(p.paidAt) : null;
+    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "—";
     const paidDateShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleDateString("es-CL", { day:"2-digit", month:"short", year:"numeric" })
       : "—";
     const paidTimeShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })
       : "";
-    const method = methodLabelReceipt(p);
-    const folio = receiptFolio(p);
+
+    const rawMethod = String(p.paymentMethod || p.paidWith || "—").toLowerCase();
+    const methodLabel = ({
+      transbank:"💳 Transbank",
+      transferencia:"🏦 Transferencia",
+      efectivo:"💵 Efectivo",
+      saldo_favor:"🔁 Saldo a favor",
+      credit:"🔁 Saldo a favor"
+    })[rawMethod] || (p.paymentMethod || p.paidWith || "—");
+
+    const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
+    const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "—";
+    const folioBase = String(p.receiptId || p.transactionId || p.id || "0").replace(/[^a-zA-Z0-9]/g,"").slice(-8).toUpperCase() || "00000000";
+    const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
+
+    const isManual = String(p.source||"").toLowerCase()==="manual";
+    const isConciliated = String(p.conciliationStatus||"").toLowerCase()==="conciliado";
+    const statusLabel = isManual || isConciliated ? "✔ Registrado por tesorería" : "✔ Pago confirmado";
 
     openModal(`
-      <div class="cpReceiptCompact" style="background:#fff;border-radius:28px;overflow:hidden;">
+      <div style="background:#fff;border-radius:28px;overflow:hidden;">
         <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
           <div>
-            <div class="cpEyebrow">CURSAPP</div>
-            <div style="font-weight:950;font-size:24px;margin-top:4px;letter-spacing:-.03em;">🧾 Comprobante</div>
-            <div class="cpMiniText" style="margin-top:6px;">Pago registrado correctamente</div>
+            <div style="font-weight:950;font-size:12px;letter-spacing:.08em;color:#64748b;">CURSAPP</div>
+            <div style="font-weight:950;font-size:26px;margin-top:4px;">🧾 Comprobante de pago</div>
+            <div class="muted" style="margin-top:6px;">${esc(isManual ? "Pago manual registrado correctamente" : "Pago procesado correctamente")}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
         </div>
 
         <div style="padding:18px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <span class="cpStatusDot ok">● PAGADO</span>
-            <span class="cpMiniText" style="font-weight:950;">${esc(folio)}</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">● PAGADO</span>
+            <span class="muted" style="font-weight:900;">Folio ${esc(folio)}</span>
           </div>
 
           <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:22px;padding:20px;background:linear-gradient(180deg,#f8fafc,#ffffff);text-align:center;">
-            <div class="cpEyebrow">MONTO PAGADO</div>
-            <div class="cpAmount" style="margin-top:8px;">${clp(amountPaid)}</div>
+            <div class="muted" style="font-weight:900;font-size:12px;letter-spacing:.05em;">MONTO PAGADO</div>
+            <div style="font-size:38px;font-weight:950;margin-top:6px;line-height:1;">${clp(amountPaid)}</div>
+            <div class="muted" style="margin-top:8px;">${amountPending>0 ? `Saldo pendiente ${clp(amountPending)}` : `Sin saldo pendiente`}</div>
           </div>
 
-          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;padding:0 14px;background:#fff;">
-            <div class="cpRow"><div class="cpLabel">Campaña</div><div class="cpValue">${esc(campaign)}</div></div>
-            <div class="cpRow"><div class="cpLabel">Alumno</div><div class="cpValue">${esc(p.studentName || p.alumno || "—")}</div></div>
-            <div class="cpRow"><div class="cpLabel">Fecha</div><div class="cpValue">${esc(paidDateShort !== "—" ? `${paidDateShort}${paidTimeShort ? " · " + paidTimeShort : ""}` : "—")}</div></div>
-            <div class="cpRow"><div class="cpLabel">Método</div><div class="cpValue">${esc(method)}</div></div>
+          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;overflow:hidden;background:#fff;">
+            ${[
+              ["Campaña", campaign],
+              ["Concepto", p.concept || "—"],
+              ["Alumno", p.studentName || p.alumno || "—"],
+              ["Apoderado", p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "—"],
+              ["Fecha", paidDateShort !== "—" ? `${paidDateShort}${paidTimeShort ? " · " + paidTimeShort : ""}` : "—"],
+              ["Método", methodLabel],
+              ["Operación", op],
+              ["Autorización", auth],
+              ["Resp. code", resp],
+            ].map((row, idx)=>`
+              <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 14px;${idx<8?'border-bottom:1px solid rgba(0,0,0,.06);':''}">
+                <div class="muted" style="font-weight:800;">${esc(row[0])}</div>
+                <div style="font-weight:900;text-align:right;max-width:62%;">${esc(row[1])}</div>
+              </div>
+            `).join("")}
           </div>
 
           <div style="margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-weight:900;color:#0f766e;">✔ Registrado por tesorería</div>
-            <div class="cpMiniText">Folio ${esc(folio)}</div>
-          </div>
-
-          <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-            <button class="btnx primary" onclick="downloadReceiptPDF('${esc(p.id)}')">📄 Descargar PDF</button>
+            <div style="font-weight:900;color:#0f766e;">${esc(statusLabel)}</div>
+            <div class="muted" style="font-size:12px;">Emitido ${esc(paidAtFull)}</div>
           </div>
         </div>
       </div>
@@ -1687,48 +1673,7 @@ function dedupePaymentsAll(list){
 }
 
   // -------- Pages --------
-
-  function apoderadoProHero(){
-    let list = [];
-    try{
-      const all = load(KEY_PAYMENTS, []);
-      list = Array.isArray(all) ? all.filter(isMinePayment).filter(p=>!isPaymentOptedOut(p)) : [];
-    }catch(e){ list = []; }
-
-    const resumen = dashboardFinancieroApoderado(list || []);
-    const vencido = Number(resumen.vencido||0);
-    const pendiente = Number(resumen.pendiente||0);
-    const cls = vencido>0 ? "danger" : (pendiente>0 ? "warn" : "ok");
-    const label = vencido>0 ? "Revisar" : (pendiente>0 ? "Pendiente" : "Al día");
-    const title = vencido>0 ? "Hay una cuota que necesita atención" : (pendiente>0 ? "Tienes pagos por revisar" : "Todo en orden");
-    const text = vencido>0
-      ? "Revisa tus pagos cuando puedas. La información está ordenada por campaña."
-      : (pendiente>0 ? "Puedes revisar el detalle por campaña o pagar desde la sección Pagos." : "No hay acciones urgentes por ahora.");
-
-    return `
-      <div class="cpHero" style="margin-bottom:12px;">
-        <div class="cpHeroTop">
-          <div>
-            <div class="cpEyebrow">Resumen personal</div>
-            <div class="cpHeroTitle">${title}</div>
-            <div class="cpHeroText">${text}</div>
-          </div>
-          <span class="cpStatusDot ${cls}">${label}</span>
-        </div>
-
-        <details class="cpDisclosure" style="margin:12px 0 0 0;box-shadow:none;">
-          <summary>Ver resumen de pagos</summary>
-          <div class="cpDisclosureBody">
-            <div class="cpMiniMetric"><span class="label">Pendiente</span><span class="value">${clp(pendiente)}</span></div>
-            <div class="cpMiniMetric"><span class="label">Vencido</span><span class="value">${clp(vencido)}</span></div>
-            <div class="cpMiniText" style="margin-top:10px;">Los montos detallados quedan en “Pagos pendientes” para no saturar el inicio.</div>
-          </div>
-        </details>
-      </div>
-    `;
-  }
-
-
+  
   function enhanceApoderadoHomeProgressive(){
     try{
       const cards = Array.from(app.querySelectorAll(".card"));
@@ -1737,7 +1682,6 @@ function dedupePaymentsAll(list){
         if(txt.includes("Pagos pendientes") && !card.closest("details")){
           const det = document.createElement("details");
           det.className = "cpDisclosure";
-          det.open = false;
           const sum = document.createElement("summary");
           sum.innerHTML = "💳 Pagos pendientes";
           const body = document.createElement("div");
@@ -1750,7 +1694,6 @@ function dedupePaymentsAll(list){
         if(txt.includes("Estado del curso") && !card.closest("details")){
           const det = document.createElement("details");
           det.className = "cpDisclosure";
-          det.open = false;
           const sum = document.createElement("summary");
           sum.innerHTML = "📊 Estado del curso";
           const body = document.createElement("div");
@@ -1843,8 +1786,6 @@ function renderHome(){
     const r = latestReport();
 
     app.innerHTML = `
-      ${apoderadoProHero()}
-
       <!-- 1) Próxima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -2603,7 +2544,7 @@ window.payNow = function(id){
     if(tab==="home") renderHome();
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
-    try{ if(window.runSmartAvisos) window.runSmartAvisos(); if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
+    try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 

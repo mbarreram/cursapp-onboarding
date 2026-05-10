@@ -1070,15 +1070,6 @@ function setActive(tab){
   }
 
   // ----- Home -----
-
-  function presidenteProHero(){
-    const ym = currentYYYYMM();
-    const pendiente = pendingMonth(ym);
-    const recMes = collectedMonth(ym);
-    const apods = approvedCount();
-    return `<div class="cpHero" style="margin-bottom:12px;"><div class="cpHeroTop"><div><div class="cpEyebrow">Presidencia</div><div class="cpHeroTitle">Panel ejecutivo del curso</div><div class="cpHeroText">Campañas, deudores e informes con foco en decisiones rápidas.</div></div><span class="cpStatusDot ${pendiente>0 ? "warn" : "ok"}">${pendiente>0 ? "Con cobranza" : "Al día"}</span></div><div class="cpQuickGrid"><div class="cpQuickCard"><div class="cpQuickLbl">Cobrado este mes</div><div class="cpQuickVal">${clp(recMes)}</div></div><div class="cpQuickCard"><div class="cpQuickLbl">Apoderados</div><div class="cpQuickVal">${apods}</div></div></div></div>`;
-  }
-
   function renderHome(){
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
@@ -1105,9 +1096,7 @@ function setActive(tab){
     if(debtorsMes > 0) alerts.push(`👥 Deudores (mes): ${debtorsMes}`);
     if(isDirty()) alerts.push(`📄 Informe desactualizado`);
 
-    app.innerHTML = `
-      ${presidenteProHero()}
-      ${alerts.length ? `
+    app.innerHTML = `      ${alerts.length ? `
         <div class="warnBox">
           <div style="font-weight:950;">Resumen rápido</div>
           <div class="muted" style="margin-top:6px;">${alerts.join(" · ")}</div>

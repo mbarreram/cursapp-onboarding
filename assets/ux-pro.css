@@ -1,73 +1,120 @@
-/* Cursapp UX PRO Polish v2 · serio / cálido / progresivo */
+/* Cursapp UX Premium Polish v3 · identidad moderna, humana y seria */
 :root{
-  --cp-bg:#f7f5f0;
+  --cp-bg:#f7f8ff;
   --cp-card:#ffffff;
-  --cp-text:#182033;
-  --cp-muted:#737b8c;
-  --cp-line:rgba(24,32,51,.08);
-  --cp-primary:#4056a1;
-  --cp-primary-soft:rgba(64,86,161,.08);
-  --cp-warm:#f5efe4;
-  --cp-ok:#2f855a;
-  --cp-warn:#b7791f;
-  --cp-danger:#b83232;
+  --cp-text:#172033;
+  --cp-muted:#687389;
+  --cp-line:rgba(23,32,51,.085);
+  --cp-primary:#5b5ce2;
+  --cp-primary-2:#7c3aed;
+  --cp-sky:#0ea5e9;
+  --cp-mint:#10b981;
+  --cp-amber:#f59e0b;
+  --cp-rose:#ef4444;
+  --cp-soft-violet:#f1efff;
+  --cp-soft-sky:#eff9ff;
+  --cp-soft-mint:#ecfdf5;
+  --cp-soft-amber:#fff7ed;
 }
 body{
-  background:
-    radial-gradient(circle at 20% 0%, rgba(222,184,135,.14), transparent 34%),
-    linear-gradient(180deg,#fbfaf7 0%,#f1f4f8 100%);
   color:var(--cp-text);
+  background:
+    radial-gradient(circle at 8% -8%, rgba(91,92,226,.22), transparent 28%),
+    radial-gradient(circle at 95% 4%, rgba(14,165,233,.15), transparent 26%),
+    linear-gradient(180deg,#fbfcff 0%,#f4f6fb 100%);
 }
 .topbar{
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  background:rgba(255,255,255,.90)!important;
-  border-bottom:1px solid rgba(24,32,51,.06);
+  background:rgba(255,255,255,.88)!important;
+  border-bottom:1px solid rgba(23,32,51,.07);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+.logo{
+  background:linear-gradient(135deg,var(--cp-primary),var(--cp-sky))!important;
+  color:#fff!important;
+  box-shadow:0 10px 20px rgba(91,92,226,.20);
 }
 .card,.campCard,.expenseCard,.tes-campCard,.kpi{
   border:1px solid var(--cp-line)!important;
-  box-shadow:0 10px 28px rgba(24,32,51,.045)!important;
+  box-shadow:0 12px 34px rgba(23,32,51,.055)!important;
+  background:rgba(255,255,255,.96)!important;
 }
-.kTitle,.campTitle,.tes-campTitle{letter-spacing:-.015em;font-weight:850!important;}
-.muted{color:var(--cp-muted)!important;font-weight:650!important;}
+.kTitle,.campTitle,.tes-campTitle{
+  color:var(--cp-text)!important;
+  font-weight:800!important;
+  letter-spacing:-.015em;
+}
+.muted{color:var(--cp-muted)!important;font-weight:600!important;}
 .btnx.primary,.btnPrimaryMini,.btn.primary{
-  background:#182033!important;
+  background:linear-gradient(135deg,var(--cp-primary),var(--cp-primary-2))!important;
   color:#fff!important;
   border:0!important;
-  box-shadow:none!important;
+  box-shadow:0 10px 22px rgba(91,92,226,.24)!important;
 }
-.btnx,.btnMini,.btn{border-radius:14px!important;font-weight:800!important;}
-.pill,.chip,.chipInfo,.chipInfoPill,.tag{border-radius:999px!important}
+.btnx,.btnMini,.btn{
+  border-radius:14px!important;
+  font-weight:750!important;
+  transition:transform .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.btnx:active,.btnMini:active,.btn:active{transform:scale(.98);}
+.pill,.chip,.chipInfo,.chipInfoPill,.tag{border-radius:999px!important;font-weight:750!important}
+
+/* Hero premium */
 .cpHero{
-  border:1px solid rgba(24,32,51,.08);
-  background:linear-gradient(135deg,#fffaf2,#f7f9fc);
-  border-radius:24px;
-  padding:16px;
-  box-shadow:0 12px 28px rgba(24,32,51,.045);
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(91,92,226,.16);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(14,165,233,.18), transparent 36%),
+    linear-gradient(135deg,#ffffff 0%,#f4f2ff 50%,#eff9ff 100%);
+  border-radius:26px;
+  padding:17px;
+  box-shadow:0 16px 40px rgba(91,92,226,.11);
 }
-.cpHeroTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.cpEyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:#737b8c;text-transform:uppercase}
-.cpHeroTitle{font-size:20px;font-weight:850;line-height:1.18;margin-top:5px;letter-spacing:-.02em}
-.cpHeroText{margin-top:7px;color:#737b8c;font-weight:650;line-height:1.38}
+.cpHero:after{
+  content:"";
+  position:absolute;
+  right:-34px;
+  bottom:-42px;
+  width:135px;
+  height:135px;
+  border-radius:999px;
+  background:rgba(91,92,226,.10);
+}
+.cpHeroTop{position:relative;z-index:1;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.cpEyebrow{font-size:11px;font-weight:850;letter-spacing:.09em;color:#6b6edb;text-transform:uppercase}
+.cpHeroTitle{font-size:20px;font-weight:820;line-height:1.18;margin-top:5px;letter-spacing:-.025em;color:#172033}
+.cpHeroText{margin-top:7px;color:#687389;font-weight:620;line-height:1.38}
 .cpStatusDot{
-  display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;
-  font-weight:800;font-size:12px;border:1px solid rgba(24,32,51,.08);background:#fff;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 11px;
+  border-radius:999px;
+  font-weight:800;
+  font-size:12px;
+  border:1px solid rgba(23,32,51,.08);
+  background:#fff;
   white-space:nowrap;
+  box-shadow:0 6px 14px rgba(23,32,51,.06);
 }
-.cpStatusDot.ok{color:#276749;background:#f0fff4;border-color:#c6f6d5}
-.cpStatusDot.warn{color:#975a16;background:#fffaf0;border-color:#fbd38d}
-.cpStatusDot.danger{color:#9b2c2c;background:#fff5f5;border-color:#fed7d7}
+.cpStatusDot.ok{color:#047857;background:#ecfdf5;border-color:#bbf7d0}
+.cpStatusDot.warn{color:#b45309;background:#fff7ed;border-color:#fed7aa}
+.cpStatusDot.danger{color:#b91c1c;background:#fef2f2;border-color:#fecaca}
+
 .cpQuickGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
-.cpQuickCard{background:#fff;border:1px solid rgba(24,32,51,.08);border-radius:16px;padding:12px}
-.cpQuickLbl{font-size:12px;color:#737b8c;font-weight:750}
-.cpQuickVal{font-size:17px;font-weight:850;margin-top:4px}
+.cpQuickCard{background:#fff;border:1px solid rgba(23,32,51,.08);border-radius:16px;padding:12px}
+.cpQuickLbl{font-size:12px;color:#687389;font-weight:700}
+.cpQuickVal{font-size:17px;font-weight:800;margin-top:4px}
+
+/* Acordeones */
 .cpDisclosure{
-  border:1px solid rgba(24,32,51,.08);
+  border:1px solid rgba(91,92,226,.13);
   border-radius:20px;
   background:#fff;
   margin:12px 0;
   overflow:hidden;
-  box-shadow:0 10px 26px rgba(24,32,51,.045);
+  box-shadow:0 10px 26px rgba(23,32,51,.045);
 }
 .cpDisclosure summary{
   list-style:none;
@@ -77,30 +124,47 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  font-weight:850;
+  font-weight:780;
+  color:#172033;
 }
 .cpDisclosure summary::-webkit-details-marker{display:none}
 .cpDisclosure summary:after{
   content:"⌄";
-  color:#737b8c;
+  color:#5b5ce2;
   font-size:18px;
   transition:.2s ease;
 }
 .cpDisclosure[open] summary:after{transform:rotate(180deg)}
 .cpDisclosureBody{padding:0 16px 16px 16px;color:#4a5568;line-height:1.42}
 .cpMiniMetric{
-  display:flex;justify-content:space-between;gap:12px;
-  padding:10px 0;border-bottom:1px solid rgba(24,32,51,.06);
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(23,32,51,.06);
 }
 .cpMiniMetric:last-child{border-bottom:0}
-.cpMiniMetric .label{color:#737b8c;font-weight:700}
-.cpMiniMetric .value{font-weight:850}
+.cpMiniMetric .label{color:#687389;font-weight:650}
+.cpMiniMetric .value{font-weight:800}
+
+/* Receipt compact */
 .cpReceiptCompact .cpAmount{font-size:34px;font-weight:850;line-height:1;letter-spacing:-.03em}
-.cpReceiptCompact .cpRow{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid rgba(24,32,51,.07)}
+.cpReceiptCompact .cpRow{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid rgba(23,32,51,.07)}
 .cpReceiptCompact .cpRow:last-child{border-bottom:0}
-.cpReceiptCompact .cpLabel{color:#737b8c;font-weight:700}
-.cpReceiptCompact .cpValue{font-weight:820;text-align:right;max-width:62%;word-break:break-word}
-.cpMiniText{font-size:12px;color:#737b8c;font-weight:650;line-height:1.35}
+.cpReceiptCompact .cpLabel{color:#687389;font-weight:650}
+.cpReceiptCompact .cpValue{font-weight:780;text-align:right;max-width:62%;word-break:break-word}
+.cpMiniText{font-size:12px;color:#687389;font-weight:620;line-height:1.35}
+
+/* Subtle cards */
+.warnBox,.alertBox{
+  background:linear-gradient(135deg,#fff7ed,#ffffff)!important;
+  border:1px solid rgba(245,158,11,.18)!important;
+  border-radius:20px!important;
+}
+.kpi.isOk,.pill.ok{background:var(--cp-soft-mint)!important;}
+.kpi.isWarn,.pill.warn{background:var(--cp-soft-amber)!important;}
+.kpi.isDanger,.pill.danger{background:#fef2f2!important;}
+
 @media(max-width:520px){
   .cpHeroTitle{font-size:19px}
   .cpReceiptCompact .cpAmount{font-size:32px}
