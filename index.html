@@ -2,122 +2,142 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Cursapp · Ingreso</title>
-
-  <link rel="stylesheet" href="assets/login-pro.css" />
+  <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
 </head>
-<body>
+<body class="authPremium">
 
-<div class="auth-container">
+  <main class="authShell" aria-label="Ingreso Cursapp">
+    <header class="authBrand">
+      <div class="authLogo" aria-hidden="true">C</div>
+      <div class="authBrandText">
+        <h1>Cursapp</h1>
+        <p>Gestión de cursos y finanzas escolares</p>
+      </div>
+    </header>
 
-  <!-- ===== CARDS DE ACCIÓN ===== -->
-
-<section class="regMini">
-  <div class="regMini__head">
-    <h2 class="regMini__title">Registrar</h2>
-  </div>
-
-  <div class="regMini__grid">
-    <!-- Directiva / Presidente -->
-    <article class="regMiniCard regMiniCard--primary">
-      <div class="regMiniCard__top">
-        <div class="regMiniCard__icon">🎓</div>
+    <section class="authCard authCard--register" aria-labelledby="registerTitle">
+      <div class="authCardHead">
         <div>
-          <h3 class="regMiniCard__title">Presidente</h3>
-          <p class="regMiniCard__sub">Registra tu curso</p>
+          <h2 id="registerTitle">Registrar</h2>
+          <p>Elige tu rol para comenzar</p>
         </div>
       </div>
-      <button id="btnDirectiva" type="button" class="regMiniCard__btn regMiniCard__btn--yellow">
-        Registrar
-      </button>
-    </article>
 
-    <!-- Apoderado -->
-    <article class="regMiniCard">
-      <div class="regMiniCard__top">
-        <div class="regMiniCard__icon">👨‍👩‍👧</div>
+      <div class="roleGrid">
+        <article class="roleCard roleCard--featured">
+          <div class="roleIcon" aria-hidden="true">🎓</div>
+          <h3>Presidente</h3>
+          <p>Registra tu curso</p>
+          <button id="btnDirectiva" type="button" class="roleBtn roleBtn--primary">
+            <span>Registrar</span><span aria-hidden="true">›</span>
+          </button>
+        </article>
+
+        <article class="roleCard">
+          <div class="roleIcon" aria-hidden="true">👥</div>
+          <h3>Apoderado</h3>
+          <p>Regístrate</p>
+          <button id="btnApoderado" type="button" class="roleBtn roleBtn--ghost">
+            <span>Registrar</span><span aria-hidden="true">›</span>
+          </button>
+        </article>
+      </div>
+    </section>
+
+    <section class="authCard authCard--login" aria-labelledby="loginTitle">
+      <div class="loginHead">
+        <div class="loginIcon" aria-hidden="true">🔐</div>
         <div>
-          <h3 class="regMiniCard__title">Apoderado</h3>
-          <p class="regMiniCard__sub">Regístrate</p>
+          <h2 id="loginTitle">Ingresa a tu curso</h2>
+          <p>Presidentes, tesoreros y apoderados</p>
         </div>
       </div>
-      <button id="btnApoderado" type="button" class="regMiniCard__btn regMiniCard__btn--ghost">
-        Registrar
-      </button>
-    </article>
-  </div>
-</section>
-  <!-- ===== LOGIN EXISTENTE ===== -->
-  <section class="login-card">
-    <h1>Ingresa a tu curso</h1>
-    <p>Presidentes, tesoreros y apoderados</>
 
-    <!-- IMPORTANTE: IDs deben coincidir con login.js -->
-    <form id="loginForm">
-      <input
-        id="username"
-        type="email"
-        placeholder="correo@ejemplo.com"
-        autocomplete="username"
-        required
-      />
+      <form id="loginForm" class="loginForm">
+        <label class="inputWrap" for="username">
+          <span class="inputIcon" aria-hidden="true">✉️</span>
+          <input id="username" type="email" placeholder="correo@ejemplo.com" autocomplete="username" required />
+        </label>
 
-      <input
-        id="password"
-        type="password"
-        placeholder="Contraseña"
-        autocomplete="current-password"
-        required
-      />
+        <label class="inputWrap" for="password">
+          <span class="inputIcon" aria-hidden="true">🔒</span>
+          <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" required />
+          <button class="eyeBtn" id="togglePassword" type="button" aria-label="Mostrar u ocultar contraseña">👁</button>
+        </label>
 
-      <div id="loginError" class="error" style="display:none;"></div>
+        <div id="loginError" class="error" style="display:none;"></div>
 
-      <div class="actions">
-        <button type="submit" class="btn primary">
-  Ingresar
-</button>
-        <button type="button" class="btn-secondary" onclick="resetForm()">Cancelar</button>
+        <button type="submit" class="btnPrimary">
+          <span>Ingresar</span><span aria-hidden="true">›</span>
+        </button>
+
+        <div class="divider"><span>o</span></div>
+
+        <button type="button" class="googleBtn" id="googleLoginBtn">
+          <span class="googleMark" aria-hidden="true">G</span>
+          <span>Continuar con Google</span>
+        </button>
+
+        <button type="button" class="cancelBtn" onclick="resetForm()">Cancelar</button>
+      </form>
+
+      <div class="links">
+        <a href="#">🔒 Olvidé mi contraseña</a>
+        <span aria-hidden="true"></span>
+        <a href="#">↻ Recuperar contraseña</a>
       </div>
-    </form>
+    </section>
+  </main>
 
-    <div class="links">
-      <a href="#">Olvidé mi contraseña</a>
-      <a href="#">Recuperar contraseña</a>
-    </div>
-  </section>
+  <script src="/assets/login.js?v=20260214" defer></script>
+  <script>
+    function resetForm(){
+      const form = document.getElementById("loginForm");
+      const err = document.getElementById("loginError");
+      if(form) form.reset();
+      if(err){ err.style.display = "none"; err.textContent = ""; }
+    }
 
-</div>
+    document.addEventListener("DOMContentLoaded", () => {
+      const btnDirectiva = document.getElementById("btnDirectiva");
+      const btnApoderado = document.getElementById("btnApoderado");
+      const togglePassword = document.getElementById("togglePassword");
+      const password = document.getElementById("password");
+      const googleLoginBtn = document.getElementById("googleLoginBtn");
+      const ONBOARDING_URL = "/onboarding/dashboard.html";
 
-<!-- TU LOGIN REAL -->
+      if(btnDirectiva){
+        btnDirectiva.addEventListener("click", () => {
+          window.location.href = `${ONBOARDING_URL}?mode=directiva&role=presidente`;
+        });
+      }
 
-<!-- Helpers UX -->
+      if(btnApoderado){
+        btnApoderado.addEventListener("click", () => {
+          window.location.href = `${ONBOARDING_URL}?mode=apoderado`;
+        });
+      }
 
-<script src="/assets/login.js?v=20260214" defer></script>
+      if(togglePassword && password){
+        togglePassword.addEventListener("click", () => {
+          const show = password.type === "password";
+          password.type = show ? "text" : "password";
+          togglePassword.classList.toggle("isActive", show);
+        });
+      }
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const btnDirectiva = document.getElementById("btnDirectiva");
-  const btnApoderado = document.getElementById("btnApoderado");
-
-  const ONBOARDING_URL = "/onboarding/dashboard.html";
-
-  if (btnDirectiva) {
-    btnDirectiva.addEventListener("click", () => {
-      window.location.href = `${ONBOARDING_URL}?mode=directiva&role=presidente`;
+      if(googleLoginBtn){
+        googleLoginBtn.addEventListener("click", () => {
+          const err = document.getElementById("loginError");
+          if(err){
+            err.style.display = "block";
+            err.textContent = "Google Login queda visualmente preparado; falta conectar proveedor OAuth.";
+          }
+        });
+      }
     });
-  }
-
-  if (btnApoderado) {
-    btnApoderado.addEventListener("click", () => {
-      window.location.href = `${ONBOARDING_URL}?mode=apoderado`;
-    });
-  }
-});
-</script>
-
-  
-  
-
+  </script>
 </body>
 </html>
