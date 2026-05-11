@@ -285,8 +285,10 @@ function loadJSON(k, def) {
 
     wrap.innerHTML = `
       <div class="cpPanel" role="dialog" aria-modal="true">
+        <div class="cpHandle" aria-hidden="true"></div>
         <div class="cpPanel__head">
-          <div>
+          <div class="cpHeadIcon" aria-hidden="true">${items.some(x=>x.role) ? "👥" : "🎒"}</div>
+          <div class="cpHeadText">
             <div class="cpTitle">${esc(title)}</div>
             <div class="cpSub">${esc(subtitle || "")}</div>
           </div>
@@ -295,16 +297,19 @@ function loadJSON(k, def) {
 
         <div class="cpList">
           ${items.map((it,i)=>`
-            <button type="button" class="cpItem" data-pk="${i}" data-role="${esc(it.role||"")}" >
+            <button type="button" class="cpItem cpItem--${esc(it.role||"default")}" data-pk="${i}" data-role="${esc(it.role||"")}" >
               <div class="cpItem__icon">${esc((it.icon||"").toString().slice(0,3) || "•")}</div>
               <div class="cpItem__body">
                 <div class="cpItem__label">${esc(it.label || it.name || ("Opción " + (i+1)))}</div>
-                <div class="cpItem__meta">${esc(it.meta || "")}</div>
+                ${it.meta ? `<div class="cpItem__pill">${esc(it.meta)}</div>` : ``}
+                ${it.desc ? `<div class="cpItem__desc">${esc(it.desc)}</div>` : ``}
               </div>
               <div class="cpItem__chev">›</div>
             </button>
           `).join("")}
         </div>
+
+        <button type="button" class="cpCancel" data-close>Cancelar</button>
       </div>
     `;
 
@@ -365,10 +370,10 @@ function loadJSON(k, def) {
     const roleItems = roles.map(r => {
   if (r === "apoderado") {
     return {
-      label: "👨‍👩‍👧 Apoderado",
-      meta: canAutoApproveApoderado(roles)
-        ? "Aprobado automáticamente"
-        : "Requiere aprobación por directiva",
+      label: "Apoderado",
+      meta: "Gestión de apoderados",
+      desc: "Ingresa para ver avisos, pagos y movimientos de tu curso.",
+      icon: "👥",
       role: r,
       profile: byRole[r]
     };
@@ -376,8 +381,10 @@ function loadJSON(k, def) {
 
   if (r === "presidente") {
     return {
-      label: "🎓 Presidente",
+      label: "Presidente",
       meta: "Gestión del curso y campañas",
+      desc: "Administra el curso, campañas, pagos y rendiciones.",
+      icon: "🎓",
       role: r,
       profile: byRole[r]
     };
@@ -385,8 +392,10 @@ function loadJSON(k, def) {
 
   if (r === "tesorero") {
     return {
-      label: "💳 Tesorero",
+      label: "Tesorero",
       meta: "Gestión de pagos y rendiciones",
+      desc: "Controla ingresos, conciliación, comprobantes y gastos.",
+      icon: "💳",
       role: r,
       profile: byRole[r]
     };
@@ -395,12 +404,13 @@ function loadJSON(k, def) {
   return {
     label: r,
     meta: "",
+    icon: "•",
     role: r,
     profile: byRole[r]
   };
 });
 
-    renderChooser("Elegir rol", "Selecciona cómo ingresar", roleItems, (it) => {
+    renderChooser("Elegir rol", "Selecciona cómo deseas ingresar", roleItems, (it) => {
       if (it.role === "apoderado") {
 
         // ✅ Si es presidente en este curso: entra como apoderado sin enrollments
