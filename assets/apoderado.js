@@ -1969,6 +1969,8 @@ function renderHome(){
       ${cpV5QuickAccess()}</div>
 `;
 
+    try{ enhanceApoderadoHomeProgressive(); }catch(e){}
+
     // comportamiento botones
     const goPending = document.getElementById("btnGoPending");
     if(goPending) goPending.onclick = ()=> go("payments");
