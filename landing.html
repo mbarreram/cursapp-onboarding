@@ -9,13 +9,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./assets/css/landing.css?v=1" />
+  <link rel="stylesheet" href="./assets/css/landing.css?v=7.1" />
 </head>
+
 <body>
   <header class="topbar">
     <div class="container topbar__inner">
       <a class="brand" href="./landing.html" aria-label="Cursapp inicio">
-        <span class="brand__mark" aria-hidden="true"></span>
+        <span class="brand__mark">C</span>
         <span class="brand__name">Cursapp</span>
       </a>
 
@@ -23,11 +24,13 @@
         <a href="#que-es">Qué es</a>
         <a href="#roles">Roles</a>
         <a href="#conocenos">Conócenos</a>
+        <a href="#integraciones">WhatsApp</a>
         <a href="#precios">Precios</a>
       </nav>
 
       <div class="topbar__cta">
         <a class="btn btn--ghost" href="./index.html">Ingresar</a>
+        <a class="btn btn--primary" href="./onboarding/dashboard.html">Registra tu curso gratis</a>
       </div>
 
       <button class="hamburger" id="hamburger" aria-label="Abrir menú">
@@ -39,6 +42,7 @@
       <a href="#que-es">Qué es</a>
       <a href="#roles">Roles</a>
       <a href="#conocenos">Conócenos</a>
+      <a href="#integraciones">WhatsApp</a>
       <a href="#precios">Precios</a>
       <div class="mobileNav__cta">
         <a class="btn btn--ghost" href="./index.html">Ingresar</a>
@@ -48,221 +52,276 @@
   </header>
 
   <main>
-    <!-- HERO -->
     <section class="hero" id="top">
-  <div class="container hero__grid">
-    <div class="hero__copy">
-      <p class="eyebrow"><span class="dot"></span> Directiva y tesorería, en control</p>
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <p class="eyebrow"><span class="dot"></span> Directiva y tesorería, en control</p>
 
-      <h1>Finanzas del curso claras. Cobros y rendiciones en minutos.</h1>
+          <h1>Finanzas del curso claras. <span>Cobros y rendiciones</span> en minutos.</h1>
 
-      <p class="lead">
-        Campañas, pagos con comprobante y rendiciones con boletas.
-        Todo en un solo lugar.
-      </p>
+          <p class="lead">
+            Organiza campañas, cobra por pasarela, rinde gastos y mantén a todos informados por WhatsApp.
+            Todo en un solo lugar.
+          </p>
 
-      <div class="hero__cta">
-        <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">
-          Registra tu curso gratis
-          <span class="btn__sub">Solo directiva · hasta 30 de marzo</span>
-        </a>
+          <div class="hero__actions">
+            <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">
+              Registra tu curso gratis
+              <small>Solo directiva · hasta 30 de marzo</small>
+            </a>
+            <a class="btn btn--ghost btn--xl btn--secondary" href="#conocenos">Conocer más</a>
+          </div>
 
-        
+          <div class="trust">
+            <span>✅ 100% online</span>
+            <span>🧾 Comprobantes</span>
+            <span>💬 WhatsApp</span>
+          </div>
+
+          <a class="whatsappHero" href="#integraciones">
+            <span class="waIcon">☎</span>
+            <span><b>Con integraciones a WhatsApp</b><small>Cobros, notificaciones e informes automáticos</small></span>
+            <strong>›</strong>
+          </a>
+        </div>
+
+        <div class="hero__visual">
+          <div class="humanCard">
+            <div class="humanPhoto">
+              <span>👨‍👩‍👧‍👦</span>
+            </div>
+            <div>
+              <b>Comunidad organizada</b>
+              <small>Directiva y apoderados alineados</small>
+            </div>
+          </div>
+
+          <div class="phoneHero">
+            <div class="phoneTop"></div>
+            <img src="./assets/screens/apoderado.jpg" alt="Pantalla real de Cursapp Apoderado" />
+          </div>
+
+          <div class="waStack" aria-hidden="true">
+            <div class="waBubble"><b>WhatsApp</b><span>Recordatorio de pago</span><small>Tu cuota vence en 3 días.</small></div>
+            <div class="waBubble"><b>WhatsApp</b><span>Pago confirmado</span><small>Comprobante disponible.</small></div>
+            <div class="waBubble"><b>WhatsApp</b><span>Informe mensual</span><small>Resumen del curso listo.</small></div>
+          </div>
+        </div>
       </div>
+    </section>
 
-      
-    </div>
-
-    <div class="hero__art" aria-hidden="true">
-      <div class="heroCard">
-        <img class="heroImg" src="./assets/img/hero-team.png" alt="">
-      </div>
-    </div>
-  </div>
-</section>
-
-    <!-- WHAT IS -->
     <section class="section" id="que-es">
       <div class="container">
-        <div class="sectionHead">
+        <div class="sectionHead center">
           <h2>Qué es Cursapp</h2>
-          <p>
-            Una app para organizar la gestión financiera del curso con claridad:
-            campañas de cobro, pagos por pasarela y rendiciones del fondo.
-          </p>
+          <p>Una app para organizar la gestión financiera del curso con claridad.</p>
         </div>
 
         <div class="features">
           <article class="feature">
             <div class="feature__icon">📌</div>
             <h3>Gestión de campañas</h3>
-<p>
-  Organiza actividades del curso en un solo lugar:
-  cobros, planificación y seguimiento de giras de estudio, paseos, graduaciones y más.
-</p>
+            <p>Giras de estudio, graduaciones, paseos y cuotas en una sola vista.</p>
           </article>
+
           <article class="feature">
             <div class="feature__icon">💳</div>
             <h3>Pagos con pasarela</h3>
-            <p>Pago confirmado automáticamente y comprobante inmediato para el apoderado.</p>
+            <p>Confirmación automática y comprobante inmediato para el apoderado.</p>
           </article>
+
           <article class="feature">
             <div class="feature__icon">🧾</div>
             <h3>Rendiciones ordenadas</h3>
-            <p>El tesorero registra gastos, adjunta boletas y mantiene el saldo claro.</p>
+            <p>Gastos, boletas y saldo del curso con trazabilidad.</p>
+          </article>
+
+          <article class="feature feature--green">
+            <div class="feature__icon">💬</div>
+            <h3>Integración WhatsApp</h3>
+            <p>Cobros, recordatorios, confirmaciones e informes automáticos.</p>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- ROLES -->
     <section class="section section--alt" id="roles">
       <div class="container">
-        <div class="sectionHead">
+        <div class="sectionHead center">
           <h2>Roles y responsabilidades</h2>
           <p>Cada rol ve lo que necesita, con permisos y trazabilidad.</p>
         </div>
 
         <div class="roles">
           <article class="role">
-            <div class="role__top"><span class="role__icon">👑</span><h3>Presidente</h3></div>
-            <p class="role__desc">Visión global del curso, campañas y pendientes.</p>
+            <div class="role__icon">👑</div>
+            <h3>Presidente</h3>
+            <span>Gestión global</span>
             <ul>
-              <li>Crear y administrar campañas</li>
+              <li>Crear campañas: giras, graduaciones y paseos</li>
               <li>Aprobar apoderados</li>
-              <li>Ver resumen del curso</li>
+              <li>Recibir informes por WhatsApp</li>
             </ul>
           </article>
 
           <article class="role">
-            <div class="role__top"><span class="role__icon">🧾</span><h3>Tesorero</h3></div>
-            <p class="role__desc">Rendiciones claras, boletas y saldo.</p>
+            <div class="role__icon">🧾</div>
+            <h3>Tesorero</h3>
+            <span>Rendiciones</span>
             <ul>
-              <li>Registrar gastos y rendiciones</li>
-              <li>Adjuntar boletas y respaldos</li>
+              <li>Registrar gastos y boletas</li>
               <li>Ver pendiente de rendir</li>
+              <li>Informes mensuales por WhatsApp</li>
             </ul>
           </article>
 
           <article class="role">
-            <div class="role__top"><span class="role__icon">👨‍👩‍👧</span><h3>Apoderado</h3></div>
-            <p class="role__desc">Pagos simples con comprobante.</p>
+            <div class="role__icon">👨‍👩‍👧</div>
+            <h3>Apoderado</h3>
+            <span>Pagos simples</span>
             <ul>
               <li>Ver campañas y cuotas</li>
               <li>Pagar con pasarela</li>
-              <li>Revisar historial</li>
+              <li>Recibir avisos por WhatsApp</li>
             </ul>
           </article>
         </div>
       </div>
     </section>
 
-    <!-- CONOCENOS (Carrusel real) -->
-    
-<section class="section" id="conocenos">
-  <div class="container">
-    <div class="sectionHead">
-      <h2>Conócenos</h2>
-      <p>Swipe para ver pantallas reales dentro de un celular.</p>
-    </div>
-
-    <div class="carouselWrap">
-      <div class="carousel" id="carousel">
-        <div class="phoneShot">
-          <div class="phoneShot__bar"></div>
-          <div class="phoneShot__frame">
-            <img src="./assets/screens/presidente.jpg" alt="Presidente" loading="lazy">
-          </div>
-          <div class="phoneShot__cap">Presidente</div>
+    <section class="section" id="conocenos">
+      <div class="container">
+        <div class="sectionHead center">
+          <h2>Cursapp en acción</h2>
+          <p>Pantallas reales de la aplicación.</p>
         </div>
 
-        <div class="phoneShot">
-          <div class="phoneShot__bar"></div>
-          <div class="phoneShot__frame">
-            <img src="./assets/screens/apoderado.jpg" alt="Apoderado" loading="lazy">
-          </div>
-          <div class="phoneShot__cap">Apoderado</div>
-        </div>
+        <div class="carouselWrap">
+          <button class="arrow arrow--left" aria-hidden="true">‹</button>
 
-        <div class="phoneShot">
-          <div class="phoneShot__bar"></div>
-          <div class="phoneShot__frame">
-            <img src="./assets/screens/tesorero_inicio.jpg" alt="Tesorero inicio" loading="lazy">
-          </div>
-          <div class="phoneShot__cap">Tesorero · Inicio</div>
-        </div>
+          <div class="carousel" id="carousel">
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/presidente.jpg" alt="Presidente">
+              </div>
+              <div class="phoneShot__cap"><b>Inicio · Presidente</b><span>Resumen del curso</span></div>
+            </div>
 
-        <div class="phoneShot">
-          <div class="phoneShot__bar"></div>
-          <div class="phoneShot__frame">
-            <img src="./assets/screens/tesorero_rendiciones.jpg" alt="Tesorero rendiciones" loading="lazy">
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/campanas.jpg" alt="Campañas">
+              </div>
+              <div class="phoneShot__cap"><b>Campañas</b><span>Giras y graduaciones</span></div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/apoderado.jpg" alt="Apoderado">
+              </div>
+              <div class="phoneShot__cap"><b>Pago · Apoderado</b><span>Pago 100% online</span></div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/tesorero_rendiciones.jpg" alt="Rendiciones">
+              </div>
+              <div class="phoneShot__cap"><b>Rendiciones</b><span>Gastos y boletas</span></div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/informes.jpg" alt="Informes">
+              </div>
+              <div class="phoneShot__cap"><b>Informes</b><span>Reportes mensuales</span></div>
+            </div>
+
+            <div class="phoneShot">
+              <div class="phoneShot__bar"></div>
+              <div class="phoneShot__frame">
+                <img src="./assets/screens/historial.jpg" alt="Historial">
+              </div>
+              <div class="phoneShot__cap"><b>Historial</b><span>Pagos y comprobantes</span></div>
+            </div>
           </div>
-          <div class="phoneShot__cap">Tesorero · Rendiciones</div>
+
+          <button class="arrow arrow--right" aria-hidden="true">›</button>
+          <div class="dots" id="dots" aria-hidden="true"></div>
         </div>
       </div>
+    </section>
 
-      <div class="dots" id="dots" aria-hidden="true"></div>
-    </div>
-  </div>
-</section>
+    <section class="section compact">
+      <div class="container twoCards">
+        <article class="riskCard">
+          <div class="riskIcon">🛡️</div>
+          <div>
+            <h3>Más transparencia, menos riesgos</h3>
+            <p>
+              Cursapp ayuda a prevenir malos entendidos y riesgos de tesorería
+              con comprobantes, trazabilidad y movimientos visibles para la comunidad.
+            </p>
+            <span>Protegemos a tu curso</span>
+          </div>
+        </article>
 
+        <article class="whatsappCard" id="integraciones">
+          <div class="waBig">☎</div>
+          <div>
+            <h3>WhatsApp que trabaja por tu curso</h3>
+            <p>Automatizamos la comunicación para que todos estén al día.</p>
 
-    
-
-    <!-- PRICING -->
-    
-<section class="section section--alt" id="precios">
-  <div class="container">
-    <div class="sectionHead">
-      <h2>Precios claros</h2>
-      <p>
-        Primero <b>gratis</b>. Luego un <b>costo anual único</b> por apoderado y un recargo
-        <b>solo si pagas cuotas por pasarela</b>.
-      </p>
-    </div>
-
-    <div class="pricing3">
-      <div class="priceCard highlightFree">
-        <div class="priceKicker">Hasta el 30 de marzo</div>
-        <div class="priceTitle">Inscripción del curso</div>
-        <div class="priceValue">Gratis</div>
-        <div class="priceNote">La directiva puede registrar el curso y dejar todo configurado.</div>
+            <div class="waGrid">
+              <span>💰 Cobros</span>
+              <span>🔔 Notificaciones</span>
+              <span>📄 Informes</span>
+              <span>✅ Confirmaciones</span>
+            </div>
+          </div>
+        </article>
       </div>
+    </section>
 
-      <div class="priceCard">
-        <div class="priceKicker">Desde el 31 de marzo</div>
-        <div class="priceTitle">Costo anual (único)</div>
-        <div class="priceValue">$990</div>
-        <div class="priceNote">Pago único anual por apoderado (no mensual).</div>
-      </div>
-
-      <div class="priceCard">
-        <div class="priceKicker">Solo cuando se paga una cuota</div>
-        <div class="priceTitle">Pasarela de pago</div>
-        <div class="priceValue">+3%</div>
-        <div class="priceNote">
-          Ejemplo: cuota $2.000 → pagas $2.060 (recargo $60). Incluye confirmación automática y comprobante.
+    <section class="section section--alt" id="precios">
+      <div class="container">
+        <div class="sectionHead center">
+          <h2>Precios simples y transparentes</h2>
         </div>
-      </div>
-    </div>
 
-    <div class="bottomCta">
-      <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">Registra tu curso gratis</a>
-    </div>
-  </div>
-</section>
+        <div class="pricing">
+          <article class="priceCard">
+            <div class="priceIcon">🎁</div>
+            <div>
+              <h3>Gratis para directivas</h3>
+              <p>Hasta el 30 de marzo. Todas las funciones sin costo.</p>
+              <span class="greenPill">100% gratis</span>
+            </div>
+          </article>
 
+          <article class="priceCard">
+            <div class="priceIcon">💳</div>
+            <div>
+              <h3>Apoderados</h3>
+              <p>Recargo por pago online. Solo 3% por transacción.</p>
+              <span class="purplePill">3% de recargo</span>
+            </div>
+          </article>
+        </div>
 
-        
-
-        
+        <div class="bottomCta">
+          <a class="btn btn--primary btn--xl" href="./onboarding/dashboard.html">Registra tu curso gratis</a>
+        </div>
       </div>
     </section>
 
     <footer class="footer">
       <div class="container footer__inner">
         <div class="footer__brand">
-          <span class="brand__mark brand__mark--sm"></span>
+          <span class="brand__mark brand__mark--sm">C</span>
           <div>
             <div class="footer__name">Cursapp</div>
             <div class="footer__small">Gestión financiera del curso, simple y transparente.</div>
@@ -272,7 +331,7 @@
         <div class="footer__links">
           <a href="#que-es">Qué es</a>
           <a href="#roles">Roles</a>
-          <a href="#conocenos">Conócenos</a>
+          <a href="#integraciones">Integraciones</a>
           <a href="#precios">Precios</a>
           <a href="./index.html">Ingresar</a>
         </div>
@@ -281,63 +340,9 @@
       <div class="container footer__bottom">
         © Cursapp · Todos los derechos reservados
       </div>
-    
-<section class="section">
-  <div class="container">
-    <div class="communitySection">
-      <div class="communityText">
-        <p class="eyebrow"><span class="dot"></span> Comunidad organizada</p>
-        <h3>Directiva y apoderados más conectados</h3>
-        <p>
-          Cursapp ayuda a mantener la comunicación, los pagos y las rendiciones
-          más claras para todo el curso. Menos confusión, más transparencia.
-        </p>
-
-        <div class="badgeSoft">💬 Integración automática con WhatsApp</div>
-
-        <div class="softTrust">
-          <h4>Más transparencia, menos riesgos</h4>
-          <p>
-            Toda la información queda respaldada con trazabilidad,
-            comprobantes y movimientos visibles para la comunidad.
-          </p>
-        </div>
-      </div>
-
-      <img src="./assets/img/community-premium.jpg" alt="Comunidad feliz">
-    </div>
-
-    <div class="whatsappBand">
-      <h3>WhatsApp que trabaja por tu curso</h3>
-
-      <div class="whatsappGrid">
-        <div class="whatsappItem">
-          <strong>💰 Cobros</strong>
-          <p>Recordatorios automáticos de cuotas y campañas.</p>
-        </div>
-
-        <div class="whatsappItem">
-          <strong>🔔 Notificaciones</strong>
-          <p>Avisos importantes para toda la comunidad.</p>
-        </div>
-
-        <div class="whatsappItem">
-          <strong>📊 Informes</strong>
-          <p>Resumen mensual enviado automáticamente.</p>
-        </div>
-
-        <div class="whatsappItem">
-          <strong>✅ Confirmaciones</strong>
-          <p>Pago confirmado y comprobante instantáneo.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-</footer>
+    </footer>
   </main>
 
-  <script src="./assets/js/landing.js?v=1"></script>
+  <script src="./assets/js/landing.js?v=7.1"></script>
 </body>
 </html>
