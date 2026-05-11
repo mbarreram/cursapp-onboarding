@@ -1674,34 +1674,95 @@ function dedupePaymentsAll(list){
 
   // -------- Pages --------
   
+  function cpV5DaysText(dueDate){
+    const s = String(dueDate||"").slice(0,10);
+    if(!s) return "";
+    const today = new Date(new Date().toISOString().slice(0,10)+"T00:00:00");
+    const due = new Date(s+"T00:00:00");
+    if(isNaN(due.getTime())) return "";
+    const days = Math.round((due.getTime()-today.getTime())/86400000);
+    if(days < 0) return `Vencida hace ${Math.abs(days)} día(s)`;
+    if(days === 0) return "Vence hoy";
+    return `Quedan ${days} día(s)`;
+  }
+
+  function cpV5DateShort(iso){
+    const s = String(iso||"").slice(0,10);
+    if(!s) return "—";
+    const d = new Date(s+"T00:00:00");
+    if(isNaN(d.getTime())) return s;
+    return d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});
+  }
+
+  function cpV5DueItems(){
+    try{
+      const tasks = load(KEY_TASKS, []);
+      return load(KEY_PAYMENTS, [])
+        .filter(isMinePayment)
+        .filter(p=>!isPaymentOptedOut(p))
+        .filter(p=>["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()))
+        .map(p=>{
+          const task = tasks.find(t=>String(t.id||"")===String(p.fromTaskId||""));
+          return { id:p.id, title: task?.title || p.campaignTitle || p.concept || "Pago", amount:Number(p.amountRemaining ?? p.amount ?? 0), dueDate:p.dueDate || task?.dueDate || "", raw:p };
+        })
+        .filter(x=>x.amount>0)
+        .sort((a,b)=>String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
+    }catch(e){ return []; }
+  }
+
+  function cpV5OpenPayment(paymentId){
+    try{
+      if(typeof go === "function") go("payments");
+      setTimeout(()=>{ try{ const btn = document.querySelector(`[data-pay-id="${CSS.escape(String(paymentId))}"]`) || document.querySelector(".payBtn,[onclick*='pay']"); if(btn) btn.click(); }catch(e){} },120);
+    }catch(e){ try{ if(typeof go === "function") go("payments"); }catch(_){} }
+  }
+
+  function cpV5NextDues(){
+    const items = cpV5DueItems();
+    if(!items.length){
+      return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">📅</div><div class="cpV5Kicker">Próxima cuota</div></div><div style="padding:0 18px 18px;"><div class="cpV5DueCard" style="min-width:100%;"><div class="cpV5DueTitle">Todo al día</div><div class="cpV5DueMeta">No tienes pagos urgentes por ahora.</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="go('payments')">Ver pagos</button></div></div></div></section>`;
+    }
+    return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">📅</div><div class="cpV5Kicker">Próxima cuota</div></div><div class="cpV5Carousel">${items.slice(0,6).map((x,i)=>`<article class="cpV5DueCard"><div class="cpV5DueIndex">${i+1} de ${items.length}</div><div class="cpV5DueTitle">${esc(x.title)}</div><div class="cpV5DueMeta">Vence el ${esc(cpV5DateShort(x.dueDate))} <span class="cpV5Badge">${esc(cpV5DaysText(x.dueDate))}</span></div><div class="cpV5Amount">${clp(x.amount)}</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="cpV5OpenPayment('${esc(x.id)}')">💳 Pagar ahora</button><button class="cpV5Detail" onclick="go('payments')">Ver detalle ›</button></div></article>`).join("")}</div>${items.length>1 ? `<div class="cpV5Dots">${items.slice(0,6).map((_,i)=>`<span class="cpV5Dot ${i===0?'active':''}"></span>`).join("")}</div>` : ""}</section>`;
+  }
+
+  function cpV5QuickAccess(){
+    return `<div class="cpV5QuickTitle">Accesos rápidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>📄</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>🧾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>💳</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda próximamente')"><span>❔</span>Ayuda</button></div><div class="cpV5Community"><div class="cpV5Shield">✓</div><div><div class="cpV5CommunityTitle">Tu curso, tu comunidad</div><div class="cpV5CommunityText">Con tu apoyo, seguimos logrando grandes cosas 💜</div></div></div>`;
+  }
+
+
   function enhanceApoderadoHomeProgressive(){
     try{
+      const wrapCard = (card, title, subtitle, icon, count, tone)=>{
+        if(!card || card.closest("details.cpV5Section")) return;
+        const det = document.createElement("details");
+        det.className = "cpV5Section";
+        const sum = document.createElement("summary");
+        const countHtml = count ? `<span class="cpV5Count ${tone||''}">${count}</span>` : "";
+        sum.innerHTML = `<span class="cpV5SecLeft"><span class="cpV5SecIcon ${tone||''}">${icon}</span><span><span class="cpV5SecTitle">${title}</span><span class="cpV5SecSub">${subtitle}</span></span></span><span class="cpV5SecRight">${countHtml}<span class="cpV5Chevron">⌄</span></span>`;
+        const body = document.createElement("div");
+        body.className = "cpV5Body";
+        card.parentNode.insertBefore(det, card);
+        det.appendChild(sum);
+        det.appendChild(body);
+        body.appendChild(card);
+      };
       const cards = Array.from(app.querySelectorAll(".card"));
       cards.forEach(card=>{
-        const txt = (card.textContent||"").trim();
-        if(txt.includes("Pagos pendientes") && !card.closest("details")){
-          const det = document.createElement("details");
-          det.className = "cpDisclosure";
-          const sum = document.createElement("summary");
-          sum.innerHTML = "💳 Pagos pendientes";
-          const body = document.createElement("div");
-          body.className = "cpDisclosureBody";
-          card.parentNode.insertBefore(det, card);
-          det.appendChild(sum);
-          det.appendChild(body);
-          body.appendChild(card);
+        const txt = (card.textContent||"").replace(/\s+/g," ").trim();
+        if(txt.includes("Próxima cuota") && !card.closest(".cpV5Next")){ card.style.display = "none"; return; }
+        if(txt.includes("Avisos del curso")){
+          const m = txt.match(/(\d+)\s+aviso/);
+          wrapCard(card, "Avisos del curso", "Información importante", "📣", m ? m[1] : "", "info");
+          return;
         }
-        if(txt.includes("Estado del curso") && !card.closest("details")){
-          const det = document.createElement("details");
-          det.className = "cpDisclosure";
-          const sum = document.createElement("summary");
-          sum.innerHTML = "📊 Estado del curso";
-          const body = document.createElement("div");
-          body.className = "cpDisclosureBody";
-          card.parentNode.insertBefore(det, card);
-          det.appendChild(sum);
-          det.appendChild(body);
-          body.appendChild(card);
+        if(txt.includes("Pagos pendientes")){
+          const m = txt.match(/(\d+)\s+pagos?/);
+          wrapCard(card, "Pagos pendientes", "Tienes pagos por revisar", "💳", m ? m[1] : "", "pay");
+          return;
+        }
+        if(txt.includes("Estado del curso")){
+          wrapCard(card, "Estado del curso", "Recaudado, gastado y disponible", "📊", "Ver", "chart");
+          return;
         }
       });
     }catch(e){}
@@ -1786,6 +1847,8 @@ function renderHome(){
     const r = latestReport();
 
     app.innerHTML = `
+      <div class="cpHomeV5">${cpV5NextDues()}
+
       <!-- 1) Próxima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -1902,7 +1965,9 @@ function renderHome(){
           `
         }
       </div>
-    `;
+    
+      ${cpV5QuickAccess()}</div>
+`;
 
     // comportamiento botones
     const goPending = document.getElementById("btnGoPending");
