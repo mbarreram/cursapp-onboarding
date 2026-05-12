@@ -46,6 +46,21 @@
       </div>
     </section>
 
+
+    <section class="authCard authCard--admin" aria-labelledby="adminTitle">
+      <div class="authCardHead authCardHead--admin">
+        <div class="authIcon authIcon--admin" aria-hidden="true">🛡️</div>
+        <div>
+          <h2 id="adminTitle">Panel administrador</h2>
+          <p>Acceso interno para administradores de Cursapp</p>
+        </div>
+      </div>
+      <button id="btnAdminPanel" type="button" class="adminPanelBtn">
+        Entrar como administrador <span>›</span>
+      </button>
+      <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
+    </section>
+
     <section class="authCard authCard--login" aria-labelledby="loginTitle">
       <div class="loginHead">
         <div class="loginIcon" aria-hidden="true">🔐</div>
@@ -139,5 +154,23 @@
       }
     });
   </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btnAdmin = document.getElementById("btnAdminPanel");
+  if (btnAdmin) {
+    btnAdmin.addEventListener("click", () => {
+      const u = document.getElementById("username");
+      const p = document.getElementById("password");
+      if (u) u.value = "admin@cursapp.cl";
+      if (p) p.value = "admin123";
+      const form = document.getElementById("loginForm");
+      if (form && typeof form.requestSubmit === "function") form.requestSubmit();
+      else if (form) form.dispatchEvent(new Event("submit", {bubbles:true, cancelable:true}));
+    });
+  }
+});
+</script>
+
 </body>
 </html>
