@@ -92,6 +92,47 @@
     return c.jornada || "";
   }
 
+
+  function getPotentialTesoreros(){
+    const out = [];
+    const add = (x, source)=>{
+      if(!x) return;
+      const blob = JSON.stringify(x).toLowerCase();
+      if(!blob.includes("tesorero")) return;
+      out.push({source, raw:x});
+    };
+
+    profiles().forEach(p=>{
+      if(String(p.role||"").toLowerCase()==="tesorero") add(p, "profile");
+    });
+
+    users().forEach(u=>{
+      if(String(u.role||u.currentRole||"").toLowerCase()==="tesorero" || (Array.isArray(u.roles) && u.roles.map(String).map(x=>x.toLowerCase()).includes("tesorero"))) add(u, "user");
+    });
+
+    allKeys().forEach(k=>{
+      const lk = String(k).toLowerCase();
+      if(!lk.includes("tesorero") && !lk.includes("directiva")) return;
+      const v = load(k, null);
+      if(v) add({key:k, value:v}, "storage");
+    });
+
+    return out;
+  }
+
+  function inferCourseKeyFromAny(raw){
+    if(!raw) return "";
+    if(raw.courseKey) return String(raw.courseKey);
+    if(raw.course?.courseKey) return String(raw.course.courseKey);
+    if(raw.value?.courseKey) return String(raw.value.courseKey);
+    if(raw.value?.course?.courseKey) return String(raw.value.course.courseKey);
+    const txt = JSON.stringify(raw);
+    const m = txt.match(/cursapp_[A-Za-z0-9_\\-|]+_(?:payments|tasks|expenses|monthly_reports|receipts)_v1/);
+    if(m) return m[0].replace(/^cursapp_/,"").replace(/_(payments|tasks|expenses|monthly_reports|receipts)_v1$/,"");
+    const ck = txt.match(/"courseKey"\\s*:\\s*"([^"]+)"/);
+    return ck ? ck[1] : "";
+  }
+
   function getAllCourses(){
     const map = new Map();
 
@@ -137,14 +178,80 @@
     return Array.from(map.values());
   }
 
-  function seedAdminData(){
-    if(!load(ADMIN_TICKETS, []).length){
-      save(ADMIN_TICKETS, [
-        {id:"TK-3487", status:"abierto", priority:"alta", school:"Colegio San Ignacio El Bosque", course:"8° Básico A", requester:"presidente@demo.cl", subject:"Problema con pago por Webpay", createdAt:now(), detail:"Apoderado indica pago rechazado pero aparece cargo bancario."},
-        {id:"TK-3486", status:"revision", priority:"media", school:"Colegio Manquecura Ciudad", course:"2° Medio B", requester:"tesorero@demo.cl", subject:"No podemos acceder a rendiciones", createdAt:new Date(Date.now()-3600e3*4).toISOString(), detail:"Tesorero no visualiza gastos asociados a campaña."},
-        {id:"TK-3485", status:"resuelto", priority:"baja", school:"Colegio Los Andes", course:"1° Medio A", requester:"directiva@demo.cl", subject:"Solicitud de corrección de curso", createdAt:new Date(Date.now()-3600e3*26).toISOString(), detail:"Se corrigió jornada del curso."}
-      ]);
+
+  function directivaRoleEntries(){
+    const d = load("cursapp_directiva_apoderado_by_role_v1", null);
+    if(!d) return [];
+    const out = [];
+    const stack = [{node:d, path:[]}];
+    while(stack.length){
+      const cur = stack.pop();
+      const node = cur.node;
+      const path = cur.path || [];
+      if(!node || typeof node !== "object") continue;
+
+      if(Array.isArray(node)){
+        node.forEach((v,i)=>stack.push({node:v,path:path.concat(String(i))}));
+        continue;
+      }
+
+      const pathStr = path.join(".").toLowerCase();
+      const role = String(node.role || node.directivaRole || (pathStr.includes("tesorero") ? "tesorero" : pathStr.includes("presidente") ? "presidente" : "")).toLowerCase();
+      const email = String(node.email || node.userId || node.userEmail || "").toLowerCase();
+      const ck = String(node.courseKey || node.course || node.ck || path.find(x=>String(x).includes("|")) || "");
+      if(role && (email || ck || node.name)){
+        out.push({role,email,courseKey:ck,name:node.name || node.fullName || "", raw:node});
+      }
+
+      Object.keys(node).forEach(k=>stack.push({node:node[k], path:path.concat(k)}));
     }
+    return out;
+  }
+
+  function priorityClass(p){
+    const v = String(p||"").toLowerCase();
+    if(v === "critica" || v === "crítica") return "red";
+    if(v === "alta") return "orange";
+    if(v === "media") return "purple";
+    return "gray";
+  }
+
+  function slaState(t){
+    if(t.status === "resuelto") return {label:"Cumplido", cls:"green"};
+    if(!t.slaDueAt) return {label:"Sin SLA", cls:"gray"};
+    const ms = new Date(t.slaDueAt).getTime() - Date.now();
+    if(ms < 0) return {label:"SLA vencido", cls:"red"};
+    const h = Math.ceil(ms/3600000);
+    if(h <= 2) return {label:`SLA ${h}h`, cls:"orange"};
+    return {label:`SLA ${h}h`, cls:"green"};
+  }
+
+  function categoryText(t){
+    return t.categoryLabel || ({
+      acceso_login:"Acceso / login",
+      pago_transaccion:"Pago o transacción",
+      menu_visual:"Problema visual / menú",
+      campanas:"Campañas / cobros",
+      rendiciones:"Rendiciones / boletas",
+      informes:"Informes",
+      datos:"Corrección de datos",
+      otro:"Otro"
+    })[t.category] || t.category || "Sin categoría";
+  }
+
+
+  function cleanupDummyTickets(){
+    const list = load(ADMIN_TICKETS, []);
+    const cleaned = list.filter(t=>{
+      const id = String(t.id || "");
+      const looksSeed = /^TK-348[567]$/.test(id) && !t.source && !t.messages;
+      return !looksSeed;
+    });
+    if(cleaned.length !== list.length) save(ADMIN_TICKETS, cleaned);
+  }
+
+  function seedAdminData(){
+    cleanupDummyTickets();
     if(!load(ADMIN_LOGS, []).length){
       save(ADMIN_LOGS, [
         {at:now(), user:"admin@cursapp.cl", type:"login_admin", action:"Ingreso a panel administrador", target:"Admin Console", ip:"local"},
@@ -507,7 +614,7 @@
   }
 
   function coursesTable(rows){
-    return `<div class="tableWrap"><table><thead><tr><th>Región</th><th>Comuna</th><th>Colegio</th><th>Curso</th><th>Jornada</th><th>Miembros</th><th>Presidentes</th><th>Apoderados</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.region)}</td><td>${esc(r.comuna)}</td><td>${esc(r.school)}</td><td>${esc(r.course)}</td><td>${esc(r.jornada)}</td><td>${r.miembros}</td><td>${r.presidentes}</td><td>${r.apoderados}</td><td><button class="adminBtn ghost" onclick="Admin.inspectCourse('${esc(r.courseKey)}')">Ver</button></td></tr>`).join("") || `<tr><td colspan="9">Sin cursos.</td></tr>`}</tbody></table></div>`;
+    return `<div class="tableWrap"><table><thead><tr><th>Región</th><th>Comuna</th><th>Colegio</th><th>Curso</th><th>Jornada</th><th>Miembros</th><th>Pres.</th><th>Tes.</th><th>Apod.</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.region)}</td><td>${esc(r.comuna)}</td><td>${esc(r.school)}</td><td>${esc(r.course)}</td><td>${esc(r.jornada)}</td><td>${r.miembros}</td><td>${r.presidentes}</td><td><span class="badge green">${r.tesoreros||0}</span></td><td>${r.apoderados}</td><td><button class="adminBtn ghost" onclick="Admin.inspectCourse('${esc(r.courseKey)}')">Ver</button></td></tr>`).join("") || `<tr><td colspan="10">Sin cursos.</td></tr>`}</tbody></table></div>`;
   }
 
   function renderLogs(){
@@ -530,23 +637,43 @@
   }
 
   function renderTickets(){
-    setTitle("Tickets de soporte", "Buscar y resolver solicitudes de directivas por curso y colegio");
+    setTitle("Tickets de soporte", "Buscar, responder y medir SLA de solicitudes por curso y colegio");
     const tickets = load(ADMIN_TICKETS, []);
     app.innerHTML = `
-      <div class="toolbar">
-        <input id="ticketSearch" placeholder="Buscar colegio, curso, correo o folio..." oninput="Admin.filterTickets()">
-        <select id="ticketStatus" onchange="Admin.filterTickets()"><option value="">Todos</option><option value="abierto">Abiertos</option><option value="revision">En revisión</option><option value="resuelto">Resueltos</option></select>
+      <div class="toolbar stickyToolbar">
+        <input id="ticketSearch" placeholder="Buscar colegio, curso, solicitante, folio..." oninput="Admin.filterTickets()">
+        <select id="ticketStatus" onchange="Admin.filterTickets()"><option value="">Todos los estados</option><option value="abierto">Abiertos</option><option value="revision">En revisión</option><option value="resuelto">Resueltos</option></select>
+        <select id="ticketPriority" onchange="Admin.filterTickets()"><option value="">Toda criticidad</option><option value="critica">Crítica</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select>
+        <select id="ticketCategory" onchange="Admin.filterTickets()"><option value="">Todas las categorías</option><option value="acceso_login">Acceso / login</option><option value="pago_transaccion">Pago o transacción</option><option value="menu_visual">Problema visual / menú</option><option value="campanas">Campañas</option><option value="rendiciones">Rendiciones</option><option value="informes">Informes</option><option value="datos">Datos</option><option value="otro">Otro</option></select>
         <button class="adminBtn" onclick="Admin.openTicketModal()">Nuevo ticket</button>
       </div>
-      <section class="panel"><div class="panelHead"><h2>Tickets</h2><span class="badge purple">${tickets.length} total</span></div><div id="ticketsList" class="list">${tickets.map(ticketFullRow).join("")}</div></section>
+      <div class="kpis">
+        ${kpi("🎫","Abiertos",tickets.filter(t=>t.status==="abierto").length,"pendientes")}
+        ${kpi("👀","En revisión",tickets.filter(t=>t.status==="revision").length,"soporte")}
+        ${kpi("✅","Resueltos",tickets.filter(t=>t.status==="resuelto").length,"cerrados")}
+        ${kpi("⏱️","SLA vencidos",tickets.filter(t=>slaState(t).cls==="red").length,"requieren gestión")}
+        ${kpi("🔥","Críticos",tickets.filter(t=>String(t.priority)==="critica").length,"alta prioridad")}
+        ${kpi("💳","Transacciones",tickets.filter(t=>String(t.category)==="pago_transaccion").length,"pagos")}
+      </div>
+      <section class="panel" style="margin-top:18px"><div class="panelHead"><h2>Tickets</h2><span id="ticketCount" class="badge purple">${tickets.length} total</span></div><div id="ticketsList" class="list">${tickets.map(ticketFullRow).join("")}</div></section>
     `;
   }
 
   function ticketFullRow(t){
-    const cls = t.status==="resuelto" ? "green" : (t.status==="revision" ? "orange" : "red");
-    return `<div class="row" onclick="Admin.openTicket('${esc(t.id)}')" style="cursor:pointer"><div class="rowIcon">🎫</div><div><b>${esc(t.id)} · ${esc(t.subject)}</b><p>${esc(t.school)} · ${esc(t.course)} · ${esc(t.requester)}</p></div><span class="badge ${cls}">${esc(t.status)}</span></div>`;
+    const statusCls = t.status==="resuelto" ? "green" : (t.status==="revision" ? "orange" : "red");
+    const sla = slaState(t);
+    return `<div class="row ticketRow" onclick="Admin.openTicket('${esc(t.id)}')" style="cursor:pointer">
+      <div class="rowIcon">🎫</div>
+      <div>
+        <b>${esc(t.id)} · ${esc(t.subject || "Sin asunto")}</b>
+        <p>${esc(t.school || "Sin colegio")} · ${esc(t.course || "Sin curso")} · ${esc(t.requesterName || t.requester || "Solicitante")} · ${fmtDate(t.createdAt)}</p>
+        <p><span class="badge ${priorityClass(t.priority)}">${esc(t.priorityLabel || t.priority || "media")}</span> <span class="badge blue">${esc(categoryText(t))}</span> <span class="badge ${sla.cls}">${esc(sla.label)}</span></p>
+      </div>
+      <span class="badge ${statusCls}">${esc(t.status || "abierto")}</span>
+    </div>`;
   }
 
+  
   function renderComunidad(){
     setTitle("Administración de comunidad", "Dar de baja miembros o corregir datos con trazabilidad");
     const ps = profiles();
@@ -635,26 +762,68 @@
     filterTickets(){
       const q = ($("#ticketSearch")?.value||"").toLowerCase();
       const st = $("#ticketStatus")?.value || "";
-      const rows = load(ADMIN_TICKETS, []).filter(t=>(!st || t.status===st) && JSON.stringify(t).toLowerCase().includes(q));
+      const pr = $("#ticketPriority")?.value || "";
+      const cat = $("#ticketCategory")?.value || "";
+      const rows = load(ADMIN_TICKETS, []).filter(t=>
+        (!st || t.status===st) &&
+        (!pr || t.priority===pr) &&
+        (!cat || t.category===cat) &&
+        JSON.stringify(t).toLowerCase().includes(q)
+      );
       $("#ticketsList").innerHTML = rows.map(ticketFullRow).join("") || emptyRow("Sin tickets");
+      const c = $("#ticketCount"); if(c) c.textContent = `${rows.length} resultados`;
     },
     openTicket(id){
       const t = load(ADMIN_TICKETS, []).find(x=>x.id===id);
       if(!t) return;
-      openModal(`<h2>${esc(t.id)} · ${esc(t.subject)}</h2><p class="muted">${esc(t.school)} · ${esc(t.course)}</p><p>${esc(t.detail||"")}</p><div class="formGrid"><div><label>Estado</label><select id="tkStatus"><option value="abierto">Abierto</option><option value="revision">En revisión</option><option value="resuelto">Resuelto</option></select></div><div><label>Prioridad</label><select id="tkPriority"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></div><div style="grid-column:1/-1"><label>Nota resolución</label><textarea id="tkNote" placeholder="Describe la gestión realizada..."></textarea></div></div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button><button class="adminBtn" onclick="Admin.resolveTicket('${esc(t.id)}')">Guardar</button></div>`);
-      $("#tkStatus").value = t.status;
-      $("#tkPriority").value = t.priority;
+      const sla = slaState(t);
+      const messages = (t.messages || []).map(m=>`
+        <div class="ticketMsg">
+          <div><b>${esc(m.from || "Usuario")}</b> <span>${esc(m.role || "")} · ${fmtDate(m.at)}</span></div>
+          <p>${esc(m.body || "")}</p>
+        </div>
+      `).join("") || `<div class="muted" style="font-weight:800">Sin conversación.</div>`;
+
+      openModal(`<h2>${esc(t.id)} · ${esc(t.subject || "Sin asunto")}</h2>
+        <p class="muted">${esc(t.school || "Sin colegio")} · ${esc(t.course || "Sin curso")} · ${esc(t.region || "")}</p>
+
+        <div class="ticketMetaGrid">
+          <div><label>Solicitante</label><b>${esc(t.requesterName || t.requester || "—")}</b><span>${esc(t.requesterEmail || "")}</span></div>
+          <div><label>Categoría</label><b>${esc(categoryText(t))}</b><span>${esc(t.category || "")}</span></div>
+          <div><label>Criticidad</label><b>${esc(t.priorityLabel || t.priority || "media")}</b><span>SLA ${esc(t.slaHours || "")}h</span></div>
+          <div><label>Vencimiento SLA</label><b class="${sla.cls}">${esc(sla.label)}</b><span>${fmtDate(t.slaDueAt)}</span></div>
+        </div>
+
+        <div class="ticketConversation">
+          <h3>Conversación</h3>
+          ${messages}
+        </div>
+
+        <div class="formGrid">
+          <div><label>Estado</label><select id="tkStatus"><option value="abierto">Abierto</option><option value="revision">En revisión</option><option value="resuelto">Resuelto</option></select></div>
+          <div><label>Criticidad</label><select id="tkPriority"><option value="critica">Crítica</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></div>
+          <div style="grid-column:1/-1"><label>Respuesta al ticket</label><textarea id="tkResponse" placeholder="Escribe la respuesta que quedará registrada en el historial..."></textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button><button class="adminBtn" onclick="Admin.resolveTicket('${esc(t.id)}')">Guardar respuesta</button></div>`);
+      $("#tkStatus").value = t.status || "abierto";
+      $("#tkPriority").value = t.priority || "media";
     },
     resolveTicket(id){
       const list = load(ADMIN_TICKETS, []);
       const i = list.findIndex(t=>t.id===id);
       if(i>=0){
+        const response = ($("#tkResponse")?.value || "").trim();
         list[i].status = $("#tkStatus").value;
         list[i].priority = $("#tkPriority").value;
-        list[i].adminNote = $("#tkNote").value;
         list[i].updatedAt = now();
+        list[i].messages = list[i].messages || [];
+        list[i].history = list[i].history || [];
+        if(response){
+          list[i].messages.push({at:now(), from:"Soporte Cursapp", role:"admin", body:response});
+        }
+        list[i].history.push({at:now(), event:"admin_response", by:"admin@cursapp.cl", status:list[i].status, priority:list[i].priority});
         save(ADMIN_TICKETS, list);
-        log("admin_action","Actualizó ticket",id,{note:list[i].adminNote});
+        log("admin_ticket_response","Respondió ticket",id,{response, status:list[i].status, priority:list[i].priority});
       }
       closeModal();
       renderTickets();
@@ -665,7 +834,13 @@
     createTicket(){
       const list = load(ADMIN_TICKETS, []);
       const id = "TK-" + Math.floor(1000+Math.random()*9000);
-      list.unshift({id,status:"abierto",priority:$("#ntPri").value,school:$("#ntSchool").value,course:$("#ntCourse").value,requester:$("#ntReq").value,subject:$("#ntSub").value,detail:$("#ntDet").value,createdAt:now()});
+      {
+        const priority = $("#ntPri").value;
+        const category = "otro";
+        const hours = priority === "alta" ? 8 : (priority === "baja" ? 48 : 24);
+        const createdAt = now();
+        list.unshift({id,status:"abierto",priority,priorityLabel:priority,category,categoryLabel:"Otro",slaHours:hours,slaDueAt:new Date(Date.now()+hours*3600*1000).toISOString(),school:$("#ntSchool").value,course:$("#ntCourse").value,requester:$("#ntReq").value,requesterName:$("#ntReq").value,requesterEmail:$("#ntReq").value,subject:$("#ntSub").value,detail:$("#ntDet").value,createdAt,updatedAt:createdAt,messages:[{at:createdAt,from:$("#ntReq").value||"Admin",role:"admin",body:$("#ntDet").value}],history:[{at:createdAt,event:"ticket_created_admin",by:"admin@cursapp.cl"}]});
+      }
       save(ADMIN_TICKETS, list);
       log("admin_action","Creó ticket interno",id);
       closeModal(); renderTickets();
@@ -717,6 +892,7 @@
       location.href = "/index.html";
       return;
     }
+    cleanupDummyTickets();
     seedAdminData();
     log("login_admin","Ingreso a panel administrador","Admin Console");
     $("#mobileMenu")?.addEventListener("click", ()=>document.body.classList.toggle("sideOpen"));

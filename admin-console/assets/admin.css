@@ -170,3 +170,75 @@ textarea{min-height:92px}
     top:70px;
   }
 }
+
+/* ===== Tickets SLA v2.3 ===== */
+.ticketRow .badge{margin-right:6px;margin-top:6px}
+.ticketMetaGrid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin:16px 0;
+}
+.ticketMetaGrid>div{
+  border:1px solid rgba(16,24,40,.08);
+  background:#f8fafc;
+  border-radius:16px;
+  padding:12px;
+}
+.ticketMetaGrid label{
+  display:block;
+  color:#667085;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  margin-bottom:6px;
+}
+.ticketMetaGrid b{display:block;font-size:14px}
+.ticketMetaGrid span{
+  display:block;
+  color:#667085;
+  font-size:12px;
+  font-weight:750;
+  margin-top:4px;
+}
+.ticketMetaGrid .red{color:#be123c}
+.ticketMetaGrid .orange{color:#9a3412}
+.ticketMetaGrid .green{color:#166534}
+.ticketConversation{
+  margin-top:16px;
+  border-top:1px solid rgba(16,24,40,.08);
+  padding-top:14px;
+}
+.ticketConversation h3{margin:0 0 10px;font-size:16px}
+.ticketMsg{
+  border:1px solid rgba(16,24,40,.08);
+  background:#fff;
+  border-radius:16px;
+  padding:12px;
+  margin-bottom:10px;
+}
+.ticketMsg div{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  color:#101828;
+  font-weight:900;
+}
+.ticketMsg span{
+  color:#667085;
+  font-size:12px;
+  font-weight:750;
+}
+.ticketMsg p{
+  margin:8px 0 0;
+  color:#344054;
+  font-weight:700;
+  line-height:1.45;
+}
+@media(max-width:780px){
+  .ticketMetaGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .ticketMetaGrid{grid-template-columns:1fr}
+}
