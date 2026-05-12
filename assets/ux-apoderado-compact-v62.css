@@ -1,0 +1,326 @@
+
+/* =========================================================
+   Cursapp · Apoderado Compact Premium v6.2
+   Cargar DESPUÉS de ux-premium-v6.css
+   ========================================================= */
+
+/* Marca visual para confirmar carga: si ves header más compacto, está aplicado */
+body{
+  font-size:14px!important;
+}
+
+/* HEADER APODERADO */
+header .topbar{
+  padding:18px 16px 14px!important;
+  min-height:auto!important;
+}
+
+header .brand{
+  gap:12px!important;
+  align-items:center!important;
+  padding-right:112px!important;
+}
+
+header .brand .logo,
+.topbar .brand .logo,
+.logo{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  font-size:18px!important;
+  box-shadow:0 10px 22px rgba(91,33,182,.18)!important;
+}
+
+#whoRoleTitle{
+  font-size:17px!important;
+  line-height:1.16!important;
+  letter-spacing:-.025em!important;
+  font-weight:900!important;
+}
+
+#whoCourseLine,
+header .muted,
+.topbar .muted{
+  font-size:11.5px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+  color:#8a93a3!important;
+}
+
+#menuBtn,
+header .btn.ghost{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  padding:0!important;
+  border-radius:999px!important;
+  font-size:17px!important;
+  top:12px!important;
+}
+
+/* si existe campana/avisos */
+#avisosBellHost .btn,
+#avisosBellHost button{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  padding:0!important;
+  border-radius:999px!important;
+  font-size:17px!important;
+}
+
+/* HERO / PRÓXIMA CUOTA */
+.cpV5Next,
+.cpV6Hero,
+section[class*="Hero"],
+section[class*="Next"]{
+  border-radius:22px!important;
+  margin-top:8px!important;
+}
+
+.cpV5NextHead,
+.cpV6HeroHead{
+  padding:15px 18px 8px!important;
+  gap:10px!important;
+  font-size:11.5px!important;
+  letter-spacing:.05em!important;
+}
+
+.cpV5Icon,
+.cpV6HeroIcon{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  border-radius:15px!important;
+  font-size:18px!important;
+}
+
+.cpV5Carousel,
+.cpV6HeroTrack{
+  padding:0 18px 18px!important;
+  gap:14px!important;
+}
+
+.cpV5DueCard,
+.cpV6HeroCard{
+  min-width:72%!important;
+  padding:17px!important;
+  border-radius:22px!important;
+}
+
+/* títulos del carrusel */
+.cpV5DueTitle,
+.cpV6HeroTitle,
+.cpV5DueCard h2,
+.cpV6HeroCard h2,
+.cpV5DueCard h3,
+.cpV6HeroCard h3{
+  font-size:17px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+}
+
+/* vencimiento y textos */
+.cpV5DueCard p,
+.cpV5DueCard .muted,
+.cpV6HeroMeta,
+.cpV6HeroCard p,
+.cpV6HeroCard .muted{
+  font-size:11.5px!important;
+  line-height:1.28!important;
+  margin-top:7px!important;
+}
+
+/* badge vencida/quedan días */
+.cpV5Badge,
+.cpV6Badge,
+.cpV5DueCard .badge,
+.cpV6HeroCard .badge{
+  font-size:10.5px!important;
+  padding:5px 8px!important;
+  border-radius:999px!important;
+  line-height:1.1!important;
+}
+
+/* índice 1 de 10 */
+.cpV6HeroIndex,
+.cpV5DueCard [class*="Index"],
+.cpV5DueCard [class*="index"]{
+  font-size:10.5px!important;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+}
+
+/* MONTO: selector fuerte */
+.cpV5Amount,
+.cpV6HeroAmount,
+.cpV5DueCard .amount,
+.cpV6HeroCard .amount,
+.cpV5DueCard [class*="Amount"],
+.cpV6HeroCard [class*="Amount"]{
+  font-size:22px!important;
+  line-height:1.05!important;
+  letter-spacing:-.035em!important;
+  margin-top:12px!important;
+}
+
+/* botones */
+.cpV5DueCard button,
+.cpV5DueCard a,
+.cpV6PrimaryBtn,
+.cpV6LinkBtn,
+.cpV6HeroCard button,
+.cpV6HeroCard a{
+  font-size:10.5px!important;
+  padding:9px 11px!important;
+  border-radius:13px!important;
+  line-height:1.1!important;
+}
+
+/* SECCIONES: Avisos / Pagos / Estado */
+.cpV5Section,
+.cpV6Section,
+details.cpV6Section{
+  border-radius:19px!important;
+  margin:10px 0!important;
+}
+
+.cpV5Section summary,
+.cpV6Section summary{
+  padding:12px!important;
+  gap:10px!important;
+}
+
+.cpV5SecIcon,
+.cpV6Section i{
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  border-radius:16px!important;
+  font-size:18px!important;
+}
+
+.cpV5SecTitle,
+.cpV6Section b,
+.cpV6Section summary b,
+details summary b{
+  font-size:14px!important;
+  line-height:1.15!important;
+  letter-spacing:-.015em!important;
+}
+
+.cpV6Section em,
+.cpV5Section em,
+details summary em{
+  font-size:11.5px!important;
+  line-height:1.22!important;
+  margin-top:3px!important;
+}
+
+.cpV5Count,
+.cpV6Section strong,
+details summary strong{
+  min-width:30px!important;
+  font-size:10.5px!important;
+  padding:5px 8px!important;
+  border-radius:12px!important;
+}
+
+.cpV6Section u,
+details summary u{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  font-size:13px!important;
+}
+
+/* GRID ACCESOS */
+.cpV6QuickTitle,
+.cpV5QuickTitle{
+  font-size:14px!important;
+  margin:14px 4px 8px!important;
+}
+
+.cpV6QuickGrid,
+.cpV5QuickGrid{
+  gap:8px!important;
+}
+
+.cpV6QuickGrid button,
+.cpV5Quick{
+  min-height:72px!important;
+  font-size:10px!important;
+  padding:6px!important;
+  border-radius:16px!important;
+}
+
+.cpV6QuickGrid span,
+.cpV5Quick span{
+  width:31px!important;
+  height:31px!important;
+  border-radius:12px!important;
+  font-size:16px!important;
+  margin-bottom:5px!important;
+}
+
+/* NAV INFERIOR */
+.bottomNav{
+  min-height:68px!important;
+  padding:8px 10px!important;
+}
+
+.bottomNav .navItem,
+nav.bottomNav button{
+  font-size:10px!important;
+  gap:3px!important;
+}
+
+.bottomNav .navItem span,
+nav.bottomNav button span{
+  font-size:10px!important;
+  font-weight:800!important;
+}
+
+/* iPhone */
+@media(max-width:430px){
+  header .topbar{
+    padding-top:16px!important;
+  }
+
+  #whoRoleTitle{
+    font-size:15.5px!important;
+  }
+
+  #whoCourseLine,
+  header .muted,
+  .topbar .muted{
+    font-size:10.8px!important;
+  }
+
+  .cpV5DueCard,
+  .cpV6HeroCard{
+    min-width:74%!important;
+    padding:16px!important;
+  }
+
+  .cpV5DueTitle,
+  .cpV6HeroTitle,
+  .cpV5DueCard h2,
+  .cpV6HeroCard h2{
+    font-size:16px!important;
+  }
+
+  .cpV5Amount,
+  .cpV6HeroAmount,
+  .cpV5DueCard [class*="Amount"],
+  .cpV6HeroCard [class*="Amount"]{
+    font-size:21px!important;
+  }
+
+  .cpV5SecTitle,
+  .cpV6Section b,
+  details summary b{
+    font-size:13.5px!important;
+  }
+}
