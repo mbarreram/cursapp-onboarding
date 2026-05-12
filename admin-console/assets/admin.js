@@ -43,46 +43,108 @@
     });
   }
 
-  function payments(){
-    return readMany(k => k.includes("_payments_v1") || k === "cursapp_payments_v1");
-  }
-  function tasks(){
-    return readMany(k => k.includes("_tasks_v1") || k === "cursapp_tasks_v1");
-  }
-  function expenses(){
-    return readMany(k => k.includes("_expenses_v1") || k === "cursapp_expenses_v1");
-  }
-  function reports(){
-    return readMany(k => k.includes("_monthly_reports_v1") || k === "cursapp_monthly_reports_v1");
-  }
-  function profiles(){
-    return load("cursapp_profiles_v1", []);
-  }
-  function users(){
-    return load("cursapp_users_v1", []);
-  }
-  function enrollments(){
-    return load("cursapp_enrollments_v1", []);
-  }
+  function payments(){ return readMany(k => k.includes("_payments_v1") || k === "cursapp_payments_v1"); }
+  function tasks(){ return readMany(k => k.includes("_tasks_v1") || k === "cursapp_tasks_v1"); }
+  function expenses(){ return readMany(k => k.includes("_expenses_v1") || k === "cursapp_expenses_v1"); }
+  function reports(){ return readMany(k => k.includes("_monthly_reports_v1") || k === "cursapp_monthly_reports_v1"); }
+  function receipts(){ return readMany(k => k.includes("_receipts_v1") || k === "cursapp_receipts_v1"); }
+  function profiles(){ return load("cursapp_profiles_v1", []); }
+  function users(){ return load("cursapp_users_v1", []); }
+  function enrollments(){ return load("cursapp_enrollments_v1", []); }
 
   function courseKeyOf(x){
-    return String(x.courseKey || x.__key || "global").replace(/^cursapp_/, "").replace(/_(payments|tasks|expenses|monthly_reports)_v1$/,"");
+    return String(x.courseKey || x.__key || "global")
+      .replace(/^cursapp_/, "")
+      .replace(/_(payments|tasks|expenses|monthly_reports|receipts)_v1$/,"");
   }
+
+  function profileCourse(p){
+    return p.course || {};
+  }
+
   function courseLabelFromProfile(p){
-    const c = p.course || {};
+    const c = profileCourse(p);
     return [c.schoolName || c.colegio || "Colegio", `${c.level||""}${c.letter||""} ${c.year||""}`.trim(), c.jornada || ""].filter(Boolean).join(" · ");
   }
 
+  function courseFromPayment(p){
+    const ck = courseKeyOf(p);
+    const ps = profiles();
+    const byKey = ps.find(x=>String(x.courseKey||"")===String(ck));
+    return byKey ? byKey.course : { courseKey: ck, schoolName: ck, regionName:"Sin región", comunaName:"" };
+  }
+
+  function getRegionName(x){
+    const c = x.course || x;
+    return c.regionName || c.region || c.regionNombre || c.regionId || "Sin región";
+  }
+  function getSchoolName(x){
+    const c = x.course || x;
+    return c.schoolName || c.colegio || c.school || c.schoolId || "Sin colegio";
+  }
+  function getCourseName(x){
+    const c = x.course || x;
+    const label = `${c.level||""}${c.letter||""} ${c.year||""}`.trim();
+    return label || c.courseName || c.curso || c.courseKey || "Sin curso";
+  }
+  function getJornada(x){
+    const c = x.course || x;
+    return c.jornada || "";
+  }
+
+  function getAllCourses(){
+    const map = new Map();
+
+    profiles().forEach(p=>{
+      const ck = p.courseKey || "global";
+      const c = p.course || {};
+      if(!map.has(ck)){
+        map.set(ck, {
+          courseKey: ck,
+          region: getRegionName(c),
+          comuna: c.comunaName || c.comuna || c.comunaId || "",
+          school: getSchoolName(c),
+          course: getCourseName(c),
+          jornada: getJornada(c),
+          label: courseLabelFromProfile(p),
+          miembros: 0,
+          presidentes: 0,
+          tesoreros: 0,
+          apoderados: 0
+        });
+      }
+      const row = map.get(ck);
+      row.miembros++;
+      if(p.role === "presidente") row.presidentes++;
+      if(p.role === "tesorero") row.tesoreros++;
+      if(p.role === "apoderado") row.apoderados++;
+    });
+
+    tasks().forEach(t=>{
+      const ck = courseKeyOf(t);
+      if(!map.has(ck)){
+        map.set(ck, {courseKey: ck, region:"Sin región", comuna:"", school:ck, course:"—", jornada:"", label:ck, miembros:0, presidentes:0, tesoreros:0, apoderados:0});
+      }
+    });
+
+    payments().forEach(p=>{
+      const ck = courseKeyOf(p);
+      if(!map.has(ck)){
+        map.set(ck, {courseKey: ck, region:"Sin región", comuna:"", school:ck, course:"—", jornada:"", label:ck, miembros:0, presidentes:0, tesoreros:0, apoderados:0});
+      }
+    });
+
+    return Array.from(map.values());
+  }
+
   function seedAdminData(){
-    const t = load(ADMIN_TICKETS, null);
-    if(!t || !t.length){
+    if(!load(ADMIN_TICKETS, []).length){
       save(ADMIN_TICKETS, [
         {id:"TK-3487", status:"abierto", priority:"alta", school:"Colegio San Ignacio El Bosque", course:"8° Básico A", requester:"presidente@demo.cl", subject:"Problema con pago por Webpay", createdAt:now(), detail:"Apoderado indica pago rechazado pero aparece cargo bancario."},
         {id:"TK-3486", status:"revision", priority:"media", school:"Colegio Manquecura Ciudad", course:"2° Medio B", requester:"tesorero@demo.cl", subject:"No podemos acceder a rendiciones", createdAt:new Date(Date.now()-3600e3*4).toISOString(), detail:"Tesorero no visualiza gastos asociados a campaña."},
         {id:"TK-3485", status:"resuelto", priority:"baja", school:"Colegio Los Andes", course:"1° Medio A", requester:"directiva@demo.cl", subject:"Solicitud de corrección de curso", createdAt:new Date(Date.now()-3600e3*26).toISOString(), detail:"Se corrigió jornada del curso."}
       ]);
     }
-
     if(!load(ADMIN_LOGS, []).length){
       save(ADMIN_LOGS, [
         {at:now(), user:"admin@cursapp.cl", type:"login_admin", action:"Ingreso a panel administrador", target:"Admin Console", ip:"local"},
@@ -99,6 +161,43 @@
     save(ADMIN_LOGS, logs.slice(0,500));
   }
 
+  function paymentMethod(p){
+    const raw = String([p.method,p.modalidad,p.channel,p.provider,p.gateway,p.ref,p.note,p.statusDetail,p.type].filter(Boolean).join(" ")).toLowerCase();
+    if(/transbank|webpay|tbk|card|tarjeta|pasarela/.test(raw)) return "Transbank";
+    if(/transfer|transferencia/.test(raw)) return "Transferencia";
+    if(/efectivo|cash/.test(raw)) return "Efectivo";
+    if(/manual|concili/.test(raw)) return "Conciliación";
+    if(String(p.status||"").toLowerCase()==="paid" && !raw) return "Transbank/demo";
+    return "No informado";
+  }
+
+  function paymentStatus(p){
+    const s = String(p.status||"pending").toLowerCase();
+    if(s === "paid") return "paid";
+    if(["failed","rejected","rechazado","fallido","error"].includes(s)) return "failed";
+    if(s === "opted_out") return "opted_out";
+    return "pending";
+  }
+
+  function paymentStats(){
+    const pays = payments();
+    const successful = pays.filter(p=>paymentStatus(p)==="paid");
+    const failed = pays.filter(p=>paymentStatus(p)==="failed");
+    const pending = pays.filter(p=>paymentStatus(p)==="pending");
+    const opted = pays.filter(p=>paymentStatus(p)==="opted_out");
+
+    const methods = {};
+    successful.forEach(p=>{
+      const m = paymentMethod(p);
+      methods[m] = methods[m] || {count:0, amount:0};
+      methods[m].count++;
+      methods[m].amount += Number(p.amount||p.monto||0);
+    });
+
+    const totalPaid = successful.reduce((a,b)=>a+Number(b.amount||b.monto||0),0);
+    return {pays, successful, failed, pending, opted, methods, totalPaid};
+  }
+
   function stats(){
     const ps = profiles();
     const us = users();
@@ -107,25 +206,42 @@
     const exps = expenses();
     const reps = reports();
     const ts = tasks();
+    const courses = getAllCourses();
 
-    const courseKeys = new Set(ps.map(p=>p.courseKey).filter(Boolean));
-    tasks().forEach(t=>courseKeys.add(courseKeyOf(t)));
-    payments().forEach(p=>courseKeys.add(courseKeyOf(p)));
+    const schools = new Set(courses.map(c=>c.school).filter(Boolean));
+    const regions = groupCount(courses, c=>c.region || "Sin región");
 
-    const schools = new Set(ps.map(p=>p.course?.schoolName || p.course?.colegio || "").filter(Boolean));
     const alumnos = new Set([
       ...ps.map(p=>p.apoderado?.alumnoId || p.apoderado?.alumno).filter(Boolean),
       ...pays.map(p=>p.alumno || p.alumnoId).filter(Boolean),
       ...ens.map(e=>e.alumno || e.alumnoId).filter(Boolean)
     ]);
 
-    const paid = pays.filter(p=>p.status==="paid");
-    const failed = pays.filter(p=>["failed","rejected","rechazado","fallido"].includes(String(p.status||"").toLowerCase()));
-    const pending = pays.filter(p=>!["paid","opted_out"].includes(String(p.status||"").toLowerCase()));
-    const manual = paid.filter(p=>/manual|transfer|efectivo|concili/i.test(String(p.method||p.note||p.ref||"")));
-    const totalPaid = paid.reduce((a,b)=>a+Number(b.amount||b.monto||0),0);
+    const pstats = paymentStats();
 
-    return {ps,us,ens,pays,exps,reps,ts,schools,courseKeys,alumnos,paid,failed,pending,manual,totalPaid};
+    return {ps,us,ens,pays,exps,reps,ts,courses,schools,regions,alumnos,...pstats};
+  }
+
+  function groupCount(list, fn){
+    const m = {};
+    list.forEach(x=>{
+      const k = fn(x) || "Sin dato";
+      m[k] = (m[k]||0)+1;
+    });
+    return m;
+  }
+
+  function groupCoursesBySchool(){
+    const courses = getAllCourses();
+    const m = {};
+    courses.forEach(c=>{
+      const k = c.school || "Sin colegio";
+      if(!m[k]) m[k] = {school:k, region:c.region || "Sin región", cursos:0, miembros:0, rows:[]};
+      m[k].cursos++;
+      m[k].miembros += c.miembros || 0;
+      m[k].rows.push(c);
+    });
+    return Object.values(m).sort((a,b)=>b.cursos-a.cursos || String(a.school).localeCompare(String(b.school)));
   }
 
   function setTitle(title, sub){
@@ -138,27 +254,38 @@
   }
 
   function renderDashboard(){
-    setTitle("Hola, Admin 👋", "Bienvenido al panel de administración de Cursapp");
+    setTitle("Hola, Admin 👋", "Panel global de operación Cursapp");
     const s = stats();
     const tickets = load(ADMIN_TICKETS, []);
     const logs = load(ADMIN_LOGS, []);
     const openTickets = tickets.filter(t=>t.status!=="resuelto").length;
+    const transbank = s.methods["Transbank"] || s.methods["Transbank/demo"] || {count:0, amount:0};
+    const conciliacion = (s.methods["Conciliación"] || {count:0, amount:0});
+    const transferencia = (s.methods["Transferencia"] || {count:0, amount:0});
+    const manualTotal = {count: conciliacion.count + transferencia.count, amount: conciliacion.amount + transferencia.amount};
 
     app.innerHTML = `
       <div class="kpis">
         ${kpi("🏫","Colegios registrados",s.schools.size || "—","+ total app")}
-        ${kpi("🎓","Cursos activos",s.courseKeys.size || "—","+ cursos detectados")}
+        ${kpi("🎓","Cursos activos",s.courses.length || "—","+ cursos detectados")}
         ${kpi("👥","Apoderados / Alumnos",s.alumnos.size || s.ps.length || "—","+ comunidad")}
-        ${kpi("💳","Pagos del mes",clp(s.totalPaid),`${s.paid.length} pagos exitosos`)}
-        ${kpi("⚠️","Pagos fallidos",s.failed.length,`${s.pending.length} pendientes`)}
+        ${kpi("💳","Pagos del mes",clp(s.totalPaid),`${s.successful.length} exitosos`)}
+        ${kpi("🤝","Conciliación / Manual",manualTotal.count,clp(manualTotal.amount))}
         ${kpi("🎫","Tickets abiertos",openTickets,`${tickets.length} tickets totales`)}
       </div>
 
-      <div class="gridMain">
+      <div class="gridMain adminGrid4">
         <section class="panel">
-          <div class="panelHead"><h2>Alertas operacionales</h2><button onclick="Admin.go('auditoria')">Ver todas</button></div>
+          <div class="panelHead"><h2>Cursos por región</h2><button onclick="Admin.go('colegios')">Detalle</button></div>
+          <div class="list regionList">
+            ${regionRows(s.regions)}
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead"><h2>Cursos por colegio</h2><button onclick="Admin.go('colegios')">Ver colegios</button></div>
           <div class="list">
-            ${alertRows(s, tickets)}
+            ${groupCoursesBySchool().slice(0,6).map(schoolRow).join("") || emptyRow("Sin colegios")}
           </div>
         </section>
 
@@ -170,24 +297,24 @@
         </section>
 
         <section class="panel">
-          <div class="panelHead"><h2>Dashboard de pagos</h2><button onclick="Admin.go('pagos')">Detalle</button></div>
+          <div class="panelHead"><h2>Pagos del mes</h2><button onclick="Admin.go('pagos')">Detalle</button></div>
           ${paymentDashboard(s)}
         </section>
       </div>
 
       <div class="tablesGrid">
         <section class="panel">
-          <div class="panelHead"><h2>Últimos movimientos en la plataforma</h2><button onclick="Admin.go('logs')">Ver todos los logs</button></div>
+          <div class="panelHead"><h2>Últimos movimientos en la plataforma</h2><button onclick="Admin.go('logs')">Ver todos</button></div>
           ${logsTable(logs.slice(0,7))}
         </section>
 
         <section class="panel">
           <div class="panelHead"><h2>Acciones rápidas</h2></div>
           <div class="actionsGrid">
-            <button class="quick" onclick="Admin.go('colegios')">🔍<strong>Buscar curso</strong><span>Ver información</span></button>
+            <button class="quick" onclick="Admin.go('colegios')">🔍<strong>Buscar curso</strong><span>Por región, colegio o curso</span></button>
             <button class="quick" onclick="Admin.go('comunidad')">👤<strong>Buscar usuario</strong><span>Ver perfil completo</span></button>
             <button class="quick" onclick="Admin.go('tickets')">💬<strong>Resolver ticket</strong><span>Ir a soporte</span></button>
-            <button class="quick" onclick="Admin.go('pagos')">💳<strong>Ver pagos</strong><span>Panel financiero</span></button>
+            <button class="quick" onclick="Admin.go('pagos')">💳<strong>Ver pagos</strong><span>Filtrar por colegio/curso</span></button>
             <button class="quick" onclick="Admin.go('logs')">📄<strong>Logs de actividad</strong><span>Ver registros</span></button>
             <button class="quick" onclick="Admin.go('auditoria')">🛡️<strong>Auditar cambios</strong><span>Ver bitácora</span></button>
           </div>
@@ -196,47 +323,191 @@
     `;
   }
 
-  function alertRows(s,tickets){
-    const rows = [];
-    if(s.failed.length) rows.push({icon:"⚠️", title:"Pagos fallidos detectados", body:`${s.failed.length} pagos fallidos en la plataforma`, tag:"red"});
-    if(tickets.filter(t=>t.status==="abierto").length) rows.push({icon:"🎫", title:"Tickets sin responder", body:`${tickets.filter(t=>t.status==="abierto").length} tickets abiertos`, tag:"orange"});
-    if(s.pending.length) rows.push({icon:"💳", title:"Pagos pendientes", body:`${s.pending.length} pagos pendientes o en revisión`, tag:"purple"});
-    rows.push({icon:"🛡️", title:"Auditoría activa", body:"Todas las acciones admin quedan registradas", tag:"blue"});
-    return rows.map(r=>`<div class="row"><div class="rowIcon">${r.icon}</div><div><b>${r.title}</b><p>${r.body}</p></div><span class="badge ${r.tag}">Ver</span></div>`).join("");
+  function regionRows(regions){
+    const rows = Object.entries(regions).sort((a,b)=>b[1]-a[1]);
+    if(!rows.length) return emptyRow("Sin regiones detectadas");
+    const max = Math.max(...rows.map(x=>x[1]),1);
+    return rows.map(([name,count])=>`
+      <div class="regionRow">
+        <div>
+          <b>${esc(name)}</b>
+          <p>${count} curso${count===1?"":"s"} registrado${count===1?"":"s"}</p>
+        </div>
+        <div class="miniBar"><span style="width:${Math.max(8,Math.round(count/max*100))}%"></span></div>
+      </div>
+    `).join("");
+  }
+
+  function schoolRow(x){
+    return `<div class="row"><div class="rowIcon">🏫</div><div><b>${esc(x.school)}</b><p>${esc(x.region)} · ${x.cursos} curso${x.cursos===1?"":"s"} · ${x.miembros} miembros</p></div><span class="badge purple">${x.cursos}</span></div>`;
   }
 
   function ticketRow(t){
     const cls = t.status==="resuelto" ? "green" : (t.status==="revision" ? "orange" : "red");
-    return `<div class="row"><div class="rowIcon">C</div><div><b>${esc(t.school)}</b><p>${esc(t.subject)} · ${esc(t.id)}</p></div><span class="badge ${cls}">${esc(t.status)}</span></div>`;
+    return `<div class="row"><div class="rowIcon">🎫</div><div><b>${esc(t.school)}</b><p>${esc(t.subject)} · ${esc(t.id)}</p></div><span class="badge ${cls}">${esc(t.status)}</span></div>`;
   }
 
   function emptyRow(text){ return `<div class="row"><div class="rowIcon">—</div><div><b>${text}</b><p>No hay información para mostrar.</p></div></div>`; }
 
   function paymentDashboard(s){
     const total = Math.max(1, s.pays.length);
-    const successful = s.paid.length;
-    const failed = s.failed.length;
-    const pending = s.pending.length;
-    const manual = s.manual.length;
+    const pieces = [
+      {label:"Exitosos", count:s.successful.length, color:"#22c55e", cls:"green"},
+      {label:"Fallidos", count:s.failed.length, color:"#f43f5e", cls:"red"},
+      {label:"Pendientes", count:s.pending.length, color:"#f59e0b", cls:"orange"},
+      {label:"No participó", count:s.opted.length, color:"#94a3b8", cls:"gray"}
+    ];
+
+    let acc = 0;
+    const stops = pieces.map(p=>{
+      const from = acc;
+      acc += (p.count / total) * 100;
+      const to = acc;
+      return `${p.color} ${from.toFixed(2)}% ${to.toFixed(2)}%`;
+    }).join(", ");
+    const bg = s.pays.length ? `conic-gradient(${stops})` : "conic-gradient(#e5e7eb 0 100%)";
+
+    const methods = Object.entries(s.methods);
+    const methodRows = methods.length ? methods.map(([name,v])=>`
+      <div class="legendRow">
+        <span class="dot" style="background:${name.includes("Transbank")?"#6d28d9":name.includes("Transfer")?"#2563eb":name.includes("Efectivo")?"#f59e0b":"#22c55e"}"></span>
+        <span>${esc(name)}</span><b>${v.count}</b><small>${clp(v.amount)}</small>
+      </div>
+    `).join("") : `<div class="muted" style="font-weight:800">Sin pagos exitosos por modalidad.</div>`;
+
     return `
       <div class="paymentBox">
-        <div class="donut"><div class="donutText"><strong>${s.pays.length}</strong><span>Pagos totales</span></div></div>
+        <div class="donut" style="background:${bg};"><div class="donutText"><strong>${s.pays.length}</strong><span>Pagos totales</span></div></div>
         <div class="legend">
-          ${legend("#22c55e","Exitosos",successful, pct(successful,total))}
-          ${legend("#f43f5e","Fallidos",failed, pct(failed,total))}
-          ${legend("#f59e0b","Pendientes",pending, pct(pending,total))}
-          ${legend("#6d28d9","Conciliación manual",manual, pct(manual,total))}
+          ${pieces.map(p=>legend(p.color,p.label,p.count,pct(p.count,total))).join("")}
           <hr style="width:100%;border:0;border-top:1px solid rgba(16,24,40,.08)">
+          <b>Modalidad de pagos exitosos</b>
+          ${methodRows}
           <div><b>Monto total transado</b><h2>${clp(s.totalPaid)}</h2></div>
         </div>
       </div>
     `;
   }
+
   function pct(v,t){ return `${Math.round((v/t)*100)}%`; }
   function legend(color,label,count,p){ return `<div class="legendRow"><span class="dot" style="background:${color}"></span><span>${label}</span><b>${count}</b><small>${p}</small></div>`; }
 
   function logsTable(logs){
     return `<div class="tableWrap"><table><thead><tr><th>Fecha / Hora</th><th>Usuario</th><th>Acción</th><th>Objetivo</th><th>Tipo</th></tr></thead><tbody>${logs.map(l=>`<tr><td>${fmtDate(l.at)}</td><td>${esc(l.user)}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td><td><span class="badge purple">${esc(l.type)}</span></td></tr>`).join("") || `<tr><td colspan="5">Sin logs.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function paymentFiltersHtml(){
+    const courses = getAllCourses();
+    const regions = [...new Set(courses.map(c=>c.region).filter(Boolean))].sort();
+    const schools = [...new Set(courses.map(c=>c.school).filter(Boolean))].sort();
+    const courseOptions = courses.slice().sort((a,b)=>String(a.label).localeCompare(String(b.label)));
+    return `
+      <div class="toolbar stickyToolbar">
+        <input id="paySearch" placeholder="Buscar alumno, concepto, colegio..." oninput="Admin.filterPayments()">
+        <select id="payRegion" onchange="Admin.filterPayments()"><option value="">Todas las regiones</option>${regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join("")}</select>
+        <select id="paySchool" onchange="Admin.filterPayments()"><option value="">Todos los colegios</option>${schools.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("")}</select>
+        <select id="payCourse" onchange="Admin.filterPayments()"><option value="">Todos los cursos</option>${courseOptions.map(c=>`<option value="${esc(c.courseKey)}">${esc(c.school)} · ${esc(c.course)} ${esc(c.jornada)}</option>`).join("")}</select>
+        <select id="payStatus" onchange="Admin.filterPayments()"><option value="">Todos los estados</option><option value="paid">Pagados</option><option value="pending">Pendientes</option><option value="failed">Fallidos</option><option value="opted_out">No participó</option></select>
+        <select id="payMethod" onchange="Admin.filterPayments()"><option value="">Todas las modalidades</option><option value="Transbank">Transbank</option><option value="Conciliación">Conciliación</option><option value="Transferencia">Transferencia</option><option value="Efectivo">Efectivo</option></select>
+      </div>
+    `;
+  }
+
+  function filteredPayments(){
+    const q = ($("#paySearch")?.value||"").toLowerCase();
+    const region = $("#payRegion")?.value || "";
+    const school = $("#paySchool")?.value || "";
+    const course = $("#payCourse")?.value || "";
+    const status = $("#payStatus")?.value || "";
+    const method = $("#payMethod")?.value || "";
+
+    return payments().filter(p=>{
+      const c = courseFromPayment(p);
+      const ck = courseKeyOf(p);
+      const m = paymentMethod(p);
+      const st = paymentStatus(p);
+      const blob = JSON.stringify(p).toLowerCase() + " " + JSON.stringify(c).toLowerCase() + " " + ck.toLowerCase();
+      return (!q || blob.includes(q)) &&
+        (!region || getRegionName(c)===region) &&
+        (!school || getSchoolName(c)===school) &&
+        (!course || ck===course) &&
+        (!status || st===status) &&
+        (!method || m===method || (method==="Transbank" && m==="Transbank/demo"));
+    }).sort((a,b)=>String(b.createdAt||b.paidAt||"").localeCompare(String(a.createdAt||a.paidAt||"")));
+  }
+
+  function renderPagos(){
+    setTitle("Panel de pagos", "Trazabilidad de pagos por colegio, curso, estado y modalidad");
+    const s = stats();
+    const rows = filteredPayments();
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("✅","Pagos efectuados",s.successful.length,clp(s.totalPaid))}
+        ${kpi("⚠️","Pagos fallidos",s.failed.length,"revisar rechazos")}
+        ${kpi("⏳","Pendientes",s.pending.length,"en curso")}
+        ${kpi("🤝","Conciliación / manual",Object.values(s.methods).filter((_,i)=>true).reduce((a,b)=>a+(b.count||0),0),"modalidades")}
+        ${kpi("💳","Total pagos",s.pays.length,"todos los estados")}
+        ${kpi("📄","Comprobantes",receipts().length,"emitidos")}
+      </div>
+      ${paymentFiltersHtml()}
+      <section class="panel" style="margin-top:16px">
+        <div class="panelHead"><h2>Detalle de pagos</h2><span id="payCount" class="badge purple">${rows.length} resultados</span></div>
+        <div id="paymentTable">${paymentsTable(rows)}</div>
+      </section>`;
+  }
+
+  function paymentsTable(pays){
+    const visible = pays.slice(0,200);
+    return `<div class="tableWrap"><table><thead><tr><th>Región</th><th>Colegio</th><th>Curso</th><th>Alumno</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Modalidad</th></tr></thead><tbody>
+      ${visible.map(p=>{
+        const c = courseFromPayment(p);
+        return `<tr><td>${esc(getRegionName(c))}</td><td>${esc(getSchoolName(c))}</td><td>${esc(getCourseName(c))} ${esc(getJornada(c))}</td><td>${esc(p.alumno||"—")}</td><td>${esc(p.concept||p.title||"Pago")}</td><td>${clp(p.amount||p.monto)}</td><td>${statusBadge(paymentStatus(p))}</td><td>${esc(paymentMethod(p))}</td></tr>`;
+      }).join("") || `<tr><td colspan="8">Sin pagos para los filtros aplicados.</td></tr>`}
+      ${pays.length>200 ? `<tr><td colspan="8"><b>Mostrando 200 de ${pays.length} resultados.</b> Usa filtros por colegio/curso para acotar la búsqueda.</td></tr>` : ``}
+    </tbody></table></div>`;
+  }
+
+  function statusBadge(st){
+    const s = String(st||"pending").toLowerCase();
+    const cls = s==="paid" ? "green" : (s==="failed" ? "red" : (s==="opted_out" ? "gray" : "orange"));
+    return `<span class="badge ${cls}">${esc(s)}</span>`;
+  }
+
+  function renderColegios(){
+    setTitle("Colegios y cursos", "Cursos registrados por región, colegio y jornada");
+    const courses = getAllCourses();
+    const schoolRows = groupCoursesBySchool();
+    const regions = [...new Set(courses.map(c=>c.region).filter(Boolean))].sort();
+
+    app.innerHTML = `
+      <div class="toolbar stickyToolbar">
+        <input id="courseSearch" placeholder="Buscar colegio, curso, comuna..." oninput="Admin.filterCourses()">
+        <select id="courseRegion" onchange="Admin.filterCourses()"><option value="">Todas las regiones</option>${regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join("")}</select>
+      </div>
+
+      <div class="tablesGrid">
+        <section class="panel">
+          <div class="panelHead"><h2>Cursos por colegio</h2><span class="badge purple">${schoolRows.length} colegios</span></div>
+          <div id="schoolTable">${schoolsTable(schoolRows)}</div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><h2>Cursos por región</h2><span class="badge purple">${courses.length} cursos</span></div>
+          <div class="list">${regionRows(groupCount(courses, c=>c.region || "Sin región"))}</div>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="panelHead"><h2>Detalle de cursos registrados</h2><span id="courseCount" class="badge purple">${courses.length} cursos</span></div>
+        <div id="courseTable">${coursesTable(courses)}</div>
+      </section>`;
+  }
+
+  function schoolsTable(rows){
+    return `<div class="tableWrap"><table><thead><tr><th>Colegio</th><th>Región</th><th>Cursos</th><th>Miembros</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.school)}</td><td>${esc(r.region)}</td><td><span class="badge purple">${r.cursos}</span></td><td>${r.miembros}</td><td><button class="adminBtn ghost" onclick="Admin.setCourseSearch('${esc(r.school)}')">Ver cursos</button></td></tr>`).join("") || `<tr><td colspan="5">Sin colegios.</td></tr>`}</tbody></table></div>`;
+  }
+
+  function coursesTable(rows){
+    return `<div class="tableWrap"><table><thead><tr><th>Región</th><th>Comuna</th><th>Colegio</th><th>Curso</th><th>Jornada</th><th>Miembros</th><th>Presidentes</th><th>Apoderados</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.region)}</td><td>${esc(r.comuna)}</td><td>${esc(r.school)}</td><td>${esc(r.course)}</td><td>${esc(r.jornada)}</td><td>${r.miembros}</td><td>${r.presidentes}</td><td>${r.apoderados}</td><td><button class="adminBtn ghost" onclick="Admin.inspectCourse('${esc(r.courseKey)}')">Ver</button></td></tr>`).join("") || `<tr><td colspan="9">Sin cursos.</td></tr>`}</tbody></table></div>`;
   }
 
   function renderLogs(){
@@ -276,31 +547,6 @@
     return `<div class="row" onclick="Admin.openTicket('${esc(t.id)}')" style="cursor:pointer"><div class="rowIcon">🎫</div><div><b>${esc(t.id)} · ${esc(t.subject)}</b><p>${esc(t.school)} · ${esc(t.course)} · ${esc(t.requester)}</p></div><span class="badge ${cls}">${esc(t.status)}</span></div>`;
   }
 
-  function renderPagos(){
-    setTitle("Panel de pagos", "Trazabilidad de pagos efectuados, fallidos y modalidades");
-    const s = stats();
-    const pays = s.pays.slice().sort((a,b)=>String(b.createdAt||b.paidAt||"").localeCompare(String(a.createdAt||a.paidAt||"")));
-    app.innerHTML = `
-      <div class="kpis">
-        ${kpi("✅","Pagos efectuados",s.paid.length,clp(s.totalPaid))}
-        ${kpi("⚠️","Pagos fallidos",s.failed.length,"revisar rechazos")}
-        ${kpi("⏳","Pendientes",s.pending.length,"en curso")}
-        ${kpi("🤝","Manuales / conciliados",s.manual.length,"transferencia / efectivo")}
-        ${kpi("💳","Total pagos",s.pays.length,"todos los estados")}
-        ${kpi("📄","Comprobantes",readMany(k=>k.includes("_receipts_v1") || k==="cursapp_receipts_v1").length,"emitidos")}
-      </div>
-      <section class="panel" style="margin-top:20px"><div class="panelHead"><h2>Detalle de pagos</h2><button onclick="Admin.go('logs')">Ver logs</button></div>
-      <div class="tableWrap"><table><thead><tr><th>Alumno</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Modalidad</th><th>Curso</th></tr></thead><tbody>
-      ${pays.map(p=>`<tr><td>${esc(p.alumno||"—")}</td><td>${esc(p.concept||p.title||"Pago")}</td><td>${clp(p.amount||p.monto)}</td><td>${statusBadge(p.status)}</td><td>${esc(p.method||p.ref||"Webpay/demo")}</td><td>${esc(courseKeyOf(p))}</td></tr>`).join("") || `<tr><td colspan="6">Sin pagos.</td></tr>`}
-      </tbody></table></div></section>`;
-  }
-
-  function statusBadge(st){
-    const s = String(st||"pending").toLowerCase();
-    const cls = s==="paid" ? "green" : (["failed","rejected","rechazado","fallido"].includes(s) ? "red" : (s==="opted_out" ? "gray" : "orange"));
-    return `<span class="badge ${cls}">${esc(s)}</span>`;
-  }
-
   function renderComunidad(){
     setTitle("Administración de comunidad", "Dar de baja miembros o corregir datos con trazabilidad");
     const ps = profiles();
@@ -317,24 +563,9 @@
     const rows = ps.length ? ps.map(p=>{
       const email = p.userId || p.apoderado?.email || "";
       const name = p.apoderado?.name || p.directiva?.name || email || "Usuario";
-      return {name,email,role:p.role, alumno:p.apoderado?.alumno||"—", course:courseLabelFromProfile(p), profileId:p.profileId};
-    }) : us.map(u=>({name:u.email,email:u.email,role:"usuario",alumno:"—",course:"—",profileId:u.userId}));
-    return `<div class="tableWrap"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Alumno</th><th>Curso</th><th>Acciones</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><span class="badge purple">${esc(r.role)}</span></td><td>${esc(r.alumno)}</td><td>${esc(r.course)}</td><td><button class="adminBtn ghost" onclick="Admin.openMember('${esc(r.profileId)}')">Administrar</button></td></tr>`).join("") || `<tr><td colspan="6">Sin miembros.</td></tr>`}</tbody></table></div>`;
-  }
-
-  function renderColegios(){
-    setTitle("Colegios y cursos", "Visión global de cursos registrados en Cursapp");
-    const ps = profiles();
-    const byCourse = {};
-    ps.forEach(p=>{
-      const ck = p.courseKey || "global";
-      if(!byCourse[ck]) byCourse[ck] = {courseKey:ck, label:courseLabelFromProfile(p), miembros:0, presidentes:0, tesoreros:0, apoderados:0};
-      byCourse[ck].miembros++;
-      byCourse[ck][`${p.role}s`] = (byCourse[ck][`${p.role}s`]||0)+1;
-    });
-    const rows = Object.values(byCourse);
-    app.innerHTML = `<div class="toolbar"><input id="courseSearch" placeholder="Buscar colegio, curso o jornada..." oninput="Admin.filterCourses()"></div>
-    <section class="panel"><div class="panelHead"><h2>Cursos registrados</h2><span class="badge purple">${rows.length} cursos</span></div><div id="courseTable"><div class="tableWrap"><table><thead><tr><th>Curso</th><th>Miembros</th><th>Presidentes</th><th>Tesoreros</th><th>Apoderados</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.label || r.courseKey)}</td><td>${r.miembros}</td><td>${r.presidentes||0}</td><td>${r.tesoreros||0}</td><td>${r.apoderados||0}</td><td><button class="adminBtn ghost" onclick="Admin.inspectCourse('${esc(r.courseKey)}')">Ver</button></td></tr>`).join("") || `<tr><td colspan="6">Sin cursos.</td></tr>`}</tbody></table></div></div></section>`;
+      return {name,email,role:p.role, alumno:p.apoderado?.alumno||"—", course:courseLabelFromProfile(p), region:getRegionName(p.course||{}), profileId:p.profileId};
+    }) : us.map(u=>({name:u.email,email:u.email,role:"usuario",alumno:"—",course:"—",region:"—",profileId:u.userId}));
+    return `<div class="tableWrap"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Alumno</th><th>Región</th><th>Curso</th><th>Acciones</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><span class="badge purple">${esc(r.role)}</span></td><td>${esc(r.alumno)}</td><td>${esc(r.region)}</td><td>${esc(r.course)}</td><td><button class="adminBtn ghost" onclick="Admin.openMember('${esc(r.profileId)}')">Administrar</button></td></tr>`).join("") || `<tr><td colspan="7">Sin miembros.</td></tr>`}</tbody></table></div>`;
   }
 
   function renderAuditoria(){
@@ -343,9 +574,7 @@
     app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Acciones sensibles</h2><button onclick="Admin.addAuditDemo()">Registrar acción demo</button></div>${logsTable(logs)}</section>`;
   }
 
-  function openModal(html){
-    modal.innerHTML = `<div class="modalBg"><div class="modalCard">${html}</div></div>`;
-  }
+  function openModal(html){ modal.innerHTML = `<div class="modalBg"><div class="modalCard">${html}</div></div>`; }
   function closeModal(){ modal.innerHTML = ""; }
 
   window.Admin = {
@@ -364,6 +593,28 @@
       log("logout_admin","Salida de panel administrador","Admin Console");
       localStorage.removeItem(SESSION_KEY);
       location.href="/index.html";
+    },
+    filterPayments(){
+      const rows = filteredPayments();
+      $("#paymentTable").innerHTML = paymentsTable(rows);
+      $("#payCount").textContent = `${rows.length} resultados`;
+    },
+    setCourseSearch(school){
+      Admin.go("colegios");
+      setTimeout(()=>{
+        const input = $("#courseSearch");
+        if(input){ input.value = school; Admin.filterCourses(); }
+      },0);
+    },
+    filterCourses(){
+      const q = ($("#courseSearch")?.value||"").toLowerCase();
+      const region = $("#courseRegion")?.value || "";
+      const rows = getAllCourses().filter(c=>{
+        const blob = JSON.stringify(c).toLowerCase();
+        return (!q || blob.includes(q)) && (!region || c.region===region);
+      });
+      $("#courseTable").innerHTML = coursesTable(rows);
+      $("#courseCount").textContent = `${rows.length} cursos`;
     },
     filterLogs(){
       const q = ($("#logSearch")?.value||"").toLowerCase();
@@ -451,11 +702,6 @@
       }
       closeModal(); renderComunidad();
     },
-    filterCourses(){
-      const q = ($("#courseSearch")?.value||"").toLowerCase();
-      // simple rerender filtered by hiding rows
-      $$("#courseTable tbody tr").forEach(tr=>tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none");
-    },
     inspectCourse(courseKey){
       const ps = profiles().filter(p=>p.courseKey===courseKey);
       openModal(`<h2>Curso ${esc(courseKey)}</h2><p class="muted">${ps.length} miembros detectados.</p>${communityTable(ps, [])}<div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cerrar</button></div>`);
@@ -466,7 +712,11 @@
   };
 
   document.addEventListener("DOMContentLoaded", ()=>{
-    if(!requireAdmin()) return;
+    const s = load(SESSION_KEY, null);
+    if(!s || s.role !== "admin" || !s.isAdmin){
+      location.href = "/index.html";
+      return;
+    }
     seedAdminData();
     log("login_admin","Ingreso a panel administrador","Admin Console");
     $("#mobileMenu")?.addEventListener("click", ()=>document.body.classList.toggle("sideOpen"));

@@ -106,3 +106,67 @@ textarea{min-height:92px}
   .actionsGrid{grid-template-columns:1fr}
   .formGrid{grid-template-columns:1fr}
 }
+
+/* ===== v2.2 mejoras operacionales ===== */
+.adminGrid4{
+  grid-template-columns:1fr 1.15fr 1fr 1.35fr;
+}
+.regionList{
+  padding:10px 14px 16px;
+}
+.regionRow{
+  display:grid;
+  gap:8px;
+  padding:12px 0;
+  border-bottom:1px solid rgba(16,24,40,.06);
+}
+.regionRow:last-child{border-bottom:0}
+.regionRow b{
+  display:block;
+  font-size:14px;
+}
+.regionRow p{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+.miniBar{
+  height:9px;
+  background:#f2f4f7;
+  border-radius:999px;
+  overflow:hidden;
+}
+.miniBar span{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(135deg,var(--purple),var(--purple2));
+}
+.stickyToolbar{
+  position:sticky;
+  top:88px;
+  z-index:12;
+  background:rgba(247,247,251,.86);
+  backdrop-filter:blur(12px);
+  padding:10px 0;
+}
+.toolbar select{
+  max-width:240px;
+}
+.muted{
+  color:var(--muted);
+}
+@media(max-width:1280px){
+  .adminGrid4{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:760px){
+  .adminGrid4{
+    grid-template-columns:1fr;
+  }
+  .stickyToolbar{
+    top:70px;
+  }
+}
