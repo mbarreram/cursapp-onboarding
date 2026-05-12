@@ -617,6 +617,141 @@
     return `<div class="tableWrap"><table><thead><tr><th>Región</th><th>Comuna</th><th>Colegio</th><th>Curso</th><th>Jornada</th><th>Miembros</th><th>Pres.</th><th>Tes.</th><th>Apod.</th><th>Acción</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.region)}</td><td>${esc(r.comuna)}</td><td>${esc(r.school)}</td><td>${esc(r.course)}</td><td>${esc(r.jornada)}</td><td>${r.miembros}</td><td>${r.presidentes}</td><td><span class="badge green">${r.tesoreros||0}</span></td><td>${r.apoderados}</td><td><button class="adminBtn ghost" onclick="Admin.inspectCourse('${esc(r.courseKey)}')">Ver</button></td></tr>`).join("") || `<tr><td colspan="10">Sin cursos.</td></tr>`}</tbody></table></div>`;
   }
 
+
+
+  function campaignStatus(t){
+    const closed = !!(t.closed || t.isClosed || t.status === "closed" || t.status === "cerrada");
+    if(closed) return {key:"closed", label:"Cerrada", cls:"gray"};
+    const due = t.dueDate || t.endDate || t.fechaVencimiento || "";
+    if(due){
+      const d = new Date(String(due).slice(0,10)+"T00:00:00");
+      const today = new Date(new Date().toISOString().slice(0,10)+"T00:00:00");
+      if(!isNaN(d.getTime()) && d < today) return {key:"expired", label:"Vencida", cls:"red"};
+    }
+    return {key:"active", label:"Activa", cls:"green"};
+  }
+
+  function campaignTypeLabel(t){
+    const type = String(t.type || t.paymentType || "").toLowerCase();
+    if(type.includes("monthly") || type.includes("mensual")) return "Mensual";
+    if(type.includes("single") || type.includes("unico") || type.includes("único")) return "Pago único";
+    return t.months && Number(t.months)>1 ? "Mensual" : "Pago único";
+  }
+
+  function campaignExpectedAmount(t){
+    const amount = Number(t.amount || t.monto || 0);
+    const months = Number(t.months || t.cuotas || 1);
+    const goal = Number(t.goalTotal || t.meta || 0);
+    return goal || (amount * Math.max(1, months));
+  }
+
+  function paymentsForCampaign(taskId){
+    if(!taskId) return [];
+    return payments().filter(p=>String(p.fromTaskId||p.taskId||p.campaignId||p.campaign_id||"")===String(taskId));
+  }
+
+  function collectedForCampaign(taskId){
+    return paymentsForCampaign(taskId).filter(p=>paymentStatus(p)==="paid").reduce((a,b)=>a+Number(b.amount||b.monto||0),0);
+  }
+
+  function campaignRows(){
+    return tasks().map(t=>{
+      const c = courseFromPayment(t);
+      const status = campaignStatus(t);
+      const rec = collectedForCampaign(t.id);
+      const expected = campaignExpectedAmount(t);
+      const pct = expected ? Math.min(100, Math.round(rec/expected*100)) : 0;
+      return Object.assign({}, t, {
+        __region:getRegionName(c),
+        __school:getSchoolName(c),
+        __course:getCourseName(c),
+        __jornada:getJornada(c),
+        __courseKey:courseKeyOf(t),
+        __status:status,
+        __typeLabel:campaignTypeLabel(t),
+        __expected:expected,
+        __collected:rec,
+        __pct:pct,
+        __payments:paymentsForCampaign(t.id).length
+      });
+    }).sort((a,b)=>String(b.createdAt||b.startDate||"").localeCompare(String(a.createdAt||a.startDate||"")));
+  }
+
+  function campaignFiltersHtml(){
+    const rows = campaignRows();
+    const regions = [...new Set(rows.map(r=>r.__region).filter(Boolean))].sort();
+    const schools = [...new Set(rows.map(r=>r.__school).filter(Boolean))].sort();
+    return `
+      <div class="toolbar stickyToolbar">
+        <input id="campSearch" placeholder="Buscar campaña, colegio, curso..." oninput="Admin.filterCampaigns()">
+        <select id="campRegion" onchange="Admin.filterCampaigns()"><option value="">Todas las regiones</option>${regions.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join("")}</select>
+        <select id="campSchool" onchange="Admin.filterCampaigns()"><option value="">Todos los colegios</option>${schools.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("")}</select>
+        <select id="campStatus" onchange="Admin.filterCampaigns()"><option value="">Todos los estados</option><option value="active">Activas</option><option value="expired">Vencidas</option><option value="closed">Cerradas</option></select>
+        <select id="campType" onchange="Admin.filterCampaigns()"><option value="">Todos los tipos</option><option value="Mensual">Mensual</option><option value="Pago único">Pago único</option></select>
+      </div>
+    `;
+  }
+
+  function filteredCampaigns(){
+    const q = ($("#campSearch")?.value||"").toLowerCase();
+    const region = $("#campRegion")?.value || "";
+    const school = $("#campSchool")?.value || "";
+    const status = $("#campStatus")?.value || "";
+    const type = $("#campType")?.value || "";
+    return campaignRows().filter(t=>{
+      const blob = JSON.stringify(t).toLowerCase();
+      return (!q || blob.includes(q)) &&
+        (!region || t.__region === region) &&
+        (!school || t.__school === school) &&
+        (!status || t.__status.key === status) &&
+        (!type || t.__typeLabel === type);
+    });
+  }
+
+  function campaignsTable(rows){
+    return `<div class="tableWrap"><table><thead><tr><th>Campaña</th><th>Colegio</th><th>Curso</th><th>Tipo</th><th>Periodo</th><th>Meta</th><th>Recaudado</th><th>Avance</th><th>Estado</th><th>Pagos</th></tr></thead><tbody>
+      ${rows.map(t=>`<tr>
+        <td><b>${esc(t.title || t.name || "Campaña")}</b><br><small>${esc(t.description || "")}</small></td>
+        <td>${esc(t.__school)}</td>
+        <td>${esc(t.__course)} ${esc(t.__jornada)}</td>
+        <td>${esc(t.__typeLabel)}</td>
+        <td>${esc(t.startDate || "—")} → ${esc(t.dueDate || t.endDate || "—")}</td>
+        <td>${clp(t.__expected)}</td>
+        <td>${clp(t.__collected)}</td>
+        <td><div class="campProgress"><span style="width:${t.__pct}%"></span></div><small>${t.__pct}%</small></td>
+        <td><span class="badge ${t.__status.cls}">${esc(t.__status.label)}</span></td>
+        <td>${t.__payments}</td>
+      </tr>`).join("") || `<tr><td colspan="10">Sin campañas para los filtros aplicados.</td></tr>`}
+    </tbody></table></div>`;
+  }
+
+  function renderCampanas(){
+    setTitle("Campañas", "Seguimiento global de campañas creadas por colegios y cursos");
+    const rows = campaignRows();
+    const active = rows.filter(r=>r.__status.key==="active").length;
+    const expired = rows.filter(r=>r.__status.key==="expired").length;
+    const closed = rows.filter(r=>r.__status.key==="closed").length;
+    const totalExpected = rows.reduce((a,b)=>a+Number(b.__expected||0),0);
+    const totalCollected = rows.reduce((a,b)=>a+Number(b.__collected||0),0);
+
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("📌","Campañas creadas",rows.length,"total app")}
+        ${kpi("🟢","Activas",active,"en seguimiento")}
+        ${kpi("🔴","Vencidas",expired,"requieren revisión")}
+        ${kpi("⚪","Cerradas",closed,"histórico")}
+        ${kpi("🎯","Meta total",clp(totalExpected),"campañas")}
+        ${kpi("💰","Recaudado",clp(totalCollected),"pagos asociados")}
+      </div>
+      ${campaignFiltersHtml()}
+      <section class="panel" style="margin-top:16px">
+        <div class="panelHead"><h2>Campañas registradas</h2><span id="campCount" class="badge purple">${rows.length} resultados</span></div>
+        <div id="campaignTable">${campaignsTable(rows)}</div>
+      </section>
+    `;
+  }
+
+
   function renderLogs(){
     setTitle("Logs de movimientos", "Trazabilidad operacional de la app");
     const logs = load(ADMIN_LOGS, []);
@@ -714,6 +849,7 @@
       if(tab==="pagos") renderPagos();
       if(tab==="comunidad") renderComunidad();
       if(tab==="colegios") renderColegios();
+      if(tab==="campanas") renderCampanas();
       if(tab==="auditoria") renderAuditoria();
     },
     logout(){
@@ -732,6 +868,11 @@
         const input = $("#courseSearch");
         if(input){ input.value = school; Admin.filterCourses(); }
       },0);
+    },
+    filterCampaigns(){
+      const rows = filteredCampaigns();
+      $("#campaignTable").innerHTML = campaignsTable(rows);
+      $("#campCount").textContent = `${rows.length} resultados`;
     },
     filterCourses(){
       const q = ($("#courseSearch")?.value||"").toLowerCase();

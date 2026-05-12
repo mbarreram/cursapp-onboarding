@@ -242,3 +242,24 @@ textarea{min-height:92px}
 @media(max-width:520px){
   .ticketMetaGrid{grid-template-columns:1fr}
 }
+
+
+/* ===== v2.6 seguimiento campañas ===== */
+.campProgress{
+  width:92px;
+  height:9px;
+  border-radius:999px;
+  background:#ede9fe;
+  overflow:hidden;
+  margin-bottom:4px;
+}
+.campProgress span{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(135deg,#6d28d9,#22c55e);
+}
+.tableWrap small{
+  color:#667085;
+  font-weight:800;
+}
