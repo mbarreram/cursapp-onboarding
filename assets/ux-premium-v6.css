@@ -88,3 +88,158 @@ body{background:linear-gradient(180deg,#fff 0%,#fbfbff 45%,#fff 100%);color:var(
 @media(max-width:520px){
   #menuDropdown{right:14px!important;top:74px!important;width:calc(100vw - 28px)!important;}
 }
+
+
+/* ===== v2.6 refinamiento tipográfico premium roles ===== */
+/* Baja la escala visual grotesca en Apoderado / Presidente / Tesorero sin tocar lógica */
+.logo{
+  width:48px!important;
+  height:48px!important;
+  font-size:20px!important;
+}
+
+.cpV6Avatar{
+  width:52px!important;
+  height:52px!important;
+  font-size:22px!important;
+}
+
+.cpV6Hello{
+  font-size:21px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+}
+
+.cpV6Sub{
+  font-size:14px!important;
+  line-height:1.32!important;
+}
+
+.cpV6Sub.small{
+  font-size:12px!important;
+}
+
+.cpV6IconBtn{
+  width:48px!important;
+  height:48px!important;
+  font-size:18px!important;
+}
+
+.cpV6HeroHead{
+  font-size:13px!important;
+  padding:18px 20px 8px!important;
+}
+
+.cpV6HeroIcon{
+  width:38px!important;
+  height:38px!important;
+  font-size:18px!important;
+}
+
+.cpV6HeroCard{
+  padding:20px!important;
+  border-radius:24px!important;
+}
+
+.cpV6HeroTitle{
+  font-size:21px!important;
+  letter-spacing:-.025em!important;
+}
+
+.cpV6HeroMeta{
+  font-size:14px!important;
+}
+
+.cpV6HeroAmount{
+  font-size:31px!important;
+  letter-spacing:-.035em!important;
+}
+
+.cpV6PrimaryBtn,
+.cpV6LinkBtn{
+  font-size:13px!important;
+}
+
+.cpV6Kpi small{
+  font-size:12px!important;
+}
+
+.cpV6Kpi b{
+  font-size:18px!important;
+}
+
+.cpV6Section i{
+  width:48px!important;
+  height:48px!important;
+  font-size:20px!important;
+  border-radius:18px!important;
+}
+
+.cpV6Section b{
+  font-size:16px!important;
+  line-height:1.18!important;
+}
+
+.cpV6Section em{
+  font-size:13px!important;
+  line-height:1.28!important;
+}
+
+.cpV6Section strong{
+  font-size:13px!important;
+  min-width:36px!important;
+  padding:7px 10px!important;
+}
+
+.cpV6Section u{
+  width:38px!important;
+  height:38px!important;
+}
+
+.cpV6QuickTitle{
+  font-size:15px!important;
+}
+
+.cpV6QuickGrid button{
+  font-size:12px!important;
+  min-height:82px!important;
+}
+
+.cpV6Community b{
+  font-size:18px!important;
+}
+
+.cpV6Community small{
+  font-size:13px!important;
+}
+
+/* Ajuste adicional para módulos internos que usan cards genéricas */
+.card .kTitle,
+.card h2,
+.card h3,
+.kTitle{
+  letter-spacing:-.02em;
+}
+
+.card h2{font-size:20px!important;}
+.card h3{font-size:17px!important;}
+.card .muted,
+.muted{
+  line-height:1.35;
+}
+
+@media(max-width:680px){
+  .container{padding-left:14px!important;padding-right:14px!important}
+  .logo{width:44px!important;height:44px!important;font-size:18px!important}
+  .cpV6Avatar{width:48px!important;height:48px!important;font-size:20px!important}
+  .cpV6Hello{font-size:19px!important}
+  .cpV6Sub{font-size:13px!important}
+  .cpV6HeroTitle{font-size:19px!important}
+  .cpV6HeroAmount{font-size:28px!important}
+  .cpV6HeroCard{min-width:82%!important}
+  .cpV6HeroHead{font-size:12px!important}
+  .cpV6Section summary{padding:14px!important}
+  .cpV6Section b{font-size:15px!important}
+  .cpV6Section em{font-size:12px!important}
+  .cpV6QuickGrid button{font-size:10.5px!important}
+}

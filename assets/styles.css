@@ -699,3 +699,29 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
 .chipIcon .dot{
   width:8px; height:8px; border-radius:999px; background:currentColor; opacity:.7;
 }
+
+
+/* ===== v2.6 base font refinement roles ===== */
+body{
+  font-size:15px;
+}
+h1{font-size:clamp(24px,4.8vw,34px)!important;}
+h2{font-size:clamp(20px,4vw,28px)!important;}
+h3{font-size:clamp(17px,3.5vw,22px)!important;}
+.kTitle{font-size:18px!important;}
+.card{
+  font-size:14px;
+}
+.btn,.btnx,.navItem{
+  font-size:13px;
+}
+.topbar .brand > div,
+header .brand > div{
+  line-height:1.22;
+}
+@media(max-width:680px){
+  body{font-size:14px;}
+  h1{font-size:25px!important;}
+  h2{font-size:21px!important;}
+  h3{font-size:18px!important;}
+}
