@@ -544,6 +544,31 @@ function loadJSON(k, def) {
       const u = String(username?.value || "").trim().toLowerCase();
       const p = String(password?.value || "");
 
+      // Admin Cursapp interno
+      if (u === "admin@cursapp.cl" && p === "admin123") {
+        try {
+          localStorage.setItem("cursapp_session_v1", JSON.stringify({
+            userId: u,
+            email: u,
+            role: "admin",
+            currentRole: "admin",
+            roles: ["admin"],
+            isAdmin: true,
+            name: "Admin Cursapp",
+            createdAt: new Date().toISOString()
+          }));
+          localStorage.setItem("cursapp_active_role_v1", "admin");
+          localStorage.setItem("cursapp_demo_user", JSON.stringify({
+            name: "Admin Cursapp",
+            role: "admin",
+            email: u
+          }));
+        } catch(e) {}
+        window.location.href = "/admin.html";
+        return;
+      }
+
+
       // Demo presidente/tesorero
       if ((u === "tesorero" || u === "presidente") && p === "demo") {
         setSession({ userId: u, role: u, courseKey: "", profileId: "" });
