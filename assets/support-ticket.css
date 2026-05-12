@@ -235,3 +235,104 @@
   .supportMeta{font-size:12px}
   .supportTicketTop{display:grid}
 }
+
+
+/* ===== Conversación soporte premium ===== */
+.supportTicketItem.hasReply{
+  border-color:rgba(109,40,217,.22);
+  box-shadow:0 10px 30px rgba(109,40,217,.08);
+}
+
+.supportTicketBadges{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:12px 0 4px;
+}
+
+.supportTicketBadges span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:950;
+}
+
+.supportTicketBadges .reply{
+  background:#ede9fe;
+  color:#6d28d9;
+}
+
+.supportTicketBadges .pending{
+  background:#fef3c7;
+  color:#92400e;
+}
+
+.supportTicketBadges .done{
+  background:#dcfce7;
+  color:#166534;
+}
+
+.supportConversationBtn{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  padding:12px 14px;
+  margin-top:12px;
+  background:#f8fafc;
+  color:#6d28d9;
+  font-weight:950;
+}
+
+.supportConversation{
+  display:none;
+  gap:10px;
+  margin-top:14px;
+}
+
+.supportConversation.open{
+  display:grid;
+}
+
+.supportBubble{
+  max-width:92%;
+  border-radius:18px;
+  padding:12px;
+}
+
+.supportBubble.user{
+  background:#f8fafc;
+  border:1px solid rgba(15,23,42,.06);
+}
+
+.supportBubble.admin{
+  background:linear-gradient(135deg,#6d28d9,#8b5cf6);
+  color:#fff;
+  margin-left:auto;
+  box-shadow:0 14px 34px rgba(109,40,217,.20);
+}
+
+.supportBubbleHead{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+
+.supportBubbleHead b{
+  font-size:13px;
+}
+
+.supportBubbleHead small{
+  opacity:.82;
+  font-size:11px;
+  font-weight:800;
+}
+
+.supportBubbleText{
+  line-height:1.45;
+  font-weight:750;
+}
+

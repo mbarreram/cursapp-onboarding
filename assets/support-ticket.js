@@ -89,20 +89,46 @@
     });
   }
 
+  
   function ticketCard(t){
     const sla = slaState(t);
-    const last = (t.messages || []).slice(-1)[0];
+    const msgs = t.messages || [];
+    const hasAdminReply = msgs.some(m=>String(m.role||"").toLowerCase()==="admin");
+    const waitingReply = !hasAdminReply && t.status !== "resuelto";
+
     return `
-      <div class="supportTicketItem">
+      <div class="supportTicketItem ${hasAdminReply ? "hasReply" : ""}">
         <div class="supportTicketTop">
           <div>
             <b>${esc(t.id)} · ${esc(t.subject || "Sin asunto")}</b>
             <span>${esc(categoryLabel(t.category))} · ${esc(priorityLabel(t.priority))} · ${fmtDate(t.createdAt)}</span>
           </div>
-          <em class="${sla.cls}">${esc(t.status || "abierto")} · ${esc(sla.label)}</em>
+          <em class="${sla.cls}">${esc(sla.label)}</em>
         </div>
-        <p>${esc(last ? last.body : t.detail || "")}</p>
-        ${(t.messages||[]).length > 1 ? `<details><summary>Ver conversación (${t.messages.length})</summary>${(t.messages||[]).map(m=>`<div class="supportMsg"><b>${esc(m.from||"")}</b><small>${fmtDate(m.at)}</small><p>${esc(m.body||"")}</p></div>`).join("")}</details>` : ""}
+
+        <div class="supportTicketBadges">
+          ${hasAdminReply ? `<span class="reply">💬 Nueva respuesta</span>` : ""}
+          ${waitingReply ? `<span class="pending">⏳ Esperando respuesta</span>` : ""}
+          ${t.status === "resuelto" ? `<span class="done">✅ Resuelto</span>` : ""}
+        </div>
+
+        <p>${esc(t.detail || "")}</p>
+
+        <button class="supportConversationBtn" onclick="this.nextElementSibling.classList.toggle('open')">
+          Ver conversación (${msgs.length})
+        </button>
+
+        <div class="supportConversation">
+          ${msgs.map(m=>`
+            <div class="supportBubble ${String(m.role||"").toLowerCase()==="admin" ? "admin" : "user"}">
+              <div class="supportBubbleHead">
+                <b>${esc(m.from || "Usuario")}</b>
+                <small>${fmtDate(m.at)}</small>
+              </div>
+              <div class="supportBubbleText">${esc(m.body || "")}</div>
+            </div>
+          `).join("")}
+        </div>
       </div>
     `;
   }
