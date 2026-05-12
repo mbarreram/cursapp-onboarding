@@ -564,7 +564,7 @@ function loadJSON(k, def) {
             email: u
           }));
         } catch(e) {}
-        window.location.href = "/admin.html";
+        window.location.href = "/admin-console/admin.html";
         return;
       }
 
