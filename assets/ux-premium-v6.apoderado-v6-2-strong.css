@@ -1,0 +1,369 @@
+
+/* =========================================================
+   Cursapp UI Premium v6.2 · Refinamiento fuerte Apoderado
+   Objetivo: bajar textos/números grandes en home mobile
+   Pegar al FINAL de cursapp/assets/ux-premium-v6.css
+   ========================================================= */
+
+/* Header superior / rol */
+body .topbar .brand .logo,
+body header .brand .logo,
+body .logo{
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  font-size:18px!important;
+  box-shadow:0 10px 22px rgba(91,33,182,.18)!important;
+}
+
+body .topbar .brand,
+body header .brand{
+  gap:12px!important;
+  align-items:center!important;
+}
+
+body .topbar .brand > div,
+body header .brand > div{
+  font-size:13px!important;
+  line-height:1.22!important;
+}
+
+body .topbar .brand div,
+body header .brand div{
+  line-height:1.22!important;
+}
+
+body .topbar .brand div[style*="font-weight"],
+body header .brand div[style*="font-weight"]{
+  font-size:17px!important;
+  letter-spacing:-.02em!important;
+}
+
+body .topbar .muted,
+body header .muted{
+  font-size:12px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+}
+
+body #menuBtn,
+body .cpV6IconBtn,
+body header button{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  font-size:18px!important;
+}
+
+/* Hero próxima cuota */
+body .cpV6Hero,
+body .cpV5Next{
+  border-radius:24px!important;
+  margin-top:10px!important;
+}
+
+body .cpV6HeroHead,
+body .cpV5NextHead{
+  padding:16px 18px 8px!important;
+  font-size:12px!important;
+  letter-spacing:.045em!important;
+  gap:10px!important;
+}
+
+body .cpV6HeroIcon,
+body .cpV5Icon{
+  width:38px!important;
+  height:38px!important;
+  border-radius:15px!important;
+  font-size:18px!important;
+}
+
+body .cpV6HeroTrack,
+body .cpV5Carousel{
+  padding:0 18px 18px!important;
+  gap:14px!important;
+}
+
+body .cpV6HeroCard,
+body .cpV5DueCard{
+  min-width:72%!important;
+  border-radius:22px!important;
+  padding:18px!important;
+}
+
+body .cpV6HeroIndex{
+  top:14px!important;
+  right:14px!important;
+  font-size:11px!important;
+  padding:5px 10px!important;
+}
+
+body .cpV6HeroTitle,
+body .cpV5DueTitle,
+body .cpV5DueCard h2,
+body .cpV6HeroCard h2{
+  font-size:18px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+  max-width:76%!important;
+}
+
+body .cpV6HeroMeta,
+body .cpV5DueCard .muted,
+body .cpV5DueCard p{
+  font-size:12.5px!important;
+  line-height:1.32!important;
+  margin-top:8px!important;
+}
+
+body .cpV6Badge,
+body .cpV5Badge,
+body .badge{
+  font-size:11px!important;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+}
+
+body .cpV6HeroAmount,
+body .cpV5Amount,
+body .cpV6HeroCard .amount,
+body .cpV5DueCard .amount{
+  font-size:24px!important;
+  line-height:1.05!important;
+  letter-spacing:-.035em!important;
+  margin-top:14px!important;
+}
+
+body .cpV6HeroActions,
+body .cpV5DueCard .actions{
+  margin-top:14px!important;
+  gap:8px!important;
+}
+
+body .cpV6PrimaryBtn,
+body .cpV6LinkBtn,
+body .cpV5DueCard button,
+body .cpV5DueCard a{
+  font-size:11.5px!important;
+  padding:10px 13px!important;
+  border-radius:14px!important;
+}
+
+body .cpV6Dots{
+  gap:6px!important;
+  padding-bottom:12px!important;
+}
+body .cpV6Dots span{
+  width:7px!important;
+  height:7px!important;
+}
+body .cpV6Dots span.active{
+  width:17px!important;
+}
+
+/* Secciones desplegables */
+body .cpV6Section,
+body .cpV5Section{
+  border-radius:20px!important;
+  margin:10px 0!important;
+}
+
+body .cpV6Section summary,
+body .cpV5Section summary{
+  padding:13px!important;
+  gap:10px!important;
+}
+
+body .cpV6Section i,
+body .cpV5SecIcon{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  border-radius:17px!important;
+  font-size:18px!important;
+}
+
+body .cpV6Section b,
+body .cpV5SecTitle,
+body details summary b{
+  font-size:15px!important;
+  line-height:1.15!important;
+  letter-spacing:-.015em!important;
+}
+
+body .cpV6Section em,
+body .cpV5Section em,
+body details summary em{
+  font-size:12px!important;
+  line-height:1.24!important;
+  margin-top:3px!important;
+}
+
+body .cpV6Section strong,
+body .cpV5Count,
+body details summary strong{
+  min-width:32px!important;
+  height:auto!important;
+  font-size:11.5px!important;
+  padding:6px 9px!important;
+  border-radius:13px!important;
+}
+
+body .cpV6Section u,
+body details summary u{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  font-size:14px!important;
+}
+
+/* Accesos rápidos y comunidad */
+body .cpV6QuickTitle{
+  font-size:14px!important;
+  margin:14px 4px 8px!important;
+}
+
+body .cpV6QuickGrid,
+body .cpV5QuickGrid{
+  gap:8px!important;
+}
+
+body .cpV6QuickGrid button,
+body .cpV5Quick{
+  min-height:72px!important;
+  font-size:10.5px!important;
+  padding:6px!important;
+  border-radius:17px!important;
+}
+
+body .cpV6QuickGrid span,
+body .cpV5Quick span{
+  width:32px!important;
+  height:32px!important;
+  border-radius:13px!important;
+  font-size:17px!important;
+  margin-bottom:6px!important;
+}
+
+body .cpV6Community{
+  border-radius:20px!important;
+  padding:14px!important;
+  gap:12px!important;
+}
+
+body .cpV6Community > span{
+  width:48px!important;
+  height:48px!important;
+  border-radius:17px!important;
+  font-size:22px!important;
+}
+
+body .cpV6Community b{
+  font-size:16px!important;
+  line-height:1.15!important;
+}
+
+body .cpV6Community small{
+  font-size:12px!important;
+  line-height:1.28!important;
+}
+
+/* Bottom nav */
+body .bottomNav{
+  min-height:70px!important;
+  padding:8px 10px!important;
+}
+
+body .bottomNav .navItem,
+body nav.bottomNav button{
+  font-size:10.5px!important;
+  gap:4px!important;
+}
+
+body .bottomNav .navItem span,
+body nav.bottomNav button span{
+  font-size:10.5px!important;
+  font-weight:800!important;
+}
+
+@media(max-width:680px){
+  body .container{
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+
+  body .cpV6HeroCard,
+  body .cpV5DueCard{
+    min-width:78%!important;
+  }
+
+  body .cpV6HeroTitle,
+  body .cpV5DueTitle{
+    font-size:17px!important;
+  }
+
+  body .cpV6HeroAmount,
+  body .cpV5Amount{
+    font-size:23px!important;
+  }
+
+  body .cpV6Section b,
+  body .cpV5SecTitle,
+  body details summary b{
+    font-size:14.5px!important;
+  }
+}
+
+/* iPhone chico: evitar look grotesco */
+@media(max-width:430px){
+  body .topbar .brand div[style*="font-weight"],
+  body header .brand div[style*="font-weight"]{
+    font-size:15.5px!important;
+  }
+
+  body .topbar .muted,
+  body header .muted{
+    font-size:11px!important;
+  }
+
+  body .cpV6HeroHead,
+  body .cpV5NextHead{
+    font-size:11px!important;
+  }
+
+  body .cpV6HeroTitle,
+  body .cpV5DueTitle{
+    font-size:16px!important;
+  }
+
+  body .cpV6HeroMeta,
+  body .cpV5DueCard p{
+    font-size:11.5px!important;
+  }
+
+  body .cpV6HeroAmount,
+  body .cpV5Amount{
+    font-size:22px!important;
+  }
+
+  body .cpV6PrimaryBtn,
+  body .cpV6LinkBtn,
+  body .cpV5DueCard button,
+  body .cpV5DueCard a{
+    font-size:10.5px!important;
+    padding:9px 11px!important;
+  }
+
+  body .cpV6Section i,
+  body .cpV5SecIcon{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+  }
+
+  body .cpV6Section b,
+  body .cpV5SecTitle,
+  body details summary b{
+    font-size:14px!important;
+  }
+}
