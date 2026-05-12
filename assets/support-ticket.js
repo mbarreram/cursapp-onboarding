@@ -8,16 +8,13 @@
     try{ const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); }catch(e){ return def; }
   }
   function save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
-  function esc(s){
-    return String(s ?? "").replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  }
+  function esc(s){ return String(s ?? "").replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
   function now(){ return new Date().toISOString(); }
   function uid(){ return "TK-" + Math.floor(100000 + Math.random()*900000); }
   function normEmail(e){ return String(e||"").trim().toLowerCase(); }
+  function fmtDate(x){ try{return new Date(x).toLocaleString("es-CL",{dateStyle:"short",timeStyle:"short"});}catch(e){return x||"—";} }
 
-  function getSession(){
-    return load(KEY_SESSION, {}) || {};
-  }
+  function getSession(){ return load(KEY_SESSION, {}) || {}; }
 
   function getActiveProfile(){
     const s = getSession();
@@ -27,17 +24,13 @@
     const ps = load("cursapp_profiles_v1", []);
     return ps.find(p =>
       String(p.courseKey||"") === String(ck) &&
-      (
-        normEmail(p.userId) === email ||
-        normEmail(p.apoderado?.email) === email
-      ) &&
+      (normEmail(p.userId) === email || normEmail(p.apoderado?.email) === email) &&
       (!role || String(p.role||"").toLowerCase() === role || role === "tesorero")
     ) || ps.find(p => String(p.courseKey||"") === String(ck) && (normEmail(p.userId)===email || normEmail(p.apoderado?.email)===email)) || null;
   }
 
   function getRequesterName(profile, session){
-    const name = profile?.directiva?.name || profile?.apoderado?.name || session.name || session.userId || "Usuario";
-    return String(name || "Usuario");
+    return String(profile?.directiva?.name || profile?.apoderado?.name || session.name || session.userId || "Usuario");
   }
 
   function getCourseMeta(){
@@ -65,113 +58,124 @@
     if(priority === "media") return 24;
     return 48;
   }
-
   function categoryLabel(v){
-    return ({
-      acceso_login:"Acceso / login",
-      pago_transaccion:"Pago o transacción no contabilizada",
-      menu_visual:"Problema visual / menú",
-      campanas:"Campañas / cobros",
-      rendiciones:"Rendiciones / boletas",
-      informes:"Informes",
-      datos:"Corrección de datos",
-      otro:"Otro"
-    })[v] || v;
+    return ({acceso_login:"Acceso / login",pago_transaccion:"Pago o transacción no contabilizada",menu_visual:"Problema visual / menú",campanas:"Campañas / cobros",rendiciones:"Rendiciones / boletas",informes:"Informes",datos:"Corrección de datos",otro:"Otro"})[v] || v;
   }
+  function priorityLabel(v){ return ({critica:"Crítica",alta:"Alta",media:"Media",baja:"Baja"})[v] || v; }
 
-  function priorityLabel(v){
-    return ({critica:"Crítica", alta:"Alta", media:"Media", baja:"Baja"})[v] || v;
+  function slaState(t){
+    if(t.status === "resuelto") return {label:"Resuelto", cls:"green"};
+    if(!t.slaDueAt) return {label:"Sin SLA", cls:"gray"};
+    const ms = new Date(t.slaDueAt).getTime() - Date.now();
+    if(ms < 0) return {label:"SLA vencido", cls:"red"};
+    const h = Math.ceil(ms/3600000);
+    return {label:`SLA ${h}h`, cls:h<=2?"orange":"green"};
   }
 
   function log(type, action, target, extra){
     const logs = load(KEY_LOGS, []);
-    logs.unshift(Object.assign({
-      at: now(),
-      user: getCourseMeta().requesterEmail || "directiva",
-      type,
-      action,
-      target,
-      ip: "local"
-    }, extra || {}));
+    logs.unshift(Object.assign({at:now(), user:getCourseMeta().requesterEmail || "directiva", type, action, target, ip:"local"}, extra||{}));
     save(KEY_LOGS, logs.slice(0,500));
   }
 
-  function openModal(){
+  function myTickets(){
     const meta = getCourseMeta();
-    const root = document.createElement("div");
-    root.className = "supportOverlay";
-    root.id = "supportTicketOverlay";
+    const email = normEmail(meta.requesterEmail);
+    const ck = String(meta.courseKey||"");
+    return load(KEY_TICKETS, []).filter(t=>{
+      const sameEmail = email && normEmail(t.requesterEmail || t.requester) === email;
+      const sameCourse = ck && String(t.courseKey||"") === ck && String(t.sourceRole||"") === String(meta.role||"");
+      return sameEmail || sameCourse;
+    });
+  }
 
-    root.innerHTML = `
-      <div class="supportCard" role="dialog" aria-modal="true">
-        <div class="supportHead">
+  function ticketCard(t){
+    const sla = slaState(t);
+    const last = (t.messages || []).slice(-1)[0];
+    return `
+      <div class="supportTicketItem">
+        <div class="supportTicketTop">
           <div>
-            <h2>Levantar ticket a soporte</h2>
-            <p>Describe el problema para que el equipo Cursapp pueda responder con trazabilidad y SLA.</p>
+            <b>${esc(t.id)} · ${esc(t.subject || "Sin asunto")}</b>
+            <span>${esc(categoryLabel(t.category))} · ${esc(priorityLabel(t.priority))} · ${fmtDate(t.createdAt)}</span>
           </div>
-          <button class="supportClose" type="button" data-close>✕</button>
+          <em class="${sla.cls}">${esc(t.status || "abierto")} · ${esc(sla.label)}</em>
         </div>
-
-        <div class="supportMeta">
-          <b>Contexto detectado:</b><br>
-          ${esc(meta.school)} · ${esc(meta.course)}<br>
-          ${esc(meta.region)} ${meta.comuna ? "· " + esc(meta.comuna) : ""}<br>
-          Solicitante: ${esc(meta.requesterName)} · ${esc(meta.role || "directiva")}
-        </div>
-
-        <div class="supportGrid">
-          <div class="supportField">
-            <label>Motivo / categoría</label>
-            <select id="stCategory">
-              <option value="acceso_login">Acceso / login</option>
-              <option value="pago_transaccion">Pago o transacción no contabilizada</option>
-              <option value="menu_visual">Problema visual / menú</option>
-              <option value="campanas">Campañas / cobros</option>
-              <option value="rendiciones">Rendiciones / boletas</option>
-              <option value="informes">Informes</option>
-              <option value="datos">Corrección de datos</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-
-          <div class="supportField">
-            <label>Criticidad</label>
-            <select id="stPriority">
-              <option value="media">Media · respuesta 24h</option>
-              <option value="alta">Alta · respuesta 8h</option>
-              <option value="critica">Crítica · respuesta 2h</option>
-              <option value="baja">Baja · respuesta 48h</option>
-            </select>
-          </div>
-
-          <div class="supportField supportWide">
-            <label>Asunto</label>
-            <input id="stSubject" placeholder="Ej: Pago no aparece como contabilizado" />
-          </div>
-
-          <div class="supportField supportWide">
-            <label>Detalle</label>
-            <textarea id="stDetail" placeholder="Cuéntanos qué ocurrió, a qué apoderado/alumno afecta, fecha del pago o pantalla donde ocurre..."></textarea>
-          </div>
-        </div>
-
-        <div class="supportActions">
-          <button class="supportBtn" type="button" data-close>Cancelar</button>
-          <button class="supportBtn primary" type="button" id="stSubmit">Enviar ticket</button>
-        </div>
+        <p>${esc(last ? last.body : t.detail || "")}</p>
+        ${(t.messages||[]).length > 1 ? `<details><summary>Ver conversación (${t.messages.length})</summary>${(t.messages||[]).map(m=>`<div class="supportMsg"><b>${esc(m.from||"")}</b><small>${fmtDate(m.at)}</small><p>${esc(m.body||"")}</p></div>`).join("")}</details>` : ""}
       </div>
     `;
+  }
 
-    root.addEventListener("click", (e)=>{
-      if(e.target === root || e.target.matches("[data-close]")) root.remove();
-    });
-    document.body.appendChild(root);
+  function renderMyTickets(){
+    const rows = myTickets();
+    return `
+      <div class="supportTicketList">
+        ${rows.length ? rows.map(ticketCard).join("") : `<div class="supportEmpty">Aún no tienes tickets levantados en este perfil.</div>`}
+      </div>
+    `;
+  }
 
-    document.getElementById("stSubmit").onclick = () => {
-      const category = document.getElementById("stCategory").value;
-      const priority = document.getElementById("stPriority").value;
-      const subject = document.getElementById("stSubject").value.trim();
-      const detail = document.getElementById("stDetail").value.trim();
+  function newTicketHtml(meta){
+    return `
+      <div class="supportMeta">
+        <b>Contexto detectado:</b><br>
+        ${esc(meta.school)} · ${esc(meta.course)}<br>
+        ${esc(meta.region)} ${meta.comuna ? "· " + esc(meta.comuna) : ""}<br>
+        Solicitante: ${esc(meta.requesterName)} · ${esc(meta.role || "directiva")}
+      </div>
+
+      <div class="supportGrid">
+        <div class="supportField">
+          <label>Motivo / categoría</label>
+          <select id="stCategory">
+            <option value="acceso_login">Acceso / login</option>
+            <option value="pago_transaccion">Pago o transacción no contabilizada</option>
+            <option value="menu_visual">Problema visual / menú</option>
+            <option value="campanas">Campañas / cobros</option>
+            <option value="rendiciones">Rendiciones / boletas</option>
+            <option value="informes">Informes</option>
+            <option value="datos">Corrección de datos</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+
+        <div class="supportField">
+          <label>Criticidad</label>
+          <select id="stPriority">
+            <option value="media">Media · respuesta 24h</option>
+            <option value="alta">Alta · respuesta 8h</option>
+            <option value="critica">Crítica · respuesta 2h</option>
+            <option value="baja">Baja · respuesta 48h</option>
+          </select>
+        </div>
+
+        <div class="supportField supportWide">
+          <label>Asunto</label>
+          <input id="stSubject" placeholder="Ej: Pago no aparece como contabilizado" />
+        </div>
+
+        <div class="supportField supportWide">
+          <label>Detalle</label>
+          <textarea id="stDetail" placeholder="Cuéntanos qué ocurrió, a qué apoderado/alumno afecta, fecha del pago o pantalla donde ocurre..."></textarea>
+        </div>
+      </div>
+
+      <div class="supportActions">
+        <button class="supportBtn primary" type="button" id="stSubmit">Enviar ticket</button>
+      </div>
+    `;
+  }
+
+  function bindSubmit(root){
+    const btn = root.querySelector("#stSubmit");
+    if(!btn) return;
+    btn.onclick = () => {
+      const meta = getCourseMeta();
+      const category = root.querySelector("#stCategory").value;
+      const priority = root.querySelector("#stPriority").value;
+      const subject = root.querySelector("#stSubject").value.trim();
+      const detail = root.querySelector("#stDetail").value.trim();
 
       if(!subject || !detail){
         alert("Completa asunto y detalle del ticket.");
@@ -180,7 +184,6 @@
 
       const hours = slaHours(priority, category);
       const createdAt = now();
-      const slaDueAt = new Date(Date.now() + hours*3600*1000).toISOString();
       const ticket = {
         id: uid(),
         status: "abierto",
@@ -189,7 +192,7 @@
         category,
         categoryLabel: categoryLabel(category),
         slaHours: hours,
-        slaDueAt,
+        slaDueAt: new Date(Date.now() + hours*3600*1000).toISOString(),
         createdAt,
         updatedAt: createdAt,
         source: "directiva",
@@ -203,21 +206,60 @@
         comuna: meta.comuna,
         subject,
         detail,
-        messages: [
-          {at: createdAt, from: meta.requesterName, role: meta.role, body: detail}
-        ],
-        history: [
-          {at: createdAt, event: "ticket_created", by: meta.requesterEmail || meta.requesterName}
-        ]
+        messages: [{at: createdAt, from: meta.requesterName, role: meta.role, body: detail}],
+        history: [{at: createdAt, event: "ticket_created", by: meta.requesterEmail || meta.requesterName}]
       };
 
       const list = load(KEY_TICKETS, []);
       list.unshift(ticket);
       save(KEY_TICKETS, list);
       log("support_ticket_created", "Directiva levantó ticket", ticket.id, {school: meta.school, course: meta.course, priority, category});
-      root.remove();
       alert(`Ticket enviado ✅\\n\\nFolio: ${ticket.id}\\nSLA respuesta: ${hours} horas`);
+      openModal("mine");
     };
+  }
+
+  function openModal(tab){
+    const meta = getCourseMeta();
+    const root = document.createElement("div");
+    root.className = "supportOverlay";
+    root.id = "supportTicketOverlay";
+    const active = tab || "new";
+    root.innerHTML = `
+      <div class="supportCard supportCardTabs" role="dialog" aria-modal="true">
+        <div class="supportHead">
+          <div>
+            <h2>Soporte Cursapp</h2>
+            <p>Levanta un ticket o revisa respuestas del equipo Cursapp.</p>
+          </div>
+          <button class="supportClose" type="button" data-close>✕</button>
+        </div>
+
+        <div class="supportTabs">
+          <button class="${active==="new"?"active":""}" data-tab="new">Nuevo ticket</button>
+          <button class="${active==="mine"?"active":""}" data-tab="mine">Mis tickets <span>${myTickets().length}</span></button>
+        </div>
+
+        <div id="supportTabBody">
+          ${active==="mine" ? renderMyTickets() : newTicketHtml(meta)}
+        </div>
+
+        <div class="supportActions">
+          <button class="supportBtn" type="button" data-close>Cerrar</button>
+        </div>
+      </div>
+    `;
+
+    root.addEventListener("click", (e)=>{
+      if(e.target === root || e.target.matches("[data-close]")) root.remove();
+      if(e.target.matches("[data-tab]")){
+        const next = e.target.getAttribute("data-tab");
+        root.remove();
+        openModal(next);
+      }
+    });
+    document.body.appendChild(root);
+    if(active === "new") bindSubmit(root);
   }
 
   function mount(){
@@ -231,10 +273,9 @@
     btn.className = "supportFab";
     btn.type = "button";
     btn.innerHTML = "💬 <span>Soporte</span>";
-    btn.onclick = openModal;
+    btn.onclick = () => openModal("new");
     document.body.appendChild(btn);
 
-    // también dejar acción en menú si existe
     const menu = document.getElementById("menuDropdown");
     if(menu && !document.getElementById("supportMenuItem")){
       const item = document.createElement("button");
@@ -242,8 +283,8 @@
       item.className = "btn ghost";
       item.type = "button";
       item.style.cssText = "width:100%;margin-top:8px;text-align:left;";
-      item.textContent = "💬 Levantar ticket soporte";
-      item.onclick = openModal;
+      item.textContent = "💬 Soporte / Mis tickets";
+      item.onclick = () => openModal("mine");
       menu.appendChild(item);
     }
   }

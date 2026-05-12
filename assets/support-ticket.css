@@ -113,3 +113,125 @@
     padding:13px 14px;
   }
 }
+
+/* ===== Mis tickets / respuestas soporte ===== */
+.supportCardTabs{padding-bottom:14px}
+.supportTabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:6px;
+  background:#f2f4f7;
+  border-radius:18px;
+  margin:12px 0 14px;
+}
+.supportTabs button{
+  border:0;
+  border-radius:14px;
+  padding:12px;
+  font-weight:950;
+  background:transparent;
+  color:#667085;
+}
+.supportTabs button.active{
+  background:#fff;
+  color:#6d28d9;
+  box-shadow:0 8px 18px rgba(15,23,42,.07);
+}
+.supportTabs span{
+  display:inline-grid;
+  place-items:center;
+  min-width:22px;
+  height:22px;
+  padding:0 7px;
+  border-radius:999px;
+  background:#ede9fe;
+  color:#6d28d9;
+  margin-left:6px;
+}
+.supportTicketList{
+  display:grid;
+  gap:10px;
+  max-height:52vh;
+  overflow:auto;
+  padding-right:2px;
+}
+.supportTicketItem{
+  border:1px solid rgba(15,23,42,.10);
+  border-radius:18px;
+  padding:14px;
+  background:#fff;
+}
+.supportTicketTop{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.supportTicketTop b{display:block;font-size:14px}
+.supportTicketTop span{
+  display:block;
+  margin-top:4px;
+  color:#667085;
+  font-weight:800;
+  font-size:12px;
+}
+.supportTicketTop em{
+  font-style:normal;
+  border-radius:999px;
+  padding:7px 9px;
+  font-size:11px;
+  font-weight:950;
+  white-space:nowrap;
+  background:#f2f4f7;
+}
+.supportTicketTop em.green{background:#dcfce7;color:#166534}
+.supportTicketTop em.orange{background:#ffedd5;color:#9a3412}
+.supportTicketTop em.red{background:#ffe4e6;color:#be123c}
+.supportTicketTop em.gray{background:#f2f4f7;color:#475467}
+.supportTicketItem p{
+  margin:10px 0 0;
+  color:#344054;
+  font-weight:700;
+  line-height:1.45;
+}
+.supportTicketItem details{
+  margin-top:12px;
+  border-top:1px solid rgba(15,23,42,.08);
+  padding-top:10px;
+}
+.supportTicketItem summary{
+  color:#6d28d9;
+  font-weight:950;
+  cursor:pointer;
+}
+.supportMsg{
+  margin-top:10px;
+  padding:10px;
+  border-radius:14px;
+  background:#f8fafc;
+}
+.supportMsg b{display:block}
+.supportMsg small{display:block;color:#667085;font-weight:800;margin-top:2px}
+.supportEmpty{
+  padding:18px;
+  border-radius:18px;
+  background:#f8fafc;
+  color:#667085;
+  font-weight:850;
+  text-align:center;
+}
+@media(max-width:560px){
+  .supportOverlay{
+    align-items:flex-end;
+    padding:10px;
+  }
+  .supportCard{
+    max-height:84vh;
+    padding:18px;
+  }
+  .supportHead h2{font-size:20px}
+  .supportHead p{font-size:15px;line-height:1.35}
+  .supportMeta{font-size:12px}
+  .supportTicketTop{display:grid}
+}
