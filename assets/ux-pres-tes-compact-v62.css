@@ -1,0 +1,413 @@
+
+/* =========================================================
+   Cursapp · Presidente/Tesorero Compact Premium v6.2
+   Cargar DESPUÉS de ux-premium-v6.css / ux-pres-tes.css
+   ========================================================= */
+
+body{
+  font-size:14px!important;
+}
+
+/* HEADER */
+header .topbar{
+  padding:18px 16px 14px!important;
+  min-height:auto!important;
+}
+
+header .brand{
+  gap:12px!important;
+  align-items:center!important;
+  padding-right:112px!important;
+}
+
+header .brand .logo,
+.topbar .brand .logo,
+.logo{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  font-size:18px!important;
+  box-shadow:0 10px 22px rgba(91,33,182,.18)!important;
+}
+
+header .brand > div,
+.topbar .brand > div{
+  font-size:13px!important;
+  line-height:1.22!important;
+}
+
+header .brand div[style*="font-weight"],
+.topbar .brand div[style*="font-weight"]{
+  font-size:17px!important;
+  letter-spacing:-.02em!important;
+}
+
+header .muted,
+.topbar .muted{
+  font-size:11.5px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+  color:#8a93a3!important;
+}
+
+#menuBtn,
+header .btn.ghost,
+header button{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  padding:0!important;
+  border-radius:999px!important;
+  font-size:17px!important;
+}
+
+/* BIENVENIDA */
+.cpV6Welcome{
+  gap:12px!important;
+  margin:2px 0 14px!important;
+}
+
+.cpV6Avatar{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  font-size:20px!important;
+  box-shadow:0 10px 22px rgba(91,33,182,.18)!important;
+}
+
+.cpV6Hello{
+  font-size:20px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+}
+
+.cpV6Sub{
+  font-size:13px!important;
+  line-height:1.28!important;
+}
+
+.cpV6Sub.small{
+  font-size:11.5px!important;
+}
+
+/* HERO / DASHBOARD EJECUTIVO / ESTADO DE CAJA */
+.cpV6Hero,
+.cpV5Next,
+section[class*="Hero"],
+section[class*="Next"]{
+  border-radius:22px!important;
+  margin-top:8px!important;
+}
+
+.cpV6HeroHead,
+.cpV5NextHead{
+  padding:15px 18px 8px!important;
+  gap:10px!important;
+  font-size:11.5px!important;
+  letter-spacing:.05em!important;
+}
+
+.cpV6HeroIcon,
+.cpV5Icon{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  border-radius:15px!important;
+  font-size:18px!important;
+}
+
+.cpV6HeroTrack,
+.cpV5Carousel{
+  padding:0 18px 18px!important;
+  gap:14px!important;
+}
+
+.cpV6HeroCard,
+.cpV5DueCard{
+  min-width:72%!important;
+  padding:17px!important;
+  border-radius:22px!important;
+}
+
+.cpV6HeroIndex{
+  top:14px!important;
+  right:14px!important;
+  font-size:10.5px!important;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+}
+
+.cpV6HeroTitle,
+.cpV5DueTitle,
+.cpV6HeroCard h2,
+.cpV6HeroCard h3,
+.cpV5DueCard h2,
+.cpV5DueCard h3{
+  font-size:17px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+  max-width:78%!important;
+}
+
+.cpV6HeroMeta,
+.cpV6HeroCard p,
+.cpV6HeroCard .muted,
+.cpV5DueCard p,
+.cpV5DueCard .muted{
+  font-size:11.5px!important;
+  line-height:1.28!important;
+  margin-top:7px!important;
+}
+
+.cpV6HeroAmount,
+.cpV5Amount,
+.cpV6HeroCard .amount,
+.cpV5DueCard .amount,
+.cpV6HeroCard [class*="Amount"],
+.cpV5DueCard [class*="Amount"]{
+  font-size:22px!important;
+  line-height:1.05!important;
+  letter-spacing:-.035em!important;
+  margin-top:12px!important;
+}
+
+.cpV6PrimaryBtn,
+.cpV6LinkBtn,
+.cpV6HeroCard button,
+.cpV6HeroCard a,
+.cpV5DueCard button,
+.cpV5DueCard a{
+  font-size:10.5px!important;
+  padding:9px 11px!important;
+  border-radius:13px!important;
+  line-height:1.1!important;
+}
+
+.cpV6Dots span{
+  width:7px!important;
+  height:7px!important;
+}
+
+.cpV6Dots span.active{
+  width:17px!important;
+}
+
+/* KPIs / métricas */
+.cpV6KpiGrid,
+.metricsRow,
+.kpiGrid{
+  gap:8px!important;
+}
+
+.cpV6Kpi,
+.metricCard,
+.kpiCard,
+.card.metric{
+  min-height:84px!important;
+  padding:12px!important;
+  border-radius:18px!important;
+}
+
+.cpV6Kpi span,
+.metricCard span,
+.kpiIcon{
+  width:34px!important;
+  height:34px!important;
+  border-radius:13px!important;
+  font-size:16px!important;
+}
+
+.cpV6Kpi small,
+.metricCard small,
+.kpiCard small{
+  font-size:10.5px!important;
+  line-height:1.2!important;
+}
+
+.cpV6Kpi b,
+.metricCard b,
+.kpiCard b{
+  font-size:18px!important;
+  letter-spacing:-.025em!important;
+}
+
+/* Cards genéricas / módulos internos */
+.card{
+  border-radius:19px!important;
+  padding:14px!important;
+  font-size:13px!important;
+}
+
+.card h2,
+.card h3,
+.kTitle{
+  font-size:16px!important;
+  line-height:1.15!important;
+  letter-spacing:-.02em!important;
+}
+
+.card .muted,
+.muted{
+  font-size:12px!important;
+  line-height:1.28!important;
+}
+
+/* SECCIONES DESPLEGABLES */
+.cpV6Section,
+.cpV5Section,
+details.cpV6Section{
+  border-radius:19px!important;
+  margin:10px 0!important;
+}
+
+.cpV6Section summary,
+.cpV5Section summary{
+  padding:12px!important;
+  gap:10px!important;
+}
+
+.cpV6Section i,
+.cpV5SecIcon{
+  width:40px!important;
+  height:40px!important;
+  min-width:40px!important;
+  border-radius:16px!important;
+  font-size:18px!important;
+}
+
+.cpV6Section b,
+.cpV5SecTitle,
+.cpV6Section summary b,
+details summary b{
+  font-size:14px!important;
+  line-height:1.15!important;
+  letter-spacing:-.015em!important;
+}
+
+.cpV6Section em,
+.cpV5Section em,
+details summary em{
+  font-size:11.5px!important;
+  line-height:1.22!important;
+  margin-top:3px!important;
+}
+
+.cpV6Section strong,
+.cpV5Count,
+details summary strong{
+  min-width:30px!important;
+  font-size:10.5px!important;
+  padding:5px 8px!important;
+  border-radius:12px!important;
+}
+
+.cpV6Section u,
+details summary u{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  font-size:13px!important;
+}
+
+/* Accesos rápidos */
+.cpV6QuickTitle,
+.cpV5QuickTitle{
+  font-size:14px!important;
+  margin:14px 4px 8px!important;
+}
+
+.cpV6QuickGrid,
+.cpV5QuickGrid{
+  gap:8px!important;
+}
+
+.cpV6QuickGrid button,
+.cpV5Quick{
+  min-height:72px!important;
+  font-size:10px!important;
+  padding:6px!important;
+  border-radius:16px!important;
+}
+
+.cpV6QuickGrid span,
+.cpV5Quick span{
+  width:31px!important;
+  height:31px!important;
+  border-radius:12px!important;
+  font-size:16px!important;
+  margin-bottom:5px!important;
+}
+
+/* Bottom nav */
+.bottomNav{
+  min-height:68px!important;
+  padding:8px 10px!important;
+}
+
+.bottomNav .navItem,
+nav.bottomNav button{
+  font-size:10px!important;
+  gap:3px!important;
+}
+
+.bottomNav .navItem span,
+nav.bottomNav button span{
+  font-size:10px!important;
+  font-weight:800!important;
+}
+
+/* Botones de acciones */
+.btn,
+.btnx,
+button{
+  font-size:12px;
+}
+
+@media(max-width:430px){
+  header .topbar{
+    padding-top:16px!important;
+  }
+
+  header .brand div[style*="font-weight"],
+  .topbar .brand div[style*="font-weight"]{
+    font-size:15.5px!important;
+  }
+
+  header .muted,
+  .topbar .muted{
+    font-size:10.8px!important;
+  }
+
+  .cpV6Hello{
+    font-size:18px!important;
+  }
+
+  .cpV6Sub{
+    font-size:12px!important;
+  }
+
+  .cpV6HeroCard,
+  .cpV5DueCard{
+    min-width:74%!important;
+    padding:16px!important;
+  }
+
+  .cpV6HeroTitle,
+  .cpV5DueTitle{
+    font-size:16px!important;
+  }
+
+  .cpV6HeroAmount,
+  .cpV5Amount,
+  .cpV6HeroCard [class*="Amount"],
+  .cpV5DueCard [class*="Amount"]{
+    font-size:21px!important;
+  }
+
+  .cpV6Section b,
+  .cpV5SecTitle,
+  details summary b{
+    font-size:13.5px!important;
+  }
+}
