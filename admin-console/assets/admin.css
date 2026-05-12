@@ -1,0 +1,108 @@
+
+:root{
+  --bg:#f7f7fb;
+  --panel:#ffffff;
+  --text:#101828;
+  --muted:#667085;
+  --line:rgba(16,24,40,.09);
+  --purple:#6d28d9;
+  --purple2:#8b5cf6;
+  --green:#22c55e;
+  --orange:#f59e0b;
+  --red:#f43f5e;
+  --blue:#2563eb;
+  --shadow:0 18px 45px rgba(16,24,40,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.adminShell{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.adminSide{background:linear-gradient(180deg,#12102b,#09091c);color:#fff;padding:22px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh}
+.sideBrand{display:flex;gap:12px;align-items:center}
+.sideLogo{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--purple2));font-weight:950;font-size:22px}
+.sideBrand strong{display:block;font-size:23px;letter-spacing:-.4px}
+.sideBrand span,.sideUser span{display:block;color:rgba(255,255,255,.65);font-size:13px;font-weight:700;margin-top:2px}
+.sideNav{display:grid;gap:8px}
+.sideItem{border:0;background:transparent;color:rgba(255,255,255,.82);text-align:left;padding:14px 14px;border-radius:14px;font-weight:850}
+.sideItem.active,.sideItem:hover{background:linear-gradient(135deg,rgba(109,40,217,.9),rgba(139,92,246,.72));color:#fff}
+.sideHelp{margin-top:auto;background:linear-gradient(135deg,rgba(109,40,217,.95),rgba(139,92,246,.75));border-radius:18px;padding:18px}
+.sideHelp p{color:rgba(255,255,255,.75);font-size:13px;line-height:1.45}
+.sideHelp button{width:100%;border:0;border-radius:14px;padding:12px;background:rgba(255,255,255,.18);color:#fff;font-weight:900}
+.sideUser{border-top:1px solid rgba(255,255,255,.12);padding-top:18px;display:flex;gap:12px;align-items:center}
+.avatar{width:42px;height:42px;border-radius:999px;background:#ede9fe;color:#6d28d9;display:grid;place-items:center;font-weight:950}
+.adminMain{min-width:0}
+.adminTop{height:88px;background:rgba(255,255,255,.84);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);display:flex;gap:18px;align-items:center;padding:0 28px;position:sticky;top:0;z-index:20}
+.adminTop h1{font-size:26px;margin:0;letter-spacing:-.5px}
+.adminTop p{margin:4px 0 0;color:var(--muted);font-weight:700}
+.topSearch{margin-left:auto;width:min(520px,35vw);height:48px;border:1px solid var(--line);border-radius:16px;background:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;box-shadow:0 8px 22px rgba(16,24,40,.04)}
+.topSearch input{border:0;outline:0;width:100%;font-weight:700;color:#344054}
+.topIcon{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 14px;font-weight:900;position:relative}
+#notifBadge{position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:999px;background:var(--purple)}
+.mobileMenu{display:none;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px}
+.adminContent{padding:26px 28px 38px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(16,24,40,.04);min-height:120px}
+.kpiIcon{width:44px;height:44px;border-radius:15px;background:#f3e8ff;color:var(--purple);display:grid;place-items:center;font-size:22px}
+.kpi label{display:block;margin-top:12px;color:#475467;font-weight:850;font-size:13px}
+.kpi strong{display:block;margin-top:8px;font-size:25px;letter-spacing:-.4px}
+.kpi small{display:block;margin-top:8px;color:#12b76a;font-weight:850}
+.gridMain{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:18px;margin-top:20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.panelHead{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panelHead h2{font-size:18px;margin:0}
+.panelHead button,.linkBtn{border:0;background:transparent;color:var(--purple);font-weight:950}
+.list{display:grid}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:15px 18px;border-bottom:1px solid rgba(16,24,40,.06)}
+.row:last-child{border-bottom:0}
+.rowIcon{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:#f3e8ff}
+.row b{display:block;font-size:14px}
+.row p{margin:4px 0 0;color:var(--muted);font-weight:700;font-size:13px;line-height:1.35}
+.badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:950}
+.badge.green{background:#dcfce7;color:#166534}.badge.orange{background:#ffedd5;color:#9a3412}.badge.red{background:#ffe4e6;color:#be123c}.badge.purple{background:#ede9fe;color:#5b21b6}.badge.blue{background:#dbeafe;color:#1d4ed8}.badge.gray{background:#f2f4f7;color:#475467}
+.paymentBox{padding:20px;display:grid;grid-template-columns:220px 1fr;gap:22px}
+.donut{width:190px;height:190px;border-radius:999px;background:conic-gradient(var(--green) 0 72%, var(--red) 72% 82%, var(--orange) 82% 91%, var(--purple) 91% 97%, var(--blue) 97% 100%);display:grid;place-items:center;margin:auto;position:relative}
+.donut:after{content:"";position:absolute;width:116px;height:116px;border-radius:999px;background:#fff}
+.donutText{position:relative;z-index:2;text-align:center}
+.donutText strong{display:block;font-size:28px}.donutText span{color:var(--muted);font-size:12px;font-weight:800}
+.legend{display:grid;gap:10px}
+.legendRow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;font-size:13px;font-weight:800}
+.dot{width:10px;height:10px;border-radius:999px}
+.tablesGrid{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;margin-top:20px}
+.tableWrap{overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:13px 16px;text-align:left;border-bottom:1px solid rgba(16,24,40,.06);font-size:13px}
+th{color:#667085;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+td{font-weight:750;color:#344054}
+.actionsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:20px}
+.quick{border:0;border-radius:18px;padding:18px;text-align:left;background:#f8fafc}
+.quick strong{display:block;margin-top:10px;font-size:14px}.quick span{color:var(--muted);font-size:12px;font-weight:800}
+.viewGrid{display:grid;gap:18px}
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.toolbar input,.toolbar select{border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;font-weight:750;min-width:210px}
+.adminBtn{border:0;border-radius:14px;padding:12px 14px;font-weight:950;background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff}
+.adminBtn.ghost{background:#fff;color:var(--purple);border:1px solid rgba(109,40,217,.18)}
+.modalBg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:18px}
+.modalCard{width:min(760px,100%);background:#fff;border-radius:26px;padding:22px;box-shadow:0 30px 80px rgba(15,23,42,.22);max-height:88vh;overflow:auto}
+.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.formGrid label{display:block;color:#667085;font-weight:850;font-size:12px;margin-bottom:6px}
+.formGrid input,.formGrid select,textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-weight:750}
+textarea{min-height:92px}
+@media(max-width:1100px){
+  .adminShell{grid-template-columns:1fr}
+  .adminSide{position:fixed;left:-290px;top:0;bottom:0;width:280px;z-index:50;transition:.2s}
+  body.sideOpen .adminSide{left:0}
+  .mobileMenu{display:block}
+  .topSearch{display:none}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .gridMain,.tablesGrid{grid-template-columns:1fr}
+  .paymentBox{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .adminTop{height:auto;padding:14px 16px;gap:10px}
+  .adminTop h1{font-size:20px}
+  .adminContent{padding:16px}
+  .kpis{grid-template-columns:1fr}
+  .actionsGrid{grid-template-columns:1fr}
+  .formGrid{grid-template-columns:1fr}
+}
