@@ -1,0 +1,115 @@
+
+/* ===== Cursapp soporte directiva ===== */
+.supportFab{
+  position:fixed;
+  right:16px;
+  bottom:92px;
+  z-index:10020;
+  border:0;
+  border-radius:999px;
+  padding:14px 16px;
+  background:linear-gradient(135deg,#6d28d9,#8b5cf6);
+  color:#fff;
+  font-weight:950;
+  box-shadow:0 18px 38px rgba(109,40,217,.24);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.supportFab:active{transform:scale(.99)}
+.supportOverlay{
+  position:fixed;
+  inset:0;
+  z-index:10050;
+  background:rgba(15,23,42,.48);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  padding:14px;
+}
+.supportCard{
+  width:min(680px,100%);
+  max-height:88vh;
+  overflow:auto;
+  background:#fff;
+  border-radius:26px;
+  padding:20px;
+  box-shadow:0 28px 80px rgba(15,23,42,.28);
+}
+.supportHead{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+.supportHead h2{margin:0;font-size:21px;letter-spacing:-.4px}
+.supportHead p{margin:6px 0 0;color:#667085;font-weight:750;line-height:1.45}
+.supportClose{
+  border:1px solid rgba(15,23,42,.10);
+  background:#fff;
+  border-radius:14px;
+  padding:10px 12px;
+  font-weight:950;
+}
+.supportGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.supportField{display:grid;gap:6px}
+.supportField label{
+  color:#667085;
+  font-size:12px;
+  font-weight:900;
+}
+.supportField input,.supportField select,.supportField textarea{
+  width:100%;
+  border:1px solid rgba(15,23,42,.12);
+  border-radius:16px;
+  padding:13px 14px;
+  font-weight:750;
+  outline:none;
+  background:#fff;
+}
+.supportField textarea{min-height:110px;resize:vertical}
+.supportWide{grid-column:1/-1}
+.supportMeta{
+  margin:14px 0;
+  padding:12px;
+  border-radius:18px;
+  background:#f8fafc;
+  border:1px solid rgba(15,23,42,.06);
+  color:#475467;
+  font-weight:800;
+  font-size:13px;
+  line-height:1.45;
+}
+.supportActions{
+  display:flex;
+  gap:10px;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  margin-top:16px;
+}
+.supportBtn{
+  border:0;
+  border-radius:16px;
+  padding:13px 16px;
+  font-weight:950;
+  background:#f2f4f7;
+  color:#101828;
+}
+.supportBtn.primary{
+  color:#fff;
+  background:linear-gradient(135deg,#6d28d9,#8b5cf6);
+  box-shadow:0 14px 32px rgba(109,40,217,.20);
+}
+@media(max-width:560px){
+  .supportGrid{grid-template-columns:1fr}
+  .supportFab{
+    right:14px;
+    bottom:84px;
+    padding:13px 14px;
+  }
+}
