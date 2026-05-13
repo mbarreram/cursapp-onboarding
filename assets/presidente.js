@@ -1089,6 +1089,18 @@ function setActive(tab){
     document.addEventListener("click", function(e){
       const btn = e.target && e.target.closest ? e.target.closest("button") : null;
       if(!btn) return;
+      // No interceptar acciones internas de la modal de avisos.
+      // Antes el listener capturaba "📢 Enviar aviso" y reabría la modal en vez de guardar.
+      if(
+        btn.id === "saveAvisoCursoBtn" ||
+        btn.id === "cerrarAvisosConfig" ||
+        btn.hasAttribute("data-del-aviso") ||
+        btn.closest("#cursappAvisosConfigOverlay") ||
+        btn.closest("#cursappAvisosInboxOverlay")
+      ){
+        return;
+      }
+
       const txt = (btn.textContent || "").replace(/\s+/g," ").trim().toLowerCase();
       const isAvisosQuick = txt.includes("avisos") || txt.includes("📢") || txt.includes("✉");
       if(!isAvisosQuick) return;
