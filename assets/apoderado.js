@@ -1713,9 +1713,27 @@ function dedupePaymentsAll(list){
   function cpV5OpenPayment(paymentId){
     try{
       if(typeof go === "function") go("payments");
-      setTimeout(()=>{ try{ const btn = document.querySelector(`[data-pay-id="${CSS.escape(String(paymentId))}"]`) || document.querySelector(".payBtn,[onclick*='pay']"); if(btn) btn.click(); }catch(e){} },120);
-    }catch(e){ try{ if(typeof go === "function") go("payments"); }catch(_){} }
+
+      // Guardar pago seleccionado para que la vista de pagos pueda resaltarlo/abrirlo si aplica.
+      try{ localStorage.setItem("cursapp_selected_payment", String(paymentId||"")); }catch(_){}
+
+      setTimeout(()=>{
+        try{
+          const pid = String(paymentId||"");
+          const escId = (window.CSS && CSS.escape) ? CSS.escape(pid) : pid.replace(/["\\]/g,"\\$&");
+          const btn =
+            document.querySelector(`[data-pay-id="${escId}"]`) ||
+            document.querySelector(`[data-payment-id="${escId}"]`) ||
+            document.querySelector(`[onclick*="${escId}"]`) ||
+            document.querySelector(".payBtn,[onclick*='openPay'],[onclick*='pay']");
+          if(btn) btn.click();
+        }catch(e){}
+      },160);
+    }catch(e){
+      try{ if(typeof go === "function") go("payments"); }catch(_){}
+    }
   }
+  window.cpV5OpenPayment = cpV5OpenPayment;
 
   function cpV5NextDues(){
     const items = cpV5DueItems();
@@ -2597,17 +2615,8 @@ window.payNow = function(id){
   }
 
   // ✅ Router GLOBAL (y expuesto para que onclick del Home no rompa)
-  function normalizeTab(tab){
-    const t = String(tab||"").toLowerCase().trim();
-    if(t === "home" || t === "inicio") return "home";
-    if(t === "pago" || t === "pagos" || t === "payments" || t === "cuotas" || t === "campana" || t === "campaña" || t === "campanas") return "payments";
-    if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
-    return t || "home";
-  }
-
   function go(tab){
-    const norm = normalizeTab(tab);
-    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===norm));
+    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
     setHeader();
 
     if(isActivationPending()){
@@ -2617,9 +2626,9 @@ window.payNow = function(id){
       closeModal();
     }
 
-    if(norm==="home") renderHome();
-    if(norm==="payments") renderPayments();
-    if(norm==="informes") renderInformes();
+    if(tab==="home") renderHome();
+    if(tab==="payments") renderPayments();
+    if(tab==="informes") renderInformes();
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
@@ -2667,16 +2676,6 @@ if(menu && !document.getElementById("resetCourseBtn")){
 
   // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
-
-  // Abrir enlaces desde hash o navegación cross-page
-  setTimeout(()=>{
-    try{
-      const next = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function") ? window.CURSAPP.consumeNextNavTab() : "";
-      const hash = String(location.hash||"").replace("#","");
-      const target = next || hash;
-      if(target) go(target);
-    }catch(e){}
-  }, 0);
 // Boot
 // ✅ Solo sembrar demo si está activado explícitamente
 const DEMO_MODE = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
