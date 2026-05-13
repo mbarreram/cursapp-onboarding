@@ -192,7 +192,7 @@
     const mr = document.getElementById("modalRoot");
     if(!mr){ alert("No se encontró modalRoot."); return; }
     mr.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div class="kTitle">📢 Avisos de ${monthLabel(curYM)}</div>
@@ -220,7 +220,7 @@
     const mr = document.getElementById("modalRoot");
     if(!mr){ alert("No se encontró modalRoot."); return; }
     mr.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div class="kTitle">📚 Avisos anteriores</div>
@@ -249,7 +249,7 @@
     const mr = document.getElementById("modalRoot");
     if(!mr){ alert("No se encontró modalRoot."); return; }
     mr.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div class="kTitle">✉️ Centro de avisos</div>
@@ -304,7 +304,7 @@
     const mr = document.getElementById("modalRoot");
     if(!mr){ alert("No se encontró modalRoot."); return; }
     mr.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;">
+      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div class="card" style="width:min(720px,100%);max-height:85vh;overflow:auto;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
             <div class="kTitle">📢 Configurar avisos</div>
@@ -321,8 +321,8 @@
               <option value="campaign">📢 Campaña</option>
               <option value="urgent">⚠️ Urgente</option>
             </select>
-            <div style="display:flex;justify-content:flex-end;">
-              <button class="btnx primary" onclick="saveAvisoCurso()">Guardar aviso</button>
+            <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+              <button class="btnx primary" style="background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;border:none;padding:14px 18px;border-radius:16px;font-weight:900;" onclick="saveAvisoCurso()">📢 Enviar aviso al curso</button>
             </div>
           </div>
 
@@ -360,6 +360,11 @@
       title, message,
       createdAt: new Date().toISOString()
     });
+
+    try{
+      alert("Aviso enviado al curso ✅");
+    }catch(e){}
+
     openAvisosConfig();
   };
 
