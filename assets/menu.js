@@ -221,17 +221,65 @@ function getRoleFromSession() {
   }
 
   // -------- Navigation helpers --------
+  function normalizeNavTabForRole(tab, role) {
+    var t = String(tab || "").toLowerCase().trim();
+    role = normalizeRole(role || getRoleFromSession());
+
+    if (t === "informe" || t === "reportes" || t === "reporte") t = "informes";
+    if (t === "campaña" || t === "campana" || t === "campaign" || t === "campaigns" || t === "cobros") t = "campanas";
+    if (t === "pago" || t === "pagos" || t === "payments" || t === "cuotas") t = "payments";
+
+    if (role === "presidente") {
+      if (t === "payments" || t === "pagos" || t === "cobros") return "campanas";
+      if (t === "campana") return "campanas";
+      return t;
+    }
+
+    if (role === "tesorero") {
+      if (t === "payments" || t === "pagos" || t === "conciliaciones") return "conciliacion";
+      if (t === "campanas" || t === "campana" || t === "campaigns") return "rendiciones";
+      return t;
+    }
+
+    // Apoderado: campañas/cuotas terminan en Pagos
+    if (t === "campanas" || t === "campana" || t === "campaigns") return "payments";
+    return t;
+  }
+
   function goTab(tab) {
-    var btn = document.querySelector('.navItem[data-tab="' + tab + '"]');
-    if (btn) btn.click();
-    // Fallback: si estamos en perfil.html, redirige al módulo correspondiente y deja el hash para que abra la pestaña
-    if (!btn && /\bperfil\.html\b/.test(location.pathname)) {
-      var s = getSession() || {};
-      var role = s.currentRole || s.role || s.activeRole || 'apoderado';
-      var page = (role === 'tesorero') ? 'tesorero.html' : (role === 'presidente' ? 'presidente.html' : 'apoderado.html');
-      location.href = page + '#' + tab;
+    var s = getSession() || {};
+    var role = normalizeRole(s.currentRole || s.role || s.activeRole || getRoleFromSession());
+    var normalized = normalizeNavTabForRole(tab, role);
+    var btn = document.querySelector('.navItem[data-tab="' + normalized + '"]');
+
+    // Primero usa la navegación oficial de la pantalla
+    if (btn) {
+      btn.click();
       return true;
     }
+
+    // Si no existe botón visible, llama al router global del rol
+    try {
+      if (typeof window.go === "function") {
+        window.go(normalized);
+        return true;
+      }
+    } catch (_) {}
+
+    // Fallback cross-page desde perfil u otras vistas
+    var page = (role === 'tesorero') ? 'tesorero.html' : (role === 'presidente' ? 'presidente.html' : 'apoderado.html');
+    try {
+      if (window.CURSAPP && typeof window.CURSAPP.setNextNavTab === "function") {
+        window.CURSAPP.setNextNavTab(normalized);
+      }
+    } catch (_) {}
+
+    if (!new RegExp(page + "$").test(location.pathname)) {
+      location.href = "/" + page + "#" + normalized;
+      return true;
+    }
+
+    return false;
   }
   function closeMenu() {
     var dd = qs("#menuDropdown");
@@ -461,6 +509,7 @@ function getRoleFromSession() {
 
   // Exponer helpers usados en onclick
   window.goTab = goTab;
+  window.normalizeNavTabForRole = normalizeNavTabForRole;
   window.closeMenu = closeMenu;
   window.logout = logout;
   window.switchToRole = switchToRole;

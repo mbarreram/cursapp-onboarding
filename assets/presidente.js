@@ -959,9 +959,12 @@ function cuotasPendientesTask(id){
   
   function normalizeTab(tab){
     const t = String(tab||"").toLowerCase().trim();
-    // Compat: algunos builds usan 'informe' (singular) en el dataset del menú
+    // Compat: enlaces legacy / menú / botones rápidos
     if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
-    if(t === "campaña" || t === "campana") return "campanas";
+    if(t === "campaña" || t === "campana" || t === "campaign" || t === "campaigns") return "campanas";
+    // Presidente no tiene pestaña pagos; los pagos se gestionan desde Campañas/Deudores.
+    if(t === "pago" || t === "pagos" || t === "payments" || t === "cobros") return "campanas";
+    if(t === "deuda" || t === "deudor") return "deudores";
     return t;
   }
 
@@ -980,6 +983,16 @@ function setActive(tab){
   }
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // Abrir enlaces desde hash o navegación cross-page
+  setTimeout(()=>{
+    try{
+      const next = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function") ? window.CURSAPP.consumeNextNavTab() : "";
+      const hash = String(location.hash||"").replace("#","");
+      const target = next || hash;
+      if(target) go(target);
+    }catch(e){}
+  }, 0);
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.

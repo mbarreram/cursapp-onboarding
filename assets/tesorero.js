@@ -686,17 +686,37 @@
     navItems.forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
   }
 
+  function normalizeTab(tab){
+    const t = String(tab||"").toLowerCase().trim();
+    if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
+    if(t === "pago" || t === "pagos" || t === "payments" || t === "conciliaciones") return "conciliacion";
+    if(t === "campaña" || t === "campana" || t === "campanas" || t === "campaigns") return "rendiciones";
+    if(t === "rendicion" || t === "rendición") return "rendiciones";
+    return t || "home";
+  }
+
   function go(tab, taskId){
-    state.tab = tab;
+    const norm = normalizeTab(tab);
+    state.tab = norm;
     state.taskId = taskId || "";
-    setActiveTab(tab);
-    if(tab==="home") renderHome();
-    if(tab==="rendiciones") renderRendiciones(state.taskId);
-    if(tab==="informes") renderInformes();
-    if(tab==="conciliacion") renderConciliacion();
+    setActiveTab(norm);
+    if(norm==="home") renderHome();
+    if(norm==="rendiciones") renderRendiciones(state.taskId);
+    if(norm==="informes") renderInformes();
+    if(norm==="conciliacion") renderConciliacion();
   }
   window.go = go;
   navItems.forEach(b=> b.onclick = ()=> go(b.dataset.tab));
+
+  // Abrir enlaces desde hash o navegación cross-page
+  setTimeout(()=>{
+    try{
+      const next = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function") ? window.CURSAPP.consumeNextNavTab() : "";
+      const hash = String(location.hash||"").replace("#","");
+      const target = next || hash;
+      if(target) go(target);
+    }catch(e){}
+  }, 0);
 
   // ---------- Render: Home ----------
   function renderHome(){

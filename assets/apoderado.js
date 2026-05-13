@@ -2597,8 +2597,17 @@ window.payNow = function(id){
   }
 
   // ✅ Router GLOBAL (y expuesto para que onclick del Home no rompa)
+  function normalizeTab(tab){
+    const t = String(tab||"").toLowerCase().trim();
+    if(t === "home" || t === "inicio") return "home";
+    if(t === "pago" || t === "pagos" || t === "payments" || t === "cuotas" || t === "campana" || t === "campaña" || t === "campanas") return "payments";
+    if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
+    return t || "home";
+  }
+
   function go(tab){
-    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
+    const norm = normalizeTab(tab);
+    navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===norm));
     setHeader();
 
     if(isActivationPending()){
@@ -2608,9 +2617,9 @@ window.payNow = function(id){
       closeModal();
     }
 
-    if(tab==="home") renderHome();
-    if(tab==="payments") renderPayments();
-    if(tab==="informes") renderInformes();
+    if(norm==="home") renderHome();
+    if(norm==="payments") renderPayments();
+    if(norm==="informes") renderInformes();
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
@@ -2658,6 +2667,16 @@ if(menu && !document.getElementById("resetCourseBtn")){
 
   // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
+
+  // Abrir enlaces desde hash o navegación cross-page
+  setTimeout(()=>{
+    try{
+      const next = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function") ? window.CURSAPP.consumeNextNavTab() : "";
+      const hash = String(location.hash||"").replace("#","");
+      const target = next || hash;
+      if(target) go(target);
+    }catch(e){}
+  }, 0);
 // Boot
 // ✅ Solo sembrar demo si está activado explícitamente
 const DEMO_MODE = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
