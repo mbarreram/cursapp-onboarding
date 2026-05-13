@@ -959,13 +959,11 @@ function cuotasPendientesTask(id){
   
   function normalizeTab(tab){
     const t = String(tab||"").toLowerCase().trim();
-    // Compat: enlaces legacy / menú / botones rápidos
     if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
     if(t === "campaña" || t === "campana" || t === "campaign" || t === "campaigns") return "campanas";
-    // Presidente no tiene pestaña pagos; los pagos se gestionan desde Campañas/Deudores.
     if(t === "pago" || t === "pagos" || t === "payments" || t === "cobros") return "campanas";
     if(t === "deuda" || t === "deudor") return "deudores";
-    return t;
+    return t || "home";
   }
 
 function setActive(tab){
@@ -984,7 +982,6 @@ function setActive(tab){
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
-  // Abrir enlaces desde hash o navegación cross-page
   setTimeout(()=>{
     try{
       const next = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function") ? window.CURSAPP.consumeNextNavTab() : "";
@@ -1083,7 +1080,77 @@ function setActive(tab){
   }
 
   // ----- Home -----
-  function renderHome(){
+  
+  // ----- v1.1 Links/actions repair for President home -----
+  function openAvisosConfigSafe(){
+    try{
+      if(window.CursappAvisos && typeof window.CursappAvisos.openConfig === "function"){
+        return window.CursappAvisos.openConfig();
+      }
+      if(typeof window.openAvisosModal === "function") return window.openAvisosModal();
+      if(typeof window.openAvisos === "function") return window.openAvisos();
+      if(typeof openModal === "function"){
+        return openModal(`
+          <div class="row">
+            <div>
+              <div style="font-weight:950;font-size:18px;">Avisos del curso</div>
+              <div class="muted" style="margin-top:6px;">Configura o revisa avisos automáticos del curso.</div>
+            </div>
+            <button class="btnMini" onclick="closeModal()">Cerrar</button>
+          </div>
+          <div class="card" style="margin-top:12px;">
+            <div style="font-weight:950;">Avisos automáticos activos</div>
+            <div class="muted" style="margin-top:6px;">Pagos registrados, campañas publicadas, informes y vencimientos.</div>
+          </div>
+        `);
+      }
+    }catch(e){}
+    alert("Avisos del curso: módulo disponible desde el panel de configuración.");
+  }
+  window.openAvisosConfig = openAvisosConfigSafe;
+
+  function openCreateCampaignSafe(){
+    try{
+      if(window.Campaigns && typeof window.Campaigns.openCreate === "function") return window.Campaigns.openCreate();
+      if(typeof openCreateCampaign === "function" && openCreateCampaign !== openCreateCampaignSafe) return openCreateCampaign();
+    }catch(e){}
+    go("campanas");
+    setTimeout(()=>{
+      try{
+        if(window.Campaigns && typeof window.Campaigns.openCreate === "function") window.Campaigns.openCreate();
+      }catch(e){}
+    }, 80);
+  }
+  window.openCreateCampaignSafe = openCreateCampaignSafe;
+
+  function handlePresidentAction(action){
+    const a = String(action||"").toLowerCase();
+    if(a === "create-campaign") return openCreateCampaignSafe();
+    if(a === "campanas" || a === "campaigns") return go("campanas");
+    if(a === "deudores") return go("deudores");
+    if(a === "informes") return go("informes");
+    if(a === "avisos") return openAvisosConfigSafe();
+    return false;
+  }
+  window.handlePresidentAction = handlePresidentAction;
+
+  function bindPresidentActionDelegation(){
+    if(window.__cursappPresidentActionsBound) return;
+    window.__cursappPresidentActionsBound = true;
+    document.addEventListener("click", function(ev){
+      const el = ev.target && ev.target.closest ? ev.target.closest("[data-cp-action]") : null;
+      if(!el) return;
+      const action = el.getAttribute("data-cp-action");
+      if(!action) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      handlePresidentAction(action);
+    }, true);
+  }
+  bindPresidentActionDelegation();
+
+
+function renderHome(){
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
     const recTot = collectedCourse();
@@ -1115,20 +1182,20 @@ function setActive(tab){
           <div class="cpV6HeroMeta">${esc(campaignTypeLabel(t))} · vence ${esc(t.dueDate||"—")}</div>
           <div class="cpV6HeroAmount">${clp(pend)}</div>
           <div class="cpV6Progress"><span style="width:${pct}%"></span></div>
-          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('campanas')">Ver campaña</button><button class="cpV6LinkBtn" onclick="go('deudores')">Deudores ›</button></div>
+          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" data-cp-action="campanas">Ver campaña</button><button class="cpV6LinkBtn" data-cp-action="deudores">Deudores ›</button></div>
         </article>`;
-    }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaña</button></div></article>`;
+    }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" data-cp-action="create-campaign">Crear campaña</button></div></article>`;
 
     app.innerHTML = `
       <div class="cpV6Page cpV6President">
-        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="openAvisosConfig()">✉️</button></section>
+        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" data-cp-action="avisos">✉️</button></section>
         <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
         ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rápido</b><span>${esc(heroAlerts.join(" · "))}</span></div>` : ``}
         <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>💰</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>⏳</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>👥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>🏦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
-        <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="go('campanas')">Ver todas las campañas</button></div></details>
-        <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="go('deudores')">Ver deudores</button></div></details>
-        <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="go('informes')">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
-        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="go('campanas')"><span>📌</span>Campañas</button><button onclick="go('deudores')"><span>🧾</span>Deudores</button><button onclick="openAvisosConfig()"><span>📢</span>Avisos</button></div>
+        <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" data-cp-action="campanas">Ver todas las campañas</button></div></details>
+        <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" data-cp-action="deudores">Ver deudores</button></div></details>
+        <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" data-cp-action="informes">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
+        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button data-cp-action="create-campaign"><span>➕</span>Crear campaña</button><button data-cp-action="campanas"><span>📌</span>Campañas</button><button data-cp-action="deudores"><span>🧾</span>Deudores</button><button data-cp-action="avisos"><span>📢</span>Avisos</button></div>
         <div class="cpV6Community"><span>🛡️</span><div><b>Tu curso, tu comunidad</b><small>Gestión clara para tomar mejores decisiones 💜</small></div><button onclick="shareExecutiveWhatsApp()">›</button></div>
       </div>`;
   }
@@ -1289,7 +1356,7 @@ function setActive(tab){
             <div class="muted" style="margin-top:6px;">Muestra deudores sin nombres y pendiente estimado.</div>
           </div>
           <div class="actions">
-            <button class="btnx primary" onclick="openCreateCampaign()">➕ Crear campaña</button>
+            <button class="btnx primary" data-cp-action="create-campaign">➕ Crear campaña</button>
           </div>
         </div>
 
@@ -2550,7 +2617,11 @@ function buildSnapshotPrintHTML(r){
 
 
   // ----- Campaign actions (delegated to campaigns.js) -----
-  window.openCreateCampaign = function () { Campaigns.openCreate(); };
+  window.openCreateCampaign = function () {
+    if(window.Campaigns && typeof Campaigns.openCreate === "function") return Campaigns.openCreate();
+    if(typeof openCreateCampaignSafe === "function") return openCreateCampaignSafe();
+    alert("No se pudo abrir Crear campaña. Falta módulo Campaigns.");
+  };
   window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
   window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
 
