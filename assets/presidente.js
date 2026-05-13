@@ -1079,6 +1079,39 @@ function setActive(tab){
     alert("El módulo de avisos no está disponible. Revisa assets/configavisos.js.");
   }
   window.openAvisosConfig = openAvisosConfigSafe;
+  window.openAvisosConfigSafe = openAvisosConfigSafe;
+
+
+  // Fix definitivo Avisos: delegación robusta para botones del home Presidente.
+  function bindAvisosButtonFallback(){
+    if(window.__cursappAvisosButtonFallbackBound) return;
+    window.__cursappAvisosButtonFallbackBound = true;
+    document.addEventListener("click", function(e){
+      const btn = e.target && e.target.closest ? e.target.closest("button") : null;
+      if(!btn) return;
+      const txt = (btn.textContent || "").replace(/\s+/g," ").trim().toLowerCase();
+      const isAvisosQuick = txt.includes("avisos") || txt.includes("📢") || txt.includes("✉");
+      if(!isAvisosQuick) return;
+      // Solo interceptar si es botón de la página Presidente y no es cerrar/eliminar.
+      if(txt.includes("cerrar") || txt.includes("eliminar")) return;
+      try{
+        if(typeof window.openAvisosCursoSendModal === "function"){
+          e.preventDefault(); e.stopPropagation();
+          window.openAvisosCursoSendModal();
+          return;
+        }
+        if(typeof window.openAvisosConfigSafe === "function"){
+          e.preventDefault(); e.stopPropagation();
+          window.openAvisosConfigSafe();
+          return;
+        }
+      }catch(err){
+        console.warn("Error abriendo avisos", err);
+      }
+    }, true);
+  }
+  bindAvisosButtonFallback();
+
 
 function renderHome(){
     const ym = currentYYYYMM();
@@ -1118,14 +1151,14 @@ function renderHome(){
 
     app.innerHTML = `
       <div class="cpV6Page cpV6President">
-        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="openAvisosConfigSafe()">✉️</button></section>
+        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="window.openAvisosConfigSafe()">✉️</button></section>
         <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
         ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rápido</b><span>${esc(heroAlerts.join(" · "))}</span></div>` : ``}
         <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>💰</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>⏳</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>👥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>🏦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
         <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="go('campanas')">Ver todas las campañas</button></div></details>
         <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="go('deudores')">Ver deudores</button></div></details>
         <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="go('informes')">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
-        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="go('campanas')"><span>📌</span>Campañas</button><button onclick="go('deudores')"><span>🧾</span>Deudores</button><button onclick="openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
+        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="go('campanas')"><span>📌</span>Campañas</button><button onclick="go('deudores')"><span>🧾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
         <div class="cpV6Community"><span>🛡️</span><div><b>Tu curso, tu comunidad</b><small>Gestión clara para tomar mejores decisiones 💜</small></div><button onclick="shareExecutiveWhatsApp()">›</button></div>
       </div>`;
   }
