@@ -143,12 +143,13 @@
 
   window.renderAvisosCursoCard = function(limit=3){
     const all = visibleAvisos();
+    const unread = all.filter(a=>!isAvisoReadByMe(a)).length;
     const avisos = all.slice(0, limit);
     return `
       <details class="cpV6Section" ${all.length ? "open" : ""}>
         <summary>
-          <span><i>📣</i><b>Avisos del curso</b><em>${all.length ? "Información importante" : "Sin avisos nuevos"}</em></span>
-          <strong>${all.length || ""}</strong><u>⌄</u>
+          <span><i>📣</i><b>Avisos del curso</b><em>${unread ? "Información importante" : (all.length ? "Avisos leídos" : "Sin avisos nuevos")}</em></span>
+          <strong>${unread || ""}</strong><u>⌄</u>
         </summary>
         <div class="cpV6SectionBody">
           ${avisos.length ? avisos.map(a=>`
@@ -163,81 +164,35 @@
   };
 
   window.openAvisosInbox = function(){
-    console.log("openAvisosInbox OK");
-
     const old = document.getElementById("cursappAvisosInboxOverlay");
     if(old) old.remove();
-
-    let all = [];
-    try{
-      all = visibleAvisos();
-      if(!Array.isArray(all)) all = [];
-    }catch(err){
-      console.warn("Error visibleAvisos", err);
-      all = [];
-    }
-
+    const all = visibleAvisos();
     const ov = document.createElement("div");
     ov.id = "cursappAvisosInboxOverlay";
     ov.style.cssText = "position:fixed;inset:0;z-index:999998;background:rgba(15,23,42,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px;";
-
-    let listHTML = "";
-    try{
-      listHTML = all.length ? all.map(a=>`
-        <div style="border:1px solid rgba(15,23,42,.08);border-radius:18px;padding:14px;background:#fff;">
-          <div style="font-weight:950;color:#111827;">${tagForType(a.category)} ${esc(a.title)}</div>
-          <div style="margin-top:6px;color:#667085;font-weight:700;line-height:1.35;">${esc(a.message)}</div>
-          <div style="margin-top:8px;font-size:12px;color:#98a2b3;font-weight:800;">${formatAvisoDate(a.createdAt)}</div>
-        </div>
-      `).join("") : `<div style="color:#667085;font-weight:800;background:#f8fafc;border-radius:16px;padding:14px;">Aún no hay avisos.</div>`;
-    }catch(err){
-      console.warn("Error render avisos inbox", err);
-      listHTML = `<div style="color:#b91c1c;font-weight:800;background:#fee2e2;border-radius:16px;padding:14px;">No se pudieron cargar los avisos.</div>`;
-    }
-
     ov.innerHTML = `
       <div style="width:min(720px,100%);max-height:82vh;overflow:auto;background:#fff;border-radius:28px;padding:22px;box-shadow:0 30px 90px rgba(15,23,42,.30);font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Arial,sans-serif;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-          <div>
-            <div style="font-size:24px;font-weight:950;color:#0f172a;">Avisos del curso</div>
-            <div style="color:#667085;margin-top:6px;font-weight:750;">Comunicados enviados por la directiva.</div>
-          </div>
+          <div><div style="font-size:24px;font-weight:950;color:#0f172a;">Avisos del curso</div><div style="color:#667085;margin-top:6px;font-weight:750;">Comunicados enviados por la directiva.</div></div>
           <button id="cerrarAvisosInbox" style="border:1px solid rgba(15,23,42,.08);background:#fff;border-radius:16px;padding:10px 13px;font-weight:950;color:#2563eb;">Cerrar</button>
         </div>
         <div style="margin-top:16px;display:grid;gap:10px;">
-          ${listHTML}
+          ${all.length ? all.map(a=>`
+            <div style="border:1px solid rgba(15,23,42,.08);border-radius:18px;padding:14px;background:#fff;">
+              <div style="font-weight:950;color:#111827;">${tagForType(a.category)} ${esc(a.title)}</div>
+              <div style="margin-top:6px;color:#667085;font-weight:700;line-height:1.35;">${esc(a.message)}</div>
+              <div style="margin-top:8px;font-size:12px;color:#98a2b3;font-weight:800;">${formatAvisoDate(a.createdAt)}</div>
+            </div>
+          `).join("") : `<div style="color:#667085;font-weight:800;background:#f8fafc;border-radius:16px;padding:14px;">Aún no hay avisos.</div>`}
         </div>
       </div>
     `;
-
     document.body.appendChild(ov);
-
-    const cerrar = document.getElementById("cerrarAvisosInbox");
-    if(cerrar) cerrar.onclick = ()=>ov.remove();
-
-    ov.addEventListener("click", e=>{
-      if(e.target===ov) ov.remove();
-    });
-
-    try{
-      all.forEach(a=>{
-        try{
-          if(a && a.id != null) markAvisoRead(a.id);
-        }catch(err){
-          console.warn("Error markAvisoRead", err);
-        }
-      });
-    }catch(err){
-      console.warn("Error avisos loop", err);
-    }
-
-    try{
-      window.renderAvisosBell && window.renderAvisosBell();
-    }catch(err){
-      console.warn("Error render bell", err);
-    }
+    document.getElementById("cerrarAvisosInbox").onclick = ()=>ov.remove();
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.remove(); });
+    all.forEach(a=>markAvisoRead(a.id));
+    window.renderAvisosBell();
   };
-
 
   function openAvisosCursoSendModal(){
     const avisos = loadAvisos().map(normalizeAviso).filter(a=>a.type==="manual").sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
