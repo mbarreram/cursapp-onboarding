@@ -18,6 +18,42 @@ function uid(prefix = "id") {
   const KEY_COURSE_V1 = "cursapp_course_v1";
   const KEY_DIRECTIVA_AP_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
 
+  // Referidos / agentes Cursapp
+  const KEY_REF_AGENTS = "cursapp_ref_agents_v1";
+  const KEY_REF_CONVERSIONS = "cursapp_ref_conversions_v1";
+
+  function normalizeReferralCode(v){
+    return String(v||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+  }
+
+  function loadRefAgents(){
+    const arr = loadJSON(KEY_REF_AGENTS, []);
+    if(Array.isArray(arr) && arr.length) return arr;
+    // Semilla visual/demo para probar el flujo sin panel admin aún.
+    return [
+      { id:"ag_demo_1", name:"Agente Demo", code:"CURSAPP2026", status:"active", commissionPct:10 },
+      { id:"ag_demo_2", name:"Directiva Referente", code:"DIRECTIVA2026", status:"active", commissionPct:8 }
+    ];
+  }
+
+  function findRefAgent(code){
+    const c = normalizeReferralCode(code);
+    if(!c) return null;
+    return loadRefAgents().find(a => normalizeReferralCode(a.code) === c && String(a.status||"active") !== "inactive") || null;
+  }
+
+  function saveReferralConversion(payload){
+    const list = loadJSON(KEY_REF_CONVERSIONS, []);
+    const key = [payload.courseKey, payload.referralCode].join("|");
+    const cleaned = Array.isArray(list) ? list.filter(x => [x.courseKey, x.referralCode].join("|") !== key) : [];
+    cleaned.unshift(Object.assign({
+      id: "ref_"+uid("conv"),
+      status: "pendiente_validacion",
+      createdAt: nowISO()
+    }, payload));
+    saveJSON(KEY_REF_CONVERSIONS, cleaned.slice(0,500));
+  }
+
   const DEBUG = localStorage.getItem("cursapp_onb_debug") === "1";
 
   const QS = new URLSearchParams(location.search);
@@ -284,6 +320,8 @@ function uid(prefix = "id") {
     const dPass2 = d.dPass2 || "";
 
     const inviteCodeInput = (d.inviteCode || "").toUpperCase();         // apoderados
+    const referralCode = normalizeReferralCode(d.referralCode || "");
+    const referralAgent = findRefAgent(referralCode);
     const payChoice = d.payChoice || "now";
 
     const debugLine = DEBUG
@@ -301,7 +339,8 @@ function uid(prefix = "id") {
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
 
     root.innerHTML = `
-      <div class="card" style="margin-top:12px;">
+      <div class="card onbHeroCard" style="margin-top:12px;">
+        <div class="onbHeroLogo">C</div>
         <div style="font-weight:950;font-size:18px;">Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
         <div class="muted" style="margin-top:6px;">Paso ${step} de ${stepsTotal}</div>
 
@@ -335,22 +374,42 @@ function uid(prefix = "id") {
                 </div>
               </div>
             ` : `
-              <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-                <div style="font-weight:950;">Crear curso (solo Presidente)</div>
-                <div class="muted" style="margin-top:6px;">Al finalizar se generará el código de invitación para apoderados.</div>
+              <div class="onbPremiumIntro">
+                <div class="onbIntroIcon">🎓</div>
+                <div>
+                  <div style="font-weight:950;">Crear curso como Presidente</div>
+                  <div class="muted" style="margin-top:6px;">Selecciona región, comuna y colegio. Al finalizar se generará el código de invitación para apoderados.</div>
+                </div>
+              </div>
+
+              <div class="onbFieldGrid">
+                <div>
+                  <label style="font-weight:900;">Región</label>
+                  <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
+                </div>
+                <div>
+                  <label style="font-weight:900;">Comuna</label>
+                  <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
+                </div>
               </div>
 
               <div style="margin-top:12px;">
-                <label style="font-weight:900;">Región</label>
-                <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
-              </div>
-              <div style="margin-top:12px;">
-                <label style="font-weight:900;">Comuna</label>
-                <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
-              </div>
-              <div style="margin-top:12px;">
                 <label style="font-weight:900;">Colegio</label>
                 <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
+              </div>
+
+              <div class="onbReferralBox">
+                <div class="onbReferralHead">
+                  <div class="onbReferralIcon">🏆</div>
+                  <div>
+                    <div style="font-weight:950;">Código de recomendación</div>
+                    <div class="muted" style="margin-top:4px;">Opcional · para agentes o apoderados que recomiendan Cursapp.</div>
+                  </div>
+                </div>
+                <input id="onbReferralCode" placeholder="Ej: CURSAPP2026" value="${escapeHtml(referralCode)}" autocomplete="off" autocapitalize="characters" />
+                <div id="onbReferralStatus" class="muted" style="margin-top:8px;font-weight:800;">
+                  ${referralCode ? (referralAgent ? `Código asociado a: <b>${escapeHtml(referralAgent.name||referralAgent.code)}</b>` : `Código ingresado pendiente de validación`) : `Si no tienes código, puedes continuar normalmente.`}
+                </div>
               </div>
             `)
           }
@@ -638,10 +697,22 @@ function uid(prefix = "id") {
     if(DIRECTIVA_ROLE!=="presidente"){
       btnNext && (btnNext.onclick = ()=> alert("El tesorero lo designa el Presidente desde el menú del curso."));
     }else{
-      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool");
+      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool"), ref = $("onbReferralCode");
       r && (r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); });
       c && (c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); });
       s && (s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); });
+      ref && (ref.oninput = ()=>{
+        d.referralCode = normalizeReferralCode(ref.value);
+        ref.value = d.referralCode;
+        const agent = findRefAgent(d.referralCode);
+        const st = $("onbReferralStatus");
+        if(st){
+          st.innerHTML = d.referralCode
+            ? (agent ? `Código asociado a: <b>${escapeHtml(agent.name||agent.code)}</b>` : `Código ingresado pendiente de validación`)
+            : `Si no tienes código, puedes continuar normalmente.`;
+        }
+        saveDraft(d);
+      });
       d.regionId = ctx.regionId; d.comunaId = ctx.comunaId; d.schoolId = ctx.schoolId;
     }
   }
@@ -868,7 +939,16 @@ if(d.alsoApoderado){
             jornada: d.jornada,
             level: d.level,
             letter: d.letter,
-            year: d.year
+            year: d.year,
+            referralCode: normalizeReferralCode(d.referralCode || ""),
+            referralAgentId: (findRefAgent(d.referralCode || "") || {}).id || "",
+            referralAgentName: (findRefAgent(d.referralCode || "") || {}).name || ""
+          },
+          referral: {
+            code: normalizeReferralCode(d.referralCode || ""),
+            agentId: (findRefAgent(d.referralCode || "") || {}).id || "",
+            agentName: (findRefAgent(d.referralCode || "") || {}).name || "",
+            status: normalizeReferralCode(d.referralCode || "") ? "pendiente_validacion" : ""
           },
           createdAt: (existingCourse && String(existingCourse.courseKey||"")===String(courseKey) && existingCourse.createdAt) ? existingCourse.createdAt : nowISO(),
           createdByRole: "presidente"
@@ -876,6 +956,22 @@ if(d.alsoApoderado){
 
         localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
         setActiveCourseKey(courseKey);
+
+        if(normalizeReferralCode(d.referralCode || "")){
+          const ag = findRefAgent(d.referralCode || "");
+          saveReferralConversion({
+            courseKey,
+            referralCode: normalizeReferralCode(d.referralCode || ""),
+            agentId: ag ? ag.id : "",
+            agentName: ag ? ag.name : "",
+            status: "pendiente_validacion",
+            schoolName: school ? school.name : "",
+            regionName: region ? region.name : "",
+            comunaName: comuna ? comuna.name : "",
+            courseLabel: `${d.level}${d.letter} ${d.year} · ${d.jornada}`,
+            createdByEmail: String(d.pEmail||"").trim().toLowerCase()
+          });
+        }
 
         // Usuario Presidente (correo es usuario de entrada)
         const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
