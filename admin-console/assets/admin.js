@@ -409,6 +409,24 @@
         </section>
       </div>
 
+      <div class="refTierGrid">
+        <div class="refTierCard">
+          <span>Básica</span>
+          <strong>60%</strong>
+          <p>$350 por apoderado activado</p>
+        </div>
+        <div class="refTierCard">
+          <span>Mejorada</span>
+          <strong>80%</strong>
+          <p>$450 por apoderado activado</p>
+        </div>
+        <div class="refTierCard premium">
+          <span>Premium</span>
+          <strong>100%</strong>
+          <p>$550 por apoderado activado</p>
+        </div>
+      </div>
+
       <div class="tablesGrid">
         <section class="panel">
           <div class="panelHead"><h2>Últimos movimientos en la plataforma</h2><button onclick="Admin.go('logs')">Ver todos</button></div>
@@ -808,12 +826,7 @@
     const month = new Date().toISOString().slice(0,7);
     const monthConvs = convs.filter(c=>String(c.createdAt||"").slice(0,7)===month);
     const valid = convs.filter(c=>["validado","pagable","pagado","activado"].includes(String(c.status||"").toLowerCase()));
-    const estimated = valid.filter(c=>referralCourseProgress(c).eligible).reduce((sum,c)=>{
-      const ag = agents.find(a=>a.id===c.agentId) || agentByCode(c.referralCode) || {};
-      const pct = Number(ag.commissionPct || 0);
-      const base = Number(c.baseCommission || c.activationAmount || 9900);
-      return sum + Math.round(base * pct / 100);
-    },0);
+    const estimated = valid.reduce((sum,c)=> sum + referralCommissionTier(c).total, 0);
     return {agents, convs, monthConvs, valid, estimated};
   }
 
@@ -826,10 +839,7 @@
       const valid = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length;
       const pct = cursos ? Math.round(valid/cursos*100) : 0;
       const eligibleRows = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase()) && referralCourseProgress(r).eligible);
-      const commission = eligibleRows.reduce((sum,r)=>{
-        const base = Number(r.baseCommission || r.activationAmount || 9900);
-        return sum + Math.round(base * Number(a.commissionPct||0) / 100);
-      },0);
+      const commission = eligibleRows.reduce((sum,r)=> sum + referralCommissionTier(r).total, 0);
       const avgProgress = rows.length ? Math.round(rows.reduce((sum,r)=>sum + referralCourseProgress(r).pct,0) / rows.length) : 0;
       return Object.assign({}, a, {__colegios:colegios,__cursos:cursos,__valid:valid,__pct:pct,__progress:avgProgress,__eligible:eligibleRows.length,__commission:commission});
     }).sort((a,b)=>b.__cursos-a.__cursos || String(a.name).localeCompare(String(b.name)));
@@ -913,6 +923,75 @@
     };
   }
 
+  function referralCommissionTier(r){
+    const p = referralCourseProgress(r);
+    const activated = Number(p.activatedParents || 0);
+
+    if(p.pct >= 100){
+      return {
+        key:"premium",
+        label:"Premium 100%",
+        shortLabel:"Premium",
+        cls:"green",
+        threshold:100,
+        amountPerParent:550,
+        activatedParents:activated,
+        total: activated * 550
+      };
+    }
+
+    if(p.pct >= 80){
+      return {
+        key:"mejorada",
+        label:"Mejorada 80%",
+        shortLabel:"Mejorada",
+        cls:"purple",
+        threshold:80,
+        amountPerParent:450,
+        activatedParents:activated,
+        total: activated * 450
+      };
+    }
+
+    if(p.pct >= 60){
+      return {
+        key:"basica",
+        label:"Básica 60%",
+        shortLabel:"Básica",
+        cls:"orange",
+        threshold:60,
+        amountPerParent:350,
+        activatedParents:activated,
+        total: activated * 350
+      };
+    }
+
+    return {
+      key:"sin_comision",
+      label:"Sin comisión",
+      shortLabel:"Sin comisión",
+      cls:"gray",
+      threshold:60,
+      amountPerParent:0,
+      activatedParents:activated,
+      total:0
+    };
+  }
+
+  function commissionTierBadge(r){
+    const t = referralCommissionTier(r);
+    return `<span class="badge ${t.cls}">${esc(t.label)}</span>`;
+  }
+
+  function commissionTierExplain(r){
+    const t = referralCommissionTier(r);
+    if(t.key === "sin_comision"){
+      const p = referralCourseProgress(r);
+      return `Faltan ${p.missing} activaciones para comisión básica`;
+    }
+    return `${clp(t.amountPerParent)} x ${t.activatedParents} apoderados activados`;
+  }
+
   function progressBarHtml(pct){
     const safe = Math.max(0, Math.min(100, Number(pct||0)));
     return `<div class="refProgress"><span style="width:${safe}%"></span></div><small>${safe}% avance comercial</small>`;
@@ -937,7 +1016,7 @@
         ${kpi("📅","Cursos este mes",s.monthConvs.length,"conversiones del mes")}
         ${kpi("🏫","Colegios captados",new Set(convs.map(c=>c.schoolName).filter(Boolean)).size,"por código")}
         ${kpi("✅","Meta 60% cumplida",convs.filter(c=>referralCourseProgress(c).eligible).length,"aptos para comisión")}
-        ${kpi("💰","Comisión estimada",clp(s.estimated),"solo cursos ≥60%")}
+        ${kpi("💰","Comisión estimada",clp(s.estimated),"tramos $350/$450/$550")}
         ${kpi("⏳","Pendientes",convs.filter(c=>!referralCourseProgress(c).eligible).length,"faltan apoderados")}
       </div>
 
@@ -946,7 +1025,7 @@
           <span class="badge purple">Nuevo módulo comercial</span>
           <h2>Agentes de venta Cursapp</h2>
           <p>Entrega un código a apoderados o directivas que recomienden la app. Cada curso registrado con ese código queda trazado para validar activación y comisión.</p>
-        <div class="refRule">Regla de pago: la comisión se habilita cuando el curso captado alcanza al menos <b>60%</b> de avance comercial: directiva registrada + apoderados activados/pagados.</div>
+        <div class="refRule">Regla de pago: comisión por apoderado activado. Básica 60% = <b>$350</b>, Mejorada 80% = <b>$450</b>, Premium 100% = <b>$550</b>. La directiva cuenta para el avance, pero la comisión se calcula sobre apoderados pagados/activados.</div>
         </div>
         <button class="adminBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
       </div>
@@ -956,7 +1035,7 @@
           <div class="panelHead"><h2>Ranking de agentes</h2><button onclick="Admin.openAgentModal()">Crear agente</button></div>
           <div class="tableWrap">
             <table>
-              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Avance inscripción</th><th>Aptos</th><th>Comisión</th><th>Acción</th></tr></thead>
+              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Avance</th><th>Aptos</th><th>Comisión estimada</th><th>Acción</th></tr></thead>
               <tbody>${rows.map(a=>`
                 <tr>
                   <td><b>${esc(a.name)}</b><br><small>${esc(a.email||"")}</small></td>
@@ -995,7 +1074,7 @@
   }
 
   function referralsTable(rows){
-    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base comisión</th><th>Avance</th><th>Comisión</th><th>Acciones</th></tr></thead><tbody>
+    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base comisión</th><th>Avance</th><th>Tramo / monto</th><th>Acciones</th></tr></thead><tbody>
       ${rows.map(r=>`<tr>
         <td>${fmtDate(r.createdAt)}</td>
         <td><span class="badge purple">${esc(r.referralCode||"—")}</span></td>
@@ -1004,7 +1083,7 @@
         <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
         <td><b>${referralCourseProgress(r).commercialCount}/${referralCourseProgress(r).target}</b><br><small>Dir. ${referralCourseProgress(r).directiva} · Apod. ${referralCourseProgress(r).activatedParents}</small></td>
         <td>${progressBarHtml(referralCourseProgress(r).pct)}</td>
-        <td>${referralEligibilityBadge(r)}<br>${statusRefBadge(r.status)}</td>
+        <td>${commissionTierBadge(r)}<br><small>${commissionTierExplain(r)} · Total ${clp(referralCommissionTier(r).total)}</small><br>${statusRefBadge(r.status)}</td>
         <td><button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button></td>
       </tr>`).join("") || `<tr><td colspan="9">Sin referidos registrados.</td></tr>`}
     </tbody></table></div>`;
@@ -1020,7 +1099,7 @@
         <div><label>Correo</label><input id="agEmail" value="${esc(a.email||"")}" placeholder="agente@correo.cl"></div>
         <div><label>Teléfono</label><input id="agPhone" value="${esc(a.phone||"")}" placeholder="+56 9..."></div>
         <div><label>Código</label><input id="agCode" value="${esc(a.code||"")}" placeholder="MATIAS2026" style="text-transform:uppercase"></div>
-        <div><label>% Comisión</label><input id="agPct" type="number" value="${esc(a.commissionPct||10)}"></div>
+        <div><label>Modelo comisión</label><input disabled value="60%=$350 · 80%=$450 · 100%=$550"></div>
         <div><label>Estado</label><select id="agStatus"><option value="active" ${String(a.status||"active")==="active"?"selected":""}>Activo</option><option value="inactive" ${String(a.status||"active")==="inactive"?"selected":""}>Inactivo</option></select></div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
@@ -1042,13 +1121,13 @@
         <div><label>Avance comercial</label><b>${p.commercialCount}</b><span>directiva + apoderados activados</span></div>
         <div><label>Meta curso</label><b>${p.target}</b><span>alumnos/apoderados estimados</span></div>
         <div><label>Avance</label><b>${p.pct}%</b><span>inscripción</span></div>
-        <div><label>Comisión</label><b>${p.eligible ? "Apta" : "Bloqueada"}</b><span>regla 60%</span></div>
+        <div><label>Comisión</label><b>${referralCommissionTier(r).shortLabel}</b><span>${clp(referralCommissionTier(r).total)}</span></div>
       </div>
       <div class="formGrid">
         <div><label>Meta total de apoderados del curso</label><input id="refTargetParents" type="number" min="1" value="${p.target}"></div>
         <div><label>Estado comercial</label><select id="refStatusGoal"><option value="pendiente_validacion" ${String(r.status)==="pendiente_validacion"?"selected":""}>Pendiente</option><option value="validado" ${String(r.status)==="validado"?"selected":""}>Validado</option><option value="pagable" ${String(r.status)==="pagable"?"selected":""}>Pagable</option><option value="pagado" ${String(r.status)==="pagado"?"selected":""}>Pagado</option><option value="rechazado" ${String(r.status)==="rechazado"?"selected":""}>Rechazado</option></select></div>
       </div>
-      <p class="muted" style="margin-top:12px">La comisión solo se considera cuando el avance comercial es igual o superior a 60%. La directiva cuenta sin pago; los apoderados cuentan solo cuando están activados/pagados.</p>
+      <p class="muted" style="margin-top:12px">La comisión se calcula solo sobre apoderados activados/pagados: 60% = $350, 80% = $450, 100% = $550 por apoderado. La directiva suma al avance comercial, pero no genera pago de incorporación.</p>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
         <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
         <button class="adminBtn" onclick="Admin.saveReferralGoal('${esc(id)}')">Guardar meta</button>
@@ -1359,7 +1438,7 @@
         email: ($("#agEmail")?.value||"").trim().toLowerCase(),
         phone: ($("#agPhone")?.value||"").trim(),
         code,
-        commissionPct: Number($("#agPct")?.value || 0),
+        commissionPct: 0,
         status: $("#agStatus")?.value || "active",
         createdAt: agentId ? (agents.find(a=>a.id===agentId)||{}).createdAt || now() : now(),
         updatedAt: now()
