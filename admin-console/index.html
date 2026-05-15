@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Cursapp · Admin Console</title>
+  <link rel="stylesheet" href="assets/admin.css?v=3"/>
+</head>
+<body>
+  <div class="adminShell">
+    <aside class="adminSide">
+      <div class="sideBrand">
+        <div class="sideLogo">C</div>
+        <div>
+          <strong>Cursapp</strong>
+          <span>Admin Console</span>
+        </div>
+      </div>
+
+      <nav class="sideNav" aria-label="Panel administrador">
+        <button class="sideItem active" data-tab="dashboard">🏠 Dashboard</button>
+        <button class="sideItem" data-tab="logs">🧾 Logs de movimientos</button>
+        <button class="sideItem" data-tab="tickets">💬 Tickets soporte</button>
+        <button class="sideItem" data-tab="pagos">💳 Pagos</button>
+        <button class="sideItem" data-tab="comunidad">👥 Comunidad</button>
+        <button class="sideItem" data-tab="colegios">🏫 Colegios y cursos</button>
+        <button class="sideItem" data-tab="campanas">📌 Campañas</button>
+        <button class="sideItem" data-tab="referidos">🏆 Agentes / Referidos</button>
+        <button class="sideItem" data-tab="auditoria">🛡️ Auditoría</button>
+      </nav>
+
+      <div class="sideHelp">
+        <strong>¿Necesitas ayuda?</strong>
+        <p>Panel interno operacional de Cursapp.</p>
+        <button onclick="Admin.go('tickets')">Ir a soporte ›</button>
+      </div>
+
+      <div class="sideUser">
+        <div class="avatar">C</div>
+        <div>
+          <strong>Admin Cursapp</strong>
+          <span>Super Administrador</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="adminMain">
+      <header class="adminTop">
+        <button class="mobileMenu" id="mobileMenu">☰</button>
+        <div>
+          <h1 id="viewTitle">Hola, Admin 👋</h1>
+          <p id="viewSub">Bienvenido al panel de administración de Cursapp</p>
+        </div>
+
+        <div class="topSearch">
+          <span>⌕</span>
+          <input id="globalSearch" placeholder="Buscar colegios, cursos, usuarios, tickets..." />
+        </div>
+
+        <button class="topIcon">🔔<span id="notifBadge"></span></button>
+        <button class="topIcon" onclick="Admin.logout()">Salir</button>
+      </header>
+
+      <section id="adminApp" class="adminContent"></section>
+    </main>
+  </div>
+
+  <div id="adminModal"></div>
+
+  <script src="assets/admin.js?v=3"></script>
+</body>
+</html>
