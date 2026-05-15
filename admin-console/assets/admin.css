@@ -263,3 +263,37 @@ textarea{min-height:92px}
   color:#667085;
   font-weight:800;
 }
+
+
+/* ===== Agentes / Referidos v3 ===== */
+.refHero{
+  margin-top:20px;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(139,92,246,.24), transparent 28%),
+    linear-gradient(135deg,#ffffff,#faf5ff);
+  border:1px solid rgba(109,40,217,.13);
+  border-radius:24px;
+  padding:24px;
+  box-shadow:var(--shadow);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+}
+.refHero h2{
+  margin:12px 0 8px;
+  font-size:28px;
+  letter-spacing:-.04em;
+}
+.refHero p{
+  margin:0;
+  color:var(--muted);
+  font-weight:750;
+  line-height:1.5;
+  max-width:760px;
+}
+@media(max-width:760px){
+  .refHero{
+    display:grid;
+  }
+}

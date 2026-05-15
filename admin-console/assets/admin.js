@@ -752,6 +752,237 @@
   }
 
 
+
+  // ===== Agentes / Referidos v1 =====
+  const KEY_REF_AGENTS = "cursapp_ref_agents_v1";
+  const KEY_REF_CONVERSIONS = "cursapp_ref_conversions_v1";
+
+  function normalizeRefCode(v){
+    return String(v||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
+  }
+
+  function refAgents(){
+    const arr = load(KEY_REF_AGENTS, []);
+    if(Array.isArray(arr) && arr.length) return arr;
+    const seed = [
+      { id:"ag_demo_1", name:"Agente Demo", email:"agente@demo.cl", phone:"+56 9 0000 0000", code:"CURSAPP2026", commissionPct:10, status:"active", createdAt:now() },
+      { id:"ag_demo_2", name:"Directiva Referente", email:"directiva@demo.cl", phone:"+56 9 1111 1111", code:"DIRECTIVA2026", commissionPct:8, status:"active", createdAt:now() }
+    ];
+    save(KEY_REF_AGENTS, seed);
+    return seed;
+  }
+
+  function saveRefAgents(arr){ save(KEY_REF_AGENTS, arr || []); }
+
+  function refConversions(){
+    const arr = load(KEY_REF_CONVERSIONS, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function saveRefConversions(arr){ save(KEY_REF_CONVERSIONS, arr || []); }
+
+  function agentByCode(code){
+    const c = normalizeRefCode(code);
+    return refAgents().find(a=>normalizeRefCode(a.code)===c) || null;
+  }
+
+  function referralConversionsMerged(){
+    const convs = refConversions().slice();
+
+    // Backfill desde perfiles/cursos que ya traigan referral en course.
+    profiles().forEach(p=>{
+      const c = p.course || {};
+      const code = normalizeRefCode(c.referralCode || p.referralCode || "");
+      if(!code || convs.some(x=>String(x.courseKey)===String(p.courseKey) && normalizeRefCode(x.referralCode)===code)) return;
+      const ag = agentByCode(code);
+      convs.push({
+        id:"ref_backfill_"+String(p.profileId||p.userId||p.courseKey||"").replace(/[^a-zA-Z0-9_-]/g,"_"),
+        courseKey:p.courseKey || "",
+        referralCode:code,
+        agentId: ag ? ag.id : "",
+        agentName: ag ? ag.name : "",
+        status:"pendiente_validacion",
+        schoolName:getSchoolName(c),
+        regionName:getRegionName(c),
+        comunaName:c.comunaName || c.comuna || "",
+        courseLabel:getCourseName(c) + (getJornada(c) ? " · "+getJornada(c) : ""),
+        createdByEmail:String(p.email || p.userEmail || p.userId || "").toLowerCase(),
+        createdAt:p.createdAt || now()
+      });
+    });
+
+    return convs.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  }
+
+  function refStats(){
+    const agents = refAgents();
+    const convs = referralConversionsMerged();
+    const month = new Date().toISOString().slice(0,7);
+    const monthConvs = convs.filter(c=>String(c.createdAt||"").slice(0,7)===month);
+    const valid = convs.filter(c=>["validado","pagable","pagado","activado"].includes(String(c.status||"").toLowerCase()));
+    const payable = convs.filter(c=>String(c.status||"").toLowerCase()==="pagable");
+    const estimated = valid.reduce((sum,c)=>{
+      const ag = agents.find(a=>a.id===c.agentId) || agentByCode(c.referralCode) || {};
+      const pct = Number(ag.commissionPct || 0);
+      const base = Number(c.baseCommission || c.activationAmount || 9900);
+      return sum + Math.round(base * pct / 100);
+    },0);
+    return {agents, convs, monthConvs, valid, payable, estimated};
+  }
+
+  function agentRows(){
+    const {agents, convs} = refStats();
+    return agents.map(a=>{
+      const rows = convs.filter(c=>c.agentId===a.id || normalizeRefCode(c.referralCode)===normalizeRefCode(a.code));
+      const colegios = new Set(rows.map(r=>r.schoolName).filter(Boolean)).size;
+      const cursos = rows.length;
+      const valid = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length;
+      const pct = cursos ? Math.round(valid/cursos*100) : 0;
+      const commission = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).reduce((sum,r)=>{
+        const base = Number(r.baseCommission || r.activationAmount || 9900);
+        return sum + Math.round(base * Number(a.commissionPct||0) / 100);
+      },0);
+      return Object.assign({}, a, {__colegios:colegios,__cursos:cursos,__valid:valid,__pct:pct,__commission:commission});
+    }).sort((a,b)=>b.__cursos-a.__cursos || String(a.name).localeCompare(String(b.name)));
+  }
+
+  function statusRefBadge(st){
+    const s = String(st||"pendiente_validacion").toLowerCase();
+    const cls = s==="pagado" ? "green" : (s==="pagable" || s==="validado" || s==="activado" ? "purple" : (s==="rechazado" ? "red" : "orange"));
+    const label = ({
+      pendiente_validacion:"Pendiente",
+      validado:"Validado",
+      activado:"Activado",
+      pagable:"Pagable",
+      pagado:"Pagado",
+      rechazado:"Rechazado"
+    })[s] || st || "Pendiente";
+    return `<span class="badge ${cls}">${esc(label)}</span>`;
+  }
+
+  function renderReferidos(){
+    setTitle("Agentes / Referidos", "Seguimiento de códigos de recomendación, cursos captados y comisiones");
+    const s = refStats();
+    const rows = agentRows();
+    const convs = referralConversionsMerged();
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("🏆","Agentes activos",s.agents.filter(a=>String(a.status||"active")==="active").length,"programa referidos")}
+        ${kpi("📅","Cursos este mes",s.monthConvs.length,"conversiones del mes")}
+        ${kpi("🏫","Colegios captados",new Set(convs.map(c=>c.schoolName).filter(Boolean)).size,"por código")}
+        ${kpi("✅","Cursos validados",s.valid.length,"comisión habilitada")}
+        ${kpi("💰","Comisión estimada",clp(s.estimated),"según % agente")}
+        ${kpi("⏳","Pendientes",convs.filter(c=>String(c.status||"").toLowerCase().includes("pendiente")).length,"por validar")}
+      </div>
+
+      <div class="refHero">
+        <div>
+          <span class="badge purple">Nuevo módulo comercial</span>
+          <h2>Agentes de venta Cursapp</h2>
+          <p>Entrega un código a apoderados o directivas que recomienden la app. Cada curso registrado con ese código queda trazado para validar activación y comisión.</p>
+        </div>
+        <button class="adminBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
+      </div>
+
+      <div class="tablesGrid">
+        <section class="panel">
+          <div class="panelHead"><h2>Ranking de agentes</h2><button onclick="Admin.openAgentModal()">Crear agente</button></div>
+          <div class="tableWrap">
+            <table>
+              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Conv.</th><th>Comisión</th><th>Acción</th></tr></thead>
+              <tbody>${rows.map(a=>`
+                <tr>
+                  <td><b>${esc(a.name)}</b><br><small>${esc(a.email||"")}</small></td>
+                  <td><span class="badge purple">${esc(a.code)}</span></td>
+                  <td>${a.__colegios}</td>
+                  <td>${a.__cursos}</td>
+                  <td>${a.__pct}%</td>
+                  <td>${clp(a.__commission)}</td>
+                  <td><button class="adminBtn ghost" onclick="Admin.openAgentDetail('${esc(a.id)}')">Ver</button></td>
+                </tr>
+              `).join("") || `<tr><td colspan="7">Sin agentes.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead"><h2>Conversiones recientes</h2><span class="badge purple">${convs.length}</span></div>
+          <div class="list">
+            ${convs.slice(0,8).map(c=>`
+              <div class="row">
+                <div class="rowIcon">🏫</div>
+                <div><b>${esc(c.schoolName||"Colegio")}</b><p>${esc(c.courseLabel||c.courseKey||"Curso")} · código ${esc(c.referralCode||"—")} · ${fmtDate(c.createdAt)}</p></div>
+                ${statusRefBadge(c.status)}
+              </div>
+            `).join("") || emptyRow("Sin conversiones")}
+          </div>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="panelHead"><h2>Detalle de referidos</h2><button onclick="Admin.exportReferrals()">Exportar CSV</button></div>
+        ${referralsTable(convs)}
+      </section>
+    `;
+  }
+
+  function referralsTable(rows){
+    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Región</th><th>Curso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr>
+        <td>${fmtDate(r.createdAt)}</td>
+        <td><span class="badge purple">${esc(r.referralCode||"—")}</span></td>
+        <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente")}</td>
+        <td>${esc(r.schoolName||"—")}</td>
+        <td>${esc(r.regionName||"—")}</td>
+        <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
+        <td>${statusRefBadge(r.status)}</td>
+        <td>
+          <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button>
+          <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button>
+        </td>
+      </tr>`).join("") || `<tr><td colspan="8">Sin referidos registrados.</td></tr>`}
+    </tbody></table></div>`;
+  }
+
+  function openAgentModal(agentId){
+    const a = refAgents().find(x=>x.id===agentId) || {};
+    openModal(`
+      <h2>${agentId ? "Editar agente" : "Crear agente"}</h2>
+      <p class="muted">El código se usará en el onboarding del presidente para asociar cursos recomendados.</p>
+      <div class="formGrid">
+        <div><label>Nombre</label><input id="agName" value="${esc(a.name||"")}" placeholder="Ej: Matías Rojas"></div>
+        <div><label>Correo</label><input id="agEmail" value="${esc(a.email||"")}" placeholder="agente@correo.cl"></div>
+        <div><label>Teléfono</label><input id="agPhone" value="${esc(a.phone||"")}" placeholder="+56 9..."></div>
+        <div><label>Código</label><input id="agCode" value="${esc(a.code||"")}" placeholder="MATIAS2026" style="text-transform:uppercase"></div>
+        <div><label>% Comisión</label><input id="agPct" type="number" value="${esc(a.commissionPct||10)}"></div>
+        <div><label>Estado</label><select id="agStatus"><option value="active" ${String(a.status||"active")==="active"?"selected":""}>Activo</option><option value="inactive" ${String(a.status||"active")==="inactive"?"selected":""}>Inactivo</option></select></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveAgent('${esc(agentId||"")}')">Guardar agente</button>
+      </div>
+    `);
+  }
+
+  function openAgentDetail(agentId){
+    const a = refAgents().find(x=>x.id===agentId);
+    if(!a) return;
+    const rows = referralConversionsMerged().filter(c=>c.agentId===a.id || normalizeRefCode(c.referralCode)===normalizeRefCode(a.code));
+    openModal(`
+      <h2>${esc(a.name)}</h2>
+      <p class="muted">Código <b>${esc(a.code)}</b> · Comisión ${Number(a.commissionPct||0)}%</p>
+      <div class="ticketMetaGrid">
+        <div><label>Colegios</label><b>${new Set(rows.map(r=>r.schoolName).filter(Boolean)).size}</b><span>Captados</span></div>
+        <div><label>Cursos</label><b>${rows.length}</b><span>Registrados</span></div>
+        <div><label>Validados</label><b>${rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length}</b><span>Habilitados</span></div>
+        <div><label>Comisión</label><b>${clp(rows.reduce((sum,r)=>sum + Math.round(Number(r.baseCommission||r.activationAmount||9900)*Number(a.commissionPct||0)/100),0))}</b><span>Estimado</span></div>
+      </div>
+      ${referralsTable(rows)}
+      <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cerrar</button></div>
+    `);
+  }
+
+
   function renderLogs(){
     setTitle("Logs de movimientos", "Trazabilidad operacional de la app");
     const logs = load(ADMIN_LOGS, []);
@@ -850,6 +1081,7 @@
       if(tab==="comunidad") renderComunidad();
       if(tab==="colegios") renderColegios();
       if(tab==="campanas") renderCampanas();
+      if(tab==="referidos") renderReferidos();
       if(tab==="auditoria") renderAuditoria();
     },
     logout(){
@@ -1024,6 +1256,65 @@
       log("admin_action","Inspeccionó curso",courseKey);
     },
     addAuditDemo(){ log("admin_audit","Revisión manual de auditoría","Admin Console",{reason:"Control preventivo"}); renderAuditoria(); },
+
+    openAgentModal,
+    openAgentDetail,
+    saveAgent(agentId){
+      const agents = refAgents();
+      const code = normalizeRefCode($("#agCode")?.value || "");
+      if(!($("#agName")?.value||"").trim() || !code){
+        alert("Completa nombre y código.");
+        return;
+      }
+      const duplicate = agents.find(a=>normalizeRefCode(a.code)===code && String(a.id)!==String(agentId||""));
+      if(duplicate){ alert("Ese código ya existe."); return; }
+      const obj = {
+        id: agentId || ("ag_"+Date.now().toString(16)),
+        name: ($("#agName")?.value||"").trim(),
+        email: ($("#agEmail")?.value||"").trim().toLowerCase(),
+        phone: ($("#agPhone")?.value||"").trim(),
+        code,
+        commissionPct: Number($("#agPct")?.value || 0),
+        status: $("#agStatus")?.value || "active",
+        createdAt: agentId ? (agents.find(a=>a.id===agentId)||{}).createdAt || now() : now(),
+        updatedAt: now()
+      };
+      const next = agents.filter(a=>String(a.id)!==String(obj.id));
+      next.unshift(obj);
+      saveRefAgents(next);
+      log("ref_agent_save", agentId ? "Editó agente referido" : "Creó agente referido", obj.code);
+      closeModal();
+      renderReferidos();
+    },
+    updateReferralStatus(id,status){
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+        saveRefConversions(arr);
+      }else{
+        // Si viene de backfill, persistir copia con nuevo estado.
+        const found = referralConversionsMerged().find(x=>String(x.id)===String(id));
+        if(found){
+          const copy = Object.assign({}, found, {status, updatedAt:now()});
+          saveRefConversions([copy].concat(arr));
+        }
+      }
+      log("referral_status", "Actualizó estado de referido", id, {status});
+      renderReferidos();
+    },
+    exportReferrals(){
+      const rows = referralConversionsMerged();
+      const csv = ["fecha,codigo,agente,colegio,region,curso,estado"].concat(rows.map(r=>[
+        r.createdAt,r.referralCode,r.agentName,r.schoolName,r.regionName,r.courseLabel,r.status
+      ].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(","))).join("\n");
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "cursapp_referidos.csv"; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    },
     closeModal
   };
 
