@@ -1020,15 +1020,34 @@
         ${kpi("⏳","Pendientes",convs.filter(c=>!referralCourseProgress(c).eligible).length,"faltan apoderados")}
       </div>
 
-      <div class="refHero">
-        <div>
-          <span class="badge purple">Nuevo módulo comercial</span>
-          <h2>Agentes de venta Cursapp</h2>
-          <p>Entrega un código a apoderados o directivas que recomienden la app. Cada curso registrado con ese código queda trazado para validar activación y comisión.</p>
-        <div class="refRule">Regla de pago: comisión por apoderado activado. Básica 60% = <b>$350</b>, Mejorada 80% = <b>$450</b>, Premium 100% = <b>$550</b>. La directiva cuenta para el avance, pero la comisión se calcula sobre apoderados pagados/activados.</div>
+      <section class="refRulesCard">
+        <div class="refRulesHead">
+          <div class="refRulesIcon">ℹ️</div>
+          <div>
+            <h2>Reglas de comisiones</h2>
+            <p>La directiva cuenta para el avance comercial, pero solo los apoderados activados/pagados generan comisión.</p>
+          </div>
         </div>
-        <button class="adminBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
-      </div>
+
+        <div class="refTierTable" aria-label="Reglas de comisiones por tramo">
+          <div class="refTierCell refTierLabel">Nivel de logro</div>
+          <div class="refTierCell"><b>Básica</b><span>60%</span></div>
+          <div class="refTierCell"><b>Mejorada</b><span>80%</span></div>
+          <div class="refTierCell"><b>Premium</b><span>100%</span></div>
+
+          <div class="refTierCell refTierLabel">Comisión por apoderado activado</div>
+          <div class="refTierCell refMoney">$350</div>
+          <div class="refTierCell refMoney">$450</div>
+          <div class="refTierCell refMoney">$550</div>
+
+          <div class="refTierCell refTierLabel">Descripción</div>
+          <div class="refTierCell refDesc">Alcanza el 60% del total estimado del curso.</div>
+          <div class="refTierCell refDesc">Alcanza el 80% del total estimado del curso.</div>
+          <div class="refTierCell refDesc">Alcanza el 100% del total estimado del curso.</div>
+        </div>
+
+        <button class="adminBtn refCreateBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
+      </section>
 
       <div class="tablesGrid">
         <section class="panel">
