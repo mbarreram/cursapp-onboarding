@@ -991,6 +991,12 @@ if(d.alsoApoderado){
             estimatedStudentsRange: estimatedStudentsRangeLabel(d.estimatedStudents),
             commissionThresholdPct: 60,
             commissionExpiresAt: addDaysISO(90),
+            incorporationFeePerParent: 990,
+            commissionTiers: [
+              { key:"basica", thresholdPct:60, amountPerActivatedParent:350 },
+              { key:"mejorada", thresholdPct:80, amountPerActivatedParent:450 },
+              { key:"premium", thresholdPct:100, amountPerActivatedParent:550 }
+            ],
             basis: "directiva_registrada_mas_apoderados_activados"
           },
           referral: {
@@ -1022,6 +1028,12 @@ if(d.alsoApoderado){
             expectedParents: Number(d.estimatedStudents || 0),
             commissionThresholdPct: 60,
             commissionExpiresAt: addDaysISO(90),
+            incorporationFeePerParent: 990,
+            commissionTiers: [
+              { key:"basica", thresholdPct:60, amountPerActivatedParent:350 },
+              { key:"mejorada", thresholdPct:80, amountPerActivatedParent:450 },
+              { key:"premium", thresholdPct:100, amountPerActivatedParent:550 }
+            ],
             activationBasis: "directiva_registrada_mas_apoderados_pagados",
             createdByEmail: String(d.pEmail||"").trim().toLowerCase()
           });
