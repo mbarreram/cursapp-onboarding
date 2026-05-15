@@ -283,3 +283,48 @@ textarea{min-height:92px}
 .refHero h2{margin:12px 0 8px;font-size:28px;letter-spacing:-.04em}
 .refHero p{margin:0;color:var(--muted);font-weight:750;line-height:1.5;max-width:760px}
 @media(max-width:760px){.refHero{display:grid}}
+
+
+/* ===== Referidos regla 60% v1.2 ===== */
+.refRule{
+  margin-top:14px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  padding:10px 14px;
+  background:#ede9fe;
+  color:#5b21b6;
+  font-weight:900;
+  font-size:13px;
+}
+.refProgress{
+  width:120px;
+  max-width:100%;
+  height:9px;
+  border-radius:999px;
+  background:#ede9fe;
+  overflow:hidden;
+  margin-bottom:5px;
+}
+.refProgress span{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(135deg,#7c3aed,#22c55e);
+}
+.tableWrap small{
+  color:#667085;
+  font-weight:750;
+}
+@media(max-width:760px){
+  .refRule{border-radius:16px;align-items:flex-start;line-height:1.35}
+  .refProgress{width:100px}
+}
+
+
+/* ===== Referral Model v2 final ===== */
+.refProgress small,
+.tableWrap small{
+  line-height:1.35;
+}

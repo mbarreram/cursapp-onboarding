@@ -808,7 +808,7 @@
     const month = new Date().toISOString().slice(0,7);
     const monthConvs = convs.filter(c=>String(c.createdAt||"").slice(0,7)===month);
     const valid = convs.filter(c=>["validado","pagable","pagado","activado"].includes(String(c.status||"").toLowerCase()));
-    const estimated = valid.reduce((sum,c)=>{
+    const estimated = valid.filter(c=>referralCourseProgress(c).eligible).reduce((sum,c)=>{
       const ag = agents.find(a=>a.id===c.agentId) || agentByCode(c.referralCode) || {};
       const pct = Number(ag.commissionPct || 0);
       const base = Number(c.baseCommission || c.activationAmount || 9900);
@@ -825,11 +825,13 @@
       const cursos = rows.length;
       const valid = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length;
       const pct = cursos ? Math.round(valid/cursos*100) : 0;
-      const commission = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).reduce((sum,r)=>{
+      const eligibleRows = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase()) && referralCourseProgress(r).eligible);
+      const commission = eligibleRows.reduce((sum,r)=>{
         const base = Number(r.baseCommission || r.activationAmount || 9900);
         return sum + Math.round(base * Number(a.commissionPct||0) / 100);
       },0);
-      return Object.assign({}, a, {__colegios:colegios,__cursos:cursos,__valid:valid,__pct:pct,__commission:commission});
+      const avgProgress = rows.length ? Math.round(rows.reduce((sum,r)=>sum + referralCourseProgress(r).pct,0) / rows.length) : 0;
+      return Object.assign({}, a, {__colegios:colegios,__cursos:cursos,__valid:valid,__pct:pct,__progress:avgProgress,__eligible:eligibleRows.length,__commission:commission});
     }).sort((a,b)=>b.__cursos-a.__cursos || String(a.name).localeCompare(String(b.name)));
   }
 
@@ -839,6 +841,90 @@
     const label = ({pendiente_validacion:"Pendiente",validado:"Validado",activado:"Activado",pagable:"Pagable",pagado:"Pagado",rechazado:"Rechazado"})[s] || st || "Pendiente";
     return `<span class="badge ${cls}">${esc(label)}</span>`;
   }
+
+
+  function targetParentsForReferral(r){
+    const raw = Number(r.targetParents || r.expectedParents || r.totalParents || r.metaApoderados || 0);
+    if(raw > 0) return raw;
+
+    const course = getAllCourses().find(c=>String(c.courseKey)===String(r.courseKey));
+    if(course && Number(course.estimatedStudents||course.targetParents||0) > 0) return Number(course.estimatedStudents||course.targetParents);
+
+    const p = profiles().find(x=>String(x.courseKey||"")===String(r.courseKey||"") && x.course && Number(x.course.estimatedStudents||0)>0);
+    if(p) return Number(p.course.estimatedStudents||0);
+
+    return 30;
+  }
+
+  function directivaRegisteredForReferral(r){
+    const ck = String(r.courseKey || "");
+    if(!ck) return 0;
+    const unique = new Set();
+    profiles().filter(p =>
+      String(p.courseKey||"") === ck &&
+      ["presidente","tesorero"].includes(String(p.role||"").toLowerCase())
+    ).forEach(p=>unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase()));
+    return unique.size;
+  }
+
+  function activatedParentsForReferral(r){
+    const ck = String(r.courseKey || "");
+    if(!ck) return 0;
+
+    const ps = profiles().filter(p =>
+      String(p.courseKey||"") === ck &&
+      String(p.role||"").toLowerCase() === "apoderado"
+    );
+
+    const unique = new Set();
+    ps.forEach(p=>{
+      const act = p.activation || {};
+      const status = String(act.status || p.activationStatus || p.status || "").toLowerCase();
+      const paid = status === "paid" || status === "activo" || status === "active" || !!act.paidAt || !!p.activationPaidAt;
+      if(paid){
+        unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase());
+      }
+    });
+
+    return unique.size || 0;
+  }
+
+  function registeredParentsForReferral(r){
+    // Compatibilidad: ahora devuelve activados/pagados, no solo registrados.
+    return activatedParentsForReferral(r);
+  }
+
+  function referralCourseProgress(r){
+    const target = targetParentsForReferral(r);
+    const directiva = directivaRegisteredForReferral(r);
+    const activatedParents = activatedParentsForReferral(r);
+    const commercialCount = directiva + activatedParents;
+    const pct = target ? Math.min(100, Math.round((commercialCount / target) * 100)) : 0;
+    const eligible = pct >= 60;
+    return {
+      target,
+      registered: commercialCount,
+      commercialCount,
+      directiva,
+      activatedParents,
+      pct,
+      eligible,
+      missing: Math.max(0, Math.ceil(target * .60) - commercialCount)
+    };
+  }
+
+  function progressBarHtml(pct){
+    const safe = Math.max(0, Math.min(100, Number(pct||0)));
+    return `<div class="refProgress"><span style="width:${safe}%"></span></div><small>${safe}% avance comercial</small>`;
+  }
+
+  function referralEligibilityBadge(r){
+    const p = referralCourseProgress(r);
+    return p.eligible
+      ? `<span class="badge green">Meta 60% cumplida</span>`
+      : `<span class="badge orange">Faltan ${p.missing} para comisión</span>`;
+  }
+
 
   function renderReferidos(){
     setTitle("Agentes / Referidos", "Seguimiento de códigos de recomendación, cursos captados y comisiones");
@@ -850,9 +936,9 @@
         ${kpi("🏆","Agentes activos",s.agents.filter(a=>String(a.status||"active")==="active").length,"programa referidos")}
         ${kpi("📅","Cursos este mes",s.monthConvs.length,"conversiones del mes")}
         ${kpi("🏫","Colegios captados",new Set(convs.map(c=>c.schoolName).filter(Boolean)).size,"por código")}
-        ${kpi("✅","Cursos validados",s.valid.length,"comisión habilitada")}
-        ${kpi("💰","Comisión estimada",clp(s.estimated),"según % agente")}
-        ${kpi("⏳","Pendientes",convs.filter(c=>String(c.status||"").toLowerCase().includes("pendiente")).length,"por validar")}
+        ${kpi("✅","Meta 60% cumplida",convs.filter(c=>referralCourseProgress(c).eligible).length,"aptos para comisión")}
+        ${kpi("💰","Comisión estimada",clp(s.estimated),"solo cursos ≥60%")}
+        ${kpi("⏳","Pendientes",convs.filter(c=>!referralCourseProgress(c).eligible).length,"faltan apoderados")}
       </div>
 
       <div class="refHero">
@@ -860,6 +946,7 @@
           <span class="badge purple">Nuevo módulo comercial</span>
           <h2>Agentes de venta Cursapp</h2>
           <p>Entrega un código a apoderados o directivas que recomienden la app. Cada curso registrado con ese código queda trazado para validar activación y comisión.</p>
+        <div class="refRule">Regla de pago: la comisión se habilita cuando el curso captado alcanza al menos <b>60%</b> de avance comercial: directiva registrada + apoderados activados/pagados.</div>
         </div>
         <button class="adminBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
       </div>
@@ -869,18 +956,19 @@
           <div class="panelHead"><h2>Ranking de agentes</h2><button onclick="Admin.openAgentModal()">Crear agente</button></div>
           <div class="tableWrap">
             <table>
-              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Conv.</th><th>Comisión</th><th>Acción</th></tr></thead>
+              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Avance inscripción</th><th>Aptos</th><th>Comisión</th><th>Acción</th></tr></thead>
               <tbody>${rows.map(a=>`
                 <tr>
                   <td><b>${esc(a.name)}</b><br><small>${esc(a.email||"")}</small></td>
                   <td><span class="badge purple">${esc(a.code)}</span></td>
                   <td>${a.__colegios}</td>
                   <td>${a.__cursos}</td>
-                  <td>${a.__pct}%</td>
+                  <td>${progressBarHtml(a.__progress)}</td>
+                  <td><span class="badge ${a.__eligible ? "green" : "orange"}">${a.__eligible}/${a.__cursos}</span></td>
                   <td>${clp(a.__commission)}</td>
                   <td><button class="adminBtn ghost" onclick="Admin.openAgentDetail('${esc(a.id)}')">Ver</button></td>
                 </tr>
-              `).join("") || `<tr><td colspan="7">Sin agentes.</td></tr>`}</tbody>
+              `).join("") || `<tr><td colspan="8">Sin agentes.</td></tr>`}</tbody>
             </table>
           </div>
         </section>
@@ -891,8 +979,8 @@
             ${convs.slice(0,8).map(c=>`
               <div class="row">
                 <div class="rowIcon">🏫</div>
-                <div><b>${esc(c.schoolName||"Colegio")}</b><p>${esc(c.courseLabel||c.courseKey||"Curso")} · código ${esc(c.referralCode||"—")} · ${fmtDate(c.createdAt)}</p></div>
-                ${statusRefBadge(c.status)}
+                <div><b>${esc(c.schoolName||"Colegio")}</b><p>${esc(c.courseLabel||c.courseKey||"Curso")} · código ${esc(c.referralCode||"—")} · ${referralCourseProgress(c).commercialCount}/${referralCourseProgress(c).target} avance · Dir. ${referralCourseProgress(c).directiva} · Apod. ${referralCourseProgress(c).activatedParents}</p>${progressBarHtml(referralCourseProgress(c).pct)}</div>
+                ${referralEligibilityBadge(c)}
               </div>
             `).join("") || emptyRow("Sin conversiones")}
           </div>
@@ -907,17 +995,18 @@
   }
 
   function referralsTable(rows){
-    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Región</th><th>Curso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base comisión</th><th>Avance</th><th>Comisión</th><th>Acciones</th></tr></thead><tbody>
       ${rows.map(r=>`<tr>
         <td>${fmtDate(r.createdAt)}</td>
         <td><span class="badge purple">${esc(r.referralCode||"—")}</span></td>
         <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente")}</td>
-        <td>${esc(r.schoolName||"—")}</td>
-        <td>${esc(r.regionName||"—")}</td>
+        <td>${esc(r.schoolName||"—")}<br><small>${esc(r.regionName||"—")}</small></td>
         <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
-        <td>${statusRefBadge(r.status)}</td>
-        <td><button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button></td>
-      </tr>`).join("") || `<tr><td colspan="8">Sin referidos registrados.</td></tr>`}
+        <td><b>${referralCourseProgress(r).commercialCount}/${referralCourseProgress(r).target}</b><br><small>Dir. ${referralCourseProgress(r).directiva} · Apod. ${referralCourseProgress(r).activatedParents}</small></td>
+        <td>${progressBarHtml(referralCourseProgress(r).pct)}</td>
+        <td>${referralEligibilityBadge(r)}<br>${statusRefBadge(r.status)}</td>
+        <td><button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button></td>
+      </tr>`).join("") || `<tr><td colspan="9">Sin referidos registrados.</td></tr>`}
     </tbody></table></div>`;
   }
 
@@ -940,6 +1029,33 @@
       </div>
     `);
   }
+
+
+  function openReferralGoal(id){
+    const r = referralConversionsMerged().find(x=>String(x.id)===String(id));
+    if(!r) return;
+    const p = referralCourseProgress(r);
+    openModal(`
+      <h2>Meta de inscripción</h2>
+      <p class="muted">${esc(r.schoolName||"Colegio")} · ${esc(r.courseLabel||r.courseKey||"Curso")}</p>
+      <div class="ticketMetaGrid">
+        <div><label>Avance comercial</label><b>${p.commercialCount}</b><span>directiva + apoderados activados</span></div>
+        <div><label>Meta curso</label><b>${p.target}</b><span>alumnos/apoderados estimados</span></div>
+        <div><label>Avance</label><b>${p.pct}%</b><span>inscripción</span></div>
+        <div><label>Comisión</label><b>${p.eligible ? "Apta" : "Bloqueada"}</b><span>regla 60%</span></div>
+      </div>
+      <div class="formGrid">
+        <div><label>Meta total de apoderados del curso</label><input id="refTargetParents" type="number" min="1" value="${p.target}"></div>
+        <div><label>Estado comercial</label><select id="refStatusGoal"><option value="pendiente_validacion" ${String(r.status)==="pendiente_validacion"?"selected":""}>Pendiente</option><option value="validado" ${String(r.status)==="validado"?"selected":""}>Validado</option><option value="pagable" ${String(r.status)==="pagable"?"selected":""}>Pagable</option><option value="pagado" ${String(r.status)==="pagado"?"selected":""}>Pagado</option><option value="rechazado" ${String(r.status)==="rechazado"?"selected":""}>Rechazado</option></select></div>
+      </div>
+      <p class="muted" style="margin-top:12px">La comisión solo se considera cuando el avance comercial es igual o superior a 60%. La directiva cuenta sin pago; los apoderados cuentan solo cuando están activados/pagados.</p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveReferralGoal('${esc(id)}')">Guardar meta</button>
+      </div>
+    `);
+  }
+
 
   function openAgentDetail(agentId){
     const a = refAgents().find(x=>x.id===agentId);
@@ -1230,6 +1346,7 @@
 
     openAgentModal,
     openAgentDetail,
+    openReferralGoal,
     saveAgent(agentId){
       const agents = refAgents();
       const code = normalizeRefCode($("#agCode")?.value || "");
@@ -1255,6 +1372,11 @@
       renderReferidos();
     },
     updateReferralStatus(id,status){
+      const targetReferral = referralConversionsMerged().find(x=>String(x.id)===String(id));
+      if(status === "pagado" && targetReferral && !referralCourseProgress(targetReferral).eligible){
+        alert("No se puede marcar como pagado: el curso aún no alcanza el 60% de apoderados registrados.");
+        return;
+      }
       const arr = refConversions();
       const idx = arr.findIndex(x=>String(x.id)===String(id));
       if(idx>=0){
@@ -1266,6 +1388,27 @@
         if(found) saveRefConversions([Object.assign({}, found, {status, updatedAt:now()})].concat(arr));
       }
       log("referral_status", "Actualizó estado de referido", id, {status});
+      renderReferidos();
+    },
+
+    saveReferralGoal(id){
+      const target = Number($("#refTargetParents")?.value || 30);
+      const status = $("#refStatusGoal")?.value || "pendiente_validacion";
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].targetParents = target;
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+        saveRefConversions(arr);
+      }else{
+        const found = referralConversionsMerged().find(x=>String(x.id)===String(id));
+        if(found){
+          saveRefConversions([Object.assign({}, found, {targetParents:target, status, updatedAt:now()})].concat(arr));
+        }
+      }
+      log("referral_goal_update","Actualizó meta de inscripción referido",id,{targetParents:target,status});
+      closeModal();
       renderReferidos();
     },
     exportReferrals(){
