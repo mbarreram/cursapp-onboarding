@@ -773,23 +773,12 @@
   }
 
   function saveRefAgents(arr){ save(KEY_REF_AGENTS, arr || []); }
-
-  function refConversions(){
-    const arr = load(KEY_REF_CONVERSIONS, []);
-    return Array.isArray(arr) ? arr : [];
-  }
-
+  function refConversions(){ const arr = load(KEY_REF_CONVERSIONS, []); return Array.isArray(arr) ? arr : []; }
   function saveRefConversions(arr){ save(KEY_REF_CONVERSIONS, arr || []); }
-
-  function agentByCode(code){
-    const c = normalizeRefCode(code);
-    return refAgents().find(a=>normalizeRefCode(a.code)===c) || null;
-  }
+  function agentByCode(code){ const c = normalizeRefCode(code); return refAgents().find(a=>normalizeRefCode(a.code)===c) || null; }
 
   function referralConversionsMerged(){
     const convs = refConversions().slice();
-
-    // Backfill desde perfiles/cursos que ya traigan referral en course.
     profiles().forEach(p=>{
       const c = p.course || {};
       const code = normalizeRefCode(c.referralCode || p.referralCode || "");
@@ -810,7 +799,6 @@
         createdAt:p.createdAt || now()
       });
     });
-
     return convs.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   }
 
@@ -820,14 +808,13 @@
     const month = new Date().toISOString().slice(0,7);
     const monthConvs = convs.filter(c=>String(c.createdAt||"").slice(0,7)===month);
     const valid = convs.filter(c=>["validado","pagable","pagado","activado"].includes(String(c.status||"").toLowerCase()));
-    const payable = convs.filter(c=>String(c.status||"").toLowerCase()==="pagable");
     const estimated = valid.reduce((sum,c)=>{
       const ag = agents.find(a=>a.id===c.agentId) || agentByCode(c.referralCode) || {};
       const pct = Number(ag.commissionPct || 0);
       const base = Number(c.baseCommission || c.activationAmount || 9900);
       return sum + Math.round(base * pct / 100);
     },0);
-    return {agents, convs, monthConvs, valid, payable, estimated};
+    return {agents, convs, monthConvs, valid, estimated};
   }
 
   function agentRows(){
@@ -849,14 +836,7 @@
   function statusRefBadge(st){
     const s = String(st||"pendiente_validacion").toLowerCase();
     const cls = s==="pagado" ? "green" : (s==="pagable" || s==="validado" || s==="activado" ? "purple" : (s==="rechazado" ? "red" : "orange"));
-    const label = ({
-      pendiente_validacion:"Pendiente",
-      validado:"Validado",
-      activado:"Activado",
-      pagable:"Pagable",
-      pagado:"Pagado",
-      rechazado:"Rechazado"
-    })[s] || st || "Pendiente";
+    const label = ({pendiente_validacion:"Pendiente",validado:"Validado",activado:"Activado",pagable:"Pagable",pagado:"Pagado",rechazado:"Rechazado"})[s] || st || "Pendiente";
     return `<span class="badge ${cls}">${esc(label)}</span>`;
   }
 
@@ -936,10 +916,7 @@
         <td>${esc(r.regionName||"—")}</td>
         <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
         <td>${statusRefBadge(r.status)}</td>
-        <td>
-          <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button>
-          <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button>
-        </td>
+        <td><button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button></td>
       </tr>`).join("") || `<tr><td colspan="8">Sin referidos registrados.</td></tr>`}
     </tbody></table></div>`;
   }
@@ -971,12 +948,6 @@
     openModal(`
       <h2>${esc(a.name)}</h2>
       <p class="muted">Código <b>${esc(a.code)}</b> · Comisión ${Number(a.commissionPct||0)}%</p>
-      <div class="ticketMetaGrid">
-        <div><label>Colegios</label><b>${new Set(rows.map(r=>r.schoolName).filter(Boolean)).size}</b><span>Captados</span></div>
-        <div><label>Cursos</label><b>${rows.length}</b><span>Registrados</span></div>
-        <div><label>Validados</label><b>${rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length}</b><span>Habilitados</span></div>
-        <div><label>Comisión</label><b>${clp(rows.reduce((sum,r)=>sum + Math.round(Number(r.baseCommission||r.activationAmount||9900)*Number(a.commissionPct||0)/100),0))}</b><span>Estimado</span></div>
-      </div>
       ${referralsTable(rows)}
       <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cerrar</button></div>
     `);
@@ -1262,10 +1233,7 @@
     saveAgent(agentId){
       const agents = refAgents();
       const code = normalizeRefCode($("#agCode")?.value || "");
-      if(!($("#agName")?.value||"").trim() || !code){
-        alert("Completa nombre y código.");
-        return;
-      }
+      if(!($("#agName")?.value||"").trim() || !code){ alert("Completa nombre y código."); return; }
       const duplicate = agents.find(a=>normalizeRefCode(a.code)===code && String(a.id)!==String(agentId||""));
       if(duplicate){ alert("Ese código ya existe."); return; }
       const obj = {
@@ -1294,12 +1262,8 @@
         arr[idx].updatedAt = now();
         saveRefConversions(arr);
       }else{
-        // Si viene de backfill, persistir copia con nuevo estado.
         const found = referralConversionsMerged().find(x=>String(x.id)===String(id));
-        if(found){
-          const copy = Object.assign({}, found, {status, updatedAt:now()});
-          saveRefConversions([copy].concat(arr));
-        }
+        if(found) saveRefConversions([Object.assign({}, found, {status, updatedAt:now()})].concat(arr));
       }
       log("referral_status", "Actualizó estado de referido", id, {status});
       renderReferidos();

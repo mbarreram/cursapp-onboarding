@@ -280,20 +280,6 @@ textarea{min-height:92px}
   align-items:center;
   gap:18px;
 }
-.refHero h2{
-  margin:12px 0 8px;
-  font-size:28px;
-  letter-spacing:-.04em;
-}
-.refHero p{
-  margin:0;
-  color:var(--muted);
-  font-weight:750;
-  line-height:1.5;
-  max-width:760px;
-}
-@media(max-width:760px){
-  .refHero{
-    display:grid;
-  }
-}
+.refHero h2{margin:12px 0 8px;font-size:28px;letter-spacing:-.04em}
+.refHero p{margin:0;color:var(--muted);font-weight:750;line-height:1.5;max-width:760px}
+@media(max-width:760px){.refHero{display:grid}}
