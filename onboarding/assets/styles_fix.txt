@@ -1,0 +1,100 @@
+
+/* Corrección textos onboarding mobile */
+
+@media(max-width:640px){
+
+  .card{
+    padding:16px !important;
+    overflow:hidden;
+  }
+
+  label{
+    font-size:13px !important;
+  }
+
+  input,
+  select,
+  textarea{
+    font-size:14px !important;
+    padding:13px 14px !important;
+  }
+
+  .muted{
+    font-size:12px !important;
+    line-height:1.45 !important;
+  }
+
+  .onbPremiumIntro{
+    gap:10px !important;
+    padding:14px !important;
+  }
+
+  .onbPremiumIntro .muted{
+    font-size:11px !important;
+  }
+
+  .onbReferralBox{
+    padding:14px !important;
+  }
+
+  .onbReferralHead{
+    gap:10px !important;
+  }
+
+  .onbReferralHead .muted{
+    font-size:11px !important;
+    line-height:1.4 !important;
+  }
+
+  .tag{
+    font-size:11px !important;
+    line-height:1.3 !important;
+    white-space:normal !important;
+  }
+
+  .helper{
+    font-size:11px !important;
+    line-height:1.45 !important;
+    word-break:break-word !important;
+  }
+
+  .otpStatusOk{
+    font-size:11px !important;
+    line-height:1.4 !important;
+  }
+
+  .fieldRow,
+  .onbFieldGrid{
+    grid-template-columns:1fr !important;
+  }
+
+  .wizardSteps{
+    gap:6px;
+  }
+
+  .wStep{
+    width:28px !important;
+    height:28px !important;
+    font-size:12px !important;
+  }
+
+  .btn,
+  button{
+    font-size:14px !important;
+  }
+
+  .roleHelpText,
+  .roleExtraText,
+  .apoderadoInfoText{
+    font-size:12px !important;
+    line-height:1.45 !important;
+    white-space:normal !important;
+    word-break:break-word !important;
+    overflow-wrap:anywhere !important;
+    max-width:100% !important;
+  }
+
+  .roleOptionCard{
+    overflow:hidden !important;
+  }
+}
