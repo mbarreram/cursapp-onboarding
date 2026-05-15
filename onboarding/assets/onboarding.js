@@ -42,6 +42,22 @@ function uid(prefix = "id") {
     return loadRefAgents().find(a => normalizeReferralCode(a.code) === c && String(a.status||"active") !== "inactive") || null;
   }
 
+  function estimatedStudentsRangeLabel(v){
+    const n = Number(v||0);
+    if(n===20) return "10 a 20";
+    if(n===30) return "21 a 30";
+    if(n===40) return "31 a 40";
+    if(n===50) return "41 a 50";
+    if(n===60) return "51 a 60";
+    return "";
+  }
+
+  function addDaysISO(days){
+    const d = new Date();
+    d.setDate(d.getDate() + Number(days||0));
+    return d.toISOString();
+  }
+
   function saveReferralConversion(payload){
     const list = loadJSON(KEY_REF_CONVERSIONS, []);
     const key = [payload.courseKey, payload.referralCode].join("|");
@@ -322,6 +338,7 @@ function uid(prefix = "id") {
     const inviteCodeInput = (d.inviteCode || "").toUpperCase();         // apoderados
     const referralCode = normalizeReferralCode(d.referralCode || "");
     const referralAgent = findRefAgent(referralCode);
+    const estimatedStudents = Number(d.estimatedStudents || 0);
     const payChoice = d.payChoice || "now";
 
     const debugLine = DEBUG
@@ -396,6 +413,27 @@ function uid(prefix = "id") {
               <div style="margin-top:12px;">
                 <label style="font-weight:900;">Colegio</label>
                 <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
+              </div>
+
+              <div class="onbReferralBox">
+                <div class="onbReferralHead">
+                  <div class="onbReferralIcon">👥</div>
+                  <div>
+                    <div style="font-weight:950;">Cantidad estimada de alumnos/apoderados</div>
+                    <div class="muted" style="margin-top:4px;">Esta meta se usará para medir el avance del curso y habilitar comisiones.</div>
+                  </div>
+                </div>
+                <select id="onbEstimatedStudents">
+                  <option value="" ${!estimatedStudents ? "selected":""}>Seleccionar rango</option>
+                  <option value="20" ${estimatedStudents===20 ? "selected":""}>10 a 20 alumnos/apoderados</option>
+                  <option value="30" ${estimatedStudents===30 ? "selected":""}>21 a 30 alumnos/apoderados</option>
+                  <option value="40" ${estimatedStudents===40 ? "selected":""}>31 a 40 alumnos/apoderados</option>
+                  <option value="50" ${estimatedStudents===50 ? "selected":""}>41 a 50 alumnos/apoderados</option>
+                  <option value="60" ${estimatedStudents===60 ? "selected":""}>51 a 60 alumnos/apoderados</option>
+                </select>
+                <div class="muted" style="margin-top:8px;font-weight:800;">
+                  Regla comercial: comisión habilitada al alcanzar 60% de esta meta con directiva registrada + apoderados activados.
+                </div>
               </div>
 
               <div class="onbReferralBox">
@@ -697,10 +735,11 @@ function uid(prefix = "id") {
     if(DIRECTIVA_ROLE!=="presidente"){
       btnNext && (btnNext.onclick = ()=> alert("El tesorero lo designa el Presidente desde el menú del curso."));
     }else{
-      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool"), ref = $("onbReferralCode");
+      const r = $("onbRegion"), c = $("onbComuna"), s = $("onbSchool"), ref = $("onbReferralCode"), est = $("onbEstimatedStudents");
       r && (r.onchange = ()=>{ d.regionId=r.value; d.comunaId=""; d.schoolId=""; saveDraft(d); render(); });
       c && (c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); });
       s && (s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); });
+      est && (est.onchange = ()=>{ d.estimatedStudents = Number(est.value || 0); saveDraft(d); });
       ref && (ref.oninput = ()=>{
         d.referralCode = normalizeReferralCode(ref.value);
         ref.value = d.referralCode;
@@ -852,6 +891,7 @@ render();
     // Step 1 directiva presidente -> step2
     if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
       if(!d.regionId || !d.comunaId || !d.schoolId){ alert("Selecciona región, comuna y colegio."); return; }
+      if(!Number(d.estimatedStudents || 0)){ alert("Selecciona la cantidad estimada de alumnos/apoderados del curso."); return; }
       d.step = 2; saveDraft(d); render(); return;
     }
 
@@ -940,9 +980,18 @@ if(d.alsoApoderado){
             level: d.level,
             letter: d.letter,
             year: d.year,
+            estimatedStudents: Number(d.estimatedStudents || 0),
+            estimatedStudentsRange: estimatedStudentsRangeLabel(d.estimatedStudents),
             referralCode: normalizeReferralCode(d.referralCode || ""),
             referralAgentId: (findRefAgent(d.referralCode || "") || {}).id || "",
             referralAgentName: (findRefAgent(d.referralCode || "") || {}).name || ""
+          },
+          commercialGoal: {
+            estimatedStudents: Number(d.estimatedStudents || 0),
+            estimatedStudentsRange: estimatedStudentsRangeLabel(d.estimatedStudents),
+            commissionThresholdPct: 60,
+            commissionExpiresAt: addDaysISO(90),
+            basis: "directiva_registrada_mas_apoderados_activados"
           },
           referral: {
             code: normalizeReferralCode(d.referralCode || ""),
@@ -969,6 +1018,11 @@ if(d.alsoApoderado){
             regionName: region ? region.name : "",
             comunaName: comuna ? comuna.name : "",
             courseLabel: `${d.level}${d.letter} ${d.year} · ${d.jornada}`,
+            targetParents: Number(d.estimatedStudents || 0),
+            expectedParents: Number(d.estimatedStudents || 0),
+            commissionThresholdPct: 60,
+            commissionExpiresAt: addDaysISO(90),
+            activationBasis: "directiva_registrada_mas_apoderados_pagados",
             createdByEmail: String(d.pEmail||"").trim().toLowerCase()
           });
         }
