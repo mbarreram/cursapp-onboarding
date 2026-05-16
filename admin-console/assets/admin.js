@@ -409,24 +409,6 @@
         </section>
       </div>
 
-      <div class="refTierGrid">
-        <div class="refTierCard">
-          <span>Básica</span>
-          <strong>60%</strong>
-          <p>$350 por apoderado activado</p>
-        </div>
-        <div class="refTierCard">
-          <span>Mejorada</span>
-          <strong>80%</strong>
-          <p>$450 por apoderado activado</p>
-        </div>
-        <div class="refTierCard premium">
-          <span>Premium</span>
-          <strong>100%</strong>
-          <p>$550 por apoderado activado</p>
-        </div>
-      </div>
-
       <div class="tablesGrid">
         <section class="panel">
           <div class="panelHead"><h2>Últimos movimientos en la plataforma</h2><button onclick="Admin.go('logs')">Ver todos</button></div>
@@ -770,481 +752,6 @@
   }
 
 
-
-  // ===== Agentes / Referidos v1 =====
-  const KEY_REF_AGENTS = "cursapp_ref_agents_v1";
-  const KEY_REF_CONVERSIONS = "cursapp_ref_conversions_v1";
-
-  function normalizeRefCode(v){
-    return String(v||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"").slice(0,24);
-  }
-
-  function refAgents(){
-    const arr = load(KEY_REF_AGENTS, []);
-    if(Array.isArray(arr) && arr.length) return arr;
-    const seed = [
-      { id:"ag_demo_1", name:"Agente Demo", email:"agente@demo.cl", phone:"+56 9 0000 0000", code:"CURSAPP2026", commissionPct:10, status:"active", createdAt:now() },
-      { id:"ag_demo_2", name:"Directiva Referente", email:"directiva@demo.cl", phone:"+56 9 1111 1111", code:"DIRECTIVA2026", commissionPct:8, status:"active", createdAt:now() }
-    ];
-    save(KEY_REF_AGENTS, seed);
-    return seed;
-  }
-
-  function saveRefAgents(arr){ save(KEY_REF_AGENTS, arr || []); }
-  function refConversions(){ const arr = load(KEY_REF_CONVERSIONS, []); return Array.isArray(arr) ? arr : []; }
-  function saveRefConversions(arr){ save(KEY_REF_CONVERSIONS, arr || []); }
-  function agentByCode(code){ const c = normalizeRefCode(code); return refAgents().find(a=>normalizeRefCode(a.code)===c) || null; }
-
-
-  function isReferralReservedActive(r){
-    if(String(r.status||"").toLowerCase() !== "reservado") return true;
-    const exp = r.reservedUntil ? Date.parse(r.reservedUntil) : 0;
-    return !exp || exp >= Date.now();
-  }
-
-  function courseHasReferral(courseKey){
-    return refConversions().some(r=>{
-      if(String(r.courseKey||"") !== String(courseKey||"")) return false;
-      if(!normalizeRefCode(r.referralCode||"")) return false;
-      const st = String(r.status||"").toLowerCase();
-      if(st === "rechazado" || st === "liberado") return false;
-      if(st === "reservado" && !isReferralReservedActive(r)) return false;
-      return true;
-    });
-  }
-
-  function unassignedReferralCourses(){
-    const map = new Map();
-    profiles().forEach(p=>{
-      if(!p.courseKey || courseHasReferral(p.courseKey)) return;
-      const c = p.course || {};
-      const obj = map.get(p.courseKey) || {
-        id:"unassigned_"+String(p.courseKey).replace(/[^a-zA-Z0-9_-]/g,"_"),
-        courseKey:p.courseKey,
-        referralCode:"",
-        agentId:"",
-        agentName:"",
-        status:"sin_agente",
-        attributionStatus:"sin_agente",
-        schoolName:getSchoolName(c),
-        regionName:getRegionName(c),
-        comunaName:c.comunaName || c.comuna || "",
-        courseLabel:getCourseName(c) + (getJornada(c) ? " · "+getJornada(c) : ""),
-        targetParents:Number(c.estimatedStudents || 0),
-        createdAt:p.createdAt || now()
-      };
-      map.set(p.courseKey, obj);
-    });
-    return Array.from(map.values());
-  }
-
-
-  function referralConversionsMerged(){
-    const convs = refConversions().slice();
-    profiles().forEach(p=>{
-      const c = p.course || {};
-      const code = normalizeRefCode(c.referralCode || p.referralCode || "");
-      if(!code || convs.some(x=>String(x.courseKey)===String(p.courseKey) && normalizeRefCode(x.referralCode)===code)) return;
-      const ag = agentByCode(code);
-      convs.push({
-        id:"ref_backfill_"+String(p.profileId||p.userId||p.courseKey||"").replace(/[^a-zA-Z0-9_-]/g,"_"),
-        courseKey:p.courseKey || "",
-        referralCode:code,
-        agentId: ag ? ag.id : "",
-        agentName: ag ? ag.name : "",
-        status:"pendiente_validacion",
-        schoolName:getSchoolName(c),
-        regionName:getRegionName(c),
-        comunaName:c.comunaName || c.comuna || "",
-        courseLabel:getCourseName(c) + (getJornada(c) ? " · "+getJornada(c) : ""),
-        createdByEmail:String(p.email || p.userEmail || p.userId || "").toLowerCase(),
-        createdAt:p.createdAt || now()
-      });
-    });
-    const filtered = convs.filter(r=>{
-      const st = String(r.status||"").toLowerCase();
-      if(st === "reservado") return isReferralReservedActive(r);
-      return true;
-    });
-    unassignedReferralCourses().forEach(u=>{
-      if(!filtered.some(x=>String(x.courseKey)===String(u.courseKey))) filtered.push(u);
-    });
-    return filtered.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
-  }
-
-  function refStats(){
-    const agents = refAgents();
-    const convs = referralConversionsMerged();
-    const month = new Date().toISOString().slice(0,7);
-    const monthConvs = convs.filter(c=>String(c.createdAt||"").slice(0,7)===month);
-    const valid = convs.filter(c=>["validado","pagable","pagado","activado"].includes(String(c.status||"").toLowerCase()));
-    const estimated = valid.reduce((sum,c)=> sum + referralCommissionTier(c).total, 0);
-    return {agents, convs, monthConvs, valid, estimated};
-  }
-
-  function agentRows(){
-    const {agents, convs} = refStats();
-    return agents.map(a=>{
-      const rows = convs.filter(c=>c.agentId===a.id || normalizeRefCode(c.referralCode)===normalizeRefCode(a.code));
-      const colegios = new Set(rows.map(r=>r.schoolName).filter(Boolean)).size;
-      const cursos = rows.length;
-      const valid = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase())).length;
-      const pct = cursos ? Math.round(valid/cursos*100) : 0;
-      const eligibleRows = rows.filter(r=>["validado","pagable","pagado","activado"].includes(String(r.status||"").toLowerCase()) && referralCourseProgress(r).eligible);
-      const commission = eligibleRows.reduce((sum,r)=> sum + referralCommissionTier(r).total, 0);
-      const avgProgress = rows.length ? Math.round(rows.reduce((sum,r)=>sum + referralCourseProgress(r).pct,0) / rows.length) : 0;
-      return Object.assign({}, a, {__colegios:colegios,__cursos:cursos,__valid:valid,__pct:pct,__progress:avgProgress,__eligible:eligibleRows.length,__commission:commission});
-    }).sort((a,b)=>b.__cursos-a.__cursos || String(a.name).localeCompare(String(b.name)));
-  }
-
-  function statusRefBadge(st){
-    const s = String(st||"pendiente_validacion").toLowerCase();
-    const cls = s==="pagado" ? "green" : (s==="pagable" || s==="validado" || s==="activado" ? "purple" : (s==="rechazado" ? "red" : "orange"));
-    const label = ({sin_agente:"Sin agente",reservado:"Reservado",asignado:"Asignado",pendiente_validacion:"Pendiente",validado:"Validado",activado:"Activado",pagable:"Pagable",pagado:"Pagado",rechazado:"Rechazado",liberado:"Liberado"})[s] || st || "Pendiente";
-    return `<span class="badge ${cls}">${esc(label)}</span>`;
-  }
-
-
-  function targetParentsForReferral(r){
-    const raw = Number(r.targetParents || r.expectedParents || r.totalParents || r.metaApoderados || 0);
-    if(raw > 0) return raw;
-
-    const course = getAllCourses().find(c=>String(c.courseKey)===String(r.courseKey));
-    if(course && Number(course.estimatedStudents||course.targetParents||0) > 0) return Number(course.estimatedStudents||course.targetParents);
-
-    const p = profiles().find(x=>String(x.courseKey||"")===String(r.courseKey||"") && x.course && Number(x.course.estimatedStudents||0)>0);
-    if(p) return Number(p.course.estimatedStudents||0);
-
-    return 30;
-  }
-
-  function directivaRegisteredForReferral(r){
-    const ck = String(r.courseKey || "");
-    if(!ck) return 0;
-    const unique = new Set();
-    profiles().filter(p =>
-      String(p.courseKey||"") === ck &&
-      ["presidente","tesorero"].includes(String(p.role||"").toLowerCase())
-    ).forEach(p=>unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase()));
-    return unique.size;
-  }
-
-  function activatedParentsForReferral(r){
-    const ck = String(r.courseKey || "");
-    if(!ck) return 0;
-
-    const ps = profiles().filter(p =>
-      String(p.courseKey||"") === ck &&
-      String(p.role||"").toLowerCase() === "apoderado"
-    );
-
-    const unique = new Set();
-    ps.forEach(p=>{
-      const act = p.activation || {};
-      const status = String(act.status || p.activationStatus || p.status || "").toLowerCase();
-      const paid = status === "paid" || status === "activo" || status === "active" || !!act.paidAt || !!p.activationPaidAt;
-      if(paid){
-        unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase());
-      }
-    });
-
-    return unique.size || 0;
-  }
-
-  function registeredParentsForReferral(r){
-    // Compatibilidad: ahora devuelve activados/pagados, no solo registrados.
-    return activatedParentsForReferral(r);
-  }
-
-  function referralCourseProgress(r){
-    const target = targetParentsForReferral(r);
-    const directiva = directivaRegisteredForReferral(r);
-    const activatedParents = activatedParentsForReferral(r);
-    const commercialCount = directiva + activatedParents;
-    const pct = target ? Math.min(100, Math.round((commercialCount / target) * 100)) : 0;
-    const eligible = pct >= 60;
-    return {
-      target,
-      registered: commercialCount,
-      commercialCount,
-      directiva,
-      activatedParents,
-      pct,
-      eligible,
-      missing: Math.max(0, Math.ceil(target * .60) - commercialCount)
-    };
-  }
-
-  function referralCommissionTier(r){
-    const p = referralCourseProgress(r);
-    const activated = Number(p.activatedParents || 0);
-
-    if(p.pct >= 100){
-      return {
-        key:"premium",
-        label:"Premium 100%",
-        shortLabel:"Premium",
-        cls:"green",
-        threshold:100,
-        amountPerParent:550,
-        activatedParents:activated,
-        total: activated * 550
-      };
-    }
-
-    if(p.pct >= 80){
-      return {
-        key:"mejorada",
-        label:"Mejorada 80%",
-        shortLabel:"Mejorada",
-        cls:"purple",
-        threshold:80,
-        amountPerParent:450,
-        activatedParents:activated,
-        total: activated * 450
-      };
-    }
-
-    if(p.pct >= 60){
-      return {
-        key:"basica",
-        label:"Básica 60%",
-        shortLabel:"Básica",
-        cls:"orange",
-        threshold:60,
-        amountPerParent:350,
-        activatedParents:activated,
-        total: activated * 350
-      };
-    }
-
-    return {
-      key:"sin_comision",
-      label:"Sin comisión",
-      shortLabel:"Sin comisión",
-      cls:"gray",
-      threshold:60,
-      amountPerParent:0,
-      activatedParents:activated,
-      total:0
-    };
-  }
-
-  function commissionTierBadge(r){
-    const t = referralCommissionTier(r);
-    return `<span class="badge ${t.cls}">${esc(t.label)}</span>`;
-  }
-
-  function commissionTierExplain(r){
-    const t = referralCommissionTier(r);
-    if(t.key === "sin_comision"){
-      const p = referralCourseProgress(r);
-      return `Faltan ${p.missing} activaciones para comisión básica`;
-    }
-    return `${clp(t.amountPerParent)} x ${t.activatedParents} apoderados activados`;
-  }
-
-  function progressBarHtml(pct){
-    const safe = Math.max(0, Math.min(100, Number(pct||0)));
-    return `<div class="refProgress"><span style="width:${safe}%"></span></div><small>${safe}% avance comercial</small>`;
-  }
-
-  function referralEligibilityBadge(r){
-    const p = referralCourseProgress(r);
-    return p.eligible
-      ? `<span class="badge green">Meta 60% cumplida</span>`
-      : `<span class="badge orange">Faltan ${p.missing} para comisión</span>`;
-  }
-
-
-  function renderReferidos(){
-    setTitle("Agentes / Referidos", "Seguimiento de códigos de recomendación, cursos captados y comisiones");
-    const s = refStats();
-    const rows = agentRows();
-    const convs = referralConversionsMerged();
-    app.innerHTML = `
-      <div class="kpis">
-        ${kpi("🏆","Agentes activos",s.agents.filter(a=>String(a.status||"active")==="active").length,"programa referidos")}
-        ${kpi("📅","Cursos este mes",s.monthConvs.length,"conversiones del mes")}
-        ${kpi("🏫","Colegios captados",new Set(convs.map(c=>c.schoolName).filter(Boolean)).size,"por código")}
-        ${kpi("✅","Meta 60% cumplida",convs.filter(c=>referralCourseProgress(c).eligible).length,"aptos para comisión")}
-        ${kpi("💰","Comisión estimada",clp(s.estimated),"tramos $350/$450/$550")}
-        ${kpi("⏳","Pendientes",convs.filter(c=>!referralCourseProgress(c).eligible).length,"faltan apoderados")}
-      </div>
-
-      <section class="refRulesCard">
-        <div class="refRulesHead">
-          <div class="refRulesIcon">ℹ️</div>
-          <div>
-            <h2>Reglas de comisiones</h2>
-            <p>La asignación es por curso: varios agentes pueden trabajar el mismo colegio, pero cada curso solo puede quedar asociado a un código.</p>
-          </div>
-        </div>
-
-        <div class="refTierTable" aria-label="Reglas de comisiones por tramo">
-          <div class="refTierCell refTierLabel">Nivel de logro</div>
-          <div class="refTierCell"><b>Básica</b><span>60%</span></div>
-          <div class="refTierCell"><b>Mejorada</b><span>80%</span></div>
-          <div class="refTierCell"><b>Premium</b><span>100%</span></div>
-
-          <div class="refTierCell refTierLabel">Comisión por apoderado activado</div>
-          <div class="refTierCell refMoney">$350</div>
-          <div class="refTierCell refMoney">$450</div>
-          <div class="refTierCell refMoney">$550</div>
-
-          <div class="refTierCell refTierLabel">Descripción</div>
-          <div class="refTierCell refDesc">Alcanza el 60% del total estimado del curso.</div>
-          <div class="refTierCell refDesc">Alcanza el 80% del total estimado del curso.</div>
-          <div class="refTierCell refDesc">Alcanza el 100% del total estimado del curso.</div>
-        </div>
-
-        <button class="adminBtn refCreateBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
-      </section>
-
-      <div class="tablesGrid">
-        <section class="panel">
-          <div class="panelHead"><h2>Ranking de agentes</h2><button onclick="Admin.openAgentModal()">Crear agente</button></div>
-          <div class="tableWrap">
-            <table>
-              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Avance</th><th>Aptos</th><th>Comisión estimada</th><th>Acción</th></tr></thead>
-              <tbody>${rows.map(a=>`
-                <tr>
-                  <td><b>${esc(a.name)}</b><br><small>${esc(a.email||"")}</small></td>
-                  <td><span class="badge purple">${esc(a.code)}</span></td>
-                  <td>${a.__colegios}</td>
-                  <td>${a.__cursos}</td>
-                  <td>${progressBarHtml(a.__progress)}</td>
-                  <td><span class="badge ${a.__eligible ? "green" : "orange"}">${a.__eligible}/${a.__cursos}</span></td>
-                  <td>${clp(a.__commission)}</td>
-                  <td><button class="adminBtn ghost" onclick="Admin.openAgentDetail('${esc(a.id)}')">Ver</button></td>
-                </tr>
-              `).join("") || `<tr><td colspan="8">Sin agentes.</td></tr>`}</tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="panelHead"><h2>Conversiones recientes</h2><span class="badge purple">${convs.length}</span></div>
-          <div class="list">
-            ${convs.slice(0,8).map(c=>`
-              <div class="row">
-                <div class="rowIcon">🏫</div>
-                <div><b>${esc(c.schoolName||"Colegio")}</b><p>${esc(c.courseLabel||c.courseKey||"Curso")} · código ${esc(c.referralCode||"—")} · ${referralCourseProgress(c).commercialCount}/${referralCourseProgress(c).target} avance · Dir. ${referralCourseProgress(c).directiva} · Apod. ${referralCourseProgress(c).activatedParents}</p>${progressBarHtml(referralCourseProgress(c).pct)}</div>
-                ${referralEligibilityBadge(c)}
-              </div>
-            `).join("") || emptyRow("Sin conversiones")}
-          </div>
-        </section>
-      </div>
-
-      <section class="panel" style="margin-top:18px">
-        <div class="panelHead"><h2>Detalle de referidos</h2><button onclick="Admin.exportReferrals()">Exportar CSV</button></div>
-        ${referralsTable(convs)}
-      </section>
-    `;
-  }
-
-  function referralsTable(rows){
-    return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base comisión</th><th>Avance</th><th>Tramo / monto</th><th>Acciones</th></tr></thead><tbody>
-      ${rows.map(r=>`<tr>
-        <td>${fmtDate(r.createdAt)}</td>
-        <td>${r.referralCode ? `<span class="badge purple">${esc(r.referralCode)}</span>` : `<span class="badge orange">Sin código</span>`}</td>
-        <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente asignado")}</td>
-        <td>${esc(r.schoolName||"—")}<br><small>${esc(r.regionName||"—")}</small></td>
-        <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
-        <td><b>${referralCourseProgress(r).commercialCount}/${referralCourseProgress(r).target}</b><br><small>Dir. ${referralCourseProgress(r).directiva} · Apod. ${referralCourseProgress(r).activatedParents}</small></td>
-        <td>${progressBarHtml(referralCourseProgress(r).pct)}</td>
-        <td>${commissionTierBadge(r)}<br><small>${commissionTierExplain(r)} · Total ${clp(referralCommissionTier(r).total)}</small><br>${statusRefBadge(r.status)}</td>
-        <td>
-          <button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button>
-          ${r.status==="sin_agente" ? `<button class="adminBtn ghost" onclick="Admin.openAssignReferral('${esc(r.courseKey)}')">Asignar</button>` : ``}
-          ${r.status!=="sin_agente" ? `<button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button>` : ``}
-        </td>
-      </tr>`).join("") || `<tr><td colspan="9">Sin referidos registrados.</td></tr>`}
-    </tbody></table></div>`;
-  }
-
-  function openAgentModal(agentId){
-    const a = refAgents().find(x=>x.id===agentId) || {};
-    openModal(`
-      <h2>${agentId ? "Editar agente" : "Crear agente"}</h2>
-      <p class="muted">El código se usará en el onboarding del presidente para asociar cursos recomendados.</p>
-      <div class="formGrid">
-        <div><label>Nombre</label><input id="agName" value="${esc(a.name||"")}" placeholder="Ej: Matías Rojas"></div>
-        <div><label>Correo</label><input id="agEmail" value="${esc(a.email||"")}" placeholder="agente@correo.cl"></div>
-        <div><label>Teléfono</label><input id="agPhone" value="${esc(a.phone||"")}" placeholder="+56 9..."></div>
-        <div><label>Código</label><input id="agCode" value="${esc(a.code||"")}" placeholder="MATIAS2026" style="text-transform:uppercase"></div>
-        <div><label>Modelo comisión</label><input disabled value="60%=$350 · 80%=$450 · 100%=$550"></div>
-        <div><label>Estado</label><select id="agStatus"><option value="active" ${String(a.status||"active")==="active"?"selected":""}>Activo</option><option value="inactive" ${String(a.status||"active")==="inactive"?"selected":""}>Inactivo</option></select></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
-        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
-        <button class="adminBtn" onclick="Admin.saveAgent('${esc(agentId||"")}')">Guardar agente</button>
-      </div>
-    `);
-  }
-
-
-
-  function openAssignReferral(courseKey){
-    const ref = referralConversionsMerged().find(x=>String(x.courseKey)===String(courseKey)) || { courseKey };
-    if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
-    const agents = refAgents().filter(a=>String(a.status||"active")==="active");
-    openModal(`
-      <h2>Asignar agente al curso</h2>
-      <p class="muted">${esc(ref.schoolName||"Curso")} · ${esc(ref.courseLabel||courseKey)}</p>
-      <div class="formGrid">
-        <div><label>Agente</label><select id="assignAgentId"><option value="">Seleccionar agente</option>${agents.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.code)}</option>`).join("")}</select></div>
-        <div><label>Estado</label><select id="assignStatus"><option value="asignado">Asignado</option><option value="reservado">Reservado 48h</option></select></div>
-      </div>
-      <p class="muted" style="margin-top:12px">Regla: un colegio puede tener varios agentes, pero este curso quedará bloqueado para el código seleccionado.</p>
-      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
-        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
-        <button class="adminBtn" onclick="Admin.saveAssignReferral('${esc(courseKey)}')">Asignar</button>
-      </div>
-    `);
-  }
-
-
-  function openReferralGoal(id){
-    const r = referralConversionsMerged().find(x=>String(x.id)===String(id));
-    if(!r) return;
-    const p = referralCourseProgress(r);
-    openModal(`
-      <h2>Meta de inscripción</h2>
-      <p class="muted">${esc(r.schoolName||"Colegio")} · ${esc(r.courseLabel||r.courseKey||"Curso")}</p>
-      <div class="ticketMetaGrid">
-        <div><label>Avance comercial</label><b>${p.commercialCount}</b><span>directiva + apoderados activados</span></div>
-        <div><label>Meta curso</label><b>${p.target}</b><span>alumnos/apoderados estimados</span></div>
-        <div><label>Avance</label><b>${p.pct}%</b><span>inscripción</span></div>
-        <div><label>Comisión</label><b>${referralCommissionTier(r).shortLabel}</b><span>${clp(referralCommissionTier(r).total)}</span></div>
-      </div>
-      <div class="formGrid">
-        <div><label>Meta total de apoderados del curso</label><input id="refTargetParents" type="number" min="1" value="${p.target}"></div>
-        <div><label>Estado comercial</label><select id="refStatusGoal"><option value="pendiente_validacion" ${String(r.status)==="pendiente_validacion"?"selected":""}>Pendiente</option><option value="validado" ${String(r.status)==="validado"?"selected":""}>Validado</option><option value="pagable" ${String(r.status)==="pagable"?"selected":""}>Pagable</option><option value="pagado" ${String(r.status)==="pagado"?"selected":""}>Pagado</option><option value="rechazado" ${String(r.status)==="rechazado"?"selected":""}>Rechazado</option></select></div>
-      </div>
-      <p class="muted" style="margin-top:12px">La comisión se calcula solo sobre apoderados activados/pagados: 60% = $350, 80% = $450, 100% = $550 por apoderado. La directiva suma al avance comercial, pero no genera pago de incorporación.</p>
-      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
-        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
-        <button class="adminBtn" onclick="Admin.saveReferralGoal('${esc(id)}')">Guardar meta</button>
-      </div>
-    `);
-  }
-
-
-  function openAgentDetail(agentId){
-    const a = refAgents().find(x=>x.id===agentId);
-    if(!a) return;
-    const rows = referralConversionsMerged().filter(c=>c.agentId===a.id || normalizeRefCode(c.referralCode)===normalizeRefCode(a.code));
-    openModal(`
-      <h2>${esc(a.name)}</h2>
-      <p class="muted">Código <b>${esc(a.code)}</b> · Comisión ${Number(a.commissionPct||0)}%</p>
-      ${referralsTable(rows)}
-      <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="adminBtn ghost" onclick="Admin.closeModal()">Cerrar</button></div>
-    `);
-  }
-
-
   function renderLogs(){
     setTitle("Logs de movimientos", "Trazabilidad operacional de la app");
     const logs = load(ADMIN_LOGS, []);
@@ -1323,6 +830,183 @@
     return `<div class="tableWrap"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Alumno</th><th>Región</th><th>Curso</th><th>Acciones</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><span class="badge purple">${esc(r.role)}</span></td><td>${esc(r.alumno)}</td><td>${esc(r.region)}</td><td>${esc(r.course)}</td><td><button class="adminBtn ghost" onclick="Admin.openMember('${esc(r.profileId)}')">Administrar</button></td></tr>`).join("") || `<tr><td colspan="7">Sin miembros.</td></tr>`}</tbody></table></div>`;
   }
 
+
+  // ===== Alertas globales operacionales =====
+  const KEY_GLOBAL_ALERTS = "cursapp_global_alerts_v1";
+
+  function globalAlerts(){
+    const arr = load(KEY_GLOBAL_ALERTS, []);
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function saveGlobalAlerts(arr){
+    save(KEY_GLOBAL_ALERTS, arr || []);
+  }
+
+  function isGlobalAlertActive(a){
+    if(!a || a.status === "cerrada") return false;
+    const n = Date.now();
+    const s = a.startAt ? Date.parse(a.startAt) : 0;
+    const e = a.endAt ? Date.parse(a.endAt) : 0;
+    if(s && s > n) return false;
+    if(e && e < n) return false;
+    return true;
+  }
+
+  function severityBadge(sev){
+    const s = String(sev||"informativa").toLowerCase();
+    const cls = s==="critica" ? "red" : (s==="advertencia" ? "orange" : "blue");
+    const label = s==="critica" ? "Crítica" : (s==="advertencia" ? "Advertencia" : "Informativa");
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function alertStatusBadge(a){
+    if(a.status === "cerrada") return `<span class="badge gray">Cerrada</span>`;
+    if(isGlobalAlertActive(a)) return `<span class="badge green">Activa</span>`;
+    const start = a.startAt ? Date.parse(a.startAt) : 0;
+    if(start && start > Date.now()) return `<span class="badge purple">Programada</span>`;
+    return `<span class="badge gray">Finalizada</span>`;
+  }
+
+  function renderAlertForm(){
+    return `
+      <section class="panel globalAlertForm">
+        <div class="panelHead"><h2>Crear nueva alerta</h2></div>
+        <div class="formGrid">
+          <div>
+            <label>Tipo</label>
+            <select id="gaType">
+              <option>Transbank</option>
+              <option>Cloud / Hosting</option>
+              <option>Mantenimiento</option>
+              <option>Operacional</option>
+              <option>General</option>
+            </select>
+          </div>
+          <div>
+            <label>Severidad</label>
+            <select id="gaSeverity">
+              <option value="informativa">Informativa</option>
+              <option value="advertencia">Advertencia</option>
+              <option value="critica">Crítica</option>
+            </select>
+          </div>
+          <div>
+            <label>Visible para</label>
+            <select id="gaVisibleTo">
+              <option value="todos">Todos los roles</option>
+              <option value="directiva">Directiva</option>
+              <option value="presidente">Presidente</option>
+              <option value="tesorero">Tesorero</option>
+              <option value="apoderado">Apoderado</option>
+            </select>
+          </div>
+          <div>
+            <label>Permitir cerrar banner</label>
+            <select id="gaDismissible">
+              <option value="true">Sí</option>
+              <option value="false">No, mantener visible</option>
+            </select>
+          </div>
+          <div style="grid-column:1/-1">
+            <label>Título</label>
+            <input id="gaTitle" placeholder="Ej: Problemas con pagos en Transbank">
+          </div>
+          <div style="grid-column:1/-1">
+            <label>Mensaje</label>
+            <textarea id="gaMessage" rows="4" placeholder="Describe la situación y qué debe hacer el usuario."></textarea>
+          </div>
+          <div>
+            <label>Desde</label>
+            <input id="gaStart" type="datetime-local">
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input id="gaEnd" type="datetime-local">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+          <button class="adminBtn ghost" onclick="Admin.clearAlertForm()">Limpiar</button>
+          <button class="adminBtn" onclick="Admin.saveGlobalAlert()">Guardar alerta</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAlertCard(a){
+    return `
+      <article class="globalAlertCard ${String(a.severity)==="critica"?"critical":String(a.severity)==="advertencia"?"warning":"info"}">
+        <div class="gaIcon">${String(a.severity)==="critica"?"🚨":String(a.type||"").includes("Transbank")?"💳":String(a.type||"").includes("Cloud")?"☁️":"ℹ️"}</div>
+        <div>
+          <div class="gaTitle">${esc(a.title)}</div>
+          <p>${esc(a.message)}</p>
+          <div class="gaMeta">
+            <span>Tipo: ${esc(a.type)}</span>
+            <span>Visible: ${esc(a.visibleTo || "todos")}</span>
+            <span>Desde: ${fmtDate(a.startAt)}</span>
+            <span>Hasta: ${fmtDate(a.endAt)}</span>
+          </div>
+        </div>
+        <div class="gaActions">
+          ${severityBadge(a.severity)}
+          ${alertStatusBadge(a)}
+          <button class="adminBtn ghost" onclick="Admin.closeGlobalAlert('${esc(a.id)}')">Cerrar</button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderAlertTable(rows){
+    return `<div class="tableWrap"><table>
+      <thead><tr><th>Título</th><th>Tipo</th><th>Severidad</th><th>Visible</th><th>Desde</th><th>Hasta</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>
+        ${rows.map(a=>`<tr>
+          <td><b>${esc(a.title)}</b><br><small>${esc(a.message).slice(0,90)}</small></td>
+          <td>${esc(a.type)}</td>
+          <td>${severityBadge(a.severity)}</td>
+          <td>${esc(a.visibleTo||"todos")}</td>
+          <td>${fmtDate(a.startAt)}</td>
+          <td>${fmtDate(a.endAt)}</td>
+          <td>${alertStatusBadge(a)}</td>
+          <td><button class="adminBtn ghost" onclick="Admin.closeGlobalAlert('${esc(a.id)}')">Cerrar</button></td>
+        </tr>`).join("") || `<tr><td colspan="8">Sin alertas.</td></tr>`}
+      </tbody>
+    </table></div>`;
+  }
+
+  function renderAlertasGlobales(){
+    setTitle("Alertas globales", "Crea y gestiona alertas operacionales visibles en todos los roles");
+    const rows = globalAlerts().sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const active = rows.filter(isGlobalAlertActive);
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("🚨","Activas",active.length,"visibles ahora")}
+        ${kpi("📅","Programadas",rows.filter(a=>a.startAt && Date.parse(a.startAt)>Date.now()).length,"próximas")}
+        ${kpi("✅","Cerradas",rows.filter(a=>a.status==="cerrada").length,"historial")}
+        ${kpi("🌐","Total",rows.length,"alertas creadas")}
+      </div>
+
+      <div class="tablesGrid">
+        <section>
+          <div class="panel">
+            <div class="panelHead"><h2>Alertas activas</h2><span class="badge ${active.length?'red':'green'}">${active.length}</span></div>
+            <div class="globalAlertList">
+              ${active.map(renderAlertCard).join("") || emptyRow("No hay alertas activas.")}
+            </div>
+          </div>
+
+          <section class="panel" style="margin-top:18px">
+            <div class="panelHead"><h2>Historial de alertas</h2></div>
+            ${renderAlertTable(rows)}
+          </section>
+        </section>
+
+        ${renderAlertForm()}
+      </div>
+    `;
+  }
+
+
   function renderAuditoria(){
     setTitle("Auditoría", "Control de cambios sensibles y acciones administrativas");
     const logs = load(ADMIN_LOGS, []).filter(l=>String(l.type||"").includes("admin") || String(l.type||"").includes("audit") || String(l.type||"").includes("member"));
@@ -1343,7 +1027,7 @@
       if(tab==="comunidad") renderComunidad();
       if(tab==="colegios") renderColegios();
       if(tab==="campanas") renderCampanas();
-      if(tab==="referidos") renderReferidos();
+      if(tab==="alertas") renderAlertasGlobales();
       if(tab==="auditoria") renderAuditoria();
     },
     logout(){
@@ -1518,118 +1202,6 @@
       log("admin_action","Inspeccionó curso",courseKey);
     },
     addAuditDemo(){ log("admin_audit","Revisión manual de auditoría","Admin Console",{reason:"Control preventivo"}); renderAuditoria(); },
-
-    openAgentModal,
-    openAgentDetail,
-    openReferralGoal,
-    openAssignReferral,
-    saveAgent(agentId){
-      const agents = refAgents();
-      const code = normalizeRefCode($("#agCode")?.value || "");
-      if(!($("#agName")?.value||"").trim() || !code){ alert("Completa nombre y código."); return; }
-      const duplicate = agents.find(a=>normalizeRefCode(a.code)===code && String(a.id)!==String(agentId||""));
-      if(duplicate){ alert("Ese código ya existe."); return; }
-      const obj = {
-        id: agentId || ("ag_"+Date.now().toString(16)),
-        name: ($("#agName")?.value||"").trim(),
-        email: ($("#agEmail")?.value||"").trim().toLowerCase(),
-        phone: ($("#agPhone")?.value||"").trim(),
-        code,
-        commissionPct: 0,
-        status: $("#agStatus")?.value || "active",
-        createdAt: agentId ? (agents.find(a=>a.id===agentId)||{}).createdAt || now() : now(),
-        updatedAt: now()
-      };
-      const next = agents.filter(a=>String(a.id)!==String(obj.id));
-      next.unshift(obj);
-      saveRefAgents(next);
-      log("ref_agent_save", agentId ? "Editó agente referido" : "Creó agente referido", obj.code);
-      closeModal();
-      renderReferidos();
-    },
-    updateReferralStatus(id,status){
-      const targetReferral = referralConversionsMerged().find(x=>String(x.id)===String(id));
-      if(status === "pagado" && targetReferral && !referralCourseProgress(targetReferral).eligible){
-        alert("No se puede marcar como pagado: el curso aún no alcanza el 60% de apoderados registrados.");
-        return;
-      }
-      const arr = refConversions();
-      const idx = arr.findIndex(x=>String(x.id)===String(id));
-      if(idx>=0){
-        arr[idx].status = status;
-        arr[idx].updatedAt = now();
-        saveRefConversions(arr);
-      }else{
-        const found = referralConversionsMerged().find(x=>String(x.id)===String(id));
-        if(found) saveRefConversions([Object.assign({}, found, {status, updatedAt:now()})].concat(arr));
-      }
-      log("referral_status", "Actualizó estado de referido", id, {status});
-      renderReferidos();
-    },
-
-
-    saveAssignReferral(courseKey){
-      const agentId = $("#assignAgentId")?.value || "";
-      const st = $("#assignStatus")?.value || "asignado";
-      const agent = refAgents().find(a=>String(a.id)===String(agentId));
-      if(!agent){ alert("Selecciona un agente."); return; }
-      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
-      const ref = referralConversionsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
-      const arr = refConversions();
-      arr.unshift({
-        id:"ref_admin_"+Date.now().toString(16),
-        courseKey,
-        referralCode:normalizeRefCode(agent.code),
-        agentId:agent.id,
-        agentName:agent.name,
-        status:st,
-        attributionStatus:st,
-        assignedByAdmin:true,
-        assignedAt:now(),
-        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
-        schoolName:ref.schoolName || "",
-        regionName:ref.regionName || "",
-        comunaName:ref.comunaName || "",
-        courseLabel:ref.courseLabel || courseKey,
-        targetParents:ref.targetParents || targetParentsForReferral(ref),
-        createdAt:now()
-      });
-      saveRefConversions(arr);
-      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:agent.code,status:st});
-      closeModal();
-      renderReferidos();
-    },
-    saveReferralGoal(id){
-      const target = Number($("#refTargetParents")?.value || 30);
-      const status = $("#refStatusGoal")?.value || "pendiente_validacion";
-      const arr = refConversions();
-      const idx = arr.findIndex(x=>String(x.id)===String(id));
-      if(idx>=0){
-        arr[idx].targetParents = target;
-        arr[idx].status = status;
-        arr[idx].updatedAt = now();
-        saveRefConversions(arr);
-      }else{
-        const found = referralConversionsMerged().find(x=>String(x.id)===String(id));
-        if(found){
-          saveRefConversions([Object.assign({}, found, {targetParents:target, status, updatedAt:now()})].concat(arr));
-        }
-      }
-      log("referral_goal_update","Actualizó meta de inscripción referido",id,{targetParents:target,status});
-      closeModal();
-      renderReferidos();
-    },
-    exportReferrals(){
-      const rows = referralConversionsMerged();
-      const csv = ["fecha,codigo,agente,colegio,region,curso,estado"].concat(rows.map(r=>[
-        r.createdAt,r.referralCode,r.agentName,r.schoolName,r.regionName,r.courseLabel,r.status
-      ].map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(","))).join("\n");
-      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "cursapp_referidos.csv"; a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-    },
     closeModal
   };
 
