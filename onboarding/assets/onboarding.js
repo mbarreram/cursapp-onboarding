@@ -70,6 +70,23 @@ function uid(prefix = "id") {
     saveJSON(KEY_REF_CONVERSIONS, cleaned.slice(0,500));
   }
 
+
+  function activeReferralForCourse(courseKey){
+    const list = loadJSON(KEY_REF_CONVERSIONS, []);
+    const nowMs = Date.now();
+    return (Array.isArray(list) ? list : []).find(x=>{
+      if(String(x.courseKey||"") !== String(courseKey||"")) return false;
+      if(!normalizeReferralCode(x.referralCode||"")) return false;
+      const st = String(x.status||"").toLowerCase();
+      if(st === "rechazado" || st === "liberado") return false;
+      if(st === "reservado"){
+        const exp = x.reservedUntil ? Date.parse(x.reservedUntil) : 0;
+        if(exp && exp < nowMs) return false;
+      }
+      return true;
+    }) || null;
+  }
+
   const DEBUG = localStorage.getItem("cursapp_onb_debug") === "1";
 
   const QS = new URLSearchParams(location.search);
@@ -420,7 +437,7 @@ function uid(prefix = "id") {
                   <div class="onbReferralIcon">👥</div>
                   <div>
                     <div style="font-weight:950;">Cantidad estimada de alumnos/apoderados</div>
-                    <div class="muted" style="margin-top:4px;">Esta meta se usará para medir el avance del curso y habilitar comisiones.</div>
+                    <div class="muted" style="margin-top:4px;">Esto nos ayuda a configurar mejor el curso y medir su avance de incorporación.</div>
                   </div>
                 </div>
                 <select id="onbEstimatedStudents">
@@ -432,7 +449,7 @@ function uid(prefix = "id") {
                   <option value="60" ${estimatedStudents===60 ? "selected":""}>51 a 60 alumnos/apoderados</option>
                 </select>
                 <div class="muted" style="margin-top:8px;font-weight:800;">
-                  Regla comercial: comisión habilitada al alcanzar 60% de esta meta con directiva registrada + apoderados activados.
+                  Puedes continuar con una estimación. Luego el administrador podrá ajustar esta meta si corresponde.
                 </div>
               </div>
 
@@ -441,7 +458,7 @@ function uid(prefix = "id") {
                   <div class="onbReferralIcon">🏆</div>
                   <div>
                     <div style="font-weight:950;">Código de recomendación</div>
-                    <div class="muted" style="margin-top:4px;">Opcional · para agentes o apoderados que recomiendan Cursapp.</div>
+                    <div class="muted" style="margin-top:4px;">Opcional · si alguien te compartió un código Cursapp.</div>
                   </div>
                 </div>
                 <input id="onbReferralCode" placeholder="Ej: CURSAPP2026" value="${escapeHtml(referralCode)}" autocomplete="off" autocapitalize="characters" />
@@ -1009,17 +1026,34 @@ if(d.alsoApoderado){
           createdByRole: "presidente"
         };
 
+        const finalReferralCode = normalizeReferralCode(d.referralCode || "");
+        if(finalReferralCode){
+          const existingReferral = activeReferralForCourse(courseKey);
+          if(existingReferral && normalizeReferralCode(existingReferral.referralCode) !== finalReferralCode){
+            showModal({
+              title: "Curso ya asociado",
+              bodyHtml: `Este curso ya tiene un código de recomendación asociado.<br><br><span class="muted">Por seguridad comercial no se puede cambiar desde el onboarding. Si corresponde, debe revisarlo el administrador Cursapp.</span>`,
+              actions: [
+                { label:"Volver", variant:"ghost", onClick:(close)=>close() }
+              ]
+            });
+            return;
+          }
+        }
+
         localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
         setActiveCourseKey(courseKey);
 
-        if(normalizeReferralCode(d.referralCode || "")){
+        if(finalReferralCode){
           const ag = findRefAgent(d.referralCode || "");
           saveReferralConversion({
             courseKey,
             referralCode: normalizeReferralCode(d.referralCode || ""),
             agentId: ag ? ag.id : "",
             agentName: ag ? ag.name : "",
-            status: "pendiente_validacion",
+            status: "asignado",
+            attributionStatus: "asignado",
+            assignedAt: nowISO(),
             schoolName: school ? school.name : "",
             regionName: region ? region.name : "",
             comunaName: comuna ? comuna.name : "",
