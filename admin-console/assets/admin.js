@@ -795,6 +795,50 @@
   function saveRefConversions(arr){ save(KEY_REF_CONVERSIONS, arr || []); }
   function agentByCode(code){ const c = normalizeRefCode(code); return refAgents().find(a=>normalizeRefCode(a.code)===c) || null; }
 
+
+  function isReferralReservedActive(r){
+    if(String(r.status||"").toLowerCase() !== "reservado") return true;
+    const exp = r.reservedUntil ? Date.parse(r.reservedUntil) : 0;
+    return !exp || exp >= Date.now();
+  }
+
+  function courseHasReferral(courseKey){
+    return refConversions().some(r=>{
+      if(String(r.courseKey||"") !== String(courseKey||"")) return false;
+      if(!normalizeRefCode(r.referralCode||"")) return false;
+      const st = String(r.status||"").toLowerCase();
+      if(st === "rechazado" || st === "liberado") return false;
+      if(st === "reservado" && !isReferralReservedActive(r)) return false;
+      return true;
+    });
+  }
+
+  function unassignedReferralCourses(){
+    const map = new Map();
+    profiles().forEach(p=>{
+      if(!p.courseKey || courseHasReferral(p.courseKey)) return;
+      const c = p.course || {};
+      const obj = map.get(p.courseKey) || {
+        id:"unassigned_"+String(p.courseKey).replace(/[^a-zA-Z0-9_-]/g,"_"),
+        courseKey:p.courseKey,
+        referralCode:"",
+        agentId:"",
+        agentName:"",
+        status:"sin_agente",
+        attributionStatus:"sin_agente",
+        schoolName:getSchoolName(c),
+        regionName:getRegionName(c),
+        comunaName:c.comunaName || c.comuna || "",
+        courseLabel:getCourseName(c) + (getJornada(c) ? " · "+getJornada(c) : ""),
+        targetParents:Number(c.estimatedStudents || 0),
+        createdAt:p.createdAt || now()
+      };
+      map.set(p.courseKey, obj);
+    });
+    return Array.from(map.values());
+  }
+
+
   function referralConversionsMerged(){
     const convs = refConversions().slice();
     profiles().forEach(p=>{
@@ -817,7 +861,15 @@
         createdAt:p.createdAt || now()
       });
     });
-    return convs.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+    const filtered = convs.filter(r=>{
+      const st = String(r.status||"").toLowerCase();
+      if(st === "reservado") return isReferralReservedActive(r);
+      return true;
+    });
+    unassignedReferralCourses().forEach(u=>{
+      if(!filtered.some(x=>String(x.courseKey)===String(u.courseKey))) filtered.push(u);
+    });
+    return filtered.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
   }
 
   function refStats(){
@@ -848,7 +900,7 @@
   function statusRefBadge(st){
     const s = String(st||"pendiente_validacion").toLowerCase();
     const cls = s==="pagado" ? "green" : (s==="pagable" || s==="validado" || s==="activado" ? "purple" : (s==="rechazado" ? "red" : "orange"));
-    const label = ({pendiente_validacion:"Pendiente",validado:"Validado",activado:"Activado",pagable:"Pagable",pagado:"Pagado",rechazado:"Rechazado"})[s] || st || "Pendiente";
+    const label = ({sin_agente:"Sin agente",reservado:"Reservado",asignado:"Asignado",pendiente_validacion:"Pendiente",validado:"Validado",activado:"Activado",pagable:"Pagable",pagado:"Pagado",rechazado:"Rechazado",liberado:"Liberado"})[s] || st || "Pendiente";
     return `<span class="badge ${cls}">${esc(label)}</span>`;
   }
 
@@ -1025,7 +1077,7 @@
           <div class="refRulesIcon">ℹ️</div>
           <div>
             <h2>Reglas de comisiones</h2>
-            <p>La directiva cuenta para el avance comercial, pero solo los apoderados activados/pagados generan comisión.</p>
+            <p>La asignación es por curso: varios agentes pueden trabajar el mismo colegio, pero cada curso solo puede quedar asociado a un código.</p>
           </div>
         </div>
 
@@ -1096,14 +1148,18 @@
     return `<div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base comisión</th><th>Avance</th><th>Tramo / monto</th><th>Acciones</th></tr></thead><tbody>
       ${rows.map(r=>`<tr>
         <td>${fmtDate(r.createdAt)}</td>
-        <td><span class="badge purple">${esc(r.referralCode||"—")}</span></td>
-        <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente")}</td>
+        <td>${r.referralCode ? `<span class="badge purple">${esc(r.referralCode)}</span>` : `<span class="badge orange">Sin código</span>`}</td>
+        <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente asignado")}</td>
         <td>${esc(r.schoolName||"—")}<br><small>${esc(r.regionName||"—")}</small></td>
         <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
         <td><b>${referralCourseProgress(r).commercialCount}/${referralCourseProgress(r).target}</b><br><small>Dir. ${referralCourseProgress(r).directiva} · Apod. ${referralCourseProgress(r).activatedParents}</small></td>
         <td>${progressBarHtml(referralCourseProgress(r).pct)}</td>
         <td>${commissionTierBadge(r)}<br><small>${commissionTierExplain(r)} · Total ${clp(referralCommissionTier(r).total)}</small><br>${statusRefBadge(r.status)}</td>
-        <td><button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button></td>
+        <td>
+          <button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button>
+          ${r.status==="sin_agente" ? `<button class="adminBtn ghost" onclick="Admin.openAssignReferral('${esc(r.courseKey)}')">Asignar</button>` : ``}
+          ${r.status!=="sin_agente" ? `<button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','validado')">Validar</button> <button class="adminBtn ghost" onclick="Admin.updateReferralStatus('${esc(r.id)}','pagado')">Pagado</button>` : ``}
+        </td>
       </tr>`).join("") || `<tr><td colspan="9">Sin referidos registrados.</td></tr>`}
     </tbody></table></div>`;
   }
@@ -1124,6 +1180,27 @@
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
         <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
         <button class="adminBtn" onclick="Admin.saveAgent('${esc(agentId||"")}')">Guardar agente</button>
+      </div>
+    `);
+  }
+
+
+
+  function openAssignReferral(courseKey){
+    const ref = referralConversionsMerged().find(x=>String(x.courseKey)===String(courseKey)) || { courseKey };
+    if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+    const agents = refAgents().filter(a=>String(a.status||"active")==="active");
+    openModal(`
+      <h2>Asignar agente al curso</h2>
+      <p class="muted">${esc(ref.schoolName||"Curso")} · ${esc(ref.courseLabel||courseKey)}</p>
+      <div class="formGrid">
+        <div><label>Agente</label><select id="assignAgentId"><option value="">Seleccionar agente</option>${agents.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.code)}</option>`).join("")}</select></div>
+        <div><label>Estado</label><select id="assignStatus"><option value="asignado">Asignado</option><option value="reservado">Reservado 48h</option></select></div>
+      </div>
+      <p class="muted" style="margin-top:12px">Regla: un colegio puede tener varios agentes, pero este curso quedará bloqueado para el código seleccionado.</p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveAssignReferral('${esc(courseKey)}')">Asignar</button>
       </div>
     `);
   }
@@ -1445,6 +1522,7 @@
     openAgentModal,
     openAgentDetail,
     openReferralGoal,
+    openAssignReferral,
     saveAgent(agentId){
       const agents = refAgents();
       const code = normalizeRefCode($("#agCode")?.value || "");
@@ -1489,6 +1567,38 @@
       renderReferidos();
     },
 
+
+    saveAssignReferral(courseKey){
+      const agentId = $("#assignAgentId")?.value || "";
+      const st = $("#assignStatus")?.value || "asignado";
+      const agent = refAgents().find(a=>String(a.id)===String(agentId));
+      if(!agent){ alert("Selecciona un agente."); return; }
+      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+      const ref = referralConversionsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
+      const arr = refConversions();
+      arr.unshift({
+        id:"ref_admin_"+Date.now().toString(16),
+        courseKey,
+        referralCode:normalizeRefCode(agent.code),
+        agentId:agent.id,
+        agentName:agent.name,
+        status:st,
+        attributionStatus:st,
+        assignedByAdmin:true,
+        assignedAt:now(),
+        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
+        schoolName:ref.schoolName || "",
+        regionName:ref.regionName || "",
+        comunaName:ref.comunaName || "",
+        courseLabel:ref.courseLabel || courseKey,
+        targetParents:ref.targetParents || targetParentsForReferral(ref),
+        createdAt:now()
+      });
+      saveRefConversions(arr);
+      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:agent.code,status:st});
+      closeModal();
+      renderReferidos();
+    },
     saveReferralGoal(id){
       const target = Number($("#refTargetParents")?.value || 30);
       const status = $("#refStatusGoal")?.value || "pendiente_validacion";
