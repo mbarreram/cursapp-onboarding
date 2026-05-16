@@ -834,6 +834,14 @@
   // ===== Alertas globales operacionales =====
   const KEY_GLOBAL_ALERTS = "cursapp_global_alerts_v1";
 
+
+  function toLocalInputValue(d){
+    const dt = d ? new Date(d) : new Date();
+    const off = dt.getTimezoneOffset();
+    const local = new Date(dt.getTime() - off*60000);
+    return local.toISOString().slice(0,16);
+  }
+
   function globalAlerts(){
     const arr = load(KEY_GLOBAL_ALERTS, []);
     return Array.isArray(arr) ? arr : [];
@@ -869,11 +877,18 @@
   }
 
   function renderAlertForm(){
+    const start = toLocalInputValue(new Date());
+    const endDate = new Date(Date.now() + 24*60*60*1000);
+    const end = toLocalInputValue(endDate);
     return `
       <section class="panel globalAlertForm">
-        <div class="panelHead"><h2>Crear nueva alerta</h2></div>
-        <div class="formGrid">
-          <div>
+        <div class="panelHead">
+          <h2>Crear alerta</h2>
+          <span class="badge purple">Operacional</span>
+        </div>
+
+        <div class="gaFormGrid">
+          <div class="gaField">
             <label>Tipo</label>
             <select id="gaType">
               <option>Transbank</option>
@@ -883,7 +898,8 @@
               <option>General</option>
             </select>
           </div>
-          <div>
+
+          <div class="gaField">
             <label>Severidad</label>
             <select id="gaSeverity">
               <option value="informativa">Informativa</option>
@@ -891,7 +907,8 @@
               <option value="critica">Crítica</option>
             </select>
           </div>
-          <div>
+
+          <div class="gaField">
             <label>Visible para</label>
             <select id="gaVisibleTo">
               <option value="todos">Todos los roles</option>
@@ -901,33 +918,39 @@
               <option value="apoderado">Apoderado</option>
             </select>
           </div>
-          <div>
-            <label>Permitir cerrar banner</label>
+
+          <div class="gaField">
+            <label>Cierre</label>
             <select id="gaDismissible">
-              <option value="true">Sí</option>
-              <option value="false">No, mantener visible</option>
+              <option value="true">Usuario puede cerrar</option>
+              <option value="false">Mantener visible</option>
             </select>
           </div>
-          <div style="grid-column:1/-1">
+
+          <div class="gaField gaFull">
             <label>Título</label>
             <input id="gaTitle" placeholder="Ej: Problemas con pagos en Transbank">
           </div>
-          <div style="grid-column:1/-1">
+
+          <div class="gaField gaFull">
             <label>Mensaje</label>
-            <textarea id="gaMessage" rows="4" placeholder="Describe la situación y qué debe hacer el usuario."></textarea>
+            <textarea id="gaMessage" rows="3" placeholder="Describe la situación y qué debe hacer el usuario."></textarea>
           </div>
-          <div>
+
+          <div class="gaField">
             <label>Desde</label>
-            <input id="gaStart" type="datetime-local">
+            <input id="gaStart" type="datetime-local" value="${start}">
           </div>
-          <div>
+
+          <div class="gaField">
             <label>Hasta</label>
-            <input id="gaEnd" type="datetime-local">
+            <input id="gaEnd" type="datetime-local" value="${end}">
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
-          <button class="adminBtn ghost" onclick="Admin.clearAlertForm()">Limpiar</button>
-          <button class="adminBtn" onclick="Admin.saveGlobalAlert()">Guardar alerta</button>
+
+        <div class="gaFormActions">
+          <button class="adminBtn ghost" onclick="Admin.clearAlertForm()" type="button">Limpiar</button>
+          <button class="adminBtn" onclick="Admin.saveGlobalAlert()" type="button">Guardar alerta</button>
         </div>
       </section>
     `;
@@ -986,7 +1009,7 @@
         ${kpi("🌐","Total",rows.length,"alertas creadas")}
       </div>
 
-      <div class="tablesGrid">
+      <div class="gaLayout">
         <section>
           <div class="panel">
             <div class="panelHead"><h2>Alertas activas</h2><span class="badge ${active.length?'red':'green'}">${active.length}</span></div>
@@ -1202,6 +1225,63 @@
       log("admin_action","Inspeccionó curso",courseKey);
     },
     addAuditDemo(){ log("admin_audit","Revisión manual de auditoría","Admin Console",{reason:"Control preventivo"}); renderAuditoria(); },
+
+    saveGlobalAlert(){
+      const title = ($("#gaTitle")?.value || "").trim();
+      const message = ($("#gaMessage")?.value || "").trim();
+      if(!title || !message){
+        alert("Completa título y mensaje.");
+        return;
+      }
+
+      const startValue = $("#gaStart")?.value || "";
+      const endValue = $("#gaEnd")?.value || "";
+      const startAt = startValue ? new Date(startValue).toISOString() : now();
+      const endAt = endValue ? new Date(endValue).toISOString() : "";
+
+      if(endAt && Date.parse(endAt) <= Date.parse(startAt)){
+        alert("La fecha hasta debe ser posterior a la fecha desde.");
+        return;
+      }
+
+      const list = globalAlerts();
+      const alertObj = {
+        id:"ga_"+Date.now().toString(16),
+        type:$("#gaType")?.value || "General",
+        severity:$("#gaSeverity")?.value || "informativa",
+        visibleTo:$("#gaVisibleTo")?.value || "todos",
+        dismissible:($("#gaDismissible")?.value || "true") === "true",
+        title,
+        message,
+        startAt,
+        endAt,
+        status:"activa",
+        createdAt:now()
+      };
+
+      list.unshift(alertObj);
+      saveGlobalAlerts(list);
+      log("global_alert_create","Creó alerta global","Admin Console",{title});
+      renderAlertasGlobales();
+    },
+    clearAlertForm(){
+      ["gaTitle","gaMessage"].forEach(id=>{ const el=$("#"+id); if(el) el.value=""; });
+      const start = $("#gaStart");
+      const end = $("#gaEnd");
+      if(start) start.value = toLocalInputValue(new Date());
+      if(end) end.value = toLocalInputValue(new Date(Date.now()+24*60*60*1000));
+    },
+    closeGlobalAlert(id){
+      const list = globalAlerts();
+      const i = list.findIndex(a=>String(a.id)===String(id));
+      if(i>=0){
+        list[i].status = "cerrada";
+        list[i].closedAt = now();
+        saveGlobalAlerts(list);
+        log("global_alert_close","Cerró alerta global",id);
+      }
+      renderAlertasGlobales();
+    },
     closeModal
   };
 

@@ -291,3 +291,189 @@ textarea{min-height:92px}
   .globalAlertCard{grid-template-columns:38px minmax(0,1fr);gap:10px}
   .gaActions{grid-column:1/-1;justify-content:flex-start}
 }
+
+
+/* ===== Alertas globales v2 visual/mobile fix ===== */
+.gaLayout{
+  display:grid;
+  grid-template-columns:minmax(0,1.45fr) minmax(320px,.8fr);
+  gap:18px;
+  align-items:start;
+}
+
+.globalAlertForm{
+  position:sticky;
+  top:92px;
+}
+
+.gaFormGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.gaField{
+  min-width:0;
+}
+
+.gaField.gaFull{
+  grid-column:1/-1;
+}
+
+.gaField label{
+  display:block;
+  margin-bottom:7px;
+  color:#667085;
+  font-weight:900;
+  font-size:13px;
+}
+
+.gaField input,
+.gaField select,
+.gaField textarea{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(16,24,40,.12);
+  border-radius:14px;
+  padding:12px 13px;
+  background:#fff;
+  color:#101828;
+  font-weight:750;
+  font-size:14px;
+  outline:none;
+  line-height:1.25;
+}
+
+.gaField textarea{
+  resize:vertical;
+  min-height:96px;
+}
+
+.gaField input:focus,
+.gaField select:focus,
+.gaField textarea:focus{
+  border-color:#7c3aed;
+  box-shadow:0 0 0 4px rgba(124,58,237,.10);
+}
+
+.gaFormActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:16px;
+}
+
+.globalAlertCard{
+  grid-template-columns:46px minmax(0,1fr) auto;
+}
+
+.tableWrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.tableWrap table{
+  min-width:720px;
+}
+
+@media(max-width:900px){
+  .gaLayout{
+    grid-template-columns:1fr;
+  }
+
+  .globalAlertForm{
+    position:relative;
+    top:auto;
+  }
+}
+
+@media(max-width:640px){
+  .adminTop{
+    align-items:center;
+  }
+
+  .adminTop h1{
+    font-size:22px !important;
+    line-height:1.12 !important;
+  }
+
+  .adminTop p{
+    font-size:13px !important;
+    line-height:1.28 !important;
+    max-width:210px;
+  }
+
+  .topSearch{
+    display:none !important;
+  }
+
+  .adminContent{
+    padding:14px !important;
+    overflow-x:hidden;
+  }
+
+  .kpis{
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
+  }
+
+  .panel{
+    border-radius:20px !important;
+    overflow:hidden;
+  }
+
+  .panelHead{
+    gap:8px;
+  }
+
+  .panelHead h2{
+    font-size:19px !important;
+    line-height:1.15 !important;
+  }
+
+  .gaFormGrid{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .gaField label{
+    font-size:12px;
+  }
+
+  .gaField input,
+  .gaField select,
+  .gaField textarea{
+    font-size:14px;
+    min-height:48px;
+    border-radius:14px;
+  }
+
+  .gaFormActions{
+    position:sticky;
+    bottom:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.76),#fff);
+    padding-top:10px;
+  }
+
+  .gaFormActions .adminBtn{
+    flex:1;
+    min-height:48px;
+  }
+
+  .globalAlertCard{
+    grid-template-columns:38px minmax(0,1fr);
+    gap:10px;
+    padding:13px;
+    border-radius:18px;
+  }
+
+  .gaActions{
+    grid-column:1/-1;
+    justify-content:flex-start;
+  }
+
+  .gaMeta{
+    font-size:11px;
+    gap:6px;
+  }
+}
