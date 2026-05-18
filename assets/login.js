@@ -564,17 +564,29 @@ function loadJSON(k, def) {
       const u = String(username?.value || "").trim().toLowerCase();
       const p = String(password?.value || "");
 
+      // Login administrador Cursapp
+      if (u === "admin@cursapp.cl" && p === "admin123") {
+        localStorage.setItem(KEY_SESSION, JSON.stringify({
+          userId:"admin_cursapp",
+          email:u,
+          role:"admin",
+          isAdmin:true,
+          createdAt:new Date().toISOString()
+        }));
+        window.location.href = "/admin/admin.html";
+        return;
+      }
 
       // Login agente Cursapp
       if (u === "agente@cursapp.cl" && p === "123456") {
         const ag = ensureDemoAgent();
         localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({
-          agentId: ag.id,
-          email: ag.email,
-          name: ag.name,
-          code: ag.code,
-          role: "agente",
-          createdAt: new Date().toISOString()
+          agentId:ag.id,
+          email:ag.email,
+          name:ag.name,
+          code:ag.code,
+          role:"agente",
+          createdAt:new Date().toISOString()
         }));
         window.location.href = "/agente/agente.html";
         return;
@@ -589,12 +601,12 @@ function loadJSON(k, def) {
           return;
         }
         localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({
-          agentId: agent.id,
-          email: agent.email,
-          name: agent.name,
-          code: agent.code,
-          role: "agente",
-          createdAt: new Date().toISOString()
+          agentId:agent.id,
+          email:agent.email,
+          name:agent.name,
+          code:agent.code,
+          role:"agente",
+          createdAt:new Date().toISOString()
         }));
         window.location.href = "/agente/agente.html";
         return;
