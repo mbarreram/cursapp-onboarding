@@ -137,7 +137,7 @@
     </section>
   </main>
 
-  <script src="/assets/login.js?v=20260214" defer></script>
+  <script src="/assets/login.js?v=20260214-agent4" defer></script>
   <script>
     function resetForm(){
       const form = document.getElementById("loginForm");
@@ -201,6 +201,66 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+</script>
+
+
+<script>
+(function(){
+  function submitLoginWith(email, pass){
+    var u=document.getElementById("username");
+    var p=document.getElementById("password");
+    var form=document.getElementById("loginForm");
+    if(u) u.value=email;
+    if(p) p.value=pass;
+    setTimeout(function(){
+      if(form && typeof form.requestSubmit==="function") form.requestSubmit();
+      else if(form) form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+    },20);
+  }
+  function bindFinalLogin(){
+    var btnDirectiva=document.getElementById("btnDirectiva");
+    var btnApoderado=document.getElementById("btnApoderado");
+    var btnAdmin=document.getElementById("btnAdminPanel");
+    var btnAgent=document.getElementById("btnAgentPanel");
+    var togglePassword=document.getElementById("togglePassword");
+    var password=document.getElementById("password");
+    var googleLoginBtn=document.getElementById("googleLoginBtn");
+
+    if(btnDirectiva && !btnDirectiva.dataset.finalBound){
+      btnDirectiva.dataset.finalBound="1";
+      btnDirectiva.onclick=function(){ location.href="/onboarding/dashboard.html?mode=directiva&role=presidente"; };
+    }
+    if(btnApoderado && !btnApoderado.dataset.finalBound){
+      btnApoderado.dataset.finalBound="1";
+      btnApoderado.onclick=function(){ location.href="/onboarding/dashboard.html?mode=apoderado"; };
+    }
+    if(btnAdmin && !btnAdmin.dataset.finalBound){
+      btnAdmin.dataset.finalBound="1";
+      btnAdmin.onclick=function(){ submitLoginWith("admin@cursapp.cl","admin123"); };
+    }
+    if(btnAgent && !btnAgent.dataset.finalBound){
+      btnAgent.dataset.finalBound="1";
+      btnAgent.onclick=function(){ submitLoginWith("agente@cursapp.cl","123456"); };
+    }
+    if(togglePassword && password && !togglePassword.dataset.finalBound){
+      togglePassword.dataset.finalBound="1";
+      togglePassword.onclick=function(){
+        var show=password.type==="password";
+        password.type=show?"text":"password";
+        togglePassword.classList.toggle("isActive",show);
+      };
+    }
+    if(googleLoginBtn && !googleLoginBtn.dataset.finalBound){
+      googleLoginBtn.dataset.finalBound="1";
+      googleLoginBtn.onclick=function(){
+        var err=document.getElementById("loginError");
+        if(err){err.style.display="block";err.textContent="Google Login queda visualmente preparado; falta conectar proveedor OAuth.";}
+      };
+    }
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindFinalLogin);
+  else bindFinalLogin();
+})();
 </script>
 
 </body>
