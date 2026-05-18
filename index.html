@@ -5,21 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Cursapp · Ingreso</title>
   <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
-
 <style>
 .authIcon--agent{background:linear-gradient(135deg,#7c3aed,#9333ea);color:white}
-.agentPanelBtn{
-  width:100%;border:0;border-radius:18px;padding:16px 18px;
-  background:linear-gradient(135deg,#7c3aed,#9333ea);
-  color:#fff;font-weight:950;font-size:15px;
-  display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 16px 36px rgba(124,58,237,.24);
-}
-.authCard--agent{
-  border:1px solid rgba(124,58,237,.14);
-}
+.agentPanelBtn{width:100%;border:0;border-radius:18px;padding:16px 18px;background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;font-weight:950;font-size:15px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 16px 36px rgba(124,58,237,.24)}
+.authCard--agent{border:1px solid rgba(124,58,237,.14)}
 </style>
-
 </head>
 <body class="authPremium">
 
@@ -76,21 +66,14 @@
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
 
-
     <section class="authCard authCard--agent" aria-labelledby="agentTitle">
       <div class="authCardHead authCardHead--agent">
         <div class="authIcon authIcon--agent" aria-hidden="true">🏆</div>
-        <div>
-          <h2 id="agentTitle">Panel agente</h2>
-          <p>Acceso para agentes captadores Cursapp</p>
-        </div>
+        <div><h2 id="agentTitle">Panel agente</h2><p>Acceso para agentes captadores Cursapp</p></div>
       </div>
-      <button id="btnAgentPanel" type="button" class="agentPanelBtn">
-        Entrar como agente <span>›</span>
-      </button>
+      <button id="btnAgentPanel" type="button" class="agentPanelBtn">Entrar como agente <span>›</span></button>
       <p class="adminHint">Usuario demo: agente@cursapp.cl · clave 123456</p>
     </section>
-
 
     <section class="authCard authCard--login" aria-labelledby="loginTitle">
       <div class="loginHead">
@@ -137,7 +120,7 @@
     </section>
   </main>
 
-  <script src="/assets/login.js?v=20260214-agent4" defer></script>
+  <script src="/assets/login.js?v=20260214-agent5" defer></script>
   <script>
     function resetForm(){
       const form = document.getElementById("loginForm");
@@ -203,65 +186,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-
 <script>
-(function(){
-  function submitLoginWith(email, pass){
-    var u=document.getElementById("username");
-    var p=document.getElementById("password");
-    var form=document.getElementById("loginForm");
-    if(u) u.value=email;
-    if(p) p.value=pass;
-    setTimeout(function(){
-      if(form && typeof form.requestSubmit==="function") form.requestSubmit();
-      else if(form) form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
-    },20);
-  }
-  function bindFinalLogin(){
-    var btnDirectiva=document.getElementById("btnDirectiva");
-    var btnApoderado=document.getElementById("btnApoderado");
-    var btnAdmin=document.getElementById("btnAdminPanel");
-    var btnAgent=document.getElementById("btnAgentPanel");
-    var togglePassword=document.getElementById("togglePassword");
-    var password=document.getElementById("password");
-    var googleLoginBtn=document.getElementById("googleLoginBtn");
-
-    if(btnDirectiva && !btnDirectiva.dataset.finalBound){
-      btnDirectiva.dataset.finalBound="1";
-      btnDirectiva.onclick=function(){ location.href="/onboarding/dashboard.html?mode=directiva&role=presidente"; };
-    }
-    if(btnApoderado && !btnApoderado.dataset.finalBound){
-      btnApoderado.dataset.finalBound="1";
-      btnApoderado.onclick=function(){ location.href="/onboarding/dashboard.html?mode=apoderado"; };
-    }
-    if(btnAdmin && !btnAdmin.dataset.finalBound){
-      btnAdmin.dataset.finalBound="1";
-      btnAdmin.onclick=function(){ submitLoginWith("admin@cursapp.cl","admin123"); };
-    }
-    if(btnAgent && !btnAgent.dataset.finalBound){
-      btnAgent.dataset.finalBound="1";
-      btnAgent.onclick=function(){ submitLoginWith("agente@cursapp.cl","123456"); };
-    }
-    if(togglePassword && password && !togglePassword.dataset.finalBound){
-      togglePassword.dataset.finalBound="1";
-      togglePassword.onclick=function(){
-        var show=password.type==="password";
-        password.type=show?"text":"password";
-        togglePassword.classList.toggle("isActive",show);
-      };
-    }
-    if(googleLoginBtn && !googleLoginBtn.dataset.finalBound){
-      googleLoginBtn.dataset.finalBound="1";
-      googleLoginBtn.onclick=function(){
-        var err=document.getElementById("loginError");
-        if(err){err.style.display="block";err.textContent="Google Login queda visualmente preparado; falta conectar proveedor OAuth.";}
-      };
-    }
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindFinalLogin);
-  else bindFinalLogin();
-})();
+document.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("btnAgentPanel");if(b)b.addEventListener("click",()=>{const u=document.getElementById("username"),p=document.getElementById("password"),f=document.getElementById("loginForm");if(u)u.value="agente@cursapp.cl";if(p)p.value="123456";if(f&&f.requestSubmit)f.requestSubmit();else if(f)f.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));});});
 </script>
-
 </body>
 </html>
