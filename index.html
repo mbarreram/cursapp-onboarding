@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Cursapp · Ingreso</title>
   <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
+
+<style>
+.authIcon--agent{background:linear-gradient(135deg,#7c3aed,#9333ea);color:white}
+.agentPanelBtn{
+  width:100%;border:0;border-radius:18px;padding:16px 18px;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:#fff;font-weight:950;font-size:15px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 16px 36px rgba(124,58,237,.24);
+}
+.authCard--agent{
+  border:1px solid rgba(124,58,237,.14);
+}
+</style>
+
 </head>
 <body class="authPremium">
 
@@ -60,6 +75,22 @@
       </button>
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
+
+
+    <section class="authCard authCard--agent" aria-labelledby="agentTitle">
+      <div class="authCardHead authCardHead--agent">
+        <div class="authIcon authIcon--agent" aria-hidden="true">🏆</div>
+        <div>
+          <h2 id="agentTitle">Panel agente</h2>
+          <p>Acceso para agentes captadores Cursapp</p>
+        </div>
+      </div>
+      <button id="btnAgentPanel" type="button" class="agentPanelBtn">
+        Entrar como agente <span>›</span>
+      </button>
+      <p class="adminHint">Usuario demo: agente@cursapp.cl · clave 123456</p>
+    </section>
+
 
     <section class="authCard authCard--login" aria-labelledby="loginTitle">
       <div class="loginHead">
