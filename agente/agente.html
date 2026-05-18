@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Cursapp · Panel agente</title>
+  <link rel="stylesheet" href="assets/agente.css?v=3"/>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><div class="logo">C</div><div><strong>Cursapp</strong><span>Panel agente</span></div></div>
+    <nav>
+      <button class="nav active" data-view="home">🏠 Inicio</button>
+      <button class="nav" data-view="cursos">🎓 Mis cursos</button>
+      <button class="nav" data-view="metas">📈 Mis metas</button>
+      <button class="nav" data-view="codigo">🔗 Mi código</button>
+      <button class="nav" data-view="material">📣 Material</button>
+    </nav>
+    <div class="help"><b>Material rápido</b><p>Mensajes y guía para motivar directivas.</p><button data-view="material">Ver material</button></div>
+    <div class="profile"><div class="avatar" id="agentAvatar">AG</div><div><b id="agentNameSide">Agente</b><span id="agentCodeSide">—</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <button id="menuBtn" class="menu">☰</button>
+      <div><h1 id="helloTitle">¡Hola! 👋</h1><p>Este es tu resumen comercial. Sigue motivando a más cursos y apoderados.</p></div>
+      <button class="logout" id="logoutBtn">Salir</button>
+    </header>
+    <section id="app"></section>
+  </main>
+  <script src="assets/agente.js?v=3"></script>
+</body>
+</html>
