@@ -17,6 +17,44 @@
 .agentPanelBtn{background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 16px 36px rgba(124,58,237,.24)}
 .authCard--admin,.authCard--agent{border:1px solid rgba(124,58,237,.14)}
 </style>
+
+<script>
+window.CURSAPP_GO_ADMIN = function(ev){
+  try{
+    if(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+
+    var s = {
+      userId:"admin_cursapp",
+      email:"admin@cursapp.cl",
+      role:"admin",
+      isAdmin:true,
+      createdAt:new Date().toISOString()
+    };
+
+    localStorage.setItem("cursapp_session_v1", JSON.stringify(s));
+    localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(s));
+
+    var check = localStorage.getItem("cursapp_session_v1");
+
+    alert(
+      "Admin click OK\n" +
+      "Sesión guardada: " + (check ? "SI" : "NO") + "\n" +
+      "Destino: /admin.html"
+    );
+
+    window.location.href = "/admin.html";
+    return false;
+
+  }catch(e){
+    alert("Error admin login: " + (e && e.message ? e.message : e));
+    return false;
+  }
+};
+</script>
+
 </head>
 <body class="authPremium">
 
@@ -67,7 +105,7 @@
           <p>Acceso interno para administradores de Cursapp</p>
         </div>
       </div>
-      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
+      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
 
@@ -203,7 +241,7 @@
         var s={userId:"admin_cursapp",email:"admin@cursapp.cl",role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
         setJSON("cursapp_session_v1",s);
         setJSON("cursapp_admin_session_v1",s);
-        location.href="/admin/admin.html";
+        location.href="/admin.html";
       };
     }
     var agent=document.getElementById("btnAgentPanel");
@@ -223,44 +261,19 @@
 </script>
 
 
-<script>
-window.addEventListener("load", function(){
 
-  var adminBtn = document.getElementById("btnAdminPanel");
 
-  if(adminBtn){
 
-    adminBtn.setAttribute("type","button");
-
-    adminBtn.onclick = function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-
-      var adminSession = {
-        userId:"admin_cursapp",
-        email:"admin@cursapp.cl",
-        role:"admin",
-        isAdmin:true,
-        createdAt:new Date().toISOString()
-      };
-
-      localStorage.setItem("cursapp_session_v1", JSON.stringify(adminSession));
-      localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(adminSession));
-
-      window.location.href = "/admin/admin.html";
-
-      return false;
-    };
-  }
-
-});
-</script>
 
 <script>
 window.addEventListener("DOMContentLoaded", function(){
   var a = document.getElementById("btnAdminPanel");
-  if(a){ a.onclick = window.CURSAPP_GO_ADMIN; }
+  if(a){
+    a.setAttribute("href","/admin.html");
+    a.setAttribute("onclick","return window.CURSAPP_GO_ADMIN(event)");
+  }
 });
 </script>
+
 </body>
 </html>
