@@ -1,1 +1,32 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Cursapp · Agente</title><link rel="stylesheet" href="assets/agente.css?v=5"/></head><body><main class="shell"><h1 id="title">Panel agente</h1><p id="sub">Resumen comercial.</p><section class="kpis"><article><b>5</b><span>Cursos captados</span></article><article><b>112</b><span>Apoderados activados</span></article><article><b>$168.000</b><span>Comisión estimada</span></article></section><section class="card"><h2>Establece tu meta</h2><p><b>$72.000</b></p><p>5 cursos x 32 apoderados x $450</p></section><section class="card"><h2>Mi código</h2><div class="code" id="code">MAU2026</div></section><section class="card"><h2>Mis cursos</h2><table><tr><th>Colegio</th><th>Curso</th><th>Avance</th></tr><tr><td>Colegio Central</td><td>2°B</td><td>55%</td></tr><tr><td>Colegio Los Robles</td><td>5°B</td><td>80%</td></tr></table></section><button id="logout">Salir</button></main><script src="assets/agente.js?v=5"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>Cursapp · Panel agente</title>
+  <link rel="stylesheet" href="assets/agente.css?v=3"/>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><div class="logo">C</div><div><strong>Cursapp</strong><span>Panel agente</span></div></div>
+    <nav>
+      <button class="nav active" data-view="home">🏠 Inicio</button>
+      <button class="nav" data-view="cursos">🎓 Mis cursos</button>
+      <button class="nav" data-view="metas">📈 Mis metas</button>
+      <button class="nav" data-view="codigo">🔗 Mi código</button>
+      <button class="nav" data-view="material">📣 Material</button>
+    </nav>
+    <div class="help"><b>Material rápido</b><p>Mensajes y guía para motivar directivas.</p><button data-view="material">Ver material</button></div>
+    <div class="profile"><div class="avatar" id="agentAvatar">AG</div><div><b id="agentNameSide">Agente</b><span id="agentCodeSide">—</span></div></div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <button id="menuBtn" class="menu">☰</button>
+      <div><h1 id="helloTitle">¡Hola! 👋</h1><p>Este es tu resumen comercial. Sigue motivando a más cursos y apoderados.</p></div>
+      <button class="logout" id="logoutBtn">Salir</button>
+    </header>
+    <section id="app"></section>
+  </main>
+  <script src="assets/agente.js?v=3"></script>
+</body>
+</html>
