@@ -42,10 +42,10 @@ window.CURSAPP_GO_ADMIN = function(ev){
     alert(
       "Admin click OK\n" +
       "Sesión guardada: " + (check ? "SI" : "NO") + "\n" +
-      "Destino: /admin.html"
+      "Destino: /admin-console/admin.html"
     );
 
-    window.location.href = "/admin.html";
+    window.location.href = "/admin-console/admin.html";
     return false;
 
   }catch(e){
@@ -105,7 +105,7 @@ window.CURSAPP_GO_ADMIN = function(ev){
           <p>Acceso interno para administradores de Cursapp</p>
         </div>
       </div>
-      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
+      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin-console/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
 
@@ -241,7 +241,7 @@ window.CURSAPP_GO_ADMIN = function(ev){
         var s={userId:"admin_cursapp",email:"admin@cursapp.cl",role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
         setJSON("cursapp_session_v1",s);
         setJSON("cursapp_admin_session_v1",s);
-        location.href="/admin.html";
+        location.href="/admin-console/admin.html";
       };
     }
     var agent=document.getElementById("btnAgentPanel");
@@ -269,7 +269,7 @@ window.CURSAPP_GO_ADMIN = function(ev){
 window.addEventListener("DOMContentLoaded", function(){
   var a = document.getElementById("btnAdminPanel");
   if(a){
-    a.setAttribute("href","/admin.html");
+    a.setAttribute("href","/admin-console/admin.html");
     a.setAttribute("onclick","return window.CURSAPP_GO_ADMIN(event)");
   }
 });
