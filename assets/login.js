@@ -549,8 +549,18 @@ function loadJSON(k, def) {
 
       // Login administrador Cursapp
       if (u === "admin@cursapp.cl" && p === "admin123") {
-        localStorage.setItem(KEY_SESSION, JSON.stringify({userId:"admin_cursapp",email:u,role:"admin",isAdmin:true,createdAt:new Date().toISOString()}));
-        window.location.href = "/admin/admin.html"; return;
+        const adminSession = {
+          userId:"admin_cursapp",
+          email:u,
+          role:"admin",
+          isAdmin:true,
+          createdAt:new Date().toISOString()
+        };
+        localStorage.setItem(KEY_SESSION, JSON.stringify(adminSession));
+        localStorage.setItem("cursapp_session_v1", JSON.stringify(adminSession));
+        localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(adminSession));
+        window.location.href = "/admin/admin.html";
+        return;
       }
 
       // Login agente Cursapp
