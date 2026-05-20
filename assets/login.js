@@ -160,14 +160,31 @@ function loadJSON(k, def) {
     return "h_" + (h >>> 0).toString(16);
   }
 
+
   function ensureDemoAgent(){
     const agents = loadJSON(KEY_REF_AGENTS, []);
-    const demo = {id:"ag_demo_cursapp",name:"Agente Demo Cursapp",email:"agente@cursapp.cl",passwordHashDemo:hashDemo("123456"),code:"MAU2026",status:"active",createdAt:new Date().toISOString()};
-    const exists = agents.find(a => String(a.email||"").toLowerCase()==="agente@cursapp.cl");
-    if(!exists){ agents.unshift(demo); saveJSON(KEY_REF_AGENTS, agents); return demo; }
-    exists.passwordHashDemo = exists.passwordHashDemo || hashDemo("123456"); exists.code = exists.code || "MAU2026"; exists.status = exists.status || "active";
-    saveJSON(KEY_REF_AGENTS, agents); return exists;
+    const demo = {
+      id:"ag_demo_cursapp",
+      name:"Agente Demo Cursapp",
+      email:"agente@cursapp.cl",
+      passwordHashDemo:hashDemo("123456"),
+      code:"MAU2026",
+      status:"active",
+      createdAt:new Date().toISOString()
+    };
+    const exists = agents.find(a => String(a.email||"").toLowerCase() === "agente@cursapp.cl");
+    if(!exists){
+      agents.unshift(demo);
+      saveJSON(KEY_REF_AGENTS, agents);
+      return demo;
+    }
+    if(!exists.passwordHashDemo) exists.passwordHashDemo = hashDemo("123456");
+    if(!exists.code) exists.code = "MAU2026";
+    if(!exists.status) exists.status = "active";
+    saveJSON(KEY_REF_AGENTS, agents);
+    return exists;
   }
+
 
   function setActiveCourseKey(k) { localStorage.setItem(KEY_ACTIVE_COURSE, String(k || "")); }
   function setActiveProfileId(id) { localStorage.setItem(KEY_ACTIVE_PROFILE, String(id || "")); }
@@ -546,19 +563,11 @@ function loadJSON(k, def) {
     try {
       const u = String(username?.value || "").trim().toLowerCase();
       const p = String(password?.value || "");
-
       // Login administrador Cursapp
       if (u === "admin@cursapp.cl" && p === "admin123") {
-        const adminSession = {
-          userId:"admin_cursapp",
-          email:u,
-          role:"admin",
-          isAdmin:true,
-          createdAt:new Date().toISOString()
-        };
-        localStorage.setItem(KEY_SESSION, JSON.stringify(adminSession));
-        localStorage.setItem("cursapp_session_v1", JSON.stringify(adminSession));
-        localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(adminSession));
+        const s = {userId:"admin_cursapp",email:u,role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
+        localStorage.setItem(KEY_SESSION, JSON.stringify(s));
+        localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(s));
         window.location.href = "/admin/admin.html";
         return;
       }
@@ -567,7 +576,8 @@ function loadJSON(k, def) {
       if (u === "agente@cursapp.cl" && p === "123456") {
         const ag = ensureDemoAgent();
         localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({agentId:ag.id,email:ag.email,name:ag.name,code:ag.code,role:"agente",createdAt:new Date().toISOString()}));
-        window.location.href = "/agente/agente.html"; return;
+        window.location.href = "/agente/agente.html";
+        return;
       }
 
       const agents = loadJSON(KEY_REF_AGENTS, []);
@@ -576,7 +586,8 @@ function loadJSON(k, def) {
         const passOk = agent.passwordHashDemo ? agent.passwordHashDemo === hashDemo(p) : p === "123456";
         if (!passOk) { showErr("Contraseña incorrecta."); return; }
         localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({agentId:agent.id,email:agent.email,name:agent.name,code:agent.code,role:"agente",createdAt:new Date().toISOString()}));
-        window.location.href = "/agente/agente.html"; return;
+        window.location.href = "/agente/agente.html";
+        return;
       }
 
       // Demo presidente/tesorero
