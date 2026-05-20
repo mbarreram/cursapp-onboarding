@@ -5,11 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Cursapp · Ingreso</title>
   <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
+
 <style>
 .authIcon--agent{background:linear-gradient(135deg,#7c3aed,#9333ea);color:white}
-.agentPanelBtn{width:100%;border:0;border-radius:18px;padding:16px 18px;background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;font-weight:950;font-size:15px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 16px 36px rgba(124,58,237,.24)}
-.authCard--agent{border:1px solid rgba(124,58,237,.14)}
+.agentPanelBtn{
+  width:100%;border:0;border-radius:18px;padding:16px 18px;
+  background:linear-gradient(135deg,#7c3aed,#9333ea);
+  color:#fff;font-weight:950;font-size:15px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 16px 36px rgba(124,58,237,.24);
+}
+.authCard--agent{
+  border:1px solid rgba(124,58,237,.14);
+}
 </style>
+
 </head>
 <body class="authPremium">
 
@@ -66,14 +76,21 @@
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
 
+
     <section class="authCard authCard--agent" aria-labelledby="agentTitle">
       <div class="authCardHead authCardHead--agent">
         <div class="authIcon authIcon--agent" aria-hidden="true">🏆</div>
-        <div><h2 id="agentTitle">Panel agente</h2><p>Acceso para agentes captadores Cursapp</p></div>
+        <div>
+          <h2 id="agentTitle">Panel agente</h2>
+          <p>Acceso para agentes captadores Cursapp</p>
+        </div>
       </div>
-      <button id="btnAgentPanel" type="button" class="agentPanelBtn">Entrar como agente <span>›</span></button>
+      <button id="btnAgentPanel" type="button" class="agentPanelBtn">
+        Entrar como agente <span>›</span>
+      </button>
       <p class="adminHint">Usuario demo: agente@cursapp.cl · clave 123456</p>
     </section>
+
 
     <section class="authCard authCard--login" aria-labelledby="loginTitle">
       <div class="loginHead">
@@ -120,7 +137,7 @@
     </section>
   </main>
 
-  <script src="/assets/login.js?v=20260214-agent6" defer></script>
+  <script src="/assets/login.js?v=20260214-agent7" defer></script>
   <script>
     function resetForm(){
       const form = document.getElementById("loginForm");
@@ -186,8 +203,53 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
+
 <script>
-document.addEventListener("DOMContentLoaded",()=>{const b=document.getElementById("btnAgentPanel");if(b)b.addEventListener("click",()=>{const u=document.getElementById("username"),p=document.getElementById("password"),f=document.getElementById("loginForm");if(u)u.value="agente@cursapp.cl";if(p)p.value="123456";if(f&&f.requestSubmit)f.requestSubmit();else if(f)f.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));});});
+(function(){
+  function setJson(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+  function ensureAgent(){
+    var KEY="cursapp_ref_agents_v1";
+    var list=[];
+    try{ list=JSON.parse(localStorage.getItem(KEY)||"[]")||[]; }catch(e){ list=[]; }
+    var ag=list.find(function(a){return String(a.email||"").toLowerCase()==="agente@cursapp.cl";});
+    if(!ag){
+      ag={id:"ag_demo_cursapp",name:"Agente Demo Cursapp",email:"agente@cursapp.cl",code:"MAU2026",status:"active",createdAt:new Date().toISOString()};
+      list.unshift(ag);
+      setJson(KEY,list);
+    }
+    return ag;
+  }
+  function bindSafeAccess(){
+    var admin=document.getElementById("btnAdminPanel");
+    if(admin && !admin.dataset.safeDirect){
+      admin.dataset.safeDirect="1";
+      admin.onclick=function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        var s={userId:"admin_cursapp",email:"admin@cursapp.cl",role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
+        setJson("cursapp_session_v1",s);
+        setJson("cursapp_admin_session_v1",s);
+        location.href="/admin/admin.html";
+        return false;
+      };
+    }
+    var agent=document.getElementById("btnAgentPanel");
+    if(agent && !agent.dataset.safeDirect){
+      agent.dataset.safeDirect="1";
+      agent.onclick=function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        var ag=ensureAgent();
+        setJson("cursapp_agent_session_v1",{agentId:ag.id,email:ag.email,name:ag.name,code:ag.code,role:"agente",createdAt:new Date().toISOString()});
+        location.href="/agente/agente.html";
+        return false;
+      };
+    }
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindSafeAccess);
+  else bindSafeAccess();
+})();
 </script>
+
 </body>
 </html>
