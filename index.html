@@ -224,5 +224,39 @@
 })();
 </script>
 
+
+<script>
+window.addEventListener("load", function(){
+
+  var adminBtn = document.getElementById("btnAdminPanel");
+
+  if(adminBtn){
+
+    adminBtn.setAttribute("type","button");
+
+    adminBtn.onclick = function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      var adminSession = {
+        userId:"admin_cursapp",
+        email:"admin@cursapp.cl",
+        role:"admin",
+        isAdmin:true,
+        createdAt:new Date().toISOString()
+      };
+
+      localStorage.setItem("cursapp_session_v1", JSON.stringify(adminSession));
+      localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(adminSession));
+
+      window.location.href = "/admin/admin.html";
+
+      return false;
+    };
+  }
+
+});
+</script>
+
 </body>
 </html>
