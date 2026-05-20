@@ -67,9 +67,7 @@
           <p>Acceso interno para administradores de Cursapp</p>
         </div>
       </div>
-      <button id="btnAdminPanel" type="button" class="adminPanelBtn">
-        Entrar como administrador <span>›</span>
-      </button>
+      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
       <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
     </section>
 
@@ -258,5 +256,11 @@ window.addEventListener("load", function(){
 });
 </script>
 
+<script>
+window.addEventListener("DOMContentLoaded", function(){
+  var a = document.getElementById("btnAdminPanel");
+  if(a){ a.onclick = window.CURSAPP_GO_ADMIN; }
+});
+</script>
 </body>
 </html>
