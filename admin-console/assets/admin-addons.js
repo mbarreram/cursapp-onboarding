@@ -96,7 +96,7 @@
 
     app().innerHTML = `
       <div class="kpis">
-        ${kpi("📣","Banners activos",activeBanners.length,"máximo ${d.config.maxBannersPerScreen || 1} por pantalla")}
+        ${kpi("📣","Banners activos",activeBanners.length,`máximo ${d.config.maxBannersPerScreen || 1} por pantalla`)}
         ${kpi("🤝","Alianzas activas",activeAlliances.length,"beneficios escolares")}
         ${kpi("🛡️","Seguros activos",activeSeguros.length,"productos derivados")}
         ${kpi("💰","Potencial ingreso",clp(revenue),"referencial")}
