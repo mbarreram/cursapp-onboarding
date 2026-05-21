@@ -31,46 +31,63 @@
   function material(){return`
     <div class="card materialCard">
       <div class="materialHead">
-        <div><h2>Material de apoyo</h2><p>Herramientas listas para motivar a directivas y apoderados.</p></div>
-        <span class="materialBadge">Kit agente</span>
+        <div>
+          <h2>Kit agente</h2>
+          <p>Herramientas listas para presentar Cursapp, motivar directivas y activar apoderados.</p>
+        </div>
+        <span class="materialBadge">Material comercial</span>
+      </div>
+
+      <div class="kitHero">
+        <div>
+          <b>Tu código activo</b>
+          <strong>${agent().code}</strong>
+          <span>Inclúyelo cuando compartas mensajes o presentes la app.</span>
+        </div>
+        <button onclick="navigator.clipboard?.writeText('${agent().code}')">Copiar código</button>
       </div>
 
       <div class="materialGrid">
         <article class="materialItem">
           <div class="materialIcon whatsapp">💬</div>
-          <div><b>Mensaje para directivas</b><span>Texto breve para presentar Cursapp al presidente o tesorero.</span></div>
-          <button onclick="navigator.clipboard?.writeText('Hola, soy agente Cursapp. Quería mostrarles una forma simple de ordenar cuotas, pagos y avisos del curso. ¿Les puedo compartir una demo?')">Copiar</button>
+          <div><b>Mensaje para directivas</b><span>Plantilla editable para presidentes y tesoreros.</span></div>
+          <button onclick="AgentKit.openTool('directiva')">Abrir</button>
         </article>
 
         <article class="materialItem">
           <div class="materialIcon parents">👨‍👩‍👧</div>
-          <div><b>Mensaje para apoderados</b><span>Invitación amigable para activar su cuenta y entrar al curso.</span></div>
-          <button onclick="navigator.clipboard?.writeText('Hola, el curso está usando Cursapp para ordenar pagos, campañas y avisos. Activa tu cuenta para ver tus cuotas y mantenerte informado.')">Copiar</button>
+          <div><b>Mensaje para apoderados</b><span>Invitación para activar cuenta y entrar al curso.</span></div>
+          <button onclick="AgentKit.openTool('apoderados')">Abrir</button>
         </article>
 
         <article class="materialItem">
           <div class="materialIcon flyer">🖼️</div>
-          <div><b>Flyer Cursapp</b><span>Imagen promocional para WhatsApp o reunión de curso.</span></div>
-          <button>Ver flyer</button>
+          <div><b>Flyer Cursapp</b><span>Vista tipo afiche para compartir en WhatsApp.</span></div>
+          <button onclick="AgentKit.openTool('flyer')">Ver</button>
         </article>
 
         <article class="materialItem">
           <div class="materialIcon video">▶️</div>
-          <div><b>Video demo</b><span>Presentación rápida para explicar el valor de la app.</span></div>
-          <button>Ver video</button>
+          <div><b>Guion video demo</b><span>Script corto para explicar Cursapp en 45 segundos.</span></div>
+          <button onclick="AgentKit.openTool('video')">Ver</button>
         </article>
 
         <article class="materialItem">
           <div class="materialIcon benefits">⭐</div>
-          <div><b>Beneficios principales</b><span>Resumen de valor: pagos, avisos, reportes y orden del curso.</span></div>
-          <button>Ver</button>
+          <div><b>Beneficios principales</b><span>Argumentos simples para reuniones o chats.</span></div>
+          <button onclick="AgentKit.openTool('beneficios')">Ver</button>
         </article>
 
         <article class="materialItem">
           <div class="materialIcon faq">❓</div>
-          <div><b>Preguntas frecuentes</b><span>Respuestas para dudas típicas de directivas y apoderados.</span></div>
-          <button>Ver FAQ</button>
+          <div><b>Preguntas frecuentes</b><span>Respuestas para objeciones y dudas comunes.</span></div>
+          <button onclick="AgentKit.openTool('faq')">Ver FAQ</button>
         </article>
+      </div>
+
+      <div class="kitTips">
+        <b>Consejo comercial</b>
+        <span>Primero conversa con la directiva. Luego ayuda a que el curso llegue al 60%, 80% o 100% de incorporación.</span>
       </div>
     </div>`}
 
@@ -79,5 +96,111 @@
   function render(v="home"){if(v==="home")$("#app").innerHTML=home(); if(v==="cursos")$("#app").innerHTML=kpis()+courses(); if(v==="metas")$("#app").innerHTML=kpis()+goal(); if(v==="codigo")$("#app").innerHTML=code(); if(v==="material")$("#app").innerHTML=material()+guide(); bindGoal(); bindCopy();}
   function bindGoal(){const c=$("#goalCourses"),p=$("#goalParents"),t=$("#goalTier");if(!c||!p||!t)return;function calc(){const courses=+c.value||0,parents=+p.value||0,opt=t.options[t.selectedIndex],pct=+opt.dataset.pct||0,amount=+t.value||0,act=Math.ceil(parents*pct/100),total=courses*act*amount;$("#goalMoney").textContent=fmt(total);$("#goalFormula").textContent=`${courses} cursos x ${act} apoderados x ${fmt(amount)}`}[c,p,t].forEach(el=>{el.oninput=calc;el.onchange=calc});calc()}
   function bindCopy(){const b=$("#copyCode");if(b)b.onclick=()=>navigator.clipboard?.writeText(agent().code)}
+
+  function kitText(kind){
+    const code = agent().code || "MAU2026";
+    const templates = {
+      directiva: {
+        title:"Mensaje para directivas",
+        copy:`Hola, soy agente Cursapp. Les quería mostrar una forma simple de ordenar las cuotas, campañas, avisos y reportes del curso.\n\nCursapp ayuda a que la directiva tenga más control y menos trabajo manual.\n\nPueden crear el curso usando este código: ${code}\n\n¿Les puedo compartir una demo rápida?`,
+        body:`<p>Usa este mensaje para contactar presidentes, tesoreros o directivas de curso.</p>`
+      },
+      apoderados: {
+        title:"Mensaje para apoderados",
+        copy:`Hola, el curso está usando Cursapp para ordenar pagos, campañas, avisos y reportes.\n\nActiva tu cuenta para ver tus cuotas, próximos pagos y comunicaciones del curso.\n\nCódigo del curso/agente: ${code}`,
+        body:`<p>Este mensaje sirve cuando la directiva ya decidió usar Cursapp y necesita que los apoderados entren.</p>`
+      },
+      video: {
+        title:"Guion video demo",
+        copy:`Hola, soy agente Cursapp.\n\nEn menos de un minuto les muestro cómo Cursapp ayuda a un curso a ordenar cuotas, campañas, pagos, avisos y reportes.\n\nLa directiva puede ver el estado financiero y los apoderados pueden revisar sus pagos pendientes desde el celular.\n\nPara crear el curso pueden usar el código: ${code}`,
+        body:`<ol class="kitList"><li>Presenta el problema: cuotas dispersas, planillas y poca visibilidad.</li><li>Muestra la solución: dashboard, pagos, avisos y reportes.</li><li>Cierra con acción: crear curso con tu código.</li></ol>`
+      }
+    };
+    return templates[kind];
+  }
+
+  function openKitModal(title, html, copyText){
+    const root = document.getElementById("agentModalRoot");
+    if(!root) return;
+    root.innerHTML = `
+      <div class="agentModalBg" onclick="AgentKit.close(event)">
+        <div class="agentModal" onclick="event.stopPropagation()">
+          <button class="agentModalClose" onclick="AgentKit.close()">×</button>
+          <h2>${title}</h2>
+          <div class="agentModalBody">${html}</div>
+          ${copyText ? `<textarea id="kitCopyText" readonly>${copyText}</textarea>
+          <button class="actionBtn" onclick="AgentKit.copyText()">Copiar texto</button>` : ``}
+        </div>
+      </div>
+    `;
+  }
+
+  window.AgentKit = {
+    openTool(kind){
+      const code = agent().code || "MAU2026";
+
+      if(kind === "directiva" || kind === "apoderados" || kind === "video"){
+        const t = kitText(kind);
+        openKitModal(t.title, t.body, t.copy);
+        return;
+      }
+
+      if(kind === "flyer"){
+        openKitModal("Flyer Cursapp", `
+          <div class="flyerPreview">
+            <div class="flyerLogo">C</div>
+            <h3>Ordena las finanzas de tu curso</h3>
+            <p>Cuotas, campañas, avisos, pagos y reportes en una sola app.</p>
+            <div class="flyerBullets">
+              <span>✅ Control para la directiva</span>
+              <span>✅ Claridad para apoderados</span>
+              <span>✅ Reportes simples</span>
+            </div>
+            <strong>Código agente: ${code}</strong>
+          </div>
+          <p class="mutedModal">Próximo paso: conectar este flyer a una imagen descargable.</p>
+        `, `Cursapp ordena las finanzas del curso: cuotas, campañas, avisos, pagos y reportes. Código agente: ${code}`);
+        return;
+      }
+
+      if(kind === "beneficios"){
+        openKitModal("Beneficios principales", `
+          <div class="benefitGrid">
+            <div><b>📌 Menos desorden</b><span>Centraliza cuotas, campañas y avisos.</span></div>
+            <div><b>💳 Pagos claros</b><span>Apoderados ven qué deben pagar y cuándo.</span></div>
+            <div><b>📊 Reportes simples</b><span>La directiva puede mostrar avances y estados.</span></div>
+            <div><b>👥 Más transparencia</b><span>Todos entienden el estado del curso.</span></div>
+            <div><b>📣 Mejor comunicación</b><span>Avisos claros para todo el curso.</span></div>
+            <div><b>🔒 Orden por curso</b><span>Cada curso mantiene sus datos separados.</span></div>
+          </div>
+        `, `Beneficios Cursapp: menos desorden, pagos claros, reportes simples, más transparencia, mejor comunicación y datos separados por curso. Código agente: ${code}`);
+        return;
+      }
+
+      if(kind === "faq"){
+        openKitModal("Preguntas frecuentes", `
+          <div class="faqList">
+            <details open><summary>¿La directiva paga?</summary><p>No. La directiva se considera para el avance, pero la incorporación pagada aplica a apoderados.</p></details>
+            <details><summary>¿Qué pasa si el curso no tiene código?</summary><p>Queda disponible para asignación manual desde el Admin.</p></details>
+            <details><summary>¿Puede haber varios agentes en un colegio?</summary><p>Sí. La regla es por curso, no por colegio.</p></details>
+            <details><summary>¿Puede un curso tener dos agentes?</summary><p>No. El primer código o asignación bloquea ese curso.</p></details>
+            <details><summary>¿Cuándo se cumple la meta?</summary><p>Cuando el curso alcanza 60%, 80% o 100% de incorporación según la meta configurada.</p></details>
+          </div>
+        `, "");
+        return;
+      }
+    },
+    copyText(){
+      const txt = document.getElementById("kitCopyText")?.value || "";
+      navigator.clipboard?.writeText(txt);
+      alert("Texto copiado");
+    },
+    close(ev){
+      if(ev && ev.target && !ev.target.classList.contains("agentModalBg")) return;
+      const root = document.getElementById("agentModalRoot");
+      if(root) root.innerHTML = "";
+    }
+  };
+
   document.addEventListener("DOMContentLoaded",()=>{seed();const a=agent();$("#helloTitle").textContent=`¡Hola, ${a.name.split(" ")[0]}! 👋`;$("#agentNameSide").textContent=a.name;$("#agentCodeSide").textContent=a.code;$("#agentAvatar").textContent=(a.name||"AG").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();$$(".nav").forEach(b=>b.onclick=()=>{$$(".nav").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.body.classList.remove("sideOpen");render(b.dataset.view)});$(".help button").onclick=()=>render("material");$("#menuBtn").onclick=()=>document.body.classList.toggle("sideOpen");$("#logoutBtn").onclick=()=>{localStorage.removeItem(KEY_SESSION);location.href="/index.html"};render()})
 })();
