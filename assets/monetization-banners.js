@@ -3,7 +3,7 @@
 
   const KEY = "cursapp_monetizacion_v1";
   const ALERTS_KEY = "cursapp_global_alerts_v1";
-  const DISMISS_KEY = "cursapp_monetization_dismissed_v1";
+  const DISMISS_KEY = "cursapp_monetization_dismissed_session_v1";
 
   function load(k, def){
     try{
@@ -47,9 +47,9 @@
   }
 
   function placementForRole(role){
-    if(role === "presidente") return ["inicio_presidente","directiva","todos","home"];
-    if(role === "tesorero") return ["inicio_tesorero","directiva","todos","home"];
-    return ["home_apoderado","apoderado","todos","home"];
+    if(role === "presidente") return ["inicio_presidente","directiva","todos_perfiles","todos","home"];
+    if(role === "tesorero") return ["inicio_tesorero","directiva","todos_perfiles","todos","home"];
+    return ["home_apoderado","apoderado","todos_perfiles","todos","home"];
   }
 
   function hasCriticalOperationalAlert(){
@@ -80,16 +80,23 @@
     const role = currentRole();
     const allowed = placementForRole(role);
     const now = Date.now();
-    const dismissed = load(DISMISS_KEY, {});
+    let dismissed = {};\n    try{ dismissed = JSON.parse(sessionStorage.getItem(DISMISS_KEY) || "{}") || {}; }catch(e){ dismissed = {}; }
 
-    return d.banners
+    const list = d.banners
       .filter(b => String(b.status || "").toLowerCase() === "activo")
       .filter(b => !b.startAt || Date.parse(b.startAt) <= now)
       .filter(b => !b.endAt || Date.parse(b.endAt) >= now)
       .filter(b => allowed.includes(String(b.placement || "").toLowerCase()))
       .filter(b => !dismissed[b.id])
-      .sort((a,b) => Number(a.priority || 99) - Number(b.priority || 99))
-      .slice(0, Number(d.config.maxBannersPerScreen || 1));
+      .sort((a,b) => Number(a.priority || 99) - Number(b.priority || 99));
+
+    const max = Number(d.config.maxBannersPerScreen || 1);
+    const roleKey = "cursapp_monetization_rotation_" + role;
+    let cursor = Number(sessionStorage.getItem(roleKey) || 0);
+    if(cursor >= list.length) cursor = 0;
+    const rotated = list.slice(cursor).concat(list.slice(0, cursor));
+    sessionStorage.setItem(roleKey, String((cursor + max) % Math.max(1, list.length)));
+    return rotated.slice(0, max);
   }
 
   function track(type, banner){
@@ -108,9 +115,7 @@
   }
 
   function dismiss(id){
-    const d = load(DISMISS_KEY, {});
-    d[id] = new Date().toISOString();
-    save(DISMISS_KEY, d);
+    let d = {};\n    try{ d = JSON.parse(sessionStorage.getItem(DISMISS_KEY) || "{}") || {}; }catch(e){ d = {}; }\n    d[id] = new Date().toISOString();\n    sessionStorage.setItem(DISMISS_KEY, JSON.stringify(d));
     render();
   }
 
