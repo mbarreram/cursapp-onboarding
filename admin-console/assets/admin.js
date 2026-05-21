@@ -836,6 +836,393 @@
     app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Acciones sensibles</h2><button onclick="Admin.addAuditDemo()">Registrar acción demo</button></div>${logsTable(logs)}</section>`;
   }
 
+
+  // ===== Agentes / Referidos =====
+  const KEY_REF_AGENTS = "cursapp_ref_agents_v1";
+  const KEY_REF_CONVERSIONS = "cursapp_ref_conversions_v1";
+
+  function refAgents(){ return load(KEY_REF_AGENTS, []); }
+  function saveRefAgents(arr){ save(KEY_REF_AGENTS, arr || []); }
+  function refConversions(){ return load(KEY_REF_CONVERSIONS, []); }
+  function saveRefConversions(arr){ save(KEY_REF_CONVERSIONS, arr || []); }
+
+  function normalizeRefCode(s){
+    return String(s||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12);
+  }
+
+  function seedAgentsIfEmpty(){
+    const arr = refAgents();
+    if(arr.length) return;
+    saveRefAgents([{
+      id:"ag_demo_cursapp",
+      name:"Agente Demo Cursapp",
+      email:"agente@cursapp.cl",
+      phone:"+56 9 0000 0000",
+      code:"MAU2026",
+      status:"active",
+      createdAt:now()
+    }]);
+  }
+
+  function agentByCode(code){
+    const c = normalizeRefCode(code);
+    return refAgents().find(a=>normalizeRefCode(a.code)===c) || null;
+  }
+
+  function agentById(id){
+    return refAgents().find(a=>String(a.id)===String(id)) || null;
+  }
+
+  function targetParentsForReferral(r){
+    const raw = Number(r.targetParents || r.expectedParents || r.totalParents || r.metaApoderados || 0);
+    if(raw > 0) return raw;
+
+    const course = getAllCourses().find(c=>String(c.courseKey)===String(r.courseKey));
+    if(course && Number(course.estimatedStudents || course.targetParents || 0) > 0){
+      return Number(course.estimatedStudents || course.targetParents);
+    }
+
+    return 30;
+  }
+
+  function directivaRegisteredForReferral(r){
+    const ck = String(r.courseKey || "");
+    if(!ck) return 0;
+    const unique = new Set();
+    profiles().filter(p =>
+      String(p.courseKey||"") === ck &&
+      ["presidente","tesorero"].includes(String(p.role||"").toLowerCase())
+    ).forEach(p=>unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase()));
+    return unique.size;
+  }
+
+  function activatedParentsForReferral(r){
+    const ck = String(r.courseKey || "");
+    if(!ck) return Number(r.activatedParents || 0);
+
+    const ps = profiles().filter(p =>
+      String(p.courseKey||"") === ck &&
+      String(p.role||"").toLowerCase() === "apoderado"
+    );
+
+    const unique = new Set();
+    ps.forEach(p=>{
+      const act = p.activation || {};
+      const status = String(act.status || p.activationStatus || p.status || "").toLowerCase();
+      const paid = status === "paid" || status === "activo" || status === "active" || !!act.paidAt || !!p.activationPaidAt;
+      if(paid) unique.add(String(p.userId || p.email || p.profileId || "").toLowerCase());
+    });
+
+    return unique.size || Number(r.activatedParents || 0);
+  }
+
+  function referralProgress(r){
+    const target = targetParentsForReferral(r);
+    const directiva = directivaRegisteredForReferral(r) || Number(r.directiva || 0);
+    const activated = activatedParentsForReferral(r);
+    const count = Number(r.commercialCount || 0) || (directiva + activated);
+    const pct = target ? Math.min(100, Math.round((count / target) * 100)) : 0;
+    const missing60 = Math.max(0, Math.ceil(target * .60) - count);
+    return { target, directiva, activatedParents:activated, commercialCount:count, pct, missing60 };
+  }
+
+  function referralTier(r){
+    const p = referralProgress(r);
+    if(p.pct >= 100) return { key:"premium", label:"Premium 100%", cls:"green", amount:550, total:p.activatedParents*550 };
+    if(p.pct >= 80) return { key:"mejorada", label:"Mejorada 80%", cls:"blue", amount:450, total:p.activatedParents*450 };
+    if(p.pct >= 60) return { key:"basica", label:"Básica 60%", cls:"orange", amount:350, total:p.activatedParents*350 };
+    return { key:"sin_comision", label:"Sin comisión", cls:"gray", amount:0, total:0 };
+  }
+
+  function isReferralReservedActive(r){
+    if(String(r.status||"").toLowerCase() !== "reservado") return true;
+    const exp = r.reservedUntil ? Date.parse(r.reservedUntil) : 0;
+    return !exp || exp >= Date.now();
+  }
+
+  function courseHasReferral(courseKey){
+    return refConversions().some(r=>{
+      if(String(r.courseKey||"") !== String(courseKey||"")) return false;
+      if(!normalizeRefCode(r.referralCode||"")) return false;
+      const st = String(r.status||"").toLowerCase();
+      if(st === "rechazado" || st === "liberado") return false;
+      if(st === "reservado" && !isReferralReservedActive(r)) return false;
+      return true;
+    });
+  }
+
+  function unassignedReferralCourses(){
+    const rows = [];
+    getAllCourses().forEach(c=>{
+      if(!c.courseKey || courseHasReferral(c.courseKey)) return;
+      rows.push({
+        id:"unassigned_"+String(c.courseKey).replace(/[^a-zA-Z0-9_-]/g,"_"),
+        courseKey:c.courseKey,
+        referralCode:"",
+        agentId:"",
+        agentName:"",
+        status:"sin_agente",
+        schoolName:c.school || c.schoolName || "Colegio",
+        regionName:c.region || "",
+        comunaName:c.comuna || "",
+        courseLabel:[c.level || c.course || c.curso || "", c.letter || "", c.year || "", c.jornada || ""].filter(Boolean).join(" "),
+        targetParents:Number(c.estimatedStudents || 0),
+        createdAt:now()
+      });
+    });
+    return rows;
+  }
+
+  function referralRowsMerged(){
+    const rows = refConversions().filter(r=>{
+      const st = String(r.status||"").toLowerCase();
+      if(st === "reservado") return isReferralReservedActive(r);
+      return true;
+    }).map(r=>{
+      const ag = agentById(r.agentId) || agentByCode(r.referralCode) || {};
+      return Object.assign({}, r, {
+        agentName: r.agentName || ag.name || "",
+        referralCode: normalizeRefCode(r.referralCode || ag.code || "")
+      });
+    });
+
+    unassignedReferralCourses().forEach(u=>{
+      if(!rows.some(x=>String(x.courseKey)===String(u.courseKey))) rows.push(u);
+    });
+
+    return rows.sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")));
+  }
+
+  function agentStats(agent){
+    const rows = referralRowsMerged().filter(r=>String(r.agentId)===String(agent.id) || normalizeRefCode(r.referralCode)===normalizeRefCode(agent.code));
+    const colegios = new Set(rows.map(r=>r.schoolName||r.school||"").filter(Boolean)).size;
+    const cursos = rows.length;
+    const avg = rows.length ? Math.round(rows.reduce((s,r)=>s+referralProgress(r).pct,0)/rows.length) : 0;
+    const commission = rows.reduce((s,r)=>s+referralTier(r).total,0);
+    return { rows, colegios, cursos, avg, commission };
+  }
+
+  function progressHtml(pct){
+    const safe = Math.max(0, Math.min(100, Number(pct||0)));
+    return `<div class="refProgress"><span style="width:${safe}%"></span></div><small>${safe}% avance</small>`;
+  }
+
+  function statusRefBadge(st){
+    const s = String(st||"pendiente").toLowerCase();
+    const map = {
+      active:["Activo","green"], inactive:["Inactivo","gray"],
+      sin_agente:["Sin agente","orange"], reservado:["Reservado","purple"], asignado:["Asignado","blue"],
+      validado:["Validado","green"], pagado:["Pagado","green"], rechazado:["Rechazado","red"], liberado:["Liberado","gray"]
+    };
+    const v = map[s] || [st || "Pendiente","gray"];
+    return `<span class="badge ${v[1]}">${v[0]}</span>`;
+  }
+
+  function renderAgentes(){
+    seedAgentsIfEmpty();
+    setTitle("Agentes / Referidos", "Crea agentes, asigna cursos y revisa comisiones por avance");
+    const agents = refAgents();
+    const refs = referralRowsMerged();
+    const unassigned = refs.filter(r=>r.status==="sin_agente");
+    const activeRefs = refs.filter(r=>r.status!=="sin_agente");
+    const totalCommission = activeRefs.reduce((s,r)=>s+referralTier(r).total,0);
+
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("🏆","Agentes",agents.length,"captadores creados")}
+        ${kpi("🎓","Cursos asociados",activeRefs.length,"con código/agente")}
+        ${kpi("🧩","Sin agente",unassigned.length,"para asignación manual")}
+        ${kpi("💰","Comisión estimada",clp(totalCommission),"$350/$450/$550")}
+      </div>
+
+      <section class="refRulesCard">
+        <div class="refRulesHead">
+          <div class="refRulesIcon">ℹ️</div>
+          <div>
+            <h2>Reglas comerciales</h2>
+            <p>La asignación es por curso: varios agentes pueden trabajar el mismo colegio, pero un curso solo puede quedar asociado a un código.</p>
+          </div>
+        </div>
+
+        <div class="refTierTable">
+          <div class="refTierCell refTierLabel">Nivel</div>
+          <div class="refTierCell"><b>Básica</b><span>60%</span></div>
+          <div class="refTierCell"><b>Mejorada</b><span>80%</span></div>
+          <div class="refTierCell"><b>Premium</b><span>100%</span></div>
+          <div class="refTierCell refTierLabel">Pago por apoderado activado</div>
+          <div class="refTierCell refMoney">$350</div>
+          <div class="refTierCell refMoney">$450</div>
+          <div class="refTierCell refMoney">$550</div>
+        </div>
+
+        <button class="adminBtn refCreateBtn" onclick="Admin.openAgentModal()">+ Crear agente</button>
+      </section>
+
+      <div class="tablesGrid" style="margin-top:18px">
+        <section class="panel">
+          <div class="panelHead"><h2>Agentes creados</h2><button class="adminBtn ghost" onclick="Admin.openAgentModal()">Crear agente</button></div>
+          <div class="tableWrap">
+            <table>
+              <thead><tr><th>Agente</th><th>Código</th><th>Colegios</th><th>Cursos</th><th>Avance prom.</th><th>Comisión</th><th>Acción</th></tr></thead>
+              <tbody>
+                ${agents.map(a=>{
+                  const st = agentStats(a);
+                  return `<tr>
+                    <td><b>${esc(a.name||"Agente")}</b><br><small>${esc(a.email||"")}</small></td>
+                    <td><span class="badge purple">${esc(a.code||"—")}</span></td>
+                    <td>${st.colegios}</td>
+                    <td>${st.cursos}</td>
+                    <td>${progressHtml(st.avg)}</td>
+                    <td><b>${clp(st.commission)}</b></td>
+                    <td><button class="adminBtn ghost" onclick="Admin.openAgentDetail('${esc(a.id)}')">Ver</button></td>
+                  </tr>`;
+                }).join("") || `<tr><td colspan="7">Sin agentes.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead"><h2>Cursos sin agente</h2><span class="badge orange">${unassigned.length}</span></div>
+          <div class="tableWrap">
+            <table>
+              <thead><tr><th>Colegio</th><th>Curso</th><th>Meta</th><th>Acción</th></tr></thead>
+              <tbody>
+                ${unassigned.map(r=>`<tr>
+                  <td><b>${esc(r.schoolName||"Colegio")}</b><br><small>${esc(r.regionName||"")}</small></td>
+                  <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
+                  <td>${targetParentsForReferral(r)}</td>
+                  <td><button class="adminBtn ghost" onclick="Admin.openAssignReferral('${esc(r.courseKey)}')">Asignar</button></td>
+                </tr>`).join("") || `<tr><td colspan="4">No hay cursos sin agente.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel" style="margin-top:18px">
+        <div class="panelHead"><h2>Todos los cursos referidos</h2></div>
+        <div class="tableWrap">
+          <table>
+            <thead><tr><th>Código</th><th>Agente</th><th>Colegio</th><th>Curso</th><th>Base</th><th>Avance</th><th>Tramo</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+              ${refs.map(r=>{
+                const p = referralProgress(r), t = referralTier(r);
+                return `<tr>
+                  <td>${r.referralCode ? `<span class="badge purple">${esc(r.referralCode)}</span>` : `<span class="badge orange">Sin código</span>`}</td>
+                  <td>${esc(r.agentName || (agentByCode(r.referralCode)||{}).name || "Sin agente")}</td>
+                  <td><b>${esc(r.schoolName||"Colegio")}</b></td>
+                  <td>${esc(r.courseLabel||r.courseKey||"—")}</td>
+                  <td><b>${p.commercialCount}/${p.target}</b><br><small>Dir. ${p.directiva} · Apod. ${p.activatedParents}</small></td>
+                  <td>${progressHtml(p.pct)}</td>
+                  <td><span class="badge ${t.cls}">${t.label}</span><br><small>${clp(t.total)}</small></td>
+                  <td>${statusRefBadge(r.status)}</td>
+                  <td>
+                    <button class="adminBtn ghost" onclick="Admin.openReferralGoal('${esc(r.id)}')">Meta</button>
+                    ${r.status==="sin_agente" ? `<button class="adminBtn ghost" onclick="Admin.openAssignReferral('${esc(r.courseKey)}')">Asignar</button>` : ``}
+                  </td>
+                </tr>`;
+              }).join("") || `<tr><td colspan="9">Sin referidos registrados.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  function openAgentModal(id){
+    const a = id ? agentById(id) : {};
+    openModal(`
+      <h2>${id ? "Editar agente" : "Crear agente"}</h2>
+      <p class="muted">El agente verá solo su mini front con cursos, metas y material de apoyo.</p>
+      <div class="formGrid">
+        <div><label>Nombre</label><input id="agName" value="${esc(a.name||"")}"></div>
+        <div><label>Email</label><input id="agEmail" value="${esc(a.email||"")}"></div>
+        <div><label>Teléfono</label><input id="agPhone" value="${esc(a.phone||"")}"></div>
+        <div><label>Código</label><input id="agCode" value="${esc(a.code||"")}" placeholder="MAU2026"></div>
+        <div><label>Estado</label><select id="agStatus"><option value="active" ${a.status!=="inactive"?"selected":""}>Activo</option><option value="inactive" ${a.status==="inactive"?"selected":""}>Inactivo</option></select></div>
+        <div><label>Clave demo</label><input disabled value="123456"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveAgent('${esc(id||"")}')">Guardar agente</button>
+      </div>
+    `);
+  }
+
+  function openAgentDetail(id){
+    const a = agentById(id);
+    if(!a) return;
+    const st = agentStats(a);
+    openModal(`
+      <h2>${esc(a.name||"Agente")}</h2>
+      <p class="muted">${esc(a.email||"")} · Código ${esc(a.code||"")}</p>
+      <div class="ticketMetaGrid">
+        <div><label>Cursos</label><b>${st.cursos}</b><span>asociados</span></div>
+        <div><label>Colegios</label><b>${st.colegios}</b><span>distintos</span></div>
+        <div><label>Avance</label><b>${st.avg}%</b><span>promedio</span></div>
+        <div><label>Comisión</label><b>${clp(st.commission)}</b><span>estimada</span></div>
+      </div>
+      <div class="tableWrap" style="margin-top:16px">
+        <table>
+          <thead><tr><th>Colegio</th><th>Curso</th><th>Avance</th><th>Tramo</th></tr></thead>
+          <tbody>${st.rows.map(r=>`<tr><td>${esc(r.schoolName||"")}</td><td>${esc(r.courseLabel||r.courseKey||"")}</td><td>${referralProgress(r).pct}%</td><td>${referralTier(r).label}</td></tr>`).join("") || `<tr><td colspan="4">Sin cursos.</td></tr>`}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.openAgentModal('${esc(id)}')">Editar</button>
+        <button class="adminBtn" onclick="Admin.closeModal()">Cerrar</button>
+      </div>
+    `);
+  }
+
+  function openAssignReferral(courseKey){
+    if(courseHasReferral(courseKey)){
+      alert("Este curso ya tiene agente/código asociado.");
+      return;
+    }
+    const ref = referralRowsMerged().find(x=>String(x.courseKey)===String(courseKey)) || { courseKey };
+    const agents = refAgents().filter(a=>String(a.status||"active")==="active");
+    openModal(`
+      <h2>Asignar agente al curso</h2>
+      <p class="muted">${esc(ref.schoolName||"Curso")} · ${esc(ref.courseLabel||courseKey)}</p>
+      <div class="formGrid">
+        <div><label>Agente</label><select id="assignAgentId"><option value="">Seleccionar agente</option>${agents.map(a=>`<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.code)}</option>`).join("")}</select></div>
+        <div><label>Estado</label><select id="assignStatus"><option value="asignado">Asignado</option><option value="reservado">Reservado 48h</option></select></div>
+      </div>
+      <p class="muted" style="margin-top:12px">Un colegio puede tener varios agentes, pero este curso quedará bloqueado para el código seleccionado.</p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveAssignReferral('${esc(courseKey)}')">Asignar</button>
+      </div>
+    `);
+  }
+
+  function openReferralGoal(id){
+    const r = referralRowsMerged().find(x=>String(x.id)===String(id));
+    if(!r) return;
+    const p = referralProgress(r);
+    openModal(`
+      <h2>Meta de inscripción</h2>
+      <p class="muted">${esc(r.schoolName||"Colegio")} · ${esc(r.courseLabel||r.courseKey||"Curso")}</p>
+      <div class="ticketMetaGrid">
+        <div><label>Avance</label><b>${p.commercialCount}</b><span>directiva + apoderados</span></div>
+        <div><label>Meta curso</label><b>${p.target}</b><span>estimada</span></div>
+        <div><label>% avance</label><b>${p.pct}%</b><span>comercial</span></div>
+        <div><label>Comisión</label><b>${clp(referralTier(r).total)}</b><span>${referralTier(r).label}</span></div>
+      </div>
+      <div class="formGrid" style="margin-top:12px">
+        <div><label>Meta total apoderados/alumnos</label><input id="refTargetParents" type="number" min="1" value="${p.target}"></div>
+        <div><label>Estado</label><select id="refStatusGoal"><option value="asignado" ${r.status==="asignado"?"selected":""}>Asignado</option><option value="validado" ${r.status==="validado"?"selected":""}>Validado</option><option value="pagado" ${r.status==="pagado"?"selected":""}>Pagado</option><option value="rechazado" ${r.status==="rechazado"?"selected":""}>Rechazado</option></select></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="adminBtn ghost" onclick="Admin.closeModal()">Cancelar</button>
+        <button class="adminBtn" onclick="Admin.saveReferralGoal('${esc(id)}')">Guardar meta</button>
+      </div>
+    `);
+  }
+
+
   function openModal(html){ modal.innerHTML = `<div class="modalBg"><div class="modalCard">${html}</div></div>`; }
   function closeModal(){ modal.innerHTML = ""; }
 
@@ -848,6 +1235,7 @@
       if(tab==="tickets") renderTickets();
       if(tab==="pagos") renderPagos();
       if(tab==="comunidad") renderComunidad();
+      if(tab==="agentes") renderAgentes();
       if(tab==="colegios") renderColegios();
       if(tab==="campanas") renderCampanas();
       if(tab==="auditoria") renderAuditoria();
@@ -966,7 +1354,86 @@
         save(ADMIN_TICKETS, list);
         log("admin_ticket_response","Respondió ticket",id,{response, status:list[i].status, priority:list[i].priority});
       }
+  
+    openAgentModal,
+    openAgentDetail,
+    openAssignReferral,
+    openReferralGoal,
+    saveAgent(id){
+      const arr = refAgents();
+      const code = normalizeRefCode($("#agCode")?.value || "");
+      if(!$("#agName")?.value.trim() || !$("#agEmail")?.value.trim() || !code){
+        alert("Completa nombre, email y código.");
+        return;
+      }
+      const payload = {
+        id: id || "ag_"+Date.now().toString(16),
+        name: $("#agName").value.trim(),
+        email: $("#agEmail").value.trim().toLowerCase(),
+        phone: $("#agPhone")?.value.trim() || "",
+        code,
+        status: $("#agStatus")?.value || "active",
+        createdAt: now(),
+        updatedAt: now()
+      };
+      const idx = arr.findIndex(a=>String(a.id)===String(id));
+      if(idx>=0) arr[idx] = Object.assign({}, arr[idx], payload);
+      else arr.unshift(payload);
+      saveRefAgents(arr);
+      log("ref_agent_save","Guardó agente",payload.email,{code});
       closeModal();
+      renderAgentes();
+    },
+    saveAssignReferral(courseKey){
+      const agentId = $("#assignAgentId")?.value || "";
+      const st = $("#assignStatus")?.value || "asignado";
+      const ag = agentById(agentId);
+      if(!ag){ alert("Selecciona un agente."); return; }
+      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+      const ref = referralRowsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
+      const arr = refConversions();
+      arr.unshift({
+        id:"ref_admin_"+Date.now().toString(16),
+        courseKey,
+        referralCode:normalizeRefCode(ag.code),
+        agentId:ag.id,
+        agentName:ag.name,
+        status:st,
+        attributionStatus:st,
+        assignedByAdmin:true,
+        assignedAt:now(),
+        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
+        schoolName:ref.schoolName || "",
+        regionName:ref.regionName || "",
+        comunaName:ref.comunaName || "",
+        courseLabel:ref.courseLabel || courseKey,
+        targetParents:ref.targetParents || targetParentsForReferral(ref),
+        createdAt:now()
+      });
+      saveRefConversions(arr);
+      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:ag.code,status:st});
+      closeModal();
+      renderAgentes();
+    },
+    saveReferralGoal(id){
+      const target = Number($("#refTargetParents")?.value || 30);
+      const status = $("#refStatusGoal")?.value || "asignado";
+      const merged = referralRowsMerged().find(x=>String(x.id)===String(id));
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].targetParents = target;
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+      }else if(merged){
+        arr.unshift(Object.assign({}, merged, {id:"ref_goal_"+Date.now().toString(16), targetParents:target, status, updatedAt:now(), createdAt:now()}));
+      }
+      saveRefConversions(arr);
+      log("referral_goal_update","Actualizó meta referido",id,{targetParents:target,status});
+      closeModal();
+      renderAgentes();
+    },
+    closeModal();
       renderTickets();
     },
     openTicketModal(){
@@ -984,7 +1451,86 @@
       }
       save(ADMIN_TICKETS, list);
       log("admin_action","Creó ticket interno",id);
-      closeModal(); renderTickets();
+  
+    openAgentModal,
+    openAgentDetail,
+    openAssignReferral,
+    openReferralGoal,
+    saveAgent(id){
+      const arr = refAgents();
+      const code = normalizeRefCode($("#agCode")?.value || "");
+      if(!$("#agName")?.value.trim() || !$("#agEmail")?.value.trim() || !code){
+        alert("Completa nombre, email y código.");
+        return;
+      }
+      const payload = {
+        id: id || "ag_"+Date.now().toString(16),
+        name: $("#agName").value.trim(),
+        email: $("#agEmail").value.trim().toLowerCase(),
+        phone: $("#agPhone")?.value.trim() || "",
+        code,
+        status: $("#agStatus")?.value || "active",
+        createdAt: now(),
+        updatedAt: now()
+      };
+      const idx = arr.findIndex(a=>String(a.id)===String(id));
+      if(idx>=0) arr[idx] = Object.assign({}, arr[idx], payload);
+      else arr.unshift(payload);
+      saveRefAgents(arr);
+      log("ref_agent_save","Guardó agente",payload.email,{code});
+      closeModal();
+      renderAgentes();
+    },
+    saveAssignReferral(courseKey){
+      const agentId = $("#assignAgentId")?.value || "";
+      const st = $("#assignStatus")?.value || "asignado";
+      const ag = agentById(agentId);
+      if(!ag){ alert("Selecciona un agente."); return; }
+      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+      const ref = referralRowsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
+      const arr = refConversions();
+      arr.unshift({
+        id:"ref_admin_"+Date.now().toString(16),
+        courseKey,
+        referralCode:normalizeRefCode(ag.code),
+        agentId:ag.id,
+        agentName:ag.name,
+        status:st,
+        attributionStatus:st,
+        assignedByAdmin:true,
+        assignedAt:now(),
+        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
+        schoolName:ref.schoolName || "",
+        regionName:ref.regionName || "",
+        comunaName:ref.comunaName || "",
+        courseLabel:ref.courseLabel || courseKey,
+        targetParents:ref.targetParents || targetParentsForReferral(ref),
+        createdAt:now()
+      });
+      saveRefConversions(arr);
+      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:ag.code,status:st});
+      closeModal();
+      renderAgentes();
+    },
+    saveReferralGoal(id){
+      const target = Number($("#refTargetParents")?.value || 30);
+      const status = $("#refStatusGoal")?.value || "asignado";
+      const merged = referralRowsMerged().find(x=>String(x.id)===String(id));
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].targetParents = target;
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+      }else if(merged){
+        arr.unshift(Object.assign({}, merged, {id:"ref_goal_"+Date.now().toString(16), targetParents:target, status, updatedAt:now(), createdAt:now()}));
+      }
+      saveRefConversions(arr);
+      log("referral_goal_update","Actualizó meta referido",id,{targetParents:target,status});
+      closeModal();
+      renderAgentes();
+    },
+    closeModal(); renderTickets();
     },
     filterCommunity(){
       const q = ($("#communitySearch")?.value||"").toLowerCase();
@@ -1016,7 +1562,86 @@
         save("cursapp_profiles_v1", ps);
         log("admin_member_update","Actualizó datos de miembro",profileId,{reason});
       }
-      closeModal(); renderComunidad();
+  
+    openAgentModal,
+    openAgentDetail,
+    openAssignReferral,
+    openReferralGoal,
+    saveAgent(id){
+      const arr = refAgents();
+      const code = normalizeRefCode($("#agCode")?.value || "");
+      if(!$("#agName")?.value.trim() || !$("#agEmail")?.value.trim() || !code){
+        alert("Completa nombre, email y código.");
+        return;
+      }
+      const payload = {
+        id: id || "ag_"+Date.now().toString(16),
+        name: $("#agName").value.trim(),
+        email: $("#agEmail").value.trim().toLowerCase(),
+        phone: $("#agPhone")?.value.trim() || "",
+        code,
+        status: $("#agStatus")?.value || "active",
+        createdAt: now(),
+        updatedAt: now()
+      };
+      const idx = arr.findIndex(a=>String(a.id)===String(id));
+      if(idx>=0) arr[idx] = Object.assign({}, arr[idx], payload);
+      else arr.unshift(payload);
+      saveRefAgents(arr);
+      log("ref_agent_save","Guardó agente",payload.email,{code});
+      closeModal();
+      renderAgentes();
+    },
+    saveAssignReferral(courseKey){
+      const agentId = $("#assignAgentId")?.value || "";
+      const st = $("#assignStatus")?.value || "asignado";
+      const ag = agentById(agentId);
+      if(!ag){ alert("Selecciona un agente."); return; }
+      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+      const ref = referralRowsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
+      const arr = refConversions();
+      arr.unshift({
+        id:"ref_admin_"+Date.now().toString(16),
+        courseKey,
+        referralCode:normalizeRefCode(ag.code),
+        agentId:ag.id,
+        agentName:ag.name,
+        status:st,
+        attributionStatus:st,
+        assignedByAdmin:true,
+        assignedAt:now(),
+        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
+        schoolName:ref.schoolName || "",
+        regionName:ref.regionName || "",
+        comunaName:ref.comunaName || "",
+        courseLabel:ref.courseLabel || courseKey,
+        targetParents:ref.targetParents || targetParentsForReferral(ref),
+        createdAt:now()
+      });
+      saveRefConversions(arr);
+      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:ag.code,status:st});
+      closeModal();
+      renderAgentes();
+    },
+    saveReferralGoal(id){
+      const target = Number($("#refTargetParents")?.value || 30);
+      const status = $("#refStatusGoal")?.value || "asignado";
+      const merged = referralRowsMerged().find(x=>String(x.id)===String(id));
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].targetParents = target;
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+      }else if(merged){
+        arr.unshift(Object.assign({}, merged, {id:"ref_goal_"+Date.now().toString(16), targetParents:target, status, updatedAt:now(), createdAt:now()}));
+      }
+      saveRefConversions(arr);
+      log("referral_goal_update","Actualizó meta referido",id,{targetParents:target,status});
+      closeModal();
+      renderAgentes();
+    },
+    closeModal(); renderComunidad();
     },
     inspectCourse(courseKey){
       const ps = profiles().filter(p=>p.courseKey===courseKey);
@@ -1024,6 +1649,85 @@
       log("admin_action","Inspeccionó curso",courseKey);
     },
     addAuditDemo(){ log("admin_audit","Revisión manual de auditoría","Admin Console",{reason:"Control preventivo"}); renderAuditoria(); },
+
+    openAgentModal,
+    openAgentDetail,
+    openAssignReferral,
+    openReferralGoal,
+    saveAgent(id){
+      const arr = refAgents();
+      const code = normalizeRefCode($("#agCode")?.value || "");
+      if(!$("#agName")?.value.trim() || !$("#agEmail")?.value.trim() || !code){
+        alert("Completa nombre, email y código.");
+        return;
+      }
+      const payload = {
+        id: id || "ag_"+Date.now().toString(16),
+        name: $("#agName").value.trim(),
+        email: $("#agEmail").value.trim().toLowerCase(),
+        phone: $("#agPhone")?.value.trim() || "",
+        code,
+        status: $("#agStatus")?.value || "active",
+        createdAt: now(),
+        updatedAt: now()
+      };
+      const idx = arr.findIndex(a=>String(a.id)===String(id));
+      if(idx>=0) arr[idx] = Object.assign({}, arr[idx], payload);
+      else arr.unshift(payload);
+      saveRefAgents(arr);
+      log("ref_agent_save","Guardó agente",payload.email,{code});
+      closeModal();
+      renderAgentes();
+    },
+    saveAssignReferral(courseKey){
+      const agentId = $("#assignAgentId")?.value || "";
+      const st = $("#assignStatus")?.value || "asignado";
+      const ag = agentById(agentId);
+      if(!ag){ alert("Selecciona un agente."); return; }
+      if(courseHasReferral(courseKey)){ alert("Este curso ya tiene agente/código asociado."); return; }
+      const ref = referralRowsMerged().find(x=>String(x.courseKey)===String(courseKey)) || {};
+      const arr = refConversions();
+      arr.unshift({
+        id:"ref_admin_"+Date.now().toString(16),
+        courseKey,
+        referralCode:normalizeRefCode(ag.code),
+        agentId:ag.id,
+        agentName:ag.name,
+        status:st,
+        attributionStatus:st,
+        assignedByAdmin:true,
+        assignedAt:now(),
+        reservedUntil: st==="reservado" ? new Date(Date.now()+48*60*60*1000).toISOString() : "",
+        schoolName:ref.schoolName || "",
+        regionName:ref.regionName || "",
+        comunaName:ref.comunaName || "",
+        courseLabel:ref.courseLabel || courseKey,
+        targetParents:ref.targetParents || targetParentsForReferral(ref),
+        createdAt:now()
+      });
+      saveRefConversions(arr);
+      log("referral_admin_assign","Asignó agente a curso",courseKey,{agent:ag.code,status:st});
+      closeModal();
+      renderAgentes();
+    },
+    saveReferralGoal(id){
+      const target = Number($("#refTargetParents")?.value || 30);
+      const status = $("#refStatusGoal")?.value || "asignado";
+      const merged = referralRowsMerged().find(x=>String(x.id)===String(id));
+      const arr = refConversions();
+      const idx = arr.findIndex(x=>String(x.id)===String(id));
+      if(idx>=0){
+        arr[idx].targetParents = target;
+        arr[idx].status = status;
+        arr[idx].updatedAt = now();
+      }else if(merged){
+        arr.unshift(Object.assign({}, merged, {id:"ref_goal_"+Date.now().toString(16), targetParents:target, status, updatedAt:now(), createdAt:now()}));
+      }
+      saveRefConversions(arr);
+      log("referral_goal_update","Actualizó meta referido",id,{targetParents:target,status});
+      closeModal();
+      renderAgentes();
+    },
     closeModal
   };
 
