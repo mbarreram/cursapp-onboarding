@@ -39,6 +39,7 @@
 
   // ===== Monetización / Banners / Alianzas =====
   const KMN = "cursapp_monetizacion_v1";
+  const KME = "cursapp_monetization_events_v1";
 
   function monetData(){
     const d = load(KMN, null);
@@ -64,6 +65,16 @@
       {id:"sg_cuotas_1", partner:"Aseguradora Demo", product:"Protección cuotas curso", commission:4500, flow:"Solicitud", status:"borrador", description:"Protección referencial ante contingencias del apoderado.", createdAt:now()}
     ];
     saveMonetData(d);
+  }
+
+
+  function monetEvents(){ return load(KME, []); }
+  function monetMetrics(bannerId){
+    const ev = monetEvents().filter(e=>!bannerId || String(e.bannerId)===String(bannerId));
+    const impressions = ev.filter(e=>e.type==="impression").length;
+    const clicks = ev.filter(e=>e.type==="click").length;
+    const ctr = impressions ? ((clicks / impressions) * 100).toFixed(1) + "%" : "0%";
+    return {impressions, clicks, ctr};
   }
 
   function monetStatusBadge(st){
@@ -97,6 +108,7 @@
     app().innerHTML = `
       <div class="kpis">
         ${kpi("📣","Banners activos",activeBanners.length,`máximo ${d.config.maxBannersPerScreen || 1} por pantalla`)}
+        ${kpi("👆","Clicks banners",monetMetrics().clicks,"eventos registrados")}
         ${kpi("🤝","Alianzas activas",activeAlliances.length,"beneficios escolares")}
         ${kpi("🛡️","Seguros activos",activeSeguros.length,"productos derivados")}
         ${kpi("💰","Potencial ingreso",clp(revenue),"referencial")}
@@ -133,15 +145,16 @@
       box.innerHTML = `
         <div class="tablesGrid">
           <section class="panel">
-            <div class="panelHead"><h2>Banners comerciales</h2><button onclick="Admin.openBannerModal()">Crear banner</button></div>
+            <div class="panelHead"><h2>Banners comerciales</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="adminBtn ghost" onclick="Admin.clearMonetMetrics()">Limpiar métricas</button><button onclick="Admin.openBannerModal()">Crear banner</button></div></div>
             <div class="tableWrap"><table>
-              <thead><tr><th>Banner</th><th>Partner</th><th>Ubicación</th><th>Segmento</th><th>Modelo</th><th>Estado</th><th>Acción</th></tr></thead>
+              <thead><tr><th>Banner</th><th>Partner</th><th>Ubicación</th><th>Segmento</th><th>Modelo</th><th>Métricas</th><th>Estado</th><th>Acción</th></tr></thead>
               <tbody>${d.banners.map(b=>`<tr>
                 <td>${bannerPreview(b)}</td>
                 <td><b>${esc(b.partner||"")}</b><br><small>${esc(b.category||"")}</small></td>
                 <td>${esc(b.placement||"")}</td>
                 <td>${esc(b.region||"Todas")} · ${esc(b.comuna||"Todas")}</td>
                 <td>${esc(b.priceModel||"Fijo")}<br><small>${clp(b.amount||0)}</small></td>
+                <td>${(()=>{const m=monetMetrics(b.id);return `<b>${m.clicks}</b> clicks<br><small>${m.impressions} impresiones · CTR ${m.ctr}</small>`})()}</td>
                 <td>${monetStatusBadge(b.status)}</td>
                 <td><button class="adminBtn ghost" onclick="Admin.openBannerModal('${esc(b.id)}')">Editar</button></td>
               </tr>`).join("") || `<tr><td colspan="7">Sin banners.</td></tr>`}</tbody>
@@ -221,7 +234,7 @@
         <div><label>Partner</label><input id="bnPartner" value="${esc(b.partner||"")}"></div>
         <div><label>Categoría</label><select id="bnCategory"><option>Librería</option><option>Uniformes</option><option>Retail</option><option>Seguros</option><option>Gira de estudio</option><option>Graduación</option></select></div>
         <div><label>Ícono</label><input id="bnEmoji" value="${esc(b.imageEmoji||"📚")}"></div>
-        <div><label>Ubicación</label><select id="bnPlacement"><option value="home_apoderado">Home apoderado</option><option value="inicio_presidente">Inicio presidente</option><option value="inicio_tesorero">Inicio tesorero</option><option value="centro_beneficios">Centro beneficios</option><option value="reportes_pdf">Reportes PDF</option></select></div>
+        <div><label>Ubicación</label><select id="bnPlacement"><option value="todos_perfiles">Todos los perfiles</option><option value="home_apoderado">Home apoderado</option><option value="inicio_presidente">Inicio presidente</option><option value="inicio_tesorero">Inicio tesorero</option><option value="centro_beneficios">Centro beneficios</option><option value="reportes_pdf">Reportes PDF</option></select></div>
         <div><label>CTA</label><input id="bnCta" value="${esc(b.cta||"Ver descuento")}"></div>
         <div><label>Región</label><input id="bnRegion" value="${esc(b.region||"Todas")}"></div>
         <div><label>Comuna</label><input id="bnComuna" value="${esc(b.comuna||"Todas")}"></div>
