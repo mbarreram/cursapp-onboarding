@@ -4,42 +4,64 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Cursapp · Mercado Escolar</title>
-<link rel="stylesheet" href="assets/mercado-escolar.css?v=1"/>
+<link rel="stylesheet" href="assets/mercado-escolar.css?v=2"/>
 </head>
 <body>
 <main class="app">
-<header class="top"><button>‹</button><div><h1>Mercado Escolar</h1><p>Comunidad registrada · sin pagos en Cursapp</p></div><button>🔔</button></header>
+<header class="top">
+  <a class="backBtn" href="/apoderado.html">‹</a>
+  <div><h1>Mercado Escolar</h1><p>Comunidad registrada · compra, venta e intercambio</p></div>
+  <button class="bell">🔔</button>
+</header>
 
 <section class="hero">
-<span>♻️ Reutiliza entre cursos</span>
-<h2>Compra, vende o intercambia dentro de tu comunidad escolar</h2>
-<p>Libros, uniformes, vestuario 18, instrumentos y más.</p>
-<button onclick="showView('publicar')">+ Publicar artículo</button>
+  <div class="heroText">
+    <span>♻️ Segunda vida escolar</span>
+    <h2>Encuentra útiles, libros y vestuario entre apoderados</h2>
+    <p>Sin pagos dentro de Cursapp. Acuerdos entre usuarios registrados.</p>
+  </div>
+  <button onclick="showView('publicar')">+ Publicar</button>
 </section>
 
 <nav class="tabs">
-<button class="active" data-view="inicio" onclick="showView('inicio')">Inicio</button>
-<button data-view="explorar" onclick="showView('explorar')">Explorar</button>
-<button data-view="publicar" onclick="showView('publicar')">Publicar</button>
-<button data-view="mis" onclick="showView('mis')">Mis avisos</button>
-<button data-view="admin" onclick="showView('admin')">Admin</button>
+<button class="active" data-view="inicio" onclick="showView('inicio')">🏠 Inicio</button>
+<button data-view="explorar" onclick="showView('explorar')">🔎 Explorar</button>
+<button data-view="publicar" onclick="showView('publicar')">➕ Publicar</button>
+<button data-view="mis" onclick="showView('mis')">📦 Mis avisos</button>
 </nav>
 
 <section id="view-inicio" class="view active">
-<div class="search">🔎 <input placeholder="Buscar libros, uniforme, traje cueca..."/></div>
-<div class="scope"><div><b>Visibilidad actual</b><span>Mi colegio + colegios cercanos</span></div><button>Editar</button></div>
-<div class="cats">
-<article onclick="filterCat('Libros')">📚<b>Libros</b></article>
-<article onclick="filterCat('Uniformes')">👕<b>Uniformes</b></article>
-<article onclick="filterCat('Vestuario')">🎭<b>18 Sept.</b></article>
-<article onclick="filterCat('Deportes')">⚽<b>Deportes</b></article>
+<div class="search"><span>🔎</span><input placeholder="Buscar libros, uniforme, traje cueca..."/></div>
+
+<div class="scope">
+  <div><b>Mostrando cerca de tu comunidad</b><span>Mi colegio · colegios cercanos · misma comuna</span></div>
+  <button>Filtros</button>
 </div>
 
-<section class="panel"><div class="panelHead"><h3>Destacados en vitrina</h3><span>Monetizable</span></div>
-<div class="featured" onclick="openDetail('Traje de huaso niño')"><div class="pic big">🎩</div><div><small>Beneficio destacado</small><b>Traje de huaso niño talla 10</b><p>Colegio San Pedro · 1,8 km</p><strong>$18.000</strong></div></div>
+<div class="cats">
+<article onclick="filterCat('Libros')"><span>📚</span><b>Libros</b></article>
+<article onclick="filterCat('Uniformes')"><span>👕</span><b>Uniformes</b></article>
+<article onclick="filterCat('Vestuario')"><span>🎭</span><b>18 Sept.</b></article>
+<article onclick="filterCat('Deportes')"><span>⚽</span><b>Deportes</b></article>
+</div>
+
+<section class="panel">
+<div class="panelHead"><div><h3>Vitrina destacada</h3><p>Mayor visibilidad para publicaciones relevantes</p></div><span>Destacado</span></div>
+<div class="spotlight" onclick="openDetail('Traje de huaso niño')">
+  <div class="spotImg">🎩</div>
+  <div class="spotBody">
+    <small>Colegio San Pedro · 1,8 km</small>
+    <b>Traje de huaso niño talla 10</b>
+    <p>Ideal acto 18 de septiembre · impecable</p>
+    <div><strong>$18.000</strong><em>Venta</em></div>
+  </div>
+</div>
 </section>
 
-<section class="panel"><div class="panelHead"><h3>Últimos publicados</h3><button onclick="showView('explorar')">Ver todos</button></div><div id="latestList"></div></section>
+<section class="panel">
+<div class="panelHead"><div><h3>Últimos publicados</h3><p>Artículos recientes de tu red escolar</p></div><button onclick="showView('explorar')">Ver todos</button></div>
+<div id="latestList"></div>
+</section>
 </section>
 
 <section id="view-explorar" class="view">
@@ -49,35 +71,37 @@
 
 <section id="view-publicar" class="view">
 <section class="panel">
-<h3>Publicar artículo</h3><p class="muted">Cursapp puede moderar, ocultar o bloquear publicaciones que incumplan reglas.</p>
+<h3>Publicar artículo</h3>
+<p class="muted">Publica solo artículos escolares permitidos. Cursapp puede ocultar publicaciones denunciadas.</p>
 <div class="form">
-<label>Foto<div class="upload">📷 Agregar foto</div></label>
+<label>Foto principal<div class="upload">📷 Agregar foto del artículo</div></label>
 <label>Título<input value="Libro Matemáticas 4° básico"/></label>
 <label>Categoría<select><option>Libros</option><option>Uniformes</option><option>Vestuario 18</option><option>Deportes</option></select></label>
 <label>Tipo<select><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
 <label>Precio<input value="$8.000"/></label>
 <label>Visibilidad<select><option>Solo mi colegio</option><option>Colegios cercanos</option><option>Mi comuna</option></select></label>
 <label class="full">Descripción<textarea>En buen estado, usado solo un semestre.</textarea></label>
-</div><button class="primary" onclick="toast('Publicación creada como borrador demo')">Publicar</button>
+</div>
+<button class="primary" onclick="toast('Publicación creada como borrador demo')">Publicar artículo</button>
 </section>
-<section class="panel"><h3>Destacar publicación</h3><div class="boost"><article><b>Normal</b><span>Gratis</span></article><article><b>Destacada</b><span>200 créditos</span></article><article><b>Portada colegio</b><span>1.000 créditos</span></article></div></section>
+
+<section class="panel">
+<h3>Mejorar visibilidad</h3>
+<div class="boost"><article><b>Normal</b><span>Gratis</span><small>Aparece por fecha</small></article><article><b>Destacada</b><span>200 créditos</span><small>Más vistas</small></article><article><b>Portada colegio</b><span>1.000 créditos</span><small>Vitrina principal</small></article></div>
+</section>
 </section>
 
 <section id="view-mis" class="view">
-<section class="panel"><h3>Mis publicaciones</h3>
+<section class="panel">
+<div class="panelHead"><div><h3>Mis publicaciones</h3><p>Gestiona estado, contacto y visibilidad</p></div><button onclick="showView('publicar')">+ Nueva</button></div>
 <div class="my"><div>📚</div><b>Libro Matemáticas</b><span>Activa · 34 vistas</span><button>Editar</button></div>
 <div class="my"><div>👕</div><b>Polerón colegio</b><span>Reservada · 8 contactos</span><button>Ver</button></div>
-<div class="my"><div>🎭</div><b>Vestido cueca</b><span>Vendida / cerrada</span><button>Reactivar</button></div>
+<div class="my"><div>🎭</div><b>Vestido cueca</b><span>Cerrada</span><button>Reactivar</button></div>
 </section>
-</section>
-
-<section id="view-admin" class="view">
-<section class="panel"><h3>Admin · Mercado Escolar</h3><div class="kpis"><div><b>124</b><span>Activas</span></div><div><b>18</b><span>Destacadas</span></div><div><b>5</b><span>Reportadas</span></div><div><b>$18.400</b><span>Créditos</span></div></div></section>
-<section class="panel"><h3>Moderación</h3><div class="mod"><article><div>🚩</div><div><b>Producto prohibido detectado</b><span>Publicación ocultada automáticamente</span></div><button>Revisar</button></article><article><div>⚠️</div><div><b>5 denuncias</b><span>Traje usado · Colegio Central</span></div><button>Resolver</button></article></div></section>
-<section class="panel"><h3>Reglas activas</h3><ul><li>Usuarios registrados y aprobados</li><li>Sin pagos dentro de Cursapp</li><li>Productos prohibidos bloqueados</li><li>3 denuncias ocultan preventivamente</li></ul></section>
 </section>
 </main>
+
 <div id="modal"></div><div id="toast"></div>
-<script src="assets/mercado-escolar.js?v=1"></script>
+<script src="assets/mercado-escolar.js?v=2"></script>
 </body>
 </html>
