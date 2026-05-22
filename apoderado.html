@@ -10,6 +10,14 @@
   <link rel="stylesheet" href="/assets/ux-pro.css?v=5">
   <link rel="stylesheet" href="/assets/ux-premium-v6.css?v=6">
   <link rel="stylesheet" href="/assets/ux-apoderado-compact-v62.css?v=62">
+
+<style id="mercadoEscolarMenuStyle">
+.marketQuickBtn{position:fixed;right:18px;bottom:86px;z-index:999;width:58px;height:58px;border-radius:22px;border:0;display:grid;place-items:center;text-decoration:none;background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;font-size:27px;box-shadow:0 18px 42px rgba(109,40,217,.30)}
+.marketQuickBtn span{position:absolute;right:54px;white-space:nowrap;background:#101828;color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;box-shadow:0 12px 24px rgba(15,23,42,.18)}
+.marketBottomTab{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;text-decoration:none!important}
+@media(max-width:520px){.marketQuickBtn{right:16px;bottom:82px;width:56px;height:56px;border-radius:20px}.marketQuickBtn span{display:none}}
+</style>
+
 </head>
 <body>
 
@@ -49,5 +57,52 @@
 <script defer src="/assets/apoderadoWelcome.js?v=2400"></script>
 <script defer src="/assets/core.js?v=2402"></script>
   <script src="assets/monetization-banners.js?v=4"></script>
+
+<script id="mercadoEscolarMenuScript">
+(function(){
+  function addMercadoEscolarAccess(){
+    var href = "/mercado-escolar/mercado-escolar.html";
+    if(document.getElementById("marketQuickBtn") || document.getElementById("marketBottomTab")) return;
+
+    var selectors = [".bottomTabs",".bottomNav",".tabbar",".navBottom",".mobileBottomNav","nav[aria-label='Navegación inferior']","nav"];
+    var nav = null;
+
+    for(var i=0;i<selectors.length;i++){
+      var el = document.querySelector(selectors[i]);
+      if(el && (el.textContent || "").match(/inicio|pagos|perfil|cuotas|historial/i)){
+        nav = el;
+        break;
+      }
+    }
+
+    if(nav){
+      var a = document.createElement("a");
+      a.id = "marketBottomTab";
+      a.className = "marketBottomTab";
+      a.href = href;
+      a.innerHTML = "<span style='font-size:20px'>🛍️</span><span>Mercado</span>";
+      nav.appendChild(a);
+      return;
+    }
+
+    var floating = document.createElement("a");
+    floating.id = "marketQuickBtn";
+    floating.className = "marketQuickBtn";
+    floating.href = href;
+    floating.innerHTML = "🛍️<span>Mercado escolar</span>";
+    document.body.appendChild(floating);
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", addMercadoEscolarAccess);
+  }else{
+    addMercadoEscolarAccess();
+  }
+
+  setTimeout(addMercadoEscolarAccess, 700);
+  setTimeout(addMercadoEscolarAccess, 1600);
+})();
+</script>
+
 </body>
 </html>
