@@ -29,15 +29,15 @@ function cfg(){
   return c;
 }
 function seed(){
-  cfg();
+  // Producción: no cargar datos dummy automáticamente.
+  // Para demo manual:
+  // localStorage.setItem("cursapp_market_demo_seed_v1","1"); location.reload();
+  if(localStorage.getItem("cursapp_market_demo_seed_v1")!=="1") return;
   let p=load(K_POSTS,[]);
   if(!p.length){
     p=[
       {id:"mk_1",owner:"apoderado.demo@cursapp.cl",title:"Polerón colegio Talla 14",category:"Uniformes",type:"Venta",price:7000,scope:"colegio",school:"Colegio Central",course:"2°B",desc:"En buen estado.",image:"poleron.svg",status:"activo",boost:"colegio",boostUntil:new Date(Date.now()+6*864e5).toISOString(),views:0,favorites:0,contacts:0,reports:0,createdAt:now()},
-      {id:"mk_2",owner:"otro@cursapp.cl",title:"Pack libros 6° básico 2024",category:"Libros",type:"Venta",price:15000,scope:"cercanos",school:"Colegio Central",course:"6°A",desc:"Pack usado un semestre.",image:"libros.svg",status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()},
-      {id:"mk_3",owner:"otro@cursapp.cl",title:"Mochila colegial excelente estado",category:"Uniformes",type:"Venta",price:10000,scope:"comuna",school:"Colegio San Pedro",course:"4°A",desc:"Mochila azul casi nueva.",image:"mochila.svg",status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()},
-      {id:"mk_4",owner:"otro@cursapp.cl",title:"Balón de fútbol N°5",category:"Deportes",type:"Venta",price:6000,scope:"cercanos",school:"Colegio Los Robles",course:"5°B",desc:"Balón en buen estado.",image:"balon.svg",status:"activo",boost:"cercanos",boostUntil:new Date(Date.now()+3*864e5).toISOString(),views:0,favorites:0,contacts:0,reports:0,createdAt:now()},
-      {id:"mk_5",owner:"otro@cursapp.cl",title:"Vestido colegio Talla 10",category:"Vestuario",type:"Venta",price:8000,scope:"colegio",school:"Colegio Central",course:"3°C",desc:"Vestido de acto escolar.",image:"vestido.svg",status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()}
+      {id:"mk_2",owner:"otro@cursapp.cl",title:"Pack libros 6° básico 2024",category:"Libros",type:"Venta",price:15000,scope:"cercanos",school:"Colegio Central",course:"6°A",desc:"Pack usado un semestre.",image:"libros.svg",status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()}
     ];
     save(K_POSTS,p);
   }
@@ -49,7 +49,17 @@ function setReports(r){save(K_REPORTS,r)}
 function wallets(){return load(K_WALLETS,{})}
 function balance(){return Number(wallets()[uid()]||0)}
 function addEvent(type,postId,extra={}){let e=load(K_EVENTS,[]);e.unshift({id:"ev_"+Date.now().toString(16),type,postId,userId:uid(),at:now(),...extra});save(K_EVENTS,e.slice(0,500))}
-function img(p){return p.image&&p.image.startsWith("data:")?p.image:`assets/img/${p.image||"generic.svg"}`}
+function imageForPost(p){
+  if(p.image && String(p.image).startsWith("data:")) return p.image;
+  const known=["poleron.svg","libros.svg","mochila.svg","balon.svg","vestido.svg","generic.svg"];
+  if(p.image && known.includes(String(p.image))) return "assets/img/"+p.image;
+  const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Otros:"generic.svg"};
+  return "assets/img/"+(map[p.category]||"generic.svg");
+}
+function emptyState(icon,title,text,button,view){
+  return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${title}</h3><p>${text}</p>${button?`<button data-view="${view||"publicar"}">${button}</button>`:""}</div>`;
+}
+function img(p){return imageForPost(p)}
 function activeBoost(p){return p.boost && (!p.boostUntil || Date.parse(p.boostUntil)>Date.now())}
 function rank(list){
   return list.slice().sort((a,b)=>{
@@ -64,19 +74,20 @@ function card(p){
   const price=p.type==="Intercambio"?"Intercambio":clp(p.price);
   return `<article class="productCard" data-post="${p.id}">
     ${activeBoost(p)?`<span class="tag">DESTACADA</span>`:""}
-    <img src="${img(p)}" alt="${esc(p.title)}">
+    <img src="${img(p)}" alt="${esc(p.title)}" onerror="this.src=\'assets/img/generic.svg\'">
     <div class="productBody"><b>${esc(p.title)}</b><strong>${price}</strong><span>⌖ ${esc(p.scope||"colegio")}</span><div class="productMeta"><small>${esc(p.category)}</small><small>${isFav(p.id)?"♥":"♡"}</small></div></div>
   </article>`;
 }
 function renderProducts(list=visible()){
   const f=$("#featuredList"), g=$("#marketGrid");
-  if(f)f.innerHTML=rank(list).slice(0,8).map(card).join("");
-  if(g)g.innerHTML=rank(list).map(card).join("");
+  const ranked=rank(list);
+  if(f) f.innerHTML=ranked.length ? ranked.slice(0,8).map(card).join("") : emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán destacados acá.","Publicar primer aviso","publicar");
+  if(g) g.innerHTML=ranked.length ? ranked.map(card).join("") : emptyState("🔎","Sin resultados","No encontramos artículos para este filtro o búsqueda.","Publicar aviso","publicar");
 }
 function renderMine(){
   const box=$("#myPosts"); if(!box)return;
   const mine=posts().filter(p=>p.owner===uid());
-  box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${img(p)}"><div><b>${esc(p.title)}</b><span>${esc(p.status)} · ${p.views||0} vistas · ${p.contacts||0} contactos</span></div><button data-edit="${p.id}">Editar</button></div>`).join("") || `<p class="muted">Aún no tienes publicaciones.</p>`;
+  box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${img(p)}"><div><b>${esc(p.title)}</b><span>${esc(p.status)} · ${p.views||0} vistas · ${p.contacts||0} contactos</span></div><button data-edit="${p.id}">Editar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
 }
 function showView(v){
   $$(".view").forEach(x=>x.classList.remove("active"));
@@ -98,7 +109,7 @@ function openDetail(id){
   ps[i].views=Number(ps[i].views||0)+1; setPosts(ps); addEvent("view",id);
   const p=ps[i];
   $("#modal").innerHTML=`<div class="modal">
-    <img src="${img(p)}" alt="${esc(p.title)}">
+    <img src="${img(p)}" alt="${esc(p.title)}" onerror="this.src=\'assets/img/generic.svg\'">
     <h2>${esc(p.title)}</h2>
     <p><b>${p.type==="Intercambio"?"Intercambio":clp(p.price)}</b> · ${esc(p.category)}</p>
     <p>${esc(p.desc||"")}</p>
