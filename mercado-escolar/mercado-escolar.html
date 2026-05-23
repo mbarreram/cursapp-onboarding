@@ -4,24 +4,19 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
-<link rel="stylesheet" href="assets/mercado-escolar.css?v=7"/>
+<link rel="stylesheet" href="assets/mercado-escolar.css?v=8"/>
 </head>
 <body>
 <main class="marketApp">
   <header class="marketHeader">
     <div class="brandIcon">🛍️</div>
-    <div>
-      <h1>Mercado Escolar</h1>
-      <p>Comunidad registrada · compra, venta e intercambio</p>
-    </div>
-    <button class="headerBell" aria-label="Notificaciones">🔔</button>
+    <div><h1>Mercado Escolar</h1><p>Comunidad registrada · compra, venta e intercambio</p></div>
+    <button class="headerBell" id="btnRules">🛡️</button>
   </header>
 
-  <section class="heroRetail">
-    <img src="assets/img/hero-mercado.svg" alt="Mercado Escolar">
-  </section>
+  <section class="heroRetail"><img src="assets/img/hero-mercado.svg" alt="Mercado Escolar"></section>
 
-  <nav class="pillNav" aria-label="Navegación Mercado Escolar">
+  <nav class="pillNav">
     <button class="active" data-view="inicio">🏠 Inicio</button>
     <button data-view="explorar">🔎 Explorar</button>
     <button data-view="publicar">＋ Publicar</button>
@@ -31,37 +26,31 @@
 
   <section id="view-inicio" class="view active">
     <div class="searchRow">
-      <div class="searchBox"><span>🔍</span><input placeholder="Buscar libros, uniforme, traje cueca..."></div>
-      <button class="filterBtn">⌯</button>
+      <div class="searchBox"><span>🔍</span><input id="searchInput" placeholder="Buscar libros, uniforme, traje cueca..."></div>
+      <button class="filterBtn" id="btnClearSearch">×</button>
     </div>
-
     <section class="locationCard">
       <div class="locIcon">📍</div>
-      <div>
-        <b>Mostrando cerca de tu comunidad <em>● Activa</em></b>
-        <span>Mi colegio · colegios cercanos · misma comuna</span>
-      </div>
-      <button>Filtros</button>
+      <div><b>Mostrando cerca de tu comunidad <em>● Activa</em></b><span>Mi colegio · colegios cercanos · misma comuna</span></div>
+      <button data-view="explorar">Filtros</button>
     </section>
-
     <div class="categoryRow">
       <article data-cat="Libros"><span>📚</span><b>Libros</b></article>
       <article data-cat="Uniformes"><span>👕</span><b>Uniformes</b></article>
       <article data-cat="Vestuario"><span>🎭</span><b>18 Sept.</b></article>
       <article data-cat="Deportes"><span>⚽</span><b>Deportes</b></article>
-      <article data-view-link="explorar"><span>▦</span><b>Más</b></article>
+      <article data-view="explorar"><span>▦</span><b>Más</b></article>
     </div>
-
-    <section class="sectionHead">
-      <h2>Destacados cerca de ti</h2>
-      <button data-view-link="explorar">Ver todos</button>
-    </section>
+    <section class="sectionHead"><h2>Destacados cerca de ti</h2><button data-view="explorar">Ver todos</button></section>
     <div id="featuredList" class="featuredScroller"></div>
   </section>
 
   <section id="view-explorar" class="view">
     <div class="filters">
-      <button class="active">Mi colegio</button><button>Cercanos</button><button>Mi comuna</button><button>Todo Cursapp</button>
+      <button class="active" data-scope="colegio">Mi colegio</button>
+      <button data-scope="cercanos">Cercanos</button>
+      <button data-scope="comuna">Mi comuna</button>
+      <button data-scope="todo">Todo Cursapp</button>
     </div>
     <div id="marketGrid" class="marketGrid"></div>
   </section>
@@ -70,40 +59,40 @@
     <section class="panel">
       <h2>Publicar artículo</h2>
       <p class="muted">Solo artículos escolares permitidos. Cursapp puede ocultar publicaciones denunciadas.</p>
-      <div class="formGrid">
-        <label>Foto principal<div class="uploadBox">📷 Agregar foto</div></label>
-        <label>Título<input value="Pack libros 6° básico 2024"></label>
-        <label>Categoría<select><option>Libros</option><option>Uniformes</option><option>Vestuario 18</option><option>Deportes</option></select></label>
-        <label>Tipo<select><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
-        <label>Precio<input value="$15.000"></label>
-        <label>Visibilidad<select><option>Solo mi colegio</option><option>Colegios cercanos</option><option>Mi comuna</option></select></label>
-        <label>Descripción<textarea>En buen estado, usado solo un semestre.</textarea></label>
-      </div>
-      <button class="primary">Publicar artículo</button>
+      <form id="publishForm" class="formGrid">
+        <label>Foto referencial / emoji<input id="pubEmoji" value="📚" maxlength="3"></label>
+        <label>Título<input id="pubTitle" required placeholder="Ej: Pack libros 6° básico"></label>
+        <label>Categoría<select id="pubCategory"><option>Libros</option><option>Uniformes</option><option>Vestuario</option><option>Deportes</option><option>Otros</option></select></label>
+        <label>Tipo<select id="pubType"><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
+        <label>Precio<input id="pubPrice" type="number" min="0" value="0"></label>
+        <label>Visibilidad<select id="pubScope"><option value="colegio">Solo mi colegio</option><option value="cercanos">Colegios cercanos</option><option value="comuna">Mi comuna</option></select></label>
+        <label>Descripción<textarea id="pubDesc" required placeholder="Describe estado, talla, año, etc."></textarea></label>
+        <button class="primary" type="submit">Publicar artículo</button>
+      </form>
     </section>
   </section>
 
   <section id="view-mis" class="view">
     <section class="panel">
-      <div class="panelHead"><h2>Mis publicaciones</h2><button data-view-link="publicar">+ Nueva</button></div>
-      <div class="myItem"><img src="assets/img/libros.svg"><div><b>Libro Matemáticas</b><span>Activa · 34 vistas</span></div><button>Editar</button></div>
-      <div class="myItem"><img src="assets/img/poleron.svg"><div><b>Polerón colegio</b><span>Reservada · 8 contactos</span></div><button>Ver</button></div>
-      <div class="myItem"><img src="assets/img/vestido.svg"><div><b>Vestido colegio</b><span>Cerrada</span></div><button>Reactivar</button></div>
+      <div class="panelHead"><h2>Mis publicaciones</h2><button data-view="publicar">+ Nueva</button></div>
+      <div id="myPosts"></div>
     </section>
   </section>
 
   <section id="view-creditos" class="view">
     <section class="panel creditsPanel">
-      <div class="panelHead">
-        <div><h2>Créditos Mercado</h2><p>Compra créditos para destacar tus avisos.</p></div>
-        <span id="creditBalanceBadge">0 créditos</span>
-      </div>
+      <div class="panelHead"><div><h2>Créditos Mercado</h2><p>Compra créditos para destacar tus avisos.</p></div><span id="creditBalanceBadge">0 créditos</span></div>
       <div id="creditPackages" class="creditPackageGrid"></div>
     </section>
     <section class="panel creditsPanel">
       <h2>Canjear visibilidad</h2>
-      <p class="muted">Usa créditos para mejorar la posición de tus publicaciones.</p>
+      <p class="muted">Selecciona una publicación propia y la regla de destacado.</p>
+      <label class="selectFull">Publicación<select id="boostPostSelect"></select></label>
       <div id="boostOptions" class="boostGrid"></div>
+    </section>
+    <section class="panel creditsPanel">
+      <h2>Historial créditos</h2>
+      <div id="creditHistory"></div>
     </section>
   </section>
 
@@ -115,10 +104,8 @@
     <a href="/apoderado.html" class="returnCursapp"><span>⌂</span><small>Volver</small></a>
   </nav>
 </main>
-
-<div id="modal"></div>
-<div id="toast"></div>
-<script src="assets/mercado-escolar.js?v=7"></script>
-<script src="assets/mercado-creditos.js?v=7"></script>
+<div id="modal"></div><div id="toast"></div>
+<script src="assets/mercado-escolar.js?v=8"></script>
+<script src="assets/mercado-creditos.js?v=2"></script>
 </body>
 </html>
