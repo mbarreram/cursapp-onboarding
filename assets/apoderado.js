@@ -1744,7 +1744,7 @@ function dedupePaymentsAll(list){
   }
 
   function cpV5QuickAccess(){
-    return `<div class="cpV5QuickTitle">Accesos rápidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>📄</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>🧾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>💳</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda próximamente')"><span>❔</span>Ayuda</button></div><div class="cpV5Community"><div class="cpV5Shield">✓</div><div><div class="cpV5CommunityTitle">Tu curso, tu comunidad</div><div class="cpV5CommunityText">Con tu apoyo, seguimos logrando grandes cosas 💜</div></div></div>`;
+    return `<div class="cpV5QuickTitle">Accesos rápidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>📄</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>🧾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>💳</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda próximamente')"><span>❔</span>Ayuda</button></div><div data-monetization-slot="apoderado"></div>`;
   }
 
 
