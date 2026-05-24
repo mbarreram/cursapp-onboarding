@@ -361,3 +361,24 @@ window.CursappMarketAdmin={render,tab,action(id,status){let ps=posts(),i=ps.find
 document.addEventListener("DOMContentLoaded",install);setTimeout(install,500);
 })();
 /* Cursapp Mercado Funcional Admin END */
+
+
+
+/* Cursapp Mercado Remove Dummy START */
+(function(){
+  const KP="cursapp_market_posts_v1";
+  const DEMO_OWNERS=["otro@cursapp.cl","demo@cursapp.cl","demo2@cursapp.cl","demo3@cursapp.cl"];
+  const DEMO_TITLES=["Polerón colegio Talla 14","Pack libros 6° básico 2024","Mochila colegial excelente estado","Balón de fútbol N°5","Vestido colegio Talla 10","Traje de huaso niño talla 10","Pack libros 6° básico","Polerón colegio talla 14","Aviso demo nuevo"];
+  function load(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+  function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
+  function clean(){
+    if(localStorage.getItem("cursapp_market_demo_seed_v1")==="1") return;
+    const ps=load(KP,[]);
+    if(!Array.isArray(ps)) return;
+    const cleaned=ps.filter(p=>!DEMO_OWNERS.includes(String(p.owner||"").toLowerCase()) && !DEMO_TITLES.includes(String(p.title||"")));
+    if(cleaned.length!==ps.length) save(KP,cleaned);
+  }
+  clean();
+  window.CursappMarketCleanDemo=clean;
+})();
+/* Cursapp Mercado Remove Dummy END */
