@@ -228,3 +228,65 @@
   object-position:center;
 }
 /* Cursapp Mercado Escolar v7 Hero Real END */
+
+/* Cursapp Mercado v8 - Hero CSS + PNG transparente */
+.heroRetail{
+  position:relative!important;
+  overflow:hidden!important;
+  min-height:250px!important;
+  border-radius:28px!important;
+  background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 52%,#c026d3 100%)!important;
+  box-shadow:0 18px 42px rgba(109,40,217,.20)!important;
+}
+.heroRetail>img{display:none!important;}
+.heroRetail::before{
+  content:"♻ SEGUNDA VIDA ESCOLAR\A Encuentra útiles, libros y\A vestuario entre apoderados\A\A Sin pagos dentro de Cursapp.\A Acuerdos entre usuarios registrados.";
+  white-space:pre-line;
+  position:absolute;
+  left:22px;
+  top:22px;
+  right:42%;
+  z-index:2;
+  color:#fff;
+  font-weight:900;
+  font-size:24px;
+  line-height:1.14;
+  text-shadow:0 2px 6px rgba(0,0,0,.22);
+}
+.heroRetail::after{
+  content:"";
+  position:absolute;
+  right:0;
+  bottom:0;
+  width:56%;
+  height:100%;
+  background:url('./img/hero-items.png') no-repeat right bottom/contain;
+  z-index:1;
+  pointer-events:none;
+}
+.heroRetail .heroButton,
+.heroRetail button{
+  position:absolute!important;
+  left:22px!important;
+  bottom:22px!important;
+  z-index:3!important;
+  border-radius:18px!important;
+  min-height:52px!important;
+  padding:0 26px!important;
+  border:0!important;
+  background:#fff!important;
+  color:#6d28d9!important;
+  font-weight:950!important;
+  box-shadow:0 12px 24px rgba(255,255,255,.18)!important;
+}
+.bottomBar .center span{
+  width:54px!important;
+  height:54px!important;
+  border-radius:19px!important;
+  margin:-16px auto 0!important;
+}
+@media(max-width:390px){
+  .heroRetail{min-height:235px!important;}
+  .heroRetail::before{font-size:22px;right:39%;left:19px;top:20px;}
+  .heroRetail::after{width:58%;}
+}
