@@ -375,3 +375,133 @@
   outline:none!important;
   background:transparent!important;
 }
+
+
+/* Cursapp Mercado Escolar v10 - Hero CSS definitivo */
+.heroRetailCss{
+  position:relative!important;
+  min-height:238px!important;
+  padding:22px 18px!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 82% 28%, rgba(255,255,255,.18), transparent 26%),
+    radial-gradient(circle at 55% 110%, rgba(255,255,255,.12), transparent 22%),
+    linear-gradient(135deg,#4c1d95 0%,#6d28d9 50%,#c026d3 100%)!important;
+  box-shadow:0 18px 42px rgba(109,40,217,.20)!important;
+}
+.heroRetailCss::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='220' viewBox='0 0 360 220'%3E%3Cg fill='none' stroke='white' stroke-opacity='.13' stroke-width='4'%3E%3Cpath d='M250 25l28 16-28 16-28-16z'/%3E%3Cpath d='M307 72l42 24v48l-42 24-42-24V96z'/%3E%3Cpath d='M94 160l34 20-34 20-34-20z'/%3E%3Cpath d='M22 55l24 14-24 14L-2 69z'/%3E%3C/g%3E%3C/svg%3E")
+    center/cover no-repeat;
+  pointer-events:none;
+}
+.heroRetailCss .heroCopy{
+  position:relative;
+  z-index:2;
+  width:58%;
+  color:#fff;
+}
+.heroRetailCss .heroCopy span{
+  display:block;
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:.08em;
+  color:#ede9fe;
+  margin-bottom:10px;
+}
+.heroRetailCss .heroCopy h2{
+  margin:0;
+  font-size:27px;
+  line-height:1.04;
+  letter-spacing:-.055em;
+  font-weight:950;
+  color:#fff;
+  text-shadow:0 2px 8px rgba(31,41,55,.16);
+}
+.heroRetailCss .heroCopy p{
+  margin:13px 0 0;
+  font-size:14px;
+  line-height:1.28;
+  font-weight:850;
+  color:#f5f3ff;
+}
+.heroRetailCss .heroCopy button{
+  margin-top:16px;
+  border:0;
+  border-radius:999px;
+  min-height:46px;
+  padding:0 22px;
+  background:#fff;
+  color:#6d28d9;
+  font-size:14px;
+  font-weight:950;
+  box-shadow:0 12px 24px rgba(255,255,255,.18);
+}
+.heroRetailCss .heroItems{
+  display:block!important;
+  position:absolute!important;
+  z-index:1;
+  right:-8px;
+  bottom:-8px;
+  width:52%;
+  height:auto!important;
+  max-height:235px;
+  object-fit:contain!important;
+  object-position:right bottom!important;
+  filter:drop-shadow(0 18px 18px rgba(17,24,39,.28));
+  opacity:.98!important;
+}
+.heroRetailCss>img:not(.heroItems){
+  display:none!important;
+}
+
+/* Ajuste final botón Publicar inferior */
+.bottomBar .center{
+  background:transparent!important;
+  overflow:visible!important;
+}
+.bottomBar .center span{
+  width:54px!important;
+  height:54px!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:-18px auto 0!important;
+  font-size:34px!important;
+  line-height:1!important;
+  background:linear-gradient(135deg,#6d28d9,#8b5cf6)!important;
+  color:#fff!important;
+  box-shadow:0 14px 28px rgba(109,40,217,.28)!important;
+}
+.bottomBar .center small{
+  margin-top:3px!important;
+  display:block!important;
+  color:#101828!important;
+  font-weight:950!important;
+  background:transparent!important;
+}
+
+@media(max-width:430px){
+  .heroRetailCss{
+    min-height:232px!important;
+    padding:20px 16px!important;
+  }
+  .heroRetailCss .heroCopy{width:59%}
+  .heroRetailCss .heroCopy h2{font-size:25px}
+  .heroRetailCss .heroCopy p{font-size:13px}
+  .heroRetailCss .heroItems{
+    right:-12px;
+    width:52%;
+    max-height:226px;
+  }
+}
+@media(max-width:380px){
+  .heroRetailCss{min-height:220px!important}
+  .heroRetailCss .heroCopy h2{font-size:22px}
+  .heroRetailCss .heroCopy p{font-size:12px}
+  .heroRetailCss .heroItems{width:50%;right:-14px}
+}
