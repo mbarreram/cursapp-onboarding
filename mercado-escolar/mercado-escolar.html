@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
-<link rel="stylesheet" href="assets/mercado-escolar.css?v=9"/>
+<link rel="stylesheet" href="assets/mercado-escolar.css?v=10"/>
 </head>
 <body>
 <main class="marketApp">
@@ -14,7 +14,15 @@
     <button class="headerBell" id="btnRules">🛡️</button>
   </header>
 
-  <section class="heroRetail"><img src="assets/img/hero-mercado.png" alt="Mercado Escolar"></section>
+  <section class="heroRetail heroRetailCss">
+    <div class="heroCopy">
+      <span>♻ SEGUNDA VIDA ESCOLAR</span>
+      <h2>Encuentra útiles, libros y vestuario entre apoderados</h2>
+      <p>Sin pagos dentro de Cursapp.<br>Acuerdos entre usuarios registrados.</p>
+      <button type="button" data-view="publicar">+ Publicar →</button>
+    </div>
+    <img class="heroItems" src="assets/img/hero-items-final.png" alt="Polerón, mochila y libros">
+  </section>
 
   <nav class="pillNav">
     <button class="active" data-view="inicio">🏠 Inicio</button>
@@ -105,7 +113,7 @@
   </nav>
 </main>
 <div id="modal"></div><div id="toast"></div>
-<script src="assets/mercado-escolar.js?v=9"></script>
+<script src="assets/mercado-escolar.js?v=10"></script>
 <script src="assets/mercado-creditos.js?v=9"></script>
 </body>
 </html>
