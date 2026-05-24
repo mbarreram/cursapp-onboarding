@@ -18,6 +18,20 @@ const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
 const now=()=>new Date().toISOString();
 const uid=()=>String((load("cursapp_demo_user",{})||{}).email||(load("cursapp_session_v1",{})||{}).email||"apoderado.demo@cursapp.cl").toLowerCase();
+
+const DEMO_OWNERS=["otro@cursapp.cl","demo@cursapp.cl","demo2@cursapp.cl","demo3@cursapp.cl"];
+const DEMO_TITLES=["Polerón colegio Talla 14","Pack libros 6° básico 2024","Mochila colegial excelente estado","Balón de fútbol N°5","Vestido colegio Talla 10","Traje de huaso niño talla 10","Pack libros 6° básico","Polerón colegio talla 14","Aviso demo nuevo"];
+function isDemoPost(p){
+  return DEMO_OWNERS.includes(String(p.owner||"").toLowerCase()) || DEMO_TITLES.includes(String(p.title||""));
+}
+function purgeDemoIfNeeded(){
+  if(localStorage.getItem("cursapp_market_demo_seed_v1")==="1") return;
+  const ps=load(K_POSTS,[]);
+  if(!Array.isArray(ps) || !ps.length) return;
+  const cleaned=ps.filter(p=>!isDemoPost(p));
+  if(cleaned.length!==ps.length) save(K_POSTS,cleaned);
+}
+
 const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
 function cfg(){
@@ -29,6 +43,7 @@ function cfg(){
   return c;
 }
 function seed(){
+  purgeDemoIfNeeded();
   // Producción: no cargar datos dummy automáticamente.
   // Para demo manual:
   // localStorage.setItem("cursapp_market_demo_seed_v1","1"); location.reload();
@@ -69,7 +84,7 @@ function rank(list){
     return Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0);
   });
 }
-function visible(){return rank(posts().filter(p=>p.status==="activo"))}
+function visible(){purgeDemoIfNeeded();return rank(posts().filter(p=>p.status==="activo" && !isDemoPost(p)))}
 function card(p){
   const price=p.type==="Intercambio"?"Intercambio":clp(p.price);
   return `<article class="productCard" data-post="${p.id}">
@@ -86,7 +101,7 @@ function renderProducts(list=visible()){
 }
 function renderMine(){
   const box=$("#myPosts"); if(!box)return;
-  const mine=posts().filter(p=>p.owner===uid());
+  const mine=posts().filter(p=>p.owner===uid() && !isDemoPost(p));
   box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${img(p)}"><div><b>${esc(p.title)}</b><span>${esc(p.status)} · ${p.views||0} vistas · ${p.contacts||0} contactos</span></div><button data-edit="${p.id}">Editar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
 }
 function showView(v){
@@ -149,7 +164,7 @@ function renderCredits(){
   const pack=$("#creditPackages");
   if(pack)pack.innerHTML=cfg().packages.filter(p=>p.status!=="inactivo").map(p=>`<article class="creditPackage ${p.recommended?"recommended":""}"><h3>${esc(p.name)}${p.recommended?" · Recomendado":""}</h3><p>${p.credits} créditos Mercado</p><strong>${clp(p.price)}</strong><button data-buy="${p.id}">Comprar con pasarela prueba</button></article>`).join("");
   const sel=$("#boostPostSelect");
-  if(sel){const mine=posts().filter(p=>p.owner===uid()&&p.status==="activo");sel.innerHTML=mine.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join("") || `<option value="">Publica un aviso primero</option>`}
+  if(sel){const mine=posts().filter(p=>p.owner===uid()&&p.status==="activo" && !isDemoPost(p));sel.innerHTML=mine.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join("") || `<option value="">Publica un aviso primero</option>`}
   const boosts=$("#boostOptions");
   if(boosts)boosts.innerHTML=cfg().boosts.filter(b=>b.status!=="inactivo").map(b=>`<article class="boostOption"><b>${esc(b.name)}</b><span>${b.credits} créditos · ${b.durationDays} días</span><small>${esc(b.scope||"Vitrina")}</small><button data-boost="${b.id}">Canjear</button></article>`).join("");
   const hist=$("#creditHistory"), mov=load(K_MOVES,[]).filter(m=>m.userId===uid());
