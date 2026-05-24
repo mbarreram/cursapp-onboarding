@@ -166,3 +166,48 @@
   .returnCursapp{border-radius:15px!important}
 }
 /* Cursapp Mercado Escolar v5 Layout Fix END */
+
+
+/* Cursapp Mercado Escolar v6 Hero + Bottom Icons START */
+.heroRetail{
+  background:#6d28d9;
+}
+.heroRetail img{
+  object-fit:cover;
+  object-position:center;
+}
+
+/* Icono Avisos más representativo */
+.bottomBar .avisosBtn span{
+  font-size:19px;
+  filter:none;
+}
+
+/* Botón Volver más destacado y legible */
+.returnCursapp{
+  background:linear-gradient(180deg,#fff,#fbfaff)!important;
+  border:2.5px solid #7c3aed!important;
+  box-shadow:0 10px 22px rgba(109,40,217,.16)!important;
+  color:#4c1d95!important;
+}
+.returnCursapp span{
+  font-size:18px!important;
+}
+.returnCursapp small{
+  font-size:9.5px!important;
+  font-weight:950!important;
+  color:#4c1d95!important;
+}
+
+/* Refina estado activo de barra inferior */
+.bottomBar button.active span,
+.bottomBar button.active small{
+  color:#6d28d9;
+}
+.bottomBar button:not(.center) span{
+  opacity:.96;
+}
+.bottomBar button:not(.center) small{
+  font-weight:900;
+}
+/* Cursapp Mercado Escolar v6 Hero + Bottom Icons END */
