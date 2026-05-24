@@ -70,3 +70,99 @@
 .emptyState p{margin:0 0 14px;color:#667085;font-weight:750;font-size:13px;line-height:1.35}
 .emptyState button{border:0;border-radius:15px;padding:12px 14px;background:#6d28d9;color:#fff;font-weight:950}
 /* Cursapp Mercado Escolar v3 Refinamiento UX END */
+
+
+/* Cursapp Mercado Escolar v5 Layout Fix START */
+.featuredScroller:has(.emptyState),
+.marketGrid:has(.emptyState){
+  display:block;
+  overflow:visible;
+}
+.featuredScroller .emptyState,
+.marketGrid .emptyState{
+  width:100%;
+  max-width:100%;
+  margin:0 auto;
+  min-height:260px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+}
+.featuredScroller .emptyState{
+  min-height:300px;
+}
+.emptyState{
+  padding:24px 20px 28px;
+}
+.emptyState h3{
+  max-width:260px;
+  font-size:22px;
+  line-height:1.08;
+}
+.emptyState p{
+  max-width:270px;
+  font-size:14px;
+  line-height:1.32;
+}
+.emptyState button{
+  width:min(260px,100%);
+  margin-top:4px;
+}
+.bottomBar{
+  height:62px;
+  width:min(382px,calc(100% - 28px));
+  border-radius:22px;
+  padding:6px 8px;
+  grid-template-columns:1fr 1fr 62px 1fr 1fr;
+  gap:0;
+}
+.bottomBar button,
+.bottomBar a{
+  min-width:0;
+  overflow:hidden;
+}
+.bottomBar span{
+  font-size:18px;
+  line-height:1;
+  margin-bottom:3px;
+}
+.bottomBar small{
+  display:block;
+  font-size:9px;
+  line-height:1.05;
+  white-space:nowrap;
+  letter-spacing:-.02em;
+}
+.bottomBar .center span{
+  width:48px;
+  height:48px;
+  margin:-15px auto 0;
+  font-size:28px;
+}
+.returnCursapp{
+  border:2px solid #8b5cf6!important;
+  border-radius:16px!important;
+  padding:4px 2px!important;
+  display:flex!important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:50px;
+}
+.returnCursapp span{
+  font-size:17px!important;
+  margin-bottom:2px!important;
+}
+.returnCursapp small{
+  font-size:9px!important;
+}
+@media(max-width:380px){
+  .bottomBar{
+    width:calc(100% - 22px);
+    grid-template-columns:1fr 1fr 58px 1fr 1fr;
+  }
+  .bottomBar small{font-size:8.5px}
+  .returnCursapp{border-radius:15px!important}
+}
+/* Cursapp Mercado Escolar v5 Layout Fix END */
