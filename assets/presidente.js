@@ -928,28 +928,9 @@ function cuotasPendientesTask(id){
 
   // ----- demo seed (if empty) -----
   function ensureDemo(){
-    if(tasks().length) return;
-
-    save(KEY_TASKS, [
-      {id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single", months:1, amount:10000, goalTotal:150000},
-      {id:"t2", title:"Paseo de curso", description:"", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly", months:3, amount:20000, goalTotal:null},
-    ]);
-
-    save(KEY_PAYMENTS, [
-      {id:"p1", fromTaskId:"t1", amount:10000, status:"paid"},
-      {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
-      {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
-      {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
-      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
-    ]);
-
-    save(KEY_EXPENSES, [
-      {id:"e1", scope:"campaign", campaignId:"t1", title:"Flores", date:"2026-01-18", amount:25000, attachments:[{name:"boleta.jpg"}]},
-      {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
-    ]);
-
-    save(KEY_MONTHLY_REPORTS, []);
-    clearDirty();
+    // Cursapp v11-clean: demo seed desactivado.
+    // Los estados vacíos se deben mostrar con datos reales del curso.
+    return;
   }
 
   // ----- state -----

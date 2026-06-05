@@ -735,41 +735,9 @@ function dueBadge(iso){
 
   // -------- Demo seed (si no hay data) --------
   function ensureDemo(){
-    const hasTasks = load(KEY_TASKS,[]).length;
-    const hasPays = load(KEY_PAYMENTS,[]).length;
-    if(hasTasks && hasPays) return;
-
-    save(KEY_TASKS,[
-      {id:"t1", title:"Prueba apoderado", startDate:"2026-01-10", dueDate:"2026-01-20", closed:false, mandatoryParticipation:true, type:"single", amount:20000},
-      {id:"t2", title:"Cuota paseo", startDate:"2026-04-01", dueDate:"2026-05-31", closed:false, mandatoryParticipation:true, type:"monthly", amount:20000},
-      {id:"t3", title:"Regalo profe", startDate:"2026-01-10", dueDate:"2026-01-21", closed:false, mandatoryParticipation:false, type:"single", amount:1500},
-    ]);
-
-    save(KEY_PAYMENTS,[
-      // pago único (pero el data puede venir duplicado desde antes: lo manejamos igual)
-      {id:"p1", fromTaskId:"t1", concept:"Pago único", amount:20000, status:"pending", dueDate:"2026-01-20", createdAt: nowISO()},
-
-      // mensual (2 cuotas)
-      {id:"p2", fromTaskId:"t2", concept:"Cuota mes Abril", amount:20000, status:"pending", dueDate:"2026-04-30", createdAt: nowISO()},
-      {id:"p3", fromTaskId:"t2", concept:"Cuota mes Mayo", amount:20000, status:"pending", dueDate:"2026-05-31", createdAt: nowISO()},
-
-      // otro pago único
-      {id:"p4", fromTaskId:"t3", concept:"Pago único", amount:1500, status:"pending", dueDate:"2026-01-21", createdAt: nowISO()},
-
-      // saldo a favor
-      {id:"c1", fromTaskId:"tX", concept:"Saldo a favor", amount:10000, status:"credit", createdAt: nowISO(), note:"Saldo a favor"}
-    ]);
-
-    if(!load(KEY_REPORTS,[]).length){
-      save(KEY_REPORTS,[{
-        id:"rep_demo",
-        period:"2026-01",
-        generatedAt:new Date().toLocaleString("es-CL"),
-        recaudadoCurso:137500,
-        gastadoCurso:75700,
-        disponibleCurso:61800
-      }]);
-    }
+    // Cursapp v11-clean: demo seed desactivado.
+    // Los estados vacíos se deben mostrar con datos reales del curso.
+    return;
   }
 
   // -------- Modal --------
@@ -972,7 +940,7 @@ function dueBadge(iso){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
     if(!p || !p.course){
-      whoCourseLine.textContent = "Curso Demo · Colegio Demo";
+      whoCourseLine.textContent = "Curso no seleccionado";
       return;
     }
     const c = p.course;

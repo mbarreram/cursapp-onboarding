@@ -564,34 +564,9 @@
 
   // ---------- demo seed ----------
   function ensureDemo(){
-    const tasks = load(KEY_TASKS, []);
-    if (Array.isArray(tasks) && tasks.length) return;
-
-    save(KEY_TASKS, [
-      {id:"t1", title:"Rifa del curso", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, mandatoryParticipation:true, type:"single"},
-      {id:"t2", title:"Paseo de curso", startDate:"2026-01-01", dueDate:"2026-03-31", closed:false, mandatoryParticipation:false, type:"monthly"},
-      {id:"t3", title:"Prueba filtrooooooo", startDate:"2026-01-19", dueDate:"2026-01-28", closed:false, mandatoryParticipation:true, type:"single"},
-    ]);
-
-    save(KEY_PAYMENTS, [
-      {id:"p1", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
-      {id:"p2", fromTaskId:"t1", concept:"Rifa del curso", amount:10000, status:"paid"},
-      {id:"p3", fromTaskId:"t2", concept:"Paseo de curso", amount:20000, status:"paid"},
-      {id:"p4", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
-      {id:"p5", fromTaskId:"t3", concept:"Prueba filtro", amount:1500, status:"paid"},
-    ]);
-
-    save(KEY_EXPENSES, [
-      {id:"e1", scope:"general", title:"Compra materiales urgentes", category:"Materiales", vendor:"Librería", date:"2026-01-18", amount:8500, note:"Gasto general del curso (demo)", attachments:[]},
-      {id:"e2", scope:"campaign", campaignId:"t1", title:"Flores", category:"Regalos", vendor:"Florería", date:"2026-01-18", amount:25000, note:"", attachments:[{name:"boleta.jpg"}]},
-      {id:"e3", scope:"campaign", campaignId:"t1", title:"Transporte", category:"Transporte", vendor:"Bus", date:"2026-01-18", amount:30000, note:"", attachments:[]},
-      {id:"e4", scope:"campaign", campaignId:"t2", title:"Reserva", category:"Otros", vendor:"", date:"2026-01-18", amount:60000, note:"", attachments:[]},
-      {id:"e5", scope:"campaign", campaignId:"t3", title:"Ccccc", category:"Gg", vendor:"Vvv", date:"2026-01-25", amount:2000, note:"", attachments:[]},
-      {id:"e6", scope:"campaign", campaignId:"t3", title:"Qqqqqq", category:"F", vendor:"H", date:"2026-01-25", amount:200, note:"", attachments:[]},
-    ]);
-
-    save(KEY_MONTHLY_REPORTS, []);
-    clearDirty();
+    // Cursapp v11-clean: demo seed desactivado.
+    // Los estados vacíos se deben mostrar con datos reales del curso.
+    return;
   }
 
   // ---------- computed ----------

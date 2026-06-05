@@ -75,7 +75,7 @@ const LEGACY_KEYS = {
   }catch(e){}
 })();
 
-const DEMO_SEED = false; // Parte 3: prueba real sin data
+const DEMO_SEED = false; // Cursapp v11-clean
 
 
 /* ---------- helpers ---------- */
@@ -132,7 +132,7 @@ function getUser(){
   }catch(e){}
   // Legacy fallback
   try{
-    return JSON.parse(localStorage.getItem("cursapp_demo_user") || "null");
+    return JSON.parse(localStorage.getItem("cursapp_current_user") || "null");
   }catch(e){
     return null;
   }

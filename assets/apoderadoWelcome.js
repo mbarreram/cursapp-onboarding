@@ -4,7 +4,7 @@
    ========================================================= */
 
 (function(){
-  const KEY_USER   = "cursapp_demo_user";
+  const KEY_USER   = "cursapp_current_user";
   const KEY_ACTIVE = "cursapp_active_course_v1";
 
   function loadJSON(k, def){
