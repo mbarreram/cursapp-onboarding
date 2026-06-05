@@ -928,9 +928,28 @@ function cuotasPendientesTask(id){
 
   // ----- demo seed (if empty) -----
   function ensureDemo(){
-    // Cursapp v11-clean: demo seed desactivado.
-    // Los estados vacíos se deben mostrar con datos reales del curso.
-    return;
+    if(tasks().length) return;
+
+    save(KEY_TASKS, [
+      {id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single", months:1, amount:10000, goalTotal:150000},
+      {id:"t2", title:"Paseo de curso", description:"", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly", months:3, amount:20000, goalTotal:null},
+    ]);
+
+    save(KEY_PAYMENTS, [
+      {id:"p1", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
+      {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
+      {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
+      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
+    ]);
+
+    save(KEY_EXPENSES, [
+      {id:"e1", scope:"campaign", campaignId:"t1", title:"Flores", date:"2026-01-18", amount:25000, attachments:[{name:"boleta.jpg"}]},
+      {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
+    ]);
+
+    save(KEY_MONTHLY_REPORTS, []);
+    clearDirty();
   }
 
   // ----- state -----
@@ -951,6 +970,7 @@ function setActive(tab){
   }
 
   function go(tab){
+  try{ updatePresidentTopbar(); }catch(e){}
     const norm = normalizeTab(tab);
     state.tab = norm;
     setActive(norm);
@@ -1447,9 +1467,49 @@ function renderBar(label, value, max){
 function activeCourse(){
   try{
     const ck = activeCourseKey();
+
+    // 1) Catálogo nuevo temporal hasta Supabase
     const courses = JSON.parse(localStorage.getItem("cursapp_courses_v1")||"[]");
-    return courses.find(c=>c.courseKey===ck) || null;
+    const found = Array.isArray(courses) ? courses.find(c=>String(c.courseKey||"")===String(ck)) : null;
+    if(found) return found;
+
+    // 2) Curso actual creado desde onboarding
+    const current = JSON.parse(localStorage.getItem("cursapp_course_v1")||"null");
+    if(current && String(current.courseKey||"")===String(ck)){
+      return Object.assign({ courseKey: current.courseKey, inviteCode: current.inviteCode }, current.course || {});
+    }
+
+    // 3) Perfil presidente/apoderado asociado al curso
+    const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1")||"[]");
+    const prof = Array.isArray(profiles) ? profiles.find(p=>String(p.courseKey||"")===String(ck) && p.course) : null;
+    if(prof && prof.course) return Object.assign({ courseKey: prof.courseKey }, prof.course || {});
+
+    // 4) Si no hay active_course pero existe un único curso actual, úsalo y corrige active_course
+    if(current && current.courseKey){
+      localStorage.setItem(KEY_ACTIVE_COURSE, String(current.courseKey));
+      return Object.assign({ courseKey: current.courseKey, inviteCode: current.inviteCode }, current.course || {});
+    }
+
+    return null;
   }catch(e){ return null; }
+}
+
+function courseDisplayLine(c){
+  if(!c) return "Curso no seleccionado";
+  const school = c.schoolName || c.school || c.colegio || "Colegio";
+  const level = c.level || c.curso || c.course || "";
+  const letter = c.letter || "";
+  const year = c.year || "";
+  const jornada = c.jornada || "";
+  return `${school} · ${level}${letter} ${year} · ${jornada}`.replace(/\s+/g," ").trim();
+}
+
+function updatePresidentTopbar(){
+  try{
+    const line = document.querySelector("header .brand .muted");
+    if(!line) return;
+    line.textContent = courseDisplayLine(activeCourse());
+  }catch(e){}
 }
 
 function buildWhatsappText(profile, summary){
