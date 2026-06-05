@@ -6,20 +6,10 @@
   const load=(k,fb)=>{try{return JSON.parse(localStorage.getItem(k)||"null")??fb}catch(e){return fb}};
   const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
   function seed(){
-    let agents=load(KEY_AGENTS,[]);
-    if(!agents.find(a=>a.email==="agente@cursapp.cl")){
-      agents.unshift({id:"ag_demo_cursapp",name:"Agente Demo Cursapp",email:"agente@cursapp.cl",code:"MAU2026",status:"active"});
-      save(KEY_AGENTS,agents);
-    }
-    if(!load(KEY_CONV,[]).length){
-      save(KEY_CONV,[
-        {id:"c1",agentId:"ag_demo_cursapp",agentName:"Agente Demo Cursapp",referralCode:"MAU2026",schoolName:"Colegio Central",courseLabel:"2°B",courseKey:"central-2b",targetParents:40,status:"asignado",commercialCount:22,directiva:2,activatedParents:20,createdAt:new Date().toISOString()},
-        {id:"c2",agentId:"ag_demo_cursapp",agentName:"Agente Demo Cursapp",referralCode:"MAU2026",schoolName:"Colegio Los Robles",courseLabel:"5°B",courseKey:"robles-5b",targetParents:60,status:"validado",commercialCount:48,directiva:2,activatedParents:46,createdAt:new Date().toISOString()},
-        {id:"c3",agentId:"ag_demo_cursapp",agentName:"Agente Demo Cursapp",referralCode:"MAU2026",schoolName:"Colegio San José",courseLabel:"3°A",courseKey:"sanjose-3a",targetParents:60,status:"pagado",commercialCount:60,directiva:2,activatedParents:58,createdAt:new Date().toISOString()}
-      ]);
-    }
+    // Cursapp v11-clean: sin agente, cursos ni comisiones demo.
+    return;
   }
-  function agent(){const s=load(KEY_SESSION,null);let a=load(KEY_AGENTS,[]).find(x=>s&&x.id===s.agentId)||load(KEY_AGENTS,[])[0];return a||{id:"ag_demo_cursapp",name:"Agente",code:"MAU2026",email:"agente@cursapp.cl"}}
+  function agent(){const s=load(KEY_SESSION,null);let a=load(KEY_AGENTS,[]).find(x=>s&&x.id===s.agentId)||load(KEY_AGENTS,[])[0];return a||{id:"ag_demo_cursapp",name:"Agente",code:"",email:""}}
   function rows(){const a=agent();return load(KEY_CONV,[]).filter(x=>x.agentId===a.id||x.referralCode===a.code)}
   function pct(r){return Math.min(100,Math.round((Number(r.commercialCount||0)/Number(r.targetParents||30))*100))}
   function tier(r){const p=pct(r), act=Number(r.activatedParents||0);if(p>=100)return{name:"Premium",cls:"green",amount:550,total:act*550,next:"¡Meta lograda!"};if(p>=80)return{name:"Mejorada",cls:"blue",amount:450,total:act*450,next:`Faltan ${Math.max(0,Math.ceil(r.targetParents)-r.commercialCount)} para 100%`};if(p>=60)return{name:"Básica",cls:"orange",amount:350,total:act*350,next:`Faltan ${Math.max(0,Math.ceil(r.targetParents*.8)-r.commercialCount)} para 80%`};return{name:"En crecimiento",cls:"",amount:0,total:0,next:`Faltan ${Math.max(0,Math.ceil(r.targetParents*.6)-r.commercialCount)} para básica`}}
@@ -98,7 +88,7 @@
   function bindCopy(){const b=$("#copyCode");if(b)b.onclick=()=>navigator.clipboard?.writeText(agent().code)}
 
   function kitText(kind){
-    const code = agent().code || "MAU2026";
+    const code = agent().code || "";
     const templates = {
       directiva: {
         title:"Mensaje para directivas",
@@ -137,7 +127,7 @@
 
   window.AgentKit = {
     openTool(kind){
-      const code = agent().code || "MAU2026";
+      const code = agent().code || "";
 
       if(kind === "directiva" || kind === "apoderados" || kind === "video"){
         const t = kitText(kind);
