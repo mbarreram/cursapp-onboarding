@@ -251,12 +251,10 @@
   }
 
   function seedAdminData(){
-    // Cursapp v11-clean: sin métricas/logs/tickets demo.
+    // Cursapp v11-clean: sin métricas, logs, tickets ni campañas demo.
     cleanupDummyTickets();
-    if(!load(ADMIN_LOGS, []).length) save(ADMIN_LOGS, []);
-    if(!load(ADMIN_PAYMENTS, []).length) save(ADMIN_PAYMENTS, []);
-    if(!load(ADMIN_TICKETS, []).length) save(ADMIN_TICKETS, []);
-    if(!load(ADMIN_BANNERS, []).length) save(ADMIN_BANNERS, []);
+    if(!Array.isArray(load(ADMIN_LOGS, []))) save(ADMIN_LOGS, []);
+    if(!Array.isArray(load(ADMIN_TICKETS, []))) save(ADMIN_TICKETS, []);
   }
 
   function log(type, action, target, extra={}){
@@ -271,7 +269,7 @@
     if(/transfer|transferencia/.test(raw)) return "Transferencia";
     if(/efectivo|cash/.test(raw)) return "Efectivo";
     if(/manual|concili/.test(raw)) return "Conciliación";
-    if(String(p.status||"").toLowerCase()==="paid" && !raw) return "Transbank/demo";
+    if(String(p.status||"").toLowerCase()==="paid" && !raw) return "Transbank";
     return "No informado";
   }
 
@@ -370,9 +368,9 @@
 
     app.innerHTML = `
       <div class="kpis">
-        ${kpi("🏫","Colegios registrados",s.schools.size || "—","+ total app")}
-        ${kpi("🎓","Cursos activos",s.courses.length || "—","+ cursos detectados")}
-        ${kpi("👥","Apoderados / Alumnos",s.alumnos.size || s.ps.length || "—","+ comunidad")}
+        ${kpi("🏫","Colegios registrados",s.schools.size,"Total actual")}
+        ${kpi("🎓","Cursos activos",s.courses.length,"Cursos detectados")}
+        ${kpi("👥","Apoderados / Alumnos",s.alumnos.size || s.ps.length,"Comunidad actual")}
         ${kpi("💳","Pagos del mes",clp(s.totalPaid),`${s.successful.length} exitosos`)}
         ${kpi("🤝","Conciliación / Manual",manualTotal.count,clp(manualTotal.amount))}
         ${kpi("🎫","Tickets abiertos",openTickets,`${tickets.length} tickets totales`)}
