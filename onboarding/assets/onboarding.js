@@ -1042,6 +1042,16 @@ if(d.alsoApoderado){
         }
 
         localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
+        // Cursapp v11: mantener catálogo local de cursos para Presidente/Admin hasta Supabase.
+        try{
+          const coursesKey = "cursapp_courses_v1";
+          const list = JSON.parse(localStorage.getItem(coursesKey) || "[]");
+          const row = Object.assign({ courseKey, inviteCode }, courseObj.course || {});
+          const idx = Array.isArray(list) ? list.findIndex(c=>String(c.courseKey||"")===String(courseKey)) : -1;
+          if(idx >= 0) list[idx] = Object.assign({}, list[idx], row);
+          else list.unshift(row);
+          localStorage.setItem(coursesKey, JSON.stringify(list));
+        }catch(e){}
         setActiveCourseKey(courseKey);
 
         if(finalReferralCode){
