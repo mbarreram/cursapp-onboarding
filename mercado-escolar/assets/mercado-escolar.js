@@ -17,12 +17,15 @@ const load=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.par
 const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
 const now=()=>new Date().toISOString();
-const uid=()=>String((load("cursapp_demo_user",{})||{}).email||(load("cursapp_session_v1",{})||{}).email||"apoderado.demo@cursapp.cl").toLowerCase();
+const uid=()=>String((load("cursapp_demo_user",{})||{}).email||(load("cursapp_session_v1",{})||{}).email||"").toLowerCase();
 
 const DEMO_OWNERS=["otro@cursapp.cl","demo@cursapp.cl","demo2@cursapp.cl","demo3@cursapp.cl"];
-const DEMO_TITLES=["Polerón colegio Talla 14","Pack libros 6° básico 2024","Mochila colegial excelente estado","Balón de fútbol N°5","Vestido colegio Talla 10","Traje de huaso niño talla 10","Pack libros 6° básico","Polerón colegio talla 14","Aviso demo nuevo"];
+const DEMO_TITLES=["Aviso demo nuevo"];
 function isDemoPost(p){
-  return DEMO_OWNERS.includes(String(p.owner||"").toLowerCase()) || DEMO_TITLES.includes(String(p.title||""));
+  const owner = String(p.owner||"").toLowerCase();
+  const id = String(p.id||"");
+  const img = String(p.image||"");
+  return DEMO_OWNERS.includes(owner) || DEMO_TITLES.includes(String(p.title||"")) || /^mk_[1-5]$/.test(id) || ["poleron.svg","libros.svg","mochila.svg","balon.svg","vestido.svg"].includes(img);
 }
 function purgeDemoIfNeeded(){
   if(localStorage.getItem("cursapp_market_demo_seed_v1")==="1") return;
@@ -44,18 +47,8 @@ function cfg(){
 }
 function seed(){
   purgeDemoIfNeeded();
-  // Producción: no cargar datos dummy automáticamente.
-  // Para demo manual:
-  // localStorage.setItem("cursapp_market_demo_seed_v1","1"); location.reload();
-  if(localStorage.getItem("cursapp_market_demo_seed_v1")!=="1") return;
-  let p=load(K_POSTS,[]);
-  if(!p.length){
-    p=[
-      {id:"mk_1",owner:"apoderado.demo@cursapp.cl",title:"Polerón colegio Talla 14",category:"Uniformes",type:"Venta",price:7000,scope:"colegio",school:"Colegio Central",course:"2°B",desc:"En buen estado.",image:"poleron.svg",status:"activo",boost:"colegio",boostUntil:new Date(Date.now()+6*864e5).toISOString(),views:0,favorites:0,contacts:0,reports:0,createdAt:now()},
-      {id:"mk_2",owner:"otro@cursapp.cl",title:"Pack libros 6° básico 2024",category:"Libros",type:"Venta",price:15000,scope:"cercanos",school:"Colegio Central",course:"6°A",desc:"Pack usado un semestre.",image:"libros.svg",status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()}
-    ];
-    save(K_POSTS,p);
-  }
+  // Cursapp v11-clean: no se crean publicaciones demo automáticamente.
+  return;
 }
 function posts(){seed();return load(K_POSTS,[])}
 function setPosts(p){save(K_POSTS,p)}

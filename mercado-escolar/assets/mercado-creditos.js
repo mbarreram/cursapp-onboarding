@@ -17,7 +17,7 @@
   function userId(){
     const a=load("cursapp_demo_user",{})||{};
     const b=load("cursapp_session_v1",{})||{};
-    return String(a.email||a.userId||b.email||b.userId||"apoderado.demo@cursapp.cl").toLowerCase();
+    return String(a.email||a.userId||b.email||b.userId||"").toLowerCase();
   }
 
   function config(){
