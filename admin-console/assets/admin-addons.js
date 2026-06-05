@@ -16,7 +16,7 @@
   const refs=()=>load(KRF,[]), saveRefs=v=>save(KRF,v||[]);
   const code=v=>String(v||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,14);
   const badge=(l,c="purple")=>`<span class="badge ${c}">${esc(l)}</span>`;
-  function seedAgents(){if(agents().length)return;saveAgents([{id:"ag_demo_cursapp",name:"Agente Demo Cursapp",email:"agente@cursapp.cl",phone:"+56 9 0000 0000",code:"MAU2026",status:"active",createdAt:now()}])}
+  function seedAgents(){ /* Cursapp v11-clean: sin agente demo automático */ return; }])}
   const agentById=id=>agents().find(a=>String(a.id)===String(id))||null;
   const agentByCode=c=>agents().find(a=>code(a.code)===code(c))||null;
   function courses(){const m=new Map();profiles().forEach(p=>{const ck=p.courseKey||"";if(!ck)return;const c=p.course||{};if(!m.has(ck))m.set(ck,{courseKey:ck,schoolName:c.schoolName||c.school||c.colegio||"Colegio",regionName:c.regionName||c.region||"",courseLabel:[c.level||c.curso||c.course||"",c.letter||"",c.year||"",c.jornada||""].filter(Boolean).join(" ")||ck,estimatedStudents:Number(c.estimatedStudents||c.targetParents||0)})});return Array.from(m.values())}
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded",install);setTimeout(install,500);
 (function(){
   const KP="cursapp_market_posts_v1";
   const DEMO_OWNERS=["otro@cursapp.cl","demo@cursapp.cl","demo2@cursapp.cl","demo3@cursapp.cl"];
-  const DEMO_TITLES=["Polerón colegio Talla 14","Pack libros 6° básico 2024","Mochila colegial excelente estado","Balón de fútbol N°5","Vestido colegio Talla 10","Traje de huaso niño talla 10","Pack libros 6° básico","Polerón colegio talla 14","Aviso demo nuevo"];
+  const DEMO_TITLES=["Aviso demo nuevo"];
   function load(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function save(k,v){localStorage.setItem(k,JSON.stringify(v))}
   function clean(){

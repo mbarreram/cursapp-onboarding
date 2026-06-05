@@ -251,15 +251,12 @@
   }
 
   function seedAdminData(){
+    // Cursapp v11-clean: sin métricas/logs/tickets demo.
     cleanupDummyTickets();
-    if(!load(ADMIN_LOGS, []).length){
-      save(ADMIN_LOGS, [
-        {at:now(), user:"admin@cursapp.cl", type:"login_admin", action:"Ingreso a panel administrador", target:"Admin Console", ip:"local"},
-        {at:new Date(Date.now()-600000).toISOString(), user:"presidente@demo.cl", type:"campaign_created", action:"Creó campaña Gira de Estudio", target:"Colegio Demo · 2°B", ip:"local"},
-        {at:new Date(Date.now()-1200000).toISOString(), user:"apoderado@demo.cl", type:"payment_success", action:"Pago realizado por apoderado", target:"Gira de Estudio", ip:"local"},
-        {at:new Date(Date.now()-1800000).toISOString(), user:"tesorero@demo.cl", type:"expense_created", action:"Registró gasto con boleta", target:"Rendiciones", ip:"local"}
-      ]);
-    }
+    if(!load(ADMIN_LOGS, []).length) save(ADMIN_LOGS, []);
+    if(!load(ADMIN_PAYMENTS, []).length) save(ADMIN_PAYMENTS, []);
+    if(!load(ADMIN_TICKETS, []).length) save(ADMIN_TICKETS, []);
+    if(!load(ADMIN_BANNERS, []).length) save(ADMIN_BANNERS, []);
   }
 
   function log(type, action, target, extra={}){
