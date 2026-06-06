@@ -318,3 +318,365 @@
   // Primer sync al cargar página (por si vienes de aprobar / cambiar optout)
   try{ scheduleSync(); }catch(e){}
 })();
+
+
+/* ============================================================
+   Cursapp · Supabase Hybrid Bridge Fase 1A
+   - No reemplaza localStorage.
+   - Replica en Supabase: colegios, cursos, usuarios, miembros_curso, campanas.
+   - Usa REST API + anon key para evitar depender del orden de scripts HTML.
+   ============================================================ */
+(function(){
+  if (window.__CURSAPP_SUPABASE_HYBRID_FASE1A__) return;
+  window.__CURSAPP_SUPABASE_HYBRID_FASE1A__ = true;
+
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const MAP_KEY = "cursapp_supabase_ids_v1";
+  const LOG_KEY = "cursapp_supabase_last_sync_v1";
+
+  function log(status, detail){
+    try{
+      const row = { status, detail: detail || {}, at: new Date().toISOString() };
+      localStorage.setItem(LOG_KEY, JSON.stringify(row));
+      window.CURSAPP_SUPABASE_STATUS = row;
+      if (status === "error") console.warn("Cursapp Supabase sync", row);
+      else console.log("Cursapp Supabase sync", row);
+    }catch(e){}
+  }
+
+  function parseJSON(v, fallback){
+    try{
+      if(v == null || v === "") return fallback;
+      return JSON.parse(v);
+    }catch(e){ return fallback; }
+  }
+  function loadJSON(k, fallback){
+    try{ return parseJSON(localStorage.getItem(k), fallback); }catch(e){ return fallback; }
+  }
+  function saveJSON(k, v){
+    try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){}
+  }
+  function mapLoad(){
+    const m = loadJSON(MAP_KEY, {});
+    m.cursos = m.cursos || {};
+    m.colegios = m.colegios || {};
+    m.usuarios = m.usuarios || {};
+    m.miembros = m.miembros || {};
+    m.campanas = m.campanas || {};
+    return m;
+  }
+  function mapSave(m){ saveJSON(MAP_KEY, m); }
+  function q(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  function asInt(v){ const n = parseInt(v,10); return Number.isFinite(n) ? n : null; }
+  function cleanDate(v){
+    const s = String(v || "").slice(0,10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  }
+
+  async function sb(path, opts){
+    const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+      }
+    }, opts || {}));
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = text; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || text || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return data;
+  }
+  async function selectOne(table, query){
+    const data = await sb(table + "?" + query + "&limit=1", { method:"GET" });
+    return Array.isArray(data) ? (data[0] || null) : null;
+  }
+  async function insert(table, body){
+    const data = await sb(table, { method:"POST", body: JSON.stringify(body) });
+    return Array.isArray(data) ? (data[0] || null) : data;
+  }
+  async function patch(table, id, body){
+    const data = await sb(table + "?id=eq." + q(id), { method:"PATCH", body: JSON.stringify(body) });
+    return Array.isArray(data) ? (data[0] || null) : data;
+  }
+  async function upsertByUnique(table, onConflict, body){
+    const data = await sb(table + "?on_conflict=" + q(onConflict), {
+      method:"POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation"
+      },
+      body: JSON.stringify(body)
+    });
+    return Array.isArray(data) ? (data[0] || null) : data;
+  }
+
+  function normalizeCourseObj(obj){
+    if(!obj) return null;
+    const c = obj.course || obj;
+    const courseKey = String(obj.courseKey || c.courseKey || "").trim();
+    if(!courseKey) return null;
+    return {
+      courseKey,
+      inviteCode: String(obj.inviteCode || c.inviteCode || ""),
+      schoolName: String(c.schoolName || c.school || c.colegio || c.nombreColegio || "Colegio").trim() || "Colegio",
+      regionName: String(c.regionName || c.region || "").trim(),
+      comunaName: String(c.comunaName || c.comuna || "").trim(),
+      schoolId: String(c.schoolId || c.colegioId || "").trim(),
+      level: String(c.level || c.nivel || "").trim(),
+      letter: String(c.letter || c.letra || "").trim(),
+      year: asInt(c.year || c.anio || c.año),
+      jornada: String(c.jornada || "").trim()
+    };
+  }
+
+  async function ensureColegio(course){
+    const m = mapLoad();
+    const ck = [course.schoolName, course.regionName, course.comunaName].join("|");
+    if(m.colegios[ck]) return m.colegios[ck];
+
+    let row = await selectOne("colegios", "nombre=eq." + q(course.schoolName) + "&region=eq." + q(course.regionName) + "&comuna=eq." + q(course.comunaName) + "&select=id");
+    if(!row){
+      row = await insert("colegios", {
+        nombre: course.schoolName,
+        region: course.regionName || null,
+        comuna: course.comunaName || null,
+        rbd: course.schoolId || null,
+        es_catalogo_demo: /\(demo\)/i.test(course.schoolName)
+      });
+    }
+    if(row && row.id){
+      m.colegios[ck] = row.id;
+      mapSave(m);
+      return row.id;
+    }
+    return null;
+  }
+
+  async function ensureCurso(courseLike){
+    const course = normalizeCourseObj(courseLike);
+    if(!course) return null;
+    const m = mapLoad();
+    if(m.cursos[course.courseKey]) return m.cursos[course.courseKey];
+
+    const colegioId = await ensureColegio(course);
+    const nombreCurso = `${course.schoolName} · ${course.level}${course.letter} ${course.year || ""}`.replace(/\s+/g," ").trim();
+    const body = {
+      colegio_id: colegioId,
+      nombre: nombreCurso || "Curso Cursapp",
+      nivel: course.level || null,
+      letra: course.letter || null,
+      anio: course.year,
+      jornada: course.jornada || null,
+      course_key: course.courseKey,
+      invite_code: course.inviteCode || null,
+      estado: "activo"
+    };
+
+    const row = await upsertByUnique("cursos", "course_key", body);
+    if(row && row.id){
+      const mm = mapLoad();
+      mm.cursos[course.courseKey] = row.id;
+      if(colegioId) mm.colegios[course.courseKey] = colegioId;
+      mapSave(mm);
+      return row.id;
+    }
+    return null;
+  }
+
+  function allLocalCourses(){
+    const out = [];
+    const current = loadJSON("cursapp_course_v1", null);
+    if(current) out.push(current);
+    const list = loadJSON("cursapp_courses_v1", []);
+    if(Array.isArray(list)) list.forEach(x=>out.push(x));
+    const profiles = loadJSON("cursapp_profiles_v1", []);
+    if(Array.isArray(profiles)) profiles.forEach(p=>{ if(p && p.courseKey && p.course) out.push({ courseKey:p.courseKey, course:p.course }); });
+    const seen = new Set();
+    return out.filter(x=>{
+      const c = normalizeCourseObj(x); if(!c) return false;
+      if(seen.has(c.courseKey)) return false;
+      seen.add(c.courseKey); return true;
+    });
+  }
+
+  async function syncCourses(){
+    const courses = allLocalCourses();
+    for(const c of courses) await ensureCurso(c);
+    return courses.length;
+  }
+
+  async function ensureUsuario(userLike, profileLike){
+    const email = String(userLike?.email || profileLike?.email || profileLike?.apoderado?.email || "").toLowerCase().trim();
+    if(!email) return null;
+    const m = mapLoad();
+    if(m.usuarios[email]) return m.usuarios[email];
+    const name = String(profileLike?.apoderado?.name || profileLike?.directiva?.name || profileLike?.name || userLike?.name || "").trim();
+    const phone = String(profileLike?.apoderado?.phone || profileLike?.phone || "").trim();
+    const row = await upsertByUnique("usuarios", "email", {
+      email,
+      nombre: name || null,
+      telefono: phone || null,
+      rol_global: "usuario",
+      estado: "activo"
+    });
+    if(row && row.id){
+      const mm = mapLoad(); mm.usuarios[email] = row.id; mapSave(mm);
+      return row.id;
+    }
+    return null;
+  }
+
+  async function upsertMiembro(profile){
+    if(!profile || !profile.courseKey || !profile.role) return null;
+    const cursoId = await ensureCurso({ courseKey:profile.courseKey, course:profile.course || {} });
+    if(!cursoId) return null;
+    const email = String(profile.apoderado?.email || profile.email || profile.userEmail || "").toLowerCase().trim();
+    const userId = await ensureUsuario({ email }, profile);
+    const rol = String(profile.role || "apoderado").toLowerCase();
+    const alumno = String(profile.apoderado?.alumno || profile.alumno || "").trim();
+    const nombre = String(profile.apoderado?.name || profile.directiva?.name || profile.name || "").trim();
+    const key = [cursoId, email || profile.userId || "sin-email", rol, alumno].join("|");
+    const m = mapLoad();
+    let rowId = m.miembros[key] || "";
+    const body = {
+      curso_id: cursoId,
+      usuario_id: userId,
+      rol,
+      nombre_apoderado: nombre || null,
+      nombre_alumno: alumno || null,
+      email: email || null,
+      estado: String(profile.status || "aprobado").toLowerCase(),
+      activacion_pagada: String(profile.activation?.status || "").toLowerCase() === "paid"
+    };
+    if(!rowId){
+      const found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id");
+      rowId = found && found.id;
+    }
+    const row = rowId ? await patch("miembros_curso", rowId, body) : await insert("miembros_curso", body);
+    if(row && row.id){
+      const mm = mapLoad(); mm.miembros[key] = row.id; mapSave(mm); return row.id;
+    }
+    return null;
+  }
+
+  async function syncUsersAndMembers(){
+    const users = loadJSON("cursapp_users_v1", []);
+    const profiles = loadJSON("cursapp_profiles_v1", []);
+    let count = 0;
+    if(Array.isArray(users)){
+      for(const u of users){ await ensureUsuario(u, null); count++; }
+    }
+    if(Array.isArray(profiles)){
+      for(const p of profiles){ await upsertMiembro(p); count++; }
+    }
+    return count;
+  }
+
+  function allTaskKeys(){
+    const keys = [];
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(!k) continue;
+        if(k === "cursapp_tasks_v1" || /tasks_v1$/.test(k) || k.indexOf("tasks_v1") >= 0) keys.push(k);
+      }
+    }catch(e){}
+    return Array.from(new Set(keys));
+  }
+
+  async function syncCampaigns(){
+    const activeCourseKey = String(localStorage.getItem("cursapp_active_course_v1") || "").trim();
+    let count = 0;
+    for(const key of allTaskKeys()){
+      const tasks = loadJSON(key, []);
+      if(!Array.isArray(tasks) || !tasks.length) continue;
+      for(const t of tasks){
+        if(!t) continue;
+        const localId = String(t.id || t.taskId || t.campaignId || "").trim();
+        if(!localId) continue;
+        const courseKey = String(t.courseKey || activeCourseKey || "").trim();
+        if(!courseKey) continue;
+        let cursoId = mapLoad().cursos[courseKey];
+        if(!cursoId){
+          const current = allLocalCourses().find(c=>normalizeCourseObj(c)?.courseKey === courseKey) || { courseKey, course:{ schoolName:"Colegio", level:"", letter:"", year:null, jornada:"" } };
+          cursoId = await ensureCurso(current);
+        }
+        if(!cursoId) continue;
+        const m = mapLoad();
+        let rowId = m.campanas[localId] || "";
+        const body = {
+          curso_id: cursoId,
+          titulo: String(t.title || t.name || t.nombre || "Campaña").trim() || "Campaña",
+          tipo: String(t.type || t.tipo || "single").toLowerCase().includes("mens") ? "monthly" : String(t.type || t.tipo || "single"),
+          monto: Number(t.amount || t.monto || 0) || 0,
+          fecha_inicio: cleanDate(t.startDate || t.fecha_inicio || t.inicio),
+          fecha_vencimiento: cleanDate(t.dueDate || t.endDate || t.fecha_vencimiento || t.fin),
+          meses: Number(t.months || t.meses || 1) || 1,
+          obligatoria: (t.mandatoryParticipation !== undefined) ? !!t.mandatoryParticipation : (t.obligatoria !== false),
+          estado: t.closed ? "cerrada" : (String(t.status || t.estado || "activa") || "activa")
+        };
+        if(!rowId){
+          const found = await selectOne("campanas", "curso_id=eq." + q(cursoId) + "&titulo=eq." + q(body.titulo) + "&select=id");
+          rowId = found && found.id;
+        }
+        const row = rowId ? await patch("campanas", rowId, body) : await insert("campanas", body);
+        if(row && row.id){
+          const mm = mapLoad(); mm.campanas[localId] = row.id; mapSave(mm); count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  let timer = null;
+  async function syncAll(reason){
+    try{
+      const cursos = await syncCourses();
+      const miembros = await syncUsersAndMembers();
+      const campanas = await syncCampaigns();
+      log("ok", { reason: reason || "manual", cursos, miembros, campanas });
+      try{ window.dispatchEvent(new CustomEvent("cursapp:supabaseSynced", { detail:{ cursos, miembros, campanas } })); }catch(e){}
+    }catch(e){
+      log("error", { reason: reason || "manual", message: e && e.message ? e.message : String(e) });
+    }
+  }
+  function schedule(reason){
+    try{ if(timer) clearTimeout(timer); }catch(e){}
+    timer = setTimeout(()=>syncAll(reason), 700);
+  }
+  function shouldSyncKey(k){
+    k = String(k || "");
+    return k === "cursapp_course_v1" || k === "cursapp_courses_v1" || k === "cursapp_users_v1" || k === "cursapp_profiles_v1" || k === "cursapp_enrollments_v1" || k.indexOf("tasks_v1") >= 0;
+  }
+
+  (function patchStorage(){
+    try{
+      if(window.__CURSAPP_SUPABASE_STORAGE_PATCHED__) return;
+      const original = localStorage.setItem.bind(localStorage);
+      localStorage.setItem = function(k,v){
+        original(k,v);
+        if(shouldSyncKey(k)) schedule("setItem:" + k);
+      };
+      window.__CURSAPP_SUPABASE_STORAGE_PATCHED__ = true;
+    }catch(e){}
+  })();
+
+  window.addEventListener("cursapp:dataChanged", function(ev){
+    const k = ev && ev.detail ? ev.detail.key : "";
+    if(shouldSyncKey(k)) schedule("event:" + k);
+  });
+  window.CURSAPP = window.CURSAPP || {};
+  window.CURSAPP.syncSupabase = function(){ return syncAll("manual"); };
+  window.CURSAPP.supabaseStatus = function(){ return loadJSON(LOG_KEY, null); };
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
+  else schedule("load");
+})();
