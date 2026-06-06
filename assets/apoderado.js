@@ -1640,6 +1640,71 @@ function dedupePaymentsAll(list){
   return { list: Array.from(map.values()), changed };
 }
 
+
+// --- FIX v11: dedupe canónico para cambio Presidente -> Apoderado sin cerrar sesión ---
+function paymentCanonicalKeyV11(p, tasksAll){
+  const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "").trim();
+  const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
+  const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+  const owner = String(p?.apoderadoKey || p?.apoderadoEmail || p?.apoderadoId || p?.email || meKey() || "").toLowerCase().trim();
+  const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : {};
+  const alumno = String(p?.alumnoId || p?.studentId || p?.studentName || p?.alumno || ident?.realAlumnoId || ident?.alumnoId || ident?.alumnoLabel || "").toLowerCase().trim();
+  const period = String(p?.period || ymFromISO(p?.dueDate) || "").trim();
+  let idx = String(p?.installmentIndex || p?.cuotaNumero || p?.installment || p?.cuota || "").trim();
+
+  if(!idx){
+    const c = String(p?.concept || "");
+    const m = c.match(/cuota\s*(\d+)\s*\/\s*\d+/i) || c.match(/cuota\s*(\d+)/i);
+    if(m) idx = String(Number(m[1]||1));
+  }
+  if(!idx) idx = String(String(task?.type||"single")==="monthly" ? (period || "ym") : "1");
+
+  return [courseKey, taskId, owner, alumno, period, idx].join("|");
+}
+
+function preferPaymentRecordV11(a,b){
+  const score = (x)=>{
+    const st = String(x?.status||"").toLowerCase();
+    let s = 0;
+    if(st === "paid") s += 1000;
+    if(st === "partial") s += 600;
+    if(st === "pending" || st === "overdue") s += 400;
+    if(x?.paymentKey) s += 40;
+    if(x?.apoderadoKey || x?.apoderadoEmail || x?.apoderadoId) s += 30;
+    if(x?.alumnoId) s += 20;
+    if(x?.period) s += 10;
+    if(x?.installmentIndex) s += 10;
+    if(x?.createdAt) s += 1;
+    return s;
+  };
+  return score(b) > score(a) ? b : a;
+}
+
+function dedupePaymentsCanonicalV11(list, tasksAll){
+  const out = new Map();
+  let changed = false;
+  (list || []).forEach(p=>{
+    if(!p) return;
+    const k = paymentCanonicalKeyV11(p, tasksAll);
+    const prev = out.get(k);
+    if(!prev){ out.set(k,p); return; }
+    out.set(k, preferPaymentRecordV11(prev,p));
+    changed = true;
+  });
+  return { list:Array.from(out.values()), changed };
+}
+
+function cleanVisiblePaymentsV11(pays, tasksAll){
+  let list = Array.isArray(pays) ? pays.slice() : [];
+  let changed = false;
+  const d1 = dedupePaymentsAll(list);
+  if(d1.changed){ list = d1.list; changed = true; }
+  const d2 = dedupePaymentsCanonicalV11(list, tasksAll || []);
+  if(d2.changed){ list = d2.list; changed = true; }
+  list = suppressPendingCoveredByPaid(list, tasksAll || []);
+  return { list, changed };
+}
+
   // -------- Pages --------
   
   function cpV5DaysText(dueDate){
@@ -1664,8 +1729,10 @@ function dedupePaymentsAll(list){
 
   function cpV5DueItems(){
     try{
-      const tasks = load(KEY_TASKS, []);
-      return load(KEY_PAYMENTS, [])
+      const tasks = normalizeTasks(load(KEY_TASKS, []));
+      let list = load(KEY_PAYMENTS, []);
+      try{ list = cleanVisiblePaymentsV11(list, tasks).list; }catch(e){}
+      return list
         .filter(isMinePayment)
         .filter(p=>!isPaymentOptedOut(p))
         .filter(p=>["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()))
@@ -1766,11 +1833,19 @@ function renderHome(){
     paysAll = load(KEY_PAYMENTS, []);
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
+
+    // FIX v11: limpiar duplicados persistentes antes de renderizar Home.
+    try{
+      const clean = cleanVisiblePaymentsV11(paysAll, tasks0);
+      if(clean.changed) save(KEY_PAYMENTS, clean.list);
+      paysAll = clean.list;
+    }catch(e){}
+
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = suppressPendingCoveredByPaid(paysAll, tasks0);
+    try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasks0).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasks0); }
 
-    const pending = paysAll.filter(p => ["pending","partial"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
+    const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
 
     const thisYM = (()=>{ const d=new Date(); const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,"0"); return `${y}-${m}`; })();
@@ -2027,6 +2102,13 @@ function renderHome(){
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
     paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
+    // FIX v11: dedupe real antes de pintar pagos/campañas.
+    try{
+      const clean = cleanVisiblePaymentsV11(paysAll, tasksAll);
+      if(clean.changed) save(KEY_PAYMENTS, clean.list);
+      paysAll = clean.list;
+    }catch(e){}
+
     // ✅ Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
     // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesión
@@ -2044,7 +2126,7 @@ function renderHome(){
     if(patched) save(KEY_PAYMENTS, paysAll);
 
     paysAll = paysAll.filter(isMinePayment);
-    paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll);
+    try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasksAll).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll); }
 
     try{
       if(window.__apoForcePaid){
@@ -2641,6 +2723,22 @@ if(menu && !document.getElementById("resetCourseBtn")){
       logoutBtn.onclick = ()=> location.href="/index.html";
     }
   }
+
+
+  // FIX v11: si storage cambia varias veces al cambiar rol, renderizar una sola vez.
+  let __apoRerenderTimer = null;
+  window.addEventListener("cursapp:dataChanged", function(ev){
+    try{
+      const k = String(ev?.detail?.key || "");
+      if(!k.includes("payments") && !k.includes("tasks")) return;
+      clearTimeout(__apoRerenderTimer);
+      __apoRerenderTimer = setTimeout(()=>{
+        const active = (Array.from(document.querySelectorAll(".navItem")).find(b=>b.classList.contains("active"))||{}).dataset?.tab || "home";
+        if(active === "home") renderHome();
+        else if(active === "payments") renderPayments();
+      }, 120);
+    }catch(e){}
+  });
 
   // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
