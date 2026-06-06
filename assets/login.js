@@ -55,7 +55,7 @@ const esc = (s) =>
   const DEBUG_LOGIN = (() => {
     try {
       const qs = new URLSearchParams(window.location.search || "");
-      if (qs.get("debug") === "1") return true;
+      if (qs.get("debug") === "1") { try{ localStorage.setItem("cursapp_debug_presidente","1"); }catch(e){} return true; }
       const v = localStorage.getItem("cursapp_debug_login");
       return v === "1" || v === "true";
     } catch (e) {
@@ -259,7 +259,15 @@ function loadJSON(k, def) {
     const pid = profile ? profileIdOf(userEmail, profile) : "";
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
-        dbgAlert("Session BEFORE save", { email: userEmail, courseKey, role, profileId: pid });
+        dbgAlert("Session BEFORE save", {
+      email: userEmail,
+      courseKey,
+      role,
+      profileId: pid,
+      activeCourse_before: localStorage.getItem(KEY_ACTIVE_COURSE),
+      course_v1: loadJSON("cursapp_course_v1", null),
+      courses_v1: loadJSON("cursapp_courses_v1", [])
+    });
 
     // Roles disponibles detectados en este login (y fallback seguro)
     let rolesAvail = [];
@@ -280,6 +288,12 @@ function loadJSON(k, def) {
       role: String(role || "apoderado").toLowerCase().trim()
     });
     try { localStorage.setItem(KEY_ACTIVE_ROLE, role); } catch(e) {}
+
+    dbgAlert("Session AFTER save", {
+      activeCourse_after: localStorage.getItem(KEY_ACTIVE_COURSE),
+      activeProfile_after: localStorage.getItem(KEY_ACTIVE_PROFILE),
+      session_after: loadJSON(KEY_SESSION, null)
+    });
 
     if (role === "apoderado" && profile) {
       const ap = profile.apoderado || {};

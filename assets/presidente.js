@@ -22,6 +22,61 @@
     }catch(e){}
   })();
 
+
+  // ===== DEBUG TEMPORAL PRESIDENTE CURSO =====
+  // Actívalo entrando a /presidente.html?debug=1
+  // o dejando localStorage.cursapp_debug_presidente = "1".
+  const PRESIDENTE_DEBUG_VERSION = "20260605-curso-activo";
+  function isDebugPresidente(){
+    try{
+      const qs = new URLSearchParams(window.location.search || "");
+      return qs.get("debug") === "1" || localStorage.getItem("cursapp_debug_presidente") === "1";
+    }catch(e){ return false; }
+  }
+  function safeParseDebug(v){
+    try{ return JSON.parse(v || "null"); }catch(e){ return v || null; }
+  }
+  function smallJsonDebug(key, maxLen){
+    try{
+      const raw = localStorage.getItem(key);
+      if(raw == null) return null;
+      if(String(raw).length > (maxLen || 900)) return String(raw).slice(0, maxLen || 900) + "...[cortado]";
+      return safeParseDebug(raw);
+    }catch(e){ return "ERR:" + (e && e.message ? e.message : e); }
+  }
+  function debugPresidenteAlert(stage){
+    if(!isDebugPresidente()) return;
+    try{
+      const session = smallJsonDebug("cursapp_session_v1", 1200);
+      const activeCourse = localStorage.getItem("cursapp_active_course_v1") || "";
+      const activeProfile = localStorage.getItem("cursapp_active_profile_v1") || "";
+      const activeRole = localStorage.getItem("cursapp_active_role_v1") || "";
+      const courseV1 = smallJsonDebug("cursapp_course_v1", 1600);
+      const courses = smallJsonDebug("cursapp_courses_v1", 1600);
+      const profiles = smallJsonDebug("cursapp_profiles_v1", 1600);
+      const enrollments = smallJsonDebug("cursapp_enrollments_v1", 1600);
+      let activeCourseResolved = null;
+      try{ activeCourseResolved = typeof activeCourse === "function" ? activeCourse() : null; }catch(e){ activeCourseResolved = "ERR:" + e.message; }
+
+      alert("[Presidente DEBUG " + PRESIDENTE_DEBUG_VERSION + "] " + stage + "\\n\\n" + JSON.stringify({
+        url: location.href,
+        activeCourse,
+        activeProfile,
+        activeRole,
+        session,
+        courseV1,
+        courses,
+        profiles,
+        enrollments,
+        activeCourseResolved
+      }, null, 2));
+    }catch(e){
+      alert("[Presidente DEBUG] Error: " + (e && e.message ? e.message : e));
+    }
+  }
+  window.cursappDebugPresidente = function(){ debugPresidenteAlert("manual"); };
+
+
   // ---- helpers ----
   const esc = (s) =>
     String(s ?? "").replace(/[&<>'"]/g, (c) =>
@@ -1490,6 +1545,12 @@ function activeCourse(){
       return Object.assign({ courseKey: current.courseKey, inviteCode: current.inviteCode }, current.course || {});
     }
 
+    // 5) Fallback temporal: si existe un único curso en catálogo, usarlo.
+    if(Array.isArray(courses) && courses.length === 1 && courses[0] && courses[0].courseKey){
+      localStorage.setItem(KEY_ACTIVE_COURSE, String(courses[0].courseKey));
+      return courses[0];
+    }
+
     return null;
   }catch(e){ return null; }
 }
@@ -2923,6 +2984,16 @@ window.deleteCampaign = function(taskId){
     // refrescar vista
     renderInformes();
   }
+  try{ debugPresidenteAlert("antes boot"); }catch(e){}
+
+  window.configurarCurso = function(){
+    try{ debugPresidenteAlert("click Configurar curso"); }catch(e){}
+    try{ updatePresidentTopbar(); }catch(e){}
+    return false;
+  };
+  window.openConfigurarCurso = window.configurarCurso;
+  window.openCourseConfig = window.configurarCurso;
+
   // ----- boot -----
   // ✅ DEMO seed solo si está activado globalmente
   const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
@@ -2939,6 +3010,7 @@ window.deleteCampaign = function(taskId){
     ? window.CURSAPP.consumeNextNavTab()
     : null;
   go(__nextTab || "home");
+  try{ debugPresidenteAlert("después go home"); }catch(e){}
 })();
 
 window.openHelp = function(topic){
