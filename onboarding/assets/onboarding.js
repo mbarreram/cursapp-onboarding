@@ -224,6 +224,19 @@ function uid(prefix = "id") {
   function loadProfiles(){ return loadJSON(KEY_PROFILES, []); }
   function saveProfiles(p){ saveJSON(KEY_PROFILES, p||[]); }
 
+  async function maybeSyncSupabase(reason){
+    try{
+      if(window.CURSAPP && typeof window.CURSAPP.syncSupabase === "function"){
+        await window.CURSAPP.syncSupabase(reason || "onboarding");
+        return true;
+      }
+    }catch(e){
+      try{ alert("Supabase ERROR ❌\n" + (e && e.message ? e.message : String(e))); }catch(_){}
+      return false;
+    }
+    return false;
+  }
+
   function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
 
   function validateEmail(e){
@@ -904,7 +917,7 @@ render();
   });
 
   // --- Next / Finalize ---
-  btnNext && (btnNext.onclick = ()=>{
+  btnNext && (btnNext.onclick = async ()=>{
     // Step 1 directiva presidente -> step2
     if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
       if(!d.regionId || !d.comunaId || !d.schoolId){ alert("Selecciona región, comuna y colegio."); return; }
@@ -1201,6 +1214,7 @@ if(d.alsoApoderado){
           }
         }catch(e){}
 
+        await maybeSyncSupabase("onboarding-directiva-final");
         clearDraft();
         alert("Curso creado ✅\n\nAhora encontrarás el código de invitación en el menú del Presidente → Apoderados.");
         window.location.href = "/presidente.html";
@@ -1270,6 +1284,7 @@ if(d.alsoApoderado){
           return;
         }
 
+        await maybeSyncSupabase("onboarding-apoderado-final");
         clearDraft();
         alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
         window.location.href = "/index.html?pending=1";
