@@ -360,7 +360,11 @@
     }catch(e){}
   }
 
-  function maybeAlert(row){ /* no-op: alertas de depuración desactivadas */ }
+  function maybeAlert(row){
+    // Alertas temporales desactivadas: el estado queda en localStorage y consola.
+    // Usar: JSON.parse(localStorage.getItem("cursapp_supabase_last_sync_v1"))
+    return;
+  }
 
   function parseJSON(v, fallback){ try{ if(v == null || v === "") return fallback; return JSON.parse(v); }catch(e){ return fallback; } }
   function loadJSON(k, fallback){ try{ return parseJSON(localStorage.getItem(k), fallback); }catch(e){ return fallback; } }
@@ -515,8 +519,24 @@
     return null;
   }
 
+  function findLocalUserById(userId){
+    try{
+      const id = String(userId || "").trim();
+      if(!id) return null;
+      const users = loadJSON("cursapp_users_v1", []);
+      return (Array.isArray(users) ? users : []).find(u => String(u.userId || u.id || "").trim() === id) || null;
+    }catch(e){ return null; }
+  }
+
+  function emailFromUserOrProfile(userLike, profileLike){
+    const byDirect = String(userLike?.email || profileLike?.email || profileLike?.userEmail || profileLike?.apoderado?.email || "").toLowerCase().trim();
+    if(byDirect) return byDirect;
+    const local = findLocalUserById(profileLike?.userId || userLike?.userId || userLike?.id);
+    return String(local?.email || "").toLowerCase().trim();
+  }
+
   async function ensureUsuario(userLike, profileLike){
-    const email = String(userLike?.email || profileLike?.email || profileLike?.apoderado?.email || "").toLowerCase().trim();
+    const email = emailFromUserOrProfile(userLike, profileLike);
     if(!email) return null;
     const m = mapLoad(); if(m.usuarios[email]) return m.usuarios[email];
     let existing = await selectOne("usuarios", "email=eq." + q(email) + "&select=id");
@@ -532,8 +552,8 @@
     if(!profile || !profile.courseKey || !profile.role) return null;
     const cursoId = await ensureCurso({ courseKey:profile.courseKey, inviteCode:profile.inviteCode || "", course:profile.course || {} });
     if(!cursoId) return null;
-    const email = String(profile.apoderado?.email || profile.email || profile.userEmail || "").toLowerCase().trim();
-    const userId = await ensureUsuario({ email }, profile);
+    const email = emailFromUserOrProfile({}, profile);
+    const userId = await ensureUsuario({ email, userId: profile.userId }, profile);
     const rol = String(profile.role || "apoderado").toLowerCase();
     const alumno = String(profile.apoderado?.alumno || profile.alumno || "").trim();
     const nombre = String(profile.apoderado?.name || profile.directiva?.name || profile.name || "").trim();
@@ -550,7 +570,7 @@
       nombre_alumno: alumno || null,
       email: email || null,
       estado: String(profile.status || "aprobado").toLowerCase(),
-      activacion_pagada: String(profile.activation?.status || "").toLowerCase() === "paid"
+      activacion_pagada: (rol === "presidente" || rol === "tesorero") ? true : (String(profile.activation?.status || "").toLowerCase() === "paid")
     });
     if(row && row.id){ const mm = mapLoad(); mm.miembros[key] = row.id; mapSave(mm); return row.id; }
     return null;
@@ -626,10 +646,13 @@
       : "cursapp_" + ck + "_tasks_v1";
     const localTasks = loadJSON(tasksKey, []);
     const merged = mergeTasksById(Array.isArray(localTasks) ? localTasks : [], remoteTasks);
-    saveJSON(tasksKey, merged);
-
-    try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
-    try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+    const before = JSON.stringify(Array.isArray(localTasks) ? localTasks : []);
+    const after = JSON.stringify(merged);
+    if(before !== after){
+      saveJSON(tasksKey, merged);
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+    }
 
     const status = { hydrated:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, campanas:remoteTasks.length, at:new Date().toISOString() };
     try{ localStorage.setItem("cursapp_supabase_last_hydrate_v1", JSON.stringify(status)); }catch(e){}
@@ -667,7 +690,6 @@
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
   else schedule("load");
-  setTimeout(()=>schedule("late-1500"), 1500);
-  setTimeout(()=>schedule("late-4000"), 4000);
-  setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-6500").catch(()=>{}), 6500);
+  // Evita re-render/parpadeo: una hidratación tardía es suficiente.
+  setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
 })();

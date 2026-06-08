@@ -378,6 +378,7 @@ function loadJSON(k, def) {
 
   function chooseRoleForCourse(userEmail, courseKey, profilesForCourse) {
     // profilesForCourse: [{role, profile}]
+    const roleOrder = { presidente: 1, tesorero: 2, apoderado: 3 };
     const byRole = {};
     profilesForCourse.forEach(p => { byRole[p.role] = p.profile; });
 
@@ -391,7 +392,7 @@ function loadJSON(k, def) {
       ...Object.keys(byRole),
       ...(hasTesorero ? ["tesorero"] : []),
       ...(hasPresidente ? ["presidente"] : [])
-    ]));
+    ])).sort((a,b)=>(roleOrder[a]||99)-(roleOrder[b]||99));
 
     dbgAlert("Roles detectados", { userEmail, courseKey, roles, byRole, directivaByRole });
 
@@ -524,51 +525,61 @@ function loadJSON(k, def) {
   }
 
   function resolveAndEnter(userEmail, allProfiles) {
-  // Decide curso (si hay varios, hoy tomamos el curso activo si existe; si no, el primero)
-  const activeCourseKey = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-  const courseKeys = Array.from(new Set((allProfiles || []).map(p => p.courseKey).filter(Boolean)));
+  const profiles = Array.isArray(allProfiles) ? allProfiles.filter(p=>p && p.courseKey) : [];
+  const courseKeys = Array.from(new Set(profiles.map(p => p.courseKey).filter(Boolean)));
 
-  const ck = (activeCourseKey && courseKeys.includes(activeCourseKey))
-    ? activeCourseKey
-    : (courseKeys[0] || (allProfiles[0] && allProfiles[0].courseKey) || "");
+  function buildRoleListForCourse(ck){
+    const profilesForCourse = profiles.filter(p => (p.courseKey || "") === ck);
+    const roleOrder = { presidente: 1, tesorero: 2, apoderado: 3 };
+    const roleList = [];
+    const seen = new Set();
+    profilesForCourse.forEach(p => {
+      const r = String(p.role || "apoderado").toLowerCase().trim();
+      if (r && !seen.has(r)) { roleList.push({ role: r, profile: p }); seen.add(r); }
+    });
 
-  const profilesForCourse = (allProfiles || []).filter(p => (p.courseKey || "") === ck);
+    const hasTes = hasRoleInDirectiva(userEmail, ck, "tesorero");
+    const hasPres = hasRoleInDirectiva(userEmail, ck, "presidente");
+    if (hasPres && !seen.has("presidente")) { roleList.push({ role: "presidente", profile: profilesForCourse[0] || {} }); seen.add("presidente"); }
+    if (hasTes && !seen.has("tesorero")) { roleList.push({ role: "tesorero", profile: profilesForCourse[0] || {} }); seen.add("tesorero"); }
 
-  // Roles base desde profiles
-  const roleList = [];
-  const seen = new Set();
-  profilesForCourse.forEach(p => {
-    const r = String(p.role || "apoderado").toLowerCase();
-    if (!seen.has(r)) {
-      roleList.push({ role: r, profile: p });
-      seen.add(r);
+    // No inventar apoderado si el usuario solo tiene rol directiva.
+    // Solo asegurar apoderado si hay algún perfil o enrollment apoderado.
+    const hasExplicitApoderado = profilesForCourse.some(p => String(p.role||"").toLowerCase()==="apoderado");
+    const hasApprovedEnrollment = findEnrollments(userEmail, ck).length > 0;
+    if (!seen.has("apoderado") && (hasExplicitApoderado || hasApprovedEnrollment)) {
+      roleList.push({ role: "apoderado", profile: profilesForCourse[0] || {} });
+      seen.add("apoderado");
     }
-  });
 
-  // Siempre asegurar apoderado si existe al menos un perfil apoderado o enrollment
-  if (!seen.has("apoderado")) {
-    roleList.push({ role: "apoderado", profile: profilesForCourse[0] || {} });
-    seen.add("apoderado");
+    return roleList.sort((a,b)=>(roleOrder[a.role]||99)-(roleOrder[b.role]||99));
   }
 
-  // Roles por directiva_by_role (por email del usuario)
-  const hasTes = hasRoleInDirectiva(userEmail, ck, "tesorero");
-  const hasPres = hasRoleInDirectiva(userEmail, ck, "presidente");
-
-  if (hasTes && !seen.has("tesorero")) {
-    roleList.push({ role: "tesorero", profile: profilesForCourse[0] || {} });
-    seen.add("tesorero");
-  }
-  if (hasPres && !seen.has("presidente")) {
-    roleList.push({ role: "presidente", profile: profilesForCourse[0] || {} });
-    seen.add("presidente");
+  function enterCourse(ck){
+    const roleList = buildRoleListForCourse(ck);
+    try { saveJSON(KEY_ROLES_AVAILABLE, roleList.map(x => x.role)); } catch(e) {}
+    chooseRoleForCourse(userEmail, ck, roleList);
   }
 
-  // Guardar roles disponibles para el menú
-  try { saveJSON(KEY_ROLES_AVAILABLE, roleList.map(x => x.role)); } catch(e) {}
+  if(!courseKeys.length){ showErr("No hay cursos asociados a este usuario."); return; }
 
-  // Elegir rol (modal si hay más de uno)
-  chooseRoleForCourse(userEmail, ck, roleList);
+  if(courseKeys.length > 1){
+    const items = courseKeys.map((ck, i)=>{
+      const p = profiles.find(x=>x.courseKey===ck) || {};
+      const c = p.course || {};
+      return {
+        label: `${c.schoolName || "Curso"} · ${c.level || ""}${c.letter || ""} ${c.year || ""}`.replace(/\s+/g," ").trim(),
+        meta: c.jornada || "Seleccionar",
+        desc: `${buildRoleListForCourse(ck).map(x=>x.role).join(" / ")}`,
+        icon: "🎓",
+        courseKey: ck
+      };
+    });
+    renderChooser("Elegir curso", "Selecciona el curso con el que quieres entrar", items, (it)=> enterCourse(it.courseKey));
+    return;
+  }
+
+  enterCourse(courseKeys[0]);
 }
 
 
@@ -624,10 +635,20 @@ function loadJSON(k, def) {
 
   function courseFromSupabaseRow(row){
     row = row || {};
+    const nivel = String(row.nivel || "");
+    const letra = String(row.letra || "");
+    const anio = String(row.anio || "");
+    const suffix = ` · ${nivel}${letra} ${anio}`.trim();
+    let schoolName = String(row.school_name || row.colegio_nombre || row.nombre || "Colegio").trim();
+    // En Supabase cursos.nombre suele venir como "Colegio · IV°B 2026".
+    // Para evitar duplicar curso/año en la cabecera, dejamos solo el colegio.
+    if(schoolName && nivel && letra){
+      schoolName = schoolName.replace(new RegExp("\\s*·\\s*" + nivel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + letra.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*" + anio.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$"), "").trim();
+    }
     return {
-      schoolName: row.nombre || "Colegio",
-      level: row.nivel || "",
-      letter: row.letra || "",
+      schoolName: schoolName || "Colegio",
+      level: nivel,
+      letter: letra,
       year: row.anio || "",
       jornada: row.jornada || ""
     };
