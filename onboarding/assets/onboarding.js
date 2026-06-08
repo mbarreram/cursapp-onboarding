@@ -88,6 +88,8 @@ function uid(prefix = "id") {
   }
 
   const DEBUG = localStorage.getItem("cursapp_onb_debug") === "1";
+  let __cursappOnboardingFinalizing = false;
+
 
   const QS = new URLSearchParams(location.search);
   const MODE = (QS.get("mode") || "apoderado").toLowerCase(); // directiva | apoderado
@@ -918,6 +920,7 @@ render();
 
   // --- Next / Finalize ---
   btnNext && (btnNext.onclick = async ()=>{
+    if(__cursappOnboardingFinalizing) return;
     // Step 1 directiva presidente -> step2
     if(step===1 && MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
       if(!d.regionId || !d.comunaId || !d.schoolId){ alert("Selecciona región, comuna y colegio."); return; }
@@ -1054,6 +1057,9 @@ if(d.alsoApoderado){
           }
         }
 
+        __cursappOnboardingFinalizing = true;
+        try{ if(btnNext) btnNext.disabled = true; }catch(e){}
+
         localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
         // Cursapp v11: mantener catálogo local de cursos para Presidente/Admin hasta Supabase.
         try{
@@ -1115,8 +1121,13 @@ if(d.alsoApoderado){
           return;
         }
 
-        if(!existingP){
-          users.unshift({ userId: presidenteUserId, email: pEmailNorm, passwordHashDemo: pPassHash, createdAt: nowISO() });
+        if(existingP){
+          existingP.nombre = existingP.nombre || d.name || "";
+          existingP.name = existingP.name || d.name || "";
+          existingP.updatedAt = nowISO();
+          saveUsers(users);
+        }else{
+          users.unshift({ userId: presidenteUserId, email: pEmailNorm, nombre: d.name || "", name: d.name || "", passwordHashDemo: pPassHash, createdAt: nowISO() });
           saveUsers(users);
         }
 
@@ -1154,10 +1165,12 @@ if(d.alsoApoderado){
         profiles.unshift({
           profileId: "pr_"+uid("p"),
           userId: presidenteUserId,
+          email: pEmailNorm,
+          name: d.name,
           role: "presidente",
           courseKey,
           course: courseObj.course,
-          directiva: { name: d.name },
+          directiva: { name: d.name, email: pEmailNorm },
           createdAt: nowISO()
         });
 
@@ -1230,6 +1243,9 @@ if(d.alsoApoderado){
         const existing = users.find(u=>String(u.email||"").toLowerCase()===String(d.email||"").toLowerCase());
         const userId = existing ? existing.userId : ("u_"+uid("usr"));
         const passHash = hashDemo(d.pass);
+
+        __cursappOnboardingFinalizing = true;
+        try{ if(btnNext) btnNext.disabled = true; }catch(e){}
 
         if(existing){
           existing.passwordHashDemo = passHash;
