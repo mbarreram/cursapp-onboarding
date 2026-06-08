@@ -238,7 +238,19 @@ function loadJSON(k, def) {
     return rolesInCourse.includes("presidente");
   }
 
-  function requireApproved(email, courseKey, rolesInCourse) {
+  function requireApproved(email, courseKey, rolesInCourse, profile) {
+    // Supabase: si el miembro viene de BD y está aprobado/activo, no dependemos del enrollment local.
+    try {
+      if (profile && profile.fromSupabase) {
+        const st = String(profile.status || "aprobado").toLowerCase();
+        if (st === "pendiente" || st === "pending") {
+          showErr("Tu solicitud está pendiente de aprobación por la directiva.");
+          return false;
+        }
+        return true;
+      }
+    } catch(e) {}
+
     // bypass si es auto-aprobado por rol presidente
     if (canAutoApproveApoderado(rolesInCourse)) return true;
 
@@ -505,7 +517,7 @@ function loadJSON(k, def) {
         }
 
         // Solo 1 alumno/enrollment
-        if (!requireApproved(userEmail, courseKey, roles)) return;
+        if (!requireApproved(userEmail, courseKey, roles, it.profile)) return;
         try {
           const enr = list[0];
           const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
@@ -838,28 +850,32 @@ function loadJSON(k, def) {
         return;
       }
 
-      // Real login: primero localStorage, luego Supabase.
+      // Real login: Supabase primero, localStorage solo como fallback.
       let users = loadJSON(KEY_USERS, []);
-      let user = users.find(x => String(x.email || "").toLowerCase().trim() === u);
-
-      if (user) {
-        const hash = hashDemo(p);
-        if (user.passwordHashDemo && user.passwordHashDemo !== hash) {
-          showErr("Contraseña incorrecta.");
-          return;
-        }
-      } else {
-        try{
-          const remote = await loginFromSupabase(u, p);
-          if(!remote || !remote.user){
-            showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
-            return;
-          }
+      let user = null;
+      try{
+        const remote = await loginFromSupabase(u, p);
+        if(remote && remote.user){
           users = loadJSON(KEY_USERS, []);
           user = users.find(x => String(x.email || "").toLowerCase().trim() === u) || { userId: remote.user.id, email:u, fromSupabase:true };
           try{ localStorage.setItem("cursapp_login_source_v1", "supabase"); }catch(e){}
-        }catch(syncErr){
-          showErr("Login Supabase: " + (syncErr && syncErr.message ? syncErr.message : String(syncErr)));
+        }
+      }catch(syncErr){
+        // Permitir fallback local cuando Supabase no tenga aún el usuario o falle temporalmente.
+        console.warn("Login Supabase fallback local", syncErr);
+      }
+
+      if (!user) {
+        users = loadJSON(KEY_USERS, []);
+        user = users.find(x => String(x.email || "").toLowerCase().trim() === u);
+        if (user) {
+          const hash = hashDemo(p);
+          if (user.passwordHashDemo && user.passwordHashDemo !== hash) {
+            showErr("Contraseña incorrecta.");
+            return;
+          }
+        } else {
+          showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
           return;
         }
       }

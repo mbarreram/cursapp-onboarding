@@ -601,10 +601,18 @@
     const email = emailFromUserOrProfile(userLike, profileLike);
     if(!email) return null;
     const m = mapLoad(); if(m.usuarios[email]) return m.usuarios[email];
-    let existing = await selectOne("usuarios", "email=eq." + q(email) + "&select=id");
-    if(existing && existing.id){ const mm = mapLoad(); mm.usuarios[email] = existing.id; mapSave(mm); return existing.id; }
-    const name = String(profileLike?.apoderado?.name || profileLike?.directiva?.name || profileLike?.name || userLike?.name || "").trim();
-    const phone = String(profileLike?.apoderado?.phone || profileLike?.phone || "").trim();
+    const name = String(profileLike?.apoderado?.name || profileLike?.directiva?.name || profileLike?.name || userLike?.name || userLike?.nombre || "").trim();
+    const phone = String(profileLike?.apoderado?.phone || profileLike?.phone || userLike?.telefono || "").trim();
+    let existing = await selectOne("usuarios", "email=eq." + q(email) + "&select=id,nombre,telefono");
+    if(existing && existing.id){
+      try{
+        const upd = {};
+        if(name && !existing.nombre) upd.nombre = name;
+        if(phone && !existing.telefono) upd.telefono = phone;
+        if(Object.keys(upd).length) await patch("usuarios", existing.id, upd);
+      }catch(e){}
+      const mm = mapLoad(); mm.usuarios[email] = existing.id; mapSave(mm); return existing.id;
+    }
     const row = await insert("usuarios", { email, nombre: name || null, telefono: phone || null, rol_global: "usuario", estado: "activo" });
     if(row && row.id){ const mm = mapLoad(); mm.usuarios[email] = row.id; mapSave(mm); return row.id; }
     return null;
@@ -622,8 +630,17 @@
     const key = [cursoId, email || profile.userId || "sin-email", rol, alumno].join("|");
     const m = mapLoad(); if(m.miembros[key]) return m.miembros[key];
     let found = null;
-    if(email) found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id");
-    if(found && found.id){ const mm = mapLoad(); mm.miembros[key] = found.id; mapSave(mm); return found.id; }
+    if(email) found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id,nombre_apoderado,nombre_alumno,estado,activacion_pagada");
+    if(found && found.id){
+      try{
+        const upd = {};
+        if(nombre && !found.nombre_apoderado) upd.nombre_apoderado = nombre;
+        if(alumno && !found.nombre_alumno) upd.nombre_alumno = alumno;
+        if(String(found.estado||"").toLowerCase() !== String(profile.status || "aprobado").toLowerCase()) upd.estado = String(profile.status || "aprobado").toLowerCase();
+        if(Object.keys(upd).length) await patch("miembros_curso", found.id, upd);
+      }catch(e){}
+      const mm = mapLoad(); mm.miembros[key] = found.id; mapSave(mm); return found.id;
+    }
     const row = await insert("miembros_curso", {
       curso_id: cursoId,
       usuario_id: userId,
@@ -640,12 +657,39 @@
 
   async function syncCourses(){ const courses = allLocalCourses(); for(const c of courses) await ensureCurso(c); return courses.length; }
 
+  function profileFromEnrollment(enr){
+    if(!enr || !enr.courseKey || !enr.email) return null;
+    const course = allLocalCourses().find(c => normalizeCourseObj(c)?.courseKey === String(enr.courseKey));
+    return {
+      profileId: "enr_profile_" + String(enr.enrollmentId || [enr.courseKey,enr.email,enr.alumno].join("_")).replace(/[^a-zA-Z0-9_-]/g,"_"),
+      userId: String(enr.email || "").toLowerCase().trim(),
+      role: "apoderado",
+      courseKey: enr.courseKey,
+      course: normalizeCourseObj(course) || { courseKey:enr.courseKey, schoolName:"Colegio", level:"", letter:"", year:null, jornada:"" },
+      apoderado: {
+        name: enr.apoderadoName || enr.name || "",
+        alumno: enr.alumno || "",
+        email: String(enr.email || "").toLowerCase().trim(),
+        phone: enr.phone || ""
+      },
+      activation: { status: enr.activationStatus || enr.activation?.status || "paid" },
+      status: String(enr.status || "pending").toLowerCase() === "approved" ? "aprobado" : "pendiente"
+    };
+  }
+
   async function syncUsersAndMembers(){
     const users = loadJSON("cursapp_users_v1", []);
     const profiles = loadJSON("cursapp_profiles_v1", []);
+    const enrollments = loadJSON("cursapp_enrollments_v1", []);
     let count = 0;
     if(Array.isArray(users)){ for(const u of users){ await ensureUsuario(u, null); count++; } }
     if(Array.isArray(profiles)){ for(const p of profiles){ await upsertMiembro(p); count++; } }
+    if(Array.isArray(enrollments)){
+      for(const e of enrollments){
+        const p = profileFromEnrollment(e);
+        if(p){ await upsertMiembro(p); count++; }
+      }
+    }
     return count;
   }
 
