@@ -43,14 +43,164 @@
     });
   }
 
-  function payments(){ return readMany(k => k.includes("_payments_v1") || k === "cursapp_payments_v1"); }
-  function tasks(){ return readMany(k => k.includes("_tasks_v1") || k === "cursapp_tasks_v1"); }
-  function expenses(){ return readMany(k => k.includes("_expenses_v1") || k === "cursapp_expenses_v1"); }
-  function reports(){ return readMany(k => k.includes("_monthly_reports_v1") || k === "cursapp_monthly_reports_v1"); }
-  function receipts(){ return readMany(k => k.includes("_receipts_v1") || k === "cursapp_receipts_v1"); }
-  function profiles(){ return load("cursapp_profiles_v1", []); }
-  function users(){ return load("cursapp_users_v1", []); }
-  function enrollments(){ return load("cursapp_enrollments_v1", []); }
+  // ============================================================
+  // Admin Fase 1D.2 · Fuente oficial Supabase
+  // El Admin deja de usar localStorage para datos de negocio.
+  // localStorage queda solo para sesión admin, logs/tickets internos.
+  // ============================================================
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  const ADMIN_DB = {
+    ready:false,
+    loading:false,
+    error:null,
+    colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[]
+  };
+
+  async function sbGet(path){
+    const res = await fetch(SB_URL + "/rest/v1/" + path, {
+      headers:{
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY,
+        "Content-Type":"application/json"
+      }
+    });
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : []; }catch(e){ data = text; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || text || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return Array.isArray(data) ? data : [];
+  }
+
+  async function loadSupabaseAdminData(){
+    if(ADMIN_DB.loading) return;
+    ADMIN_DB.loading = true;
+    ADMIN_DB.error = null;
+    try{
+      const [colegios, cursos, usuarios, miembros, campanas, pagos] = await Promise.all([
+        sbGet("colegios?select=*&order=created_at.desc"),
+        sbGet("cursos?select=*,colegios(*)&order=created_at.desc"),
+        sbGet("usuarios?select=*&order=created_at.desc"),
+        sbGet("miembros_curso?select=*,usuarios(*),cursos(*),cursos(colegios(*))&order=created_at.desc"),
+        sbGet("campanas?select=*,cursos(*),cursos(colegios(*))&order=created_at.desc"),
+        sbGet("pagos?select=*,campanas(*),cursos(*),cursos(colegios(*)),miembros_curso(*),miembros_curso(usuarios(*))&order=created_at.desc")
+      ]);
+      ADMIN_DB.colegios = colegios;
+      ADMIN_DB.cursos = cursos;
+      ADMIN_DB.usuarios = usuarios;
+      ADMIN_DB.miembros = miembros;
+      ADMIN_DB.campanas = campanas;
+      ADMIN_DB.pagos = pagos;
+      ADMIN_DB.ready = true;
+      try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({status:"ok", at:now(), cursos:cursos.length, usuarios:usuarios.length, miembros:miembros.length, campanas:campanas.length, pagos:pagos.length})); }catch(e){}
+    }catch(e){
+      ADMIN_DB.error = e && e.message ? e.message : String(e);
+      ADMIN_DB.ready = false;
+      try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({status:"error", at:now(), message:ADMIN_DB.error})); }catch(_e){}
+    }finally{
+      ADMIN_DB.loading = false;
+    }
+  }
+
+  function courseObjectFromCurso(curso){
+    curso = curso || {};
+    const col = curso.colegios || {};
+    return {
+      courseKey: curso.course_key || curso.id || "",
+      id: curso.id || "",
+      schoolName: col.nombre || curso.nombre || "Colegio",
+      regionName: col.region || "Sin región",
+      comunaName: col.comuna || "",
+      level: curso.nivel || "",
+      letter: curso.letra || "",
+      year: curso.anio || "",
+      jornada: curso.jornada || ""
+    };
+  }
+
+  function payments(){
+    return (ADMIN_DB.pagos || []).map(p=>{
+      const m = p.miembros_curso || {};
+      const u = m.usuarios || {};
+      const camp = p.campanas || {};
+      const curso = p.cursos || camp.cursos || {};
+      return Object.assign({}, p, {
+        id: p.id,
+        amount: Number(p.monto || 0),
+        monto: Number(p.monto || 0),
+        amountPaid: Number(p.monto_pagado || 0),
+        status: String(p.estado || "pendiente").toLowerCase()==="pagado" ? "paid" : String(p.estado || "pending").toLowerCase(),
+        method: p.metodo_pago || "",
+        paidAt: p.paid_at || p.fecha_pago || "",
+        createdAt: p.created_at || "",
+        concept: camp.titulo || "Pago",
+        title: camp.titulo || "Pago",
+        alumno: m.nombre_alumno || "",
+        alumnoId: m.id || "",
+        apoderadoEmail: m.email || u.email || "",
+        fromTaskId: p.campana_id || camp.id || "",
+        campaign_id: p.campana_id || camp.id || "",
+        courseKey: curso.course_key || curso.id || p.curso_id || "",
+        __course: courseObjectFromCurso(curso)
+      });
+    });
+  }
+
+  function tasks(){
+    return (ADMIN_DB.campanas || []).map(t=>{
+      const curso = t.cursos || {};
+      return Object.assign({}, t, {
+        id: t.id,
+        title: t.titulo || "Campaña",
+        name: t.titulo || "Campaña",
+        amount: Number(t.monto || 0),
+        monto: Number(t.monto || 0),
+        type: t.tipo || "single",
+        months: Number(t.meses || 1),
+        startDate: t.fecha_inicio || "",
+        dueDate: t.fecha_vencimiento || "",
+        createdAt: t.created_at || "",
+        status: t.estado || "activa",
+        closed: String(t.estado || "").toLowerCase()==="cerrada",
+        mandatoryParticipation: t.obligatoria !== false,
+        courseKey: curso.course_key || curso.id || t.curso_id || "",
+        __course: courseObjectFromCurso(curso)
+      });
+    });
+  }
+
+  function expenses(){ return []; }
+  function reports(){ return []; }
+  function receipts(){ return []; }
+
+  function profiles(){
+    return (ADMIN_DB.miembros || []).map(m=>{
+      const u = m.usuarios || {};
+      const curso = m.cursos || {};
+      const c = courseObjectFromCurso(curso);
+      const role = String(m.rol || "usuario").toLowerCase();
+      return {
+        profileId: m.id,
+        userId: u.id || m.usuario_id || m.email || "",
+        role,
+        status: m.estado || "activo",
+        courseKey: c.courseKey,
+        course: c,
+        apoderado: role === "apoderado" ? { name:m.nombre_apoderado || u.nombre || m.email || "", alumno:m.nombre_alumno || "", email:m.email || u.email || "" } : null,
+        directiva: role !== "apoderado" ? { name:m.nombre_apoderado || u.nombre || m.email || "" } : null
+      };
+    });
+  }
+
+  function users(){
+    return (ADMIN_DB.usuarios || []).map(u=>({ userId:u.id, id:u.id, email:u.email, name:u.nombre || u.email || "", telefono:u.telefono || "", createdAt:u.created_at || "" }));
+  }
+
+  function enrollments(){ return profiles(); }
 
   function courseKeyOf(x){
     return String(x.courseKey || x.__key || "global")
@@ -68,6 +218,7 @@
   }
 
   function courseFromPayment(p){
+    if(p && p.__course) return p.__course;
     const ck = courseKeyOf(p);
     const ps = profiles();
     const byKey = ps.find(x=>String(x.courseKey||"")===String(ck));
@@ -136,46 +287,40 @@
   function getAllCourses(){
     const map = new Map();
 
-    profiles().forEach(p=>{
-      const ck = p.courseKey || "global";
-      const c = p.course || {};
-      if(!map.has(ck)){
-        map.set(ck, {
-          courseKey: ck,
-          region: getRegionName(c),
-          comuna: c.comunaName || c.comuna || c.comunaId || "",
-          school: getSchoolName(c),
-          course: getCourseName(c),
-          jornada: getJornada(c),
-          label: courseLabelFromProfile(p),
-          miembros: 0,
-          presidentes: 0,
-          tesoreros: 0,
-          apoderados: 0
-        });
+    (ADMIN_DB.cursos || []).forEach(curso=>{
+      const c = courseObjectFromCurso(curso);
+      map.set(c.courseKey, {
+        courseKey: c.courseKey,
+        id: c.id,
+        region: c.regionName || "Sin región",
+        comuna: c.comunaName || "",
+        school: c.schoolName || "Sin colegio",
+        course: `${c.level||""}${c.letter||""} ${c.year||""}`.trim() || curso.nombre || "Sin curso",
+        jornada: c.jornada || "",
+        label: [c.schoolName, `${c.level||""}${c.letter||""} ${c.year||""}`.trim(), c.jornada].filter(Boolean).join(" · "),
+        miembros: 0,
+        presidentes: 0,
+        tesoreros: 0,
+        apoderados: 0
+      });
+    });
+
+    (ADMIN_DB.miembros || []).forEach(m=>{
+      const c = courseObjectFromCurso(m.cursos || {});
+      const key = c.courseKey || m.curso_id || "";
+      if(!key) return;
+      if(!map.has(key)){
+        map.set(key, {courseKey:key, id:m.curso_id, region:c.regionName||"Sin región", comuna:c.comunaName||"", school:c.schoolName||"Sin colegio", course:`${c.level||""}${c.letter||""} ${c.year||""}`.trim()||"Sin curso", jornada:c.jornada||"", label:[c.schoolName, `${c.level||""}${c.letter||""} ${c.year||""}`.trim(), c.jornada].filter(Boolean).join(" · "), miembros:0, presidentes:0, tesoreros:0, apoderados:0});
       }
-      const row = map.get(ck);
+      const row = map.get(key);
       row.miembros++;
-      if(p.role === "presidente") row.presidentes++;
-      if(p.role === "tesorero") row.tesoreros++;
-      if(p.role === "apoderado") row.apoderados++;
+      const role = String(m.rol || "").toLowerCase();
+      if(role === "presidente") row.presidentes++;
+      if(role === "tesorero") row.tesoreros++;
+      if(role === "apoderado") row.apoderados++;
     });
 
-    tasks().forEach(t=>{
-      const ck = courseKeyOf(t);
-      if(!map.has(ck)){
-        map.set(ck, {courseKey: ck, region:"Sin región", comuna:"", school:ck, course:"—", jornada:"", label:ck, miembros:0, presidentes:0, tesoreros:0, apoderados:0});
-      }
-    });
-
-    payments().forEach(p=>{
-      const ck = courseKeyOf(p);
-      if(!map.has(ck)){
-        map.set(ck, {courseKey: ck, region:"Sin región", comuna:"", school:ck, course:"—", jornada:"", label:ck, miembros:0, presidentes:0, tesoreros:0, apoderados:0});
-      }
-    });
-
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a,b)=>String(a.school).localeCompare(String(b.school),"es") || String(a.course).localeCompare(String(b.course),"es"));
   }
 
 
@@ -264,7 +409,7 @@
   }
 
   function paymentMethod(p){
-    const raw = String([p.method,p.modalidad,p.channel,p.provider,p.gateway,p.ref,p.note,p.statusDetail,p.type].filter(Boolean).join(" ")).toLowerCase();
+    const raw = String([p.method,p.metodo_pago,p.modalidad,p.channel,p.provider,p.gateway,p.ref,p.note,p.statusDetail,p.type].filter(Boolean).join(" ")).toLowerCase();
     if(/transbank|webpay|tbk|card|tarjeta|pasarela/.test(raw)) return "Transbank";
     if(/transfer|transferencia/.test(raw)) return "Transferencia";
     if(/efectivo|cash/.test(raw)) return "Efectivo";
@@ -274,8 +419,8 @@
   }
 
   function paymentStatus(p){
-    const s = String(p.status||"pending").toLowerCase();
-    if(s === "paid") return "paid";
+    const s = String(p.status||p.estado||"pending").toLowerCase();
+    if(s === "paid" || s === "pagado") return "paid";
     if(["failed","rejected","rechazado","fallido","error"].includes(s)) return "failed";
     if(s === "opted_out") return "opted_out";
     return "pending";
@@ -1022,7 +1167,7 @@
     closeModal
   };
 
-  document.addEventListener("DOMContentLoaded", ()=>{
+  document.addEventListener("DOMContentLoaded", async ()=>{
     const s = load(SESSION_KEY, null);
     if(!s || s.role !== "admin" || !s.isAdmin){
       location.href = "/index.html";
@@ -1030,9 +1175,18 @@
     }
     cleanupDummyTickets();
     seedAdminData();
-    log("login_admin","Ingreso a panel administrador","Admin Console");
     $("#mobileMenu")?.addEventListener("click", ()=>document.body.classList.toggle("sideOpen"));
     $$(".sideItem").forEach(b=>b.addEventListener("click", ()=>Admin.go(b.dataset.tab)));
+
+    setTitle("Cargando datos", "Consultando Supabase...");
+    app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Conectando con Supabase</h2></div><p class="muted" style="font-weight:800">Cargando usuarios, cursos, campañas y pagos...</p></section>`;
+    await loadSupabaseAdminData();
+    if(ADMIN_DB.error){
+      setTitle("Error Supabase", "No se pudieron cargar los datos");
+      app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Error al cargar Supabase</h2></div><p class="muted" style="font-weight:900;color:#b42318">${esc(ADMIN_DB.error)}</p><button class="adminBtn" onclick="location.reload()">Reintentar</button></section>`;
+      return;
+    }
+    log("login_admin","Ingreso a panel administrador","Admin Console");
     Admin.go("dashboard");
   });
 })();
