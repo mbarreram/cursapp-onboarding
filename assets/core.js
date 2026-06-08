@@ -351,7 +351,7 @@
 
   function log(status, detail){
     try{
-      const row = { status, detail: detail || {}, at: new Date().toISOString(), version: "fase1a-fix-v1" };
+      const row = { status, detail: detail || {}, at: new Date().toISOString(), version: "fase1c2-campanas-supabase-authoritative" };
       localStorage.setItem(LOG_KEY, JSON.stringify(row));
       window.CURSAPP_SUPABASE_STATUS = row;
       if (status === "error") console.warn("Cursapp Supabase sync", row);
@@ -404,13 +404,18 @@
   }
 
   function mergeTasksById(localTasks, remoteTasks){
+    // Fase 1C.2: Supabase es fuente oficial de campañas.
+    // No mezclar campañas antiguas de localStorage porque duplica o muestra campañas fantasmas.
     const out = [];
     const seen = new Set();
-    function keyOf(t){ return String(t?.supabaseId || t?.id || t?.title || ""); }
-    (remoteTasks || []).forEach(t=>{ const k=keyOf(t); if(!k || seen.has(k)) return; seen.add(k); out.push(t); });
-    (localTasks || []).forEach(t=>{
-      const k=keyOf(t); if(!k || seen.has(k)) return;
-      seen.add(k); out.push(t);
+    function keyOf(t){
+      return String(t?.supabaseId || t?.id || [t?.title,t?.amount,t?.startDate,t?.dueDate].join("|") || "");
+    }
+    (remoteTasks || []).forEach(t=>{
+      const k = keyOf(t);
+      if(!k || seen.has(k)) return;
+      seen.add(k);
+      out.push(t);
     });
     return out;
   }
@@ -648,10 +653,13 @@
     const merged = mergeTasksById(Array.isArray(localTasks) ? localTasks : [], remoteTasks);
     const before = JSON.stringify(Array.isArray(localTasks) ? localTasks : []);
     const after = JSON.stringify(merged);
+    // Siempre dejar el caché local exactamente igual a Supabase para el curso activo.
+    // Si Supabase tiene 9 campañas, la UI debe mostrar 9, no 9 + locales antiguas.
     if(before !== after){
       saveJSON(tasksKey, merged);
-      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
-      try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+      try{ localStorage.setItem("cursapp_supabase_campaigns_authoritative_v1", "1"); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:tasksKey, source:"supabase-authoritative-hydrate", count:remoteTasks.length } })); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:tasksKey, source:"supabase-authoritative-hydrate", count:remoteTasks.length } })); }catch(e){}
     }
 
     const status = { hydrated:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, campanas:remoteTasks.length, at:new Date().toISOString() };
