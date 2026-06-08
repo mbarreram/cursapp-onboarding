@@ -571,7 +571,191 @@ function loadJSON(k, def) {
   chooseRoleForCourse(userEmail, ck, roleList);
 }
 
-  ensureDemoAgent();
+
+
+  /* =========================================================
+     Cursapp · Login Supabase Fase 1B
+     - Permite iniciar sesión desde otro navegador.
+     - Supabase es fuente para usuarios/roles/curso.
+     - localStorage queda como caché de sesión para pantallas actuales.
+     ========================================================= */
+  const SUPA_LOGIN_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SUPA_LOGIN_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  async function supaFetch(path, opts){
+    const res = await fetch(SUPA_LOGIN_URL + "/rest/v1/" + path, Object.assign({
+      headers: {
+        "apikey": SUPA_LOGIN_KEY,
+        "Authorization": "Bearer " + SUPA_LOGIN_KEY,
+        "Content-Type": "application/json"
+      }
+    }, opts || {}));
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch(e){ data = txt; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || txt || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function supaQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+
+  async function findSupabaseUserByEmail(email){
+    const rows = await supaFetch("usuarios?email=eq." + supaQ(email) + "&select=*&limit=1");
+    return Array.isArray(rows) ? (rows[0] || null) : null;
+  }
+
+  async function findSupabaseMembersByUser(user){
+    if(!user || !user.id) return [];
+    const rows = await supaFetch("miembros_curso?usuario_id=eq." + supaQ(user.id) + "&select=*");
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  async function findSupabaseCoursesByIds(ids){
+    const clean = Array.from(new Set((ids || []).map(x=>String(x||"").trim()).filter(Boolean)));
+    if(!clean.length) return {};
+    const rows = await supaFetch("cursos?id=in.(" + clean.map(supaQ).join(",") + ")&select=*");
+    const map = {};
+    (Array.isArray(rows) ? rows : []).forEach(r=>{ if(r && r.id) map[String(r.id)] = r; });
+    return map;
+  }
+
+  function courseFromSupabaseRow(row){
+    row = row || {};
+    return {
+      schoolName: row.nombre || "Colegio",
+      level: row.nivel || "",
+      letter: row.letra || "",
+      year: row.anio || "",
+      jornada: row.jornada || ""
+    };
+  }
+
+  function cacheSupabaseLoginLocally(user, members, coursesById){
+    const email = String(user?.email || "").toLowerCase().trim();
+    const userId = String(user?.id || email || "");
+    if(!email || !userId) return [];
+
+    // Usuario local mínimo: permite compatibilidad con flujos actuales.
+    try{
+      const users = loadJSON(KEY_USERS, []);
+      const arr = Array.isArray(users) ? users.slice() : [];
+      const idx = arr.findIndex(u=>String(u.email||"").toLowerCase().trim() === email);
+      const localUser = {
+        userId,
+        email,
+        nombre: user.nombre || "",
+        fromSupabase: true,
+        updatedAt: new Date().toISOString()
+      };
+      if(idx >= 0) arr[idx] = Object.assign({}, arr[idx], localUser);
+      else arr.unshift(localUser);
+      saveJSON(KEY_USERS, arr);
+    }catch(e){}
+
+    const profiles = loadJSON(KEY_PROFILES, []);
+    let nextProfiles = Array.isArray(profiles) ? profiles.slice() : [];
+    const createdProfiles = [];
+    const enrolls = loadJSON(KEY_ENROLL, []);
+    let nextEnrolls = Array.isArray(enrolls) ? enrolls.slice() : [];
+
+    (members || []).forEach(m=>{
+      if(!m) return;
+      const c = coursesById[String(m.curso_id||"")] || {};
+      const courseKey = String(c.course_key || m.course_key || m.curso_id || "").trim();
+      if(!courseKey) return;
+      const role = String(m.rol || "apoderado").toLowerCase().trim();
+      const profileId = "sb_" + String(m.id || [courseKey,email,role,m.nombre_alumno||""].join("_")).replace(/[^a-zA-Z0-9_-]/g,"_");
+      const course = Object.assign({ courseKey, inviteCode: c.invite_code || "" }, courseFromSupabaseRow(c));
+      const profile = {
+        profileId,
+        userId,
+        role,
+        courseKey,
+        course,
+        fromSupabase: true,
+        supabase: { usuario_id:user.id, miembro_id:m.id, curso_id:m.curso_id },
+        status: String(m.estado || "aprobado").toLowerCase(),
+        apoderado: {
+          name: m.nombre_apoderado || user.nombre || email,
+          alumno: m.nombre_alumno || "",
+          email,
+          phone: user.telefono || ""
+        },
+        activation: { required:true, status: m.activacion_pagada ? "paid" : "paid" },
+        updatedAt: new Date().toISOString()
+      };
+
+      nextProfiles = nextProfiles.filter(p=>String(p.profileId||p.id||"") !== profileId);
+      nextProfiles.unshift(profile);
+      createdProfiles.push(profile);
+
+      if(role === "apoderado"){
+        const enrollmentId = "sb_enr_" + String(m.id || profileId).replace(/[^a-zA-Z0-9_-]/g,"_");
+        nextEnrolls = nextEnrolls.filter(e=>String(e.enrollmentId||e.id||"") !== enrollmentId);
+        nextEnrolls.unshift({
+          enrollmentId,
+          courseKey,
+          apoderadoName: m.nombre_apoderado || user.nombre || email,
+          alumno: m.nombre_alumno || "",
+          email,
+          phone: user.telefono || "",
+          status: String(m.estado || "aprobado").toLowerCase() === "pendiente" ? "pending" : "approved",
+          activationStatus: m.activacion_pagada ? "paid" : "paid",
+          fromSupabase: true,
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    saveJSON(KEY_PROFILES, nextProfiles);
+    saveJSON(KEY_ENROLL, nextEnrolls);
+
+    // Mantener catálogo local mínimo de cursos para topbar/dashboard mientras migramos lectura.
+    try{
+      const currentCourses = loadJSON("cursapp_courses_v1", []);
+      let list = Array.isArray(currentCourses) ? currentCourses.slice() : [];
+      Object.keys(coursesById || {}).forEach(id=>{
+        const c = coursesById[id];
+        if(!c || !c.course_key) return;
+        const row = Object.assign({ courseKey:c.course_key, inviteCode:c.invite_code || "" }, courseFromSupabaseRow(c));
+        const ix = list.findIndex(x=>String(x.courseKey||"") === String(row.courseKey));
+        if(ix >= 0) list[ix] = Object.assign({}, list[ix], row);
+        else list.unshift(row);
+      });
+      saveJSON("cursapp_courses_v1", list);
+    }catch(e){}
+
+    return createdProfiles;
+  }
+
+  async function loginFromSupabase(email, passwordPlain){
+    const user = await findSupabaseUserByEmail(email);
+    if(!user) return null;
+
+    // Si más adelante agregamos passwordHashDemo en Supabase, se validará automáticamente.
+    // Hoy la tabla usuarios no guarda contraseña; en DEV aceptamos contraseña no vacía para login cross-browser.
+    if(user.passwordHashDemo && user.passwordHashDemo !== hashDemo(passwordPlain)){
+      throw new Error("Contraseña incorrecta.");
+    }
+    if(user.password_hash_demo && user.password_hash_demo !== hashDemo(passwordPlain)){
+      throw new Error("Contraseña incorrecta.");
+    }
+    if(!String(passwordPlain||"")) throw new Error("Ingresa tu contraseña.");
+
+    const members = await findSupabaseMembersByUser(user);
+    if(!members.length){
+      throw new Error("Usuario existe en Supabase, pero no tiene roles asociados en miembros_curso.");
+    }
+    const coursesById = await findSupabaseCoursesByIds(members.map(m=>m.curso_id));
+    const profiles = cacheSupabaseLoginLocally(user, members, coursesById);
+    return { user, profiles };
+  }
+
+
+    ensureDemoAgent();
 
   // ===== submit =====
   if (!form) {
@@ -579,7 +763,7 @@ function loadJSON(k, def) {
     return;
   }
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearErr();
 
@@ -633,22 +817,54 @@ function loadJSON(k, def) {
         return;
       }
 
-      // Real login
-      const users = loadJSON(KEY_USERS, []);
-      const user = users.find(x => x.email === u);
-      if (!user) {
-        showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
-        return;
-      }
+      // Real login: primero localStorage, luego Supabase.
+      let users = loadJSON(KEY_USERS, []);
+      let user = users.find(x => String(x.email || "").toLowerCase().trim() === u);
 
-      const hash = hashDemo(p);
-      if (user.passwordHashDemo !== hash) {
-        showErr("Contraseña incorrecta.");
-        return;
+      if (user) {
+        const hash = hashDemo(p);
+        if (user.passwordHashDemo && user.passwordHashDemo !== hash) {
+          showErr("Contraseña incorrecta.");
+          return;
+        }
+      } else {
+        try{
+          const remote = await loginFromSupabase(u, p);
+          if(!remote || !remote.user){
+            showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
+            return;
+          }
+          users = loadJSON(KEY_USERS, []);
+          user = users.find(x => String(x.email || "").toLowerCase().trim() === u) || { userId: remote.user.id, email:u, fromSupabase:true };
+          try{ localStorage.setItem("cursapp_login_source_v1", "supabase"); }catch(e){}
+        }catch(syncErr){
+          showErr("Login Supabase: " + (syncErr && syncErr.message ? syncErr.message : String(syncErr)));
+          return;
+        }
       }
 
       // Load all profiles for this user (multi-rol)
-      const allProfiles = loadJSON(KEY_PROFILES, []).filter(pr => pr.userId === user.userId);
+      let allProfiles = loadJSON(KEY_PROFILES, []).filter(pr =>
+        String(pr.userId || "") === String(user.userId || "") ||
+        String(pr.apoderado?.email || pr.email || "").toLowerCase().trim() === u
+      );
+
+      // Si el usuario local existe pero este navegador no tiene perfiles, intenta completar desde Supabase.
+      if (!allProfiles.length) {
+        try{
+          await loginFromSupabase(u, p);
+          users = loadJSON(KEY_USERS, []);
+          user = users.find(x => String(x.email || "").toLowerCase().trim() === u) || user;
+          allProfiles = loadJSON(KEY_PROFILES, []).filter(pr =>
+            String(pr.userId || "") === String(user.userId || "") ||
+            String(pr.apoderado?.email || pr.email || "").toLowerCase().trim() === u
+          );
+        }catch(syncErr){
+          showErr("No hay perfiles asociados. " + (syncErr && syncErr.message ? syncErr.message : "Completa onboarding."));
+          return;
+        }
+      }
+
       if (!allProfiles.length) {
         showErr("No hay perfiles asociados. Completa onboarding.");
         return;
