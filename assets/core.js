@@ -325,7 +325,8 @@
    - No reemplaza localStorage.
    - Replica: colegios, cursos, usuarios, miembros_curso, campanas.
    - Evita upsert para no exigir políticas UPDATE en esta fase dev.
-   - Deja diagnóstico visible en localStorage y alerta breve una vez por carga.
+   - Deja diagnóstico en localStorage sin alertas visibles.
+   - Fase 1C: hidrata campañas desde Supabase hacia caché local por curso.
    ============================================================ */
 (function(){
   if (window.__CURSAPP_SUPABASE_HYBRID_FASE1A_CORE_FIX__) return;
@@ -355,22 +356,11 @@
       window.CURSAPP_SUPABASE_STATUS = row;
       if (status === "error") console.warn("Cursapp Supabase sync", row);
       else console.log("Cursapp Supabase sync", row);
-      maybeAlert(row);
+      // Sin alertas en producción. El diagnóstico queda en localStorage y console.
     }catch(e){}
   }
 
-  function maybeAlert(row){
-    // Temporal para depurar en iPhone. Solo una alerta por carga de página.
-    try{
-      if(sessionStorage.getItem(ALERT_KEY)==="1") return;
-      sessionStorage.setItem(ALERT_KEY,"1");
-      const d = row.detail || {};
-      const msg = row.status === "ok"
-        ? `Supabase OK ✅\nCursos: ${d.cursos||0}\nMiembros: ${d.miembros||0}\nCampañas: ${d.campanas||0}`
-        : `Supabase ERROR ❌\n${d.message || JSON.stringify(d).slice(0,220)}`;
-      setTimeout(()=>alert(msg), 250);
-    }catch(e){}
-  }
+  function maybeAlert(row){ /* no-op: alertas de depuración desactivadas */ }
 
   function parseJSON(v, fallback){ try{ if(v == null || v === "") return fallback; return JSON.parse(v); }catch(e){ return fallback; } }
   function loadJSON(k, fallback){ try{ return parseJSON(localStorage.getItem(k), fallback); }catch(e){ return fallback; } }
@@ -378,6 +368,48 @@
   function q(v){ return encodeURIComponent(String(v == null ? "" : v)); }
   function asInt(v){ const n = parseInt(v,10); return Number.isFinite(n) ? n : null; }
   function cleanDate(v){ const s = String(v || "").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
+
+  function activeCourseKey(){
+    try{
+      const s = loadJSON("cursapp_session_v1", null) || {};
+      return String(localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "").trim();
+    }catch(e){ return ""; }
+  }
+
+  function taskFromSupabase(row){
+    row = row || {};
+    const id = row.local_id || row.campaign_id || row.id || ("sb_campaign_" + Date.now());
+    const type = String(row.tipo || "single");
+    const status = String(row.estado || "activa").toLowerCase();
+    return {
+      id: String(id),
+      supabaseId: row.id || "",
+      title: row.titulo || row.nombre || "Campaña",
+      type: type,
+      amount: Number(row.monto || 0) || 0,
+      startDate: row.fecha_inicio || "",
+      dueDate: row.fecha_vencimiento || "",
+      endDate: row.fecha_vencimiento || "",
+      months: Number(row.meses || 1) || 1,
+      mandatoryParticipation: row.obligatoria !== false,
+      status: status,
+      closed: status === "cerrada" || status === "closed",
+      fromSupabase: true,
+      updatedAt: row.updated_at || row.created_at || new Date().toISOString()
+    };
+  }
+
+  function mergeTasksById(localTasks, remoteTasks){
+    const out = [];
+    const seen = new Set();
+    function keyOf(t){ return String(t?.supabaseId || t?.id || t?.title || ""); }
+    (remoteTasks || []).forEach(t=>{ const k=keyOf(t); if(!k || seen.has(k)) return; seen.add(k); out.push(t); });
+    (localTasks || []).forEach(t=>{
+      const k=keyOf(t); if(!k || seen.has(k)) return;
+      seen.add(k); out.push(t);
+    });
+    return out;
+  }
 
   function mapLoad(){
     const m = loadJSON(MAP_KEY, {});
@@ -577,6 +609,33 @@
     return count;
   }
 
+  async function hydrateActiveCourseFromSupabase(reason){
+    const ck = activeCourseKey();
+    if(!ck) return { hydrated:false, reason:"no-active-course" };
+
+    const curso = await selectOne("cursos", "course_key=eq." + q(ck) + "&select=*");
+    if(!curso || !curso.id) return { hydrated:false, reason:"course-not-found", courseKey:ck };
+
+    // Guardar mapa curso local -> Supabase.
+    try{ const mm = mapLoad(); mm.cursos[ck] = curso.id; mapSave(mm); }catch(e){}
+
+    const rows = await sb("campanas?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc", { method:"GET" });
+    const remoteTasks = (Array.isArray(rows) ? rows : []).map(taskFromSupabase);
+    const tasksKey = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function")
+      ? window.CURSAPP.scopedKey("tasks_v1")
+      : "cursapp_" + ck + "_tasks_v1";
+    const localTasks = loadJSON(tasksKey, []);
+    const merged = mergeTasksById(Array.isArray(localTasks) ? localTasks : [], remoteTasks);
+    saveJSON(tasksKey, merged);
+
+    try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:tasksKey, source:"supabase-hydrate", count:remoteTasks.length } })); }catch(e){}
+
+    const status = { hydrated:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, campanas:remoteTasks.length, at:new Date().toISOString() };
+    try{ localStorage.setItem("cursapp_supabase_last_hydrate_v1", JSON.stringify(status)); }catch(e){}
+    return status;
+  }
+
   let timer = null;
   async function syncAll(reason){
     try{
@@ -584,6 +643,7 @@
       const miembros = await syncUsersAndMembers();
       const campanas = await syncCampaigns();
       log("ok", { reason: reason || "manual", cursos, miembros, campanas });
+      try{ await hydrateActiveCourseFromSupabase(reason || "syncAll"); }catch(e){ console.warn("Cursapp Supabase hydrate", e); }
       try{ window.dispatchEvent(new CustomEvent("cursapp:supabaseSynced", { detail:{ cursos, miembros, campanas } })); }catch(e){}
     }catch(e){ log("error", { reason: reason || "manual", message: e && e.message ? e.message : String(e) }); }
   }
@@ -601,10 +661,13 @@
 
   window.addEventListener("cursapp:dataChanged", function(ev){ const k = ev && ev.detail ? ev.detail.key : ""; if(shouldSyncKey(k)) schedule("event:" + k); });
   window.CURSAPP.syncSupabase = function(){ return syncAll("manual"); };
+  window.CURSAPP.hydrateSupabase = function(){ return hydrateActiveCourseFromSupabase("manual"); };
   window.CURSAPP.supabaseStatus = function(){ return loadJSON(LOG_KEY, null); };
+  window.CURSAPP.supabaseHydrateStatus = function(){ return loadJSON("cursapp_supabase_last_hydrate_v1", null); };
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
   else schedule("load");
   setTimeout(()=>schedule("late-1500"), 1500);
   setTimeout(()=>schedule("late-4000"), 4000);
+  setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-6500").catch(()=>{}), 6500);
 })();
