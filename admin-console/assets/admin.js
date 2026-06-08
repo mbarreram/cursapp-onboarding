@@ -87,7 +87,7 @@
         sbGet("usuarios?select=*&order=created_at.desc"),
         sbGet("miembros_curso?select=*,usuarios(*),cursos(*),cursos(colegios(*))&order=created_at.desc"),
         sbGet("campanas?select=*,cursos(*),cursos(colegios(*))&order=created_at.desc"),
-        sbGet("pagos?select=*,campanas(*),cursos(*),cursos(colegios(*)),miembros_curso(*),miembros_curso(usuarios(*))&order=created_at.desc")
+        sbGet("pagos?select=*,campana:campanas(*),curso:cursos(*,colegio:colegios(*)),miembro:miembros_curso(*,usuario:usuarios(*))&order=created_at.desc")
       ]);
       ADMIN_DB.colegios = colegios;
       ADMIN_DB.cursos = cursos;
@@ -124,10 +124,10 @@
 
   function payments(){
     return (ADMIN_DB.pagos || []).map(p=>{
-      const m = p.miembros_curso || {};
-      const u = m.usuarios || {};
-      const camp = p.campanas || {};
-      const curso = p.cursos || camp.cursos || {};
+      const m = p.miembro || p.miembros_curso || {};
+      const u = m.usuario || m.usuarios || {};
+      const camp = p.campana || p.campanas || {};
+      const curso = p.curso || p.cursos || camp.curso || camp.cursos || {};
       return Object.assign({}, p, {
         id: p.id,
         amount: Number(p.monto || 0),
