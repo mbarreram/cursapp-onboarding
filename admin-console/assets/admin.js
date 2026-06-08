@@ -81,17 +81,52 @@
     ADMIN_DB.loading = true;
     ADMIN_DB.error = null;
     try{
-      const [colegios, cursos, usuarios, miembros, campanas, pagos] = await Promise.all([
+      // Consultas sin relaciones embebidas para evitar errores PostgREST por alias duplicados
+      // como "miembros_curso_cursos_1 specified more than once".
+      // Luego relacionamos los datos en memoria.
+      const [colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw] = await Promise.all([
         sbGet("colegios?select=*&order=created_at.desc"),
-        sbGet("cursos?select=*,colegios(*)&order=created_at.desc"),
+        sbGet("cursos?select=*&order=created_at.desc"),
         sbGet("usuarios?select=*&order=created_at.desc"),
-        sbGet("miembros_curso?select=*,usuarios(*),cursos(*),cursos(colegios(*))&order=created_at.desc"),
-        sbGet("campanas?select=*,cursos(*),cursos(colegios(*))&order=created_at.desc"),
-        sbGet("pagos?select=*,campana:campanas(*),curso:cursos(*,colegio:colegios(*)),miembro:miembros_curso(*,usuario:usuarios(*))&order=created_at.desc")
+        sbGet("miembros_curso?select=*&order=created_at.desc"),
+        sbGet("campanas?select=*&order=created_at.desc"),
+        sbGet("pagos?select=*&order=created_at.desc")
       ]);
-      ADMIN_DB.colegios = colegios;
+
+      const byId = (rows)=>{
+        const m = new Map();
+        (rows || []).forEach(r=>{ if(r && r.id) m.set(String(r.id), r); });
+        return m;
+      };
+
+      const colegiosById = byId(colegiosRaw);
+      const usuariosById = byId(usuariosRaw);
+
+      const cursos = (cursosRaw || []).map(c=>Object.assign({}, c, {
+        colegios: colegiosById.get(String(c.colegio_id || "")) || null
+      }));
+      const cursosById = byId(cursos);
+
+      const miembros = (miembrosRaw || []).map(m=>Object.assign({}, m, {
+        usuarios: usuariosById.get(String(m.usuario_id || "")) || null,
+        cursos: cursosById.get(String(m.curso_id || "")) || null
+      }));
+      const miembrosById = byId(miembros);
+
+      const campanas = (campanasRaw || []).map(c=>Object.assign({}, c, {
+        cursos: cursosById.get(String(c.curso_id || "")) || null
+      }));
+      const campanasById = byId(campanas);
+
+      const pagos = (pagosRaw || []).map(p=>Object.assign({}, p, {
+        campanas: campanasById.get(String(p.campana_id || "")) || null,
+        cursos: cursosById.get(String(p.curso_id || "")) || null,
+        miembros_curso: miembrosById.get(String(p.miembro_id || "")) || null
+      }));
+
+      ADMIN_DB.colegios = colegiosRaw;
       ADMIN_DB.cursos = cursos;
-      ADMIN_DB.usuarios = usuarios;
+      ADMIN_DB.usuarios = usuariosRaw;
       ADMIN_DB.miembros = miembros;
       ADMIN_DB.campanas = campanas;
       ADMIN_DB.pagos = pagos;
@@ -124,10 +159,10 @@
 
   function payments(){
     return (ADMIN_DB.pagos || []).map(p=>{
-      const m = p.miembro || p.miembros_curso || {};
-      const u = m.usuario || m.usuarios || {};
-      const camp = p.campana || p.campanas || {};
-      const curso = p.curso || p.cursos || camp.curso || camp.cursos || {};
+      const m = p.miembros_curso || {};
+      const u = m.usuarios || {};
+      const camp = p.campanas || {};
+      const curso = p.cursos || camp.cursos || {};
       return Object.assign({}, p, {
         id: p.id,
         amount: Number(p.monto || 0),
