@@ -1233,9 +1233,11 @@ if(d.alsoApoderado){
 
         if(existing){
           existing.passwordHashDemo = passHash;
+          existing.nombre = existing.nombre || d.name || "";
+          existing.telefono = existing.telefono || d.phone || "";
           existing.updatedAt = nowISO();
         }else{
-          users.unshift({ userId, email: d.email, passwordHashDemo: passHash, createdAt: nowISO() });
+          users.unshift({ userId, email: d.email, nombre: d.name || "", telefono: d.phone || "", passwordHashDemo: passHash, createdAt: nowISO() });
         }
         saveUsers(users);
 
@@ -1275,6 +1277,7 @@ if(d.alsoApoderado){
         }
 
         const res = createEnrollment({
+          courseKey,
           apoderadoName: d.name, alumno: d.alumno, email: d.email, phone: d.phone || "",
           activationAmount: 7990, activationStatus: activation.status
         });
