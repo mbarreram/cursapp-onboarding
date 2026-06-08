@@ -403,6 +403,59 @@
     };
   }
 
+
+  function estadoPagoToLocal(st){
+    const s = String(st || "").toLowerCase();
+    if(s === "pagado" || s === "paid") return "paid";
+    if(s === "vencido" || s === "overdue") return "overdue";
+    if(s === "parcial" || s === "partial") return "partial";
+    if(s === "anulado" || s === "void" || s === "cancelled") return "void";
+    return "pending";
+  }
+  function estadoPagoToDb(st){
+    const s = String(st || "").toLowerCase();
+    if(s === "paid" || s === "pagado") return "pagado";
+    if(s === "overdue" || s === "vencido") return "vencido";
+    if(s === "partial" || s === "parcial") return "parcial";
+    if(s === "void" || s === "cancelled" || s === "anulado") return "anulado";
+    return "pendiente";
+  }
+  function pagoFromSupabase(row, memberById, campaignById){
+    row = row || {};
+    const m = (row.miembros_curso && typeof row.miembros_curso === "object") ? row.miembros_curso : (memberById && memberById[String(row.miembro_id)] || {});
+    const c = (row.campanas && typeof row.campanas === "object") ? row.campanas : (campaignById && campaignById[String(row.campana_id)] || {});
+    const monto = Number(row.monto || 0) || 0;
+    const pagado = Number(row.monto_pagado || 0) || 0;
+    const status = estadoPagoToLocal(row.estado);
+    return {
+      id: String(row.id || ("sb_pay_" + Date.now())),
+      supabaseId: row.id || "",
+      courseKey: activeCourseKey(),
+      fromTaskId: String(row.campana_id || ""),
+      campaignTitle: c.titulo || c.title || "Campaña",
+      concept: c.titulo || "Pago",
+      amount: monto,
+      amountPaid: pagado,
+      amountRemaining: Math.max(0, monto - pagado),
+      status,
+      dueDate: row.fecha_vencimiento || c.fecha_vencimiento || "",
+      period: row.periodo || "",
+      installmentIndex: Number(row.cuota || 1) || 1,
+      paymentMethod: row.metodo_pago || "",
+      paidWith: row.metodo_pago || "",
+      paidAt: row.paid_at || "",
+      createdAt: row.created_at || "",
+      apoderadoEmail: String(m.email || "").toLowerCase().trim(),
+      email: String(m.email || "").toLowerCase().trim(),
+      apoderadoKey: String(m.email || row.miembro_id || "").toLowerCase().trim(),
+      apoderadoId: String(m.email || row.miembro_id || "").toLowerCase().trim(),
+      alumnoId: String(row.miembro_id || ""),
+      guardianName: m.nombre_apoderado || "",
+      studentName: m.nombre_alumno || "",
+      fromSupabase: true
+    };
+  }
+
   function mergeTasksById(localTasks, remoteTasks){
     // Fase 1C.2: Supabase es fuente oficial de campañas.
     // No mezclar campañas antiguas de localStorage porque duplica o muestra campañas fantasmas.
@@ -450,6 +503,10 @@
   }
   async function insert(table, body){
     const data = await sb(table, { method:"POST", body: JSON.stringify(body) });
+    return Array.isArray(data) ? (data[0] || null) : data;
+  }
+  async function patch(table, id, body){
+    const data = await sb(table + "?id=eq." + q(id), { method:"PATCH", body: JSON.stringify(body) });
     return Array.isArray(data) ? (data[0] || null) : data;
   }
 
@@ -667,6 +724,116 @@
     return status;
   }
 
+
+  function addMonthsYM(ym, add){
+    const y = parseInt(String(ym).slice(0,4),10);
+    const m = parseInt(String(ym).slice(5,7),10);
+    if(!y || !m) return ym;
+    const base = (y*12 + (m-1)) + Number(add||0);
+    const ny = Math.floor(base/12);
+    const nm = (base%12)+1;
+    return ny + "-" + String(nm).padStart(2,"0");
+  }
+  function endOfMonthISO(ym){
+    const y = parseInt(String(ym).slice(0,4),10);
+    const m = parseInt(String(ym).slice(5,7),10);
+    if(!y || !m) return "";
+    const d = new Date(y, m, 0);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  async function ensurePagosForCurso(cursoId){
+    if(!cursoId) return 0;
+    const members = await sb("miembros_curso?curso_id=eq." + q(cursoId) + "&estado=eq.aprobado&select=id,email,rol,nombre_apoderado,nombre_alumno", { method:"GET" });
+    const apods = (Array.isArray(members) ? members : []).filter(m => String(m.rol || "").toLowerCase() === "apoderado");
+    const campaigns = await sb("campanas?curso_id=eq." + q(cursoId) + "&select=id,titulo,tipo,monto,fecha_inicio,fecha_vencimiento,meses,obligatoria,estado", { method:"GET" });
+    let created = 0;
+    for(const c of (Array.isArray(campaigns) ? campaigns : [])){
+      const estado = String(c.estado || "activa").toLowerCase();
+      if(estado === "cerrada" || estado === "closed" || estado === "cancelada") continue;
+      const months = Math.max(1, Number(c.meses || 1) || 1);
+      const tipo = String(c.tipo || "single").toLowerCase();
+      const startYM = String(c.fecha_inicio || c.fecha_vencimiento || new Date().toISOString().slice(0,10)).slice(0,7);
+      const slots = [];
+      if(tipo.includes("month") || tipo.includes("mens")){
+        for(let i=0;i<months;i++){ const period=addMonthsYM(startYM,i); slots.push({period, due:endOfMonthISO(period), idx:i+1}); }
+      }else{
+        const period = String(c.fecha_vencimiento || c.fecha_inicio || new Date().toISOString().slice(0,10)).slice(0,7);
+        slots.push({period, due:c.fecha_vencimiento || endOfMonthISO(period), idx:1});
+      }
+      for(const m of apods){
+        for(const slot of slots){
+          const found = await selectOne("pagos", "curso_id=eq." + q(cursoId) + "&campana_id=eq." + q(c.id) + "&miembro_id=eq." + q(m.id) + "&periodo=eq." + q(slot.period) + "&select=id");
+          if(found && found.id) continue;
+          await insert("pagos", {
+            curso_id: cursoId,
+            campana_id: c.id,
+            miembro_id: m.id,
+            monto: Number(c.monto || 0) || 0,
+            monto_pagado: 0,
+            estado: "pendiente",
+            fecha_vencimiento: slot.due || null,
+            periodo: slot.period || null,
+            metodo_pago: null
+          });
+          created++;
+        }
+      }
+    }
+    return created;
+  }
+
+  async function hydratePagosForActiveCourse(reason){
+    const ck = activeCourseKey();
+    if(!ck) return { hydrated:false, reason:"no-active-course" };
+    const curso = await selectOne("cursos", "course_key=eq." + q(ck) + "&select=id");
+    if(!curso || !curso.id) return { hydrated:false, reason:"course-not-found" };
+    let created = 0;
+    try{ created = await ensurePagosForCurso(curso.id); }catch(e){ console.warn("Cursapp pagos auto", e); }
+    let rows = [];
+    try{
+      rows = await sb("pagos?curso_id=eq." + q(curso.id) + "&select=*,miembros_curso(id,email,nombre_apoderado,nombre_alumno),campanas(id,titulo,tipo,monto,fecha_vencimiento)&order=created_at.desc", { method:"GET" });
+    }catch(embedErr){
+      rows = await sb("pagos?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc", { method:"GET" });
+    }
+    const pays = (Array.isArray(rows) ? rows : []).map(r => pagoFromSupabase(r, {}, {}));
+    const key = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function") ? window.CURSAPP.scopedKey("payments_v1") : "cursapp_" + ck + "_payments_v1";
+    const before = localStorage.getItem(key) || "[]";
+    const after = JSON.stringify(pays);
+    if(before !== after){
+      saveJSON(key, pays);
+      try{ localStorage.setItem("cursapp_supabase_payments_authoritative_v1", "1"); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key, source:"supabase-payments-hydrate", count:pays.length } })); }catch(e){}
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key, source:"supabase-payments-hydrate", count:pays.length } })); }catch(e){}
+    }
+    const status = { hydrated:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, pagos:pays.length, created, at:new Date().toISOString() };
+    try{ localStorage.setItem("cursapp_supabase_last_payments_hydrate_v1", JSON.stringify(status)); }catch(e){}
+    return status;
+  }
+
+  async function syncLocalPaidPaymentsToSupabase(){
+    const ck = activeCourseKey();
+    if(!ck) return 0;
+    const key = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function") ? window.CURSAPP.scopedKey("payments_v1") : "cursapp_" + ck + "_payments_v1";
+    const pays = loadJSON(key, []);
+    if(!Array.isArray(pays) || !pays.length) return 0;
+    let count = 0;
+    for(const p of pays){
+      const id = String(p.supabaseId || (String(p.id||"").match(/^[0-9a-f-]{36}$/i) ? p.id : "") || "");
+      if(!id) continue;
+      const st = estadoPagoToDb(p.status);
+      if(st !== "pagado" && st !== "parcial" && st !== "anulado") continue;
+      await patch("pagos", id, {
+        estado: st,
+        monto_pagado: Number(p.amountPaid ?? p.amount ?? 0) || 0,
+        metodo_pago: p.paymentMethod || p.paidWith || null,
+        paid_at: p.paidAt || new Date().toISOString()
+      });
+      count++;
+    }
+    return count;
+  }
+
   let timer = null;
   async function syncAll(reason){
     try{
@@ -675,11 +842,13 @@
       const campanas = await syncCampaigns();
       log("ok", { reason: reason || "manual", cursos, miembros, campanas });
       try{ await hydrateActiveCourseFromSupabase(reason || "syncAll"); }catch(e){ console.warn("Cursapp Supabase hydrate", e); }
+      try{ await syncLocalPaidPaymentsToSupabase(); }catch(e){ console.warn("Cursapp pagos sync", e); }
+      try{ await hydratePagosForActiveCourse(reason || "syncAll"); }catch(e){ console.warn("Cursapp pagos hydrate", e); }
       try{ window.dispatchEvent(new CustomEvent("cursapp:supabaseSynced", { detail:{ cursos, miembros, campanas } })); }catch(e){}
     }catch(e){ log("error", { reason: reason || "manual", message: e && e.message ? e.message : String(e) }); }
   }
   function schedule(reason){ try{ if(timer) clearTimeout(timer); }catch(e){} timer = setTimeout(()=>syncAll(reason), 700); }
-  function shouldSyncKey(k){ k = String(k || ""); return k === "cursapp_course_v1" || k === "cursapp_courses_v1" || k === "cursapp_users_v1" || k === "cursapp_profiles_v1" || k === "cursapp_enrollments_v1" || k.indexOf("tasks_v1") >= 0; }
+  function shouldSyncKey(k){ k = String(k || ""); return k === "cursapp_course_v1" || k === "cursapp_courses_v1" || k === "cursapp_users_v1" || k === "cursapp_profiles_v1" || k === "cursapp_enrollments_v1" || k.indexOf("tasks_v1") >= 0 || k.indexOf("payments_v1") >= 0; }
 
   (function patchStorage(){
     try{
@@ -695,9 +864,12 @@
   window.CURSAPP.hydrateSupabase = function(){ return hydrateActiveCourseFromSupabase("manual"); };
   window.CURSAPP.supabaseStatus = function(){ return loadJSON(LOG_KEY, null); };
   window.CURSAPP.supabaseHydrateStatus = function(){ return loadJSON("cursapp_supabase_last_hydrate_v1", null); };
+  window.CURSAPP.hydratePagosSupabase = function(){ return hydratePagosForActiveCourse("manual"); };
+  window.CURSAPP.supabasePaymentsStatus = function(){ return loadJSON("cursapp_supabase_last_payments_hydrate_v1", null); };
 
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
   else schedule("load");
   // Evita re-render/parpadeo: una hidratación tardía es suficiente.
   setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
+  setTimeout(()=>hydratePagosForActiveCourse("late-payments-2300").catch(()=>{}), 2300);
 })();
