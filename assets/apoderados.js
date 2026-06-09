@@ -1,41 +1,182 @@
 (function(){
-  const KEY_USER   = "cursapp_demo_user";
-  const KEY_ENROLL = "cursapp_enrollments_v1";
-  const KEY_ACTIVE = "cursapp_active_course_v1";
-  const KEY_COURSE = "cursapp_course_v1";
-  const KEY_DIRECTIVA_BY_ROLE = "cursapp_directiva_apoderado_by_role_v1";
+  // Cursapp v11 · Gestión de apoderados Supabase-first
+  // Fuente oficial: Supabase (cursos + miembros_curso). localStorage solo se usa para sesión.
+
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const KEY_SESSION = "cursapp_session_v1";
 
   const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
-  function loadJSON(k, def){
-    try{ const v = localStorage.getItem(k); if(v==null) return def; return JSON.parse(v); }
-    catch(e){ return def; }
-  }
-  function saveJSON(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+  let STATE = {
+    loading: true,
+    error: null,
+    session: null,
+    curso: null,
+    miembros: []
+  };
 
-  function getUser(){ return loadJSON(KEY_USER, null); }
-  function isDirectiva(role){ return role === "presidente" || role === "tesorero"; }
-  function fmtDate(iso){ try{ return iso ? new Date(iso).toLocaleString("es-CL") : ""; }catch(e){ return iso||""; } }
-
-  function activeCourseKey(){ return localStorage.getItem(KEY_ACTIVE) || ""; }
-  function courseObj(){ return loadJSON(KEY_COURSE, null); }
-
-  function loadEnrollments(){ return loadJSON(KEY_ENROLL, []); }
-  function saveEnrollments(list){ saveJSON(KEY_ENROLL, list || []); }
-
-  function upsertEnrollment(id, patch){
-    const list = loadEnrollments();
-    const idx = list.findIndex(e => e.enrollmentId === id);
-    if(idx < 0) return false;
-    list[idx] = { ...list[idx], ...patch };
-    saveEnrollments(list);
-    return true;
+  function loadSession(){
+    try{ return JSON.parse(localStorage.getItem(KEY_SESSION) || "null") || null; }
+    catch(e){ return null; }
   }
 
-  // ---------------- Clipboard helpers ----------------
+  function roleOf(){
+    return String(STATE.session?.currentRole || STATE.session?.role || "").toLowerCase();
+  }
+
+  function isDirectiva(role){
+    return role === "presidente" || role === "tesorero";
+  }
+
+  function activeCourseKey(){
+    const s = STATE.session || {};
+    return String(s.courseKey || s.course_key || s.course?.courseKey || "").trim();
+  }
+
+  function fmtDate(iso){
+    try{ return iso ? new Date(iso).toLocaleString("es-CL") : ""; }
+    catch(e){ return iso || ""; }
+  }
+
+  async function sb(path, opts={}){
+    const res = await fetch(SB_URL + "/rest/v1/" + path, {
+      method: opts.method || "GET",
+      headers: Object.assign({
+        "apikey": SB_KEY,
+        "Authorization": "Bearer " + SB_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+      }, opts.headers || {}),
+      body: opts.body
+    });
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = text; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || text || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return Array.isArray(data) ? data : (data ? [data] : []);
+  }
+
+  function eq(v){ return "eq." + encodeURIComponent(String(v || "")); }
+
+  function normalizeEstado(v){
+    const s = String(v || "aprobado").toLowerCase();
+    if(["aprobado","approved","activo","active"].includes(s)) return "approved";
+    if(["pendiente","pending","solicitado","solicitada"].includes(s)) return "pending";
+    if(["eliminado","deleted","rechazado","rejected"].includes(s)) return "deleted";
+    return s || "approved";
+  }
+
+  function memberToEnrollment(m){
+    const st = normalizeEstado(m.estado);
+    return {
+      enrollmentId: m.id,
+      id: m.id,
+      remoteId: m.id,
+      usuarioId: m.usuario_id || "",
+      cursoId: m.curso_id || "",
+      role: String(m.rol || "apoderado").toLowerCase(),
+      status: st,
+      apoderadoName: m.nombre_apoderado || m.usuarios?.nombre || m.email || "Apoderado",
+      alumno: m.nombre_alumno || "",
+      email: m.email || m.usuarios?.email || "",
+      createdAt: m.created_at || "",
+      reviewedAt: m.reviewed_at || "",
+      reviewNote: m.review_note || "",
+      activation: { status: m.activacion_pagada ? "paid" : "pending" },
+      directivaRole: String(m.rol || "").toLowerCase() === "tesorero" ? "tesorero" : null
+    };
+  }
+
+  function courseLabel(curso){
+    if(!curso) return "Curso activo";
+    const colegio = curso.colegios || {};
+    const name = colegio.nombre || curso.nombre || "Colegio";
+    const cursoTxt = `${curso.nivel || ""}${curso.letra || ""} ${curso.anio || ""}`.trim();
+    const jornada = curso.jornada || "";
+    return [name, cursoTxt, jornada].filter(Boolean).join(" · ") || (curso.course_key || curso.id || "Curso activo");
+  }
+
+  function headerUserLine(){
+    const who = $("whoLine");
+    if(!who) return;
+    const s = STATE.session || {};
+    const label = s.name || s.nombre || s.email || "Directiva";
+    const role = roleOf() || "directiva";
+    who.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:2px;line-height:1.1;">
+        <div style="font-weight:950;font-size:14px;">${esc(label)} · ${esc(role.toUpperCase())}</div>
+        <div class="muted" style="font-weight:700;font-size:11px;opacity:.9;">Gestión de apoderados</div>
+      </div>
+    `;
+  }
+
+  function emptyCard(title, text){
+    return `<div class="card" style="margin-top:12px;">
+      <div style="font-weight:950;font-size:18px;">${esc(title)}</div>
+      <div class="muted" style="margin-top:8px;font-weight:800;line-height:1.45;">${esc(text)}</div>
+    </div>`;
+  }
+
+  async function loadData(){
+    STATE.loading = true;
+    STATE.error = null;
+    STATE.session = loadSession();
+
+    const role = roleOf();
+    if(!STATE.session || !isDirectiva(role)){
+      STATE.loading = false;
+      return;
+    }
+
+    const ck = activeCourseKey();
+    if(!ck){
+      STATE.loading = false;
+      return;
+    }
+
+    try{
+      const cursos = await sb(`cursos?select=*,colegios(*)&course_key=${eq(ck)}&limit=1`);
+      const curso = cursos[0] || null;
+      if(!curso) throw new Error("No se encontró el curso activo en Supabase: " + ck);
+
+      const miembros = await sb(
+        `miembros_curso?select=*,usuarios(*)&curso_id=${eq(curso.id)}&order=created_at.asc`
+      );
+
+      STATE.curso = curso;
+      STATE.miembros = miembros.map(memberToEnrollment);
+      STATE.loading = false;
+    }catch(e){
+      STATE.error = e && e.message ? e.message : String(e);
+      STATE.loading = false;
+    }
+  }
+
+  function buildWhatsappInvite(curso){
+    const colegio = curso?.colegios || {};
+    const code = curso?.invite_code || "";
+    const school = colegio.nombre || curso?.nombre || "Colegio";
+    const courseTxt = `${curso?.nivel || ""}${curso?.letra || ""} ${curso?.anio || ""} · ${curso?.jornada || ""}`.trim();
+    const url = location?.origin ? (location.origin + "/onboarding/dashboard.html") : "https://cursapp-onboarding.pages.dev/onboarding/dashboard.html";
+    return (
+      "👋 Hola apoderados/as\n\n" +
+      "Ya está activo *Cursapp* para nuestro curso:\n\n" +
+      "🏫 *" + school + "*\n" +
+      "📘 *" + courseTxt + "*\n\n" +
+      "Ingresa aquí:\n" + url + "\n\n" +
+      "Código de invitación:\n👉 *" + code + "*\n\n" +
+      "Tu registro será revisado por la directiva antes de activarse."
+    );
+  }
+
   async function copyText(text){
     try{
-      if(navigator.clipboard && navigator.clipboard.writeText){
+      if(navigator.clipboard?.writeText){
         await navigator.clipboard.writeText(text);
         alert("Copiado ✅");
         return;
@@ -44,291 +185,84 @@
     alert("Copia manualmente:\n\n" + text);
   }
 
-  // ---------------- WhatsApp text builders ----------------
-  function buildWhatsappInvite(courseObj){
-    const c = courseObj?.course || {};
-    const code = courseObj?.inviteCode || "";
-
-    const courseLabel = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
-    const school = c.schoolName || "Colegio";
-
-    const url = (location && location.origin)
-      ? (location.origin + "/onboarding/dashboard.html")
-      : "https://cursapp.netlify.app/onboarding/dashboard.html";
-
-    return (
-      "👋 Hola apoderados/as\n\n" +
-      "Ya está activo *Cursapp* para nuestro curso:\n\n" +
-      "🏫 *" + school + "*\n" +
-      "📘 *" + courseLabel + "*\n\n" +
-      "Para registrarte como apoderado/a sigue estos pasos:\n\n" +
-      "1️⃣ Ingresa aquí:\n" +
-      url + "\n\n" +
-      "2️⃣ Cuando te lo pida, pega este *CÓDIGO DE INVITACIÓN* 👇\n" +
-      "👉 *" + code + "*\n\n" +
-      "💳 *Activación única:* *$7.990 por apoderado*\n" +
-      "(Permite usar Cursapp durante todo el año)\n\n" +
-      "✨ ¿Para qué sirve Cursapp?\n" +
-      "• Facilita la tesorería del curso\n" +
-      "• Ordena pagos y campañas\n" +
-      "• Mejora la comunicación con la directiva\n" +
-      "• Da transparencia a los fondos del curso\n\n" +
-      "👉 Tu registro será revisado por la directiva antes de activarse.\n\n" +
-      "¡Gracias por apoyar la organización del curso! 🙌"
-    );
-  }
-
-  function buildWhatsappApproval(courseObj, enr){
-    const c = courseObj?.course || {};
-    const school = c.schoolName || "Colegio";
-    const courseLabel = `${(c.level||"")}${(c.letter||"")} ${c.year||""} · ${c.jornada||""}`.trim();
-    const name = (enr?.apoderadoName || "Apoderado/a").trim();
-
-    return (
-      "✅ Hola " + name + "\n\n" +
-      "Tu registro en *Cursapp* ya fue aprobado para:\n" +
-      "🏫 *" + school + "*\n" +
-      "📘 *" + courseLabel + "*\n\n" +
-      "Ya puedes ingresar y ver tus cobros/pagos.\n\n" +
-      "Gracias por apoyar la organización del curso 🙌"
-    );
-  }
-
-  // ---------------- Modal helpers ----------------
-  function openModal(html){
-    const root = $("modalRoot");
-    if(!root) return;
-    root.innerHTML = html;
-  }
-  function closeModal(){
-    const root = $("modalRoot");
-    if(root) root.innerHTML = "";
-  }
-
-  function openApprovalModal(enr){
-    const msg = buildWhatsappApproval(courseObj(), enr);
-    openModal(`
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:20000;display:flex;align-items:flex-end;justify-content:center;padding:14px;">
-        <div class="card" style="width:min(640px,100%);margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
-            <div style="font-weight:950;font-size:18px;">Aprobado ✅</div>
-            <button class="btn ghost" type="button" onclick="window.__closeModal()">Cerrar</button>
-          </div>
-
-          <div class="muted" style="margin-top:10px;font-weight:800;">
-            Se aprobó a <b>${(enr.apoderadoName||"Apoderado/a")}</b>.
-          </div>
-
-          <div style="margin-top:12px;">
-            <div class="muted" style="font-weight:900;margin-bottom:6px;">Mensaje listo para WhatsApp</div>
-            <textarea id="waApprovalText" style="width:100%;min-height:160px;border:1px solid rgba(229,231,235,.9);border-radius:14px;padding:10px;font-weight:700;">${msg}</textarea>
-          </div>
-
-          <div style="margin-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-            <button class="btn ghost" type="button" onclick="window.__closeModal()">Cerrar</button>
-            <button class="btn primary" type="button" onclick="window.__copyApproval()">
-              📲 Copiar mensaje WhatsApp
-            </button>
-          </div>
-        </div>
-      </div>
-    `);
-
-    window.__copyApproval = ()=> copyText(document.getElementById("waApprovalText").value);
-  }
-
-  window.__closeModal = closeModal;
-
-  // ---------------- Tesorero assignment ----------------
-  function setTesorero(enrollmentId){
-    const ck = activeCourseKey();
-    if(!ck) return alert("No hay curso activo.");
-
-    const course = courseObj();
-    if(!course) return alert("No hay curso.");
-
-    const list = loadEnrollments();
-    const target = list.find(e => e.enrollmentId === enrollmentId);
-
-    if(!target) return alert("No encontrado.");
-    if(String(target.courseKey||"") !== ck) return alert("No pertenece al curso activo.");
-    if(target.status !== "approved") return alert("Debe estar aprobado antes de asignar tesorero.");
-
-    // desmarcar tesorero anterior
-    list.forEach(e=>{
-      if(e.courseKey === ck && e.directivaRole === "tesorero"){
-        e.directivaRole = null;
-      }
-    });
-
-    target.directivaRole = "tesorero";
-
-    course.directiva = course.directiva || {};
-    course.directiva.tesorero = {
-      enrollmentId: target.enrollmentId,
-      name: target.apoderadoName || "",
-      email: target.email || ""
-    };
-
-    saveEnrollments(list);
-    saveJSON(KEY_COURSE, course);
-
-    // ✅ mantener en sync la estructura usada por el login (cursapp_directiva_apoderado_by_role_v1)
+  async function approve(id){
     try{
-      const map = loadJSON(KEY_DIRECTIVA_BY_ROLE, {}) || {};
-      map["tesorero"] = {
-        email: String(target.email||"").trim().toLowerCase(),
-        apoderadoName: target.apoderadoName || "",
-        alumno: target.alumno || "",
-        courseKey: ck,
-        role: "tesorero"
-      };
-      saveJSON(KEY_DIRECTIVA_BY_ROLE, map);
-    }catch(e){}
-
-    alert("Tesorero asignado ✅");
-    render();
-  }
-
-  function clearTesorero(){
-    const ck = activeCourseKey();
-    if(!ck) return;
-
-    const course = courseObj();
-    if(!course) return;
-
-    const list = loadEnrollments();
-    list.forEach(e=>{
-      if(e.courseKey === ck && e.directivaRole === "tesorero"){
-        e.directivaRole = null;
-      }
-    });
-
-    course.directiva = course.directiva || {};
-    course.directiva.tesorero = null;
-
-    saveEnrollments(list);
-    saveJSON(KEY_COURSE, course);
-
-    // ✅ limpiar también estructura usada por el login
-    try{
-      const map = loadJSON(KEY_DIRECTIVA_BY_ROLE, {}) || {};
-      const t = map["tesorero"];
-      if(t && String(t.courseKey||"") === ck){ delete map["tesorero"]; saveJSON(KEY_DIRECTIVA_BY_ROLE, map); }
-    }catch(e){}
-
-    alert("Tesorero removido ✅");
-    render();
-  }
-
-  // ---------------- Approve / Delete ----------------
-  function approve(id, role){
-    const ck = activeCourseKey();
-    const listBefore = loadEnrollments();
-    const targetBefore = listBefore.find(e => e.enrollmentId === id);
-
-    const ok = upsertEnrollment(id, {
-      status:"approved",
-      reviewedAt:new Date().toISOString(),
-      reviewedBy: role||"directiva",
-      reviewNote:""
-    });
-
-    if(!ok){
-      alert("No encontrado");
-      return;
+      await sb(`miembros_curso?id=${eq(id)}`, {
+        method:"PATCH",
+        body: JSON.stringify({ estado:"aprobado" })
+      });
+      await loadData();
+      render();
+    }catch(e){
+      alert("No se pudo aprobar: " + (e.message || e));
     }
-
-    // Re-leer enrollments para obtener data actual
-    const listAfter = loadEnrollments();
-    const enr = listAfter.find(e => e.enrollmentId === id) || targetBefore || {};
-
-    render();
-    openApprovalModal(enr);
   }
 
-  function del(id, role){
-    const note = prompt("Motivo (opcional):", "Registro incorrecto / curso equivocado") || "";
-    const ok = upsertEnrollment(id, {
-      status:"deleted",
-      reviewedAt:new Date().toISOString(),
-      reviewedBy: role||"directiva",
-      reviewNote: note
-    });
-    if(!ok) alert("No encontrado");
-    render();
+  async function del(id){
+    try{
+      await sb(`miembros_curso?id=${eq(id)}`, {
+        method:"PATCH",
+        body: JSON.stringify({ estado:"eliminado" })
+      });
+      await loadData();
+      render();
+    }catch(e){
+      alert("No se pudo eliminar: " + (e.message || e));
+    }
   }
 
-  // ---------------- UI helpers ----------------
-  function headerUserLine(u){
-    const who = $("whoLine");
-    if(!who) return;
-    who.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:2px;line-height:1.1;">
-        <div style="font-weight:950;font-size:14px;">${u?.name || "Directiva"} · ${(u?.role||"").toUpperCase()}</div>
-        <div class="muted" style="font-weight:700;font-size:11px;opacity:.9;">Gestión de apoderados</div>
-      </div>
-    `;
+  async function setTesorero(id){
+    alert("Asignación de tesorero se revisará en la siguiente fase para no perder el rol apoderado.");
   }
 
-  function emptyCard(title, text){
-    return `<div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;font-size:18px;">${title}</div>
-      <div class="muted" style="margin-top:8px;font-weight:800;line-height:1.45;">${text}</div>
-    </div>`;
-  }
-
-  // ---------------- render ----------------
   function render(){
     const app = $("app");
     if(!app) return;
 
-    const user = getUser();
-    const role = String(user?.role||"").toLowerCase();
+    headerUserLine();
 
-    if(!user || !isDirectiva(role)){
+    const role = roleOf();
+    if(STATE.loading){
+      app.innerHTML = emptyCard("Cargando apoderados", "Consultando Supabase...");
+      return;
+    }
+
+    if(!STATE.session || !isDirectiva(role)){
       app.innerHTML = emptyCard("Acceso restringido", "Esta vista es solo para Presidente o Tesorero.");
       return;
     }
 
-    headerUserLine(user);
-
-    const ck = activeCourseKey();
-    if(!ck){
-      app.innerHTML = emptyCard("No hay curso activo", "Crea el curso como Presidente para comenzar a recibir solicitudes.");
+    if(STATE.error){
+      app.innerHTML = emptyCard("Error Supabase", STATE.error);
       return;
     }
 
-    const c = courseObj();
-    const invite = c?.inviteCode || "";
-    const tes = c?.directiva?.tesorero || null;
+    const ck = activeCourseKey();
+    if(!ck){
+      app.innerHTML = emptyCard("No hay curso activo", "Vuelve a iniciar sesión seleccionando el curso y rol correspondiente.");
+      return;
+    }
 
-    const listAll = loadEnrollments();
-    const list = listAll.filter(e => String(e.courseKey||"") === ck);
+    const curso = STATE.curso;
+    const invite = curso?.invite_code || "";
 
+    // Gestión de apoderados solo muestra roles de apoderado.
+    // El presidente que también es apoderado aparece una vez por su rol apoderado.
+    const list = (STATE.miembros || []).filter(e => e.role === "apoderado" || e.role === "tesorero");
     const pend = list.filter(e => e.status === "pending");
     const appr = list.filter(e => e.status === "approved");
     const deld = list.filter(e => e.status === "deleted");
 
-    const courseLine = (c && c.course)
-      ? `${c.course.schoolName} · ${c.course.level}${c.course.letter} ${c.course.year} · ${c.course.jornada}`
-      : `Curso activo: ${ck}`;
-
+    const tes = (STATE.miembros || []).find(e => e.role === "tesorero");
     const tesLine = tes
-      ? `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> ${tes.name || tes.email}</div>`
+      ? `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> ${esc(tes.apoderadoName || tes.email)}</div>`
       : `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> —</div>`;
-
-    const tesActions = (role === "presidente" && tes)
-      ? `<button class="btn ghost" type="button" style="margin-top:10px;width:100%;" onclick="clearTesorero()">Remover tesorero</button>`
-      : ``;
 
     const head = `
       <div class="card">
         <div style="font-weight:950;font-size:18px;">Apoderados</div>
-        <div class="muted" style="margin-top:6px;font-weight:800;">${courseLine}</div>
+        <div class="muted" style="margin-top:6px;font-weight:800;">${esc(courseLabel(curso))}</div>
         ${tesLine}
-        ${tesActions}
-
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
           <span class="tag warn">Pendientes ${pend.length}</span>
           <span class="tag ok">Aprobados ${appr.length}</span>
@@ -340,15 +274,9 @@
     const codes = invite ? `
       <div class="card codeBox" style="margin-top:12px;">
         <div style="font-weight:950;">Código de invitación (Apoderados)</div>
-        <div class="code" style="margin-top:10px;">${invite}</div>
-
-        <button class="btn ghost" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyInviteCode()">
-          📋 Copiar código
-        </button>
-
-        <button class="btn primary" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyWhatsappInvite()">
-          📲 Copiar invitación WhatsApp
-        </button>
+        <div class="code" style="margin-top:10px;">${esc(invite)}</div>
+        <button class="btn ghost" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyInviteCode()">📋 Copiar código</button>
+        <button class="btn primary" type="button" style="width:100%;margin-top:10px;" onclick="window.__copyWhatsappInvite()">📲 Copiar invitación WhatsApp</button>
       </div>
     ` : ``;
 
@@ -357,40 +285,27 @@
       const st = e.status === "approved" ? `<span class="tag ok">Aprobado</span>` :
                  e.status === "deleted" ? `<span class="tag">Eliminado</span>` :
                  `<span class="tag warn">Pendiente</span>`;
-
-      const tesTag = (e.directivaRole === "tesorero") ? `<span class="tag ok">Tesorero</span>` : ``;
-
-      const actionsPending = (e.status === "pending")
+      const actions = e.status === "pending"
         ? `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-             <button class="btn primary" type="button" onclick="window.__approve('${e.enrollmentId}')">Aceptar</button>
-             <button class="btn ghost" type="button" onclick="window.__delete('${e.enrollmentId}')">Eliminar</button>
+             <button class="btn primary" type="button" onclick="window.__approve('${esc(e.enrollmentId)}')">Aceptar</button>
+             <button class="btn ghost" type="button" onclick="window.__delete('${esc(e.enrollmentId)}')">Eliminar</button>
            </div>`
         : `<div class="muted">—</div>`;
-
-      const assignTesBtn = (role === "presidente" && e.status === "approved" && e.directivaRole !== "tesorero")
-        ? `<button class="btn ghost" type="button" onclick="setTesorero('${e.enrollmentId}')">Asignar como tesorero</button>`
+      const assignTesBtn = (role === "presidente" && e.status === "approved" && e.role !== "tesorero")
+        ? `<button class="btn ghost" type="button" onclick="window.setTesorero('${esc(e.enrollmentId)}')">Asignar como tesorero</button>`
         : ``;
 
       return `
         <div style="padding:12px 0;border-top:1px solid rgba(229,231,235,.6);">
           <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
             <div style="min-width:240px;">
-              <div style="font-weight:950;">${e.apoderadoName || "Apoderado"} · ${e.alumno || "Alumno"}</div>
-              <div class="muted" style="margin-top:6px;font-weight:800;">${e.email || ""}</div>
-              <div class="muted" style="margin-top:6px;">Registrado: ${fmtDate(e.createdAt)}</div>
-
-              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                ${st} ${pay} ${tesTag}
-              </div>
-
+              <div style="font-weight:950;">${esc(e.apoderadoName || "Apoderado")} · ${esc(e.alumno || "Alumno")}</div>
+              <div class="muted" style="margin-top:6px;font-weight:800;">${esc(e.email || "")}</div>
+              <div class="muted" style="margin-top:6px;">Registrado: ${esc(fmtDate(e.createdAt))}</div>
+              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${st} ${pay}</div>
               ${assignTesBtn ? `<div style="margin-top:10px;">${assignTesBtn}</div>` : ``}
-
-              ${e.reviewNote ? `<div class="muted" style="margin-top:8px;">Nota: ${e.reviewNote}</div>` : ``}
             </div>
-
-            <div style="min-width:220px;text-align:right;">
-              ${e.status === "pending" ? actionsPending : `<div class="muted">—</div>`}
-            </div>
+            <div style="min-width:220px;text-align:right;">${actions}</div>
           </div>
         </div>
       `;
@@ -400,7 +315,7 @@
       <div class="card" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div style="font-weight:950;">Solicitudes</div>
-          <button class="btn ghost" type="button" onclick="location.reload()">Actualizar</button>
+          <button class="btn ghost" type="button" onclick="window.__reloadApoderados()">Actualizar</button>
         </div>
         ${list.length ? list.map(row).join("") : `<div class="muted" style="margin-top:10px;">Aún no hay apoderados registrados.</div>`}
       </div>
@@ -408,18 +323,17 @@
 
     app.innerHTML = head + codes + cards;
 
-    // handlers existentes
-    window.__approve = (id)=> approve(id, role);
-    window.__delete  = (id)=> del(id, role);
-
-    // handlers tesorero
+    window.__approve = approve;
+    window.__delete = del;
     window.setTesorero = setTesorero;
-    window.clearTesorero = clearTesorero;
-
-    // copiado
-    window.__copyInviteCode = ()=> copyText(invite);
-    window.__copyWhatsappInvite = ()=> copyText(buildWhatsappInvite(c));
+    window.__copyInviteCode = () => copyText(invite);
+    window.__copyWhatsappInvite = () => copyText(buildWhatsappInvite(curso));
+    window.__reloadApoderados = async () => { await loadData(); render(); };
   }
 
-  document.addEventListener("DOMContentLoaded", render);
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    render();
+    await loadData();
+    render();
+  });
 })();
