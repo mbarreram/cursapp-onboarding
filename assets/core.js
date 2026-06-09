@@ -174,6 +174,9 @@
   }
 
   function ensureMandatoryPaymentsForApproved(){
+    // Fase 2A: desactivado. Los pagos pendientes se generan en Supabase (tabla pagos), no en localStorage.
+    return false;
+    
     const tasks = load(KEY_TASKS, []);
     const enrollments = load(KEY_ENROLLMENTS, []);
     const approved = (enrollments||[]).filter(e => String(e?.status||'').toLowerCase() === 'approved');

@@ -212,8 +212,8 @@ window.toggleOptOut = function(taskId){
 
 // ---- Safe init post-reset (no pisa datos reales) ----
   function initSafeStorage(){
-    if(localStorage.getItem(KEY_TASKS)===null) save(KEY_TASKS, []);
-    if(localStorage.getItem(KEY_PAYMENTS)===null) save(KEY_PAYMENTS, []);
+    // Fase 2A: no crear tasks/payments vacíos en localStorage.
+    // Supabase hidrata estas llaves antes del render.
     if(localStorage.getItem(KEY_REPORTS)===null) save(KEY_REPORTS, []);
     if(localStorage.getItem(KEY_PROFILES)===null) save(KEY_PROFILES, []);
   }
@@ -1832,7 +1832,8 @@ function renderHome(){
     try { normalizeAndDedupePaymentsFor(ident0); } catch(e) {}
     paysAll = load(KEY_PAYMENTS, []);
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
-    paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
+    // Fase 2A: no materializar pagos locales. Usar solo pagos hidratados desde Supabase.
+    // paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
 
     // FIX v11: limpiar duplicados persistentes antes de renderizar Home.
     try{
@@ -2100,7 +2101,8 @@ function renderHome(){
 
 
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+    // Fase 2A: no materializar pagos locales. Usar solo pagos hidratados desde Supabase.
+    // paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
     // FIX v11: dedupe real antes de pintar pagos/campañas.
     try{
@@ -2599,9 +2601,16 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 window.payNow = function(id){
     if(!id){ alert("Pago no disponible."); return; }
+    const sid = String(id || "").trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
+    if(!isUuid){
+      alert("El pago aún no está sincronizado con Supabase. Vuelve a abrir Pagos en unos segundos.");
+      try{ if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function") window.CURSAPP_PAYMENTS_V11.refresh("payNow-non-uuid"); }catch(e){}
+      return;
+    }
     // Fase 2A MVP: no usar Netlify/Transbank desde Cloudflare.
     // El pago se registra en Supabase desde pay.html en modo demo.
-    location.href = `/pay.html?pid=${encodeURIComponent(id)}`;
+    location.href = `/pay.html?pago=${encodeURIComponent(sid)}`;
   };
 
   function renderInformes(){
@@ -2812,7 +2821,9 @@ if (DEMO_MODE) {
 async function __bootApoderadoSupabaseFirst(){
   try{
     if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache();
-    if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+    if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+      await window.CURSAPP_PAYMENTS_V11.refresh("apoderado-boot");
+    }else if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
       await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-boot");
     }
   }catch(e){
