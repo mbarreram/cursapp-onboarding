@@ -2598,49 +2598,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
 window.payNow = function(id){
-    // Checkout Webpay (Transbank): ir a pantalla de pago
-    const pays = load(KEY_PAYMENTS, []);
-    const i = pays.findIndex(p=>p.id===id);
-    if(i<0) return;
-
-    const mk = meKey();
-    const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    const courseKey = ident?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-
-    // ✅ Bloqueo duro: no pagar cobro de otro apoderado
-    const owner = String(pays[i].apoderadoKey || pays[i].apoderadoEmail || pays[i].apoderadoId || "").toLowerCase().trim();
-    if(owner && owner !== mk){
-      alert("Este cobro no pertenece a este apoderado.");
-      return;
-    }
-    // ✅ Si no tiene dueño, lo sellamos al apoderado actual (solo si ya es visible para él)
-    pays[i].courseKey = pays[i].courseKey || courseKey;
-    pays[i].apoderadoKey = mk;
-    pays[i].apoderadoId = mk;
-    pays[i].apoderadoEmail = mk;
-    if(!pays[i].alumnoId){
-      const alumnoLabel = String(pays[i].alumno || ident?.alumnoId || "");
-      pays[i].alumnoId = alumnoIdOf(pays[i].courseKey, mk, alumnoLabel);
-    }
-    if(!pays[i].paymentKey){
-      pays[i].paymentKey = paymentKeyOf(pays[i].courseKey, pays[i].fromTaskId, mk, pays[i].alumnoId, pays[i].period||"", pays[i].installmentIndex||"");
-    }
-
-    save(KEY_PAYMENTS, pays);
-
-    const checkouts = load(KEY_CHECKOUTS, []);
-    const checkout = {
-      id: "ck_" + Math.random().toString(16).slice(2),
-      paymentId: id,
-      apoderadoKey: mk,
-      courseKey: pays[i].courseKey,
-      createdAt: nowISO(),
-      status: "created"
-    };
-    checkouts.unshift(checkout);
-    save(KEY_CHECKOUTS, checkouts);
-
-    location.href = `/pay.html?pid=${encodeURIComponent(id)}&cid=${encodeURIComponent(checkout.id)}`;
+    if(!id){ alert("Pago no disponible."); return; }
+    // Fase 2A MVP: no usar Netlify/Transbank desde Cloudflare.
+    // El pago se registra en Supabase desde pay.html en modo demo.
+    location.href = `/pay.html?pid=${encodeURIComponent(id)}`;
   };
 
   function renderInformes(){
