@@ -1282,6 +1282,7 @@ if(d.alsoApoderado){
             phone: d.phone || ""
           },
           activation: { required:true, amount:7990, status: activation.status, createdAt: nowISO(), paidAt: activation.paidAt },
+          status: "pendiente",
           createdAt: nowISO()
         });
         saveProfiles(profiles);
