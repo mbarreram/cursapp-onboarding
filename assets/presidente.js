@@ -2995,22 +2995,34 @@ window.deleteCampaign = function(taskId){
   window.openCourseConfig = window.configurarCurso;
 
   // ----- boot -----
-  // ✅ DEMO seed solo si está activado globalmente
-  const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
-  if (DEMO_SEED) ensureDemo();
+  // Cursapp Fase 1D.6: antes de renderizar, hidratar datos oficiales desde Supabase.
+  // localStorage queda solo como caché técnica generada desde Supabase, no como fuente operacional.
+  async function __bootPresidenteSupabaseFirst(){
+    const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
+    if (DEMO_SEED) ensureDemo();
 
-  initMenu();
-  setInterval(()=>{
-    if(state.tab!=="campanas") return;
-    const sig = __tasksSig();
-    if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
-  }, 800);
-  // Si venimos desde Perfil, abrir el tab solicitado
-  var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
-    ? window.CURSAPP.consumeNextNavTab()
-    : null;
-  go(__nextTab || "home");
-  try{ debugPresidenteAlert("después go home"); }catch(e){}
+    try{
+      if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache();
+      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("presidente-boot");
+      }
+    }catch(e){
+      console.warn("Presidente: no se pudo hidratar Supabase antes del render", e);
+    }
+
+    initMenu();
+    setInterval(()=>{
+      if(state.tab!=="campanas") return;
+      const sig = __tasksSig();
+      if(sig && sig!==__TASKS_SIG){ __TASKS_SIG=sig; renderCampanas(); }
+    }, 800);
+    var __nextTab = (window.CURSAPP && typeof window.CURSAPP.consumeNextNavTab === "function")
+      ? window.CURSAPP.consumeNextNavTab()
+      : null;
+    go(__nextTab || "home");
+    try{ debugPresidenteAlert("después go home"); }catch(e){}
+  }
+  __bootPresidenteSupabaseFirst();
 })();
 
 window.openHelp = function(topic){

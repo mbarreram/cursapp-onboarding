@@ -2848,14 +2848,26 @@ if (DEMO_MODE) {
     }catch(e){}
   }
 
-initMenu();
-__hideLegacyTesoreroBanner();
-__maybePromptRole();
+async function __bootApoderadoSupabaseFirst(){
+  try{
+    if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache();
+    if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+      await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-boot");
+    }
+  }catch(e){
+    console.warn("Apoderado: no se pudo hidratar Supabase antes del render", e);
+  }
 
-const hash = (location.hash || "").replace("#","");
-if(hash==="payments_paid"){
-  try{ window.__apoForcePaid = true; }catch(e){}
-  go("payments");
-}else if(hash==="payments") go("payments");
-else go("home"); // default seguro post-reset
+  initMenu();
+  __hideLegacyTesoreroBanner();
+  __maybePromptRole();
+
+  const hash = (location.hash || "").replace("#","");
+  if(hash==="payments_paid"){
+    try{ window.__apoForcePaid = true; }catch(e){}
+    go("payments");
+  }else if(hash==="payments") go("payments");
+  else go("home");
+}
+__bootApoderadoSupabaseFirst();
 })();

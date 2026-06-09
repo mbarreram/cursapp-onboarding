@@ -1612,7 +1612,18 @@ const DEMO_SEED = (
 );
 if (DEMO_SEED) ensureDemo();
 
-initMenu();
-go("home");
+async function __bootTesoreroSupabaseFirst(){
+  try{
+    if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache();
+    if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+      await window.CURSAPP.hydrateOperationalFromSupabase("tesorero-boot");
+    }
+  }catch(e){
+    console.warn("Tesorero: no se pudo hidratar Supabase antes del render", e);
+  }
+  initMenu();
+  go("home");
+}
+__bootTesoreroSupabaseFirst();
 
 })();
