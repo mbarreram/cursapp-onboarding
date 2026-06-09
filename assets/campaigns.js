@@ -111,6 +111,108 @@
     ).toLowerCase().trim();
   }
 
+
+  // ---- Supabase write helpers (v11 MVP) ----
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg".replace("eyJpc3MiOiJIUzI1NiIs", "eyJpc3MiOiJIUzI1NiIs");
+  // Mantener key explícita real si el replace anterior no aplica en runtime.
+  const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  async function sb(path, opts){
+    const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({
+      headers:{
+        apikey: SB_ANON,
+        Authorization: "Bearer " + SB_ANON,
+        "Content-Type":"application/json",
+        Prefer:"return=representation"
+      }
+    }, opts || {}));
+    const txt = await res.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || txt || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  function currentCourseKey(){
+    try{
+      const sess = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null") || {};
+      return String(sess.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
+    }catch(e){ return String(localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim(); }
+  }
+
+  async function getActiveCursoRow(){
+    const ck = currentCourseKey();
+    if(!ck) throw new Error("No se encontró curso activo para guardar la campaña.");
+    const rows = await sb("cursos?course_key=eq." + sbQ(ck) + "&select=*&limit=1", { method:"GET" });
+    const curso = Array.isArray(rows) ? rows[0] : null;
+    if(!curso || !curso.id) throw new Error("El curso activo no existe en Supabase: " + ck);
+    return curso;
+  }
+
+  function cleanDate(v){
+    const s = String(v || "").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  }
+
+  function isApprovedMember(m){
+    const st = String(m?.estado || "").toLowerCase();
+    return ["aprobado","aprobada","approved","activo","activa"].includes(st);
+  }
+
+  async function ensurePagosForCampana(campana, curso, task){
+    if(!campana || !campana.id || !curso || !curso.id) return 0;
+    if(task && task.mandatoryParticipation === false) return 0;
+    const miembros = await sb("miembros_curso?curso_id=eq." + sbQ(curso.id) + "&rol=eq.apoderado&select=*", { method:"GET" });
+    const aprobados = (Array.isArray(miembros) ? miembros : []).filter(isApprovedMember);
+    let count = 0;
+    for(const m of aprobados){
+      if(!m || !m.id) continue;
+      const existing = await sb("pagos?campana_id=eq." + sbQ(campana.id) + "&miembro_id=eq." + sbQ(m.id) + "&select=id&limit=1", { method:"GET" });
+      if(Array.isArray(existing) && existing.length) continue;
+      const row = {
+        curso_id: curso.id,
+        campana_id: campana.id,
+        miembro_id: m.id,
+        monto: Number(task?.amount || task?.monto || 0) || 0,
+        monto_pagado: 0,
+        estado: "pendiente",
+        fecha_vencimiento: cleanDate(task?.dueDate || task?.fecha_vencimiento || task?.endDate),
+        periodo: String(task?.dueDate || task?.fecha_vencimiento || task?.endDate || new Date().toISOString()).slice(0,7)
+      };
+      await sb("pagos", { method:"POST", body:JSON.stringify(row) });
+      count++;
+    }
+    return count;
+  }
+
+  async function saveCampaignToSupabase(task){
+    const curso = await getActiveCursoRow();
+    const body = {
+      curso_id: curso.id,
+      titulo: String(task?.title || task?.titulo || "Campaña").trim() || "Campaña",
+      tipo: String(task?.type || task?.tipo || "single"),
+      monto: Number(task?.amount || task?.monto || 0) || 0,
+      fecha_inicio: cleanDate(task?.startDate || task?.fecha_inicio),
+      fecha_vencimiento: cleanDate(task?.dueDate || task?.fecha_vencimiento || task?.endDate),
+      meses: Number(task?.months || task?.meses || 1) || 1,
+      obligatoria: task?.mandatoryParticipation !== false,
+      estado: task?.closed ? "cerrada" : "activa"
+    };
+    const inserted = await sb("campanas", { method:"POST", body:JSON.stringify(body) });
+    const campana = Array.isArray(inserted) ? inserted[0] : inserted;
+    if(campana && campana.id){
+      task.supabaseId = campana.id;
+      task.campana_id = campana.id;
+      await ensurePagosForCampana(campana, curso, task);
+    }
+    return campana;
+  }
+
   function addMonthsKeepDay(isoDateStr, monthsToAdd) {
     const d = new Date(isoDateStr + "T12:00:00");
     const target = new Date(d.getFullYear(), d.getMonth() + monthsToAdd, d.getDate(), 12, 0, 0);
@@ -546,7 +648,7 @@
     addQuote();
   }
 
-  function saveCreateTemplate(tpl){
+  async function saveCreateTemplate(tpl){
     const template = String(tpl||"").toLowerCase();
     const title = (document.getElementById("tc_title").value||"").trim();
     const desc  = (document.getElementById("tc_desc").value||"").trim();
@@ -578,7 +680,7 @@
 
     const newTaskId = uid("t");
     const ts = load(KEY_TASKS, []);
-    ts.unshift({
+    const task = {
       id: newTaskId,
       title,
       description: desc,
@@ -593,7 +695,10 @@
       template,
       saldo_prev: saldoPrev,
       cotizaciones: cotizaciones2,
-    });
+    };
+    try{ await saveCampaignToSupabase(task); }
+    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
+    ts.unshift(task);
     save(KEY_TASKS, ts);
 
     // Instantiate pending payments for mandatory templates (first month only)
@@ -730,7 +835,7 @@
     `);
   }
 
-  function saveCreate() {
+  async function saveCreate() {
     const title = (document.getElementById("cc_title").value || "").trim();
     const desc  = (document.getElementById("cc_desc").value || "").trim();
     const type  = document.getElementById("cc_type").value || "single";
@@ -758,7 +863,7 @@
     const newTaskId = uid("t");
 
     const ts = load(KEY_TASKS, []);
-    ts.unshift({
+    const task = {
       id: newTaskId,
       title,
       description: desc,
@@ -773,8 +878,12 @@
       closeType: "",
       closeReason: "",
       closedAt: ""
-    });
+    };
 
+    try{ await saveCampaignToSupabase(task); }
+    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
+
+    ts.unshift(task);
     save(KEY_TASKS, ts);
 
     // ✅ Mandatory campaigns: pre-create pending payments per approved apoderado.

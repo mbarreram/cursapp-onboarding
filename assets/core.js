@@ -376,9 +376,7 @@
   function activeCourseKey(){
     try{
       const s = loadJSON("cursapp_session_v1", null) || {};
-      // v11 Supabase-first: la sesión es la fuente oficial del curso activo.
-      // cursapp_active_course_v1 queda solo como compatibilidad si una sesión antigua no trae courseKey.
-      return String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
+      return String(localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "").trim();
     }catch(e){ return ""; }
   }
 
@@ -576,7 +574,7 @@
       nombre_apoderado: nombre || null,
       nombre_alumno: alumno || null,
       email: email || null,
-      estado: String(profile.status || "aprobado").toLowerCase(),
+      estado: String(profile.status || (rol === "apoderado" ? "pendiente" : "aprobado")).toLowerCase(),
       activacion_pagada: (rol === "presidente" || rol === "tesorero") ? true : (String(profile.activation?.status || "").toLowerCase() === "paid")
     });
     if(row && row.id){ const mm = mapLoad(); mm.miembros[key] = row.id; mapSave(mm); return row.id; }
@@ -758,7 +756,6 @@
   function getSession(){ return loadJSON("cursapp_session_v1", null) || {}; }
   function activeCourseKey(){
     const s = getSession();
-    // v11 Supabase-first: la sesión manda; localStorage solo fallback legacy.
     return String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
   }
   function scopedKey(base){
@@ -772,7 +769,7 @@
     const keep = new Set([
       "cursapp_session_v1",
       "cursapp_active_role_v1",
-      // No conservar cursapp_active_course_v1: causaba curso activo viejo entre Safari/Chrome.
+      "cursapp_active_course_v1",
       "cursapp_active_profile_v1",
       "cursapp_nav_tab_v1",
       "cursapp_nav_at_v1",
