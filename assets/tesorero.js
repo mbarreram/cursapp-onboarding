@@ -423,6 +423,15 @@
     save(KEY_PAYMENTS, payments);
 
     try{
+      const paidPaymentForSync = pendingIdx >= 0 ? payments[pendingIdx] : payments[0];
+      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.syncPaidLocalPayment === "function"){
+        window.CURSAPP_PAYMENTS_V11.syncPaidLocalPayment(paidPaymentForSync)
+          .then(function(){ try{ return window.CURSAPP_PAYMENTS_V11.refresh("manual-payment"); }catch(e){} })
+          .catch(function(e){ console.warn("No se pudo sincronizar pago manual en Supabase", e); });
+      }
+    }catch(e){}
+
+    try{
       if(typeof window.createAviso === "function"){
         const paidPayment = pendingIdx >= 0 ? payments[pendingIdx] : payments[0];
         const campaignTitle = String(task?.title || concept || "Pago").trim();

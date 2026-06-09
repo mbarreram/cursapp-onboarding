@@ -885,6 +885,11 @@
 
     ts.unshift(task);
     save(KEY_TASKS, ts);
+    try{
+      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+        window.CURSAPP_PAYMENTS_V11.refresh("campaign-created").catch(function(e){ console.warn("No se pudo refrescar pagos Supabase", e); });
+      }
+    }catch(e){}
 
     // ✅ Mandatory campaigns: pre-create pending payments per approved apoderado.
     // This improves UX/consistency (deudores + cuotas) without waiting for each apoderado to enter.

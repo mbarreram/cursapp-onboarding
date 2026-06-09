@@ -997,3 +997,177 @@
     else run();
   }
 })();
+
+
+/* ============================================================
+   Cursapp · Fase 2A Pagos Supabase
+   - Supabase es fuente oficial de pagos.
+   - Genera pagos pendientes faltantes para campañas obligatorias.
+   - Permite marcar pagos como pagados desde Webpay o conciliación manual.
+   ============================================================ */
+(function(){
+  if(window.__CURSAPP_FASE2A_PAGOS_SUPABASE__) return;
+  window.__CURSAPP_FASE2A_PAGOS_SUPABASE__ = true;
+
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const STATUS_KEY = "cursapp_fase2a_pagos_status_v1";
+
+  const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
+  const todayISO = ()=> new Date().toISOString().slice(0,10);
+  const ymFromISO = (v)=> String(v||"").slice(0,7) || todayISO().slice(0,7);
+  const norm = (v)=> String(v||"").toLowerCase().trim();
+  const isUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
+
+  function saveStatus(status, detail){
+    try{ localStorage.setItem(STATUS_KEY, JSON.stringify({status, detail:detail||{}, at:new Date().toISOString()})); }catch(e){}
+  }
+  async function sb(path, opts){
+    const headers = Object.assign({
+      apikey: SB_KEY,
+      Authorization: "Bearer " + SB_KEY,
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    }, (opts && opts.headers) || {});
+    const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({}, opts || {}, { headers }));
+    const txt = await res.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint || data.details)) || txt || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return Array.isArray(data) ? data : (data ? [data] : []);
+  }
+  function getSession(){ try{ return JSON.parse(localStorage.getItem("cursapp_session_v1") || "null") || {}; }catch(e){ return {}; } }
+  function activeCourseKey(){
+    const s = getSession();
+    return String(s.courseKey || s.course_key || "").trim();
+  }
+  async function getCurso(){
+    const ck = activeCourseKey();
+    if(!ck) return null;
+    const rows = await sb("cursos?course_key=eq." + q(ck) + "&select=*&limit=1");
+    return rows[0] || null;
+  }
+  function isApprovedApoderado(m){
+    if(norm(m.rol) !== "apoderado") return false;
+    return ["aprobado","aprobada","approved","activo","activa"].includes(norm(m.estado));
+  }
+  function isMandatoryActive(c){
+    if(c.obligatoria === false) return false;
+    const st = norm(c.estado || "activa");
+    return !(st === "cerrada" || st === "closed" || st === "eliminada");
+  }
+  async function ensurePagosPendientes(cursoId){
+    if(!cursoId) return {inserted:0, campanas:0, miembros:0};
+    const [campanas, miembros, pagos] = await Promise.all([
+      sb("campanas?curso_id=eq." + q(cursoId) + "&select=*&order=created_at.desc"),
+      sb("miembros_curso?curso_id=eq." + q(cursoId) + "&select=*&order=created_at.desc"),
+      sb("pagos?curso_id=eq." + q(cursoId) + "&select=id,campana_id,miembro_id")
+    ]);
+    const aps = miembros.filter(isApprovedApoderado);
+    const existing = new Set(pagos.map(p=> String(p.campana_id||"") + "|" + String(p.miembro_id||"")));
+    let inserted = 0;
+    for(const camp of campanas.filter(isMandatoryActive)){
+      for(const m of aps){
+        if(!camp.id || !m.id) continue;
+        const key = String(camp.id) + "|" + String(m.id);
+        if(existing.has(key)) continue;
+        const body = {
+          curso_id: cursoId,
+          campana_id: camp.id,
+          miembro_id: m.id,
+          monto: Number(camp.monto || 0) || 0,
+          monto_pagado: 0,
+          estado: "pendiente",
+          fecha_vencimiento: camp.fecha_vencimiento || null,
+          periodo: ymFromISO(camp.fecha_vencimiento || camp.created_at)
+        };
+        await sb("pagos", { method:"POST", body: JSON.stringify(body) });
+        existing.add(key);
+        inserted++;
+      }
+    }
+    return {inserted, campanas:campanas.length, miembros:aps.length};
+  }
+  async function markPaid(paymentId, opts){
+    if(!paymentId || !isUuid(paymentId)) return null;
+    const amount = Number(opts?.amount || 0) || null;
+    const body = {
+      estado: "pagado",
+      paid_at: opts?.paidAt || new Date().toISOString(),
+      metodo_pago: opts?.method || opts?.paymentMethod || "webpay"
+    };
+    if(amount != null) body.monto_pagado = amount;
+    const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
+    try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
+    return rows[0] || null;
+  }
+  async function syncPaidLocalPayment(payment){
+    if(!payment) return null;
+    const id = payment.remoteId || payment.id;
+    if(isUuid(id)) return markPaid(id, { amount: payment.amount || payment.monto, method: payment.paymentMethod || payment.paidWith || "manual", paidAt: payment.paidAt || new Date().toISOString() });
+
+    const curso = await getCurso();
+    if(!curso || !curso.id) return null;
+    const email = norm(payment.apoderadoEmail || payment.email || payment.apoderadoKey || payment.apoderadoId || "");
+    const campanaId = payment.campana_id || payment.campaignId || payment.fromTaskId || "";
+    if(!email || !campanaId || !isUuid(campanaId)) return null;
+    const miembros = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id&limit=1");
+    const miembro = miembros[0];
+    if(!miembro || !miembro.id) return null;
+    const existentes = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id&limit=1");
+    if(existentes[0]) return markPaid(existentes[0].id, { amount: payment.amount || payment.monto, method: payment.paymentMethod || payment.paidWith || "manual", paidAt: payment.paidAt || new Date().toISOString() });
+    const rows = await sb("pagos", { method:"POST", body: JSON.stringify({
+      curso_id: curso.id,
+      campana_id: campanaId,
+      miembro_id: miembro.id,
+      monto: Number(payment.amount || payment.monto || 0),
+      monto_pagado: Number(payment.amount || payment.monto || 0),
+      estado: "pagado",
+      paid_at: payment.paidAt || new Date().toISOString(),
+      metodo_pago: payment.paymentMethod || payment.paidWith || "manual",
+      fecha_vencimiento: payment.dueDate || null,
+      periodo: payment.period || ymFromISO(payment.dueDate || payment.paidAt)
+    }) });
+    return rows[0] || null;
+  }
+  async function syncPaidLocalPayments(){
+    try{
+      const ck = activeCourseKey();
+      if(!ck) return {synced:0};
+      const key = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function") ? window.CURSAPP.scopedKey("payments_v1") : "cursapp_" + ck + "_payments_v1";
+      const arr = JSON.parse(localStorage.getItem(key) || localStorage.getItem("cursapp_payments_v1") || "[]");
+      let synced = 0;
+      for(const p of (Array.isArray(arr)?arr:[])){
+        if(norm(p && p.status) !== "paid") continue;
+        try{ const row = await syncPaidLocalPayment(p); if(row) synced++; }catch(e){}
+      }
+      return {synced};
+    }catch(e){ return {synced:0, error:e.message}; }
+  }
+  async function refresh(reason){
+    try{
+      const curso = await getCurso();
+      if(!curso || !curso.id) return;
+      const ensured = await ensurePagosPendientes(curso.id);
+      const synced = await syncPaidLocalPayments();
+      saveStatus("ok", {reason:reason||"manual", ensured, synced});
+      try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-refresh"); }catch(e){}
+      return {ensured, synced};
+    }catch(e){ saveStatus("error", {reason:reason||"manual", message:e.message}); throw e; }
+  }
+
+  window.CURSAPP = window.CURSAPP || {};
+  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, syncPaidLocalPayment, syncPaidLocalPayments };
+  window.CURSAPP.refreshPagosSupabase = refresh;
+  window.CURSAPP.markPaymentPaidSupabase = markPaid;
+
+  let t = null;
+  function schedule(reason){ clearTimeout(t); t = setTimeout(()=>refresh(reason).catch(()=>{}), 600); }
+  window.addEventListener("cursapp:dataChanged", ()=>schedule("dataChanged"));
+  window.addEventListener("cursapp:dataUpdated", ()=>schedule("dataUpdated"));
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
+  else schedule("load");
+})();

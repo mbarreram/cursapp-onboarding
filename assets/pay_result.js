@@ -82,6 +82,12 @@
         }
       }catch(e){}
       save(KEY_PAYMENTS, pays);
+      try{
+        if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.markPaid === "function"){
+          window.CURSAPP_PAYMENTS_V11.markPaid(pid, { amount, method:"webpay", paidAt:new Date().toISOString(), authorizationCode: auth, responseCode: resp, buyOrder: buy })
+            .catch(function(e){ console.warn("No se pudo actualizar pago en Supabase", e); });
+        }
+      }catch(e){}
     }
 
     try{
@@ -99,7 +105,7 @@
         </div>
       </div>
     `;
-    setTimeout(goPaid, 450);
+    setTimeout(goPaid, 900);
   }else{
     el.innerHTML = `
       <div class="card">
