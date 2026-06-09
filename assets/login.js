@@ -185,7 +185,11 @@ function loadJSON(k, def) {
     return exists;
   }
 
-  function setActiveCourseKey(k) { localStorage.setItem(KEY_ACTIVE_COURSE, String(k || "")); }
+  function setActiveCourseKey(k) {
+    // v11 Supabase-first: se guarda por compatibilidad, pero la sesión es la fuente oficial.
+    try { localStorage.removeItem(KEY_ACTIVE_COURSE); } catch(e) {}
+    localStorage.setItem(KEY_ACTIVE_COURSE, String(k || ""));
+  }
   function setActiveProfileId(id) { localStorage.setItem(KEY_ACTIVE_PROFILE, String(id || "")); }
 
   function setSession(session) {
@@ -269,6 +273,7 @@ function loadJSON(k, def) {
   // ===== routing by role =====
   function go(role, userEmail, courseKey, profile) {
     const pid = profile ? profileIdOf(userEmail, profile) : "";
+    try { if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache(); } catch(e) {}
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
         dbgAlert("Session BEFORE save", {

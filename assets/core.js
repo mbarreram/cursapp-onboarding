@@ -376,7 +376,9 @@
   function activeCourseKey(){
     try{
       const s = loadJSON("cursapp_session_v1", null) || {};
-      return String(localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "").trim();
+      // v11 Supabase-first: la sesión es la fuente oficial del curso activo.
+      // cursapp_active_course_v1 queda solo como compatibilidad si una sesión antigua no trae courseKey.
+      return String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
     }catch(e){ return ""; }
   }
 
@@ -756,6 +758,7 @@
   function getSession(){ return loadJSON("cursapp_session_v1", null) || {}; }
   function activeCourseKey(){
     const s = getSession();
+    // v11 Supabase-first: la sesión manda; localStorage solo fallback legacy.
     return String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
   }
   function scopedKey(base){
@@ -769,7 +772,7 @@
     const keep = new Set([
       "cursapp_session_v1",
       "cursapp_active_role_v1",
-      "cursapp_active_course_v1",
+      // No conservar cursapp_active_course_v1: causaba curso activo viejo entre Safari/Chrome.
       "cursapp_active_profile_v1",
       "cursapp_nav_tab_v1",
       "cursapp_nav_at_v1",

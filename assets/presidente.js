@@ -733,7 +733,10 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const KEY_ENROLL = "cursapp_enrollments_v1";
 
   function activeCourseKey(){
-    return localStorage.getItem(KEY_ACTIVE_COURSE) || "";
+    try{
+      const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null") || {};
+      return String(s.courseKey || "").trim();
+    }catch(e){ return ""; }
   }
   function approvedApoderados(){
     const ck = activeCourseKey();
