@@ -2097,24 +2097,7 @@ function renderHome(){
   let payFilter="pending";
   window.setPayFilter=(f)=>{ payFilter=f; renderPayments(); };
 
-  async function renderPayments(){
-    if(window.__apoPaymentsBootRefresh !== true && !window.__apoPaymentsBootRefreshing){
-      window.__apoPaymentsBootRefreshing = true;
-      try{
-        if(app){
-          app.innerHTML = `<div class="card"><div class="kTitle">Actualizando pagos…</div><div class="muted" style="margin-top:6px;">Sincronizando cobros desde Supabase.</div></div>`;
-        }
-        if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
-          await window.CURSAPP_PAYMENTS_V11.refresh("apoderado-render-payments");
-        }else if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
-          await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-render-payments");
-        }
-      }catch(e){
-        console.warn("No se pudo refrescar pagos antes de renderizar", e);
-      }
-      window.__apoPaymentsBootRefresh = true;
-      window.__apoPaymentsBootRefreshing = false;
-    }
+  function renderPayments(){
     let paysAll = load(KEY_PAYMENTS, []);
     const ddP = dedupePaymentsAll(paysAll);
     if(ddP.changed) save(KEY_PAYMENTS, ddP.list);
@@ -2201,7 +2184,7 @@ function renderHome(){
       const isPend = (st==="pending" || st==="partial");
       const isPaidRow = (st==="paid");
       const isCred = (st==="credit");
-      const task = tasksAll.find(t=>paymentBelongsToTask(r, t));
+      const task = tasksAll.find(t=>t.id===r.fromTaskId);
       const isMonthlyTask = String(task?.type||"") === "monthly";
       const optedOut = task ? isOptedOut(task.id) : false;
 
@@ -2266,7 +2249,7 @@ function renderHome(){
     const nextCard = nextDue ? `
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
         <div style="font-weight:950;">Próxima cuota</div>
-        <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>paymentBelongsToTask(nextDue, t))?.title)||"—")}</b></div>
+        <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"—")}</b></div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
           Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
         </div>
@@ -2278,11 +2261,7 @@ function renderHome(){
     ` : ``;
     // Aplicar filtro por campaña (si no es "all")
     if(selectedTask !== "all"){
-      paysFiltered = paysFiltered.filter(p => {
-        if(selectedTask === "no_task") return paymentTaskGroupKey(p) === "no_task";
-        const t = tasksAll.find(x=>String(x.id)===String(selectedTask));
-        return t ? paymentBelongsToTask(p, t) : paymentTaskGroupKey(p) === selectedTask;
-      });
+      paysFiltered = paysFiltered.filter(p => (p.fromTaskId || "no_task") === selectedTask);
     }
 
 
@@ -2300,29 +2279,10 @@ function renderHome(){
       return out;
     }
 
-function paymentBelongsToTask(p, t){
-      if(!p || !t) return false;
-      const ids = [p.fromTaskId, p.taskId, p.campaignId, p.campana_id, p.remoteCampaignId].map(x=>String(x||"").trim()).filter(Boolean);
-      const taskIds = [t.id, t.remoteId, t.supabaseId, t.campana_id].map(x=>String(x||"").trim()).filter(Boolean);
-      if(ids.some(id=>taskIds.includes(id))) return true;
-      const pt = String(p.title || p.campaignTitle || p.concept || "").toLowerCase().trim();
-      const tt = String(t.title || t.name || "").toLowerCase().trim();
-      const pa = Number(p.amount ?? p.amountRemaining ?? p.monto ?? 0) || 0;
-      const ta = Number(t.amount ?? t.monto ?? 0) || 0;
-      return !!pt && !!tt && pt === tt && (!pa || !ta || pa === ta);
-    }
-
-    function paymentTaskGroupKey(p){
-      const direct = String(p?.fromTaskId || p?.taskId || p?.campaignId || p?.campana_id || p?.remoteCampaignId || "").trim();
-      if(direct) return direct;
-      const t = tasksAll.find(x=>paymentBelongsToTask(p, x));
-      return t ? String(t.id) : "no_task";
-    }
-
-    // agrupar pagos por campaña
+// agrupar pagos por campaña
     const paysByTask = {};
     paysFiltered.forEach(p=>{
-      const tid = paymentTaskGroupKey(p);
+      const tid = p.fromTaskId || "no_task";
       paysByTask[tid] = paysByTask[tid] || [];
       paysByTask[tid].push(p);
     });
@@ -2358,11 +2318,9 @@ function paymentBelongsToTask(p, t){
       .slice()
       .sort((a,b)=>String(a.dueDate||"").localeCompare(String(b.dueDate||"")))
       .map(t=>{
-        const rows = uniquePayments((paysByTask[t.id] || []).concat(
-          (paysFiltered || []).filter(p => !(paysByTask[t.id] || []).includes(p) && paymentBelongsToTask(p, t))
-        ));
+        const rows = uniquePayments(paysByTask[t.id] || []);
         if(!rows.length){
-          const hasAny = paysAll.some(p=>paymentBelongsToTask(p, t));
+          const hasAny = paysAll.some(p=>p.fromTaskId===t.id);
           return hasAny
             ? (()=>{
                 const oo = (t.mandatoryParticipation===false) ? isOptedOut(t.id) : false;
@@ -2654,6 +2612,32 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 window.payNow = async function(id){
     if(!id){ alert("Pago no disponible."); return; }
     const sid = String(id || "").trim();
+
+    // DEBUG TEMPORAL Fase 2B pagos · quitar después de validar despliegue Cloudflare
+    try{
+      const paysDbg = load(KEY_PAYMENTS, []);
+      const tasksDbg = normalizeTasks(load(KEY_TASKS, []));
+      const pDbg = (Array.isArray(paysDbg) ? paysDbg : []).find(x => String(x?.id || x?.remoteId || "") === sid) || null;
+      const tDbg = pDbg ? tasksDbg.find(t => String(t?.id || t?.remoteId || "") === String(pDbg.fromTaskId || pDbg.campana_id || pDbg.campaignId || "")) : null;
+      alert(
+        "DEBUG PAGO F2B 2026-06-10 12:10\n" +
+        "id recibido: " + sid + "\n" +
+        "es UUID: " + (isSupabaseUuid(sid) ? "SI" : "NO") + "\n" +
+        "pago encontrado local: " + (pDbg ? "SI" : "NO") + "\n" +
+        "remoteId: " + String(pDbg?.remoteId || "") + "\n" +
+        "status: " + String(pDbg?.status || pDbg?.estado || "") + "\n" +
+        "monto: " + String(pDbg?.amount ?? pDbg?.monto ?? "") + "\n" +
+        "amountRemaining: " + String(pDbg?.amountRemaining ?? "") + "\n" +
+        "fromTaskId: " + String(pDbg?.fromTaskId || "") + "\n" +
+        "campana_id: " + String(pDbg?.campana_id || pDbg?.campaignId || "") + "\n" +
+        "campaña match: " + (tDbg ? "SI - " + String(tDbg.title || tDbg.name || tDbg.id) : "NO") + "\n" +
+        "pagos cache: " + (Array.isArray(paysDbg) ? paysDbg.length : 0) + "\n" +
+        "campañas cache: " + (Array.isArray(tasksDbg) ? tasksDbg.length : 0)
+      );
+    }catch(e){
+      alert("DEBUG PAGO F2B 2026-06-10 12:10\nError armando diagnóstico: " + (e && e.message ? e.message : String(e)));
+    }
+
     if(!isSupabaseUuid(sid)){
       // Este caso corresponde a IDs legacy tipo pay_xxx. No existen en tabla pagos.
       try{
