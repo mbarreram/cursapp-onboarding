@@ -13,8 +13,6 @@ if (!session || !session.userId || !session.courseKey) {
 }
 
 (function(){
-  const CURSAPP_DEBUG_PAGO_VERSION = "F2B-PAGO-DEBUG-20260610-1235";
-  const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
 
@@ -558,6 +556,12 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
+  // Fase 2B: un pago válido debe venir desde Supabase (UUID de tabla pagos.id).
+  // Los IDs legacy tipo pay_xxx son caché local antigua y NO deben abrir pay.html.
+  const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
+  function onlySupabasePayments(list){
+    return (Array.isArray(list) ? list : []).filter(p => isSupabaseUuid(p?.id || p?.remoteId));
+  }
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
@@ -1734,6 +1738,9 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
       const tasks = normalizeTasks(load(KEY_TASKS, []));
       let list = load(KEY_PAYMENTS, []);
       try{ list = cleanVisiblePaymentsV11(list, tasks).list; }catch(e){}
+      // Fase 2B: Home no debe usar cobros locales legacy tipo pay_xxx.
+      // Solo los pagos con UUID real de Supabase pueden abrir pay.html.
+      list = onlySupabasePayments(list);
       return list
         .filter(isMinePayment)
         .filter(p=>!isPaymentOptedOut(p))
@@ -1834,7 +1841,8 @@ function renderHome(){
     try { normalizeAndDedupePaymentsFor(ident0); } catch(e) {}
     paysAll = load(KEY_PAYMENTS, []);
     const tasks0 = normalizeTasks(load(KEY_TASKS, []));
-    paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
+    // Fase 2B: no crear pagos locales en Apoderado. Los pagos nacen en Supabase.
+    // paysAll = ensurePaymentsForIdentity(ident0, tasks0, paysAll);
 
     // FIX v11: limpiar duplicados persistentes antes de renderizar Home.
     try{
@@ -1842,6 +1850,9 @@ function renderHome(){
       if(clean.changed) save(KEY_PAYMENTS, clean.list);
       paysAll = clean.list;
     }catch(e){}
+
+    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
+    paysAll = onlySupabasePayments(paysAll);
 
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
@@ -2102,7 +2113,8 @@ function renderHome(){
 
 
     const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : null;
-    paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+    // Fase 2B: no crear pagos locales en Apoderado. Los pagos nacen en Supabase.
+    // paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
     // FIX v11: dedupe real antes de pintar pagos/campañas.
     try{
@@ -2110,6 +2122,9 @@ function renderHome(){
       if(clean.changed) save(KEY_PAYMENTS, clean.list);
       paysAll = clean.list;
     }catch(e){}
+
+    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
+    paysAll = onlySupabasePayments(paysAll);
 
     // ✅ Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
@@ -2298,17 +2313,7 @@ function renderHome(){
             <span class="tag">${esc(m.part)}</span>
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
-            Aún no hay cobros generados para ti en esta campaña.
-          </div>
-          <div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:900;line-height:1.35;font-size:13px;">
-            DEBUG ${esc(CURSAPP_DEBUG_PAGO_VERSION)}<br>
-            Campaña id: ${esc(t.id)}<br>
-            Pagos con fromTaskId igual: ${(paysAll||[]).filter(p=>String(p.fromTaskId||p.campana_id||p.campaignId||'')===String(t.id)).length}<br>
-            Total pagos cache: ${(paysAll||[]).length}<br>
-            UUID pagos cache: ${(paysAll||[]).filter(p=>isSupabaseUuid(p?.id || p?.remoteId)).length}
-          </div>
-          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
-            <button class="btnx primary" type="button" onclick="window.__debugRefreshPagos && window.__debugRefreshPagos()">Forzar refresco pagos</button>
+            Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
           </div>
         </div>
       `;
@@ -2496,11 +2501,6 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         </div>
                 <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
         ${chips}
-        <div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:900;line-height:1.35;">
-          DEBUG ${esc(CURSAPP_DEBUG_PAGO_VERSION)}<br>
-          Campañas cache: ${tasksAll.length} · Pagos cache: ${paysAll.length} · Filtro: ${esc(payFilter)}<br>
-          UUID pagos: ${paysAll.filter(p=>isSupabaseUuid(p?.id || p?.remoteId)).length}
-        </div>
       </div>
 
       ${taskOptions}
@@ -2614,27 +2614,24 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   };
 
 
-window.__debugRefreshPagos = async function(){
-    alert("DEBUG refresco pagos " + CURSAPP_DEBUG_PAGO_VERSION);
-    try{
-      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
-        await window.CURSAPP_PAYMENTS_V11.refresh("debug-refresh-button");
-      }
-      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
-        await window.CURSAPP.hydrateOperationalFromSupabase("debug-refresh-button");
-      }
-      alert("Refresco completado. Se volverá a pintar Pagos.");
-      renderPayments();
-    }catch(e){
-      alert("Error refrescando pagos: " + (e && e.message ? e.message : e));
-    }
-  };
-
-window.payNow = function(id){
+window.payNow = async function(id){
     if(!id){ alert("Pago no disponible."); return; }
-    // Fase 2A MVP: no usar Netlify/Transbank desde Cloudflare.
-    // El pago se registra en Supabase desde pay.html en modo demo.
-    location.href = `/pay.html?pid=${encodeURIComponent(id)}`;
+    const sid = String(id || "").trim();
+    if(!isSupabaseUuid(sid)){
+      // Este caso corresponde a IDs legacy tipo pay_xxx. No existen en tabla pagos.
+      try{
+        if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+          await window.CURSAPP_PAYMENTS_V11.refresh("payNow-legacy-id");
+        }else if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+          await window.CURSAPP.hydrateOperationalFromSupabase("payNow-legacy-id");
+        }
+      }catch(e){}
+      alert("Este pago viene de una referencia antigua del navegador. Actualicé desde Supabase; vuelve a presionar Pagar.");
+      try{ renderPayments(); }catch(e){}
+      return;
+    }
+    // Fase 2B: pay.html recibe exclusivamente pagos.id UUID de Supabase.
+    location.href = `/pay.html?pago=${encodeURIComponent(sid)}`;
   };
 
   function renderInformes(){
@@ -2848,8 +2845,16 @@ async function __bootApoderadoSupabaseFirst(){
     if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
       await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-boot");
     }
+    // Fase 2B: antes de pintar, pedir a Supabase que cree los pagos pendientes faltantes
+    // para campañas obligatorias y luego rehidratar. Evita mostrar pagos locales pay_xxx.
+    if(window.CURSAPP && typeof window.CURSAPP.refreshPagosSupabase === "function"){
+      await window.CURSAPP.refreshPagosSupabase("apoderado-boot-before-render");
+      if(typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-boot-after-payments-refresh");
+      }
+    }
   }catch(e){
-    console.warn("Apoderado: no se pudo hidratar Supabase antes del render", e);
+    console.warn("Apoderado: no se pudo hidratar/crear pagos Supabase antes del render", e);
   }
 
   initMenu();

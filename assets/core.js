@@ -586,12 +586,110 @@
 
   async function syncCourses(){ const courses = allLocalCourses(); for(const c of courses) await ensureCurso(c); return courses.length; }
 
+  function getSessionLike(){
+    try{ return loadJSON("cursapp_session_v1", {}) || {}; }catch(e){ return {}; }
+  }
+
+  function firstNonEmpty(){
+    for(const v of arguments){
+      const s = String(v == null ? "" : v).trim();
+      if(s) return s;
+    }
+    return "";
+  }
+
+  function sessionEmailFallback(s){
+    s = s || {};
+    const direct = firstNonEmpty(s.email, s.userEmail, s.username, s.loginEmail, s.apoderadoEmail);
+    if(direct) return direct.toLowerCase();
+    const uid = firstNonEmpty(s.userId, s.id);
+    return uid.includes("@") ? uid.toLowerCase() : "";
+  }
+
+  function currentRoleFallback(s){
+    s = s || {};
+    let r = String(firstNonEmpty(s.role, s.rol, localStorage.getItem("cursapp_active_role_v1"))).toLowerCase();
+    const path = String(location.pathname || "").toLowerCase();
+    if(!r && path.includes("presidente")) r = "presidente";
+    if(!r && path.includes("tesorero")) r = "tesorero";
+    if(!r && path.includes("apoderado")) r = "apoderado";
+    if(r.includes("pres")) return "presidente";
+    if(r.includes("tesor")) return "tesorero";
+    if(r.includes("apod")) return "apoderado";
+    return r || "apoderado";
+  }
+
+  function localCourseForSession(courseKey){
+    try{
+      const all = allLocalCourses();
+      const found = all.find(x => normalizeCourseObj(x)?.courseKey === courseKey);
+      if(found) return normalizeCourseObj(found);
+    }catch(e){}
+    try{
+      const c = loadJSON("cursapp_course_v1", null);
+      const nc = normalizeCourseObj(c);
+      if(nc && nc.courseKey === courseKey) return nc;
+    }catch(e){}
+    return { courseKey, schoolName:"Colegio", regionName:"", comunaName:"", level:"", letter:"", year:null, jornada:"", inviteCode:"" };
+  }
+
+  function buildSessionFallbackProfiles(){
+    const s = getSessionLike();
+    const courseKey = firstNonEmpty(s.courseKey, s.course_key, localStorage.getItem("cursapp_active_course_v1"));
+    const email = sessionEmailFallback(s);
+    if(!courseKey || !email) return [];
+
+    const course = localCourseForSession(courseKey);
+    const name = firstNonEmpty(s.name, s.nombre, s.fullName, s.apoderadoName, email);
+    const alumno = firstNonEmpty(s.alumno, s.nombre_alumno, s.nombreAlumno, s.studentName, s.student, "");
+    const phone = firstNonEmpty(s.phone, s.telefono, "");
+    const userId = firstNonEmpty(s.userId, s.id, email);
+    const role = currentRoleFallback(s);
+
+    const mkProfile = (rol)=>({
+      profileId: [courseKey, email, rol, alumno || "sin-alumno"].join("|"),
+      userId,
+      role: rol,
+      status: "aprobado",
+      courseKey,
+      inviteCode: course.inviteCode || "",
+      course,
+      email,
+      apoderado: { name, alumno, email, phone },
+      directiva: { name },
+      activation: { required:true, status:"paid", paidAt:new Date().toISOString() },
+      createdAt:new Date().toISOString(),
+      __sessionFallback:true
+    });
+
+    const out = [];
+    if(role === "presidente"){
+      out.push(mkProfile("presidente"));
+      // En Cursapp el presidente también opera como apoderado del curso.
+      out.push(mkProfile("apoderado"));
+    }else{
+      out.push(mkProfile(role));
+    }
+    return out;
+  }
+
+  async function syncSessionFallbackMembers(){
+    const profiles = buildSessionFallbackProfiles();
+    let count = 0;
+    for(const p of profiles){
+      try{ await upsertMiembro(p); count++; }catch(e){ console.warn("Cursapp fallback miembro no insertado", e); }
+    }
+    return count;
+  }
+
   async function syncUsersAndMembers(){
     const users = loadJSON("cursapp_users_v1", []);
     const profiles = loadJSON("cursapp_profiles_v1", []);
     let count = 0;
     if(Array.isArray(users)){ for(const u of users){ await ensureUsuario(u, null); count++; } }
     if(Array.isArray(profiles)){ for(const p of profiles){ await upsertMiembro(p); count++; } }
+    // Blindaje Fase 2A: si onboarding/login no dejó perfiles locales, reconstruir desde sesión activa.
+    count += await syncSessionFallbackMembers();
     return count;
   }
 
@@ -694,15 +792,21 @@
   })();
 
   window.addEventListener("cursapp:dataChanged", function(ev){ const k = ev && ev.detail ? ev.detail.key : ""; if(shouldSyncKey(k)) schedule("event:" + k); });
-  window.CURSAPP.syncSupabase = function(){ return syncAll("manual"); };
+  // Fase 2B: queda prohibido sincronizar datos operativos desde localStorage hacia Supabase.
+  // El onboarding y los módulos productivos deben escribir directo en la BD.
+  // Se conserva hydrateSupabase sólo para compatibilidad visual de pantallas legacy.
+  window.CURSAPP.syncSupabase = async function(reason){
+    log("disabled", { reason: reason || "manual", message:"localStorage->Supabase sync disabled in Fase 2B" });
+    return { disabled:true, reason: reason || "manual" };
+  };
   window.CURSAPP.hydrateSupabase = function(){ return hydrateActiveCourseFromSupabase("manual"); };
   window.CURSAPP.supabaseStatus = function(){ return loadJSON(LOG_KEY, null); };
   window.CURSAPP.supabaseHydrateStatus = function(){ return loadJSON("cursapp_supabase_last_hydrate_v1", null); };
 
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
-  else schedule("load");
-  // Evita re-render/parpadeo: una hidratación tardía es suficiente.
-  setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
+  // Auto-sync desde localStorage DESACTIVADO.
+  // if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
+  // else schedule("load");
+  // setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
 })();
 
 /* ============================================================
@@ -768,6 +872,9 @@
   }
 
   function clearOperationalCache(){
+    // Fase 2A SAFE: no borrar caché local antes de confirmar que Supabase tiene datos.
+    // Esto evita que usuarios/perfiles/enrolamientos desaparezcan si la BD responde vacía.
+    return;
     // Evita que Safari/Chrome muestren datos antiguos antes de hidratar desde BD.
     const keep = new Set([
       "cursapp_session_v1",
@@ -966,10 +1073,19 @@
     const courseObj = { courseKey:ck, inviteCode:course.inviteCode || curso.invite_code || "", course, createdAt:curso.created_at || "", createdByRole:"supabase" };
     saveJSON("cursapp_course_v1", courseObj);
     saveJSON("cursapp_courses_v1", [Object.assign({ courseKey:ck, inviteCode:course.inviteCode || "" }, course)]);
-    saveJSON("cursapp_users_v1", usuariosRows.map(u=>({ userId:u.id, email:u.email, name:u.nombre || u.email || "", phone:u.telefono || "", createdAt:u.created_at || "" })));
-    saveJSON("cursapp_profiles_v1", profiles);
-    saveJSON("cursapp_enrollments_v1", enrollments);
-    saveJSON(scopedKey("enrollments_v1"), enrollments);
+
+    // SAFE HYDRATE: no pisar usuarios/perfiles/enrolamientos locales con arrays vacíos.
+    // Si la BD viene vacía por una carrera de sincronización, conservamos la sesión local y
+    // dejamos que syncSessionFallbackMembers() repueble usuarios/miembros_curso.
+    if((usuariosRows || []).length){
+      saveJSON("cursapp_users_v1", usuariosRows.map(u=>({ userId:u.id, email:u.email, name:u.nombre || u.email || "", phone:u.telefono || "", createdAt:u.created_at || "" })));
+    }
+    if((profiles || []).length) saveJSON("cursapp_profiles_v1", profiles);
+    if((enrollments || []).length){
+      saveJSON("cursapp_enrollments_v1", enrollments);
+      saveJSON(scopedKey("enrollments_v1"), enrollments);
+    }
+
     saveJSON(scopedKey("tasks_v1"), tasks);
     saveJSON(scopedKey("payments_v1"), payments);
     saveJSON("cursapp_tasks_v1", tasks);
@@ -1173,4 +1289,93 @@
   window.addEventListener("cursapp:dataUpdated", ()=>schedule("dataUpdated"));
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
   else schedule("load");
+})();
+
+
+/* ============================================================
+   Cursapp · Fase 2B DB Session Guard
+   - Bloquea dashboards si el usuario/miembro no existe en Supabase.
+   - Evita entrar con sesiones/perfiles antiguos guardados en navegador.
+   - localStorage puede existir como compatibilidad visual, pero NO autoriza acceso.
+   ============================================================ */
+(function(){
+  if(window.__CURSAPP_FASE2B_DB_SESSION_GUARD__) return;
+  window.__CURSAPP_FASE2B_DB_SESSION_GUARD__ = true;
+
+  const path = String(location.pathname || "").toLowerCase();
+  const businessPage = /presidente|apoderado|tesorero/.test(path);
+  if(!businessPage) return;
+
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  // Fallback correcto si el token anterior fue copiado con typo en algún merge.
+  const SB_KEY_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_KEY_OK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  function parseJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || sessionStorage.getItem(k) || "null"); }catch(e){ return null; } }
+  function q(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  function isUuid(v){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||"")); }
+  function norm(v){ return String(v||"").toLowerCase().trim(); }
+
+  async function sb(path){
+    const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+    const res = await fetch(SB_URL + "/rest/v1/" + path, { headers:{ apikey:key, Authorization:"Bearer " + key, "Content-Type":"application/json" } });
+    const txt = await res.text();
+    let data = null; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok){ throw new Error((data && (data.message || data.error || data.hint)) || txt || ("HTTP " + res.status)); }
+    return Array.isArray(data) ? data : (data ? [data] : []);
+  }
+
+  function clearSessionOnly(){
+    const keepPrefix = [];
+    const keys = [
+      "cursapp_session_v1","cursapp_active_role_v1","cursapp_active_course_v1","cursapp_active_profile_v1",
+      "cursapp_demo_user_v1","cursapp_login_source_v1","cursapp_selected_payment"
+    ];
+    try{ keys.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    try{ sessionStorage.clear(); }catch(e){}
+  }
+
+  function redirectBlocked(reason){
+    try{ localStorage.setItem("cursapp_db_guard_last_block_v1", JSON.stringify({reason, at:new Date().toISOString()})); }catch(e){}
+    clearSessionOnly();
+    location.replace("/index.html?not_registered=1");
+  }
+
+  async function validate(){
+    const s = parseJSON("cursapp_session_v1") || {};
+    const email = norm(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : ""));
+    const userId = String(s.userId || "").trim();
+    const courseKey = String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
+    const role = norm(s.role || localStorage.getItem("cursapp_active_role_v1") || "");
+
+    if(role === "admin" || s.isAdmin) return true;
+    if(!email && !isUuid(userId)) return redirectBlocked("no-local-session-identity");
+
+    let users = [];
+    if(email) users = await sb("usuarios?email=eq." + q(email) + "&select=id,email,estado&limit=1");
+    if(!users.length && isUuid(userId)) users = await sb("usuarios?id=eq." + q(userId) + "&select=id,email,estado&limit=1");
+    const user = users[0];
+    if(!user || !user.id) return redirectBlocked("user-not-in-supabase");
+
+    let membersPath = "miembros_curso?usuario_id=eq." + q(user.id) + "&select=id,curso_id,rol,estado,cursos(course_key)";
+    const members = await sb(membersPath);
+    const valid = members.filter(m=>{
+      const st = norm(m.estado || "aprobado");
+      if(["rechazado","rejected","inactivo","inactive"].includes(st)) return false;
+      if(role && norm(m.rol) !== role && !(role === "presidente" && norm(m.rol)==="apoderado")) return false;
+      if(courseKey){
+        const ck = String((m.cursos && m.cursos.course_key) || "").trim();
+        if(ck && ck !== courseKey) return false;
+      }
+      return true;
+    });
+    if(!valid.length) return redirectBlocked("member-role-not-in-supabase");
+    return true;
+  }
+
+  validate().catch(err=>{
+    console.warn("Cursapp DB guard", err);
+    redirectBlocked("guard-error:" + (err && err.message ? err.message : String(err)));
+  });
 })();
