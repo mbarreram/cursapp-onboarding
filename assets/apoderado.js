@@ -14,6 +14,7 @@ if (!session || !session.userId || !session.courseKey) {
 
 (function(){
   const CURSAPP_DEBUG_PAGO_VERSION = "F2B-PAGO-DEBUG-20260610-1235";
+  const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
 
