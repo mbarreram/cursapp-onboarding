@@ -13,6 +13,7 @@ if (!session || !session.userId || !session.courseKey) {
 }
 
 (function(){
+  const CURSAPP_DEBUG_PAGO_VERSION = "F2B-PAGO-DEBUG-20260610-1235";
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
 
@@ -556,12 +557,6 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
-  // Fase 2B: un pago válido debe venir desde Supabase (UUID de tabla pagos.id).
-  // Los IDs legacy tipo pay_xxx son caché local antigua y NO deben abrir pay.html.
-  const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
-  function onlySupabasePayments(list){
-    return (Array.isArray(list) ? list : []).filter(p => isSupabaseUuid(p?.id || p?.remoteId));
-  }
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
@@ -1847,9 +1842,6 @@ function renderHome(){
       paysAll = clean.list;
     }catch(e){}
 
-    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
-    paysAll = onlySupabasePayments(paysAll);
-
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasks0).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasks0); }
@@ -2118,9 +2110,6 @@ function renderHome(){
       paysAll = clean.list;
     }catch(e){}
 
-    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
-    paysAll = onlySupabasePayments(paysAll);
-
     // ✅ Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
     // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesión
@@ -2308,7 +2297,17 @@ function renderHome(){
             <span class="tag">${esc(m.part)}</span>
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
-            Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
+            Aún no hay cobros generados para ti en esta campaña.
+          </div>
+          <div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:900;line-height:1.35;font-size:13px;">
+            DEBUG ${esc(CURSAPP_DEBUG_PAGO_VERSION)}<br>
+            Campaña id: ${esc(t.id)}<br>
+            Pagos con fromTaskId igual: ${(paysAll||[]).filter(p=>String(p.fromTaskId||p.campana_id||p.campaignId||'')===String(t.id)).length}<br>
+            Total pagos cache: ${(paysAll||[]).length}<br>
+            UUID pagos cache: ${(paysAll||[]).filter(p=>isSupabaseUuid(p?.id || p?.remoteId)).length}
+          </div>
+          <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+            <button class="btnx primary" type="button" onclick="window.__debugRefreshPagos && window.__debugRefreshPagos()">Forzar refresco pagos</button>
           </div>
         </div>
       `;
@@ -2496,6 +2495,11 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
         </div>
                 <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
         ${chips}
+        <div style="margin-top:10px;padding:10px 12px;border-radius:14px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:900;line-height:1.35;">
+          DEBUG ${esc(CURSAPP_DEBUG_PAGO_VERSION)}<br>
+          Campañas cache: ${tasksAll.length} · Pagos cache: ${paysAll.length} · Filtro: ${esc(payFilter)}<br>
+          UUID pagos: ${paysAll.filter(p=>isSupabaseUuid(p?.id || p?.remoteId)).length}
+        </div>
       </div>
 
       ${taskOptions}
@@ -2609,50 +2613,27 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   };
 
 
-window.payNow = async function(id){
-    if(!id){ alert("Pago no disponible."); return; }
-    const sid = String(id || "").trim();
-
-    // DEBUG TEMPORAL Fase 2B pagos · quitar después de validar despliegue Cloudflare
+window.__debugRefreshPagos = async function(){
+    alert("DEBUG refresco pagos " + CURSAPP_DEBUG_PAGO_VERSION);
     try{
-      const paysDbg = load(KEY_PAYMENTS, []);
-      const tasksDbg = normalizeTasks(load(KEY_TASKS, []));
-      const pDbg = (Array.isArray(paysDbg) ? paysDbg : []).find(x => String(x?.id || x?.remoteId || "") === sid) || null;
-      const tDbg = pDbg ? tasksDbg.find(t => String(t?.id || t?.remoteId || "") === String(pDbg.fromTaskId || pDbg.campana_id || pDbg.campaignId || "")) : null;
-      alert(
-        "DEBUG PAGO F2B 2026-06-10 12:10\n" +
-        "id recibido: " + sid + "\n" +
-        "es UUID: " + (isSupabaseUuid(sid) ? "SI" : "NO") + "\n" +
-        "pago encontrado local: " + (pDbg ? "SI" : "NO") + "\n" +
-        "remoteId: " + String(pDbg?.remoteId || "") + "\n" +
-        "status: " + String(pDbg?.status || pDbg?.estado || "") + "\n" +
-        "monto: " + String(pDbg?.amount ?? pDbg?.monto ?? "") + "\n" +
-        "amountRemaining: " + String(pDbg?.amountRemaining ?? "") + "\n" +
-        "fromTaskId: " + String(pDbg?.fromTaskId || "") + "\n" +
-        "campana_id: " + String(pDbg?.campana_id || pDbg?.campaignId || "") + "\n" +
-        "campaña match: " + (tDbg ? "SI - " + String(tDbg.title || tDbg.name || tDbg.id) : "NO") + "\n" +
-        "pagos cache: " + (Array.isArray(paysDbg) ? paysDbg.length : 0) + "\n" +
-        "campañas cache: " + (Array.isArray(tasksDbg) ? tasksDbg.length : 0)
-      );
+      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+        await window.CURSAPP_PAYMENTS_V11.refresh("debug-refresh-button");
+      }
+      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("debug-refresh-button");
+      }
+      alert("Refresco completado. Se volverá a pintar Pagos.");
+      renderPayments();
     }catch(e){
-      alert("DEBUG PAGO F2B 2026-06-10 12:10\nError armando diagnóstico: " + (e && e.message ? e.message : String(e)));
+      alert("Error refrescando pagos: " + (e && e.message ? e.message : e));
     }
+  };
 
-    if(!isSupabaseUuid(sid)){
-      // Este caso corresponde a IDs legacy tipo pay_xxx. No existen en tabla pagos.
-      try{
-        if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
-          await window.CURSAPP_PAYMENTS_V11.refresh("payNow-legacy-id");
-        }else if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
-          await window.CURSAPP.hydrateOperationalFromSupabase("payNow-legacy-id");
-        }
-      }catch(e){}
-      alert("Este pago viene de una referencia antigua del navegador. Actualicé desde Supabase; vuelve a presionar Pagar.");
-      try{ renderPayments(); }catch(e){}
-      return;
-    }
-    // Fase 2B: pay.html recibe exclusivamente pagos.id UUID de Supabase.
-    location.href = `/pay.html?pago=${encodeURIComponent(sid)}`;
+window.payNow = function(id){
+    if(!id){ alert("Pago no disponible."); return; }
+    // Fase 2A MVP: no usar Netlify/Transbank desde Cloudflare.
+    // El pago se registra en Supabase desde pay.html en modo demo.
+    location.href = `/pay.html?pid=${encodeURIComponent(id)}`;
   };
 
   function renderInformes(){
