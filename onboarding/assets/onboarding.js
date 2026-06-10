@@ -239,6 +239,199 @@ function uid(prefix = "id") {
     return false;
   }
 
+  /* =========================================================
+     Fase 2B · Supabase directo en Onboarding
+     Regla: usuarios/cursos/miembros NO se crean desde localStorage.
+     localStorage queda solo como compatibilidad visual/sesión mínima.
+     ========================================================= */
+  const SB_URL_ONB = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY_ONB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdG5tZ2Rrb2FpdWxmYnEiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4MDY5ODU0NCwiZXhwIjoyMDk2Mjc0NTQ0fQ.INVALID";
+  const SB_KEY_ONB_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  function sbCleanDate(v){ const s = String(v || "").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
+  async function sbOnb(path, opts){
+    const key = SB_KEY_ONB_REAL;
+    const res = await fetch(SB_URL_ONB + "/rest/v1/" + path, Object.assign({
+      method: "GET",
+      headers: {
+        apikey: key,
+        Authorization: "Bearer " + key,
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      }
+    }, opts || {}));
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = text; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint || data.details)) || text || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return Array.isArray(data) ? data : (data ? [data] : []);
+  }
+  async function sbSelectOne(table, query){
+    const rows = await sbOnb(table + "?" + query + "&limit=1");
+    return rows[0] || null;
+  }
+  async function sbInsert(table, body){
+    const rows = await sbOnb(table, { method:"POST", body: JSON.stringify(body) });
+    return rows[0] || null;
+  }
+  async function ensureColegioDB(courseObj){
+    const c = courseObj.course || courseObj || {};
+    const nombre = String(c.schoolName || c.school || c.colegio || "Colegio").trim() || "Colegio";
+    const region = String(c.regionName || c.region || "").trim();
+    const comuna = String(c.comunaName || c.comuna || "").trim();
+    let row = await sbSelectOne("colegios", "nombre=eq." + sbQ(nombre) + "&region=eq." + sbQ(region) + "&comuna=eq." + sbQ(comuna) + "&select=*");
+    if(row && row.id) return row;
+    row = await sbInsert("colegios", {
+      nombre,
+      region: region || null,
+      comuna: comuna || null,
+      rbd: c.schoolId || null,
+      es_catalogo_demo: /\(demo\)/i.test(nombre)
+    });
+    return row;
+  }
+  async function ensureCursoDB(courseObj){
+    const c = courseObj.course || courseObj || {};
+    const courseKey = String(courseObj.courseKey || c.courseKey || "").trim();
+    if(!courseKey) throw new Error("courseKey vacío al crear curso");
+    let row = await sbSelectOne("cursos", "course_key=eq." + sbQ(courseKey) + "&select=*");
+    if(row && row.id) return row;
+    const colegio = await ensureColegioDB(courseObj);
+    const nombre = `${c.schoolName || "Colegio"} · ${c.level || ""}${c.letter || ""} ${c.year || ""}`.replace(/\s+/g," ").trim();
+    row = await sbInsert("cursos", {
+      colegio_id: colegio && colegio.id ? colegio.id : null,
+      nombre: nombre || "Curso Cursapp",
+      nivel: c.level || null,
+      letra: c.letter || null,
+      anio: Number(c.year || 0) || null,
+      jornada: c.jornada || null,
+      course_key: courseKey,
+      invite_code: courseObj.inviteCode || c.inviteCode || generateCode(),
+      estado: "activo"
+    });
+    return row;
+  }
+  async function ensureUsuarioDB(payload){
+    const email = String(payload.email || "").trim().toLowerCase();
+    if(!email) throw new Error("email vacío al crear usuario");
+    let row = await sbSelectOne("usuarios", "email=eq." + sbQ(email) + "&select=*");
+    if(row && row.id) return row;
+    row = await sbInsert("usuarios", {
+      email,
+      nombre: payload.nombre || payload.name || null,
+      telefono: payload.telefono || payload.phone || null,
+      rol_global: "usuario",
+      estado: "activo"
+    });
+    return row;
+  }
+  async function ensureMiembroDB(payload){
+    if(!payload.curso_id) throw new Error("curso_id vacío al crear miembro");
+    const email = String(payload.email || "").trim().toLowerCase();
+    const rol = String(payload.rol || "apoderado").toLowerCase();
+    let row = await sbSelectOne("miembros_curso", "curso_id=eq." + sbQ(payload.curso_id) + "&email=eq." + sbQ(email) + "&rol=eq." + sbQ(rol) + "&select=*");
+    if(row && row.id) return row;
+    row = await sbInsert("miembros_curso", {
+      curso_id: payload.curso_id,
+      usuario_id: payload.usuario_id || null,
+      rol,
+      nombre_apoderado: payload.nombre_apoderado || null,
+      nombre_alumno: payload.nombre_alumno || null,
+      email: email || null,
+      estado: payload.estado || (rol === "apoderado" ? "pendiente" : "aprobado"),
+      activacion_pagada: !!payload.activacion_pagada
+    });
+    return row;
+  }
+  async function findCursoByInviteCodeDB(code){
+    const rows = await sbOnb("cursos?invite_code=eq." + sbQ(String(code||"").trim().toUpperCase()) + "&select=*,colegios(*)&limit=1");
+    return rows[0] || null;
+  }
+  function buildCourseObjFromCursoDB(row){
+    const colegio = row.colegios || {};
+    const regionObj = REGIONS.find(r => String(r.name||"").toLowerCase() === String(colegio.region||"").toLowerCase());
+    const comunaObj = COMUNAS.find(c => String(c.name||"").toLowerCase() === String(colegio.comuna||"").toLowerCase());
+    return {
+      courseKey: row.course_key,
+      inviteCode: row.invite_code || "",
+      course: {
+        regionId: regionObj ? regionObj.id : "",
+        regionName: colegio.region || "",
+        comunaId: comunaObj ? comunaObj.id : "",
+        comunaName: colegio.comuna || "",
+        schoolId: colegio.rbd || "",
+        schoolName: colegio.nombre || row.nombre || "Colegio",
+        jornada: row.jornada || "",
+        level: row.nivel || "",
+        letter: row.letra || "",
+        year: row.anio || ""
+      },
+      createdAt: row.created_at || nowISO(),
+      createdByRole: "supabase"
+    };
+  }
+  function setMinimalSession(session){
+    const clean = {
+      userId: session.userId,
+      email: session.email,
+      role: session.role,
+      currentRole: session.role,
+      roles: session.roles || [session.role],
+      courseKey: session.courseKey
+    };
+    try{ sessionStorage.setItem("cursapp_session_v1", JSON.stringify(clean)); }catch(e){}
+    // Compatibilidad temporal: las pantallas actuales aún leen esta sesión.
+    try{ localStorage.setItem("cursapp_session_v1", JSON.stringify(clean)); }catch(e){}
+    try{ localStorage.setItem("cursapp_active_course_v1", clean.courseKey || ""); }catch(e){}
+    try{ localStorage.setItem("cursapp_active_role_v1", clean.role || ""); }catch(e){}
+  }
+  async function registerPresidentSupabaseOnly(courseObj, data){
+    const curso = await ensureCursoDB(courseObj);
+    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "" });
+    await ensureMiembroDB({
+      curso_id: curso.id,
+      usuario_id: usuario.id,
+      rol: "presidente",
+      nombre_apoderado: data.name,
+      email: data.email,
+      estado: "aprobado",
+      activacion_pagada: true
+    });
+    if(data.alsoApoderado){
+      await ensureMiembroDB({
+        curso_id: curso.id,
+        usuario_id: usuario.id,
+        rol: "apoderado",
+        nombre_apoderado: data.name,
+        nombre_alumno: data.alumno || "",
+        email: data.email,
+        estado: "aprobado",
+        activacion_pagada: true
+      });
+    }
+    return { curso, usuario };
+  }
+  async function registerApoderadoSupabaseOnly(courseKey, courseObj, data){
+    const curso = await ensureCursoDB(courseObj || { courseKey, course:{} });
+    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "" });
+    const miembro = await ensureMiembroDB({
+      curso_id: curso.id,
+      usuario_id: usuario.id,
+      rol: "apoderado",
+      nombre_apoderado: data.name,
+      nombre_alumno: data.alumno || "",
+      email: data.email,
+      estado: "pendiente",
+      activacion_pagada: data.activationStatus === "paid"
+    });
+    return { curso, usuario, miembro };
+  }
+
+
   function setActiveCourseKey(k){ localStorage.setItem(KEY_ACTIVE_COURSE, k); }
 
   function validateEmail(e){
@@ -728,34 +921,36 @@ function uid(prefix = "id") {
 
     inv && (inv.oninput = ()=>{ d.inviteCode = String(inv.value||"").trim().toUpperCase(); saveDraft(d); });
 
-    btn && (btn.onclick = ()=>{
+    btn && (btn.onclick = async ()=>{
       const code = String(d.inviteCode||"").trim().toUpperCase();
       if(!code){ alert("Ingresa el código de invitación."); return; }
 
-      const course = getCourseV1();
-      if(!course || !course.inviteCode){ alert("Aún no existe un curso creado por el Presidente."); return; }
-
-      if(code !== String(course.inviteCode||"").toUpperCase()){
-        alert("Código de invitación incorrecto.");
-        if(preview) preview.innerHTML = "";
-        return;
+      try{
+        const curso = await findCursoByInviteCodeDB(code);
+        if(!curso || !curso.id){
+          alert("Código de invitación incorrecto o curso no existe en Supabase.");
+          if(preview) preview.innerHTML = "";
+          return;
+        }
+        const course = buildCourseObjFromCursoDB(curso);
+        const c = course.course || {};
+        d.regionId = c.regionId;
+        d.comunaId = c.comunaId;
+        d.schoolId = c.schoolId;
+        d.jornada = c.jornada;
+        d.level = c.level;
+        d.letter = c.letter;
+        d.year = c.year;
+        d.courseKey = course.courseKey;
+        d.inviteCode = course.inviteCode;
+        d.courseLocked = true;
+        d.step = 3;
+        saveDraft(d);
+        if(preview) preview.innerHTML = courseSummaryHTML(course);
+        render();
+      }catch(e){
+        alert("No se pudo validar el código en Supabase: " + (e && e.message ? e.message : String(e)));
       }
-
-      const c = course.course || {};
-      d.regionId = c.regionId;
-      d.comunaId = c.comunaId;
-      d.schoolId = c.schoolId;
-      d.jornada = c.jornada;
-      d.level = c.level;
-      d.letter = c.letter;
-      d.year = c.year;
-
-      d.courseLocked = true;
-      d.step = 3;
-      saveDraft(d);
-
-      if(preview) preview.innerHTML = courseSummaryHTML(course);
-      render();
     });
 
     // Continuar no aplica
@@ -1060,255 +1255,72 @@ if(d.alsoApoderado){
         __cursappOnboardingFinalizing = true;
         try{ if(btnNext) btnNext.disabled = true; }catch(e){}
 
-        localStorage.setItem(KEY_COURSE_V1, JSON.stringify(courseObj));
-        // Cursapp v11: mantener catálogo local de cursos para Presidente/Admin hasta Supabase.
         try{
-          const coursesKey = "cursapp_courses_v1";
-          const list = JSON.parse(localStorage.getItem(coursesKey) || "[]");
-          const row = Object.assign({ courseKey, inviteCode }, courseObj.course || {});
-          const idx = Array.isArray(list) ? list.findIndex(c=>String(c.courseKey||"")===String(courseKey)) : -1;
-          if(idx >= 0) list[idx] = Object.assign({}, list[idx], row);
-          else list.unshift(row);
-          localStorage.setItem(coursesKey, JSON.stringify(list));
-        }catch(e){}
-        setActiveCourseKey(courseKey);
-
-        if(finalReferralCode){
-          const ag = findRefAgent(d.referralCode || "");
-          saveReferralConversion({
-            courseKey,
-            referralCode: normalizeReferralCode(d.referralCode || ""),
-            agentId: ag ? ag.id : "",
-            agentName: ag ? ag.name : "",
-            status: "asignado",
-            attributionStatus: "asignado",
-            assignedAt: nowISO(),
-            schoolName: school ? school.name : "",
-            regionName: region ? region.name : "",
-            comunaName: comuna ? comuna.name : "",
-            courseLabel: `${d.level}${d.letter} ${d.year} · ${d.jornada}`,
-            targetParents: Number(d.estimatedStudents || 0),
-            expectedParents: Number(d.estimatedStudents || 0),
-            commissionThresholdPct: 60,
-            commissionExpiresAt: addDaysISO(90),
-            incorporationFeePerParent: 990,
-            commissionTiers: [
-              { key:"basica", thresholdPct:60, amountPerActivatedParent:350 },
-              { key:"mejorada", thresholdPct:80, amountPerActivatedParent:450 },
-              { key:"premium", thresholdPct:100, amountPerActivatedParent:550 }
-            ],
-            activationBasis: "directiva_registrada_mas_apoderados_pagados",
-            createdByEmail: String(d.pEmail||"").trim().toLowerCase()
+          const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
+          const db = await registerPresidentSupabaseOnly(courseObj, {
+            email: pEmailNorm,
+            name: d.name,
+            phone: d.dPhone || "",
+            alsoApoderado: !!d.alsoApoderado,
+            alumno: d.alumno || ""
           });
-        }
-
-        // Usuario Presidente (correo es usuario de entrada)
-        const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
-        const pPassHash = hashDemo(d.pPass||"");
-        let users = loadUsers();
-        const existingP = users.find(u=>String(u.email||"").toLowerCase()===pEmailNorm);
-        const presidenteUserId = existingP ? existingP.userId : ("u_"+uid("usr"));
-
-        // Si el correo ya existe, NO pisar password: debe coincidir
-        if(existingP && existingP.passwordHashDemo && String(existingP.passwordHashDemo)!==String(pPassHash)){
-          showModal({
-            title: "Correo ya registrado",
-            bodyHtml: `Este correo ya existe. Ingresa con tu contraseña actual.<br><br><span class="muted">Si olvidaste tu contraseña, usa “Olvidé mi contraseña”.</span>`,
-            actions: [
-              { label:"Ir a Login", variant:"primary", onClick: ()=>{ window.location.href="/index.html"; } }
-            ]
+          // Sesión mínima; los datos operativos ya están en Supabase.
+          setMinimalSession({
+            userId: db.usuario.id,
+            email: pEmailNorm,
+            role: "presidente",
+            roles: d.alsoApoderado ? ["presidente","apoderado"] : ["presidente"],
+            courseKey
           });
+          clearDraft();
+          alert("Curso creado ✅\n\nUsuario y miembros creados directamente en Supabase.");
+          window.location.href = "/presidente.html";
+          return;
+        }catch(e){
+          __cursappOnboardingFinalizing = false;
+          try{ if(btnNext) btnNext.disabled = false; }catch(_e){}
+          alert("Supabase ERROR ❌\n" + (e && e.message ? e.message : String(e)));
           return;
         }
-
-        if(existingP){
-          existingP.nombre = existingP.nombre || d.name || "";
-          existingP.name = existingP.name || d.name || "";
-          existingP.updatedAt = nowISO();
-          saveUsers(users);
-        }else{
-          users.unshift({ userId: presidenteUserId, email: pEmailNorm, nombre: d.name || "", name: d.name || "", passwordHashDemo: pPassHash, createdAt: nowISO() });
-          saveUsers(users);
-        }
-
-        // Reglas: presidente único por curso
-        let profiles = loadProfiles();
-        const existingPres = profiles.find(p=>p.role==="presidente" && p.courseKey===courseKey);
-
-        if(existingPres && existingPres.userId !== presidenteUserId){
-          showModal({
-            title: "Este curso ya tiene Presidente",
-            bodyHtml: `Ya existe un Presidente para este curso (${escapeHtml(school?school.name:"")}).<br><br>Si necesitas ingresar como apoderado, usa el código de invitación.`,
-            actions: [
-              { label:"Volver", variant:"ghost", onClick:(close)=>close() },
-              { label:"Ir a Login", variant:"primary", onClick: ()=>{ window.location.href="/index.html"; } }
-            ]
-          });
-          return;
-        }
-
-        if(existingPres && existingPres.userId === presidenteUserId){
-          // Ya registrado como presidente: no permitir re-onboarding para agregar otro alumno
-          showModal({
-            title: "Ya estás registrado como Presidente",
-            bodyHtml: `Ya estás registrado como <b>Presidente</b> en este curso.<br><br>Si quieres agregar otro alumno (otro hijo), hazlo ingresando como <b>Apoderado</b> con el código de invitación.`,
-            actions: [
-              { label:"Ir a Dashboard", variant:"primary", onClick: ()=>{ window.location.href="/presidente.html"; } },
-              { label:"Ingresar como Apoderado", variant:"ghost", onClick: ()=>{ window.location.href="/index.html"; } }
-            ]
-          });
-          return;
-        }
-
-        // Crear profile Presidente
-        profiles = profiles.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && p.role==="presidente"));
-        profiles.unshift({
-          profileId: "pr_"+uid("p"),
-          userId: presidenteUserId,
-          email: pEmailNorm,
-          name: d.name,
-          role: "presidente",
-          courseKey,
-          course: courseObj.course,
-          directiva: { name: d.name, email: pEmailNorm },
-          createdAt: nowISO()
-        });
-
-        // Si también es apoderado: profile + enrollment auto-approved (aparece en “Aprobados”)
-        if(d.alsoApoderado){
-          profiles = profiles.filter(p=>!(p.userId===presidenteUserId && p.courseKey===courseKey && p.role==="apoderado"));
-          profiles.unshift({
-            profileId: "pr_"+uid("p"),
-            userId: presidenteUserId,
-            role: "apoderado",
-            courseKey,
-            course: courseObj.course,
-            apoderado: {
-              name: d.name,
-              alumno: d.alumno,
-              alumnoId: alumnoIdOf(courseKey, pEmailNorm, d.alumno),
-              email: pEmailNorm,
-              phone: d.dPhone || ""
-            },
-            activation: { required:true, amount:7990, status:"paid", createdAt: nowISO(), paidAt: nowISO() },
-            createdAt: nowISO()
-          });
-
-          // enrollment auto-approved (para solicitudes/aprobados)
-          if(typeof createEnrollment === "function"){
-            createEnrollment({
-              courseKey,
-              apoderadoName: d.name,
-              alumno: d.alumno,
-              email: pEmailNorm,
-              phone: d.dPhone || "",
-              activationAmount: 7990,
-              activationStatus: "paid",
-              status: "approved",
-              reviewedBy: "presidente",
-              reviewedAt: nowISO()
-            });
-          }
-
-          const map = loadJSON(KEY_DIRECTIVA_AP_BY_ROLE, {});
-          map["presidente"] = { email: pEmailNorm, apoderadoName: d.name, alumno: d.alumno, courseKey };
-          saveJSON(KEY_DIRECTIVA_AP_BY_ROLE, map);
-        }
-
-        saveProfiles(profiles);
-
-
-        // sesión
-        try{
-          if(window.CURSAPP && typeof window.CURSAPP.setSession==="function"){
-            window.CURSAPP.setSession({ userId: presidenteUserId, role: "presidente", courseKey });
-          }else{
-            localStorage.setItem("cursapp_session_v1", JSON.stringify({ userId: presidenteUserId, role: "presidente", courseKey }));
-          }
-        }catch(e){}
-
-        await maybeSyncSupabase("onboarding-directiva-final");
-        clearDraft();
-        alert("Curso creado ✅\n\nAhora encontrarás el código de invitación en el menú del Presidente → Apoderados.");
-        window.location.href = "/presidente.html";
-        return;
       }
 
       if(MODE==="apoderado"){
         const payChoice = d.payChoice || "now";
-        const activation = (payChoice==="later") ? { status:"unpaid", paidAt:"" } : { status:"paid", paidAt: nowISO() };
-
-        // usuario apoderado
-        let users = loadUsers();
-        const existing = users.find(u=>String(u.email||"").toLowerCase()===String(d.email||"").toLowerCase());
-        const userId = existing ? existing.userId : ("u_"+uid("usr"));
-        const passHash = hashDemo(d.pass);
-
+        const activationStatus = (payChoice === "later") ? "unpaid" : "paid";
         __cursappOnboardingFinalizing = true;
         try{ if(btnNext) btnNext.disabled = true; }catch(e){}
 
-        if(existing){
-          existing.passwordHashDemo = passHash;
-          existing.nombre = existing.nombre || d.name || "";
-          existing.telefono = existing.telefono || d.phone || "";
-          existing.updatedAt = nowISO();
-        }else{
-          users.unshift({ userId, email: d.email, nombre: d.name || "", telefono: d.phone || "", passwordHashDemo: passHash, createdAt: nowISO() });
-        }
-        saveUsers(users);
-
-        // perfil apoderado
-        let profiles = loadProfiles();
-        profiles = profiles.filter(p=>!(p.userId===userId && p.courseKey===courseKey && p.role==="apoderado"));
-        profiles.unshift({
-          profileId: "pr_"+uid("p"),
-          userId,
-          role: "apoderado",
-          courseKey,
-          course: {
-            regionId: d.regionId, regionName: region?region.name:"",
-            comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
-            schoolId: d.schoolId, schoolName: school?school.name:"",
-            jornada: d.jornada,
-            level: d.level,
-            letter: d.letter,
-            year: d.year
-          },
-          apoderado: {
+        try{
+          const courseObj = {
+            courseKey: d.courseKey || courseKey,
+            inviteCode: d.inviteCode || "",
+            course: {
+              regionId: d.regionId, regionName: region?region.name:"",
+              comunaId: d.comunaId, comunaName: comuna?comuna.name:"",
+              schoolId: d.schoolId, schoolName: school?school.name:(d.schoolName||"Colegio"),
+              jornada: d.jornada,
+              level: d.level,
+              letter: d.letter,
+              year: d.year
+            }
+          };
+          await registerApoderadoSupabaseOnly(d.courseKey || courseKey, courseObj, {
+            email: String(d.email||"").trim().toLowerCase(),
             name: d.name,
+            phone: d.phone || "",
             alumno: d.alumno,
-            alumnoId: alumnoIdOf(courseKey, d.email, d.alumno),
-            email: d.email,
-            phone: d.phone || ""
-          },
-          activation: { required:true, amount:7990, status: activation.status, createdAt: nowISO(), paidAt: activation.paidAt },
-          status: "pendiente",
-          createdAt: nowISO()
-        });
-        saveProfiles(profiles);
-
-        // enrollment (pendiente) si existe
-        if(typeof createEnrollment !== "function"){
-          alert("Falta enrollments.js.\n\nCarga /assets/enrollments.js antes de onboarding.js.");
+            activationStatus
+          });
+          clearDraft();
+          alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
+          window.location.href = "/index.html?pending=1";
+          return;
+        }catch(e){
+          __cursappOnboardingFinalizing = false;
+          try{ if(btnNext) btnNext.disabled = false; }catch(_e){}
+          alert("Supabase ERROR ❌\n" + (e && e.message ? e.message : String(e)));
           return;
         }
-
-        const res = createEnrollment({
-          courseKey,
-          apoderadoName: d.name, alumno: d.alumno, email: d.email, phone: d.phone || "",
-          activationAmount: 7990, activationStatus: activation.status
-        });
-
-        if(!res || !res.ok){
-          alert((res && res.error) ? res.error : "No se pudo enviar la solicitud.");
-          return;
-        }
-
-        await maybeSyncSupabase("onboarding-apoderado-final");
-        clearDraft();
-        alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
-        window.location.href = "/index.html?pending=1";
-        return;
       }
 
       alert("Acción no válida.");
