@@ -586,12 +586,110 @@
 
   async function syncCourses(){ const courses = allLocalCourses(); for(const c of courses) await ensureCurso(c); return courses.length; }
 
+  function getSessionLike(){
+    try{ return loadJSON("cursapp_session_v1", {}) || {}; }catch(e){ return {}; }
+  }
+
+  function firstNonEmpty(){
+    for(const v of arguments){
+      const s = String(v == null ? "" : v).trim();
+      if(s) return s;
+    }
+    return "";
+  }
+
+  function sessionEmailFallback(s){
+    s = s || {};
+    const direct = firstNonEmpty(s.email, s.userEmail, s.username, s.loginEmail, s.apoderadoEmail);
+    if(direct) return direct.toLowerCase();
+    const uid = firstNonEmpty(s.userId, s.id);
+    return uid.includes("@") ? uid.toLowerCase() : "";
+  }
+
+  function currentRoleFallback(s){
+    s = s || {};
+    let r = String(firstNonEmpty(s.role, s.rol, localStorage.getItem("cursapp_active_role_v1"))).toLowerCase();
+    const path = String(location.pathname || "").toLowerCase();
+    if(!r && path.includes("presidente")) r = "presidente";
+    if(!r && path.includes("tesorero")) r = "tesorero";
+    if(!r && path.includes("apoderado")) r = "apoderado";
+    if(r.includes("pres")) return "presidente";
+    if(r.includes("tesor")) return "tesorero";
+    if(r.includes("apod")) return "apoderado";
+    return r || "apoderado";
+  }
+
+  function localCourseForSession(courseKey){
+    try{
+      const all = allLocalCourses();
+      const found = all.find(x => normalizeCourseObj(x)?.courseKey === courseKey);
+      if(found) return normalizeCourseObj(found);
+    }catch(e){}
+    try{
+      const c = loadJSON("cursapp_course_v1", null);
+      const nc = normalizeCourseObj(c);
+      if(nc && nc.courseKey === courseKey) return nc;
+    }catch(e){}
+    return { courseKey, schoolName:"Colegio", regionName:"", comunaName:"", level:"", letter:"", year:null, jornada:"", inviteCode:"" };
+  }
+
+  function buildSessionFallbackProfiles(){
+    const s = getSessionLike();
+    const courseKey = firstNonEmpty(s.courseKey, s.course_key, localStorage.getItem("cursapp_active_course_v1"));
+    const email = sessionEmailFallback(s);
+    if(!courseKey || !email) return [];
+
+    const course = localCourseForSession(courseKey);
+    const name = firstNonEmpty(s.name, s.nombre, s.fullName, s.apoderadoName, email);
+    const alumno = firstNonEmpty(s.alumno, s.nombre_alumno, s.nombreAlumno, s.studentName, s.student, "");
+    const phone = firstNonEmpty(s.phone, s.telefono, "");
+    const userId = firstNonEmpty(s.userId, s.id, email);
+    const role = currentRoleFallback(s);
+
+    const mkProfile = (rol)=>({
+      profileId: [courseKey, email, rol, alumno || "sin-alumno"].join("|"),
+      userId,
+      role: rol,
+      status: "aprobado",
+      courseKey,
+      inviteCode: course.inviteCode || "",
+      course,
+      email,
+      apoderado: { name, alumno, email, phone },
+      directiva: { name },
+      activation: { required:true, status:"paid", paidAt:new Date().toISOString() },
+      createdAt:new Date().toISOString(),
+      __sessionFallback:true
+    });
+
+    const out = [];
+    if(role === "presidente"){
+      out.push(mkProfile("presidente"));
+      // En Cursapp el presidente también opera como apoderado del curso.
+      out.push(mkProfile("apoderado"));
+    }else{
+      out.push(mkProfile(role));
+    }
+    return out;
+  }
+
+  async function syncSessionFallbackMembers(){
+    const profiles = buildSessionFallbackProfiles();
+    let count = 0;
+    for(const p of profiles){
+      try{ await upsertMiembro(p); count++; }catch(e){ console.warn("Cursapp fallback miembro no insertado", e); }
+    }
+    return count;
+  }
+
   async function syncUsersAndMembers(){
     const users = loadJSON("cursapp_users_v1", []);
     const profiles = loadJSON("cursapp_profiles_v1", []);
     let count = 0;
     if(Array.isArray(users)){ for(const u of users){ await ensureUsuario(u, null); count++; } }
     if(Array.isArray(profiles)){ for(const p of profiles){ await upsertMiembro(p); count++; } }
+    // Blindaje Fase 2A: si onboarding/login no dejó perfiles locales, reconstruir desde sesión activa.
+    count += await syncSessionFallbackMembers();
     return count;
   }
 
@@ -768,13 +866,37 @@
   }
 
   function clearOperationalCache(){
-    // Fase 2A.1 FIX:
-    // NO borrar caché operacional al entrar a dashboards.
-    // En la versión anterior se eliminaban usuarios/perfiles/enrolamientos locales
-    // antes de confirmar que Supabase tenía datos, dejando cursos/campañas huérfanos
-    // cuando la hidratación venía vacía o aún no había terminado el sync.
-    // Mantener esta función como no-op para compatibilidad con componentes que la llaman.
-    return false;
+    // Fase 2A SAFE: no borrar caché local antes de confirmar que Supabase tiene datos.
+    // Esto evita que usuarios/perfiles/enrolamientos desaparezcan si la BD responde vacía.
+    return;
+    // Evita que Safari/Chrome muestren datos antiguos antes de hidratar desde BD.
+    const keep = new Set([
+      "cursapp_session_v1",
+      "cursapp_active_role_v1",
+      "cursapp_active_course_v1",
+      "cursapp_active_profile_v1",
+      "cursapp_nav_tab_v1",
+      "cursapp_nav_at_v1",
+      STATUS_KEY
+    ]);
+    const patterns = [
+      /^cursapp_users_v1$/,
+      /^cursapp_profiles_v1$/,
+      /^cursapp_enrollments_v1$/,
+      /^cursapp_course_v1$/,
+      /^cursapp_courses_v1$/,
+      /^cursapp_.*_(tasks|payments|expenses|monthly_reports|receipts|enrollments|optout)_v1$/,
+      /^cursapp_(tasks|payments|expenses|monthly_reports|receipts|enrollments|optout)_v1$/,
+      /^(campanas|cobros|pagos|usuarios|dashboardData)$/
+    ];
+    try{
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++) keys.push(localStorage.key(i));
+      keys.filter(Boolean).forEach(k=>{
+        if(keep.has(k)) return;
+        if(patterns.some(rx=>rx.test(k))) localStorage.removeItem(k);
+      });
+    }catch(e){}
   }
 
   function courseObject(row){
@@ -874,19 +996,6 @@
       sb("pagos?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc")
     ]);
 
-    // Fase 2A.1 FIX: protección contra hidratación vacía.
-    // Si Supabase aún no tiene usuarios/miembros, no sobreescribir caché local con arrays vacíos.
-    // Esto evita perder visualmente presidente/apoderados al reingresar entre navegadores.
-    const existingUsers = loadJSON("cursapp_users_v1", []);
-    const existingProfiles = loadJSON("cursapp_profiles_v1", []);
-    const hasLocalIdentityCache = (Array.isArray(existingUsers) && existingUsers.length > 0) || (Array.isArray(existingProfiles) && existingProfiles.length > 0);
-    if((!usuariosRows || usuariosRows.length === 0) && (!miembrosRows || miembrosRows.length === 0) && hasLocalIdentityCache){
-      const status = { ok:false, reason:"empty-supabase-protection", courseKey:ck, cursoId:curso.id, at:new Date().toISOString() };
-      saveJSON(STATUS_KEY, status);
-      console.warn("Cursapp: hidratación cancelada porque Supabase vino sin usuarios/miembros y existe caché local", status);
-      return status;
-    }
-
     const usersById = {};
     usuariosRows.forEach(u=>{ if(u && u.id) usersById[String(u.id)] = u; });
 
@@ -958,14 +1067,19 @@
     const courseObj = { courseKey:ck, inviteCode:course.inviteCode || curso.invite_code || "", course, createdAt:curso.created_at || "", createdByRole:"supabase" };
     saveJSON("cursapp_course_v1", courseObj);
     saveJSON("cursapp_courses_v1", [Object.assign({ courseKey:ck, inviteCode:course.inviteCode || "" }, course)]);
-    const usersCache = usuariosRows.map(u=>({ userId:u.id, email:u.email, name:u.nombre || u.email || "", phone:u.telefono || "", createdAt:u.created_at || "" }));
-    // Fase 2A.1 FIX: no pisar identidad local con vacío.
-    if(usersCache.length > 0) saveJSON("cursapp_users_v1", usersCache);
-    if(profiles.length > 0) saveJSON("cursapp_profiles_v1", profiles);
-    if(enrollments.length > 0){
+
+    // SAFE HYDRATE: no pisar usuarios/perfiles/enrolamientos locales con arrays vacíos.
+    // Si la BD viene vacía por una carrera de sincronización, conservamos la sesión local y
+    // dejamos que syncSessionFallbackMembers() repueble usuarios/miembros_curso.
+    if((usuariosRows || []).length){
+      saveJSON("cursapp_users_v1", usuariosRows.map(u=>({ userId:u.id, email:u.email, name:u.nombre || u.email || "", phone:u.telefono || "", createdAt:u.created_at || "" })));
+    }
+    if((profiles || []).length) saveJSON("cursapp_profiles_v1", profiles);
+    if((enrollments || []).length){
       saveJSON("cursapp_enrollments_v1", enrollments);
       saveJSON(scopedKey("enrollments_v1"), enrollments);
     }
+
     saveJSON(scopedKey("tasks_v1"), tasks);
     saveJSON(scopedKey("payments_v1"), payments);
     saveJSON("cursapp_tasks_v1", tasks);
@@ -987,8 +1101,7 @@
   const path = String(location.pathname || "").toLowerCase();
   const businessPage = /presidente|apoderado|tesorero|admin/.test(path);
   if(businessPage){
-    // Fase 2A.1 FIX: no limpiar caché antes de confirmar datos de Supabase.
-    // clearOperationalCache();
+    clearOperationalCache();
     const run = ()=>hydrateOperationalFromSupabase("page-load").catch(e=>{
       saveJSON(STATUS_KEY, { ok:false, reason:"error", message:e && e.message ? e.message : String(e), at:new Date().toISOString() });
       console.warn("Cursapp Supabase operational hydrate", e);
