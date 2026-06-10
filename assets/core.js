@@ -1284,3 +1284,92 @@
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
   else schedule("load");
 })();
+
+
+/* ============================================================
+   Cursapp · Fase 2B DB Session Guard
+   - Bloquea dashboards si el usuario/miembro no existe en Supabase.
+   - Evita entrar con sesiones/perfiles antiguos guardados en navegador.
+   - localStorage puede existir como compatibilidad visual, pero NO autoriza acceso.
+   ============================================================ */
+(function(){
+  if(window.__CURSAPP_FASE2B_DB_SESSION_GUARD__) return;
+  window.__CURSAPP_FASE2B_DB_SESSION_GUARD__ = true;
+
+  const path = String(location.pathname || "").toLowerCase();
+  const businessPage = /presidente|apoderado|tesorero/.test(path);
+  if(!businessPage) return;
+
+  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  // Fallback correcto si el token anterior fue copiado con typo en algún merge.
+  const SB_KEY_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_KEY_OK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+
+  function parseJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || sessionStorage.getItem(k) || "null"); }catch(e){ return null; } }
+  function q(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  function isUuid(v){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||"")); }
+  function norm(v){ return String(v||"").toLowerCase().trim(); }
+
+  async function sb(path){
+    const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+    const res = await fetch(SB_URL + "/rest/v1/" + path, { headers:{ apikey:key, Authorization:"Bearer " + key, "Content-Type":"application/json" } });
+    const txt = await res.text();
+    let data = null; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok){ throw new Error((data && (data.message || data.error || data.hint)) || txt || ("HTTP " + res.status)); }
+    return Array.isArray(data) ? data : (data ? [data] : []);
+  }
+
+  function clearSessionOnly(){
+    const keepPrefix = [];
+    const keys = [
+      "cursapp_session_v1","cursapp_active_role_v1","cursapp_active_course_v1","cursapp_active_profile_v1",
+      "cursapp_demo_user_v1","cursapp_login_source_v1","cursapp_selected_payment"
+    ];
+    try{ keys.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+    try{ sessionStorage.clear(); }catch(e){}
+  }
+
+  function redirectBlocked(reason){
+    try{ localStorage.setItem("cursapp_db_guard_last_block_v1", JSON.stringify({reason, at:new Date().toISOString()})); }catch(e){}
+    clearSessionOnly();
+    location.replace("/index.html?not_registered=1");
+  }
+
+  async function validate(){
+    const s = parseJSON("cursapp_session_v1") || {};
+    const email = norm(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : ""));
+    const userId = String(s.userId || "").trim();
+    const courseKey = String(s.courseKey || localStorage.getItem("cursapp_active_course_v1") || "").trim();
+    const role = norm(s.role || localStorage.getItem("cursapp_active_role_v1") || "");
+
+    if(role === "admin" || s.isAdmin) return true;
+    if(!email && !isUuid(userId)) return redirectBlocked("no-local-session-identity");
+
+    let users = [];
+    if(email) users = await sb("usuarios?email=eq." + q(email) + "&select=id,email,estado&limit=1");
+    if(!users.length && isUuid(userId)) users = await sb("usuarios?id=eq." + q(userId) + "&select=id,email,estado&limit=1");
+    const user = users[0];
+    if(!user || !user.id) return redirectBlocked("user-not-in-supabase");
+
+    let membersPath = "miembros_curso?usuario_id=eq." + q(user.id) + "&select=id,curso_id,rol,estado,cursos(course_key)";
+    const members = await sb(membersPath);
+    const valid = members.filter(m=>{
+      const st = norm(m.estado || "aprobado");
+      if(["rechazado","rejected","inactivo","inactive"].includes(st)) return false;
+      if(role && norm(m.rol) !== role && !(role === "presidente" && norm(m.rol)==="apoderado")) return false;
+      if(courseKey){
+        const ck = String((m.cursos && m.cursos.course_key) || "").trim();
+        if(ck && ck !== courseKey) return false;
+      }
+      return true;
+    });
+    if(!valid.length) return redirectBlocked("member-role-not-in-supabase");
+    return true;
+  }
+
+  validate().catch(err=>{
+    console.warn("Cursapp DB guard", err);
+    redirectBlocked("guard-error:" + (err && err.message ? err.message : String(err)));
+  });
+})();

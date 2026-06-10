@@ -801,6 +801,11 @@ function loadJSON(k, def) {
     return;
   }
 
+  try{
+    const qsMsg = new URLSearchParams(location.search);
+    if(qsMsg.get("not_registered")==="1") showErr("Usuario no registrado o sin roles activos en Supabase.");
+  }catch(e){}
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearErr();
@@ -855,60 +860,30 @@ function loadJSON(k, def) {
         return;
       }
 
-      // Real login: Supabase primero, localStorage solo como fallback.
-      let users = loadJSON(KEY_USERS, []);
+      // Real login Fase 2B: Supabase es la única fuente de verdad.
+      // No se permite fallback a localStorage. Si la DB está vacía, el usuario NO entra.
       let user = null;
+      let allProfiles = [];
       try{
         const remote = await loginFromSupabase(u, p);
         if(remote && remote.user){
-          users = loadJSON(KEY_USERS, []);
-          user = users.find(x => String(x.email || "").toLowerCase().trim() === u) || { userId: remote.user.id, email:u, fromSupabase:true };
-          try{ localStorage.setItem("cursapp_login_source_v1", "supabase"); }catch(e){}
+          user = { userId: remote.user.id, email:u, fromSupabase:true };
+          allProfiles = Array.isArray(remote.profiles) ? remote.profiles : [];
+          try{ localStorage.setItem("cursapp_login_source_v1", "supabase-only"); }catch(e){}
         }
       }catch(syncErr){
-        // Permitir fallback local cuando Supabase no tenga aún el usuario o falle temporalmente.
-        console.warn("Login Supabase fallback local", syncErr);
+        console.warn("Login Supabase-only falló", syncErr);
+        showErr(syncErr && syncErr.message ? syncErr.message : "Usuario no registrado en Supabase.");
+        return;
       }
 
       if (!user) {
-        users = loadJSON(KEY_USERS, []);
-        user = users.find(x => String(x.email || "").toLowerCase().trim() === u);
-        if (user) {
-          const hash = hashDemo(p);
-          if (user.passwordHashDemo && user.passwordHashDemo !== hash) {
-            showErr("Contraseña incorrecta.");
-            return;
-          }
-        } else {
-          showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
-          return;
-        }
-      }
-
-      // Load all profiles for this user (multi-rol)
-      let allProfiles = loadJSON(KEY_PROFILES, []).filter(pr =>
-        String(pr.userId || "") === String(user.userId || "") ||
-        String(pr.apoderado?.email || pr.email || "").toLowerCase().trim() === u
-      );
-
-      // Si el usuario local existe pero este navegador no tiene perfiles, intenta completar desde Supabase.
-      if (!allProfiles.length) {
-        try{
-          await loginFromSupabase(u, p);
-          users = loadJSON(KEY_USERS, []);
-          user = users.find(x => String(x.email || "").toLowerCase().trim() === u) || user;
-          allProfiles = loadJSON(KEY_PROFILES, []).filter(pr =>
-            String(pr.userId || "") === String(user.userId || "") ||
-            String(pr.apoderado?.email || pr.email || "").toLowerCase().trim() === u
-          );
-        }catch(syncErr){
-          showErr("No hay perfiles asociados. " + (syncErr && syncErr.message ? syncErr.message : "Completa onboarding."));
-          return;
-        }
+        showErr("Usuario no registrado. Usa Onboarding para crear cuenta.");
+        return;
       }
 
       if (!allProfiles.length) {
-        showErr("No hay perfiles asociados. Completa onboarding.");
+        showErr("No hay perfiles asociados en Supabase. Completa onboarding o solicita aprobación.");
         return;
       }
 
