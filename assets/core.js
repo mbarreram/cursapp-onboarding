@@ -951,6 +951,7 @@
     const email = normEmail(mem.email || "");
     const estado = String(row.estado || "pendiente").toLowerCase();
     const paid = ["pagado","paid","conciliado"].includes(estado);
+    const optedOut = ["no_participa","no participa","opted_out","excluido","excluida"].includes(estado);
     return {
       id: row.id,
       remoteId: row.id,
@@ -971,9 +972,9 @@
       concept: camp.titulo || "Pago",
       title: camp.titulo || "Pago",
       amount: Number(row.monto || 0),
-      amountRemaining: paid ? 0 : Number(row.monto || 0) - Number(row.monto_pagado || 0),
+      amountRemaining: (paid || optedOut) ? 0 : Number(row.monto || 0) - Number(row.monto_pagado || 0),
       monto: Number(row.monto || 0),
-      status: paid ? "paid" : "pending",
+      status: optedOut ? "opted_out" : (paid ? "paid" : "pending"),
       estado: row.estado || "pendiente",
       dueDate: row.fecha_vencimiento || "",
       period: row.periodo || ymFromISO(row.fecha_vencimiento || row.created_at || ""),
@@ -1173,39 +1174,68 @@
     if(norm(m.rol) !== "apoderado") return false;
     return ["aprobado","aprobada","approved","activo","activa"].includes(norm(m.estado));
   }
-  function isMandatoryActive(c){
-    if(c.obligatoria === false) return false;
+  function isCampanaActive(c){
     const st = norm(c.estado || "activa");
-    return !(st === "cerrada" || st === "closed" || st === "eliminada");
+    return !(st === "cerrada" || st === "closed" || st === "eliminada" || st === "eliminado" || st === "cancelada" || st === "cancelado");
+  }
+  function isMonthlyCampana(c){
+    const t = norm(c.tipo || "single");
+    return t.includes("month") || t.includes("mens") || t === "monthly";
+  }
+  function addMonthsDateISO(baseISO, add){
+    const raw = String(baseISO || todayISO()).slice(0,10);
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return raw;
+    const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo + Number(add||0), d));
+    return dt.toISOString().slice(0,10);
+  }
+  function paymentSlotsForCampana(camp){
+    const months = Math.max(1, Number(camp.meses || 1) || 1);
+    const amount = Number(camp.monto || 0) || 0;
+    if(!isMonthlyCampana(camp)){
+      const due = camp.fecha_vencimiento || camp.fecha_inicio || todayISO();
+      return [{ amount, dueDate: due, periodo: ymFromISO(due || camp.created_at), cuota:1 }];
+    }
+    const start = camp.fecha_inicio || todayISO();
+    const out = [];
+    for(let i=0;i<months;i++){
+      const due = addMonthsDateISO(start, i);
+      out.push({ amount, dueDate: due, periodo: ymFromISO(due), cuota:i+1 });
+    }
+    return out;
   }
   async function ensurePagosPendientes(cursoId){
     if(!cursoId) return {inserted:0, campanas:0, miembros:0};
     const [campanas, miembros, pagos] = await Promise.all([
       sb("campanas?curso_id=eq." + q(cursoId) + "&select=*&order=created_at.desc"),
       sb("miembros_curso?curso_id=eq." + q(cursoId) + "&select=*&order=created_at.desc"),
-      sb("pagos?curso_id=eq." + q(cursoId) + "&select=id,campana_id,miembro_id")
+      sb("pagos?curso_id=eq." + q(cursoId) + "&select=id,campana_id,miembro_id,periodo")
     ]);
     const aps = miembros.filter(isApprovedApoderado);
-    const existing = new Set(pagos.map(p=> String(p.campana_id||"") + "|" + String(p.miembro_id||"")));
+    const existing = new Set(pagos.map(p=> [String(p.campana_id||""), String(p.miembro_id||""), String(p.periodo||"")].join("|")));
     let inserted = 0;
-    for(const camp of campanas.filter(isMandatoryActive)){
+    for(const camp of campanas.filter(isCampanaActive)){
+      const slots = paymentSlotsForCampana(camp);
       for(const m of aps){
         if(!camp.id || !m.id) continue;
-        const key = String(camp.id) + "|" + String(m.id);
-        if(existing.has(key)) continue;
-        const body = {
-          curso_id: cursoId,
-          campana_id: camp.id,
-          miembro_id: m.id,
-          monto: Number(camp.monto || 0) || 0,
-          monto_pagado: 0,
-          estado: "pendiente",
-          fecha_vencimiento: camp.fecha_vencimiento || null,
-          periodo: ymFromISO(camp.fecha_vencimiento || camp.created_at)
-        };
-        await sb("pagos", { method:"POST", body: JSON.stringify(body) });
-        existing.add(key);
-        inserted++;
+        for(const slot of slots){
+          const key = [String(camp.id), String(m.id), String(slot.periodo||"")].join("|");
+          if(existing.has(key)) continue;
+          const body = {
+            curso_id: cursoId,
+            campana_id: camp.id,
+            miembro_id: m.id,
+            monto: Number(slot.amount || 0) || 0,
+            monto_pagado: 0,
+            estado: "pendiente",
+            fecha_vencimiento: slot.dueDate || null,
+            periodo: slot.periodo || ymFromISO(slot.dueDate || camp.created_at)
+          };
+          await sb("pagos", { method:"POST", body: JSON.stringify(body) });
+          existing.add(key);
+          inserted++;
+        }
       }
     }
     return {inserted, campanas:campanas.length, miembros:aps.length};
@@ -1222,6 +1252,27 @@
     const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
     return rows[0] || null;
+  }
+
+  async function markCampaignOptOut(campanaId, optedOut){
+    const curso = await getCurso();
+    if(!curso || !curso.id || !isUuid(campanaId)) return null;
+    const s = getSession();
+    const email = norm(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : ""));
+    if(!email) throw new Error("Sin email de sesión");
+    const miembros = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id&limit=1");
+    const miembro = miembros[0];
+    if(!miembro || !miembro.id) throw new Error("No encontré miembro apoderado");
+    const rows = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id,estado");
+    let updated = 0;
+    for(const p of rows){
+      const st = norm(p.estado);
+      if(["pagado","paid","conciliado"].includes(st)) continue;
+      await sb("pagos?id=eq." + q(p.id), { method:"PATCH", body: JSON.stringify({ estado: optedOut ? "no_participa" : "pendiente" }) });
+      updated++;
+    }
+    try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2b-optout"); }catch(e){}
+    return { updated };
   }
   async function syncPaidLocalPayment(payment){
     if(!payment) return null;
@@ -1279,9 +1330,10 @@
   }
 
   window.CURSAPP = window.CURSAPP || {};
-  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, syncPaidLocalPayment, syncPaidLocalPayments };
+  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, markCampaignOptOut, syncPaidLocalPayment, syncPaidLocalPayments };
   window.CURSAPP.refreshPagosSupabase = refresh;
   window.CURSAPP.markPaymentPaidSupabase = markPaid;
+  window.CURSAPP.markCampaignOptOutSupabase = markCampaignOptOut;
 
   let t = null;
   function schedule(reason){ clearTimeout(t); t = setTimeout(()=>refresh(reason).catch(()=>{}), 600); }

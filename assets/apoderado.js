@@ -184,10 +184,21 @@ function applyOptOutToPayments(taskId, optedOut){
 }
 
 window.openCotizacionesModal = openCotizacionesModal;
-window.toggleOptOut = function(taskId){
+window.toggleOptOut = async function(taskId){
   const next = !isOptedOut(taskId);
   setOptedOut(taskId, next);
   applyOptOutToPayments(taskId, next);
+  try{
+    if(window.CURSAPP && typeof window.CURSAPP.markCampaignOptOutSupabase === "function" && isSupabaseUuid(taskId)){
+      await window.CURSAPP.markCampaignOptOutSupabase(taskId, next);
+    }
+    if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+      await window.CURSAPP_PAYMENTS_V11.refresh("apoderado-optout");
+    }
+  }catch(e){
+    console.warn("No se pudo actualizar No participo en Supabase", e);
+    try{ alert("No se pudo actualizar en Supabase: " + (e.message || e)); }catch(_){}
+  }
   renderPayments();
 };
 
@@ -195,6 +206,8 @@ window.toggleOptOut = function(taskId){
   // Compat con fixes anteriores: algunos lugares usan isPaymentOptedOut().
   function isPaymentOptedOut(p){
     try{
+      const st0 = String(p?.status || p?.estado || "").toLowerCase().trim();
+      if(st0 === "opted_out" || st0 === "no_participa" || st0 === "no participa") return true;
       const tid = (p && (p.fromTaskId || p.taskId || p.campaignId)) || "";
       if(!tid) return false;
       const ts = normalizeTasks(load(KEY_TASKS, []));
@@ -2313,8 +2326,13 @@ function renderHome(){
             <span class="tag">${esc(m.part)}</span>
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
-            Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente.
+            ${t.mandatoryParticipation===false ? "Esta campaña es voluntaria. Se generarán cobros pendientes para quienes participen; también puedes marcar No participo." : "Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente."}
           </div>
+          ${t.mandatoryParticipation===false ? `
+            <div class="actions" style="margin-top:12px;justify-content:flex-end;">
+              <button class="btnx" onclick="toggleOptOut('${esc(t.id)}')">${isOptedOut(t.id) ? "Participar" : "No participo"}</button>
+            </div>
+          ` : ``}
         </div>
       `;
     }
@@ -2369,6 +2387,11 @@ function renderHome(){
                 </div>
                   <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
                 </div>
+                ${t.mandatoryParticipation===false ? `
+                  <button class="btnx" style="border:1px solid rgba(0,0,0,.14);" onclick="toggleOptOut('${esc(t.id)}')">
+                    ${isOptedOut(t.id) ? "Participar" : "No participo"}
+                  </button>
+                ` : ``}
               </div>
 ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
