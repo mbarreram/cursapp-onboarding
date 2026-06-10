@@ -792,15 +792,21 @@
   })();
 
   window.addEventListener("cursapp:dataChanged", function(ev){ const k = ev && ev.detail ? ev.detail.key : ""; if(shouldSyncKey(k)) schedule("event:" + k); });
-  window.CURSAPP.syncSupabase = function(){ return syncAll("manual"); };
+  // Fase 2B: queda prohibido sincronizar datos operativos desde localStorage hacia Supabase.
+  // El onboarding y los módulos productivos deben escribir directo en la BD.
+  // Se conserva hydrateSupabase sólo para compatibilidad visual de pantallas legacy.
+  window.CURSAPP.syncSupabase = async function(reason){
+    log("disabled", { reason: reason || "manual", message:"localStorage->Supabase sync disabled in Fase 2B" });
+    return { disabled:true, reason: reason || "manual" };
+  };
   window.CURSAPP.hydrateSupabase = function(){ return hydrateActiveCourseFromSupabase("manual"); };
   window.CURSAPP.supabaseStatus = function(){ return loadJSON(LOG_KEY, null); };
   window.CURSAPP.supabaseHydrateStatus = function(){ return loadJSON("cursapp_supabase_last_hydrate_v1", null); };
 
-  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
-  else schedule("load");
-  // Evita re-render/parpadeo: una hidratación tardía es suficiente.
-  setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
+  // Auto-sync desde localStorage DESACTIVADO.
+  // if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", ()=>schedule("DOMContentLoaded"));
+  // else schedule("load");
+  // setTimeout(()=>hydrateActiveCourseFromSupabase("late-hydrate-1800").catch(()=>{}), 1800);
 })();
 
 /* ============================================================
