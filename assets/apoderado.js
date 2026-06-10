@@ -556,6 +556,12 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
+  // Fase 2B: un pago válido debe venir desde Supabase (UUID de tabla pagos.id).
+  // Los IDs legacy tipo pay_xxx son caché local antigua y NO deben abrir pay.html.
+  const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
+  function onlySupabasePayments(list){
+    return (Array.isArray(list) ? list : []).filter(p => isSupabaseUuid(p?.id || p?.remoteId));
+  }
 
   // ✅ alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
@@ -1841,6 +1847,9 @@ function renderHome(){
       paysAll = clean.list;
     }catch(e){}
 
+    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
+    paysAll = onlySupabasePayments(paysAll);
+
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasks0).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasks0); }
@@ -2108,6 +2117,9 @@ function renderHome(){
       if(clean.changed) save(KEY_PAYMENTS, clean.list);
       paysAll = clean.list;
     }catch(e){}
+
+    // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
+    paysAll = onlySupabasePayments(paysAll);
 
     // ✅ Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
@@ -2597,11 +2609,24 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
   };
 
 
-window.payNow = function(id){
+window.payNow = async function(id){
     if(!id){ alert("Pago no disponible."); return; }
-    // Fase 2A MVP: no usar Netlify/Transbank desde Cloudflare.
-    // El pago se registra en Supabase desde pay.html en modo demo.
-    location.href = `/pay.html?pid=${encodeURIComponent(id)}`;
+    const sid = String(id || "").trim();
+    if(!isSupabaseUuid(sid)){
+      // Este caso corresponde a IDs legacy tipo pay_xxx. No existen en tabla pagos.
+      try{
+        if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+          await window.CURSAPP_PAYMENTS_V11.refresh("payNow-legacy-id");
+        }else if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+          await window.CURSAPP.hydrateOperationalFromSupabase("payNow-legacy-id");
+        }
+      }catch(e){}
+      alert("Este pago viene de una referencia antigua del navegador. Actualicé desde Supabase; vuelve a presionar Pagar.");
+      try{ renderPayments(); }catch(e){}
+      return;
+    }
+    // Fase 2B: pay.html recibe exclusivamente pagos.id UUID de Supabase.
+    location.href = `/pay.html?pago=${encodeURIComponent(sid)}`;
   };
 
   function renderInformes(){

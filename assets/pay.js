@@ -66,7 +66,8 @@
     try{
       const pago = await loadPago(pid);
       if(!pago){
-        el.innerHTML = `<div class="card"><div class="kTitle">Pago no encontrado</div><div class="muted" style="margin-top:6px;">Vuelve a Pagos e inténtalo nuevamente.</div></div>`;
+        const legacy = pid && !isUuid(pid);
+        el.innerHTML = `<div class="card"><div class="kTitle">Pago no encontrado</div><div class="muted" style="margin-top:6px;">${legacy ? "La referencia recibida no es un UUID de Supabase. Vuelve a Pagos para refrescar la lista." : "Vuelve a Pagos e inténtalo nuevamente."}</div><div class="actions" style="margin-top:14px;justify-content:flex-end;"><button class="btnx primary" onclick="location.href='/apoderado.html#payments'">Volver a Pagos</button></div></div>`;
         return;
       }
       const camp = pago.campanas || {};
