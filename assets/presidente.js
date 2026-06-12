@@ -1,3 +1,75 @@
+
+/* ============================================================
+   Cursapp · Fix temprano asignar tesorero v2
+   - Se registra al inicio para interceptar el placeholder antiguo.
+   - No elimina rol apoderado.
+   ============================================================ */
+(function(){
+  if(window.__CURSAPP_TESORERO_EARLY_CAPTURE_V2__) return;
+  window.__CURSAPP_TESORERO_EARLY_CAPTURE_V2__ = true;
+  function emailNear(el){
+    let n = el;
+    for(let i=0; n && i<8; i++, n=n.parentElement){
+      const txt = String(n.innerText || n.textContent || "");
+      const m = txt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      if(m) return {email:m[0].toLowerCase().trim(), node:n};
+    }
+    return {email:"", node:el};
+  }
+  function metaFrom(node){
+    const lines = String(node?.innerText || node?.textContent || "").split("\n").map(x=>x.trim()).filter(Boolean);
+    const line = lines.find(x=>x.includes(" · ")) || "";
+    const parts = line.split(" · ");
+    return {name:(parts[0]||"").trim(), student:(parts[1]||"").trim()};
+  }
+  function setBusy(btn, busy){
+    if(!btn) return;
+    if(busy){
+      btn.dataset.oldText = btn.dataset.oldText || btn.textContent;
+      btn.disabled = true;
+      btn.classList.add("is-loading");
+      btn.style.opacity = ".65";
+      btn.textContent = "Asignando...";
+    }else{
+      btn.disabled = false;
+      btn.classList.remove("is-loading");
+      btn.style.opacity = "";
+      if(btn.dataset.oldText) btn.textContent = btn.dataset.oldText;
+    }
+  }
+  document.addEventListener("click", async function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+    if(!btn) return;
+    const txt = String(btn.textContent || "").toLowerCase();
+    if(!txt.includes("asignar") || !txt.includes("tesorero")) return;
+
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+
+    const found = emailNear(btn);
+    const email = btn.dataset.email || btn.getAttribute("data-email") || found.email;
+    const meta = metaFrom(found.node);
+    if(!email){ alert("No pude detectar el correo del miembro para asignarlo como tesorero."); return; }
+    if(!window.CURSAPP || typeof window.CURSAPP.assignTesoreroByEmail !== "function"){
+      alert("El módulo de asignación de tesorero no terminó de cargar. Recarga la página e inténtalo otra vez.");
+      return;
+    }
+    if(!confirm("Asignar como tesorero a " + email + "?\n\nMantendrá también su rol actual de apoderado.")) return;
+    setBusy(btn, true);
+    try{
+      const r = await window.CURSAPP.assignTesoreroByEmail(email, meta);
+      alert(r && r.already ? "Ese miembro ya tenía rol tesorero ✅" : "Tesorero asignado correctamente ✅");
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", {detail:{key:"miembros_curso"}})); }catch(e){}
+      try{ if(typeof window.go === "function") window.go("home"); }catch(e){}
+    }catch(e){
+      alert("No se pudo asignar tesorero: " + (e && e.message ? e.message : e));
+    }finally{
+      setBusy(btn, false);
+    }
+  }, true);
+})();
+
 (function () {
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -3325,13 +3397,29 @@ window.openHelp = function(topic){
   }, true);
 })();
 
-/* Re-render banners después de cada render de Presidente */
+
+/* Re-render banners estable después de navegación Presidente · sin intervalos */
 (function(){
-  if(window.__CURSAPP_PRESIDENTE_MONETIZATION_RERENDER__) return;
-  window.__CURSAPP_PRESIDENTE_MONETIZATION_RERENDER__ = true;
-  function rerender(){ try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(), 120); }catch(e){} }
+  if(window.__CURSAPP_PRESIDENTE_MONETIZATION_STABLE_V2__) return;
+  window.__CURSAPP_PRESIDENTE_MONETIZATION_STABLE_V2__ = true;
+  function rerender(){ try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(), 180); }catch(e){} }
   window.addEventListener("cursapp:dataChanged", rerender);
   window.addEventListener("cursapp:dataUpdated", rerender);
-  const timer = setInterval(rerender, 1500);
-  setTimeout(()=>clearInterval(timer), 12000);
+  const patch = ()=>{
+    try{
+      if(typeof window.go === "function" && !window.go.__cursappBannerPatched){
+        const originalGo = window.go;
+        const wrapped = function(){
+          const ret = originalGo.apply(this, arguments);
+          rerender();
+          return ret;
+        };
+        wrapped.__cursappBannerPatched = true;
+        window.go = wrapped;
+      }
+    }catch(e){}
+  };
+  patch();
+  document.addEventListener("DOMContentLoaded", ()=>{ patch(); rerender(); });
+  window.addEventListener("pageshow", ()=>{ patch(); rerender(); });
 })();
