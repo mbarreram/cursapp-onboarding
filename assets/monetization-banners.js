@@ -22,3 +22,21 @@ function open(id){const b=data().banners.find(x=>String(x.id)===String(id));if(!
 let obs=false;function observer(){return}
 window.CursappMonetization={render,dismiss,open};document.addEventListener("DOMContentLoaded",()=>{setTimeout(render,250)});window.addEventListener("pageshow",()=>setTimeout(render,250));
 })();
+
+/* Cursapp · Monetization resilient render v2 */
+(function(){
+  if(window.__CURSAPP_MONETIZATION_RESILIENT_V2__) return;
+  window.__CURSAPP_MONETIZATION_RESILIENT_V2__ = true;
+  function safeRender(){ try{ if(window.CursappMonetization && typeof window.CursappMonetization.render === "function") window.CursappMonetization.render(); }catch(e){} }
+  document.addEventListener("DOMContentLoaded", ()=>setTimeout(safeRender, 450));
+  window.addEventListener("pageshow", ()=>setTimeout(safeRender, 450));
+  window.addEventListener("cursapp:dataChanged", ()=>setTimeout(safeRender, 180));
+  window.addEventListener("cursapp:dataUpdated", ()=>setTimeout(safeRender, 180));
+  try{
+    const mo = new MutationObserver(()=>{
+      if(window.__cursappMonetizationRenderTimer) clearTimeout(window.__cursappMonetizationRenderTimer);
+      window.__cursappMonetizationRenderTimer = setTimeout(safeRender, 260);
+    });
+    mo.observe(document.body, {childList:true, subtree:true});
+  }catch(e){}
+})();

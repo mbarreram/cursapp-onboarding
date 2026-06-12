@@ -699,3 +699,21 @@ html[data-role="presidente"]{ --role-accent:#f59e0b; }
 .chipIcon .dot{
   width:8px; height:8px; border-radius:999px; background:currentColor; opacity:.7;
 }
+
+/* Cursapp · Button states */
+button:disabled,
+.btn:disabled,
+.btnx:disabled,
+.cpV6PrimaryBtn:disabled,
+.cpV6SoftBtn:disabled,
+.cpV6MiniBtn:disabled{
+  opacity:.58!important;
+  pointer-events:none!important;
+  filter:grayscale(.08);
+}
+button.is-loading,
+.btn.is-loading,
+.btnx.is-loading{
+  opacity:.68!important;
+  pointer-events:none!important;
+}

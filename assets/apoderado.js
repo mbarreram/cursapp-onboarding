@@ -2893,3 +2893,15 @@ async function __bootApoderadoSupabaseFirst(){
 }
 __bootApoderadoSupabaseFirst();
 })();
+
+/* Re-render banners después de cada render de Apoderado */
+(function(){
+  if(window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__) return;
+  window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__ = true;
+  function rerender(){ try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(), 120); }catch(e){} }
+  window.addEventListener("cursapp:dataChanged", rerender);
+  window.addEventListener("cursapp:dataUpdated", rerender);
+  window.addEventListener("pageshow", rerender);
+  const timer = setInterval(rerender, 1500);
+  setTimeout(()=>clearInterval(timer), 12000);
+})();
