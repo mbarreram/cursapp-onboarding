@@ -168,7 +168,7 @@
         amount: Number(p.monto || 0),
         monto: Number(p.monto || 0),
         amountPaid: Number(p.monto_pagado || 0),
-        status: String(p.estado || "pendiente").toLowerCase()==="pagado" ? "paid" : String(p.estado || "pending").toLowerCase(),
+        status: normalizePaymentStatusAdmin(p.estado),
         method: p.metodo_pago || "",
         paidAt: p.paid_at || p.fecha_pago || "",
         createdAt: p.created_at || "",
@@ -443,6 +443,14 @@
     save(ADMIN_LOGS, logs.slice(0,500));
   }
 
+  function normalizePaymentStatusAdmin(v){
+    const s = String(v || "pending").toLowerCase().trim();
+    if(s === "paid" || s === "pagado" || s === "conciliado") return "paid";
+    if(["failed","rejected","rechazado","fallido","error"].includes(s)) return "failed";
+    if(["opted_out","no_participa","no participa","excluido","excluida"].includes(s)) return "opted_out";
+    return "pending";
+  }
+
   function paymentMethod(p){
     const raw = String([p.method,p.metodo_pago,p.modalidad,p.channel,p.provider,p.gateway,p.ref,p.note,p.statusDetail,p.type].filter(Boolean).join(" ")).toLowerCase();
     if(/transbank|webpay|tbk|card|tarjeta|pasarela/.test(raw)) return "Transbank";
@@ -454,11 +462,7 @@
   }
 
   function paymentStatus(p){
-    const s = String(p.status||p.estado||"pending").toLowerCase();
-    if(s === "paid" || s === "pagado") return "paid";
-    if(["failed","rejected","rechazado","fallido","error"].includes(s)) return "failed";
-    if(s === "opted_out") return "opted_out";
-    return "pending";
+    return normalizePaymentStatusAdmin(p.status || p.estado || "pending");
   }
 
   function paymentStats(){
