@@ -166,13 +166,13 @@ function applyOptOutToPayments(taskId, optedOut){
       if(st === "paid" || st === "settled" || st === "refunded") return p;
 
       if(optedOut){
-        return { ...p, status: "opted_out" };
+        return { ...p, status: "opted_out", estado: "no_participa", amountRemaining: 0 };
       }else{
         // volver a pendiente o vencida según fecha
         const due = p?.dueDate ? new Date(p.dueDate) : null;
         const nextStatus = (due && due < now) ? "overdue" : "pending";
         // si estaba opted_out lo reactivamos; si ya estaba pending/overdue lo dejamos
-        if(st === "opted_out") return { ...p, status: nextStatus };
+        if(st === "opted_out" || st === "no_participa" || st === "no participa") return { ...p, status: nextStatus, estado: "pendiente", amountRemaining: Number(p.amount || p.monto || 0) };
         return p;
       }
     });

@@ -374,9 +374,15 @@ function hash32(str){
   }
 
   // payment status tolerance
-  const isPaid = (p) => p.status === "paid";
-  const isCredit = (p) => p.status === "credit";
-  const isPendingLike = (p) => ["pending","unpaid","due","partial"].includes(String(p.status||"").toLowerCase());
+  function paymentStatusNorm(p){
+    const st = String(p?.status || p?.estado || "").toLowerCase().trim();
+    if(["opted_out","no_participa","no participa","excluido","excluida"].includes(st)) return "opted_out";
+    if(["pagado","paid","conciliado"].includes(st)) return "paid";
+    return st;
+  }
+  const isPaid = (p) => paymentStatusNorm(p) === "paid";
+  const isCredit = (p) => paymentStatusNorm(p) === "credit";
+  const isPendingLike = (p) => ["pending","pendiente","unpaid","due","partial","overdue","vencido"].includes(paymentStatusNorm(p));
 
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
@@ -444,7 +450,7 @@ function dedupePaymentsAll(list){
   
     
     const isExcludedStatus = (p)=>{
-      const st = String(p?.status||"").toLowerCase();
+      const st = paymentStatusNorm(p);
       return st==="opted_out" || st==="void" || st==="cancelled";
     };
   const ym = currentYM();
@@ -854,7 +860,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
         // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && paymentStatusNorm(p)==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -868,7 +874,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
         if(t.mandatoryParticipation === false){
           const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && String(p.status||"").toLowerCase()==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
+            return p.fromTaskId===t.id && paymentStatusNorm(p)==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
           }).length;
           expected -= Math.min(opted, people) * amt;
         }
@@ -890,7 +896,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
   function pendingTask(id){
     // pendiente operacional (solo cobros instanciados)
-    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingLike(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingFinancialStatus(p)), p => (p.amountRemaining ?? p.amount ?? 0));
   }
 
   function expectedTaskTotal(t){
@@ -1193,7 +1199,7 @@ function renderHome(){
     const sal = saldoCourse();
     const pendMes = pendingMonth(ym);
     const pendProjMes = pendingMonthProjected(ym);
-    const debtorsMes = pendMes > 0 ? approvedCount() : 0;
+    const debtorsMes = pendMes > 0 ? deudoresMonth(ym) : 0;
     const credit = creditTotal();
     const apods = approvedCount();
     const last = latestReport();
@@ -1374,7 +1380,7 @@ function renderHome(){
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">🗑️ Eliminar</button>` : ""}
           </div>
 
-          ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>String(p?.status||"").toLowerCase()==="opted_out")) ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;font-weight:900;">No participan apoderados en esta campaña por ahora.</div>` : ``}
+          ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>paymentStatusNorm(p)==="opted_out")) ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;font-weight:900;">No participan apoderados en esta campaña por ahora.</div>` : ``}
           ${t.closed && pend>0 ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;">
             Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
           </div>` : ``}
@@ -1501,7 +1507,7 @@ function summarizeDebts(email){
 }
 
 function monthMandatoryOutstanding(ym){
-  const pays = payments().filter(isPendingLike).filter(p => withinMonth(p.dueDate||"", ym));
+  const pays = payments().filter(isPendingFinancialStatus).filter(p => withinMonth(p.dueDate||"", ym));
   let total = 0;
   pays.forEach(p=>{
     const t = taskById(p.fromTaskId);
@@ -1618,7 +1624,7 @@ function renderDeudores(){
   }));
 
   // Pendiente del mes (solo obligatorias) por email
-  const pendingMonth = payments().filter(isPendingLike).filter(p=> withinMonth(p.dueDate||"", ym));
+  const pendingMonth = payments().filter(isPendingFinancialStatus).filter(p=> withinMonth(p.dueDate||"", ym));
   const mandatoryPendingByEmail = new Map();
   pendingMonth.forEach(p=>{
     const t = taskById(p.fromTaskId);
@@ -1694,7 +1700,7 @@ function renderDeudores(){
   `;
 
   // bars
-  const pendingAll = payments().filter(isPendingLike);
+  const pendingAll = payments().filter(isPendingFinancialStatus);
   const byTask = new Map();
   pendingAll.forEach(p=>{
     const id = String(p.fromTaskId||"unknown");
@@ -1954,7 +1960,7 @@ const ym = currentYM();
       const relYm = rel.filter(p => (p.dueYm||p.ym||"")===ym);
 
       const monthProjected = relYm.length
-        ? relYm.filter(p=>p.status!=="opted_out").reduce((a,p)=>a+Number(p.amount||0),0)
+        ? relYm.filter(p=>paymentStatusNorm(p)!=="opted_out").reduce((a,p)=>a+Number(p.amount||0),0)
         : (isMonthly ? Number(t.amountPerStudent||t.amount||0)*people : 0);
 
       const monthPaid = relYm.length
@@ -2733,7 +2739,7 @@ window.deleteCampaign = function(taskId){
 
     // pagos: paid -> credit, pending-like -> remove
     const ps = payments()
-      .filter(p=>!(p.fromTaskId===taskId && isPendingLike(p))) // elimina pendientes de esa campaña
+      .filter(p=>!(p.fromTaskId===taskId && isPendingFinancialStatus(p))) // elimina pendientes de esa campaña
       .map(p=>{
         if(p.fromTaskId===taskId && isPaid(p)){
           return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
@@ -2904,7 +2910,7 @@ window.deleteCampaign = function(taskId){
             const people = approvedCount();
             let expected = Number(t.amount||0) * people;
             if(t.mandatoryParticipation === false){
-              const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+              const opted = paysAll.filter(p=>p.fromTaskId===t.id && paymentStatusNorm(p)==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
               expected -= Math.min(opted, people) * Number(t.amount||0);
             }
             const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);
@@ -2917,7 +2923,7 @@ window.deleteCampaign = function(taskId){
           const people = approvedCount();
           let expected = Number(t.amount||0) * people;
           if(t.mandatoryParticipation === false){
-            const opted = paysAll.filter(p=>p.fromTaskId===t.id && String(p.status||'').toLowerCase()==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
+            const opted = paysAll.filter(p=>p.fromTaskId===t.id && paymentStatusNorm(p)==='opted_out' && withinMonth(p.dueDate||p.period||'', period)).length;
             expected -= Math.min(opted, people) * Number(t.amount||0);
           }
           const paid = paysAll.filter(p=>p.fromTaskId===t.id && isPaid(p) && withinMonth((p.paidAt||p.paidDate||p.createdAt||p.dueDate||''), period)).reduce((s,p)=>s+Number(p.amount||0),0);

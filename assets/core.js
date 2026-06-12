@@ -1254,15 +1254,65 @@
     return rows[0] || null;
   }
 
+  function getActiveProfileForOptOut(){
+    try{
+      const activeProfileId = String(localStorage.getItem("cursapp_active_profile_v1") || "").trim();
+      const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1") || "[]");
+      if(activeProfileId && Array.isArray(profiles)){
+        const byId = profiles.find(p => String(p?.profileId || p?.id || "") === activeProfileId);
+        if(byId) return byId;
+      }
+      const s = getSession();
+      const ck = activeCourseKey();
+      const email = norm(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : ""));
+      if(Array.isArray(profiles)){
+        return profiles.find(p => String(p?.courseKey||"") === ck && norm(p?.apoderado?.email || p?.email || p?.user?.email || "") === email && norm(p?.role || p?.user?.role || "") === "apoderado") || null;
+      }
+    }catch(e){}
+    return null;
+  }
+
+  async function findCurrentApoderadoMember(cursoId){
+    const s = getSession();
+    const prof = getActiveProfileForOptOut();
+    const profileId = String(prof?.profileId || prof?.id || "").trim();
+    const sessionUserId = String(s.userId || s.id || "").trim();
+    const email = norm(
+      prof?.apoderado?.email || prof?.email || prof?.user?.email ||
+      s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : "")
+    );
+
+    // 1) Mejor caso: el perfil activo ya es el id real de miembros_curso.
+    if(profileId && isUuid(profileId)){
+      const rows = await sb("miembros_curso?id=eq." + q(profileId) + "&curso_id=eq." + q(cursoId) + "&rol=eq.apoderado&select=id,email,usuario_id&limit=1");
+      if(rows[0]) return rows[0];
+    }
+
+    // 2) Email del apoderado.
+    if(email){
+      const rows = await sb("miembros_curso?curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id,email,usuario_id&limit=1");
+      if(rows[0]) return rows[0];
+    }
+
+    // 3) usuario_id si la sesión viene con UUID.
+    if(sessionUserId && isUuid(sessionUserId)){
+      const rows = await sb("miembros_curso?curso_id=eq." + q(cursoId) + "&usuario_id=eq." + q(sessionUserId) + "&rol=eq.apoderado&select=id,email,usuario_id&limit=1");
+      if(rows[0]) return rows[0];
+    }
+
+    throw new Error("No encontré miembro apoderado para marcar No participo");
+  }
+
   async function markCampaignOptOut(campanaId, optedOut){
     const curso = await getCurso();
     if(!curso || !curso.id || !isUuid(campanaId)) return null;
-    const s = getSession();
-    const email = norm(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : ""));
-    if(!email) throw new Error("Sin email de sesión");
-    const miembros = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id&limit=1");
-    const miembro = miembros[0];
+
+    const miembro = await findCurrentApoderadoMember(curso.id);
     if(!miembro || !miembro.id) throw new Error("No encontré miembro apoderado");
+
+    // Asegura que existan las cuotas antes de marcarlas, especialmente en campañas mensuales no obligatorias.
+    try{ await ensurePagosPendientes(curso.id); }catch(e){ console.warn("ensurePagosPendientes optout", e); }
+
     const rows = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id,estado");
     let updated = 0;
     for(const p of rows){
@@ -1272,7 +1322,7 @@
       updated++;
     }
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2b-optout"); }catch(e){}
-    return { updated };
+    return { updated, miembroId: miembro.id };
   }
   async function syncPaidLocalPayment(payment){
     if(!payment) return null;
