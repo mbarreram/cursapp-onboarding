@@ -9,6 +9,24 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
+  // Debug visible en móvil: si hay error JS lo dejamos en pantalla, sin necesitar consola.
+  function showFatal(title, err){
+    try{
+      const app = $("app");
+      if(!app) return;
+      const msg = (err && (err.message || err.toString())) ? (err.message || err.toString()) : String(err || "Error desconocido");
+      const stack = err && err.stack ? String(err.stack) : "";
+      app.innerHTML = `<div class="card" style="margin-top:12px;border:1px solid rgba(239,68,68,.28);background:#fff7f7;">
+        <div style="font-weight:950;font-size:18px;color:#991b1b;">${esc(title || "Error")}</div>
+        <div class="muted" style="margin-top:8px;font-weight:800;white-space:pre-wrap;word-break:break-word;">${esc(msg)}${stack ? "\n" + esc(stack) : ""}</div>
+        <button class="btn ghost" type="button" style="margin-top:12px;" onclick="window.__reloadApoderados && window.__reloadApoderados()">Reintentar</button>
+      </div>`;
+    }catch(e){}
+  }
+
+  window.addEventListener("error", function(e){ showFatal("Error en Apoderados", e && (e.error || e.message)); });
+  window.addEventListener("unhandledrejection", function(e){ showFatal("Error Supabase/Apoderados", e && e.reason); });
+
   let STATE = {
     loading: true,
     error: null,
@@ -23,7 +41,15 @@
   }
 
   function roleOf(){
-    return String(STATE.session?.currentRole || STATE.session?.role || "").toLowerCase();
+    try{
+      return String(
+        STATE.session?.currentRole ||
+        STATE.session?.role ||
+        localStorage.getItem("cursapp_active_role_v1") ||
+        localStorage.getItem("cursapp_role_v1") ||
+        ""
+      ).toLowerCase().trim();
+    }catch(e){ return ""; }
   }
 
   function isDirectiva(role){
@@ -32,7 +58,15 @@
 
   function activeCourseKey(){
     const s = STATE.session || {};
-    return String(s.courseKey || s.course_key || s.course?.courseKey || "").trim();
+    try{
+      return String(
+        s.courseKey ||
+        s.course_key ||
+        s.course?.courseKey ||
+        localStorage.getItem("cursapp_active_course_v1") ||
+        ""
+      ).trim();
+    }catch(e){ return ""; }
   }
 
   function fmtDate(iso){
@@ -212,31 +246,25 @@
   }
 
   async function setTesorero(id){
-    const btns = Array.from(document.querySelectorAll("button"));
-    const clicked = btns.find(b => (b.getAttribute("onclick") || "").includes(String(id)) && (b.textContent || "").toLowerCase().includes("tesorero"));
-    const oldText = clicked ? clicked.textContent : "Asignar como tesorero";
+    const member = (STATE.miembros || []).find(x => String(x.enrollmentId || x.id) === String(id));
+    if(!member){ alert("No encontré el miembro seleccionado."); return; }
+    if(member.role === "tesorero"){ alert("Esta persona ya está asignada como tesorero."); return; }
+    if(!confirm(`¿Asignar como tesorero a ${member.apoderadoName || member.email}?
+
+Mantendrá su rol de apoderado y además tendrá acceso de tesorero.`)) return;
+
     try{
-      const member = (STATE.miembros || []).find(x => String(x.enrollmentId || x.id || "") === String(id));
-      if(!member) throw new Error("No se encontró el miembro seleccionado.");
-      if(member.status !== "approved") throw new Error("Solo puedes asignar tesorero a miembros aprobados del curso.");
+      const cursoId = member.cursoId || STATE.curso?.id;
+      if(!cursoId) throw new Error("No hay curso_id activo.");
 
-      const cursoId = member.cursoId || STATE.curso?.id || "";
       const email = String(member.email || "").toLowerCase().trim();
-      if(!cursoId) throw new Error("No hay curso activo en Supabase.");
-      if(!email) throw new Error("El miembro no tiene correo registrado.");
+      const existing = (STATE.miembros || []).find(x =>
+        String(x.email || "").toLowerCase().trim() === email && String(x.role || "").toLowerCase() === "tesorero"
+      );
 
-      if(clicked){
-        clicked.disabled = true;
-        clicked.textContent = "Asignando...";
-        clicked.style.opacity = ".65";
-      }
-
-      const existing = await sb(`miembros_curso?curso_id=${eq(cursoId)}&email=${eq(email)}&rol=${eq("tesorero")}&select=id&limit=1`);
-      if(existing && existing.length){
-        if(clicked) clicked.textContent = "Tesorero asignado ✅";
-        alert("Este apoderado ya tiene rol tesorero ✅");
-        await loadData();
-        render();
+      if(existing){
+        alert("Tesorero asignado correctamente ✅");
+        await loadData(); render();
         return;
       }
 
@@ -248,24 +276,17 @@
           rol: "tesorero",
           nombre_apoderado: member.apoderadoName || null,
           nombre_alumno: member.alumno || null,
-          email: email,
+          email: member.email || null,
           estado: "aprobado",
           activacion_pagada: true
         })
       });
 
-      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:"miembros_curso", source:"apoderados-set-tesorero" } })); }catch(_e){}
-      alert("Tesorero asignado correctamente ✅
-
-La persona mantiene su rol apoderado y además tendrá acceso como tesorero.");
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", {detail:{key:"miembros_curso", source:"apoderados-set-tesorero"}})); }catch(e){}
+      alert("Tesorero asignado correctamente ✅");
       await loadData();
       render();
     }catch(e){
-      if(clicked){
-        clicked.disabled = false;
-        clicked.textContent = oldText;
-        clicked.style.opacity = "";
-      }
       alert("No se pudo asignar tesorero: " + (e && e.message ? e.message : e));
     }
   }
@@ -387,8 +408,12 @@ La persona mantiene su rol apoderado y además tendrá acceso como tesorero.");
   }
 
   document.addEventListener("DOMContentLoaded", async ()=>{
-    render();
-    await loadData();
-    render();
+    try{
+      render();
+      await loadData();
+      render();
+    }catch(e){
+      showFatal("Error cargando Apoderados", e);
+    }
   });
 })();
