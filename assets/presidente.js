@@ -1,201 +1,152 @@
-
-/* Cursapp HOTFIX v6 · Tesorero Supabase + sin loop banner */
+/* Cursapp HOTFIX v7 · Presidente estable
+   - Sin loop de banner: render único post Home.
+   - Dashboard ejecutivo sin carrusel horizontal que rebote.
+   - Asignar tesorero abre selector estable y crea rol tesorero en Supabase sin quitar apoderado.
+*/
 (function(){
-  if(window.__CURSAPP_TESORERO_EARLY_GUARD_V6__) return;
-  window.__CURSAPP_TESORERO_EARLY_GUARD_V6__ = true;
+  if(window.__CURSAPP_PRESIDENTE_STABLE_V7__) return;
+  window.__CURSAPP_PRESIDENTE_STABLE_V7__ = true;
 
   const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg".replace('eyJpc3MiOiJIUzI1NiIsInJlZiI6','eyJpc3MiOiJIUzI1NiIsInJlZiI6');
   const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
+  const esc = (s)=> String(s ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
-  function patchAlert(){
-    try{
-      if(window.__CURSAPP_ALERT_ORIGINAL_V6__) return;
-      window.__CURSAPP_ALERT_ORIGINAL_V6__ = window.alert.bind(window);
+  // Bloquea SOLO el placeholder antiguo, no los demás alerts reales.
+  try{
+    if(!window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__){
+      window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__ = window.alert.bind(window);
       window.alert = function(msg){
         const s = String(msg || "");
-        if(s.includes("Asignación de tesorero") || s.includes("perder el rol apoderado")){
-          console.warn("Cursapp v6 bloqueó alert legacy tesorero", s);
+        if(s.includes("Asignación de tesorero") || s.includes("perder el rol apoderado") || s.includes("siguiente fase")){
+          console.warn("Cursapp v7 bloqueó placeholder tesorero:", s);
+          try{ window.CursappPresidentStable.openTreasurerPicker(); }catch(e){}
           return;
         }
-        return window.__CURSAPP_ALERT_ORIGINAL_V6__(msg);
+        return window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__(msg);
       };
-    }catch(e){}
+    }
+  }catch(e){}
+
+  function injectStableCss(){
+    if(document.getElementById('cursappPresidentStableV7')) return;
+    const st=document.createElement('style');
+    st.id='cursappPresidentStableV7';
+    st.textContent=`
+      .cpV6President .cpV6HeroTrack{
+        overflow-x:hidden!important;
+        overflow-y:visible!important;
+        scroll-snap-type:none!important;
+        -webkit-overflow-scrolling:auto!important;
+        touch-action:pan-y!important;
+        display:grid!important;
+        grid-template-columns:1fr!important;
+        gap:12px!important;
+      }
+      .cpV6President .cpV6HeroTrack .cpV6HeroCard{min-width:0!important;width:100%!important;scroll-snap-align:none!important;}
+      .cpV6President .cpV6Dots{display:none!important;}
+      .cpV6President button,.cpV6President a{touch-action:manipulation;}
+      .cursappTreasurerOverlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:14px;}
+      .cursappTreasurerCard{width:min(760px,100%);max-height:82vh;overflow:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:24px;padding:16px;box-shadow:0 24px 70px rgba(15,23,42,.24);}
+      .cursappMemberRow{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:12px;margin-top:10px;background:#fff;}
+      .cursappMemberRow b{display:block}.cursappMemberRow small{display:block;color:#64748b;font-weight:800;margin-top:3px}.cursappMemberRow button{border:0;border-radius:999px;padding:10px 12px;font-weight:950;background:#f59e0b;color:#111827;}
+    `;
+    document.head.appendChild(st);
   }
-  patchAlert();
+  injectStableCss();
 
   async function sb(path, opts){
     const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({method:"GET"}, opts || {}, {
-      headers:Object.assign({
-        apikey:SB_KEY,
-        Authorization:"Bearer " + SB_KEY,
-        "Content-Type":"application/json",
-        Prefer:"return=representation"
-      }, (opts && opts.headers) || {})
+      headers:Object.assign({apikey:SB_KEY, Authorization:"Bearer "+SB_KEY, "Content-Type":"application/json", Prefer:"return=representation"}, (opts && opts.headers) || {})
     }));
-    const text = await res.text();
-    let data = null;
-    try{ data = text ? JSON.parse(text) : null; }catch(e){ data = text; }
-    if(!res.ok){
-      const msg = (data && (data.message || data.error || data.details || data.hint)) || text || ("HTTP " + res.status);
-      throw new Error(msg);
-    }
+    const text = await res.text(); let data=null;
+    try{ data=text?JSON.parse(text):null; }catch(e){ data=text; }
+    if(!res.ok){ const msg=(data&&(data.message||data.error||data.details||data.hint))||text||("HTTP "+res.status); throw new Error(msg); }
     return data;
   }
-
   function sessionCourseKey(){
-    try{
-      const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null") || {};
-      return String(localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "").trim();
-    }catch(e){ return String(localStorage.getItem("cursapp_active_course_v1") || "").trim(); }
+    try{ const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'null')||{}; return String(localStorage.getItem('cursapp_active_course_v1')||s.courseKey||'').trim(); }
+    catch(e){ return String(localStorage.getItem('cursapp_active_course_v1')||'').trim(); }
   }
-
-  function findEmailNear(btn){
-    let el = btn;
-    for(let i=0; el && i<10; i++, el=el.parentElement){
-      const txt = String(el.textContent || "");
-      const m = txt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-      if(m) return m[0].toLowerCase().trim();
-    }
-    return "";
+  async function getCurso(){
+    const ck=sessionCourseKey(); if(!ck) throw new Error('No hay curso activo en la sesión.');
+    const rows=await sb('cursos?course_key=eq.'+q(ck)+'&select=id,course_key,nombre&limit=1');
+    const c=Array.isArray(rows)?rows[0]:null; if(!c||!c.id) throw new Error('No encontré el curso en Supabase.');
+    return c;
   }
+  async function getMembers(){
+    const curso=await getCurso();
+    const rows=await sb('miembros_curso?curso_id=eq.'+q(curso.id)+'&select=*&order=created_at.asc');
+    return {curso, rows:Array.isArray(rows)?rows:[]};
+  }
+  function memberLabel(m){ return String(m.nombre_apoderado || m.email || 'Miembro del curso').trim(); }
+  function memberSub(m){ return [m.email, m.nombre_alumno ? ('Alumno/a: '+m.nombre_alumno) : '', m.rol ? ('Rol actual: '+m.rol) : ''].filter(Boolean).join(' · '); }
 
-  function setBtnBusy(btn, busy, label){
+  async function assignTreasurerByEmail(email){
+    email=String(email||'').toLowerCase().trim(); if(!email) throw new Error('Correo inválido.');
+    const {curso, rows}=await getMembers();
+    const mine=rows.filter(m=>String(m.email||'').toLowerCase().trim()===email);
+    if(!mine.length) throw new Error('No encontré ese miembro en el curso.');
+    const existing=mine.find(m=>String(m.rol||'').toLowerCase()==='tesorero');
+    if(existing) return existing;
+    const src=mine.find(m=>String(m.rol||'').toLowerCase()==='apoderado') || mine[0];
+    const body={curso_id:curso.id, usuario_id:src.usuario_id||null, rol:'tesorero', nombre_apoderado:src.nombre_apoderado||null, nombre_alumno:src.nombre_alumno||null, email:src.email||email, estado:'aprobado', activacion_pagada:true};
+    const inserted=await sb('miembros_curso', {method:'POST', body:JSON.stringify(body)});
     try{
-      btn.disabled = !!busy;
-      btn.style.opacity = busy ? ".65" : "";
-      btn.style.pointerEvents = busy ? "none" : "";
-      if(label) btn.textContent = label;
+      const profiles=JSON.parse(localStorage.getItem('cursapp_profiles_v1')||'[]');
+      if(Array.isArray(profiles)){
+        const ck=sessionCourseKey();
+        const base=profiles.find(p=>String(p?.apoderado?.email||p?.email||p?.user?.email||'').toLowerCase().trim()===email && (!ck || String(p?.courseKey||'')===ck));
+        const exists=profiles.some(p=>String(p?.apoderado?.email||p?.email||p?.user?.email||'').toLowerCase().trim()===email && String(p?.role||'').toLowerCase()==='tesorero' && (!ck || String(p?.courseKey||'')===ck));
+        if(base && !exists){ const copy=JSON.parse(JSON.stringify(base)); copy.role='tesorero'; copy.profileId=[copy.courseKey||ck,email,'tesorero',copy?.apoderado?.alumno||''].join('|'); copy.status='aprobado'; copy.activation=Object.assign({},copy.activation||{},{required:true,status:'paid'}); profiles.push(copy); localStorage.setItem('cursapp_profiles_v1', JSON.stringify(profiles)); }
+      }
     }catch(e){}
+    return Array.isArray(inserted)?inserted[0]:inserted;
   }
 
-  function updateLocalProfilesAsTesorero(email){
+  function closePicker(){ const el=document.getElementById('cursappTreasurerOverlay'); if(el) el.remove(); }
+  async function openTreasurerPicker(){
+    injectStableCss();
+    let overlay=document.getElementById('cursappTreasurerOverlay'); if(overlay) overlay.remove();
+    overlay=document.createElement('div'); overlay.id='cursappTreasurerOverlay'; overlay.className='cursappTreasurerOverlay';
+    overlay.innerHTML=`<div class="cursappTreasurerCard"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><div style="font-weight:950;font-size:20px;">Asignar tesorero</div><div style="color:#64748b;font-weight:800;margin-top:4px;">Selecciona cualquier miembro del curso. Mantendrá su rol actual y además tendrá acceso como tesorero.</div></div><button type="button" style="border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:999px;padding:9px 12px;font-weight:900;" data-close-treasurer> Cerrar </button></div><div id="cursappTreasurerRows" style="margin-top:12px;color:#64748b;font-weight:850;">Cargando miembros...</div></div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click',e=>{ if(e.target===overlay || e.target.closest('[data-close-treasurer]')) closePicker(); });
+    const mount=overlay.querySelector('#cursappTreasurerRows');
     try{
-      const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1") || "[]");
-      if(!Array.isArray(profiles)) return;
-      const courseKey = sessionCourseKey();
-      const base = profiles.find(p=>{
-        const e = String(p?.apoderado?.email || p?.email || p?.user?.email || "").toLowerCase().trim();
-        return e === email && (!courseKey || String(p?.courseKey||"") === courseKey);
+      const {rows}=await getMembers();
+      const unique=[]; const seen=new Set();
+      rows.forEach(m=>{ const email=String(m.email||'').toLowerCase().trim(); if(!email||seen.has(email)) return; seen.add(email); unique.push(m); });
+      if(!unique.length){ mount.innerHTML='No hay miembros con correo para asignar.'; return; }
+      mount.innerHTML=unique.map(m=>`<div class="cursappMemberRow"><div><b>${esc(memberLabel(m))}</b><small>${esc(memberSub(m))}</small></div><button type="button" data-assign-treasurer-email="${esc(String(m.email||'').toLowerCase().trim())}">Asignar</button></div>`).join('');
+      mount.querySelectorAll('[data-assign-treasurer-email]').forEach(btn=>{
+        btn.addEventListener('click', async (ev)=>{
+          ev.preventDefault(); ev.stopPropagation();
+          const email=btn.getAttribute('data-assign-treasurer-email'); const old=btn.textContent;
+          btn.disabled=true; btn.textContent='Asignando...';
+          try{ await assignTreasurerByEmail(email); btn.textContent='Asignado ✅'; window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__('Tesorero asignado correctamente ✅'); closePicker(); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v7'}})); }catch(e){} }
+          catch(err){ btn.disabled=false; btn.textContent=old; window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__('No se pudo asignar tesorero: '+(err&&err.message?err.message:err)); }
+        }, true);
       });
-      if(!base) return;
-      const exists = profiles.some(p=>{
-        const e = String(p?.apoderado?.email || p?.email || p?.user?.email || "").toLowerCase().trim();
-        return e === email && String(p?.role||"").toLowerCase()==="tesorero" && (!courseKey || String(p?.courseKey||"")===courseKey);
-      });
-      if(exists) return;
-      const copy = JSON.parse(JSON.stringify(base));
-      copy.role = "tesorero";
-      copy.profileId = [copy.courseKey || courseKey, email, "tesorero", copy?.apoderado?.alumno || ""].join("|");
-      copy.status = "aprobado";
-      copy.activation = Object.assign({}, copy.activation || {}, {required:true, status:"paid"});
-      profiles.push(copy);
-      localStorage.setItem("cursapp_profiles_v1", JSON.stringify(profiles));
-    }catch(e){}
+    }catch(err){ mount.innerHTML='<div style="color:#b91c1c;font-weight:900;">No se pudieron cargar miembros: '+esc(err&&err.message?err.message:err)+'</div>'; }
   }
 
-  async function assignTreasurer(email){
-    const courseKey = sessionCourseKey();
-    if(!courseKey) throw new Error("No hay curso activo en la sesión.");
-    const cursos = await sb("cursos?course_key=eq." + q(courseKey) + "&select=id,course_key&limit=1");
-    const curso = Array.isArray(cursos) ? cursos[0] : null;
-    if(!curso || !curso.id) throw new Error("No encontré el curso en Supabase.");
+  function findEmailNear(btn){ let el=btn; for(let i=0; el && i<10; i++,el=el.parentElement){ const m=String(el.textContent||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i); if(m) return m[0].toLowerCase().trim(); } return ''; }
+  function isTreasurerButton(btn){ if(!btn) return false; const txt=String(btn.textContent||btn.value||'').toLowerCase(); const attr=String((btn.getAttribute&&((btn.getAttribute('onclick')||'')+' '+(btn.getAttribute('title')||'')+' '+(btn.getAttribute('aria-label')||'')))||'').toLowerCase(); return (txt.includes('tesorero') && (txt.includes('asignar')||txt.includes('designar'))) || attr.includes('tesorero'); }
 
-    const members = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&select=*&order=created_at.asc");
-    if(!Array.isArray(members) || !members.length) throw new Error("No encontré a este miembro en el curso.");
-
-    const existingTreasurer = members.find(m => String(m.rol || "").toLowerCase() === "tesorero");
-    if(existingTreasurer){ updateLocalProfilesAsTesorero(email); return existingTreasurer; }
-
-    const source = members.find(m => String(m.rol || "").toLowerCase() === "apoderado") || members[0];
-    const body = {
-      curso_id: curso.id,
-      usuario_id: source.usuario_id || null,
-      rol: "tesorero",
-      nombre_apoderado: source.nombre_apoderado || null,
-      nombre_alumno: source.nombre_alumno || null,
-      email: source.email || email,
-      estado: "aprobado",
-      activacion_pagada: true
-    };
-    const inserted = await sb("miembros_curso", { method:"POST", body:JSON.stringify(body) });
-    updateLocalProfilesAsTesorero(email);
-    return Array.isArray(inserted) ? inserted[0] : inserted;
-  }
-
-  async function handleTreasurerClick(btn, ev){
-    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
-    const email = findEmailNear(btn);
-    if(!email){ window.__CURSAPP_ALERT_ORIGINAL_V6__("No pude identificar el correo del miembro seleccionado."); return false; }
-    const old = btn.textContent;
-    setBtnBusy(btn, true, "Asignando...");
-    try{
-      await assignTreasurer(email);
-      setBtnBusy(btn, true, "Tesorero asignado ✅");
-      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", {detail:{key:"miembros_curso", source:"assign-treasurer"}})); }catch(e){}
-      window.__CURSAPP_ALERT_ORIGINAL_V6__("Tesorero asignado correctamente ✅\n\nLa persona mantiene su rol actual y además tendrá acceso como tesorero.");
-    }catch(e){
-      setBtnBusy(btn, false, old || "Asignar como tesorero");
-      window.__CURSAPP_ALERT_ORIGINAL_V6__("No se pudo asignar tesorero: " + (e && e.message ? e.message : e));
-    }
-    return false;
-  }
-  window.__cursappHandleTreasurerClickV6 = handleTreasurerClick;
-
-  function isTreasurerButton(btn){
-    if(!btn) return false;
-    const txt = String(btn.textContent || btn.value || "").toLowerCase();
-    const aria = String(btn.getAttribute && (btn.getAttribute("aria-label") || btn.getAttribute("title") || "") || "").toLowerCase();
-    const onclick = String(btn.getAttribute && (btn.getAttribute("onclick") || "") || "").toLowerCase();
-    return (txt.includes("asignar") && txt.includes("tesorero")) || (aria.includes("tesorero") && aria.includes("asign")) || onclick.includes("tesorero");
-  }
-
-  document.addEventListener("click", function(ev){
-    const btn = ev.target && ev.target.closest ? ev.target.closest("button,a,[role='button']") : null;
-    if(!isTreasurerButton(btn)) return;
-    handleTreasurerClick(btn, ev);
-  }, true);
-})();
-
-
-/* Cursapp HOTFIX v5 · Tesorero click guard temprano */
-(function(){
-  if(window.__CURSAPP_TESORERO_EARLY_GUARD_V5__) return;
-  window.__CURSAPP_TESORERO_EARLY_GUARD_V5__ = true;
-  function patchAlert(){
-    try{
-      if(window.__CURSAPP_ALERT_ORIGINAL_V5__) return;
-      window.__CURSAPP_ALERT_ORIGINAL_V5__ = window.alert.bind(window);
-      window.alert = function(msg){
-        const s = String(msg || "");
-        if(s.includes("Asignación de tesorero") || s.includes("perder el rol apoderado")){
-          console.warn("Cursapp v5 bloqueó alert legacy tesorero", s);
-          return;
-        }
-        return window.__CURSAPP_ALERT_ORIGINAL_V5__(msg);
-      };
-    }catch(e){}
-  }
-  patchAlert();
-  setInterval(patchAlert, 700);
-  function isTreasurerButton(btn){
-    if(!btn) return false;
-    const txt = String(btn.textContent || btn.value || "").toLowerCase();
-    const aria = String(btn.getAttribute && (btn.getAttribute("aria-label") || btn.getAttribute("title") || "") || "").toLowerCase();
-    const onclick = String(btn.getAttribute && (btn.getAttribute("onclick") || "") || "").toLowerCase();
-    return (txt.includes("asignar") && txt.includes("tesorero")) || (aria.includes("tesorero") && aria.includes("asign")) || onclick.includes("tesorero");
-  }
-  document.addEventListener("click", function(ev){
-    const btn = ev.target && ev.target.closest ? ev.target.closest("button,a,[role='button']") : null;
+  document.addEventListener('click', async function(ev){
+    const btn=ev.target&&ev.target.closest?ev.target.closest('button,a,[role="button"]'):null;
     if(!isTreasurerButton(btn)) return;
     ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-    if(typeof window.__cursappHandleTreasurerClickV5 === "function"){
-      window.__cursappHandleTreasurerClickV5(btn, ev);
-    }else{
-      console.warn("Handler tesorero v5 aún no disponible");
-    }
+    const email=findEmailNear(btn);
+    if(!email){ openTreasurerPicker(); return false; }
+    const old=btn.textContent; btn.disabled=true; btn.textContent='Asignando...';
+    try{ await assignTreasurerByEmail(email); btn.textContent='Tesorero asignado ✅'; window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__('Tesorero asignado correctamente ✅'); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v7'}})); }catch(e){} }
+    catch(err){ btn.disabled=false; btn.textContent=old||'Asignar como tesorero'; window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__('No se pudo asignar tesorero: '+(err&&err.message?err.message:err)); }
     return false;
   }, true);
+
+  window.CursappPresidentStable={openTreasurerPicker, assignTreasurerByEmail, injectStableCss};
 })();
 
 (function () {
@@ -1438,6 +1389,8 @@ function renderHome(){
         <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="go('campanas')"><span>📌</span>Campañas</button><button onclick="go('deudores')"><span>🧾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
         <div data-monetization-slot="presidente"></div>
       </div>`;
+    try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
+    try{ if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function') setTimeout(()=>window.CursappMonetization.render(), 250); }catch(e){}
   }
 
   // ----- Campaigns ----// ----- Campaigns -----

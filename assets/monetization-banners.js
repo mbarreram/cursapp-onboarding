@@ -1,8 +1,9 @@
-/* Cursapp HOTFIX v6 · Banner estable sin dataChanged */
+/* Cursapp monetization banners · stable v7
+   No escucha dataChanged y no escribe eventos en localStorage para evitar loops de render.
+*/
 (function(){"use strict";
-const KEY="cursapp_monetizacion_v1",ALERTS_KEY="cursapp_global_alerts_v1",EVENTS_KEY="cursapp_monetization_events_v1";
-const dismissedInPage={};
-let lastSignature="";
+const KEY="cursapp_monetizacion_v1",ALERTS_KEY="cursapp_global_alerts_v1";
+const dismissedInPage={};let lastSignature="";let timer=null;const seen={};
 function load(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function esc(s){return String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
@@ -11,27 +12,21 @@ function allowed(r){if(r==="presidente")return["todos_perfiles","inicio_presiden
 function seed(){let d=load(KEY,null);if(d&&Array.isArray(d.banners)&&d.banners.length)return d;d={banners:[{id:"bn_uniformes_chile",title:"Uniformes escolares con despacho",subtitle:"Uniformes",partner:"Uniformes Chile",category:"Uniformes",placement:"todos_perfiles",cta:"Cotizar",url:"#",status:"activo",priority:1,startAt:new Date().toISOString(),endAt:"",imageEmoji:"👕",heroGradient:"purple"},{id:"bn_libreria",title:"Libros y útiles escolares",subtitle:"Beneficio para apoderados Cursapp",partner:"Librería Escolar",category:"Librería",placement:"todos_perfiles",cta:"Ver catálogo",url:"#",status:"activo",priority:2,startAt:new Date().toISOString(),endAt:"",imageEmoji:"📚",heroGradient:"blue"}],config:{maxBannersPerScreen:1,hideWhenOperationalAlert:true,rotation:false}};save(KEY,d);return d}
 function data(){const d=seed();d.banners=Array.isArray(d.banners)?d.banners:[];d.config=Object.assign({maxBannersPerScreen:1,hideWhenOperationalAlert:true,rotation:false},d.config||{});return d}
 function critical(){const arr=load(ALERTS_KEY,[]),now=Date.now();return arr.some(a=>String(a.status||"activa").toLowerCase()!=="cerrada"&&(!a.endAt||Date.parse(a.endAt)>=now)&&String(a.severity||"").toLowerCase()==="critica")}
-function active(){const d=data();if(d.config.hideWhenOperationalAlert!==false&&critical())return[];const r=role(),a=allowed(r),now=Date.now();let list=d.banners.filter(b=>String(b.status||"").toLowerCase()==="activo").filter(b=>!b.startAt||Date.parse(b.startAt)<=now).filter(b=>!b.endAt||Date.parse(b.endAt)>=now).filter(b=>a.includes(String(b.placement||"").toLowerCase())).filter(b=>!dismissedInPage[b.id]).sort((x,y)=>Number(x.priority||99)-Number(y.priority||99));return list.slice(0,Number(d.config.maxBannersPerScreen||1))}
-const seen={};function track(t,b){const id=t+":"+b.id+":"+role();if(t==="impression"&&seen[id])return;if(t==="impression")seen[id]=1;/* v5: no persistir eventos aquí para evitar loop con localStorage patched */}
+function active(){const d=data();if(d.config.hideWhenOperationalAlert!==false&&critical())return[];const r=role(),a=allowed(r),now=Date.now();return d.banners.filter(b=>String(b.status||"").toLowerCase()==="activo").filter(b=>!b.startAt||Date.parse(b.startAt)<=now).filter(b=>!b.endAt||Date.parse(b.endAt)>=now).filter(b=>a.includes(String(b.placement||"").toLowerCase())).filter(b=>!dismissedInPage[b.id]).sort((x,y)=>Number(x.priority||99)-Number(y.priority||99)).slice(0,Number(d.config.maxBannersPerScreen||1))}
+function track(t,b){const id=t+":"+b.id+":"+role();if(t==="impression"&&seen[id])return;if(t==="impression")seen[id]=1;/* sin persistencia local para no disparar cursapp:dataChanged */}
 function grad(g){return{blue:"linear-gradient(135deg,#0f172a,#0ea5e9)",green:"linear-gradient(135deg,#064e3b,#22c55e)",pink:"linear-gradient(135deg,#831843,#ec4899)",purple:"linear-gradient(135deg,#4c1d95,#8b5cf6)"}[g]||"linear-gradient(135deg,#4c1d95,#8b5cf6)"}
 function styles(){if(document.getElementById("cursappMonetizationRetailStyle"))return;const st=document.createElement("style");st.id="cursappMonetizationRetailStyle";st.textContent=`
-  .cpV5Community,.cpV6Community,.motivator,.motivador,.bannerMotivador,.motivational,.homeMotivator,[data-motivator]{display:none!important}
-  .cursappRetailSlot{position:relative!important;z-index:1!important;margin:18px 16px 110px!important;display:grid;gap:12px;transform:none!important;will-change:auto!important;contain:layout paint;scroll-margin-bottom:170px;}
-  .cursappRetailBanner{position:relative!important;min-height:148px;border-radius:28px;overflow:hidden;display:grid;grid-template-columns:1fr 94px;gap:12px;align-items:center;padding:18px;box-shadow:0 18px 42px rgba(15,23,42,.14);color:#fff;isolation:isolate;}
-  .retailCopy span,.retailCopy small{display:block;color:#ede9fe;font-size:12px;font-weight:850;line-height:1.25}.retailCopy b{display:block;font-size:22px;line-height:1.04;letter-spacing:-.04em;margin:7px 0}.retailCopy button{margin-top:12px;border:0;border-radius:999px;padding:10px 14px;background:#fff;color:#6d28d9;font-weight:950}.retailVisual{font-size:58px;text-align:center;filter:drop-shadow(0 12px 20px rgba(0,0,0,.18))}.retailClose{position:absolute;right:12px;top:12px;width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:900}
-  @media(max-width:520px){.cursappRetailSlot{margin:16px 14px 110px!important}.cursappRetailBanner{grid-template-columns:1fr 80px;min-height:138px;padding:16px}.retailCopy b{font-size:20px}.retailVisual{font-size:48px}}
+.cpV5Community,.cpV6Community,.motivator,.motivador,.bannerMotivador,.motivational,.homeMotivator,[data-motivator]{display:none!important}
+.cursappRetailSlot{position:relative!important;z-index:1!important;margin:16px 0 calc(120px + env(safe-area-inset-bottom,0px))!important;display:grid;gap:12px;transform:none!important;will-change:auto!important;contain:layout paint;}
+.cursappRetailBanner{position:relative!important;min-height:134px;border-radius:24px;overflow:hidden;display:grid;grid-template-columns:1fr 78px;gap:12px;align-items:center;padding:16px;box-shadow:0 16px 36px rgba(15,23,42,.14);color:#fff;isolation:isolate;}
+.retailCopy span,.retailCopy small{display:block;color:#ede9fe;font-size:12px;font-weight:850;line-height:1.25}.retailCopy b{display:block;font-size:20px;line-height:1.04;letter-spacing:-.03em;margin:6px 0}.retailCopy button{margin-top:10px;border:0;border-radius:999px;padding:10px 14px;background:#fff;color:#6d28d9;font-weight:950}.retailVisual{font-size:46px;text-align:center;filter:drop-shadow(0 12px 20px rgba(0,0,0,.18))}.retailClose{position:absolute;right:12px;top:12px;width:30px;height:30px;border:0;border-radius:999px;background:rgba(255,255,255,.2);color:#fff;font-size:20px;font-weight:900}
 `;document.head.appendChild(st)}
 function removeMotivator(){document.querySelectorAll('.cpV5Community,.cpV6Community,.motivator,.motivador,.bannerMotivador,.motivational,.homeMotivator,[data-motivator]').forEach(x=>x.remove())}
 function card(b){track("impression",b);return`<article class="cursappRetailBanner" data-banner-id="${esc(b.id)}" style="background:${grad(b.heroGradient)}"><div class="retailCopy"><span>Beneficio Cursapp · ${esc(b.partner||"Comercio")}</span><b>${esc(b.title||"Promoción escolar")}</b><small>${esc(b.subtitle||b.category||"Beneficio para la comunidad")}</small><button type="button" onclick="CursappMonetization.open('${esc(b.id)}')">${esc(b.cta||"Ver")}</button></div><div class="retailVisual">${esc(b.imageEmoji||"🛍️")}</div><button type="button" class="retailClose" onclick="CursappMonetization.dismiss('${esc(b.id)}')">×</button></article>`}
-function target(){const r=role();const explicit=document.querySelector(`[data-monetization-slot="${r}"]`)||document.querySelector('[data-monetization-slot]');if(explicit)return explicit;const app=document.querySelector('#app');if(!app)return document.body;return app}
-function render(){styles();removeMotivator();const bs=active();const sig=role()+":"+bs.map(b=>b.id).join(',');const t=target();if(!t)return;let slot=t.querySelector(':scope > .cursappRetailSlot') || document.querySelector('.cursappRetailSlot');if(!bs.length){if(slot)slot.remove();lastSignature="";return;}if(slot&&lastSignature===sig&&slot.isConnected)return;if(!slot){slot=document.createElement('section');slot.className='cursappRetailSlot';}
-  slot.innerHTML=bs.map(card).join('');
-  // Inserción estable: siempre después de accesos rápidos, nunca como overlay ni fixed.
-  const quick=Array.from(t.querySelectorAll('.cpV6QuickGrid,.quickGrid,.actionsGrid')).pop();
-  if(quick&&quick.parentNode){quick.insertAdjacentElement('afterend',slot);}else{t.appendChild(slot);}lastSignature=sig;}
-function dismiss(id){dismissedInPage[id]=1;const b=data().banners.find(x=>String(x.id)===String(id));if(b)track('close',b);lastSignature='';render()}
+function target(){const r=role();return document.querySelector(`[data-monetization-slot="${r}"]`)||document.querySelector('[data-monetization-slot]')||document.querySelector('#app')||document.body}
+function render(){styles();removeMotivator();const bs=active();const t=target();if(!t)return;const sig=role()+":"+bs.map(b=>b.id).join(',')+":"+(t.getAttribute('data-monetization-slot')||'');let slot=t.querySelector(':scope > .cursappRetailSlot');if(!bs.length){if(slot)slot.remove();lastSignature="";return;}if(slot&&lastSignature===sig&&slot.isConnected)return;if(!slot){slot=document.createElement('section');slot.className='cursappRetailSlot';t.appendChild(slot)}slot.innerHTML=bs.map(card).join('');lastSignature=sig;}
+function dismiss(id){dismissedInPage[id]=1;lastSignature='';render()}
 function open(id){const b=data().banners.find(x=>String(x.id)===String(id));if(!b)return;track('click',b);if(b.url&&b.url!=="#"){location.href=b.url;return}alert((b.partner||"Beneficio Cursapp")+"\n\n"+(b.title||"")+"\n\nPronto conectaremos el detalle del beneficio.")}
-let timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(render,180)}
-window.CursappMonetization={render,schedule,dismiss,open};
-document.addEventListener('DOMContentLoaded',schedule);window.addEventListener('pageshow',schedule);
+function schedule(){clearTimeout(timer);timer=setTimeout(render,250)}
+window.CursappMonetization={render,schedule,dismiss,open};document.addEventListener('DOMContentLoaded',schedule);window.addEventListener('pageshow',schedule);
 })();
