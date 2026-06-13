@@ -472,32 +472,8 @@ function hash32(str){
   const ENROLL_KEY = "cursapp_enrollments_v1";
 
   function ensurePaymentsForAllApproved(){
-    try{
-      const courseKey = String(localStorage.getItem("cursapp_active_course_v1") || "");
-      if(!courseKey) return;
-
-      const tasksAll = normalizeTasks(load(KEY_TASKS, []));
-      if(!tasksAll.length) return;
-
-      const enrolls = load(ENROLL_KEY, []).filter(e => String(e?.courseKey||"")===courseKey && String(e?.status||"").toLowerCase()==="approved");
-      if(!enrolls.length) return;
-
-      let paysAll = load(KEY_PAYMENTS, []);
-      const beforeLen = paysAll.length;
-
-      for(const e of enrolls){
-        const ident = {
-          courseKey,
-          apoderadoEmail: String(e.email||"").trim().toLowerCase(),
-          alumnoLabel: String(e.alumno||"").trim()
-        };
-        paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
-      }
-
-      if(paysAll.length !== beforeLen){
-        save(KEY_PAYMENTS, paysAll);
-      }
-    }catch(e){}
+    // Supabase es la fuente oficial de pagos. No materializar pagos legacy en localStorage desde Presidente.
+    return;
   }
 
   const markDirty = () => localStorage.setItem(KEY_DIRTY, "1");
@@ -1199,16 +1175,19 @@ function setActive(tab){
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
-  const __refresh = ()=>{
+  let __refreshTimer = null;
+  const __refresh = (ev)=>{
     try{
-      // materializa pagos faltantes (sin depender de entrar como apoderado)
-      ensurePaymentsForAllApproved();
-
       const tab = (state && state.tab) ? state.tab : 'home';
-      if(tab==='home') renderHome();
-      else if(tab==='campanas') renderCampanas();
-      else if(tab==='deudores') renderDeudores();
-      else if(tab==='informes') renderInformes();
+      // Evita que el carrusel del Dashboard Ejecutivo vuelva al inicio mientras se usa.
+      if(tab === 'home') return;
+      if(__refreshTimer) clearTimeout(__refreshTimer);
+      __refreshTimer = setTimeout(()=>{
+        const t = (state && state.tab) ? state.tab : 'home';
+        if(t==='campanas') renderCampanas();
+        else if(t==='deudores') renderDeudores();
+        else if(t==='informes') renderInformes();
+      }, 180);
     }catch(e){}
   };
   window.addEventListener('cursapp:dataChanged', __refresh);
@@ -1299,6 +1278,46 @@ function setActive(tab){
 
 
   // Fix definitivo Avisos: delegación robusta para botones del home Presidente.
+
+  function ensurePresidentStableCss(){
+    if(document.getElementById("cursappPresidentStableV8")) return;
+    const st = document.createElement("style");
+    st.id = "cursappPresidentStableV8";
+    st.textContent = `
+      .cpV6HeroTrack{
+        display:flex!important;
+        gap:12px!important;
+        overflow-x:auto!important;
+        overflow-y:hidden!important;
+        scroll-snap-type:x proximity!important;
+        -webkit-overflow-scrolling:touch!important;
+        overscroll-behavior-x:contain!important;
+        touch-action:pan-x pan-y!important;
+        padding-bottom:6px!important;
+      }
+      .cpV6HeroTrack::-webkit-scrollbar{display:none!important;}
+      .cpV6HeroCard{
+        flex:0 0 min(86vw,420px)!important;
+        scroll-snap-align:start!important;
+        scroll-snap-stop:normal!important;
+      }
+      .cpV6HeroActions button,.cpV6QuickGrid button,.cpV6SoftBtn,.cpV6MiniBtn,.btnx,.btn,.navItem{
+        pointer-events:auto!important;
+        touch-action:manipulation!important;
+      }
+      .supportFab{
+        bottom:calc(132px + env(safe-area-inset-bottom,0px))!important;
+        z-index:9000!important;
+      }
+      [data-monetization-slot="presidente"],
+      body[data-role="presidente"] .cursappRetailSlot,
+      .cpV6President .cursappRetailSlot{
+        display:none!important;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
   function bindAvisosButtonFallback(){
     if(window.__cursappAvisosButtonFallbackBound) return;
     window.__cursappAvisosButtonFallbackBound = true;
@@ -1342,6 +1361,7 @@ function setActive(tab){
 
 
 function renderHome(){
+    ensurePresidentStableCss();
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
     const recTot = collectedCourse();
@@ -3172,6 +3192,7 @@ window.deleteCampaign = function(taskId){
       console.warn("Presidente: no se pudo hidratar Supabase antes del render", e);
     }
 
+    ensurePresidentStableCss();
     initMenu();
     setInterval(()=>{
       if(state.tab!=="campanas") return;

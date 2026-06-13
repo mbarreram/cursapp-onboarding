@@ -212,7 +212,62 @@
   }
 
   async function setTesorero(id){
-    alert("Asignación de tesorero se revisará en la siguiente fase para no perder el rol apoderado.");
+    const btns = Array.from(document.querySelectorAll("button"));
+    const clicked = btns.find(b => (b.getAttribute("onclick") || "").includes(String(id)) && (b.textContent || "").toLowerCase().includes("tesorero"));
+    const oldText = clicked ? clicked.textContent : "Asignar como tesorero";
+    try{
+      const member = (STATE.miembros || []).find(x => String(x.enrollmentId || x.id || "") === String(id));
+      if(!member) throw new Error("No se encontró el miembro seleccionado.");
+      if(member.status !== "approved") throw new Error("Solo puedes asignar tesorero a miembros aprobados del curso.");
+
+      const cursoId = member.cursoId || STATE.curso?.id || "";
+      const email = String(member.email || "").toLowerCase().trim();
+      if(!cursoId) throw new Error("No hay curso activo en Supabase.");
+      if(!email) throw new Error("El miembro no tiene correo registrado.");
+
+      if(clicked){
+        clicked.disabled = true;
+        clicked.textContent = "Asignando...";
+        clicked.style.opacity = ".65";
+      }
+
+      const existing = await sb(`miembros_curso?curso_id=${eq(cursoId)}&email=${eq(email)}&rol=${eq("tesorero")}&select=id&limit=1`);
+      if(existing && existing.length){
+        if(clicked) clicked.textContent = "Tesorero asignado ✅";
+        alert("Este apoderado ya tiene rol tesorero ✅");
+        await loadData();
+        render();
+        return;
+      }
+
+      await sb("miembros_curso", {
+        method:"POST",
+        body: JSON.stringify({
+          curso_id: cursoId,
+          usuario_id: member.usuarioId || null,
+          rol: "tesorero",
+          nombre_apoderado: member.apoderadoName || null,
+          nombre_alumno: member.alumno || null,
+          email: email,
+          estado: "aprobado",
+          activacion_pagada: true
+        })
+      });
+
+      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:"miembros_curso", source:"apoderados-set-tesorero" } })); }catch(_e){}
+      alert("Tesorero asignado correctamente ✅
+
+La persona mantiene su rol apoderado y además tendrá acceso como tesorero.");
+      await loadData();
+      render();
+    }catch(e){
+      if(clicked){
+        clicked.disabled = false;
+        clicked.textContent = oldText;
+        clicked.style.opacity = "";
+      }
+      alert("No se pudo asignar tesorero: " + (e && e.message ? e.message : e));
+    }
   }
 
   function render(){

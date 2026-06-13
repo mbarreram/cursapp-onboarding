@@ -3,7 +3,7 @@
 .supportFab{
   position:fixed;
   right:16px;
-  bottom:92px;
+  bottom:132px;
   z-index:10020;
   border:0;
   border-radius:999px;
@@ -109,7 +109,7 @@
   .supportGrid{grid-template-columns:1fr}
   .supportFab{
     right:14px;
-    bottom:84px;
+    bottom:132px;
     padding:13px 14px;
   }
 }
