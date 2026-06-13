@@ -1,3 +1,44 @@
+
+/* Cursapp HOTFIX v5 · Tesorero click guard temprano */
+(function(){
+  if(window.__CURSAPP_TESORERO_EARLY_GUARD_V5__) return;
+  window.__CURSAPP_TESORERO_EARLY_GUARD_V5__ = true;
+  function patchAlert(){
+    try{
+      if(window.__CURSAPP_ALERT_ORIGINAL_V5__) return;
+      window.__CURSAPP_ALERT_ORIGINAL_V5__ = window.alert.bind(window);
+      window.alert = function(msg){
+        const s = String(msg || "");
+        if(s.includes("Asignación de tesorero") || s.includes("perder el rol apoderado")){
+          console.warn("Cursapp v5 bloqueó alert legacy tesorero", s);
+          return;
+        }
+        return window.__CURSAPP_ALERT_ORIGINAL_V5__(msg);
+      };
+    }catch(e){}
+  }
+  patchAlert();
+  setInterval(patchAlert, 700);
+  function isTreasurerButton(btn){
+    if(!btn) return false;
+    const txt = String(btn.textContent || btn.value || "").toLowerCase();
+    const aria = String(btn.getAttribute && (btn.getAttribute("aria-label") || btn.getAttribute("title") || "") || "").toLowerCase();
+    const onclick = String(btn.getAttribute && (btn.getAttribute("onclick") || "") || "").toLowerCase();
+    return (txt.includes("asignar") && txt.includes("tesorero")) || (aria.includes("tesorero") && aria.includes("asign")) || onclick.includes("tesorero");
+  }
+  document.addEventListener("click", function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest("button,a,[role='button']") : null;
+    if(!isTreasurerButton(btn)) return;
+    ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    if(typeof window.__cursappHandleTreasurerClickV5 === "function"){
+      window.__cursappHandleTreasurerClickV5(btn, ev);
+    }else{
+      console.warn("Handler tesorero v5 aún no disponible");
+    }
+    return false;
+  }, true);
+})();
+
 (function () {
   const app = document.getElementById("app");
   const modalRoot = document.getElementById("modalRoot");
@@ -3314,6 +3355,8 @@ window.openHelp = function(topic){
     }
     return false;
   }
+
+  window.__cursappHandleTreasurerClickV5 = handleTreasurerClick;
 
   function isTreasurerButton(btn){
     if(!btn) return false;

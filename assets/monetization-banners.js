@@ -11,7 +11,7 @@ function seed(){let d=load(KEY,null);if(d&&Array.isArray(d.banners)&&d.banners.l
 function data(){const d=seed();d.banners=Array.isArray(d.banners)?d.banners:[];d.config=Object.assign({maxBannersPerScreen:1,hideWhenOperationalAlert:true,rotation:false},d.config||{});return d}
 function critical(){const arr=load(ALERTS_KEY,[]),now=Date.now();return arr.some(a=>String(a.status||"activa").toLowerCase()!=="cerrada"&&(!a.endAt||Date.parse(a.endAt)>=now)&&String(a.severity||"").toLowerCase()==="critica")}
 function active(){const d=data();if(d.config.hideWhenOperationalAlert!==false&&critical())return[];const r=role(),a=allowed(r),now=Date.now();let list=d.banners.filter(b=>String(b.status||"").toLowerCase()==="activo").filter(b=>!b.startAt||Date.parse(b.startAt)<=now).filter(b=>!b.endAt||Date.parse(b.endAt)>=now).filter(b=>a.includes(String(b.placement||"").toLowerCase())).filter(b=>!dismissedInPage[b.id]).sort((x,y)=>Number(x.priority||99)-Number(y.priority||99));return list.slice(0,Number(d.config.maxBannersPerScreen||1))}
-const seen={};function track(t,b){const id=t+":"+b.id+":"+role();if(t==="impression"&&seen[id])return;if(t==="impression")seen[id]=1;const arr=load(EVENTS_KEY,[]);arr.unshift({at:new Date().toISOString(),type:t,bannerId:b.id,title:b.title,partner:b.partner,role:role(),placement:b.placement});save(EVENTS_KEY,arr.slice(0,500))}
+const seen={};function track(t,b){const id=t+":"+b.id+":"+role();if(t==="impression"&&seen[id])return;if(t==="impression")seen[id]=1;/* v5: no persistir eventos aquí para evitar loop con localStorage patched */}
 function grad(g){return{blue:"linear-gradient(135deg,#0f172a,#0ea5e9)",green:"linear-gradient(135deg,#064e3b,#22c55e)",pink:"linear-gradient(135deg,#831843,#ec4899)",purple:"linear-gradient(135deg,#4c1d95,#8b5cf6)"}[g]||"linear-gradient(135deg,#4c1d95,#8b5cf6)"}
 function styles(){if(document.getElementById("cursappMonetizationRetailStyle"))return;const st=document.createElement("style");st.id="cursappMonetizationRetailStyle";st.textContent=`
   .cpV5Community,.cpV6Community,.motivator,.motivador,.bannerMotivador,.motivational,.homeMotivator,[data-motivator]{display:none!important}
@@ -32,5 +32,5 @@ function dismiss(id){dismissedInPage[id]=1;const b=data().banners.find(x=>String
 function open(id){const b=data().banners.find(x=>String(x.id)===String(id));if(!b)return;track('click',b);if(b.url&&b.url!=="#"){location.href=b.url;return}alert((b.partner||"Beneficio Cursapp")+"\n\n"+(b.title||"")+"\n\nPronto conectaremos el detalle del beneficio.")}
 let timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(render,180)}
 window.CursappMonetization={render,schedule,dismiss,open};
-document.addEventListener('DOMContentLoaded',schedule);window.addEventListener('pageshow',schedule);window.addEventListener('cursapp:dataChanged',schedule);window.addEventListener('cursapp:dataUpdated',schedule);
+document.addEventListener('DOMContentLoaded',schedule);window.addEventListener('pageshow',schedule);
 })();
