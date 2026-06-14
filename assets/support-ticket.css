@@ -3,8 +3,8 @@
 .supportFab{
   position:fixed;
   right:16px;
-  bottom:124px;
-  z-index:8000;
+  bottom:148px;
+  z-index:9000;
   border:0;
   border-radius:999px;
   padding:14px 16px;
@@ -109,7 +109,7 @@
   .supportGrid{grid-template-columns:1fr}
   .supportFab{
     right:14px;
-    bottom:124px;
+    bottom:84px;
     padding:13px 14px;
   }
 }
@@ -336,9 +336,3 @@
   font-weight:750;
 }
 
-
-
-/* Cursapp Presidente stable v9 */
-body .supportFab{bottom:124px!important;right:18px!important;z-index:8000!important;}
-body .cpV6HeroTrack{scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
-body .cpV6HeroCard{scroll-snap-align:start;}

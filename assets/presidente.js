@@ -472,8 +472,32 @@ function hash32(str){
   const ENROLL_KEY = "cursapp_enrollments_v1";
 
   function ensurePaymentsForAllApproved(){
-    // Supabase es la fuente oficial de pagos. No materializar pagos legacy en localStorage desde Presidente.
-    return;
+    try{
+      const courseKey = String(localStorage.getItem("cursapp_active_course_v1") || "");
+      if(!courseKey) return;
+
+      const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+      if(!tasksAll.length) return;
+
+      const enrolls = load(ENROLL_KEY, []).filter(e => String(e?.courseKey||"")===courseKey && String(e?.status||"").toLowerCase()==="approved");
+      if(!enrolls.length) return;
+
+      let paysAll = load(KEY_PAYMENTS, []);
+      const beforeLen = paysAll.length;
+
+      for(const e of enrolls){
+        const ident = {
+          courseKey,
+          apoderadoEmail: String(e.email||"").trim().toLowerCase(),
+          alumnoLabel: String(e.alumno||"").trim()
+        };
+        paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
+      }
+
+      if(paysAll.length !== beforeLen){
+        save(KEY_PAYMENTS, paysAll);
+      }
+    }catch(e){}
   }
 
   const markDirty = () => localStorage.setItem(KEY_DIRTY, "1");
@@ -1170,24 +1194,23 @@ function setActive(tab){
     if(norm==="informes") renderInformes();
     if(norm==="deudores") renderDeudores();
   }
+  window.go = go;
+  window.__cursappPresidentGo = go;
 
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
-  let __refreshTimer = null;
-  const __refresh = (ev)=>{
+  const __refresh = ()=>{
     try{
+      // materializa pagos faltantes (sin depender de entrar como apoderado)
+      ensurePaymentsForAllApproved();
+
       const tab = (state && state.tab) ? state.tab : 'home';
-      // Evita que el carrusel del Dashboard Ejecutivo vuelva al inicio mientras se usa.
-      if(tab === 'home') return;
-      if(__refreshTimer) clearTimeout(__refreshTimer);
-      __refreshTimer = setTimeout(()=>{
-        const t = (state && state.tab) ? state.tab : 'home';
-        if(t==='campanas') renderCampanas();
-        else if(t==='deudores') renderDeudores();
-        else if(t==='informes') renderInformes();
-      }, 180);
+      if(tab==='home') renderHome();
+      else if(tab==='campanas') renderCampanas();
+      else if(tab==='deudores') renderDeudores();
+      else if(tab==='informes') renderInformes();
     }catch(e){}
   };
   window.addEventListener('cursapp:dataChanged', __refresh);
@@ -1278,46 +1301,6 @@ function setActive(tab){
 
 
   // Fix definitivo Avisos: delegación robusta para botones del home Presidente.
-
-  function ensurePresidentStableCss(){
-    if(document.getElementById("cursappPresidentStableV8")) return;
-    const st = document.createElement("style");
-    st.id = "cursappPresidentStableV8";
-    st.textContent = `
-      .cpV6HeroTrack{
-        display:flex!important;
-        gap:12px!important;
-        overflow-x:auto!important;
-        overflow-y:hidden!important;
-        scroll-snap-type:x proximity!important;
-        -webkit-overflow-scrolling:touch!important;
-        overscroll-behavior-x:contain!important;
-        touch-action:pan-x pan-y!important;
-        padding-bottom:6px!important;
-      }
-      .cpV6HeroTrack::-webkit-scrollbar{display:none!important;}
-      .cpV6HeroCard{
-        flex:0 0 min(86vw,420px)!important;
-        scroll-snap-align:start!important;
-        scroll-snap-stop:normal!important;
-      }
-      .cpV6HeroActions button,.cpV6QuickGrid button,.cpV6SoftBtn,.cpV6MiniBtn,.btnx,.btn,.navItem{
-        pointer-events:auto!important;
-        touch-action:manipulation!important;
-      }
-      .supportFab{
-        bottom:calc(132px + env(safe-area-inset-bottom,0px))!important;
-        z-index:9000!important;
-      }
-      [data-monetization-slot="presidente"],
-      body[data-role="presidente"] .cursappRetailSlot,
-      .cpV6President .cursappRetailSlot{
-        display:none!important;
-      }
-    `;
-    document.head.appendChild(st);
-  }
-
   function bindAvisosButtonFallback(){
     if(window.__cursappAvisosButtonFallbackBound) return;
     window.__cursappAvisosButtonFallbackBound = true;
@@ -1361,7 +1344,6 @@ function setActive(tab){
 
 
 function renderHome(){
-    ensurePresidentStableCss();
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
     const recTot = collectedCourse();
@@ -1393,7 +1375,7 @@ function renderHome(){
           <div class="cpV6HeroMeta">${esc(campaignTypeLabel(t))} · vence ${esc(t.dueDate||"—")}</div>
           <div class="cpV6HeroAmount">${clp(pend)}</div>
           <div class="cpV6Progress"><span style="width:${pct}%"></span></div>
-          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('campanas')">Ver campaña</button><button class="cpV6LinkBtn" onclick="go('deudores')">Deudores ›</button></div>
+          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="window.go('campanas')">Ver campaña</button><button class="cpV6LinkBtn" onclick="window.go('deudores')">Deudores ›</button></div>
         </article>`;
     }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaña</button></div></article>`;
 
@@ -1403,10 +1385,10 @@ function renderHome(){
         <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
         ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rápido</b><span>${esc(heroAlerts.join(" · "))}</span></div>` : ``}
         <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>💰</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>⏳</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>👥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>🏦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
-        <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="go('campanas')">Ver todas las campañas</button></div></details>
-        <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="go('deudores')">Ver deudores</button></div></details>
-        <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="go('informes')">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
-        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="go('campanas')"><span>📌</span>Campañas</button><button onclick="go('deudores')"><span>🧾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
+        <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="window.go('campanas')">Ver todas las campañas</button></div></details>
+        <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="window.go('deudores')">Ver deudores</button></div></details>
+        <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="window.go('informes')">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
+        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="window.go('campanas')"><span>📌</span>Campañas</button><button onclick="window.go('deudores')"><span>🧾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
         <div data-monetization-slot="presidente"></div>
       </div>`;
     try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
@@ -2210,7 +2192,7 @@ const ym = currentYM();
         </div>
 
         <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-          <button class="btn" onclick="go('pagos')">Ir a pagos</button>
+          <button class="btn" onclick="window.go('pagos')">Ir a pagos</button>
         </div>
       </div>
     `;
@@ -2451,7 +2433,7 @@ function viewExpenseAttachment(expenseId){
           </div>
           <div class="actions" style="margin-top:12px;gap:10px;flex-wrap:wrap;">
             <button class="btnx" onclick="(function(){try{const x=localStorage.getItem('cursapp_last_informe_error')||''; if(navigator.clipboard){navigator.clipboard.writeText(x);} else {prompt('Copia esto:', x);} }catch(_){}})()">Copiar detalle</button>
-            <button class="btnx primary" onclick="go('home')">Volver</button>
+            <button class="btnx primary" onclick="window.go('home')">Volver</button>
           </div>
         </div>
       `;
@@ -3192,7 +3174,6 @@ window.deleteCampaign = function(taskId){
       console.warn("Presidente: no se pudo hidratar Supabase antes del render", e);
     }
 
-    ensurePresidentStableCss();
     initMenu();
     setInterval(()=>{
       if(state.tab!=="campanas") return;
@@ -3333,3 +3314,43 @@ window.openHelp = function(topic){
 })();
 
 /* Supabase Bridge retirado de presidente.js. La sincronización vive solo en /assets/core.js. */
+
+
+/* Cursapp stable v10 · Presidente dashboard carousel + clickable inline actions */
+(function(){
+  if(window.__CURSAPP_PRESIDENTE_STABLE_V10__) return;
+  window.__CURSAPP_PRESIDENTE_STABLE_V10__ = true;
+  const st = document.createElement('style');
+  st.id = 'cursappPresidentStableV10';
+  st.textContent = `
+    .cpV6President .cpV6HeroTrack{
+      display:flex!important;
+      flex-wrap:nowrap!important;
+      gap:14px!important;
+      overflow-x:auto!important;
+      overflow-y:hidden!important;
+      scroll-snap-type:x mandatory!important;
+      scroll-behavior:smooth!important;
+      -webkit-overflow-scrolling:touch!important;
+      touch-action:pan-x pan-y!important;
+      padding:2px 4px 10px 4px!important;
+      overscroll-behavior-x:contain!important;
+    }
+    .cpV6President .cpV6HeroTrack .cpV6HeroCard{
+      flex:0 0 88%!important;
+      width:auto!important;
+      min-width:88%!important;
+      max-width:88%!important;
+      scroll-snap-align:start!important;
+      scroll-snap-stop:normal!important;
+    }
+    .cpV6President .cpV6Dots{display:flex!important;}
+    .cpV6President .cpV6HeroActions button,
+    .cpV6President .cpV6QuickGrid button,
+    .cpV6President .cpV6SoftBtn,
+    .cpV6President .cpV6PrimaryBtn,
+    .cpV6President .cpV6LinkBtn{pointer-events:auto!important;position:relative!important;z-index:2!important;}
+    @media(min-width:760px){.cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}}
+  `;
+  document.head.appendChild(st);
+})();

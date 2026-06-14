@@ -9,24 +9,6 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
-  // Debug visible en móvil: si hay error JS lo dejamos en pantalla, sin necesitar consola.
-  function showFatal(title, err){
-    try{
-      const app = $("app");
-      if(!app) return;
-      const msg = (err && (err.message || err.toString())) ? (err.message || err.toString()) : String(err || "Error desconocido");
-      const stack = err && err.stack ? String(err.stack) : "";
-      app.innerHTML = `<div class="card" style="margin-top:12px;border:1px solid rgba(239,68,68,.28);background:#fff7f7;">
-        <div style="font-weight:950;font-size:18px;color:#991b1b;">${esc(title || "Error")}</div>
-        <div class="muted" style="margin-top:8px;font-weight:800;white-space:pre-wrap;word-break:break-word;">${esc(msg)}${stack ? "\n" + esc(stack) : ""}</div>
-        <button class="btn ghost" type="button" style="margin-top:12px;" onclick="window.__reloadApoderados && window.__reloadApoderados()">Reintentar</button>
-      </div>`;
-    }catch(e){}
-  }
-
-  window.addEventListener("error", function(e){ showFatal("Error en Apoderados", e && (e.error || e.message)); });
-  window.addEventListener("unhandledrejection", function(e){ showFatal("Error Supabase/Apoderados", e && e.reason); });
-
   let STATE = {
     loading: true,
     error: null,
@@ -41,15 +23,7 @@
   }
 
   function roleOf(){
-    try{
-      return String(
-        STATE.session?.currentRole ||
-        STATE.session?.role ||
-        localStorage.getItem("cursapp_active_role_v1") ||
-        localStorage.getItem("cursapp_role_v1") ||
-        ""
-      ).toLowerCase().trim();
-    }catch(e){ return ""; }
+    return String(STATE.session?.currentRole || STATE.session?.role || "").toLowerCase();
   }
 
   function isDirectiva(role){
@@ -58,15 +32,7 @@
 
   function activeCourseKey(){
     const s = STATE.session || {};
-    try{
-      return String(
-        s.courseKey ||
-        s.course_key ||
-        s.course?.courseKey ||
-        localStorage.getItem("cursapp_active_course_v1") ||
-        ""
-      ).trim();
-    }catch(e){ return ""; }
+    return String(s.courseKey || s.course_key || s.course?.courseKey || "").trim();
   }
 
   function fmtDate(iso){
@@ -246,48 +212,44 @@
   }
 
   async function setTesorero(id){
-    const member = (STATE.miembros || []).find(x => String(x.enrollmentId || x.id) === String(id));
-    if(!member){ alert("No encontré el miembro seleccionado."); return; }
-    if(member.role === "tesorero"){ alert("Esta persona ya está asignada como tesorero."); return; }
-    if(!confirm(`¿Asignar como tesorero a ${member.apoderadoName || member.email}?
+    const src = (STATE.miembros || []).find(e => String(e.enrollmentId) === String(id) || String(e.id) === String(id));
+    if(!src){ alert("No pude identificar al miembro seleccionado."); return; }
+    const email = String(src.email || "").toLowerCase().trim();
+    if(!email){ alert("El miembro seleccionado no tiene correo válido."); return; }
 
-Mantendrá su rol de apoderado y además tendrá acceso de tesorero.`)) return;
+    const nombre = src.apoderadoName || src.email || "este apoderado";
+    const ok = confirm(
+      "¿Asignar como tesorero a " + nombre + "?\n\n" +
+      "Mantendrá su rol de apoderado y además tendrá acceso de tesorero."
+    );
+    if(!ok) return;
 
     try{
-      const cursoId = member.cursoId || STATE.curso?.id;
-      if(!cursoId) throw new Error("No hay curso_id activo.");
-
-      const email = String(member.email || "").toLowerCase().trim();
-      const existing = (STATE.miembros || []).find(x =>
-        String(x.email || "").toLowerCase().trim() === email && String(x.role || "").toLowerCase() === "tesorero"
+      const already = (STATE.miembros || []).some(e =>
+        String(e.email || "").toLowerCase().trim() === email &&
+        String(e.role || "").toLowerCase() === "tesorero" &&
+        e.status !== "deleted"
       );
-
-      if(existing){
-        alert("Tesorero asignado correctamente ✅");
-        await loadData(); render();
-        return;
+      if(!already){
+        await sb("miembros_curso", {
+          method:"POST",
+          body: JSON.stringify({
+            curso_id: STATE.curso.id,
+            usuario_id: src.usuarioId || null,
+            rol: "tesorero",
+            nombre_apoderado: src.apoderadoName || null,
+            nombre_alumno: src.alumno || null,
+            email: src.email || email,
+            estado: "aprobado",
+            activacion_pagada: true
+          })
+        });
       }
-
-      await sb("miembros_curso", {
-        method:"POST",
-        body: JSON.stringify({
-          curso_id: cursoId,
-          usuario_id: member.usuarioId || null,
-          rol: "tesorero",
-          nombre_apoderado: member.apoderadoName || null,
-          nombre_alumno: member.alumno || null,
-          email: member.email || null,
-          estado: "aprobado",
-          activacion_pagada: true
-        })
-      });
-
-      try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", {detail:{key:"miembros_curso", source:"apoderados-set-tesorero"}})); }catch(e){}
-      alert("Tesorero asignado correctamente ✅");
       await loadData();
       render();
+      alert("Tesorero asignado correctamente ✅");
     }catch(e){
-      alert("No se pudo asignar tesorero: " + (e && e.message ? e.message : e));
+      alert("No se pudo asignar tesorero: " + (e.message || e));
     }
   }
 
@@ -324,12 +286,17 @@ Mantendrá su rol de apoderado y además tendrá acceso de tesorero.`)) return;
 
     // Gestión de apoderados solo muestra roles de apoderado.
     // El presidente que también es apoderado aparece una vez por su rol apoderado.
-    const list = (STATE.miembros || []).filter(e => e.role === "apoderado" || e.role === "tesorero");
+    const tesoreros = (STATE.miembros || []).filter(e => e.role === "tesorero" && e.status !== "deleted");
+    const tesEmails = new Set(tesoreros.map(e => String(e.email || "").toLowerCase().trim()).filter(Boolean));
+
+    // Mostrar apoderados únicos. El rol tesorero queda reflejado como estado adicional,
+    // no como una fila extra para evitar duplicar aprobados.
+    const list = (STATE.miembros || []).filter(e => e.role === "apoderado");
     const pend = list.filter(e => e.status === "pending");
     const appr = list.filter(e => e.status === "approved");
     const deld = list.filter(e => e.status === "deleted");
 
-    const tes = (STATE.miembros || []).find(e => e.role === "tesorero");
+    const tes = tesoreros[0];
     const tesLine = tes
       ? `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> ${esc(tes.apoderadoName || tes.email)}</div>`
       : `<div class="muted" style="margin-top:6px;"><b>Tesorero:</b> —</div>`;
@@ -367,8 +334,11 @@ Mantendrá su rol de apoderado y además tendrá acceso de tesorero.`)) return;
              <button class="btn ghost" type="button" onclick="window.__delete('${esc(e.enrollmentId)}')">Eliminar</button>
            </div>`
         : `<div class="muted">—</div>`;
-      const assignTesBtn = (role === "presidente" && e.status === "approved" && e.role !== "tesorero")
-        ? `<button class="btn ghost" type="button" onclick="window.setTesorero('${esc(e.enrollmentId)}')">Asignar como tesorero</button>`
+      const isTreasurer = tesEmails.has(String(e.email || "").toLowerCase().trim());
+      const assignTesBtn = (role === "presidente" && e.status === "approved")
+        ? (isTreasurer
+          ? `<button class="btn ghost" type="button" disabled style="opacity:.65;">Tesorero asignado ✅</button>`
+          : `<button class="btn ghost" type="button" onclick="window.setTesorero('${esc(e.enrollmentId)}')">Asignar como tesorero</button>`)
         : ``;
 
       return `
@@ -408,12 +378,8 @@ Mantendrá su rol de apoderado y además tendrá acceso de tesorero.`)) return;
   }
 
   document.addEventListener("DOMContentLoaded", async ()=>{
-    try{
-      render();
-      await loadData();
-      render();
-    }catch(e){
-      showFatal("Error cargando Apoderados", e);
-    }
+    render();
+    await loadData();
+    render();
   });
 })();
