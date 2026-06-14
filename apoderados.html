@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Apoderados · Cursapp</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=stable9">
+  <link rel="stylesheet" href="/assets/styles.css?v=2300">
   <style>
     body{padding-bottom:24px;}
     .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;background:rgba(100,116,139,.12);color:#0f172a;}
@@ -36,8 +36,8 @@
     // volver al home correcto según rol
     window.__goBackHome = function(){
       try{
-        const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null") || {};
-        const role = String(s.currentRole || s.role || localStorage.getItem("cursapp_active_role_v1") || "").toLowerCase();
+        const u = JSON.parse(localStorage.getItem("cursapp_demo_user") || "null");
+        const role = (u && u.role) ? String(u.role).toLowerCase() : "";
         if(role === "presidente") return location.assign("/presidente.html");
         if(role === "tesorero") return location.assign("/tesorero.html");
         return location.assign("/index.html");
@@ -47,7 +47,7 @@
     };
   </script>
 
-  <script defer src="/assets/core.js?v=stable9"></script>
-  <script defer src="/assets/apoderados.js?v=stable9"></script>
+  <script defer src="/assets/core.js?v=2300"></script>
+  <script defer src="/assets/apoderados.js?v=stable10"></script>
 </body>
 </html>
