@@ -3471,3 +3471,60 @@ window.openHelp = function(topic){
 
 
 /* __CURSAPP_PRESIDENTE_V11_4_TESORERO_BLOQUEO_Y_ELIMINAR__ */
+
+
+/* __CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__ */
+(function(){
+  if(window.__CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__) return;
+  window.__CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__ = true;
+
+  function norm(s){ return String(s || '').toLowerCase().trim(); }
+  function findEmailNear(el){
+    let x = el;
+    for(let i=0; x && i<12; i++, x=x.parentElement){
+      const m = String(x.textContent || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      if(m) return norm(m[0]);
+    }
+    return '';
+  }
+  async function refresh(){
+    try{
+      if(!window.CursappPresidentStable || typeof window.CursappPresidentStable.refreshTreasurerButtons !== 'function') return;
+      await window.CursappPresidentStable.refreshTreasurerButtons();
+
+      // Refuerzo visual para tarjetas antiguas que vuelven a pintar "Tesorero asignado ✅".
+      document.querySelectorAll('button').forEach(function(btn){
+        const txt = norm(btn.textContent);
+        if(!txt.includes('tesorero')) return;
+        const email = findEmailNear(btn);
+        if(!email) return;
+
+        if(txt.includes('tesorero asignado')){
+          btn.textContent = 'Eliminar tesorero';
+          btn.disabled = false;
+          btn.removeAttribute('disabled');
+          btn.style.opacity = '1';
+          btn.setAttribute('data-remove-treasurer-email', email);
+          btn.removeAttribute('data-assign-treasurer-email');
+        }
+      });
+    }catch(e){ console.warn('V11.5 refresh tesorero', e); }
+  }
+
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!btn) return;
+    const txt = norm(btn.textContent);
+    if(txt.includes('ya existe tesorero')){
+      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      alert('Ya existe un tesorero asignado en este curso.\n\nPrimero elimina el tesorero vigente para asignar otro.');
+      return false;
+    }
+  }, true);
+
+  try{ window.addEventListener('cursapp:dataUpdated', function(){ setTimeout(refresh, 200); }); }catch(e){}
+  try{ window.addEventListener('cursapp:dataChanged', function(){ setTimeout(refresh, 200); }); }catch(e){}
+  try{ new MutationObserver(function(){ clearTimeout(window.__tesoreroV115Timer); window.__tesoreroV115Timer=setTimeout(refresh, 250); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  setTimeout(refresh, 300);
+  setTimeout(refresh, 1000);
+})();

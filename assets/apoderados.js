@@ -211,40 +211,115 @@
     }
   }
 
+  function tesoreroActuales(){
+    return (STATE.miembros || []).filter(e =>
+      String(e.role || e.rol || "").toLowerCase() === "tesorero" &&
+      String(e.status || e.estado || "").toLowerCase() !== "deleted" &&
+      String(e.status || e.estado || "").toLowerCase() !== "eliminado"
+    );
+  }
+
+  function msgTesoreroExiste(){
+    const t = tesoreroActuales()[0];
+    const nombre = t ? (t.apoderadoName || t.nombre_apoderado || t.email || "tesorero vigente") : "tesorero vigente";
+    alert(
+      "Ya existe un tesorero asignado en este curso: " + nombre + ".\n\n" +
+      "Para cambiarlo, primero presiona "Eliminar tesorero" en el tesorero vigente."
+    );
+  }
+
+  async function removeTesorero(id){
+    const src = (STATE.miembros || []).find(e => String(e.enrollmentId) === String(id) || String(e.id) === String(id));
+    if(!src){ alert("No pude identificar al tesorero seleccionado."); return; }
+
+    const email = String(src.email || "").toLowerCase().trim();
+    if(!email){ alert("El tesorero seleccionado no tiene correo válido."); return; }
+
+    const nombre = src.apoderadoName || src.nombre_apoderado || src.email || "este apoderado";
+    const ok = confirm(
+      "¿Eliminar rol tesorero de " + nombre + "?\n\n" +
+      "Mantendrá su rol de apoderado."
+    );
+    if(!ok) return;
+
+    try{
+      // Siempre pregunta al estado actual del curso y elimina solo filas rol=tesorero del mismo correo.
+      const targets = (STATE.miembros || []).filter(e =>
+        String(e.email || "").toLowerCase().trim() === email &&
+        String(e.role || e.rol || "").toLowerCase() === "tesorero" &&
+        String(e.status || e.estado || "").toLowerCase() !== "deleted" &&
+        String(e.status || e.estado || "").toLowerCase() !== "eliminado"
+      );
+
+      if(!targets.length){ alert("Este apoderado no tiene rol tesorero vigente."); return; }
+
+      const errors = [];
+      for(const t of targets){
+        const rowId = t.id || t.enrollmentId;
+        if(!rowId){ errors.push("registro sin id"); continue; }
+        try{
+          await sb(`miembros_curso?id=${eq(rowId)}`, { method:"DELETE" });
+        }catch(e){
+          errors.push(e.message || String(e));
+        }
+      }
+
+      if(errors.length){
+        alert("No se pudo eliminar tesorero. Revisa RLS/DELETE en Supabase: " + errors.join(" | "));
+        return;
+      }
+
+      await loadData();
+      render();
+      alert("Rol tesorero eliminado ✅");
+    }catch(e){
+      alert("No se pudo eliminar tesorero: " + (e.message || e));
+    }
+  }
+
   async function setTesorero(id){
     const src = (STATE.miembros || []).find(e => String(e.enrollmentId) === String(id) || String(e.id) === String(id));
     if(!src){ alert("No pude identificar al miembro seleccionado."); return; }
     const email = String(src.email || "").toLowerCase().trim();
     if(!email){ alert("El miembro seleccionado no tiene correo válido."); return; }
 
-    const nombre = src.apoderadoName || src.email || "este apoderado";
-    const ok = confirm(
-      "¿Asignar como tesorero a " + nombre + "?\n\n" +
-      "Mantendrá su rol de apoderado y además tendrá acceso de tesorero."
-    );
-    if(!ok) return;
-
     try{
-      const already = (STATE.miembros || []).some(e =>
-        String(e.email || "").toLowerCase().trim() === email &&
-        String(e.role || "").toLowerCase() === "tesorero" &&
-        e.status !== "deleted"
-      );
-      if(!already){
-        await sb("miembros_curso", {
-          method:"POST",
-          body: JSON.stringify({
-            curso_id: STATE.curso.id,
-            usuario_id: src.usuarioId || null,
-            rol: "tesorero",
-            nombre_apoderado: src.apoderadoName || null,
-            nombre_alumno: src.alumno || null,
-            email: src.email || email,
-            estado: "aprobado",
-            activacion_pagada: true
-          })
-        });
+      // Regla V11.5: consultar siempre el estado del curso antes de crear otro tesorero.
+      // No se hace query global; se usa STATE.miembros ya hidratado para el curso activo.
+      const currentTreasurers = tesoreroActuales();
+      const same = currentTreasurers.find(e => String(e.email || "").toLowerCase().trim() === email);
+
+      if(same){
+        alert("Este apoderado ya es el tesorero vigente del curso ✅");
+        return;
       }
+
+      if(currentTreasurers.length){
+        msgTesoreroExiste();
+        return;
+      }
+
+      const nombre = src.apoderadoName || src.email || "este apoderado";
+      const ok = confirm(
+        "¿Asignar como tesorero a " + nombre + "?\n\n" +
+        "Mantendrá su rol de apoderado y además tendrá acceso de tesorero."
+      );
+      if(!ok) return;
+
+      await sb("miembros_curso", {
+        method:"POST",
+        body: JSON.stringify({
+          curso_id: STATE.curso.id,
+          usuario_id: src.usuarioId || null,
+          rol: "tesorero",
+          nombre_apoderado: src.apoderadoName || null,
+          nombre_alumno: src.alumno || null,
+          email: src.email || email,
+          estado: "aprobado",
+          activacion_pagada: true
+        })
+      });
+
       await loadData();
       render();
       alert("Tesorero asignado correctamente ✅");
@@ -335,10 +410,13 @@
            </div>`
         : `<div class="muted">—</div>`;
       const isTreasurer = tesEmails.has(String(e.email || "").toLowerCase().trim());
+      const hasTreasurer = tesEmails.size > 0;
       const assignTesBtn = (role === "presidente" && e.status === "approved")
         ? (isTreasurer
-          ? `<button class="btn ghost" type="button" disabled style="opacity:.65;">Tesorero asignado ✅</button>`
-          : `<button class="btn ghost" type="button" onclick="window.setTesorero('${esc(e.enrollmentId)}')">Asignar como tesorero</button>`)
+          ? `<button class="btn ghost" type="button" onclick="window.removeTesorero('${esc(e.enrollmentId)}')">Eliminar tesorero</button>`
+          : (hasTreasurer
+            ? `<button class="btn ghost" type="button" onclick="window.__tesoreroExisteMsg()">Ya existe tesorero</button>`
+            : `<button class="btn ghost" type="button" onclick="window.setTesorero('${esc(e.enrollmentId)}')">Asignar como tesorero</button>`))
         : ``;
 
       return `
@@ -374,6 +452,8 @@
     window.setTesorero = setTesorero;
     window.__copyInviteCode = () => copyText(invite);
     window.__copyWhatsappInvite = () => copyText(buildWhatsappInvite(curso));
+    window.removeTesorero = removeTesorero;
+    window.__tesoreroExisteMsg = msgTesoreroExiste;
     window.__reloadApoderados = async () => { await loadData(); render(); };
   }
 
@@ -383,3 +463,5 @@
     render();
   });
 })();
+
+/* __CURSAPP_APODERADOS_V11_5_TESORERO_UNICO__ */
