@@ -1347,11 +1347,16 @@ function setActive(tab){
         )) return;
       }
 
+      // V11.11: en Home no re-renderizar por eventos internos.
+      // El Dashboard horizontal y el banner parpadeaban porque cambios de localStorage
+      // disparaban renderHome() mientras el usuario estaba mirando/deslizando.
+      // Home se vuelve a pintar solo al entrar explícitamente con go('home').
+      if(tab==='home') return;
+
       // materializa pagos faltantes solo si el evento afecta datos operacionales.
       ensurePaymentsForAllApproved();
 
-      if(tab==='home') renderHome();
-      else if(tab==='campanas') renderCampanas();
+      if(tab==='campanas') renderCampanas();
       else if(tab==='deudores') renderDeudores();
       else if(tab==='informes') renderInformes();
     }catch(e){}
@@ -1486,13 +1491,6 @@ function setActive(tab){
   bindAvisosButtonFallback();
 
 
-
-  function presidentHeroDots(n){
-    const count = Math.max(1, Math.min(5, Number(n||1)));
-    if(count <= 1) return "";
-    return `<div class="cpV6Dots">${Array.from({length:count}).map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div>`;
-  }
-
 function renderHome(){
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
@@ -1519,7 +1517,7 @@ function renderHome(){
       const pend = pendingTaskEstimated(t);
       const pct = Math.max(0, Math.min(100, Math.round((rec / Math.max(1, rec + pend)) * 100)));
       return `
-        <article class="cpV6HeroCard cpV5DueCard">
+        <article class="cpV6HeroCard">
           <div class="cpV6HeroIndex">${i+1} de ${Math.max(1, active.length)}</div>
           <div class="cpV6HeroTitle">${esc(t.title||"Campaña")}</div>
           <div class="cpV6HeroMeta">${esc(campaignTypeLabel(t))} · vence ${esc(t.dueDate||"—")}</div>
@@ -1527,12 +1525,12 @@ function renderHome(){
           <div class="cpV6Progress"><span style="width:${pct}%"></span></div>
           <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="window.go('campanas')">Ver campaña</button><button class="cpV6LinkBtn" onclick="window.go('deudores')">Deudores ›</button></div>
         </article>`;
-    }).join("") || `<article class="cpV6HeroCard cpV5DueCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaña</button></div></article>`;
+    }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaña</button></div></article>`;
 
     app.innerHTML = `
       <div class="cpV6Page cpV6President">
         <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="window.openAvisosConfigSafe()">✉️</button></section>
-        <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack cpV5Carousel" data-cursapp-president-carousel="1">${campaignSlides}</div>${presidentHeroDots(active.length)}</section>
+        <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
         ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rápido</b><span>${esc(heroAlerts.join(" · "))}</span></div>` : ``}
         <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>💰</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>⏳</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>👥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>🏦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
         <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="window.go('campanas')">Ver todas las campañas</button></div></details>
@@ -1543,13 +1541,20 @@ function renderHome(){
       </div>`;
     try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
     try{
-      // V11.10: mismo patrón estable que Apoderado.
-      // El slot queda en el flujo normal y se renderiza después del Home.
+      // V11.9: render del banner una sola vez por ciclo de Home.
+      // No se vuelve a llamar en cada scroll/evento para evitar parpadeo.
       if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function'){
-        setTimeout(()=>{ try{ window.CursappMonetization.render(); }catch(_e){} }, 120);
+        const slot = document.querySelector('[data-monetization-slot="presidente"]');
+        if(slot && !slot.getAttribute('data-cursapp-banner-rendered')){
+          slot.setAttribute('data-cursapp-banner-rendered','1');
+          setTimeout(()=>{
+            try{
+              if(!slot.childElementCount) window.CursappMonetization.render();
+            }catch(_e){}
+          }, 250);
+        }
       }
     }catch(e){}
-    try{ setTimeout(()=>window.__CURSAPP_PRESIDENTE_DASHBOARD_BANNER_V1110__ && window.__CURSAPP_PRESIDENTE_DASHBOARD_BANNER_V1110__.bind(), 0); }catch(e){}
   }
 
   // ----- Campaigns ----// ----- Campaigns -----
@@ -3569,156 +3574,108 @@ window.openHelp = function(topic){
 })();
 
 
-/* __CURSAPP_PRESIDENTE_V11_10_DASHBOARD_BANNER_FROM_APODERADO__ */
+/* __CURSAPP_PRESIDENTE_V11_11_HOME_NO_RERENDER_BANNER_NO_FLICKER__
+   - Home Presidente no se vuelve a renderizar por dataChanged/dataUpdated.
+   - Banner: no se recrea si ya existe en el slot.
+   - Dashboard: no se fuerza scrollLeft en cada mutación del DOM.
+*/
 (function(){
-  if(window.__CURSAPP_PRESIDENTE_V11_10_DASHBOARD_BANNER_FROM_APODERADO__) return;
-  window.__CURSAPP_PRESIDENTE_V11_10_DASHBOARD_BANNER_FROM_APODERADO__ = true;
-
-  const STORE_KEY = "cursapp_presidente_dashboard_scroll_left_v1110";
+  if(window.__CURSAPP_PRESIDENTE_V11_11_HOME_STABLE__) return;
+  window.__CURSAPP_PRESIDENTE_V11_11_HOME_STABLE__ = true;
 
   function inject(){
-    if(document.getElementById("cursappPresidentV1110DashboardBanner")) return;
-    const st=document.createElement("style");
-    st.id="cursappPresidentV1110DashboardBanner";
+    if(document.getElementById('cursappPresidentV1111Stable')) return;
+    const st=document.createElement('style');
+    st.id='cursappPresidentV1111Stable';
     st.textContent=`
-      .cpV6President .cpV6Hero{
-        overflow:hidden!important;
-      }
-      .cpV6President .cpV6HeroTrack,
-      .cpV6President .cpV6HeroTrack.cpV5Carousel{
-        display:flex!important;
-        flex-wrap:nowrap!important;
-        gap:14px!important;
+      .cpV6President .cpV6HeroTrack{
         overflow-x:auto!important;
         overflow-y:hidden!important;
-        -webkit-overflow-scrolling:touch!important;
-        touch-action:pan-x pan-y!important;
-        scroll-behavior:auto!important;
         scroll-snap-type:x mandatory!important;
+        scroll-behavior:auto!important;
+        -webkit-overflow-scrolling:touch!important;
         overscroll-behavior-x:contain!important;
-        padding:2px 4px 12px 4px!important;
-        scrollbar-width:none!important;
         transform:translateZ(0)!important;
-        will-change:scroll-position!important;
+        will-change:auto!important;
       }
-      .cpV6President .cpV6HeroTrack::-webkit-scrollbar{display:none!important;}
       .cpV6President .cpV6HeroTrack .cpV6HeroCard{
-        flex:0 0 86%!important;
-        width:auto!important;
-        min-width:86%!important;
-        max-width:86%!important;
         scroll-snap-align:center!important;
         scroll-snap-stop:normal!important;
         transform:translateZ(0)!important;
-      }
-      .cpV6President [data-monetization-slot="presidente"]{
-        display:block!important;
-        position:relative!important;
-        min-height:0!important;
-        overflow:visible!important;
-        contain:none!important;
-        margin-top:16px!important;
-      }
-      .cpV6President [data-monetization-slot="presidente"] > *{
-        transform:translateZ(0)!important;
         backface-visibility:hidden!important;
       }
-      @media(min-width:760px){
-        .cpV6President .cpV6HeroTrack .cpV6HeroCard{
-          flex-basis:46%!important;
-          min-width:46%!important;
-          max-width:46%!important;
-        }
+      .cpV6President [data-monetization-slot="presidente"]{
+        overflow-anchor:none!important;
+        contain:layout paint!important;
+      }
+      .cpV6President [data-monetization-slot="presidente"] .cursappRetailSlot,
+      .cpV6President [data-monetization-slot="presidente"] .cursappRetailBanner{
+        transform:translateZ(0)!important;
+        backface-visibility:hidden!important;
+        will-change:auto!important;
       }
     `;
     document.head.appendChild(st);
   }
 
-  function updateDots(track){
+  function patchBannerRender(){
     try{
-      const hero = track.closest(".cpV6Hero");
-      const dots = hero && hero.querySelectorAll(".cpV6Dots span");
-      if(!dots || !dots.length) return;
-      const cards = Array.from(track.querySelectorAll(".cpV6HeroCard"));
-      if(!cards.length) return;
-      const center = track.scrollLeft + (track.clientWidth/2);
-      let best = 0, dist = Infinity;
-      cards.forEach((card, i)=>{
-        const c = card.offsetLeft + (card.offsetWidth/2);
-        const d = Math.abs(c-center);
-        if(d < dist){ dist=d; best=i; }
-      });
-      dots.forEach((d,i)=>d.classList.toggle("active", i===best));
-    }catch(e){}
-  }
-
-  function bind(){
-    inject();
-    const track=document.querySelector(".cpV6President .cpV6HeroTrack");
-    if(!track) return;
-
-    if(!track.__cursappV1110Bound){
-      track.__cursappV1110Bound = true;
-      let timer=null;
-      const remember=()=>{
-        try{
-          sessionStorage.setItem(STORE_KEY, String(track.scrollLeft||0));
-          updateDots(track);
-        }catch(e){}
-      };
-      track.addEventListener("scroll", ()=>{
-        if(timer) clearTimeout(timer);
-        timer=setTimeout(remember, 80);
-      }, {passive:true});
-      track.addEventListener("touchend", ()=>setTimeout(remember, 120), {passive:true});
-      track.addEventListener("pointerup", ()=>setTimeout(remember, 120), {passive:true});
-    }
-
-    try{
-      const saved = Number(sessionStorage.getItem(STORE_KEY) || 0);
-      if(saved > 8 && Math.abs((track.scrollLeft||0)-saved) > 8){
-        track.scrollLeft = saved;
-        requestAnimationFrame(()=>{ try{ track.scrollLeft = saved; updateDots(track); }catch(e){} });
-      }else{
-        updateDots(track);
-      }
-    }catch(e){}
-  }
-
-  function patchMonetizationRender(){
-    try{
-      if(!window.CursappMonetization || typeof window.CursappMonetization.render !== "function") return;
-      if(window.CursappMonetization.__presidenteV1110Patched) return;
+      if(!window.CursappMonetization || typeof window.CursappMonetization.render !== 'function') return;
+      if(window.CursappMonetization.__presidenteV1111NoFlicker) return;
       const original = window.CursappMonetization.render.bind(window.CursappMonetization);
       window.CursappMonetization.render = function(){
         const slot = document.querySelector('.cpV6President [data-monetization-slot="presidente"]');
-        // Si ya existe banner en Presidente, no lo recreamos: evita parpadeo.
-        if(slot && slot.childElementCount){
-          return;
-        }
+        const existing = slot && slot.querySelector('.cursappRetailSlot,.cursappRetailBanner');
+        if(existing) return existing;
         return original();
       };
-      window.CursappMonetization.__presidenteV1110Patched = true;
+      window.CursappMonetization.__presidenteV1111NoFlicker = true;
     }catch(e){}
   }
 
-  function renderBannerLikeApoderado(){
+  let dotTimer=null;
+  function updateDotsOnly(){
     try{
-      patchMonetizationRender();
-      if(window.CursappMonetization && typeof window.CursappMonetization.render === "function"){
-        setTimeout(()=>{ try{ window.CursappMonetization.render(); }catch(e){} }, 120);
+      const track=document.querySelector('.cpV6President .cpV6HeroTrack');
+      if(!track) return;
+      const hero=track.closest('.cpV6Hero');
+      const dots=hero ? Array.from(hero.querySelectorAll('.cpV6Dots span')) : [];
+      const cards=Array.from(track.querySelectorAll('.cpV6HeroCard'));
+      if(!dots.length || !cards.length) return;
+      const center=track.scrollLeft + track.clientWidth/2;
+      let best=0, dist=Infinity;
+      cards.forEach((card,i)=>{
+        const d=Math.abs((card.offsetLeft + card.offsetWidth/2)-center);
+        if(d<dist){dist=d; best=i;}
+      });
+      dots.forEach((d,i)=>d.classList.toggle('active', i===best));
+    }catch(e){}
+  }
+  function bindTrackPassive(){
+    try{
+      const track=document.querySelector('.cpV6President .cpV6HeroTrack');
+      if(!track || track.__cursappV1111PassiveBound) return;
+      track.__cursappV1111PassiveBound=true;
+      track.addEventListener('scroll',()=>{
+        clearTimeout(dotTimer);
+        dotTimer=setTimeout(updateDotsOnly,90);
+      },{passive:true});
+      updateDotsOnly();
+    }catch(e){}
+  }
+
+  function boot(){
+    inject();
+    patchBannerRender();
+    bindTrackPassive();
+    try{
+      if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function'){
+        setTimeout(()=>{ try{ window.CursappMonetization.render(); }catch(e){} },160);
       }
     }catch(e){}
   }
-
-  const api = { bind, renderBannerLikeApoderado };
-  window.__CURSAPP_PRESIDENTE_DASHBOARD_BANNER_V1110__ = api;
-
-  document.addEventListener("DOMContentLoaded", ()=>{ bind(); renderBannerLikeApoderado(); });
-  window.addEventListener("load", ()=>{ bind(); renderBannerLikeApoderado(); });
-  window.addEventListener("pageshow", ()=>{ bind(); renderBannerLikeApoderado(); });
-  window.addEventListener("cursapp:dataChanged", ()=>setTimeout(bind, 120));
-  window.addEventListener("cursapp:dataUpdated", ()=>setTimeout(bind, 120));
-  try{ new MutationObserver(()=>setTimeout(bind, 80)).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-  setTimeout(()=>{ bind(); renderBannerLikeApoderado(); }, 300);
+  document.addEventListener('DOMContentLoaded', boot);
+  window.addEventListener('load', boot);
+  window.addEventListener('pageshow', boot);
+  setTimeout(boot,300);
 })();
