@@ -2840,39 +2840,27 @@ if (DEMO_MODE) {
   window.__setRole = function(r){
     try{
       localStorage.setItem("cursapp_role_prompted_v1","1");
-      window.__CURSAPP_APO_ROLE_CHOOSER_PENDING__ = false;
+      localStorage.setItem("cursapp_active_role_v1", String(r)==="tesorero" ? "tesorero" : "apoderado");
     }catch(e){}
     try{ closeModal(); }catch(e){}
     if(String(r)==="tesorero"){
       location.href="/tesorero.html";
     }else{
-      // quedarse en apoderado: recién aquí se pinta Home y después banner.
+      // quedarse en apoderado
       try{ __hideLegacyTesoreroBanner(); }catch(e){}
-      try{
-        const hash = (location.hash || "").replace("#","");
-        if(hash==="payments_paid"){ try{ window.__apoForcePaid = true; }catch(_e){} go("payments"); }
-        else if(hash==="payments") go("payments");
-        else go("home");
-      }catch(_go){}
-      try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(), 220); }catch(_m){}
     }
   };
 
-  function __mustPromptRole(){
-    try{
-      var already = localStorage.getItem("cursapp_role_prompted_v1")==="1";
-      if(already) return false;
-      return __profilesHasRole("tesorero");
-    }catch(e){ return false; }
-  }
-
   function __maybePromptRole(){
+    // V11.14: no mostrar selector automático dentro de Apoderado.
+    // El selector debe resolverse antes de entrar a esta pantalla (login / cambio de rol).
+    // Esto evita el bug Presidente -> Apoderado donde se renderizaba Home/banner
+    // y luego aparecía nuevamente "Elegir rol", dejando el banner de fondo.
     try{
-      if(!__mustPromptRole()) return false;
-      window.__CURSAPP_APO_ROLE_CHOOSER_PENDING__ = true;
-      __openRoleChooser();
-      return true;
-    }catch(e){ return false; }
+      localStorage.setItem("cursapp_role_prompted_v1","1");
+      localStorage.setItem("cursapp_active_role_v1","apoderado");
+    }catch(e){}
+    return;
   }
 
 async function __bootApoderadoSupabaseFirst(){
@@ -2895,10 +2883,7 @@ async function __bootApoderadoSupabaseFirst(){
 
   initMenu();
   __hideLegacyTesoreroBanner();
-
-  // V11.13: cuando viene de Presidente y tiene doble rol, primero se elige rol.
-  // No renderizamos Home ni banner hasta que el usuario seleccione Apoderado.
-  if(__maybePromptRole()) return;
+  __maybePromptRole();
 
   const hash = (location.hash || "").replace("#","");
   if(hash==="payments_paid"){
@@ -2914,14 +2899,7 @@ __bootApoderadoSupabaseFirst();
 (function(){
   if(window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__) return;
   window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__ = true;
-  function rerender(){
-    try{
-      if(window.__CURSAPP_APO_ROLE_CHOOSER_PENDING__) return;
-      if(window.CursappMonetization) setTimeout(()=>{
-        try{ if(!window.__CURSAPP_APO_ROLE_CHOOSER_PENDING__) window.CursappMonetization.render(); }catch(_e){}
-      }, 120);
-    }catch(e){}
-  }
+  function rerender(){ try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(), 120); }catch(e){} }
   window.addEventListener("cursapp:dataChanged", rerender);
   window.addEventListener("cursapp:dataUpdated", rerender);
   window.addEventListener("pageshow", rerender);
@@ -2929,4 +2907,4 @@ __bootApoderadoSupabaseFirst();
   setTimeout(()=>clearInterval(timer), 12000);
 })();
 
-/* __CURSAPP_APODERADO_V11_13_ROLE_BEFORE_BANNER__ */
+/* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
