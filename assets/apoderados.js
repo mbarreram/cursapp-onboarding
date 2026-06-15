@@ -224,7 +224,7 @@
     const nombre = t ? (t.apoderadoName || t.nombre_apoderado || t.email || "tesorero vigente") : "tesorero vigente";
     alert(
       "Ya existe un tesorero asignado en este curso: " + nombre + ".\n\n" +
-      "Para cambiarlo, primero presiona "Eliminar tesorero" en el tesorero vigente."
+      "Para cambiarlo, primero presiona \"Eliminar tesorero\" en el tesorero vigente."
     );
   }
 
