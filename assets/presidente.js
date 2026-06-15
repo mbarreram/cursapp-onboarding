@@ -3529,43 +3529,52 @@ window.openHelp = function(topic){
   setTimeout(refresh, 1000);
 })();
 
-/* __CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__ */
+
+/* __CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__ */
 (function(){
-  if(window.__CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__) return;
-  window.__CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__ = true;
+  if(window.__CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__) return;
+  window.__CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__ = true;
 
-  var bannerCacheHTML = '';
-  var renderWrapped = false;
-  var lastHeroLeft = 0;
-  var timer = null;
+  var HERO_KEY = 'cursapp_presidente_hero_index_v11_7';
+  var bannerHTML = '';
+  var bannerWrapped = false;
+  var rafRestore = null;
+  var mutTimer = null;
+  var renderTimer = null;
 
-  function injectCss(){
-    if(document.getElementById('cursappPresidentV116DashboardBanner')) return;
+  function css(){
+    if(document.getElementById('cursappPresidentV117DashboardBanner')) return;
     var st = document.createElement('style');
-    st.id = 'cursappPresidentV116DashboardBanner';
+    st.id = 'cursappPresidentV117DashboardBanner';
     st.textContent = `
+      /* Dashboard ejecutivo: carrusel manual, sin autoplay ni rebote al primero */
+      .cpV6President .cpV6Hero{overflow:hidden!important;}
       .cpV6President .cpV6HeroTrack{
         display:flex!important;
         flex-wrap:nowrap!important;
         gap:14px!important;
         overflow-x:auto!important;
         overflow-y:hidden!important;
-        scroll-snap-type:none!important;
-        scroll-behavior:auto!important;
         -webkit-overflow-scrolling:touch!important;
+        scroll-snap-type:x mandatory!important;
+        scroll-behavior:auto!important;
         touch-action:pan-x pan-y!important;
         overscroll-behavior-x:contain!important;
         padding:2px 4px 10px 4px!important;
+        scrollbar-width:none!important;
       }
+      .cpV6President .cpV6HeroTrack::-webkit-scrollbar{display:none!important;}
       .cpV6President .cpV6HeroTrack .cpV6HeroCard{
         flex:0 0 88%!important;
         min-width:88%!important;
         max-width:88%!important;
         width:auto!important;
-        scroll-snap-align:none!important;
+        scroll-snap-align:start!important;
+        scroll-snap-stop:always!important;
       }
-      .cpV6President .cpV6HeroTrack::-webkit-scrollbar{display:none;}
-      .cpV6President .cpV6HeroTrack{scrollbar-width:none;}
+      @media(min-width:760px){
+        .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}
+      }
       .cpV6President .cpV6HeroActions button,
       .cpV6President .cpV6QuickGrid button,
       .cpV6President .cpV6SoftBtn,
@@ -3573,111 +3582,190 @@ window.openHelp = function(topic){
       .cpV6President .cpV6LinkBtn{
         pointer-events:auto!important;
         position:relative!important;
-        z-index:5!important;
+        z-index:10!important;
       }
-      [data-monetization-slot="presidente"]{
+
+      /* Banner Presidente: mismo comportamiento estable que Apoderado, dentro del flujo y sin empujar scroll */
+      .cpV6President [data-monetization-slot="presidente"]{
+        display:block!important;
+        width:100%!important;
         min-height:0!important;
+        margin:14px 0 calc(112px + env(safe-area-inset-bottom,0px))!important;
         overflow:visible!important;
         contain:layout paint!important;
+        transform:none!important;
+        will-change:auto!important;
       }
-      [data-monetization-slot="presidente"][data-cursapp-banner-stable="1"]{
-        margin-top:12px!important;
+      .cpV6President [data-monetization-slot="presidente"] > .cursappRetailSlot{
+        margin:0!important;
+        display:grid!important;
+        gap:12px!important;
+        position:relative!important;
+        z-index:1!important;
+        transform:none!important;
+        will-change:auto!important;
+        contain:layout paint!important;
       }
-      @media(min-width:760px){
-        .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}
+      .cpV6President [data-monetization-slot="presidente"] .cursappRetailBanner{
+        min-height:118px!important;
+        border-radius:24px!important;
+      }
+      .cpV6President [data-monetization-slot="presidente"] .retailCopy b{
+        font-size:19px!important;
       }
     `;
     document.head.appendChild(st);
   }
 
-  function heroTrack(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
-  function rememberHero(){ var t=heroTrack(); if(t) lastHeroLeft = t.scrollLeft || 0; }
-  function restoreHero(){ var t=heroTrack(); if(t && lastHeroLeft > 0){ try{ t.scrollLeft = lastHeroLeft; }catch(e){} } }
+  function isPresidentHome(){ return !!document.querySelector('.cpV6President'); }
+  function track(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
+  function cards(){ var t=track(); return t ? Array.prototype.slice.call(t.querySelectorAll('.cpV6HeroCard')) : []; }
+  function getIndex(){
+    try{ return Math.max(0, parseInt(sessionStorage.getItem(HERO_KEY) || localStorage.getItem(HERO_KEY) || '0', 10) || 0); }
+    catch(e){ return 0; }
+  }
+  function setIndex(i){
+    i = Math.max(0, Number(i||0));
+    try{ sessionStorage.setItem(HERO_KEY, String(i)); localStorage.setItem(HERO_KEY, String(i)); }catch(e){}
+    updateDots(i);
+  }
+  function nearestIndex(){
+    var t=track(), cs=cards();
+    if(!t || !cs.length) return 0;
+    var left = t.scrollLeft || 0;
+    var best=0, dist=Infinity;
+    cs.forEach(function(c,i){
+      var d = Math.abs((c.offsetLeft || 0) - left);
+      if(d < dist){ dist=d; best=i; }
+    });
+    return best;
+  }
+  function updateDots(i){
+    var dots = document.querySelectorAll('.cpV6President .cpV6Dots span');
+    if(!dots || !dots.length) return;
+    dots.forEach(function(d,k){ d.classList.toggle('active', k===i); });
+  }
+  function scrollToIndex(i, immediate){
+    var t=track(), cs=cards();
+    if(!t || !cs.length) return;
+    i = Math.max(0, Math.min(cs.length-1, Number(i||0)));
+    var left = cs[i].offsetLeft || 0;
+    try{
+      if(immediate || Math.abs((t.scrollLeft||0)-left)>4) t.scrollTo({left:left, behavior:'auto'});
+      else t.scrollLeft = left;
+    }catch(e){ try{ t.scrollLeft = left; }catch(_e){} }
+    updateDots(i);
+  }
+  function wireHero(){
+    var t=track(); if(!t || t.__cursappV117HeroWired) return;
+    t.__cursappV117HeroWired = true;
+    var endTimer=null;
+    t.addEventListener('scroll', function(){
+      clearTimeout(endTimer);
+      endTimer = setTimeout(function(){
+        var i = nearestIndex();
+        setIndex(i);
+        scrollToIndex(i, true);
+      }, 120);
+    }, {passive:true});
+    t.addEventListener('touchend', function(){ setTimeout(function(){ var i=nearestIndex(); setIndex(i); scrollToIndex(i, true); }, 160); }, {passive:true});
+  }
+  function restoreHero(){
+    clearTimeout(rafRestore);
+    rafRestore = setTimeout(function(){
+      wireHero();
+      var i = getIndex();
+      scrollToIndex(i, true);
+    }, 80);
+  }
 
-  function wireDashboardButtons(){
-    document.querySelectorAll('.cpV6HeroActions button,.cpV6QuickGrid button,.cpV6SoftBtn,.cpV6PrimaryBtn,.cpV6LinkBtn').forEach(function(btn){
-      var txt = String(btn.textContent || '').toLowerCase();
-      if(txt.includes('ver campaña') || txt.includes('campañas') || txt.includes('campanas')){
-        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go === 'function') window.go('campanas'); return false; };
+  function slot(){ return document.querySelector('.cpV6President [data-monetization-slot="presidente"]') || document.querySelector('[data-monetization-slot="presidente"]'); }
+  function currentRetailSlot(){ var s=slot(); return s ? s.querySelector(':scope > .cursappRetailSlot') : null; }
+  function cacheBanner(){
+    var rs = currentRetailSlot();
+    if(rs && rs.innerHTML.trim()) bannerHTML = rs.outerHTML;
+  }
+  function restoreBanner(){
+    var s = slot(); if(!s) return;
+    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    var rs = currentRetailSlot();
+    if(rs && rs.innerHTML.trim()){ cacheBanner(); return; }
+    if(bannerHTML && !rs){
+      s.innerHTML = bannerHTML;
+      requestAnimationFrame(function(){ try{ window.scrollTo(0, y); }catch(e){} });
+    }
+  }
+  function wrapBannerRender(){
+    if(bannerWrapped) return;
+    var cm = window.CursappMonetization;
+    if(!cm || typeof cm.render !== 'function') return;
+    var original = cm.render.bind(cm);
+    cm.render = function(){
+      if(!isPresidentHome()) return original.apply(cm, arguments);
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      var idx = getIndex();
+      var s = slot();
+      var rs = currentRetailSlot();
+      if(s && bannerHTML && (!rs || !rs.innerHTML.trim())){
+        s.innerHTML = bannerHTML;
+        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} });
+        return;
       }
+      if(rs && rs.innerHTML.trim()){
+        cacheBanner();
+        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} });
+        return;
+      }
+      var out = original.apply(cm, arguments);
+      setTimeout(function(){ cacheBanner(); try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} }, 120);
+      return out;
+    };
+    bannerWrapped = true;
+  }
+
+  function buttons(){
+    if(!isPresidentHome()) return;
+    document.querySelectorAll('.cpV6President .cpV6HeroActions button,.cpV6President .cpV6QuickGrid button,.cpV6President .cpV6SoftBtn,.cpV6President .cpV6PrimaryBtn,.cpV6President .cpV6LinkBtn').forEach(function(btn){
+      var txt = String(btn.textContent || '').toLowerCase();
       if(txt.includes('deudores')){
-        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go === 'function') window.go('deudores'); return false; };
+        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go==='function') window.go('deudores'); return false; };
+      }else if(txt.includes('ver campaña') || txt.includes('ver todas las campañas') || txt.includes('campañas') || txt.includes('campanas')){
+        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go==='function') window.go('campanas'); return false; };
       }
     });
   }
 
-  function stableBannerSlot(){
-    var slot = document.querySelector('[data-monetization-slot="presidente"]');
-    if(!slot) return;
-
-    if(slot.innerHTML.trim()){
-      bannerCacheHTML = slot.innerHTML;
-      slot.setAttribute('data-cursapp-banner-stable','1');
-      return;
-    }
-
-    if(bannerCacheHTML){
-      var y = window.scrollY || document.documentElement.scrollTop || 0;
-      slot.innerHTML = bannerCacheHTML;
-      slot.setAttribute('data-cursapp-banner-stable','1');
-      requestAnimationFrame(function(){ try{ window.scrollTo(0, y); }catch(e){} });
-    }
-  }
-
-  function wrapMonetization(){
-    if(renderWrapped) return;
-    var cm = window.CursappMonetization;
-    if(!cm || typeof cm.render !== 'function') return;
-
-    var original = cm.render.bind(cm);
-    cm.render = function(){
-      var slot = document.querySelector('[data-monetization-slot="presidente"]');
-      var y = window.scrollY || document.documentElement.scrollTop || 0;
-      rememberHero();
-
-      // Si ya existe banner en memoria o en DOM, no volver a pedir/renderizar.
-      if(slot && (slot.innerHTML.trim() || bannerCacheHTML)){
-        stableBannerSlot();
-        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); restoreHero(); }catch(e){} });
-        return;
-      }
-
-      var out = original.apply(cm, arguments);
-      setTimeout(function(){
-        stableBannerSlot();
-        try{ window.scrollTo(0, y); restoreHero(); }catch(e){}
-      }, 80);
-      return out;
-    };
-    renderWrapped = true;
-  }
-
-  function stabilizeAll(){
-    injectCss();
-    wrapMonetization();
-    stableBannerSlot();
-    wireDashboardButtons();
+  function stabilize(){
+    css();
+    wrapBannerRender();
+    wireHero();
+    restoreBanner();
     restoreHero();
+    buttons();
   }
 
-  document.addEventListener('scroll', rememberHero, true);
   document.addEventListener('click', function(ev){
     var btn = ev.target && ev.target.closest ? ev.target.closest('button,a,[role="button"]') : null;
-    if(!btn) return;
+    if(!btn || !btn.closest('.cpV6President')) return;
     var txt = String(btn.textContent || '').toLowerCase();
-    if(txt.includes('ver campaña') || txt.includes('campañas') || txt.includes('campanas')){
-      if(btn.closest('.cpV6President')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('campanas'); }
+    if(txt.includes('deudores')){
+      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      if(typeof window.go==='function') window.go('deudores');
+      return false;
     }
-    if(txt.includes('deudores') && btn.closest('.cpV6President')){
-      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('deudores');
+    if(txt.includes('ver campaña') || txt.includes('ver todas las campañas')){
+      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      if(typeof window.go==='function') window.go('campanas');
+      return false;
     }
   }, true);
 
-  try{ new MutationObserver(function(){ clearTimeout(timer); timer=setTimeout(stabilizeAll, 120); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-  try{ window.addEventListener('cursapp:dataChanged', function(){ setTimeout(stabilizeAll, 180); }); }catch(e){}
-  try{ window.addEventListener('cursapp:dataUpdated', function(){ setTimeout(stabilizeAll, 180); }); }catch(e){}
-
-  setTimeout(stabilizeAll, 100);
-  setTimeout(stabilizeAll, 600);
-  setTimeout(stabilizeAll, 1400);
+  try{ history.scrollRestoration = 'manual'; }catch(e){}
+  try{ new MutationObserver(function(){ clearTimeout(mutTimer); mutTimer=setTimeout(stabilize, 90); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  try{ window.addEventListener('cursapp:dataChanged', function(){ clearTimeout(renderTimer); renderTimer=setTimeout(stabilize, 160); }); }catch(e){}
+  try{ window.addEventListener('cursapp:dataUpdated', function(){ clearTimeout(renderTimer); renderTimer=setTimeout(stabilize, 160); }); }catch(e){}
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(stabilize, 50); setTimeout(stabilize, 400); });
+  setTimeout(stabilize, 80);
+  setTimeout(stabilize, 700);
+  setTimeout(stabilize, 1500);
 })();
