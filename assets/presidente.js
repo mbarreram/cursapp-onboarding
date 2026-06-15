@@ -1,3 +1,32 @@
+
+// === CURSAPP GLOBAL LOADING ===
+window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
+ show:(role='')=>{
+  try{
+   let el=document.getElementById('cursapp-loading-overlay');
+   if(el) return;
+   const msgs={
+    presidente:['📊 Preparando dashboard ejecutivo...','👥 Revisando apoderados...','📈 Actualizando indicadores...'],
+    tesorero:['💰 Conciliando pagos...','🧾 Actualizando comprobantes...','📋 Revisando rendiciones...'],
+    apoderado:['🎒 Revisando información del curso...','📅 Consultando próximas cuotas...','📣 Actualizando avisos...']
+   };
+   const arr=msgs[(role||'').toLowerCase()]||['Cargando datos...'];
+   el=document.createElement('div');
+   el.id='cursapp-loading-overlay';
+   el.style.cssText='position:fixed;inset:0;background:#fff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center';
+   el.innerHTML='<div style="font-size:54px;color:#6d28d9;font-weight:700">C</div><div id="ca-msg" style="margin-top:12px;font-weight:600">Cargando datos...</div><div style="width:220px;height:6px;background:#eee;border-radius:8px;overflow:hidden;margin-top:12px"><div style="height:100%;width:100%;background:#6d28d9;animation:caProg 1.4s infinite"></div></div><style>@keyframes caProg{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}</style>';
+   document.body.appendChild(el);
+   let i=0; el._t=setInterval(()=>{const m=el.querySelector('#ca-msg'); if(m) m.textContent=arr[i++%arr.length];},900);
+  }catch(e){}
+ },
+ hide:()=>{
+  const el=document.getElementById('cursapp-loading-overlay');
+  if(el){try{clearInterval(el._t);}catch(e){} el.remove();}
+ }
+};
+document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('presidente'); setTimeout(()=>window.CURSAPP_LOADING.hide(),1200);}catch(e){}});
+// === END LOADING ===
+
 /* Cursapp HOTFIX v7 · Presidente estable
    - Sin loop de banner: render único post Home.
    - Dashboard ejecutivo sin carrusel horizontal que rebote.
