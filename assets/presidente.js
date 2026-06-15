@@ -3530,242 +3530,138 @@ window.openHelp = function(topic){
 })();
 
 
-/* __CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__ */
+/* __CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__ */
 (function(){
-  if(window.__CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__) return;
-  window.__CURSAPP_PRESIDENTE_V11_7_DASHBOARD_BANNER_FIX__ = true;
+  if(window.__CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__) return;
+  window.__CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__ = true;
 
-  var HERO_KEY = 'cursapp_presidente_hero_index_v11_7';
-  var bannerHTML = '';
-  var bannerWrapped = false;
-  var rafRestore = null;
-  var mutTimer = null;
-  var renderTimer = null;
+  var lastHeroIndex = Number(sessionStorage.getItem('cursapp_pres_hero_idx') || 0) || 0;
+  var lastHeroLeft = Number(sessionStorage.getItem('cursapp_pres_hero_left') || 0) || 0;
+  var bannerHTML = sessionStorage.getItem('cursapp_pres_banner_html_v118') || '';
+  var bannerDone = false;
+  var restoreScrollY = null;
+  var restoreTimer = null;
 
+  function isHome(){ return !!document.querySelector('.cpV6President'); }
+  function heroTrack(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
+  function heroCards(){ var t=heroTrack(); return t ? Array.prototype.slice.call(t.querySelectorAll('.cpV6HeroCard')) : []; }
+  function nearestIndex(){
+    var t=heroTrack(), cards=heroCards();
+    if(!t || !cards.length) return 0;
+    var left=t.scrollLeft||0, best=0, bestD=Infinity;
+    cards.forEach(function(c,i){ var d=Math.abs((c.offsetLeft||0)-left); if(d<bestD){ bestD=d; best=i; } });
+    return best;
+  }
+  function setDots(i){
+    try{
+      var dots=document.querySelectorAll('.cpV6President .cpV6Dots span');
+      dots.forEach(function(d,k){ d.classList.toggle('active', k===i); });
+    }catch(e){}
+  }
+  function rememberHero(){
+    var t=heroTrack(); if(!t) return;
+    lastHeroLeft = t.scrollLeft || 0;
+    lastHeroIndex = nearestIndex();
+    try{ sessionStorage.setItem('cursapp_pres_hero_idx', String(lastHeroIndex)); sessionStorage.setItem('cursapp_pres_hero_left', String(lastHeroLeft)); }catch(e){}
+    setDots(lastHeroIndex);
+  }
+  function restoreHeroOnlyAfterRender(){
+    var t=heroTrack(); if(!t) return;
+    if(t.__cursappV118Wired !== true){
+      t.__cursappV118Wired = true;
+      t.addEventListener('scroll', function(){
+        clearTimeout(t.__cursappV118ScrollTimer);
+        t.__cursappV118ScrollTimer = setTimeout(rememberHero, 80);
+      }, {passive:true});
+      t.addEventListener('touchend', function(){ setTimeout(rememberHero, 120); }, {passive:true});
+    }
+    var cards=heroCards();
+    if(!cards.length) return;
+    var maxIndex=Math.max(0,cards.length-1);
+    var i=Math.min(Math.max(0,lastHeroIndex),maxIndex);
+    var targetLeft = cards[i] ? (cards[i].offsetLeft||0) : lastHeroLeft;
+    // Solo restaurar cuando el render dejó el track en 0 pero el usuario estaba en otra tarjeta.
+    // No forzar scroll en cada mutation: eso causaba el parpadeo.
+    if(i>0 && Math.abs((t.scrollLeft||0)-targetLeft)>24 && (t.scrollLeft||0)<24){
+      try{ t.scrollLeft = targetLeft; }catch(e){}
+    }
+    setDots(i);
+  }
   function css(){
-    if(document.getElementById('cursappPresidentV117DashboardBanner')) return;
-    var st = document.createElement('style');
-    st.id = 'cursappPresidentV117DashboardBanner';
-    st.textContent = `
-      /* Dashboard ejecutivo: carrusel manual, sin autoplay ni rebote al primero */
-      .cpV6President .cpV6Hero{overflow:hidden!important;}
-      .cpV6President .cpV6HeroTrack{
-        display:flex!important;
-        flex-wrap:nowrap!important;
-        gap:14px!important;
-        overflow-x:auto!important;
-        overflow-y:hidden!important;
-        -webkit-overflow-scrolling:touch!important;
-        scroll-snap-type:x mandatory!important;
-        scroll-behavior:auto!important;
-        touch-action:pan-x pan-y!important;
-        overscroll-behavior-x:contain!important;
-        padding:2px 4px 10px 4px!important;
-        scrollbar-width:none!important;
-      }
-      .cpV6President .cpV6HeroTrack::-webkit-scrollbar{display:none!important;}
-      .cpV6President .cpV6HeroTrack .cpV6HeroCard{
-        flex:0 0 88%!important;
-        min-width:88%!important;
-        max-width:88%!important;
-        width:auto!important;
-        scroll-snap-align:start!important;
-        scroll-snap-stop:always!important;
-      }
-      @media(min-width:760px){
-        .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}
-      }
-      .cpV6President .cpV6HeroActions button,
-      .cpV6President .cpV6QuickGrid button,
-      .cpV6President .cpV6SoftBtn,
-      .cpV6President .cpV6PrimaryBtn,
-      .cpV6President .cpV6LinkBtn{
-        pointer-events:auto!important;
-        position:relative!important;
-        z-index:10!important;
-      }
-
-      /* Banner Presidente: mismo comportamiento estable que Apoderado, dentro del flujo y sin empujar scroll */
-      .cpV6President [data-monetization-slot="presidente"]{
-        display:block!important;
-        width:100%!important;
-        min-height:0!important;
-        margin:14px 0 calc(112px + env(safe-area-inset-bottom,0px))!important;
-        overflow:visible!important;
-        contain:layout paint!important;
-        transform:none!important;
-        will-change:auto!important;
-      }
-      .cpV6President [data-monetization-slot="presidente"] > .cursappRetailSlot{
-        margin:0!important;
-        display:grid!important;
-        gap:12px!important;
-        position:relative!important;
-        z-index:1!important;
-        transform:none!important;
-        will-change:auto!important;
-        contain:layout paint!important;
-      }
-      .cpV6President [data-monetization-slot="presidente"] .cursappRetailBanner{
-        min-height:118px!important;
-        border-radius:24px!important;
-      }
-      .cpV6President [data-monetization-slot="presidente"] .retailCopy b{
-        font-size:19px!important;
-      }
-    `;
+    if(document.getElementById('cursappPresidentV118NoFlicker')) return;
+    var st=document.createElement('style');
+    st.id='cursappPresidentV118NoFlicker';
+    st.textContent='\
+      .cpV6President .cpV6Hero{overflow:hidden!important;}\
+      .cpV6President .cpV6HeroTrack{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;scroll-behavior:auto!important;scroll-snap-type:none!important;overscroll-behavior-x:contain!important;padding-left:0!important;}\
+      .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex:0 0 88%!important;min-width:88%!important;max-width:88%!important;scroll-snap-align:none!important;scroll-snap-stop:normal!important;}\
+      .cpV6President [data-monetization-slot="presidente"]{display:block!important;min-height:0!important;contain:layout paint!important;overflow:hidden!important;}\
+      .cpV6President [data-monetization-slot="presidente"] .cursappRetailSlot{animation:none!important;transition:none!important;}\
+      .cpV6President .cpV6HeroActions button,.cpV6President .cpV6QuickGrid button,.cpV6President .cpV6SoftBtn,.cpV6President .cpV6PrimaryBtn,.cpV6President .cpV6LinkBtn{pointer-events:auto!important;position:relative!important;z-index:5!important;}\
+    ';
     document.head.appendChild(st);
   }
 
-  function isPresidentHome(){ return !!document.querySelector('.cpV6President'); }
-  function track(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
-  function cards(){ var t=track(); return t ? Array.prototype.slice.call(t.querySelectorAll('.cpV6HeroCard')) : []; }
-  function getIndex(){
-    try{ return Math.max(0, parseInt(sessionStorage.getItem(HERO_KEY) || localStorage.getItem(HERO_KEY) || '0', 10) || 0); }
-    catch(e){ return 0; }
-  }
-  function setIndex(i){
-    i = Math.max(0, Number(i||0));
-    try{ sessionStorage.setItem(HERO_KEY, String(i)); localStorage.setItem(HERO_KEY, String(i)); }catch(e){}
-    updateDots(i);
-  }
-  function nearestIndex(){
-    var t=track(), cs=cards();
-    if(!t || !cs.length) return 0;
-    var left = t.scrollLeft || 0;
-    var best=0, dist=Infinity;
-    cs.forEach(function(c,i){
-      var d = Math.abs((c.offsetLeft || 0) - left);
-      if(d < dist){ dist=d; best=i; }
-    });
-    return best;
-  }
-  function updateDots(i){
-    var dots = document.querySelectorAll('.cpV6President .cpV6Dots span');
-    if(!dots || !dots.length) return;
-    dots.forEach(function(d,k){ d.classList.toggle('active', k===i); });
-  }
-  function scrollToIndex(i, immediate){
-    var t=track(), cs=cards();
-    if(!t || !cs.length) return;
-    i = Math.max(0, Math.min(cs.length-1, Number(i||0)));
-    var left = cs[i].offsetLeft || 0;
-    try{
-      if(immediate || Math.abs((t.scrollLeft||0)-left)>4) t.scrollTo({left:left, behavior:'auto'});
-      else t.scrollLeft = left;
-    }catch(e){ try{ t.scrollLeft = left; }catch(_e){} }
-    updateDots(i);
-  }
-  function wireHero(){
-    var t=track(); if(!t || t.__cursappV117HeroWired) return;
-    t.__cursappV117HeroWired = true;
-    var endTimer=null;
-    t.addEventListener('scroll', function(){
-      clearTimeout(endTimer);
-      endTimer = setTimeout(function(){
-        var i = nearestIndex();
-        setIndex(i);
-        scrollToIndex(i, true);
-      }, 120);
-    }, {passive:true});
-    t.addEventListener('touchend', function(){ setTimeout(function(){ var i=nearestIndex(); setIndex(i); scrollToIndex(i, true); }, 160); }, {passive:true});
-  }
-  function restoreHero(){
-    clearTimeout(rafRestore);
-    rafRestore = setTimeout(function(){
-      wireHero();
-      var i = getIndex();
-      scrollToIndex(i, true);
-    }, 80);
-  }
-
   function slot(){ return document.querySelector('.cpV6President [data-monetization-slot="presidente"]') || document.querySelector('[data-monetization-slot="presidente"]'); }
-  function currentRetailSlot(){ var s=slot(); return s ? s.querySelector(':scope > .cursappRetailSlot') : null; }
-  function cacheBanner(){
-    var rs = currentRetailSlot();
-    if(rs && rs.innerHTML.trim()) bannerHTML = rs.outerHTML;
-  }
-  function restoreBanner(){
-    var s = slot(); if(!s) return;
-    var y = window.scrollY || document.documentElement.scrollTop || 0;
-    var rs = currentRetailSlot();
-    if(rs && rs.innerHTML.trim()){ cacheBanner(); return; }
-    if(bannerHTML && !rs){
-      s.innerHTML = bannerHTML;
-      requestAnimationFrame(function(){ try{ window.scrollTo(0, y); }catch(e){} });
+  function retail(){ var s=slot(); return s ? s.querySelector('.cursappRetailSlot') : null; }
+  function saveBanner(){
+    var r=retail();
+    if(r && String(r.innerHTML||'').trim()){
+      bannerHTML = r.outerHTML;
+      bannerDone = true;
+      try{ sessionStorage.setItem('cursapp_pres_banner_html_v118', bannerHTML); }catch(e){}
     }
   }
-  function wrapBannerRender(){
-    if(bannerWrapped) return;
-    var cm = window.CursappMonetization;
-    if(!cm || typeof cm.render !== 'function') return;
-    var original = cm.render.bind(cm);
-    cm.render = function(){
-      if(!isPresidentHome()) return original.apply(cm, arguments);
-      var y = window.scrollY || document.documentElement.scrollTop || 0;
-      var idx = getIndex();
-      var s = slot();
-      var rs = currentRetailSlot();
-      if(s && bannerHTML && (!rs || !rs.innerHTML.trim())){
-        s.innerHTML = bannerHTML;
-        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} });
-        return;
-      }
-      if(rs && rs.innerHTML.trim()){
-        cacheBanner();
-        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} });
-        return;
-      }
-      var out = original.apply(cm, arguments);
-      setTimeout(function(){ cacheBanner(); try{ window.scrollTo(0, y); scrollToIndex(idx, true); }catch(e){} }, 120);
+  function restoreBannerStable(){
+    var s=slot(); if(!s) return;
+    var r=retail();
+    if(r && String(r.innerHTML||'').trim()){ saveBanner(); return; }
+    if(bannerHTML){
+      var y = (restoreScrollY == null) ? (window.scrollY || document.documentElement.scrollTop || 0) : restoreScrollY;
+      // Restaurar solo si el slot está vacío tras renderHome. No llamar al render del banner otra vez.
+      s.innerHTML = bannerHTML;
+      requestAnimationFrame(function(){ try{ window.scrollTo(0,y); }catch(e){} });
+    }
+  }
+  function wrapMonetization(){
+    var cm=window.CursappMonetization;
+    if(!cm || typeof cm.render!=='function' || cm.__cursappV118Wrapped) return;
+    var original=cm.render.bind(cm);
+    cm.render=function(){
+      if(!isHome()) return original.apply(cm, arguments);
+      restoreScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      // Si ya existe/caché banner, no recrear. Re-crear era el origen del parpadeo.
+      if(retail()){ saveBanner(); return; }
+      if(bannerHTML){ restoreBannerStable(); return; }
+      if(bannerDone) return;
+      var out=original.apply(cm, arguments);
+      setTimeout(function(){ saveBanner(); try{ window.scrollTo(0, restoreScrollY||0); }catch(e){} }, 180);
       return out;
     };
-    bannerWrapped = true;
+    cm.__cursappV118Wrapped = true;
   }
-
   function buttons(){
-    if(!isPresidentHome()) return;
+    if(!isHome()) return;
     document.querySelectorAll('.cpV6President .cpV6HeroActions button,.cpV6President .cpV6QuickGrid button,.cpV6President .cpV6SoftBtn,.cpV6President .cpV6PrimaryBtn,.cpV6President .cpV6LinkBtn').forEach(function(btn){
-      var txt = String(btn.textContent || '').toLowerCase();
-      if(txt.includes('deudores')){
-        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go==='function') window.go('deudores'); return false; };
-      }else if(txt.includes('ver campaña') || txt.includes('ver todas las campañas') || txt.includes('campañas') || txt.includes('campanas')){
-        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go==='function') window.go('campanas'); return false; };
-      }
+      var txt=String(btn.textContent||'').toLowerCase();
+      if(txt.includes('deudores')) btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} if(typeof window.go==='function') window.go('deudores'); return false; };
+      else if(txt.includes('ver campaña')||txt.includes('ver todas las campañas')||txt.includes('campañas')||txt.includes('campanas')) btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} if(typeof window.go==='function') window.go('campanas'); return false; };
     });
   }
-
   function stabilize(){
-    css();
-    wrapBannerRender();
-    wireHero();
-    restoreBanner();
-    restoreHero();
-    buttons();
+    css(); wrapMonetization(); restoreBannerStable(); restoreHeroOnlyAfterRender(); buttons();
   }
-
   document.addEventListener('click', function(ev){
-    var btn = ev.target && ev.target.closest ? ev.target.closest('button,a,[role="button"]') : null;
+    var btn=ev.target&&ev.target.closest?ev.target.closest('button,a,[role="button"]'):null;
     if(!btn || !btn.closest('.cpV6President')) return;
-    var txt = String(btn.textContent || '').toLowerCase();
-    if(txt.includes('deudores')){
-      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      if(typeof window.go==='function') window.go('deudores');
-      return false;
-    }
-    if(txt.includes('ver campaña') || txt.includes('ver todas las campañas')){
-      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      if(typeof window.go==='function') window.go('campanas');
-      return false;
-    }
+    var txt=String(btn.textContent||'').toLowerCase();
+    if(txt.includes('deudores')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('deudores'); return false; }
+    if(txt.includes('ver campaña') || txt.includes('ver todas las campañas')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('campanas'); return false; }
   }, true);
-
-  try{ history.scrollRestoration = 'manual'; }catch(e){}
-  try{ new MutationObserver(function(){ clearTimeout(mutTimer); mutTimer=setTimeout(stabilize, 90); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-  try{ window.addEventListener('cursapp:dataChanged', function(){ clearTimeout(renderTimer); renderTimer=setTimeout(stabilize, 160); }); }catch(e){}
-  try{ window.addEventListener('cursapp:dataUpdated', function(){ clearTimeout(renderTimer); renderTimer=setTimeout(stabilize, 160); }); }catch(e){}
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(stabilize, 50); setTimeout(stabilize, 400); });
-  setTimeout(stabilize, 80);
-  setTimeout(stabilize, 700);
-  setTimeout(stabilize, 1500);
+  try{ history.scrollRestoration='manual'; }catch(e){}
+  try{ new MutationObserver(function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 140); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  try{ window.addEventListener('cursapp:dataChanged', function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 220); }); }catch(e){}
+  try{ window.addEventListener('cursapp:dataUpdated', function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 220); }); }catch(e){}
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(stabilize,80); setTimeout(stabilize,500); });
+  setTimeout(stabilize,80); setTimeout(stabilize,700); setTimeout(stabilize,1500);
 })();
