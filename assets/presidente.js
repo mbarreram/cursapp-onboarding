@@ -39,14 +39,14 @@
         gap:14px!important;
         overflow-x:auto!important;
         overflow-y:hidden!important;
-        scroll-snap-type:x mandatory!important;
+        scroll-snap-type:none!important;
         scroll-behavior:auto!important;
         -webkit-overflow-scrolling:touch!important;
         touch-action:pan-x pan-y!important;
         padding:2px 4px 10px 4px!important;
         overscroll-behavior-x:contain!important;
       }
-      .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex:0 0 88%!important;width:auto!important;min-width:88%!important;max-width:88%!important;scroll-snap-align:start!important;scroll-snap-stop:normal!important;}
+      .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex:0 0 88%!important;width:auto!important;min-width:88%!important;max-width:88%!important;scroll-snap-align:none!important;scroll-snap-stop:normal!important;}
       .cpV6President .cpV6Dots{display:flex!important;}
       @media(min-width:760px){.cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}}
       .cpV6President button,.cpV6President a{touch-action:manipulation;}
@@ -1315,12 +1315,41 @@ function setActive(tab){
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
   // campaigns.js emite este evento al crear/editar/cerrar campañas.
-  const __refresh = ()=>{
+  const __refresh = (ev)=>{
     try{
-      // materializa pagos faltantes (sin depender de entrar como apoderado)
+      // V11.9: evitar re-render del Home por eventos no financieros.
+      // El parpadeo del banner y el retorno del carrusel venían de renderHome()
+      // disparado por localStorage/cursapp:dataChanged de módulos visuales.
+      const key = String(ev && ev.detail && ev.detail.key || '');
+      const source = String(ev && ev.detail && ev.detail.source || '').toLowerCase();
+      const tab = (state && state.tab) ? state.tab : 'home';
+
+      const allowedKeys = new Set([
+        KEY_TASKS,
+        KEY_PAYMENTS,
+        KEY_EXPENSES,
+        KEY_MONTHLY_REPORTS,
+        KEY_ENROLLMENTS,
+        KEY_ENROLL,
+        ENROLL_KEY
+      ].filter(Boolean));
+
+      if(ev && ev.type === 'cursapp:dataChanged'){
+        if(key && !allowedKeys.has(key)) return;
+      }
+
+      if(ev && ev.type === 'cursapp:dataUpdated'){
+        if(source && (
+          source.includes('banner') ||
+          source.includes('monetization') ||
+          source.includes('support') ||
+          source.includes('tesorero')
+        )) return;
+      }
+
+      // materializa pagos faltantes solo si el evento afecta datos operacionales.
       ensurePaymentsForAllApproved();
 
-      const tab = (state && state.tab) ? state.tab : 'home';
       if(tab==='home') renderHome();
       else if(tab==='campanas') renderCampanas();
       else if(tab==='deudores') renderDeudores();
@@ -1506,7 +1535,21 @@ function renderHome(){
         <div data-monetization-slot="presidente"></div>
       </div>`;
     try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
-    try{ if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function') setTimeout(()=>window.CursappMonetization.render(), 250); }catch(e){}
+    try{
+      // V11.9: render del banner una sola vez por ciclo de Home.
+      // No se vuelve a llamar en cada scroll/evento para evitar parpadeo.
+      if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function'){
+        const slot = document.querySelector('[data-monetization-slot="presidente"]');
+        if(slot && !slot.getAttribute('data-cursapp-banner-rendered')){
+          slot.setAttribute('data-cursapp-banner-rendered','1');
+          setTimeout(()=>{
+            try{
+              if(!slot.childElementCount) window.CursappMonetization.render();
+            }catch(_e){}
+          }, 250);
+        }
+      }
+    }catch(e){}
   }
 
   // ----- Campaigns ----// ----- Campaigns -----
@@ -3443,7 +3486,7 @@ window.openHelp = function(topic){
       gap:14px!important;
       overflow-x:auto!important;
       overflow-y:hidden!important;
-      scroll-snap-type:x mandatory!important;
+      scroll-snap-type:none!important;
       scroll-behavior:auto!important;
       -webkit-overflow-scrolling:touch!important;
       touch-action:pan-x pan-y!important;
@@ -3455,7 +3498,7 @@ window.openHelp = function(topic){
       width:auto!important;
       min-width:88%!important;
       max-width:88%!important;
-      scroll-snap-align:start!important;
+      scroll-snap-align:none!important;
       scroll-snap-stop:normal!important;
     }
     .cpV6President .cpV6Dots{display:flex!important;}
@@ -3473,195 +3516,54 @@ window.openHelp = function(topic){
 /* __CURSAPP_PRESIDENTE_V11_4_TESORERO_BLOQUEO_Y_ELIMINAR__ */
 
 
-/* __CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__ */
+/* __CURSAPP_PRESIDENTE_V11_9_DASHBOARD_BANNER_STABLE__ */
 (function(){
-  if(window.__CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__) return;
-  window.__CURSAPP_PRESIDENTE_V11_5_FINAL_TESORERO_GUARD__ = true;
+  if(window.__CURSAPP_PRESIDENTE_V11_9_DASHBOARD_BANNER_STABLE__) return;
+  window.__CURSAPP_PRESIDENTE_V11_9_DASHBOARD_BANNER_STABLE__ = true;
 
-  function norm(s){ return String(s || '').toLowerCase().trim(); }
-  function findEmailNear(el){
-    let x = el;
-    for(let i=0; x && i<12; i++, x=x.parentElement){
-      const m = String(x.textContent || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-      if(m) return norm(m[0]);
-    }
-    return '';
-  }
-  async function refresh(){
-    try{
-      if(!window.CursappPresidentStable || typeof window.CursappPresidentStable.refreshTreasurerButtons !== 'function') return;
-      await window.CursappPresidentStable.refreshTreasurerButtons();
-
-      // Refuerzo visual para tarjetas antiguas que vuelven a pintar "Tesorero asignado ✅".
-      document.querySelectorAll('button').forEach(function(btn){
-        const txt = norm(btn.textContent);
-        if(!txt.includes('tesorero')) return;
-        const email = findEmailNear(btn);
-        if(!email) return;
-
-        if(txt.includes('tesorero asignado')){
-          btn.textContent = 'Eliminar tesorero';
-          btn.disabled = false;
-          btn.removeAttribute('disabled');
-          btn.style.opacity = '1';
-          btn.setAttribute('data-remove-treasurer-email', email);
-          btn.removeAttribute('data-assign-treasurer-email');
-        }
-      });
-    }catch(e){ console.warn('V11.5 refresh tesorero', e); }
-  }
-
-  document.addEventListener('click', function(ev){
-    const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
-    if(!btn) return;
-    const txt = norm(btn.textContent);
-    if(txt.includes('ya existe tesorero')){
-      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
-      alert('Ya existe un tesorero asignado en este curso.\n\nPrimero elimina el tesorero vigente para asignar otro.');
-      return false;
-    }
-  }, true);
-
-  try{ window.addEventListener('cursapp:dataUpdated', function(){ setTimeout(refresh, 200); }); }catch(e){}
-  try{ window.addEventListener('cursapp:dataChanged', function(){ setTimeout(refresh, 200); }); }catch(e){}
-  try{ new MutationObserver(function(){ clearTimeout(window.__tesoreroV115Timer); window.__tesoreroV115Timer=setTimeout(refresh, 250); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-  setTimeout(refresh, 300);
-  setTimeout(refresh, 1000);
-})();
-
-
-/* __CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__ */
-(function(){
-  if(window.__CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__) return;
-  window.__CURSAPP_PRESIDENTE_V11_8_DASHBOARD_BANNER_NO_FLICKER__ = true;
-
-  var lastHeroIndex = Number(sessionStorage.getItem('cursapp_pres_hero_idx') || 0) || 0;
-  var lastHeroLeft = Number(sessionStorage.getItem('cursapp_pres_hero_left') || 0) || 0;
-  var bannerHTML = sessionStorage.getItem('cursapp_pres_banner_html_v118') || '';
-  var bannerDone = false;
-  var restoreScrollY = null;
-  var restoreTimer = null;
-
-  function isHome(){ return !!document.querySelector('.cpV6President'); }
-  function heroTrack(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
-  function heroCards(){ var t=heroTrack(); return t ? Array.prototype.slice.call(t.querySelectorAll('.cpV6HeroCard')) : []; }
-  function nearestIndex(){
-    var t=heroTrack(), cards=heroCards();
-    if(!t || !cards.length) return 0;
-    var left=t.scrollLeft||0, best=0, bestD=Infinity;
-    cards.forEach(function(c,i){ var d=Math.abs((c.offsetLeft||0)-left); if(d<bestD){ bestD=d; best=i; } });
-    return best;
-  }
-  function setDots(i){
-    try{
-      var dots=document.querySelectorAll('.cpV6President .cpV6Dots span');
-      dots.forEach(function(d,k){ d.classList.toggle('active', k===i); });
-    }catch(e){}
-  }
-  function rememberHero(){
-    var t=heroTrack(); if(!t) return;
-    lastHeroLeft = t.scrollLeft || 0;
-    lastHeroIndex = nearestIndex();
-    try{ sessionStorage.setItem('cursapp_pres_hero_idx', String(lastHeroIndex)); sessionStorage.setItem('cursapp_pres_hero_left', String(lastHeroLeft)); }catch(e){}
-    setDots(lastHeroIndex);
-  }
-  function restoreHeroOnlyAfterRender(){
-    var t=heroTrack(); if(!t) return;
-    if(t.__cursappV118Wired !== true){
-      t.__cursappV118Wired = true;
-      t.addEventListener('scroll', function(){
-        clearTimeout(t.__cursappV118ScrollTimer);
-        t.__cursappV118ScrollTimer = setTimeout(rememberHero, 80);
-      }, {passive:true});
-      t.addEventListener('touchend', function(){ setTimeout(rememberHero, 120); }, {passive:true});
-    }
-    var cards=heroCards();
-    if(!cards.length) return;
-    var maxIndex=Math.max(0,cards.length-1);
-    var i=Math.min(Math.max(0,lastHeroIndex),maxIndex);
-    var targetLeft = cards[i] ? (cards[i].offsetLeft||0) : lastHeroLeft;
-    // Solo restaurar cuando el render dejó el track en 0 pero el usuario estaba en otra tarjeta.
-    // No forzar scroll en cada mutation: eso causaba el parpadeo.
-    if(i>0 && Math.abs((t.scrollLeft||0)-targetLeft)>24 && (t.scrollLeft||0)<24){
-      try{ t.scrollLeft = targetLeft; }catch(e){}
-    }
-    setDots(i);
-  }
-  function css(){
-    if(document.getElementById('cursappPresidentV118NoFlicker')) return;
-    var st=document.createElement('style');
-    st.id='cursappPresidentV118NoFlicker';
-    st.textContent='\
-      .cpV6President .cpV6Hero{overflow:hidden!important;}\
-      .cpV6President .cpV6HeroTrack{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;scroll-behavior:auto!important;scroll-snap-type:none!important;overscroll-behavior-x:contain!important;padding-left:0!important;}\
-      .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex:0 0 88%!important;min-width:88%!important;max-width:88%!important;scroll-snap-align:none!important;scroll-snap-stop:normal!important;}\
-      .cpV6President [data-monetization-slot="presidente"]{display:block!important;min-height:0!important;contain:layout paint!important;overflow:hidden!important;}\
-      .cpV6President [data-monetization-slot="presidente"] .cursappRetailSlot{animation:none!important;transition:none!important;}\
-      .cpV6President .cpV6HeroActions button,.cpV6President .cpV6QuickGrid button,.cpV6President .cpV6SoftBtn,.cpV6President .cpV6PrimaryBtn,.cpV6President .cpV6LinkBtn{pointer-events:auto!important;position:relative!important;z-index:5!important;}\
-    ';
+  function inject(){
+    if(document.getElementById('cursappPresidentV119DashboardBanner')) return;
+    const st=document.createElement('style');
+    st.id='cursappPresidentV119DashboardBanner';
+    st.textContent=`
+      .cpV6President .cpV6HeroTrack{
+        scroll-snap-type:none!important;
+        scroll-behavior:auto!important;
+        overflow-x:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        overscroll-behavior-x:contain!important;
+      }
+      .cpV6President .cpV6HeroTrack .cpV6HeroCard{
+        scroll-snap-align:none!important;
+        scroll-snap-stop:normal!important;
+      }
+      .cpV6President [data-monetization-slot="presidente"]{
+        display:block!important;
+        min-height:0!important;
+        contain:layout paint!important;
+        overflow:hidden!important;
+      }
+      .cpV6President [data-monetization-slot="presidente"]:empty{
+        display:none!important;
+      }
+    `;
     document.head.appendChild(st);
   }
 
-  function slot(){ return document.querySelector('.cpV6President [data-monetization-slot="presidente"]') || document.querySelector('[data-monetization-slot="presidente"]'); }
-  function retail(){ var s=slot(); return s ? s.querySelector('.cursappRetailSlot') : null; }
-  function saveBanner(){
-    var r=retail();
-    if(r && String(r.innerHTML||'').trim()){
-      bannerHTML = r.outerHTML;
-      bannerDone = true;
-      try{ sessionStorage.setItem('cursapp_pres_banner_html_v118', bannerHTML); }catch(e){}
-    }
+  let lastLeft = 0;
+  let userTouching = false;
+  function bindTrack(){
+    inject();
+    const track=document.querySelector('.cpV6President .cpV6HeroTrack');
+    if(!track || track.__cursappV119Bound) return;
+    track.__cursappV119Bound = true;
+    track.addEventListener('touchstart',()=>{userTouching=true;},{passive:true});
+    track.addEventListener('touchend',()=>{setTimeout(()=>{userTouching=false; lastLeft=track.scrollLeft||0;},120);},{passive:true});
+    track.addEventListener('scroll',()=>{ if(userTouching) lastLeft=track.scrollLeft||0; },{passive:true});
   }
-  function restoreBannerStable(){
-    var s=slot(); if(!s) return;
-    var r=retail();
-    if(r && String(r.innerHTML||'').trim()){ saveBanner(); return; }
-    if(bannerHTML){
-      var y = (restoreScrollY == null) ? (window.scrollY || document.documentElement.scrollTop || 0) : restoreScrollY;
-      // Restaurar solo si el slot está vacío tras renderHome. No llamar al render del banner otra vez.
-      s.innerHTML = bannerHTML;
-      requestAnimationFrame(function(){ try{ window.scrollTo(0,y); }catch(e){} });
-    }
-  }
-  function wrapMonetization(){
-    var cm=window.CursappMonetization;
-    if(!cm || typeof cm.render!=='function' || cm.__cursappV118Wrapped) return;
-    var original=cm.render.bind(cm);
-    cm.render=function(){
-      if(!isHome()) return original.apply(cm, arguments);
-      restoreScrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      // Si ya existe/caché banner, no recrear. Re-crear era el origen del parpadeo.
-      if(retail()){ saveBanner(); return; }
-      if(bannerHTML){ restoreBannerStable(); return; }
-      if(bannerDone) return;
-      var out=original.apply(cm, arguments);
-      setTimeout(function(){ saveBanner(); try{ window.scrollTo(0, restoreScrollY||0); }catch(e){} }, 180);
-      return out;
-    };
-    cm.__cursappV118Wrapped = true;
-  }
-  function buttons(){
-    if(!isHome()) return;
-    document.querySelectorAll('.cpV6President .cpV6HeroActions button,.cpV6President .cpV6QuickGrid button,.cpV6President .cpV6SoftBtn,.cpV6President .cpV6PrimaryBtn,.cpV6President .cpV6LinkBtn').forEach(function(btn){
-      var txt=String(btn.textContent||'').toLowerCase();
-      if(txt.includes('deudores')) btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} if(typeof window.go==='function') window.go('deudores'); return false; };
-      else if(txt.includes('ver campaña')||txt.includes('ver todas las campañas')||txt.includes('campañas')||txt.includes('campanas')) btn.onclick=function(ev){ if(ev){ev.preventDefault();ev.stopPropagation();} if(typeof window.go==='function') window.go('campanas'); return false; };
-    });
-  }
-  function stabilize(){
-    css(); wrapMonetization(); restoreBannerStable(); restoreHeroOnlyAfterRender(); buttons();
-  }
-  document.addEventListener('click', function(ev){
-    var btn=ev.target&&ev.target.closest?ev.target.closest('button,a,[role="button"]'):null;
-    if(!btn || !btn.closest('.cpV6President')) return;
-    var txt=String(btn.textContent||'').toLowerCase();
-    if(txt.includes('deudores')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('deudores'); return false; }
-    if(txt.includes('ver campaña') || txt.includes('ver todas las campañas')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('campanas'); return false; }
-  }, true);
-  try{ history.scrollRestoration='manual'; }catch(e){}
-  try{ new MutationObserver(function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 140); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
-  try{ window.addEventListener('cursapp:dataChanged', function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 220); }); }catch(e){}
-  try{ window.addEventListener('cursapp:dataUpdated', function(){ clearTimeout(restoreTimer); restoreTimer=setTimeout(stabilize, 220); }); }catch(e){}
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(stabilize,80); setTimeout(stabilize,500); });
-  setTimeout(stabilize,80); setTimeout(stabilize,700); setTimeout(stabilize,1500);
+  function tick(){ bindTrack(); }
+  document.addEventListener('DOMContentLoaded', tick);
+  window.addEventListener('load', tick);
+  try{ new MutationObserver(tick).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  setTimeout(tick, 300);
 })();
