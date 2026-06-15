@@ -3528,3 +3528,156 @@ window.openHelp = function(topic){
   setTimeout(refresh, 300);
   setTimeout(refresh, 1000);
 })();
+
+/* __CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__ */
+(function(){
+  if(window.__CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__) return;
+  window.__CURSAPP_PRESIDENTE_V11_6_DASHBOARD_BANNER_STABLE__ = true;
+
+  var bannerCacheHTML = '';
+  var renderWrapped = false;
+  var lastHeroLeft = 0;
+  var timer = null;
+
+  function injectCss(){
+    if(document.getElementById('cursappPresidentV116DashboardBanner')) return;
+    var st = document.createElement('style');
+    st.id = 'cursappPresidentV116DashboardBanner';
+    st.textContent = `
+      .cpV6President .cpV6HeroTrack{
+        display:flex!important;
+        flex-wrap:nowrap!important;
+        gap:14px!important;
+        overflow-x:auto!important;
+        overflow-y:hidden!important;
+        scroll-snap-type:none!important;
+        scroll-behavior:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-x pan-y!important;
+        overscroll-behavior-x:contain!important;
+        padding:2px 4px 10px 4px!important;
+      }
+      .cpV6President .cpV6HeroTrack .cpV6HeroCard{
+        flex:0 0 88%!important;
+        min-width:88%!important;
+        max-width:88%!important;
+        width:auto!important;
+        scroll-snap-align:none!important;
+      }
+      .cpV6President .cpV6HeroTrack::-webkit-scrollbar{display:none;}
+      .cpV6President .cpV6HeroTrack{scrollbar-width:none;}
+      .cpV6President .cpV6HeroActions button,
+      .cpV6President .cpV6QuickGrid button,
+      .cpV6President .cpV6SoftBtn,
+      .cpV6President .cpV6PrimaryBtn,
+      .cpV6President .cpV6LinkBtn{
+        pointer-events:auto!important;
+        position:relative!important;
+        z-index:5!important;
+      }
+      [data-monetization-slot="presidente"]{
+        min-height:0!important;
+        overflow:visible!important;
+        contain:layout paint!important;
+      }
+      [data-monetization-slot="presidente"][data-cursapp-banner-stable="1"]{
+        margin-top:12px!important;
+      }
+      @media(min-width:760px){
+        .cpV6President .cpV6HeroTrack .cpV6HeroCard{flex-basis:46%!important;min-width:46%!important;max-width:46%!important;}
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function heroTrack(){ return document.querySelector('.cpV6President .cpV6HeroTrack'); }
+  function rememberHero(){ var t=heroTrack(); if(t) lastHeroLeft = t.scrollLeft || 0; }
+  function restoreHero(){ var t=heroTrack(); if(t && lastHeroLeft > 0){ try{ t.scrollLeft = lastHeroLeft; }catch(e){} } }
+
+  function wireDashboardButtons(){
+    document.querySelectorAll('.cpV6HeroActions button,.cpV6QuickGrid button,.cpV6SoftBtn,.cpV6PrimaryBtn,.cpV6LinkBtn').forEach(function(btn){
+      var txt = String(btn.textContent || '').toLowerCase();
+      if(txt.includes('ver campaña') || txt.includes('campañas') || txt.includes('campanas')){
+        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go === 'function') window.go('campanas'); return false; };
+      }
+      if(txt.includes('deudores')){
+        btn.onclick = function(ev){ if(ev){ev.preventDefault(); ev.stopPropagation();} if(typeof window.go === 'function') window.go('deudores'); return false; };
+      }
+    });
+  }
+
+  function stableBannerSlot(){
+    var slot = document.querySelector('[data-monetization-slot="presidente"]');
+    if(!slot) return;
+
+    if(slot.innerHTML.trim()){
+      bannerCacheHTML = slot.innerHTML;
+      slot.setAttribute('data-cursapp-banner-stable','1');
+      return;
+    }
+
+    if(bannerCacheHTML){
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      slot.innerHTML = bannerCacheHTML;
+      slot.setAttribute('data-cursapp-banner-stable','1');
+      requestAnimationFrame(function(){ try{ window.scrollTo(0, y); }catch(e){} });
+    }
+  }
+
+  function wrapMonetization(){
+    if(renderWrapped) return;
+    var cm = window.CursappMonetization;
+    if(!cm || typeof cm.render !== 'function') return;
+
+    var original = cm.render.bind(cm);
+    cm.render = function(){
+      var slot = document.querySelector('[data-monetization-slot="presidente"]');
+      var y = window.scrollY || document.documentElement.scrollTop || 0;
+      rememberHero();
+
+      // Si ya existe banner en memoria o en DOM, no volver a pedir/renderizar.
+      if(slot && (slot.innerHTML.trim() || bannerCacheHTML)){
+        stableBannerSlot();
+        requestAnimationFrame(function(){ try{ window.scrollTo(0, y); restoreHero(); }catch(e){} });
+        return;
+      }
+
+      var out = original.apply(cm, arguments);
+      setTimeout(function(){
+        stableBannerSlot();
+        try{ window.scrollTo(0, y); restoreHero(); }catch(e){}
+      }, 80);
+      return out;
+    };
+    renderWrapped = true;
+  }
+
+  function stabilizeAll(){
+    injectCss();
+    wrapMonetization();
+    stableBannerSlot();
+    wireDashboardButtons();
+    restoreHero();
+  }
+
+  document.addEventListener('scroll', rememberHero, true);
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('button,a,[role="button"]') : null;
+    if(!btn) return;
+    var txt = String(btn.textContent || '').toLowerCase();
+    if(txt.includes('ver campaña') || txt.includes('campañas') || txt.includes('campanas')){
+      if(btn.closest('.cpV6President')){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('campanas'); }
+    }
+    if(txt.includes('deudores') && btn.closest('.cpV6President')){
+      ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); if(typeof window.go==='function') window.go('deudores');
+    }
+  }, true);
+
+  try{ new MutationObserver(function(){ clearTimeout(timer); timer=setTimeout(stabilizeAll, 120); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
+  try{ window.addEventListener('cursapp:dataChanged', function(){ setTimeout(stabilizeAll, 180); }); }catch(e){}
+  try{ window.addEventListener('cursapp:dataUpdated', function(){ setTimeout(stabilizeAll, 180); }); }catch(e){}
+
+  setTimeout(stabilizeAll, 100);
+  setTimeout(stabilizeAll, 600);
+  setTimeout(stabilizeAll, 1400);
+})();
