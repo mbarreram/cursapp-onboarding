@@ -1,7 +1,13 @@
 {
-  "name": "cursapp",
+  "name": "cursapp-qa360-v9-clicks",
+  "version": "9.0.0",
   "private": true,
-  "dependencies": {
-    "transbank-sdk": "^6.1.0"
+  "scripts": {
+    "test:clicks": "playwright test",
+    "test:clicks:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0"
   }
 }
