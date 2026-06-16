@@ -1,7 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
-   - V2: pagos variados y pruebas de duplicidad de correos en onboarding.
+   - V3: pagos según esquema real Supabase + validación formularios vs DB.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -45,6 +45,7 @@
     ...MODULES_QUICK,
     { id:'onboarding', name:'Onboarding QA', tests:['create-colegio','create-curso','create-usuarios','create-miembros','approve-apoderados','email-duplicate-same-course','email-same-different-course'] },
     { id:'roles', name:'Roles / Tesorero único', tests:['assign-tesorero','block-second-tesorero','remove-tesorero','reassign-tesorero'] },
+    { id:'formularios', name:'Formularios vs DB', tests:['schema-pagos','schema-campanas','schema-miembros','schema-form-gaps'] },
     { id:'campanas', name:'Campañas', tests:['create-campana-unica','create-campana-mensual','create-campana-voluntaria','create-pagos','create-pagos-variados','validate-dashboard-data'] },
     { id:'pagos', name:'Pagos variados', tests:['validate-pago-pendiente','validate-pago-pagado','validate-pago-vencido','validate-pago-parcial','validate-pago-manual','validate-pago-saldo-favor','validate-pago-no-participa'] },
     { id:'apoderado', name:'Apoderado', tests:['apoderado-data','no-participo-logic','apoderado-ui-markers'] },
@@ -95,6 +96,7 @@
     return ({
       infra:'Conectividad, rutas, assets y permisos básicos.',
       componentes:'Loading premium, tesorero único, dashboard y banner.',
+      formularios:'Valida que campos usados por formularios existan en Supabase o queden reportados como brecha.',
       onboarding:'Crea curso, usuarios y miembros QA_*; valida reglas de correo.',
       roles:'Valida un solo tesorero y reasignación controlada.',
       campanas:'Crea campañas obligatorias, mensuales, voluntarias y pagos base.',
@@ -109,6 +111,7 @@
     return ({
       'login-html':'Login carga correctamente','role-html':'Pantallas por rol disponibles','assets':'Assets principales disponibles','supabase-ready':'Cliente Supabase inicializa','supabase-tables':'Tablas base responden','supabase-write':'Permisos escritura QA disponibles',
       'loading':'Loading premium presente','tesorero-markers':'Tesorero único mantiene lógica','banner-dashboard':'Dashboard/Banner estabilizados','qa-button':'Botón QA visible en Login',
+      'schema-pagos':'Tabla pagos compatible con formularios','schema-campanas':'Tabla campanas compatible con formularios','schema-miembros':'Tabla miembros_curso compatible con formularios','schema-form-gaps':'Brechas formulario vs DB',
       'create-colegio':'Crear colegio QA','create-curso':'Crear curso QA','create-usuarios':'Crear usuarios QA','create-miembros':'Crear miembros curso QA','approve-apoderados':'Apoderados QA aprobados','email-duplicate-same-course':'Bloquear mismo correo en mismo curso','email-same-different-course':'Permitir mismo correo en curso distinto',
       'assign-tesorero':'Asignar tesorero QA','block-second-tesorero':'Bloquear segundo tesorero','remove-tesorero':'Eliminar tesorero QA','reassign-tesorero':'Reasignar tesorero QA',
       'create-campana-unica':'Crear campaña única QA','create-campana-mensual':'Crear campaña mensual QA','create-campana-voluntaria':'Crear campaña voluntaria QA','create-pagos':'Crear pagos QA base','create-pagos-variados':'Crear pagos QA variados','validate-dashboard-data':'Validar datos para dashboard',
@@ -196,6 +199,10 @@
       case 'tesorero-markers': { const t=(await fetchText('/assets/presidente.js')).text; const miss=['Ya existe un tesorero','Eliminar tesorero','rol tesorero'].filter(x=>!t.includes(x)); return miss.length?fail(id,module,'Faltan marcas: '+miss.join(', ')):pass(id,module,'Lógica detectada.'); }
       case 'banner-dashboard': { const t=(await fetchText('/assets/presidente.js')).text; const miss=['CursappMonetization','cpV6HeroTrack','data-monetization-slot'].filter(x=>!t.includes(x)); return miss.length?warn(id,module,'Faltan marcas: '+miss.join(', ')):pass(id,module,'Marcas dashboard/banner OK.'); }
       case 'qa-button': { const t=(await fetchText('/')).text; return (t.includes('qa360.html')||t.includes('QA 360'))?pass(id,module,'Botón QA detectado en login.'):fail(id,module,'No se detectó botón QA.'); }
+      case 'schema-pagos': return validateSchemaPagos(id,module);
+      case 'schema-campanas': return validateSchemaCampanas(id,module);
+      case 'schema-miembros': return validateSchemaMiembros(id,module);
+      case 'schema-form-gaps': return validateFormGaps(id,module);
       case 'create-colegio': return createColegio(id,module);
       case 'create-curso': return createCurso(id,module);
       case 'create-usuarios': return createUsuarios(id,module);
@@ -328,39 +335,132 @@
     };
     const row=await insert('campanas',body); state.created.campanas.push(row); return pass(id,module,'Campaña creada: '+row.titulo+' · obligatoria='+body.obligatoria);
   }
+  function pagoRowBase(camp, m, overrides){
+    const amount = Number((overrides && overrides.monto) || camp.monto || 1000);
+    const estado = String((overrides && overrides.estado) || 'pendiente');
+    const montoPagado = (overrides && overrides.monto_pagado != null)
+      ? Number(overrides.monto_pagado)
+      : (estado === 'pagado' || estado === 'conciliado' || estado === 'saldo_favor' ? amount : 0);
+
+    const row = {
+      curso_id: state.created.cursoId,
+      campana_id: camp.id,
+      miembro_id: m.id,
+      monto: amount,
+      monto_pagado: montoPagado,
+      estado,
+      fecha_vencimiento: (overrides && overrides.fecha_vencimiento) || addDays(15),
+      periodo: (overrides && overrides.periodo) || today().slice(0,7),
+      metodo_pago: (overrides && overrides.metodo_pago) || 'qa'
+    };
+
+    if(overrides && overrides.comprobante_url) row.comprobante_url = overrides.comprobante_url;
+    if(overrides && overrides.paid_at) row.paid_at = overrides.paid_at;
+    return row;
+  }
+
   async function createPagos(id,module){
-    const c=await sb(); const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado'); if(e1) throw new Error(e1.message);
+    const c=await sb();
+    const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado');
+    if(e1) throw new Error(e1.message);
     let n=0;
     for(const camp of state.created.campanas){
       for(const m of (aps||[])){
-        const row=await insert('pagos',{curso_id:state.created.cursoId,campana_id:camp.id,miembro_id:m.id,monto:Number(camp.monto||1000),monto_pagado:0,estado:'pendiente',fecha_vencimiento:addDays(15),periodo:today().slice(0,7),concepto:QA_PREFIX+' pago base'});
+        const row=await insert('pagos', pagoRowBase(camp, m, {estado:'pendiente', metodo_pago:'qa'}));
         state.created.pagos.push(row); n++;
       }
     }
-    return pass(id,module,'Pagos base creados: '+n);
+    return pass(id,module,'Pagos base creados con esquema real pagos: '+n);
   }
 
   async function createPagosVariados(id,module){
     const c=await sb();
-    const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado'); if(e1) throw new Error(e1.message);
+    const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado');
+    if(e1) throw new Error(e1.message);
     const camp = state.created.campanas[0]; if(!camp) throw new Error('No hay campaña para crear pagos variados.');
     const member = (aps||[])[0]; if(!member) throw new Error('No hay apoderado para pagos variados.');
+    const now = new Date().toISOString();
     const variants=[
-      {estado:'pendiente',monto:3100,monto_pagado:0,fecha_vencimiento:addDays(10),concepto:'QA pago pendiente'},
-      {estado:'pagado',monto:3200,monto_pagado:3200,fecha_vencimiento:addDays(10),pagado_en:new Date().toISOString(),metodo_pago:'transbank',concepto:'QA pago pagado'},
-      {estado:'vencido',monto:3300,monto_pagado:0,fecha_vencimiento:addDays(-7),concepto:'QA pago vencido'},
-      {estado:'parcial',monto:3400,monto_pagado:1500,fecha_vencimiento:addDays(5),concepto:'QA pago parcial'},
-      {estado:'conciliado',monto:3500,monto_pagado:3500,fecha_vencimiento:addDays(5),metodo_pago:'transferencia',conciliacion_estado:'conciliado',conciliado_por:'QA tesorero',concepto:'QA pago manual conciliado'},
-      {estado:'saldo_favor',monto:900,monto_pagado:900,fecha_vencimiento:addDays(5),metodo_pago:'saldo_favor',concepto:'QA saldo a favor'},
-      {estado:'no_participa',monto:0,monto_pagado:0,fecha_vencimiento:addDays(5),concepto:'QA no participa'}
+      {estado:'pendiente',monto:3100,monto_pagado:0,fecha_vencimiento:addDays(10),metodo_pago:'qa'},
+      {estado:'pagado',monto:3200,monto_pagado:3200,fecha_vencimiento:addDays(10),paid_at:now,metodo_pago:'transbank',comprobante_url:'qa://comprobante/pagado'},
+      {estado:'vencido',monto:3300,monto_pagado:0,fecha_vencimiento:addDays(-7),metodo_pago:'qa'},
+      {estado:'parcial',monto:3400,monto_pagado:1500,fecha_vencimiento:addDays(5),metodo_pago:'transferencia'},
+      {estado:'conciliado',monto:3500,monto_pagado:3500,fecha_vencimiento:addDays(5),paid_at:now,metodo_pago:'transferencia',comprobante_url:'qa://comprobante/conciliado'},
+      {estado:'saldo_favor',monto:900,monto_pagado:900,fecha_vencimiento:addDays(5),paid_at:now,metodo_pago:'saldo_favor'},
+      {estado:'no_participa',monto:0,monto_pagado:0,fecha_vencimiento:addDays(5),metodo_pago:'qa'}
     ];
     let n=0;
     for(const v of variants){
-      const row=await insert('pagos',Object.assign({curso_id:state.created.cursoId,campana_id:camp.id,miembro_id:member.id,periodo:today().slice(0,7)},v));
+      const row=await insert('pagos', pagoRowBase(camp, member, v));
       state.created.pagos.push(row); n++;
     }
-    return pass(id,module,'Pagos variados creados: '+n+' estados.');
+    return pass(id,module,'Pagos variados creados: '+n+' estados con columnas reales.');
   }
+
+  async function tableHasColumn(table,col){
+    const c=await sb();
+    const {error}=await c.from(table).select(col,{count:'exact',head:true}).limit(1);
+    return !error;
+  }
+  async function requireColumns(id,module,table,required,optional){
+    const missing=[];
+    for(const col of required){ if(!(await tableHasColumn(table,col))) missing.push(col); }
+    const missingOptional=[];
+    for(const col of (optional||[])){ if(!(await tableHasColumn(table,col))) missingOptional.push(col); }
+    if(missing.length) return fail(id,module,table+' sin columnas obligatorias: '+missing.join(', '));
+    const msg = table+' OK · columnas obligatorias: '+required.join(', ') + (missingOptional.length ? ' · opcionales ausentes: '+missingOptional.join(', ') : '');
+    return missingOptional.length ? warn(id,module,msg) : pass(id,module,msg);
+  }
+  async function validateSchemaPagos(id,module){
+    return requireColumns(id,module,'pagos',
+      ['id','curso_id','campana_id','miembro_id','monto','monto_pagado','estado','fecha_vencimiento','periodo','metodo_pago','created_at'],
+      ['comprobante_url','paid_at','concepto','conciliacion_estado','conciliado_por']
+    );
+  }
+  async function validateSchemaCampanas(id,module){
+    return requireColumns(id,module,'campanas',
+      ['id','curso_id','titulo','tipo','monto','fecha_inicio','fecha_vencimiento','obligatoria','estado'],
+      ['meses','descripcion','meta','goal_total','created_at']
+    );
+  }
+  async function validateSchemaMiembros(id,module){
+    return requireColumns(id,module,'miembros_curso',
+      ['id','curso_id','rol','email','estado','activacion_pagada'],
+      ['usuario_id','nombre_apoderado','nombre_alumno','created_at']
+    );
+  }
+  async function validateFormGaps(id,module){
+    const files = [
+      (await fetchText('/assets/presidente.js')).text,
+      (await fetchText('/assets/apoderado.js')).text,
+      (await fetchText('/assets/tesorero.js')).text,
+      (await fetchText('/assets/campaigns.js').catch(()=>({text:''}))).text,
+      (await fetchText('/assets/core.js').catch(()=>({text:''}))).text
+    ].join('\n');
+
+    const gaps=[];
+    // Campos detectados en formularios/código que hoy no están en DB: se reportan, no bloquean el QA funcional.
+    if(files.includes('concepto') || files.includes('Concepto')){
+      if(!(await tableHasColumn('pagos','concepto'))){
+        gaps.push('pagos.concepto: aparece en formularios/textos de pago/tesorería, pero no existe en DB. Sugerencia SQL: alter table public.pagos add column if not exists concepto text;');
+      }
+    }
+    if(files.includes('conciliacion_estado')){
+      if(!(await tableHasColumn('pagos','conciliacion_estado'))){
+        gaps.push('pagos.conciliacion_estado: aparece en lógica de conciliación, pero no existe en DB. Sugerencia SQL: alter table public.pagos add column if not exists conciliacion_estado text;');
+      }
+    }
+    if(files.includes('conciliado_por')){
+      if(!(await tableHasColumn('pagos','conciliado_por'))){
+        gaps.push('pagos.conciliado_por: aparece en lógica de tesorero, pero no existe en DB. Sugerencia SQL: alter table public.pagos add column if not exists conciliado_por text;');
+      }
+    }
+    if(gaps.length){
+      return warn(id,module,'Brechas detectadas: '+gaps.join(' | '));
+    }
+    return pass(id,module,'No se detectaron campos de formulario sin columna DB en módulos revisados.');
+  }
+
 
   async function validatePagoEstado(id,module,estado){
     const c=await sb();
