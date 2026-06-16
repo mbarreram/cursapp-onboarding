@@ -94,17 +94,21 @@
   }
   function fillCategorySelect(){
     const sel=$("#pubCategory"); if(!sel) return;
-    sel.innerHTML=state.categories.map(c=>`<option value="${esc(c.nombre)}">${esc(c.icono||"")} ${esc(c.nombre)}</option>`).join("");
+    sel.innerHTML=state.categories.map(c=>`<option value="${esc(c.id||c.nombre)}" data-name="${esc(c.nombre)}">${esc(c.icono||"")} ${esc(c.nombre)}</option>`).join("");
   }
   function renderCategoryRow(){
     const row=$(".categoryRow"); if(!row) return;
     const cats=state.categories.slice(0,4);
     row.innerHTML=cats.map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Más</b></article>`;
   }
+  function categoryById(id){ return state.categories.find(c=>String(c.id)===String(id)) || null; }
+  function categoryName(p){ return categoryName(p) || categoryById(p.categoria_id)?.nombre || "Otros"; }
+  function categoryIconByName(name){ return (state.categories.find(c=>String(c.nombre).toLowerCase()===String(name).toLowerCase())||{}).icono || "🛍️"; }
+
   async function loadPosts(){
-    let query=state.sb.from("mercado_publicaciones").select("*").in("estado",["disponible","reservado"]);
-    if(state.session.courseId) query=query.or(`curso_id.eq.${state.session.courseId},visibilidad.eq.todo`);
-    query=query.order("destacado",{ascending:false}).order("created_at",{ascending:false}).limit(80);
+    let query=state.sb.from("mercado_publicaciones").select("*").in("estado",["disponible","reservado"]).eq("activo",true);
+    if(state.session.courseId) query=query.eq("curso_id",state.session.courseId);
+    query=query.order("created_at",{ascending:false}).limit(80);
     const {data,error}=await query;
     if(error){renderError("No se pudieron cargar publicaciones: "+error.message); return;}
     state.posts=data||[];
@@ -113,20 +117,21 @@
   }
 
   function imageForPost(p){
-    if(p.imagen_url) return p.imagen_url;
+    if(p.imagen_principal) return p.imagen_principal;
+    const name=categoryName(p);
     const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Tecnología:"mochila.svg",Instrumentos:"generic.svg",Servicios:"generic.svg",Otros:"generic.svg"};
-    return "assets/img/"+(map[p.categoria_nombre]||"generic.svg");
+    return "assets/img/"+(map[name]||"generic.svg");
   }
   function emptyState(icon,title,text,button,view){
     return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;
   }
   function card(p){
-    const price=String(p.tipo||"").toLowerCase().includes("intercambio")?"Intercambio":clp(p.precio);
+    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     const title=p.titulo||"Publicación";
     return `<article class="productCard" data-post="${esc(p.id)}">
       ${p.destacado?`<span class="tag">DESTACADA</span>`:""}
       <img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'">
-      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>⌖ ${esc(p.visibilidad||"colegio")}</span><div class="productMeta"><small>${esc(p.categoria_nombre||"Otros")}</small><small>${esc(p.estado||"disponible")}</small></div></div>
+      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>⌖ ${esc(p.curso_id?"Mi colegio":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(p.estado||"disponible")}</small></div></div>
     </article>`;
   }
   function visible(list=state.posts){return list.filter(p=>!["eliminado","oculto","vendido"].includes(String(p.estado||"").toLowerCase()))}
@@ -140,8 +145,8 @@
   function renderMine(){
     const box=$("#myPosts"); if(!box) return;
     const email=state.session.email;
-    const mine=state.posts.filter(p=>String(p.vendedor_email||"").toLowerCase()===email && !["eliminado"].includes(String(p.estado||"").toLowerCase()));
-    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado)} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos_count||0)} contactos</span></div><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
+    const mine=state.posts.filter(p=>String(String(p.vendedor_id||"")).toLowerCase()===email && !["eliminado"].includes(String(p.estado||"").toLowerCase()));
+    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado)} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span></div><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -151,10 +156,10 @@
   }
   function search(q){
     q=String(q||"").toLowerCase().trim();
-    const list=!q?visible():visible().filter(p=>String((p.titulo||"")+" "+(p.categoria_nombre||"")+" "+(p.descripcion||"")).toLowerCase().includes(q));
+    const list=!q?visible():visible().filter(p=>String((p.titulo||"")+" "+categoryName(p)+" "+(p.descripcion||"")).toLowerCase().includes(q));
     renderProducts(list);
   }
-  function filterCat(cat){showView("explorar"); renderProducts(visible().filter(p=>p.categoria_nombre===cat));}
+  function filterCat(cat){showView("explorar"); renderProducts(visible().filter(p=>categoryName(p)===cat));}
 
   function svgData(emoji,title){
     return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620"><rect width="900" height="620" rx="42" fill="#ede9fe"/><rect x="145" y="115" width="610" height="340" rx="42" fill="#fff"/><text x="450" y="300" text-anchor="middle" dominant-baseline="middle" font-size="130">${emoji}</text><text x="450" y="410" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="#101828">${String(title||"").slice(0,24)}</text></svg>`)}`;
@@ -164,26 +169,22 @@
     if(!requireSession()) return;
     const title=$("#pubTitle").value.trim(), desc=$("#pubDesc").value.trim();
     if(!title||!desc){toast("Completa título y descripción");return;}
-    const cat=$("#pubCategory").value.replace(/^\S+\s/,"");
-    const emoji=$("#pubEmoji").value.trim()||"🛍️";
+    const catValue=$("#pubCategory").value;
+    const catObj=state.categories.find(c=>String(c.id)===String(catValue)) || state.categories.find(c=>String(c.nombre)===String(catValue)) || null;
+    const emoji=$("#pubEmoji").value.trim()||categoryIconByName(catObj?.nombre)||"🛍️";
     const whatsapp=phoneClean($("#pubWhatsapp")?.value||state.session.phone||"");
     const row={
       curso_id:state.session.courseId,
-      colegio_id:state.session.colegioId,
-      vendedor_usuario_id:state.session.userId,
-      vendedor_email:state.session.email,
-      vendedor_nombre:state.session.name,
-      vendedor_whatsapp:whatsapp,
+      vendedor_id:state.session.userId,
+      categoria_id:catObj?catObj.id:null,
       titulo:title,
       descripcion:desc,
-      categoria_nombre:cat,
-      tipo:$("#pubType").value,
       precio:Number($("#pubPrice").value||0),
-      moneda:"CLP",
       estado:"disponible",
-      visibilidad:$("#pubScope").value,
-      emoji,
-      imagen_url:svgData(emoji,title)
+      nombre_vendedor:state.session.name,
+      whatsapp,
+      imagen_principal:svgData(emoji,title),
+      activo:true
     };
     const {data,error}=await state.sb.from("mercado_publicaciones").insert([row]).select("*").single();
     if(error){toast("No se pudo publicar: "+error.message);return;}
@@ -192,15 +193,15 @@
 
   async function openDetail(id){
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
-    state.sb.from("mercado_publicaciones").update({vistas:Number(p.vistas||0)+1}).eq("id",p.id).then(()=>{});
-    p.vistas=Number(p.vistas||0)+1;
-    const price=String(p.tipo||"").toLowerCase().includes("intercambio")?"Intercambio":clp(p.precio);
+    state.sb.from("mercado_publicaciones").update({vistas:Number(p.visualizaciones||0)+1}).eq("id",p.id).then(()=>{});
+    p.visualizaciones=Number(p.visualizaciones||0)+1;
+    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     $("#modal").innerHTML=`<div class="modal">
       <img src="${esc(imageForPost(p))}" alt="${esc(p.titulo)}" onerror="this.src='assets/img/generic.svg'">
       <h2>${esc(p.titulo)}</h2>
-      <p><b>${price}</b> · ${esc(p.categoria_nombre||"Otros")}</p>
+      <p><b>${price}</b> · ${esc(categoryName(p))}</p>
       <p>${esc(p.descripcion||"")}</p>
-      <p><b>${esc(p.vendedor_nombre||"Apoderado")}</b> · ${esc(p.visibilidad||"colegio")}</p>
+      <p><b>${esc(p.nombre_vendedor||"Apoderado")}</b> · ${esc(p.curso_id?"Mi colegio":"Comunidad")}</p>
       <button data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
       <button class="danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
       <button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button>
@@ -210,13 +211,13 @@
     if(!requireSession()) return;
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
     const msg=`Hola, vi tu publicación en Mercado Escolar Cursapp: ${p.titulo}. ¿Sigue disponible?`;
-    const phone=phoneClean(p.vendedor_whatsapp||"");
+    const phone=phoneClean(p.whatsapp||"");
     const whatsappUrl=phone?`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(msg)}`:"";
-    const row={publicacion_id:p.id,curso_id:p.curso_id,comprador_email:state.session.email,vendedor_email:p.vendedor_email,canal:"whatsapp",mensaje:msg,whatsapp_url:whatsappUrl};
+    const row={publicacion_id:p.id,interesado_id:state.session.userId,canal:"whatsapp",mensaje:msg};
     const {error}=await state.sb.from("mercado_contactos").insert([row]);
     if(error){toast("No se pudo registrar contacto: "+error.message);return;}
-    p.contactos_count=Number(p.contactos_count||0)+1;
-    state.sb.from("mercado_publicaciones").update({contactos_count:p.contactos_count}).eq("id",p.id).then(()=>{});
+    p.contactos=Number(p.contactos||0)+1;
+    state.sb.from("mercado_publicaciones").update({contactos:p.contactos}).eq("id",p.id).then(()=>{});
     toast("Contacto registrado"+(whatsappUrl?". Abriendo WhatsApp...":"."));
     if(whatsappUrl) window.open(whatsappUrl,"_blank");
   }
@@ -225,10 +226,8 @@
     const motivo=prompt("Motivo del reporte: producto inexistente, información falsa, spam, contenido ofensivo u otro");
     if(!motivo) return;
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
-    const {error}=await state.sb.from("mercado_reportes").insert([{publicacion_id:p.id,curso_id:p.curso_id,reporter_email:state.session.email,motivo,estado:"pendiente"}]);
+    const {error}=await state.sb.from("mercado_reportes").insert([{publicacion_id:p.id,usuario_id:state.session.userId,motivo,detalle:motivo,estado:"pendiente"}]);
     if(error){toast("No se pudo reportar: "+error.message);return;}
-    p.reportes_count=Number(p.reportes_count||0)+1;
-    state.sb.from("mercado_publicaciones").update({reportes_count:p.reportes_count}).eq("id",p.id).then(()=>{});
     toast("Reporte enviado para revisión"); $("#modal").innerHTML="";
   }
   async function updateStatus(id,status){
@@ -256,7 +255,7 @@
     $("#searchInput")?.addEventListener("input",e=>search(e.target.value));
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
-    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.visibilidad===sc||sc==="colegio"))}));
+    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(visible())}));
   }
 
   document.addEventListener("DOMContentLoaded",init);
