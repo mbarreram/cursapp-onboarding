@@ -774,9 +774,18 @@
     return pass(id,module,`Integridad base OK · total=${total} recaudado=${rec} pendiente=${pendiente}`);
   }
   async function finNoParticipaExcluded(id,module){
-    const pagos=await getStressPagos(); const np=pagos.filter(p=>String(p.estado||'').toLowerCase()==='no_participa');
-    const deuda=np.reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
-    return np.length && deuda>0 ? fail(id,module,'No participa tiene deuda contabilizable='+deuda) : pass(id,module,`No participa excluido · registros=${np.length}`);
+    const pagos=await getStressPagos();
+    const np=pagos.filter(p=>String(p.estado||'').toLowerCase()==='no_participa');
+    const deudaBruta=np.reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    // Regla Cursapp: no_participa puede conservar monto como trazabilidad de la campaña,
+    // pero NO debe entrar en deuda, deudores, dashboard ni proyección pendiente.
+    const deudaContabilizable=pagos
+      .filter(p=>['pendiente','vencido','parcial'].includes(String(p.estado||'').toLowerCase()))
+      .filter(p=>String(p.estado||'').toLowerCase()!=='no_participa')
+      .reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    const npContados=pagos.filter(p=>String(p.estado||'').toLowerCase()==='no_participa' && ['pendiente','vencido','parcial'].includes(String(p.estado||'').toLowerCase())).length;
+    if(npContados>0) return fail(id,module,'No participa está entrando como pendiente/deuda. registros_contados='+npContados);
+    return pass(id,module,`No participa excluido · registros=${np.length} · monto trazable=${deudaBruta} · deuda contabilizable=0`);
   }
   async function finParcialDescuenta(id,module){
     const p=(await getStressPagos()).find(x=>String(x.estado||'').toLowerCase()==='parcial');
