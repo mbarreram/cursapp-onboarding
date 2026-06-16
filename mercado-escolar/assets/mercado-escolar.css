@@ -505,3 +505,12 @@
   .heroRetailCss .heroCopy p{font-size:12px}
   .heroRetailCss .heroItems{width:50%;right:-14px}
 }
+
+
+/* Cursapp Mercado Escolar V1 Supabase */
+.marketLoading{position:fixed;inset:0;background:rgba(255,255,255,.92);z-index:9999;display:none;place-items:center;backdrop-filter:blur(8px)}
+.marketLoading>div{background:#fff;border:1px solid rgba(15,23,42,.08);box-shadow:0 22px 60px rgba(15,23,42,.14);border-radius:28px;padding:22px;min-width:260px;text-align:center;color:#111827}
+.marketLoading span{display:block;font-size:42px;margin-bottom:8px;animation:marketPulse 1.1s ease-in-out infinite}
+.marketLoading b{display:block;font-size:17px;font-weight:950}.marketLoading small{display:block;color:#64748b;font-weight:850;margin-top:6px}
+.myItem{grid-template-columns:58px 1fr auto auto}.myItem button+button{margin-left:6px}
+@keyframes marketPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}

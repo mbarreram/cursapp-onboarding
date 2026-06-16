@@ -1,206 +1,264 @@
 (function(){
-"use strict";
+  "use strict";
 
-const K_POSTS="cursapp_market_posts_v1";
-const K_REPORTS="cursapp_market_reports_v1";
-const K_CFG="cursapp_market_config_v1";
-const K_WALLETS="cursapp_market_credit_wallets_v1";
-const K_ORDERS="cursapp_market_credit_orders_v1";
-const K_MOVES="cursapp_market_credit_movements_v1";
-const K_EVENTS="cursapp_market_events_v1";
-const K_CONTACTS="cursapp_market_contacts_v1";
-const K_FAVS="cursapp_market_favorites_v1";
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
+  const now=()=>new Date().toISOString();
+  const phoneClean=s=>String(s||"").replace(/[^0-9]/g,"");
+  const DEFAULT_CATS=[
+    {nombre:"Libros",icono:"📚",orden:1},
+    {nombre:"Uniformes",icono:"👕",orden:2},
+    {nombre:"Útiles escolares",icono:"✏️",orden:3},
+    {nombre:"Instrumentos",icono:"🎸",orden:4},
+    {nombre:"Tecnología",icono:"💻",orden:5},
+    {nombre:"Deportes",icono:"⚽",orden:6},
+    {nombre:"Vestuario",icono:"🎭",orden:7},
+    {nombre:"Servicios",icono:"🧑‍🏫",orden:8},
+    {nombre:"Otros",icono:"🛍️",orden:9}
+  ];
 
-const $=(s,r=document)=>r.querySelector(s);
-const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-const load=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};
-const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
-const now=()=>new Date().toISOString();
-const uid=()=>String((load("cursapp_demo_user",{})||{}).email||(load("cursapp_session_v1",{})||{}).email||"").toLowerCase();
+  const state={sb:null, session:null, profile:null, categories:[], posts:[], loading:false};
 
-const DEMO_OWNERS=["otro@cursapp.cl","demo@cursapp.cl","demo2@cursapp.cl","demo3@cursapp.cl"];
-const DEMO_TITLES=["Aviso demo nuevo"];
-function isDemoPost(p){
-  const owner = String(p.owner||"").toLowerCase();
-  const id = String(p.id||"");
-  const img = String(p.image||"");
-  return DEMO_OWNERS.includes(owner) || DEMO_TITLES.includes(String(p.title||"")) || /^mk_[1-5]$/.test(id) || ["poleron.svg","libros.svg","mochila.svg","balon.svg","vestido.svg"].includes(img);
-}
-function purgeDemoIfNeeded(){
-  if(localStorage.getItem("cursapp_market_demo_seed_v1")==="1") return;
-  const ps=load(K_POSTS,[]);
-  if(!Array.isArray(ps) || !ps.length) return;
-  const cleaned=ps.filter(p=>!isDemoPost(p));
-  if(cleaned.length!==ps.length) save(K_POSTS,cleaned);
-}
-
-const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-
-function cfg(){
-  let c=load(K_CFG,null);
-  if(!c){
-    c={packages:[{id:"starter",name:"Starter",credits:10,price:990,status:"activo",recommended:false},{id:"medio",name:"Medio",credits:25,price:1990,status:"activo",recommended:true},{id:"pro",name:"Pro",credits:60,price:3990,status:"activo",recommended:false}],boosts:[{id:"colegio",name:"Destacado colegio",credits:2,durationDays:7,status:"activo",scope:"Mi colegio"},{id:"cercanos",name:"Colegios cercanos",credits:5,durationDays:7,status:"activo",scope:"Cercanos"},{id:"comuna",name:"Portada comuna",credits:12,durationDays:7,status:"activo",scope:"Comuna"}],rules:{autoHideReports:3,blockReports:5}};
-    save(K_CFG,c);
+  function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+  function getSession(){
+    const s=readJson("cursapp_session_v1",{})||{};
+    const p=readJson("cursapp_active_profile_v1",{})||{};
+    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||"apoderado";
+    return {
+      raw:s,
+      profile:p,
+      userId:s.userId||s.usuario_id||p.usuario_id||p.userId||null,
+      email:String(s.email||p.email||"").toLowerCase(),
+      name:s.nombre||s.name||p.nombre_apoderado||p.nombre||"Apoderado Cursapp",
+      role,
+      courseId:s.curso_id||s.cursoId||p.curso_id||p.cursoId||null,
+      colegioId:s.colegio_id||s.colegioId||p.colegio_id||p.colegioId||null,
+      courseKey:s.courseKey||s.course_key||p.courseKey||p.course_key||"",
+      phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""
+    };
   }
-  return c;
-}
-function seed(){
-  purgeDemoIfNeeded();
-  // Cursapp v11-clean: no se crean publicaciones demo automáticamente.
-  return;
-}
-function posts(){seed();return load(K_POSTS,[])}
-function setPosts(p){save(K_POSTS,p)}
-function reports(){return load(K_REPORTS,[])}
-function setReports(r){save(K_REPORTS,r)}
-function wallets(){return load(K_WALLETS,{})}
-function balance(){return Number(wallets()[uid()]||0)}
-function addEvent(type,postId,extra={}){let e=load(K_EVENTS,[]);e.unshift({id:"ev_"+Date.now().toString(16),type,postId,userId:uid(),at:now(),...extra});save(K_EVENTS,e.slice(0,500))}
-function imageForPost(p){
-  if(p.image && String(p.image).startsWith("data:")) return p.image;
-  const known=["poleron.svg","libros.svg","mochila.svg","balon.svg","vestido.svg","generic.svg"];
-  if(p.image && known.includes(String(p.image))) return "assets/img/"+p.image;
-  const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Otros:"generic.svg"};
-  return "assets/img/"+(map[p.category]||"generic.svg");
-}
-function emptyState(icon,title,text,button,view){
-  return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${title}</h3><p>${text}</p>${button?`<button data-view="${view||"publicar"}">${button}</button>`:""}</div>`;
-}
-function img(p){return imageForPost(p)}
-function activeBoost(p){return p.boost && (!p.boostUntil || Date.parse(p.boostUntil)>Date.now())}
-function rank(list){
-  return list.slice().sort((a,b)=>{
-    const ba=activeBoost(a)?1:0, bb=activeBoost(b)?1:0;
-    if(ba!==bb)return bb-ba;
-    if((a.reports||0)!==(b.reports||0))return (a.reports||0)-(b.reports||0);
-    return Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0);
-  });
-}
-function visible(){purgeDemoIfNeeded();return rank(posts().filter(p=>p.status==="activo" && !isDemoPost(p)))}
-function card(p){
-  const price=p.type==="Intercambio"?"Intercambio":clp(p.price);
-  return `<article class="productCard" data-post="${p.id}">
-    ${activeBoost(p)?`<span class="tag">DESTACADA</span>`:""}
-    <img src="${img(p)}" alt="${esc(p.title)}" onerror="this.src=\'assets/img/generic.svg\'">
-    <div class="productBody"><b>${esc(p.title)}</b><strong>${price}</strong><span>⌖ ${esc(p.scope||"colegio")}</span><div class="productMeta"><small>${esc(p.category)}</small><small>${isFav(p.id)?"♥":"♡"}</small></div></div>
-  </article>`;
-}
-function renderProducts(list=visible()){
-  const f=$("#featuredList"), g=$("#marketGrid");
-  const ranked=rank(list);
-  if(f) f.innerHTML=ranked.length ? ranked.slice(0,8).map(card).join("") : emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán destacados acá.","Publicar primer aviso","publicar");
-  if(g) g.innerHTML=ranked.length ? ranked.map(card).join("") : emptyState("🔎","Sin resultados","No encontramos artículos para este filtro o búsqueda.","Publicar aviso","publicar");
-}
-function renderMine(){
-  const box=$("#myPosts"); if(!box)return;
-  const mine=posts().filter(p=>p.owner===uid() && !isDemoPost(p));
-  box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${img(p)}"><div><b>${esc(p.title)}</b><span>${esc(p.status)} · ${p.views||0} vistas · ${p.contacts||0} contactos</span></div><button data-edit="${p.id}">Editar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
-}
-function showView(v){
-  $$(".view").forEach(x=>x.classList.remove("active"));
-  $("#view-"+v)?.classList.add("active");
-  $$(".pillNav button,.bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
-  if(v==="mis")renderMine();
-  if(v==="creditos")renderCredits();
-}
-function search(q){
-  q=String(q||"").toLowerCase().trim();
-  const list=!q?visible():visible().filter(p=>(p.title+" "+p.category+" "+p.desc).toLowerCase().includes(q));
-  renderProducts(list);
-}
-function filterCat(cat){showView("explorar"); renderProducts(visible().filter(p=>p.category===cat));}
-function isFav(id){return (load(K_FAVS,{})[uid()]||[]).includes(id)}
-function toggleFav(id){let f=load(K_FAVS,{});f[uid()]=f[uid()]||[];f[uid()]=f[uid()].includes(id)?f[uid()].filter(x=>x!==id):f[uid()].concat(id);save(K_FAVS,f);renderProducts()}
-function openDetail(id){
-  let ps=posts(), i=ps.findIndex(p=>p.id===id); if(i<0)return;
-  ps[i].views=Number(ps[i].views||0)+1; setPosts(ps); addEvent("view",id);
-  const p=ps[i];
-  $("#modal").innerHTML=`<div class="modal">
-    <img src="${img(p)}" alt="${esc(p.title)}" onerror="this.src=\'assets/img/generic.svg\'">
-    <h2>${esc(p.title)}</h2>
-    <p><b>${p.type==="Intercambio"?"Intercambio":clp(p.price)}</b> · ${esc(p.category)}</p>
-    <p>${esc(p.desc||"")}</p>
-    <p><b>${esc(p.school||"Colegio")}</b> · ${esc(p.course||"Curso")}</p>
-    <button data-contact="${p.id}">Contactar / reservar</button>
-    <button class="ghost" data-fav="${p.id}">${isFav(p.id)?"Quitar favorito":"Guardar favorito"}</button>
-    <button class="danger" data-report="${p.id}">🚩 Denunciar</button>
-    <button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button>
-  </div>`;
-}
-function contact(id){
-  let ps=posts(), i=ps.findIndex(p=>p.id===id); if(i<0)return;
-  ps[i].contacts=Number(ps[i].contacts||0)+1; setPosts(ps);
-  let c=load(K_CONTACTS,[]); c.unshift({id:"ct_"+Date.now().toString(16),postId:id,userId:uid(),owner:ps[i].owner,at:now(),status:"solicitado"}); save(K_CONTACTS,c);
-  addEvent("contact",id); toast("Solicitud de contacto registrada");
-}
-function report(id){
-  const reason=prompt("Motivo denuncia: fraude, producto prohibido, contenido ofensivo, riesgo menores, otro");
-  if(!reason)return;
-  let r=reports(); r.unshift({id:"rp_"+Date.now().toString(16),postId:id,reason,reporter:uid(),status:"pendiente",createdAt:now()}); setReports(r);
-  let ps=posts(), i=ps.findIndex(p=>p.id===id); if(i>=0){ps[i].reports=Number(ps[i].reports||0)+1; if(ps[i].reports>=Number(cfg().rules.autoHideReports||3))ps[i].status="oculto"; setPosts(ps);}
-  addEvent("report",id,{reason}); toast("Denuncia registrada para revisión");
-  $("#modal").innerHTML="";
-  renderProducts();
-}
-function publish(e){
-  e.preventDefault();
-  const title=$("#pubTitle").value.trim(), desc=$("#pubDesc").value.trim();
-  if(!title||!desc){toast("Completa título y descripción");return}
-  const emoji=$("#pubEmoji").value.trim()||"🛍️";
-  const svg=`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620"><rect width="900" height="620" rx="42" fill="#ede9fe"/><rect x="145" y="115" width="610" height="340" rx="42" fill="#fff"/><text x="450" y="300" text-anchor="middle" dominant-baseline="middle" font-size="130">${emoji}</text><text x="450" y="410" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="#101828">${title.slice(0,24)}</text></svg>`)}`;
-  let p={id:"mk_"+Date.now().toString(16),owner:uid(),title,desc,category:$("#pubCategory").value,type:$("#pubType").value,price:Number($("#pubPrice").value||0),scope:$("#pubScope").value,school:"Colegio Central",course:"2°B",image:svg,status:"activo",boost:"",views:0,favorites:0,contacts:0,reports:0,createdAt:now()};
-  let ps=posts();ps.unshift(p);setPosts(ps);addEvent("publish",p.id);e.target.reset();toast("Publicación creada");showView("mis");
-}
-function renderCredits(){
-  const bal=$("#creditBalanceBadge"); if(bal)bal.textContent=balance()+" créditos";
-  const pack=$("#creditPackages");
-  if(pack)pack.innerHTML=cfg().packages.filter(p=>p.status!=="inactivo").map(p=>`<article class="creditPackage ${p.recommended?"recommended":""}"><h3>${esc(p.name)}${p.recommended?" · Recomendado":""}</h3><p>${p.credits} créditos Mercado</p><strong>${clp(p.price)}</strong><button data-buy="${p.id}">Comprar con pasarela prueba</button></article>`).join("");
-  const sel=$("#boostPostSelect");
-  if(sel){const mine=posts().filter(p=>p.owner===uid()&&p.status==="activo" && !isDemoPost(p));sel.innerHTML=mine.map(p=>`<option value="${p.id}">${esc(p.title)}</option>`).join("") || `<option value="">Publica un aviso primero</option>`}
-  const boosts=$("#boostOptions");
-  if(boosts)boosts.innerHTML=cfg().boosts.filter(b=>b.status!=="inactivo").map(b=>`<article class="boostOption"><b>${esc(b.name)}</b><span>${b.credits} créditos · ${b.durationDays} días</span><small>${esc(b.scope||"Vitrina")}</small><button data-boost="${b.id}">Canjear</button></article>`).join("");
-  const hist=$("#creditHistory"), mov=load(K_MOVES,[]).filter(m=>m.userId===uid());
-  if(hist)hist.innerHTML=mov.slice(0,20).map(m=>`<div class="historyItem"><b>${m.credits>0?"+":""}${m.credits} créditos</b><span>${esc(m.detail)} · ${new Date(m.at).toLocaleString("es-CL")}</span></div>`).join("") || `<p class="muted">Sin movimientos.</p>`;
-}
-function addCredits(c,detail,oid){let w=wallets();w[uid()]=Number(w[uid()]||0)+Number(c||0);save(K_WALLETS,w);let m=load(K_MOVES,[]);m.unshift({id:"mv_"+Date.now().toString(16),userId:uid(),type:"credit",credits:Number(c),detail,orderId:oid||"",at:now()});save(K_MOVES,m)}
-function wallets(){return load(K_WALLETS,{})}
-function debit(c,detail){let w=wallets(), bal=Number(w[uid()]||0); if(bal<c){toast("No tienes créditos suficientes");return false} w[uid()]=bal-c; save(K_WALLETS,w); let m=load(K_MOVES,[]);m.unshift({id:"mv_"+Date.now().toString(16),userId:uid(),type:"debit",credits:-Number(c),detail,at:now()});save(K_MOVES,m);return true}
-function buy(id){
-  const p=cfg().packages.find(x=>x.id===id); if(!p)return;
-  let order={id:"mko_"+Date.now().toString(16),userId:uid(),packageId:p.id,packageName:p.name,credits:p.credits,amount:p.price,status:"iniciado",gateway:"transbank_demo",createdAt:now()};
-  let os=load(K_ORDERS,[]);os.unshift(order);save(K_ORDERS,os);
-  const ok=confirm("Pasarela de prueba\\n\\nComprar "+p.credits+" créditos por "+clp(p.price)+"?");
-  order.status=ok?"pagado":"cancelado";order.paidAt=ok?now():"";
-  os=load(K_ORDERS,[]);const i=os.findIndex(o=>o.id===order.id); if(i>=0)os[i]=order; save(K_ORDERS,os);
-  if(ok){addCredits(p.credits,"Compra paquete "+p.name,order.id);toast("Pago aprobado: créditos agregados");renderCredits();}
-}
-function boost(id){
-  const b=cfg().boosts.find(x=>x.id===id), postId=$("#boostPostSelect")?.value; if(!b||!postId)return;
-  if(!debit(Number(b.credits||0),"Canje "+b.name))return;
-  let ps=posts(), i=ps.findIndex(p=>p.id===postId); if(i>=0){ps[i].boost=b.id;ps[i].boostUntil=new Date(Date.now()+Number(b.durationDays||7)*864e5).toISOString();setPosts(ps);addEvent("boost",postId,{boost:b.id});}
-  toast("Destacado aplicado");renderCredits();renderProducts();renderMine();
-}
-function toast(t){let el=$("#toast");el.textContent=t;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),1800)}
-function rules(){alert("Reglas de comunidad\\n\\n• Solo usuarios registrados.\\n• Cursapp no procesa pagos entre apoderados.\\n• Productos prohibidos serán ocultados.\\n• Denuncias pueden suspender publicaciones.\\n• Los créditos solo sirven para visibilidad.");}
+  async function waitSupabase(timeoutMs=5000){
+    const start=Date.now();
+    while(Date.now()-start<timeoutMs){
+      if(window.cursappSupabase) return window.cursappSupabase;
+      if(window.initCursappSupabase){try{const x=window.initCursappSupabase(); if(x) return x;}catch(e){}}
+      await new Promise(r=>setTimeout(r,100));
+    }
+    return null;
+  }
+  function toast(t){const el=$("#toast"); if(!el){alert(t); return;} el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),1900)}
+  function setLoading(on,msg){
+    state.loading=!!on;
+    let box=$("#marketLoading");
+    if(!box){box=document.createElement("div");box.id="marketLoading";box.className="marketLoading";document.body.appendChild(box)}
+    box.innerHTML=`<div><span>🛍️</span><b>${esc(msg||"Cargando Mercado Escolar...")}</b><small>Sin pagos dentro de Cursapp · comunidad registrada</small></div>`;
+    box.style.display=on?"grid":"none";
+  }
+  function requireSession(){
+    state.session=getSession();
+    if(!state.session.email){
+      toast("Debes ingresar a Cursapp para usar Mercado Escolar");
+      return false;
+    }
+    return true;
+  }
 
-document.addEventListener("click",e=>{
-  const v=e.target.closest("[data-view]"); if(v){e.preventDefault();showView(v.dataset.view);return}
-  const c=e.target.closest("[data-cat]"); if(c){e.preventDefault();filterCat(c.dataset.cat);return}
-  const pc=e.target.closest("[data-post]"); if(pc){e.preventDefault();openDetail(pc.dataset.post);return}
-  const contactBtn=e.target.closest("[data-contact]"); if(contactBtn){contact(contactBtn.dataset.contact);return}
-  const favBtn=e.target.closest("[data-fav]"); if(favBtn){toggleFav(favBtn.dataset.fav);$("#modal").innerHTML="";return}
-  const rep=e.target.closest("[data-report]"); if(rep){report(rep.dataset.report);return}
-  const buyBtn=e.target.closest("[data-buy]"); if(buyBtn){buy(buyBtn.dataset.buy);return}
-  const boostBtn=e.target.closest("[data-boost]"); if(boostBtn){boost(boostBtn.dataset.boost);return}
-  const edit=e.target.closest("[data-edit]"); if(edit){showView("publicar");toast("Edición completa se conectará al formulario en la siguiente iteración");return}
-});
-$("#publishForm")?.addEventListener("submit",publish);
-$("#searchInput")?.addEventListener("input",e=>search(e.target.value));
-$("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
-$("#btnRules")?.addEventListener("click",rules);
-$$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.scope===sc||sc==="colegio"))}));
+  async function init(){
+    setLoading(true,"Preparando Mercado Escolar...");
+    state.sb=await waitSupabase();
+    state.session=getSession();
+    if(!state.sb){
+      setLoading(false);
+      renderError("Supabase no disponible. Revisa conexión.");
+      return;
+    }
+    await loadCategories();
+    fillCategorySelect();
+    renderCategoryRow();
+    await loadPosts();
+    bind();
+    setLoading(false);
+  }
 
-seed();renderProducts();renderCredits();
-window.CursappMarket={renderProducts,renderCredits,showView};
+  function renderError(msg){
+    const f=$("#featuredList"), g=$("#marketGrid");
+    const html=emptyState("⚠️","Mercado no disponible",msg||"Intenta nuevamente en unos segundos.","Volver a Cursapp","");
+    if(f) f.innerHTML=html; if(g) g.innerHTML=html;
+  }
+  async function loadCategories(){
+    const {data,error}=await state.sb.from("mercado_categorias").select("*").eq("estado","activo").order("orden",{ascending:true});
+    if(error){state.categories=DEFAULT_CATS.map((c,i)=>({id:null,...c,orden:i+1,estado:"activo"})); return;}
+    state.categories=(data&&data.length?data:DEFAULT_CATS.map((c,i)=>({id:null,...c,orden:i+1,estado:"activo"})));
+  }
+  function fillCategorySelect(){
+    const sel=$("#pubCategory"); if(!sel) return;
+    sel.innerHTML=state.categories.map(c=>`<option value="${esc(c.nombre)}">${esc(c.icono||"")} ${esc(c.nombre)}</option>`).join("");
+  }
+  function renderCategoryRow(){
+    const row=$(".categoryRow"); if(!row) return;
+    const cats=state.categories.slice(0,4);
+    row.innerHTML=cats.map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Más</b></article>`;
+  }
+  async function loadPosts(){
+    let query=state.sb.from("mercado_publicaciones").select("*").in("estado",["disponible","reservado"]);
+    if(state.session.courseId) query=query.or(`curso_id.eq.${state.session.courseId},visibilidad.eq.todo`);
+    query=query.order("destacado",{ascending:false}).order("created_at",{ascending:false}).limit(80);
+    const {data,error}=await query;
+    if(error){renderError("No se pudieron cargar publicaciones: "+error.message); return;}
+    state.posts=data||[];
+    renderProducts(state.posts);
+    renderMine();
+  }
+
+  function imageForPost(p){
+    if(p.imagen_url) return p.imagen_url;
+    const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Tecnología:"mochila.svg",Instrumentos:"generic.svg",Servicios:"generic.svg",Otros:"generic.svg"};
+    return "assets/img/"+(map[p.categoria_nombre]||"generic.svg");
+  }
+  function emptyState(icon,title,text,button,view){
+    return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;
+  }
+  function card(p){
+    const price=String(p.tipo||"").toLowerCase().includes("intercambio")?"Intercambio":clp(p.precio);
+    const title=p.titulo||"Publicación";
+    return `<article class="productCard" data-post="${esc(p.id)}">
+      ${p.destacado?`<span class="tag">DESTACADA</span>`:""}
+      <img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'">
+      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>⌖ ${esc(p.visibilidad||"colegio")}</span><div class="productMeta"><small>${esc(p.categoria_nombre||"Otros")}</small><small>${esc(p.estado||"disponible")}</small></div></div>
+    </article>`;
+  }
+  function visible(list=state.posts){return list.filter(p=>!["eliminado","oculto","vendido"].includes(String(p.estado||"").toLowerCase()))}
+  function renderProducts(list=visible()){
+    const f=$("#featuredList"), g=$("#marketGrid");
+    const ranked=list.slice().sort((a,b)=>(Number(b.destacado)-Number(a.destacado))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
+    if(f) f.innerHTML=ranked.length?ranked.slice(0,8).map(card).join(""):empty;
+    if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
+  }
+  function renderMine(){
+    const box=$("#myPosts"); if(!box) return;
+    const email=state.session.email;
+    const mine=state.posts.filter(p=>String(p.vendedor_email||"").toLowerCase()===email && !["eliminado"].includes(String(p.estado||"").toLowerCase()));
+    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado)} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos_count||0)} contactos</span></div><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
+  }
+  function showView(v){
+    $$(".view").forEach(x=>x.classList.remove("active"));
+    $("#view-"+v)?.classList.add("active");
+    $$(".pillNav button,.bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+    if(v==="mis") renderMine();
+  }
+  function search(q){
+    q=String(q||"").toLowerCase().trim();
+    const list=!q?visible():visible().filter(p=>String((p.titulo||"")+" "+(p.categoria_nombre||"")+" "+(p.descripcion||"")).toLowerCase().includes(q));
+    renderProducts(list);
+  }
+  function filterCat(cat){showView("explorar"); renderProducts(visible().filter(p=>p.categoria_nombre===cat));}
+
+  function svgData(emoji,title){
+    return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620"><rect width="900" height="620" rx="42" fill="#ede9fe"/><rect x="145" y="115" width="610" height="340" rx="42" fill="#fff"/><text x="450" y="300" text-anchor="middle" dominant-baseline="middle" font-size="130">${emoji}</text><text x="450" y="410" text-anchor="middle" font-family="Arial" font-size="42" font-weight="800" fill="#101828">${String(title||"").slice(0,24)}</text></svg>`)}`;
+  }
+  async function publish(e){
+    e.preventDefault();
+    if(!requireSession()) return;
+    const title=$("#pubTitle").value.trim(), desc=$("#pubDesc").value.trim();
+    if(!title||!desc){toast("Completa título y descripción");return;}
+    const cat=$("#pubCategory").value.replace(/^\S+\s/,"");
+    const emoji=$("#pubEmoji").value.trim()||"🛍️";
+    const whatsapp=phoneClean($("#pubWhatsapp")?.value||state.session.phone||"");
+    const row={
+      curso_id:state.session.courseId,
+      colegio_id:state.session.colegioId,
+      vendedor_usuario_id:state.session.userId,
+      vendedor_email:state.session.email,
+      vendedor_nombre:state.session.name,
+      vendedor_whatsapp:whatsapp,
+      titulo:title,
+      descripcion:desc,
+      categoria_nombre:cat,
+      tipo:$("#pubType").value,
+      precio:Number($("#pubPrice").value||0),
+      moneda:"CLP",
+      estado:"disponible",
+      visibilidad:$("#pubScope").value,
+      emoji,
+      imagen_url:svgData(emoji,title)
+    };
+    const {data,error}=await state.sb.from("mercado_publicaciones").insert([row]).select("*").single();
+    if(error){toast("No se pudo publicar: "+error.message);return;}
+    state.posts.unshift(data); e.target.reset(); toast("Publicación creada"); renderProducts(); renderMine(); showView("mis");
+  }
+
+  async function openDetail(id){
+    const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
+    state.sb.from("mercado_publicaciones").update({vistas:Number(p.vistas||0)+1}).eq("id",p.id).then(()=>{});
+    p.vistas=Number(p.vistas||0)+1;
+    const price=String(p.tipo||"").toLowerCase().includes("intercambio")?"Intercambio":clp(p.precio);
+    $("#modal").innerHTML=`<div class="modal">
+      <img src="${esc(imageForPost(p))}" alt="${esc(p.titulo)}" onerror="this.src='assets/img/generic.svg'">
+      <h2>${esc(p.titulo)}</h2>
+      <p><b>${price}</b> · ${esc(p.categoria_nombre||"Otros")}</p>
+      <p>${esc(p.descripcion||"")}</p>
+      <p><b>${esc(p.vendedor_nombre||"Apoderado")}</b> · ${esc(p.visibilidad||"colegio")}</p>
+      <button data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
+      <button class="danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
+      <button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button>
+    </div>`;
+  }
+  async function contact(id){
+    if(!requireSession()) return;
+    const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
+    const msg=`Hola, vi tu publicación en Mercado Escolar Cursapp: ${p.titulo}. ¿Sigue disponible?`;
+    const phone=phoneClean(p.vendedor_whatsapp||"");
+    const whatsappUrl=phone?`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(msg)}`:"";
+    const row={publicacion_id:p.id,curso_id:p.curso_id,comprador_email:state.session.email,vendedor_email:p.vendedor_email,canal:"whatsapp",mensaje:msg,whatsapp_url:whatsappUrl};
+    const {error}=await state.sb.from("mercado_contactos").insert([row]);
+    if(error){toast("No se pudo registrar contacto: "+error.message);return;}
+    p.contactos_count=Number(p.contactos_count||0)+1;
+    state.sb.from("mercado_publicaciones").update({contactos_count:p.contactos_count}).eq("id",p.id).then(()=>{});
+    toast("Contacto registrado"+(whatsappUrl?". Abriendo WhatsApp...":"."));
+    if(whatsappUrl) window.open(whatsappUrl,"_blank");
+  }
+  async function report(id){
+    if(!requireSession()) return;
+    const motivo=prompt("Motivo del reporte: producto inexistente, información falsa, spam, contenido ofensivo u otro");
+    if(!motivo) return;
+    const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
+    const {error}=await state.sb.from("mercado_reportes").insert([{publicacion_id:p.id,curso_id:p.curso_id,reporter_email:state.session.email,motivo,estado:"pendiente"}]);
+    if(error){toast("No se pudo reportar: "+error.message);return;}
+    p.reportes_count=Number(p.reportes_count||0)+1;
+    state.sb.from("mercado_publicaciones").update({reportes_count:p.reportes_count}).eq("id",p.id).then(()=>{});
+    toast("Reporte enviado para revisión"); $("#modal").innerHTML="";
+  }
+  async function updateStatus(id,status){
+    const {error}=await state.sb.from("mercado_publicaciones").update({estado:status,updated_at:now()}).eq("id",id);
+    if(error){toast("No se pudo actualizar: "+error.message);return;}
+    const p=state.posts.find(x=>String(x.id)===String(id)); if(p) p.estado=status;
+    toast("Publicación actualizada"); renderProducts(); renderMine();
+  }
+  async function removePost(id){
+    if(!confirm("¿Eliminar esta publicación?")) return;
+    await updateStatus(id,"eliminado");
+  }
+  function rules(){alert("Reglas de comunidad\n\n• Solo usuarios registrados.\n• Cursapp no procesa pagos entre apoderados.\n• Contacto por WhatsApp o acuerdo directo.\n• Publicaciones reportadas pueden ocultarse.\n• No publicar productos prohibidos o no escolares.");}
+  function bind(){
+    document.addEventListener("click",e=>{
+      const v=e.target.closest("[data-view]"); if(v){e.preventDefault();showView(v.dataset.view);return;}
+      const c=e.target.closest("[data-cat]"); if(c){e.preventDefault();filterCat(c.dataset.cat);return;}
+      const pc=e.target.closest("[data-post]"); if(pc){e.preventDefault();openDetail(pc.dataset.post);return;}
+      const contactBtn=e.target.closest("[data-contact]"); if(contactBtn){contact(contactBtn.dataset.contact);return;}
+      const rep=e.target.closest("[data-report]"); if(rep){report(rep.dataset.report);return;}
+      const del=e.target.closest("[data-delete]"); if(del){removePost(del.dataset.delete);return;}
+      const st=e.target.closest("[data-status]"); if(st){updateStatus(st.dataset.id,st.dataset.status);return;}
+    });
+    $("#publishForm")?.addEventListener("submit",publish);
+    $("#searchInput")?.addEventListener("input",e=>search(e.target.value));
+    $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
+    $("#btnRules")?.addEventListener("click",rules);
+    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.visibilidad===sc||sc==="colegio"))}));
+  }
+
+  document.addEventListener("DOMContentLoaded",init);
+  window.CursappMarket={reload:loadPosts,showView};
 })();
