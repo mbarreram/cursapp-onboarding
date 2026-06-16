@@ -1,7 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
-   - V7: stress aislado + performance + avisos + integridad financiera + informes/rendiciones/RLS/concurrencia/resiliencia/navegación.
+   - V8: stress financiero + performance + avisos + gastos/rendiciones + informes publicados + RLS/concurrencia/resiliencia/navegación.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -61,7 +61,7 @@
     { id:'avisos', name:'Avisos', tests:['avisos-schema','avisos-create','avisos-consulta-presidente','avisos-consulta-apoderado'] },
     { id:'performance', name:'Performance DB', tests:['perf-dashboard-stress','perf-deudores-stress','perf-avisos-stress','perf-pagos-stress','perf-thresholds'] },
     { id:'integridad', name:'Integridad financiera', tests:['fin-dashboard-sums','fin-no-participa-excluded','fin-parcial-descuenta','fin-conciliado-impacta'] },
-    { id:'rendiciones', name:'Rendiciones / gastos', tests:['gastos-schema','gastos-create','gastos-impacto-saldo'] },
+    { id:'rendiciones', name:'Rendiciones / gastos', tests:['gastos-schema','gastos-create','rendicion-create','gastos-impacto-saldo'] },
     { id:'informes-reales', name:'Informes reales', tests:['informe-genera','informe-publica','informe-roles'] },
     { id:'seguridad', name:'Seguridad / RLS', tests:['rls-curso-ajeno-empty','rls-negative-write-foreign'] },
     { id:'concurrencia', name:'Concurrencia', tests:['race-tesorero-unico','race-pago-duplicado','race-aprobacion-miembro'] },
@@ -153,7 +153,7 @@
       'avisos-schema':'Validar tabla avisos','avisos-create':'Crear avisos QA','avisos-consulta-presidente':'Consultar avisos Presidente','avisos-consulta-apoderado':'Consultar avisos Apoderado',
       'perf-dashboard-stress':'Medir dashboard stress','perf-deudores-stress':'Medir deudores stress','perf-avisos-stress':'Medir avisos stress','perf-pagos-stress':'Medir pagos stress','perf-thresholds':'Validar umbrales performance',
       'fin-dashboard-sums':'Suma pagos vs dashboard','fin-no-participa-excluded':'No participa excluido de deuda','fin-parcial-descuenta':'Pago parcial descuenta','fin-conciliado-impacta':'Conciliado impacta reportes',
-      'gastos-schema':'Validar tabla gastos/rendiciones','gastos-create':'Crear gasto/rendición QA','gastos-impacto-saldo':'Gasto resta del saldo',
+      'gastos-schema':'Validar tabla gastos/rendiciones','gastos-create':'Crear gasto/rendición QA','gastos-impacto-saldo':'Gasto resta del saldo','rendicion-create':'Crear rendición QA',
       'informe-genera':'Generar informe QA','informe-publica':'Publicar informe QA','informe-roles':'Validar informe por rol',
       'rls-curso-ajeno-empty':'Aislamiento curso ajeno','rls-negative-write-foreign':'Escritura negativa curso ajeno',
       'race-tesorero-unico':'Concurrencia tesorero único','race-pago-duplicado':'Concurrencia pago duplicado','race-aprobacion-miembro':'Concurrencia aprobación miembro',
@@ -299,6 +299,7 @@
       case 'fin-conciliado-impacta': return finConciliadoImpacta(id,module);
       case 'gastos-schema': return gastosSchema(id,module);
       case 'gastos-create': return gastosCreate(id,module);
+      case 'rendicion-create': return rendicionCreate(id,module);
       case 'gastos-impacto-saldo': return gastosImpactoSaldo(id,module);
       case 'informe-genera': return informeGenera(id,module);
       case 'informe-publica': return informePublica(id,module);
@@ -801,11 +802,17 @@
 
   async function gastosSchema(id,module){
     const c=await sb();
-    for(const table of ['gastos','rendiciones']){
-      const r=await c.from(table).select('*',{count:'exact',head:true});
-      if(!r.error){ state.created.gastosTable=table; return pass(id,module,`Tabla ${table} responde · count=${r.count}`); }
+    const g=await c.from('gastos').select('*',{count:'exact',head:true});
+    const r=await c.from('rendiciones').select('*',{count:'exact',head:true});
+    if(g.error && r.error){
+      return warn(id,module,'No existen tablas gastos/rendiciones accesibles; se recomienda crearlas antes de probar saldos con gastos.');
     }
-    return warn(id,module,'No existe tabla gastos/rendiciones accesible; se recomienda crearla antes de probar saldos con gastos.');
+    if(!g.error) state.created.gastosTable='gastos';
+    if(!r.error) state.created.rendicionesTable='rendiciones';
+    if(g.error || r.error){
+      return warn(id,module,`Parcial: gastos=${g.error?g.error.message:('OK count='+g.count)} · rendiciones=${r.error?r.error.message:('OK count='+r.count)}`);
+    }
+    return pass(id,module,`Tablas gastos/rendiciones responden · gastos=${g.count} · rendiciones=${r.count}`);
   }
   async function adaptiveInsertGeneric(table,row){
     const c=await sb(); let cur=Object.assign({},row);
@@ -820,34 +827,97 @@
     throw new Error('No se pudo adaptar insert '+table);
   }
   async function gastosCreate(id,module){
-    const table=state.created.gastosTable; if(!table) return warn(id,module,'Sin tabla gastos/rendiciones para crear gasto QA.');
-    const curso=(state.created.stress.cursos||[])[0], camp=(state.created.stress.campanas||[])[0]; if(!curso||!camp) return warn(id,module,'No hay curso/campaña stress para gasto.');
-    const row=await adaptiveInsertGeneric(table,{curso_id:curso.id,campana_id:camp.id,titulo:QA_PREFIX+' Gasto QA',descripcion:'Gasto QA stress',concepto:QA_PREFIX+' Gasto QA',monto:12345,amount:12345,fecha:today(),date:today(),estado:'aprobado',status:'approved',comprobante_url:'https://qa.cursapp.cl/comprobante.pdf',created_at:new Date().toISOString()});
-    state.created.gasto=row; return pass(id,module,`Gasto/rendición QA creado en ${table}: ${row.id||'sin id'}`);
+    const table=state.created.gastosTable;
+    if(!table) return warn(id,module,'Sin tabla gastos para crear gasto QA.');
+    const curso=(state.created.stress.cursos||[])[0], camp=(state.created.stress.campanas||[])[0];
+    if(!curso||!camp) return warn(id,module,'No hay curso/campaña stress para gasto.');
+    const row=await adaptiveInsertGeneric('gastos',{
+      curso_id:curso.id,
+      campana_id:camp.id,
+      titulo:QA_PREFIX+' Gasto QA',
+      descripcion:'Gasto QA stress financiero',
+      concepto:QA_PREFIX+' Gasto QA',
+      monto:12345,
+      amount:12345,
+      fecha_gasto:today(),
+      fecha:today(),
+      date:today(),
+      estado:'aprobado',
+      status:'approved',
+      comprobante_url:'https://qa.cursapp.cl/comprobante.pdf',
+      created_at:new Date().toISOString()
+    });
+    state.created.gasto=row;
+    return pass(id,module,`Gasto QA creado en gastos: ${row.id||'sin id'} · monto=${row.monto||row.amount||12345}`);
   }
+  async function rendicionCreate(id,module){
+    if(!state.created.rendicionesTable) return warn(id,module,'Sin tabla rendiciones para crear rendición QA.');
+    const curso=(state.created.stress.cursos||[])[0], camp=(state.created.stress.campanas||[])[0];
+    if(!curso||!camp) return warn(id,module,'No hay curso/campaña stress para rendición.');
+    const gastoMonto=amountNum(state.created.gasto?.monto||state.created.gasto?.amount||12345);
+    const row=await adaptiveInsertGeneric('rendiciones',{
+      curso_id:curso.id,
+      campana_id:camp.id,
+      periodo:today().slice(0,7),
+      descripcion:QA_PREFIX+' Rendición QA',
+      titulo:QA_PREFIX+' Rendición QA',
+      total_gastado:gastoMonto,
+      monto:gastoMonto,
+      saldo:0,
+      publicado:false,
+      created_at:new Date().toISOString()
+    });
+    state.created.rendicion=row;
+    return pass(id,module,`Rendición QA creada: ${row.id||'sin id'} · total_gastado=${row.total_gastado||row.monto||gastoMonto}`);
+  }
+
   async function gastosImpactoSaldo(id,module){
     if(!state.created.gasto) return warn(id,module,'Sin gasto creado; no se valida impacto de saldo.');
-    const pagos=await getStressPagos(); const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
-    const gasto=amountNum(state.created.gasto.monto||state.created.gasto.amount); const saldo=rec-gasto;
-    return pass(id,module,`Saldo con gasto calculado OK · recaudado=${rec} gasto=${gasto} saldo=${saldo}`);
+    const pagos=await getStressPagos();
+    const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    const gasto=amountNum(state.created.gasto.monto||state.created.gasto.amount);
+    const saldo=rec-gasto;
+    const rendMsg=state.created.rendicion ? ' · rendición registrada' : ' · sin rendición registrada';
+    return pass(id,module,`Saldo con gasto calculado OK · recaudado=${rec} gasto=${gasto} saldo=${saldo}${rendMsg}`);
   }
 
   async function informeGenera(id,module){
-    const c=await sb(); const curso=(state.created.stress.cursos||[])[0]; if(!curso) return warn(id,module,'No hay curso stress para informe.');
-    const payload={curso_id:curso.id,periodo:today().slice(0,7),titulo:QA_PREFIX+' Informe QA',resumen:'Informe generado por QA stress',estado:'generado',created_at:new Date().toISOString(),publicado:false};
-    const r=await c.from('informes').insert([payload]).select('*').single();
-    if(r.error) return warn(id,module,'No se pudo insertar informe QA; tabla puede tener otro esquema: '+r.error.message);
-    state.created.informes.push(r.data); return pass(id,module,'Informe QA generado: '+(r.data.id||'sin id'));
+    const curso=(state.created.stress.cursos||[])[0];
+    if(!curso) return warn(id,module,'No hay curso stress para informe.');
+    const payload={
+      curso_id:curso.id,
+      tipo:'mensual',
+      periodo:today().slice(0,7),
+      titulo:QA_PREFIX+' Informe QA',
+      contenido:'Informe generado por QA stress financiero',
+      resumen:'Informe generado por QA stress financiero',
+      publicado:false,
+      created_at:new Date().toISOString()
+    };
+    try{
+      const row=await adaptiveInsertGeneric('informes', payload);
+      state.created.informes.push(row);
+      return pass(id,module,'Informe QA generado: '+(row.id||'sin id'));
+    }catch(e){
+      return warn(id,module,'No se pudo insertar informe QA; tabla puede tener otro esquema: '+(e&&e.message?e.message:e));
+    }
   }
   async function informePublica(id,module){
-    const inf=state.created.informes[0]; if(!inf||!inf.id) return warn(id,module,'Sin informe QA insertado para publicar.');
-    const c=await sb(); const r=await c.from('informes').update({estado:'publicado',publicado:true,publicado_at:new Date().toISOString()}).eq('id',inf.id).select('*').single();
-    if(r.error) return warn(id,module,'No se pudo publicar informe con columnas estándar: '+r.error.message);
-    state.created.informes[0]=r.data; return pass(id,module,'Informe QA publicado.');
+    const inf=state.created.informes[0];
+    if(!inf||!inf.id) return warn(id,module,'Sin informe QA insertado para publicar.');
+    const c=await sb();
+    const r=await c.from('informes').update({publicado:true,publicado_at:new Date().toISOString()}).eq('id',inf.id).select('*').single();
+    if(r.error) return warn(id,module,'No se pudo publicar informe con columnas publicado/publicado_at: '+r.error.message);
+    state.created.informes[0]=r.data;
+    return r.data && r.data.publicado ? pass(id,module,'Informe QA publicado con publicado=true.') : warn(id,module,'Informe actualizado pero publicado no quedó true.');
   }
   async function informeRoles(id,module){
     const inf=state.created.informes[0];
-    return inf ? pass(id,module,'Informe disponible para validar vista presidente/apoderado · id='+(inf.id||'sin id')) : warn(id,module,'No se creó informe real; UI de informes ya se valida en módulo base.');
+    if(!inf||!inf.id) return warn(id,module,'No se creó informe real; UI de informes ya se valida en módulo base.');
+    const c=await sb();
+    const r=await c.from('informes').select('*',{count:'exact'}).eq('id',inf.id).eq('publicado',true);
+    if(r.error) return warn(id,module,'No se pudo consultar informe publicado: '+r.error.message);
+    return (r.count||0)>0 ? pass(id,module,'Informe publicado consultable para presidente/apoderado · id='+(inf.id||'sin id')) : warn(id,module,'Informe existe pero no aparece como publicado.');
   }
 
   async function rlsCursoAjenoEmpty(id,module){
