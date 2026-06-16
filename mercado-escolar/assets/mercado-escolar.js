@@ -169,22 +169,26 @@
     if(!requireSession()) return;
     const title=$("#pubTitle").value.trim(), desc=$("#pubDesc").value.trim();
     if(!title||!desc){toast("Completa título y descripción");return;}
-    const catValue=$("#pubCategory").value;
-    const catObj=state.categories.find(c=>String(c.id)===String(catValue)) || state.categories.find(c=>String(c.nombre)===String(catValue)) || null;
-    const emoji=$("#pubEmoji").value.trim()||categoryIconByName(catObj?.nombre)||"🛍️";
+    const cat=$("#pubCategory").value.replace(/^\S+\s/,"");
+    const emoji=$("#pubEmoji").value.trim()||"🛍️";
     const whatsapp=phoneClean($("#pubWhatsapp")?.value||state.session.phone||"");
     const row={
       curso_id:state.session.courseId,
-      vendedor_id:state.session.userId,
-      categoria_id:catObj?catObj.id:null,
+      colegio_id:state.session.colegioId,
+      vendedor_usuario_id:state.session.userId,
+      vendedor_email:state.session.email,
+      vendedor_nombre:state.session.name,
+      vendedor_whatsapp:whatsapp,
       titulo:title,
       descripcion:desc,
+      categoria_nombre:cat,
+      tipo:$("#pubType").value,
       precio:Number($("#pubPrice").value||0),
+      moneda:"CLP",
       estado:"disponible",
-      nombre_vendedor:state.session.name,
-      whatsapp,
-      imagen_principal:svgData(emoji,title),
-      activo:true
+      visibilidad:$("#pubScope").value,
+      emoji,
+      imagen_url:svgData(emoji,title)
     };
     const {data,error}=await state.sb.from("mercado_publicaciones").insert([row]).select("*").single();
     if(error){toast("No se pudo publicar: "+error.message);return;}
@@ -194,7 +198,7 @@
   async function openDetail(id){
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
     state.sb.from("mercado_publicaciones").update({vistas:Number(p.visualizaciones||0)+1}).eq("id",p.id).then(()=>{});
-    p.visualizaciones=Number(p.visualizaciones||0)+1;
+    p.vistas=Number(p.visualizaciones||0)+1;
     const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     $("#modal").innerHTML=`<div class="modal">
       <img src="${esc(imageForPost(p))}" alt="${esc(p.titulo)}" onerror="this.src='assets/img/generic.svg'">
@@ -211,13 +215,13 @@
     if(!requireSession()) return;
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
     const msg=`Hola, vi tu publicación en Mercado Escolar Cursapp: ${p.titulo}. ¿Sigue disponible?`;
-    const phone=phoneClean(p.whatsapp||"");
+    const phone=phoneClean(p.vendedor_whatsapp||"");
     const whatsappUrl=phone?`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(msg)}`:"";
-    const row={publicacion_id:p.id,interesado_id:state.session.userId,canal:"whatsapp",mensaje:msg};
+    const row={publicacion_id:p.id,curso_id:p.curso_id,comprador_email:state.session.email,vendedor_email:p.vendedor_email,canal:"whatsapp",mensaje:msg,whatsapp_url:whatsappUrl};
     const {error}=await state.sb.from("mercado_contactos").insert([row]);
     if(error){toast("No se pudo registrar contacto: "+error.message);return;}
-    p.contactos=Number(p.contactos||0)+1;
-    state.sb.from("mercado_publicaciones").update({contactos:p.contactos}).eq("id",p.id).then(()=>{});
+    p.contactos_count=Number(p.contactos||0)+1;
+    state.sb.from("mercado_publicaciones").update({contactos_count:p.contactos_count}).eq("id",p.id).then(()=>{});
     toast("Contacto registrado"+(whatsappUrl?". Abriendo WhatsApp...":"."));
     if(whatsappUrl) window.open(whatsappUrl,"_blank");
   }
@@ -255,7 +259,7 @@
     $("#searchInput")?.addEventListener("input",e=>search(e.target.value));
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
-    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(visible())}));
+    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.visibilidad===sc||sc==="colegio"))}));
   }
 
   document.addEventListener("DOMContentLoaded",init);
