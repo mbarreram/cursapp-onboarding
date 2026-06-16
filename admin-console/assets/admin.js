@@ -55,7 +55,9 @@
     ready:false,
     loading:false,
     error:null,
-    colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[]
+    colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[],
+    avisos:[], gastos:[], rendiciones:[], informes:[],
+    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[]
   };
 
   async function sbGet(path){
@@ -84,13 +86,26 @@
       // Consultas sin relaciones embebidas para evitar errores PostgREST por alias duplicados
       // como "miembros_curso_cursos_1 specified more than once".
       // Luego relacionamos los datos en memoria.
-      const [colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw] = await Promise.all([
+      const [
+        colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw,
+        avisosRaw, gastosRaw, rendicionesRaw, informesRaw,
+        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw
+      ] = await Promise.all([
         sbGet("colegios?select=*&order=created_at.desc"),
         sbGet("cursos?select=*&order=created_at.desc"),
         sbGet("usuarios?select=*&order=created_at.desc"),
         sbGet("miembros_curso?select=*&order=created_at.desc"),
         sbGet("campanas?select=*&order=created_at.desc"),
-        sbGet("pagos?select=*&order=created_at.desc")
+        sbGet("pagos?select=*&order=created_at.desc"),
+        sbGet("avisos?select=*&order=created_at.desc"),
+        sbGet("gastos?select=*&order=created_at.desc"),
+        sbGet("rendiciones?select=*&order=created_at.desc"),
+        sbGet("informes?select=*&order=created_at.desc"),
+        sbGet("mercado_categorias?select=*&order=nombre.asc"),
+        sbGet("mercado_publicaciones?select=*&order=created_at.desc"),
+        sbGet("mercado_contactos?select=*&order=created_at.desc"),
+        sbGet("mercado_reportes?select=*&order=created_at.desc"),
+        sbGet("mercado_imagenes?select=*&order=created_at.desc")
       ]);
 
       const byId = (rows)=>{
@@ -124,14 +139,65 @@
         miembros_curso: miembrosById.get(String(p.miembro_id || "")) || null
       }));
 
+      const avisos = (avisosRaw || []).map(a=>Object.assign({}, a, {
+        cursos: cursosById.get(String(a.curso_id || "")) || null
+      }));
+
+      const gastos = (gastosRaw || []).map(g=>Object.assign({}, g, {
+        cursos: cursosById.get(String(g.curso_id || "")) || null,
+        campanas: campanasById.get(String(g.campana_id || "")) || null
+      }));
+
+      const rendiciones = (rendicionesRaw || []).map(r=>Object.assign({}, r, {
+        cursos: cursosById.get(String(r.curso_id || "")) || null,
+        campanas: campanasById.get(String(r.campana_id || "")) || null
+      }));
+
+      const informes = (informesRaw || []).map(r=>Object.assign({}, r, {
+        cursos: cursosById.get(String(r.curso_id || "")) || null
+      }));
+
+      const mercadoCategoriasById = byId(mercadoCategoriasRaw);
+      const mercadoPublicacionesById = byId(mercadoPublicacionesRaw);
+      const mercadoPublicaciones = (mercadoPublicacionesRaw || []).map(p=>Object.assign({}, p, {
+        categorias: mercadoCategoriasById.get(String(p.categoria_id || "")) || null,
+        cursos: cursosById.get(String(p.curso_id || "")) || null,
+        vendedor: usuariosById.get(String(p.vendedor_id || "")) || null
+      }));
+      const mercadoContactos = (mercadoContactosRaw || []).map(c=>Object.assign({}, c, {
+        publicaciones: mercadoPublicacionesById.get(String(c.publicacion_id || "")) || null,
+        interesado: usuariosById.get(String(c.interesado_id || "")) || null
+      }));
+      const mercadoReportes = (mercadoReportesRaw || []).map(r=>Object.assign({}, r, {
+        publicaciones: mercadoPublicacionesById.get(String(r.publicacion_id || "")) || null,
+        usuario: usuariosById.get(String(r.usuario_id || "")) || null
+      }));
+      const mercadoImagenes = (mercadoImagenesRaw || []).map(i=>Object.assign({}, i, {
+        publicaciones: mercadoPublicacionesById.get(String(i.publicacion_id || "")) || null
+      }));
+
       ADMIN_DB.colegios = colegiosRaw;
       ADMIN_DB.cursos = cursos;
       ADMIN_DB.usuarios = usuariosRaw;
       ADMIN_DB.miembros = miembros;
       ADMIN_DB.campanas = campanas;
       ADMIN_DB.pagos = pagos;
+      ADMIN_DB.avisos = avisos;
+      ADMIN_DB.gastos = gastos;
+      ADMIN_DB.rendiciones = rendiciones;
+      ADMIN_DB.informes = informes;
+      ADMIN_DB.mercado_categorias = mercadoCategoriasRaw || [];
+      ADMIN_DB.mercado_publicaciones = mercadoPublicaciones;
+      ADMIN_DB.mercado_contactos = mercadoContactos;
+      ADMIN_DB.mercado_reportes = mercadoReportes;
+      ADMIN_DB.mercado_imagenes = mercadoImagenes;
       ADMIN_DB.ready = true;
-      try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({status:"ok", at:now(), cursos:cursos.length, usuarios:usuarios.length, miembros:miembros.length, campanas:campanas.length, pagos:pagos.length})); }catch(e){}
+      try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({
+        status:"ok", at:now(),
+        cursos:cursos.length, usuarios:usuarios.length, miembros:miembros.length, campanas:campanas.length, pagos:pagos.length,
+        avisos:avisos.length, gastos:gastos.length, rendiciones:rendiciones.length, informes:informes.length,
+        mercado_publicaciones:mercadoPublicaciones.length, mercado_contactos:mercadoContactos.length, mercado_reportes:mercadoReportes.length
+      })); }catch(e){}
     }catch(e){
       ADMIN_DB.error = e && e.message ? e.message : String(e);
       ADMIN_DB.ready = false;
@@ -208,8 +274,41 @@
     });
   }
 
-  function expenses(){ return []; }
-  function reports(){ return []; }
+  function expenses(){
+    return (ADMIN_DB.gastos || []).map(g=>Object.assign({}, g, {
+      id:g.id,
+      title:g.titulo || g.concepto || "Gasto",
+      amount:Number(g.monto || 0),
+      createdAt:g.created_at || g.fecha_gasto || g.fecha || "",
+      courseKey:g.cursos?.course_key || g.curso_id || "",
+      __course: courseObjectFromCurso(g.cursos || {})
+    }));
+  }
+  function reports(){
+    return (ADMIN_DB.informes || []).map(r=>Object.assign({}, r, {
+      id:r.id,
+      title:r.titulo || r.tipo || "Informe",
+      status:r.publicado ? "publicado" : "borrador",
+      createdAt:r.created_at || "",
+      publishedAt:r.publicado_at || "",
+      courseKey:r.cursos?.course_key || r.curso_id || "",
+      __course: courseObjectFromCurso(r.cursos || {})
+    }));
+  }
+  function renditions(){
+    return (ADMIN_DB.rendiciones || []).map(r=>Object.assign({}, r, {
+      id:r.id,
+      amount:Number(r.total_gastado || r.monto || 0),
+      saldo:Number(r.saldo || 0),
+      createdAt:r.created_at || "",
+      courseKey:r.cursos?.course_key || r.curso_id || "",
+      __course: courseObjectFromCurso(r.cursos || {})
+    }));
+  }
+  function notices(){ return ADMIN_DB.avisos || []; }
+  function marketPublications(){ return ADMIN_DB.mercado_publicaciones || []; }
+  function marketContacts(){ return ADMIN_DB.mercado_contactos || []; }
+  function marketReports(){ return ADMIN_DB.mercado_reportes || []; }
   function receipts(){ return []; }
 
   function profiles(){
@@ -491,6 +590,11 @@
     const pays = payments();
     const exps = expenses();
     const reps = reports();
+    const rends = renditions();
+    const avis = notices();
+    const market = marketPublications();
+    const mcontacts = marketContacts();
+    const mreports = marketReports();
     const ts = tasks();
     const courses = getAllCourses();
 
@@ -505,7 +609,7 @@
 
     const pstats = paymentStats();
 
-    return {ps,us,ens,pays,exps,reps,ts,courses,schools,regions,alumnos,...pstats};
+    return {ps,us,ens,pays,exps,reps,rends,avis,market,mcontacts,mreports,ts,courses,schools,regions,alumnos,...pstats};
   }
 
   function groupCount(list, fn){
@@ -558,6 +662,9 @@
         ${kpi("💳","Pagos del mes",clp(s.totalPaid),`${s.successful.length} exitosos`)}
         ${kpi("🤝","Conciliación / Manual",manualTotal.count,clp(manualTotal.amount))}
         ${kpi("🎫","Tickets abiertos",openTickets,`${tickets.length} tickets totales`)}
+        ${kpi("📣","Avisos activos",s.avis.length,"Desde Supabase")}
+        ${kpi("🛍️","Mercado escolar",s.market.filter(p=>p.activo!==false && p.estado!=="eliminado").length,`${s.mcontacts.length} contactos · ${s.mreports.length} reportes`)}
+        ${kpi("📄","Informes publicados",s.reps.filter(r=>r.publicado || r.status==="publicado").length,`${s.rends.length} rendiciones`)}
       </div>
 
       <div class="gridMain adminGrid4">
@@ -603,6 +710,9 @@
             <button class="quick" onclick="Admin.go('pagos')">💳<strong>Ver pagos</strong><span>Filtrar por colegio/curso</span></button>
             <button class="quick" onclick="Admin.go('logs')">📄<strong>Logs de actividad</strong><span>Ver registros</span></button>
             <button class="quick" onclick="Admin.go('auditoria')">🛡️<strong>Auditar cambios</strong><span>Ver bitácora</span></button>
+            <button class="quick" onclick="Admin.go('avisos')">📣<strong>Avisos</strong><span>Comunicaciones Supabase</span></button>
+            <button class="quick" onclick="Admin.go('finanzas')">📊<strong>Informes y rendiciones</strong><span>Gastos, informes y saldos</span></button>
+            <button class="quick" onclick="Admin.go('mercado')">🛍️<strong>Mercado Escolar</strong><span>Publicaciones, contactos y reportes</span></button>
           </div>
         </section>
       </div>
@@ -1009,6 +1119,156 @@
     return `<div class="tableWrap"><table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Alumno</th><th>Región</th><th>Curso</th><th>Acciones</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><span class="badge purple">${esc(r.role)}</span></td><td>${esc(r.alumno)}</td><td>${esc(r.region)}</td><td>${esc(r.course)}</td><td><button class="adminBtn ghost" onclick="Admin.openMember('${esc(r.profileId)}')">Administrar</button></td></tr>`).join("") || `<tr><td colspan="7">Sin miembros.</td></tr>`}</tbody></table></div>`;
   }
 
+
+  function badge(label, cls){
+    return `<span class="badge ${esc(cls||"purple")}">${esc(label)}</span>`;
+  }
+
+  function marketStatusBadge(st){
+    const s = String(st || "disponible").toLowerCase();
+    const cls = s === "vendido" ? "green" : (s === "reservado" ? "orange" : (s === "eliminado" ? "red" : "purple"));
+    return badge(s, cls);
+  }
+
+  function renderAvisos(){
+    setTitle("Avisos", "Comunicaciones cargadas desde Supabase");
+    const rows = notices();
+    const byTipo = groupCount(rows, a=>a.tipo || "general");
+    const byDestino = groupCount(rows, a=>a.destino || a.rol_destino || a.destinatario_rol || "todos");
+
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("📣","Avisos totales",rows.length,"Tabla avisos")}
+        ${kpi("👪","Para apoderados",(byDestino.apoderado||0)+(byDestino.todos||0),"Destino")}
+        ${kpi("🏫","Cursos con avisos",new Set(rows.map(a=>a.curso_id).filter(Boolean)).size,"Cursos")}
+        ${kpi("⚡","Tipos",Object.keys(byTipo).length,"general, pago, directiva")}
+      </div>
+      <section class="panel">
+        <div class="panelHead"><h2>Últimos avisos</h2><button onclick="Admin.refresh()">Actualizar</button></div>
+        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Tipo</th><th>Destino</th><th>Curso</th><th>Mensaje</th></tr></thead><tbody>
+          ${rows.slice(0,80).map(a=>`<tr>
+            <td>${fmtDate(a.created_at || a.fecha_publicacion)}</td>
+            <td><b>${esc(a.titulo || "Aviso")}</b></td>
+            <td>${badge(a.tipo || "general","purple")}</td>
+            <td>${esc(a.destino || a.rol_destino || a.destinatario_rol || "todos")}</td>
+            <td>${esc(a.cursos?.nombre || a.curso_id || "—")}</td>
+            <td>${esc(a.mensaje || a.contenido || "")}</td>
+          </tr>`).join("") || `<tr><td colspan="6">Sin avisos.</td></tr>`}
+        </tbody></table></div>
+      </section>
+    `;
+  }
+
+  function renderFinanzas(){
+    setTitle("Informes y rendiciones", "Gastos, rendiciones e informes desde Supabase");
+    const gs = expenses();
+    const rs = renditions();
+    const inf = reports();
+    const totalGastos = gs.reduce((a,g)=>a+Number(g.amount||0),0);
+    const publicados = inf.filter(i=>i.publicado || i.status==="publicado").length;
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("🧾","Gastos",gs.length,clp(totalGastos))}
+        ${kpi("📊","Rendiciones",rs.length,`${rs.filter(r=>r.publicado).length} publicadas`)}
+        ${kpi("📄","Informes",inf.length,`${publicados} publicados`)}
+        ${kpi("💰","Total rendido",clp(rs.reduce((a,r)=>a+Number(r.amount||0),0)),"Supabase")}
+      </div>
+      <div class="tablesGrid">
+        <section class="panel">
+          <div class="panelHead"><h2>Últimos gastos</h2></div>
+          <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th>Curso</th><th>Campaña</th></tr></thead><tbody>
+            ${gs.slice(0,60).map(g=>`<tr><td>${fmtDate(g.createdAt)}</td><td><b>${esc(g.title)}</b><br><small>${esc(g.descripcion || "")}</small></td><td>${clp(g.amount)}</td><td>${esc(g.__course?.schoolName || g.curso_id || "—")}</td><td>${esc(g.campanas?.titulo || g.campana_id || "—")}</td></tr>`).join("") || `<tr><td colspan="5">Sin gastos.</td></tr>`}
+          </tbody></table></div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><h2>Informes publicados</h2></div>
+          <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Tipo</th><th>Publicado</th><th>Curso</th></tr></thead><tbody>
+            ${inf.slice(0,60).map(r=>`<tr><td>${fmtDate(r.createdAt)}</td><td><b>${esc(r.title)}</b></td><td>${esc(r.tipo || "informe")}</td><td>${r.publicado ? "✅" : "—"} ${esc(r.publishedAt ? fmtDate(r.publishedAt) : "")}</td><td>${esc(r.__course?.schoolName || r.curso_id || "—")}</td></tr>`).join("") || `<tr><td colspan="5">Sin informes.</td></tr>`}
+          </tbody></table></div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderMercado(){
+    setTitle("Mercado Escolar", "Publicaciones, contactos WhatsApp y reportes desde Supabase");
+    const pubs = marketPublications();
+    const contacts = marketContacts();
+    const reports = marketReports();
+    const activos = pubs.filter(p=>p.activo!==false && String(p.estado||"")!=="eliminado");
+    const vendidos = pubs.filter(p=>String(p.estado||"").toLowerCase()==="vendido");
+    const reportesPend = reports.filter(r=>String(r.estado||"pendiente").toLowerCase()==="pendiente");
+
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("🛍️","Publicaciones activas",activos.length,`${pubs.length} totales`)}
+        ${kpi("✅","Vendidas",vendidos.length,"Estado vendido")}
+        ${kpi("💬","Contactos WhatsApp",contacts.length,"Interacciones")}
+        ${kpi("🚩","Reportes pendientes",reportesPend.length,`${reports.length} reportes`)}
+      </div>
+
+      <div class="gridMain adminGrid4">
+        <section class="panel">
+          <div class="panelHead"><h2>Últimas publicaciones</h2><button onclick="Admin.refresh()">Actualizar</button></div>
+          <div class="list">
+            ${pubs.slice(0,8).map(p=>`
+              <div class="listItem">
+                <div><b>${esc(p.titulo || "Publicación")}</b><span>${esc(p.categorias?.nombre || p.categoria_id || "Sin categoría")} · ${clp(p.precio || 0)}</span></div>
+                <div>${marketStatusBadge(p.estado)}<br><small>${fmtDate(p.created_at)}</small></div>
+              </div>
+            `).join("") || emptyRow("Sin publicaciones")}
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><h2>Contactos recientes</h2></div>
+          <div class="list">
+            ${contacts.slice(0,8).map(c=>`
+              <div class="listItem">
+                <div><b>${esc(c.publicaciones?.titulo || c.publicacion_id || "Contacto")}</b><span>${esc(c.canal || "whatsapp")} · ${fmtDate(c.created_at)}</span></div>
+                <span>${esc(c.mensaje || "—")}</span>
+              </div>
+            `).join("") || emptyRow("Sin contactos")}
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><h2>Reportes pendientes</h2></div>
+          <div class="list">
+            ${reports.slice(0,8).map(r=>`
+              <div class="listItem">
+                <div><b>${esc(r.motivo || "Reporte")}</b><span>${esc(r.publicaciones?.titulo || r.publicacion_id || "")}</span></div>
+                <div>${badge(r.estado || "pendiente","orange")}<br><small>${fmtDate(r.created_at)}</small></div>
+              </div>
+            `).join("") || emptyRow("Sin reportes")}
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panelHead"><h2>Categorías</h2></div>
+          <div class="list">
+            ${(ADMIN_DB.mercado_categorias||[]).map(c=>`
+              <div class="listItem"><div><b>${esc(c.icono || "📦")} ${esc(c.nombre)}</b><span>${c.activo===false ? "Inactiva" : "Activa"}</span></div></div>
+            `).join("") || emptyRow("Sin categorías")}
+          </div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panelHead"><h2>Detalle publicaciones</h2><span id="marketCount">${pubs.length} publicaciones</span></div>
+        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Vendedor</th><th>WhatsApp</th><th>Métricas</th></tr></thead><tbody>
+          ${pubs.map(p=>`<tr>
+            <td>${fmtDate(p.created_at)}</td>
+            <td><b>${esc(p.titulo || "—")}</b><br><small>${esc(p.descripcion || "")}</small></td>
+            <td>${esc(p.categorias?.nombre || p.categoria_id || "—")}</td>
+            <td>${clp(p.precio || 0)}</td>
+            <td>${marketStatusBadge(p.estado)}</td>
+            <td>${esc(p.nombre_vendedor || p.vendedor?.nombre || "—")}</td>
+            <td>${esc(p.whatsapp || "—")}</td>
+            <td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)}</td>
+          </tr>`).join("") || `<tr><td colspan="8">Sin publicaciones Mercado.</td></tr>`}
+        </tbody></table></div>
+      </section>
+    `;
+  }
+
   function renderAuditoria(){
     setTitle("Auditoría", "Control de cambios sensibles y acciones administrativas");
     const logs = load(ADMIN_LOGS, []).filter(l=>String(l.type||"").includes("admin") || String(l.type||"").includes("audit") || String(l.type||"").includes("member"));
@@ -1029,7 +1289,17 @@
       if(tab==="comunidad") renderComunidad();
       if(tab==="colegios") renderColegios();
       if(tab==="campanas") renderCampanas();
+      if(tab==="avisos") renderAvisos();
+      if(tab==="finanzas") renderFinanzas();
+      if(tab==="mercado") renderMercado();
       if(tab==="auditoria") renderAuditoria();
+    },
+    async refresh(){
+      setTitle("Actualizando datos", "Consultando Supabase...");
+      app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Actualizando</h2></div><p class="muted" style="font-weight:800">Consultando datos más recientes...</p></section>`;
+      ADMIN_DB.loading = false;
+      await loadSupabaseAdminData();
+      Admin.go(document.querySelector(".sideItem.active")?.dataset.tab || "dashboard");
     },
     logout(){
       log("logout_admin","Salida de panel administrador","Admin Console");
@@ -1218,7 +1488,7 @@
     $$(".sideItem").forEach(b=>b.addEventListener("click", ()=>Admin.go(b.dataset.tab)));
 
     setTitle("Cargando datos", "Consultando Supabase...");
-    app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Conectando con Supabase</h2></div><p class="muted" style="font-weight:800">Cargando usuarios, cursos, campañas y pagos...</p></section>`;
+    app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Conectando con Supabase</h2></div><p class="muted" style="font-weight:800">Cargando usuarios, cursos, campañas, pagos, avisos, informes, rendiciones y mercado escolar...</p></section>`;
     await loadSupabaseAdminData();
     if(ADMIN_DB.error){
       setTitle("Error Supabase", "No se pudieron cargar los datos");
