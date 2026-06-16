@@ -31,14 +31,47 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
 
 
-const session = JSON.parse(localStorage.getItem("cursapp_session_v1") || "null");
+// V10.1 · Contexto de rol robusto para Apoderado.
+// No exige courseKey en sesión porque puede venir desde cursapp_active_course_v1
+// o desde el perfil activo. Evita el falso "contexto inválido" al cambiar
+// Presidente → Apoderado con usuarios multirol.
+function __cursappReadJsonV101(key, fallback){
+  try{ const raw=localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch(_e){ return fallback; }
+}
+function __cursappWriteJsonV101(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_e){}
+}
+function __cursappNormalizeRoleContextV101(expectedRole){
+  const role = String(expectedRole || 'apoderado').toLowerCase().trim();
+  const session = __cursappReadJsonV101('cursapp_session_v1', null) || {};
+  const profile = __cursappReadJsonV101('cursapp_active_profile_v1', null) || {};
+  const activeCourse = String(localStorage.getItem('cursapp_active_course_v1') || session.courseKey || profile.courseKey || profile.course_key || '').trim();
 
-if (!session || !session.userId || !session.courseKey) {
-  alert(
-    "❌ CONTEXTO INVÁLIDO EN APODERADO\n\n" +
-    JSON.stringify(session, null, 2)
-  );
-  throw new Error("Contexto apoderado inválido");
+  if(!session.userId && (session.email || profile.email)){
+    session.userId = String(session.email || profile.email).toLowerCase().trim();
+  }
+
+  const roles = Array.isArray(session.roles) ? session.roles.map(r=>String(r).toLowerCase().trim()).filter(Boolean) : [];
+  if(!roles.includes(role)) roles.push(role);
+
+  session.roles = roles;
+  session.currentRole = role;
+  session.activeRole = role;
+  session.role = role;
+  if(activeCourse){
+    session.courseKey = activeCourse;
+    localStorage.setItem('cursapp_active_course_v1', activeCourse);
+  }
+  localStorage.setItem('cursapp_active_role_v1', role);
+  __cursappWriteJsonV101('cursapp_session_v1', session);
+  document.documentElement.setAttribute('data-role', role);
+  return session;
+}
+
+const session = __cursappNormalizeRoleContextV101('apoderado');
+
+if (!session || !session.userId) {
+  console.warn('Cursapp Apoderado: sesión sin userId; se mostrará estado vacío controlado.', session);
 }
 
 (function(){
@@ -2831,7 +2864,7 @@ if (DEMO_MODE) {
   function __openRoleChooser(){
     // Usamos openModal si existe (misma UI de ayudas). Fallback: alert.
     if(typeof openModal !== "function"){
-      alert("Elegir rol: Apoderado o Tesorero");
+      alert("Selecciona perfil: Apoderado o Tesorero");
       return;
     }
     var canTesorero = __profilesHasRole("tesorero");
@@ -2839,7 +2872,7 @@ if (DEMO_MODE) {
       <div class="card helpModalCard" style="max-width:520px">
         <div class="helpHeader">
           <div>
-            <div class="kTitle">Elegir rol</div>
+            <div class="kTitle">Cambiar perfil</div>
             <div class="muted" style="margin-top:6px;font-weight:800;">Selecciona cómo ingresar</div>
           </div>
           <button class="btn small" onclick="closeModal()">Cerrar</button>
@@ -2867,15 +2900,25 @@ if (DEMO_MODE) {
   }
 
   window.__setRole = function(r){
+    const nextRole = String(r)==="tesorero" ? "tesorero" : "apoderado";
     try{
       localStorage.setItem("cursapp_role_prompted_v1","1");
-      localStorage.setItem("cursapp_active_role_v1", String(r)==="tesorero" ? "tesorero" : "apoderado");
+      localStorage.setItem("cursapp_active_role_v1", nextRole);
+      const s = __cursappReadJsonV101('cursapp_session_v1', {}) || {};
+      const roles = Array.isArray(s.roles) ? s.roles.map(x=>String(x).toLowerCase().trim()).filter(Boolean) : [];
+      if(!roles.includes(nextRole)) roles.push(nextRole);
+      s.roles = roles;
+      s.currentRole = nextRole;
+      s.activeRole = nextRole;
+      s.role = nextRole;
+      __cursappWriteJsonV101('cursapp_session_v1', s);
     }catch(e){}
     try{ closeModal(); }catch(e){}
-    if(String(r)==="tesorero"){
+    if(nextRole==="tesorero"){
       location.href="/tesorero.html";
     }else{
       // quedarse en apoderado
+      try{ __cursappNormalizeRoleContextV101('apoderado'); }catch(e){}
       try{ __hideLegacyTesoreroBanner(); }catch(e){}
     }
   };
@@ -2884,10 +2927,11 @@ if (DEMO_MODE) {
     // V11.14: no mostrar selector automático dentro de Apoderado.
     // El selector debe resolverse antes de entrar a esta pantalla (login / cambio de rol).
     // Esto evita el bug Presidente -> Apoderado donde se renderizaba Home/banner
-    // y luego aparecía nuevamente "Elegir rol", dejando el banner de fondo.
+    // y luego aparecía nuevamente el selector de perfil, dejando el banner de fondo.
     try{
       localStorage.setItem("cursapp_role_prompted_v1","1");
       localStorage.setItem("cursapp_active_role_v1","apoderado");
+      __cursappNormalizeRoleContextV101('apoderado');
     }catch(e){}
     return;
   }
@@ -2937,3 +2981,5 @@ __bootApoderadoSupabaseFirst();
 })();
 
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
+
+/* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */

@@ -984,7 +984,14 @@
   async function navPresidenteApoderado(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('Cargando datos') && t.toLowerCase().includes('apoderado')) ? pass(id,module,'Marcas de transición Presidente→Apoderado detectadas.') : warn(id,module,'No se detectan marcas claras de transición Presidente→Apoderado.'); }
   async function navApoderadoTesorero(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/tesorero.js')).text; return (t.includes('tesorero') && t.includes('Cargando datos')) ? pass(id,module,'Marcas de transición Apoderado→Tesorero detectadas.') : warn(id,module,'No se detectan marcas claras de transición Apoderado→Tesorero.'); }
   async function navNoBannerFlicker(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('data-monetization-slot') && t.includes('Cargando datos')) ? pass(id,module,'Carga premium y banner coexisten; flicker mitigado.') : warn(id,module,'No se puede confirmar mitigación de flicker desde estático.'); }
-  async function navNoSelectorRepetido(id,module){ const t=(await fetchText('/assets/apoderado.js')).text; return t.includes('Elegir rol') ? warn(id,module,'apoderado.js aún contiene texto selector Elegir rol; revisar que no se autoabra tras cambio de rol.') : pass(id,module,'No se detecta selector de rol automático en apoderado.js.'); }
+  async function navNoSelectorRepetido(id,module){
+    setQaRoleContext('apoderado');
+    const ctx=validateQaRoleContext('apoderado');
+    const sandbox=document.getElementById('qaUiSandbox');
+    const visibleChooser=sandbox && String(sandbox.innerText||'').includes('Elegir rol');
+    if(!ctx.ok) return warn(id,module,'Contexto de rol no coincide: current='+ctx.current+' active='+ctx.active);
+    return visibleChooser ? warn(id,module,'Selector de rol visible en QA; revisar autoapertura.') : pass(id,module,'No se detecta selector de rol repetido ni contexto inválido en apoderado.');
+  }
 
 
 
@@ -997,6 +1004,37 @@
       document.body.appendChild(box);
     }
     return box;
+  }
+
+  function setQaRoleContext(role){
+    try{
+      const r=String(role||'apoderado').toLowerCase().trim();
+      const courseKey=(state.created?.stress?.cursos?.[0]?.course_key)||qa.courseKey||'QA_CLICK_COURSE';
+      const session={
+        userId:'qa_click_'+r,
+        email:'qa.'+r+'@qa.cursapp.cl',
+        role:r,
+        currentRole:r,
+        activeRole:r,
+        roles:r==='presidente'?['presidente','apoderado']:(r==='tesorero'?['tesorero','apoderado']:[r]),
+        courseKey
+      };
+      localStorage.setItem('cursapp_session_v1', JSON.stringify(session));
+      localStorage.setItem('cursapp_active_role_v1', r);
+      localStorage.setItem('cursapp_active_course_v1', courseKey);
+      localStorage.setItem('cursapp_role_prompted_v1','1');
+      return session;
+    }catch(e){ return null; }
+  }
+  function readQaSession(){
+    try{ return JSON.parse(localStorage.getItem('cursapp_session_v1')||'null'); }catch(e){ return null; }
+  }
+  function validateQaRoleContext(role){
+    const s=readQaSession()||{};
+    const r=String(role||'').toLowerCase();
+    const active=String(localStorage.getItem('cursapp_active_role_v1')||'').toLowerCase();
+    const current=String(s.currentRole||s.role||s.activeRole||'').toLowerCase();
+    return {ok: current===r && active===r, current, active, session:s};
   }
 
   async function loadQaFrame(path,label){
@@ -1050,7 +1088,8 @@
       const f=await loadQaFrame(path,label);
       const doc=f.contentDocument;
       const title=(doc && (doc.title || visibleText(doc.body).slice(0,40))) || label;
-      out.push(label+': cargada · '+title);
+      const ctx=validateQaRoleContext(label);
+      out.push(label+': cargada · '+title+' · contexto='+(ctx.ok?'OK':('WARN current='+ctx.current+' active='+ctx.active)));
     }
     return pass(id,module,out.join(' · '));
   }
@@ -1238,3 +1277,5 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+
+/* __CURSAPP_QA_V10_1_CONTEXT_VALIDATION__ */

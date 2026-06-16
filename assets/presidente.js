@@ -27,6 +27,24 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
 document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('presidente'); setTimeout(()=>window.CURSAPP_LOADING.hide(),1200);}catch(e){}});
 // === END LOADING ===
 
+// V10.1 · Mantiene contexto de rol coherente al abrir presidente.
+(function(){
+  try{
+    const expected='presidente';
+    const raw=localStorage.getItem('cursapp_session_v1');
+    const s=raw ? JSON.parse(raw) : {};
+    const roles=Array.isArray(s.roles) ? s.roles.map(r=>String(r).toLowerCase().trim()).filter(Boolean) : [];
+    if(!roles.includes(expected)) roles.push(expected);
+    s.roles=roles; s.currentRole=expected; s.activeRole=expected; s.role=expected;
+    const activeCourse=String(localStorage.getItem('cursapp_active_course_v1') || s.courseKey || '').trim();
+    if(activeCourse) s.courseKey=activeCourse;
+    localStorage.setItem('cursapp_active_role_v1', expected);
+    localStorage.setItem('cursapp_session_v1', JSON.stringify(s));
+    document.documentElement.setAttribute('data-role', expected);
+  }catch(_e){}
+})();
+/* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
+
 /* Cursapp HOTFIX v7 · Presidente estable
    - Sin loop de banner: render único post Home.
    - Dashboard ejecutivo sin carrusel horizontal que rebote.
