@@ -32,7 +32,8 @@
       <div style="font-weight:950;font-size:18px;">Estado de ejecución</div>
       <div class="qaNote" style="margin-top:6px;">El QA rápido solo valida. El QA completo crea curso, usuarios, miembros, campañas y pagos con prefijo <b>QA_</b>. El QA stress agrega 2 colegios, 2 cursos, 85 alumnos/apoderados, 16 campañas y cerca de 3.000 pagos, avisos, performance, integridad financiera, resiliencia y navegación; puede limpiarlos al final.</div>
       <label class="qaCheck"><input id="cleanupQa" type="checkbox" checked /> Limpiar automáticamente los registros QA_* creados al finalizar.</label>
-      <div class="qaActions" style="margin-top:12px;"><button class="qaBtn ghost" id="cleanupOnlyBtn">Limpiar último QA</button><button class="qaBtn ghost" id="downloadJsonBtn">Descargar JSON</button><button class="qaBtn ghost" id="downloadHtmlBtn">Descargar HTML</button></div>
+      <label class="qaCheck"><input id="keepMercadoQa" type="checkbox" /> Mantener publicaciones Mercado QA para inspección visual (si desactivas limpieza general, Mercado también se conserva).</label>
+      <div class="qaActions" style="margin-top:12px;"><button class="qaBtn ghost" id="cleanupOnlyBtn">Limpiar último QA</button><button class="qaBtn ghost" id="cleanupMarketOnlyBtn">Limpiar Mercado QA</button><button class="qaBtn ghost" id="downloadJsonBtn">Descargar JSON</button><button class="qaBtn ghost" id="downloadHtmlBtn">Descargar HTML</button></div>
       <div class="qaGrid"><div class="qaKpi"><small>Total</small><b id="kTotal">0</b></div><div class="qaKpi"><small>OK</small><b id="kPass">0</b></div><div class="qaKpi"><small>Advertencias</small><b id="kWarn">0</b></div><div class="qaKpi"><small>Errores</small><b id="kFail">0</b></div></div>
       <div class="qaProgress"><span id="qaProgressBar"></span></div>
     </section>
@@ -44,6 +45,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/supabaseClient.js?v=20260608" defer></script>
-  <script src="/assets/qa360.js?v=20260616-stress-v7" defer></script>
+  <script src="/assets/qa360.js?v=20260617-mercado-v2" defer></script>
 </body>
 </html>
