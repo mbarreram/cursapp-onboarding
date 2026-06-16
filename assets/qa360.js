@@ -67,6 +67,7 @@
     { id:'concurrencia', name:'Concurrencia', tests:['race-tesorero-unico','race-pago-duplicado','race-aprobacion-miembro'] },
     { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
     { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
+    { id:'clicks', name:'Click simulado integrado', tests:['ui-open-role-pages','ui-click-presidente','ui-click-apoderado','ui-click-tesorero','ui-click-qa-evidence'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -133,6 +134,7 @@
       concurrencia:'Simula operaciones simultáneas para tesorero, pago y aprobación.',
       resiliencia:'Valida respuestas ante cursos vacíos, sin pagos o usuarios sin curso.',
       navegacion:'Valida marcas de cambio de rol, loading y ausencia de selector/banner prematuro.',
+      clicks:'Ejecuta clicks simulados integrados en iframes sobre las pantallas desplegadas; no requiere consola ni Playwright local.',
       limpieza:'Borra solo registros creados por este QA.'
     })[id] || '';
   }
@@ -159,6 +161,7 @@
       'race-tesorero-unico':'Concurrencia tesorero único','race-pago-duplicado':'Concurrencia pago duplicado','race-aprobacion-miembro':'Concurrencia aprobación miembro',
       'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
       'nav-presidente-apoderado':'Presidente → Apoderado','nav-apoderado-tesorero':'Apoderado → Tesorero','nav-no-banner-flicker':'Sin banner antes de carga','nav-no-selector-repetido':'Sin selector de rol repetido',
+      'ui-open-role-pages':'Abrir pantallas en modo UI','ui-click-presidente':'Clicks Presidente','ui-click-apoderado':'Clicks Apoderado','ui-click-tesorero':'Clicks Tesorero','ui-click-qa-evidence':'Evidencia QA descargable',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -317,6 +320,11 @@
       case 'nav-apoderado-tesorero': return navApoderadoTesorero(id,module);
       case 'nav-no-banner-flicker': return navNoBannerFlicker(id,module);
       case 'nav-no-selector-repetido': return navNoSelectorRepetido(id,module);
+      case 'ui-open-role-pages': return uiOpenRolePages(id,module);
+      case 'ui-click-presidente': return uiClickPresidente(id,module);
+      case 'ui-click-apoderado': return uiClickApoderado(id,module);
+      case 'ui-click-tesorero': return uiClickTesorero(id,module);
+      case 'ui-click-qa-evidence': return uiClickQaEvidence(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -977,6 +985,103 @@
   async function navApoderadoTesorero(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/tesorero.js')).text; return (t.includes('tesorero') && t.includes('Cargando datos')) ? pass(id,module,'Marcas de transición Apoderado→Tesorero detectadas.') : warn(id,module,'No se detectan marcas claras de transición Apoderado→Tesorero.'); }
   async function navNoBannerFlicker(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('data-monetization-slot') && t.includes('Cargando datos')) ? pass(id,module,'Carga premium y banner coexisten; flicker mitigado.') : warn(id,module,'No se puede confirmar mitigación de flicker desde estático.'); }
   async function navNoSelectorRepetido(id,module){ const t=(await fetchText('/assets/apoderado.js')).text; return t.includes('Elegir rol') ? warn(id,module,'apoderado.js aún contiene texto selector Elegir rol; revisar que no se autoabra tras cambio de rol.') : pass(id,module,'No se detecta selector de rol automático en apoderado.js.'); }
+
+
+
+  function ensureUiSandbox(){
+    let box=document.getElementById('qaUiSandbox');
+    if(!box){
+      box=document.createElement('div');
+      box.id='qaUiSandbox';
+      box.style.cssText='position:fixed;left:-9999px;top:0;width:390px;height:844px;overflow:hidden;background:#fff;z-index:-1;opacity:.01;';
+      document.body.appendChild(box);
+    }
+    return box;
+  }
+
+  async function loadQaFrame(path,label){
+    const box=ensureUiSandbox();
+    let frame=document.getElementById('qaFrame_'+label);
+    if(frame) frame.remove();
+    frame=document.createElement('iframe');
+    frame.id='qaFrame_'+label;
+    frame.src=path;
+    frame.style.cssText='width:390px;height:844px;border:0;';
+    box.appendChild(frame);
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>resolve(),4500);
+      frame.onload=()=>{ clearTimeout(timer); setTimeout(resolve,900); };
+      frame.onerror=()=>{ clearTimeout(timer); reject(new Error('No se pudo cargar '+path)); };
+    });
+    return frame;
+  }
+
+  function visibleText(el){ return String((el && (el.innerText || el.textContent)) || '').replace(/\s+/g,' ').trim(); }
+  function clickableCandidates(doc){
+    if(!doc) return [];
+    return Array.from(doc.querySelectorAll('button,a,[role="button"],.btn,.card,.qa-click,[onclick],[data-action],[data-nav],[data-tab]'));
+  }
+  function findClickableByWords(doc, words){
+    const ws=(words||[]).map(w=>String(w).toLowerCase());
+    return clickableCandidates(doc).find(el=>{
+      const txt=(visibleText(el)+' '+Array.from(el.classList||[]).join(' ')+' '+Array.from(el.attributes||[]).map(a=>a.name+'='+a.value).join(' ')).toLowerCase();
+      return ws.some(w=>txt.includes(w));
+    });
+  }
+  async function clickWords(frame, words){
+    const doc=frame && frame.contentDocument;
+    if(!doc) return {ok:false, detail:'sin DOM accesible'};
+    const el=findClickableByWords(doc, words);
+    if(!el) return {ok:false, detail:'no encontrado: '+words.join('/')};
+    try{
+      el.scrollIntoView({block:'center',inline:'center'});
+      el.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+      el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));
+      el.click();
+      el.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));
+      await sleep(450);
+      return {ok:true, detail:'click: '+visibleText(el).slice(0,60)};
+    }catch(e){ return {ok:false, detail:'click error: '+(e.message||String(e))}; }
+  }
+  async function uiOpenRolePages(id,module){
+    const pages=[['/presidente.html','presidente'],['/apoderado.html','apoderado'],['/tesorero.html','tesorero']];
+    const out=[];
+    for(const [path,label] of pages){
+      const f=await loadQaFrame(path,label);
+      const doc=f.contentDocument;
+      const title=(doc && (doc.title || visibleText(doc.body).slice(0,40))) || label;
+      out.push(label+': cargada · '+title);
+    }
+    return pass(id,module,out.join(' · '));
+  }
+  async function uiClickPresidente(id,module){
+    const f=await loadQaFrame('/presidente.html','presidente_click');
+    const tests=[['campañas','campana','crear campaña'],['deudores','deudor'],['avisos','aviso'],['informes','informe']];
+    const out=[]; let ok=0;
+    for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
+    return ok>=2 ? pass(id,module,'Presidente clicks OK · '+out.join(' · ')) : warn(id,module,'Presidente cargó, pero pocos clicks detectados · '+out.join(' · '));
+  }
+  async function uiClickApoderado(id,module){
+    const f=await loadQaFrame('/apoderado.html','apoderado_click');
+    const tests=[['pagar','pago','pagos'],['detalle','ver detalle'],['informes','informe'],['mercado'],['avisos','sobre']];
+    const out=[]; let ok=0;
+    for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
+    return ok>=2 ? pass(id,module,'Apoderado clicks OK · '+out.join(' · ')) : warn(id,module,'Apoderado cargó, pero pocos clicks detectados · '+out.join(' · '));
+  }
+  async function uiClickTesorero(id,module){
+    const f=await loadQaFrame('/tesorero.html','tesorero_click');
+    const tests=[['pagos','conciliar','conciliación'],['rendiciones','rendición'],['comprobantes','comprobante'],['informes','informe']];
+    const out=[]; let ok=0;
+    for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
+    return ok>=2 ? pass(id,module,'Tesorero clicks OK · '+out.join(' · ')) : warn(id,module,'Tesorero cargó, pero pocos clicks detectados · '+out.join(' · '));
+  }
+  async function uiClickQaEvidence(id,module){
+    const jsonBtn=$('downloadJsonBtn'), htmlBtn=$('downloadHtmlBtn');
+    const sandbox=document.getElementById('qaUiSandbox');
+    const frames=sandbox ? sandbox.querySelectorAll('iframe').length : 0;
+    if(!jsonBtn || !htmlBtn) return warn(id,module,'Botones de evidencia JSON/HTML no disponibles. Frames UI='+frames);
+    return pass(id,module,'Evidencia QA disponible: Descargar JSON/HTML · pantallas cargadas en iframes='+frames);
+  }
 
   async function cleanupStaleQA(id,module){
     const c=await sb(); let total=0;
