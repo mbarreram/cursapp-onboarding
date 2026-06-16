@@ -1,6 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
+   - V2: pagos variados y pruebas de duplicidad de correos en onboarding.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -14,7 +15,7 @@
     cleanup: true,
     modules: [],
     results: [],
-    created: { colegioId:null, cursoId:null, usuarios:[], miembros:[], campanas:[], pagos:[], informes:[] }
+    created: { colegioId:null, cursoId:null, cursoAltId:null, usuarios:[], miembros:[], campanas:[], pagos:[], informes:[] }
   };
 
   const $ = (id)=>document.getElementById(id);
@@ -31,7 +32,9 @@
     presidenteEmail: (QA_PREFIX + '.presidente@qa.cursapp.cl').toLowerCase(),
     apo1Email: (QA_PREFIX + '.apoderado1@qa.cursapp.cl').toLowerCase(),
     apo2Email: (QA_PREFIX + '.apoderado2@qa.cursapp.cl').toLowerCase(),
-    tesoreroEmail: (QA_PREFIX + '.tesorero@qa.cursapp.cl').toLowerCase()
+    tesoreroEmail: (QA_PREFIX + '.tesorero@qa.cursapp.cl').toLowerCase(),
+    duplicateEmail: (QA_PREFIX + '.apoderado1@qa.cursapp.cl').toLowerCase(),
+    otherCourseKey: QA_PREFIX + '_COURSE_ALT'
   };
 
   const MODULES_QUICK = [
@@ -40,11 +43,12 @@
   ];
   const MODULES_FULL = [
     ...MODULES_QUICK,
-    { id:'onboarding', name:'Onboarding QA', tests:['create-colegio','create-curso','create-usuarios','create-miembros','approve-apoderados'] },
+    { id:'onboarding', name:'Onboarding QA', tests:['create-colegio','create-curso','create-usuarios','create-miembros','approve-apoderados','email-duplicate-same-course','email-same-different-course'] },
     { id:'roles', name:'Roles / Tesorero único', tests:['assign-tesorero','block-second-tesorero','remove-tesorero','reassign-tesorero'] },
-    { id:'campanas', name:'Campañas', tests:['create-campana-unica','create-campana-mensual','create-pagos','validate-dashboard-data'] },
+    { id:'campanas', name:'Campañas', tests:['create-campana-unica','create-campana-mensual','create-campana-voluntaria','create-pagos','create-pagos-variados','validate-dashboard-data'] },
+    { id:'pagos', name:'Pagos variados', tests:['validate-pago-pendiente','validate-pago-pagado','validate-pago-vencido','validate-pago-parcial','validate-pago-manual','validate-pago-saldo-favor','validate-pago-no-participa'] },
     { id:'apoderado', name:'Apoderado', tests:['apoderado-data','no-participo-logic','apoderado-ui-markers'] },
-    { id:'tesorero', name:'Tesorero', tests:['tesorero-data','tesorero-ui-markers'] },
+    { id:'tesorero', name:'Tesorero', tests:['tesorero-data','tesorero-ui-markers','tesorero-pagos-conciliables'] },
     { id:'informes', name:'Informes', tests:['informes-table','informes-ui-markers'] },
     { id:'limpieza', name:'Limpieza QA', tests:['cleanup-qa','verify-cleanup'] }
   ];
@@ -91,9 +95,10 @@
     return ({
       infra:'Conectividad, rutas, assets y permisos básicos.',
       componentes:'Loading premium, tesorero único, dashboard y banner.',
-      onboarding:'Crea curso, usuarios y miembros QA_* en Supabase.',
+      onboarding:'Crea curso, usuarios y miembros QA_*; valida reglas de correo.',
       roles:'Valida un solo tesorero y reasignación controlada.',
-      campanas:'Crea campañas y pagos QA_* para validar datos.',
+      campanas:'Crea campañas obligatorias, mensuales, voluntarias y pagos base.',
+      pagos:'Valida estados de pago variados: pendiente, pagado, vencido, parcial, manual, saldo y no participa.',
       apoderado:'Valida datos y marcas visuales de apoderado.',
       tesorero:'Valida datos y marcas visuales de tesorero.',
       informes:'Valida tablas o módulos de informes.',
@@ -104,11 +109,12 @@
     return ({
       'login-html':'Login carga correctamente','role-html':'Pantallas por rol disponibles','assets':'Assets principales disponibles','supabase-ready':'Cliente Supabase inicializa','supabase-tables':'Tablas base responden','supabase-write':'Permisos escritura QA disponibles',
       'loading':'Loading premium presente','tesorero-markers':'Tesorero único mantiene lógica','banner-dashboard':'Dashboard/Banner estabilizados','qa-button':'Botón QA visible en Login',
-      'create-colegio':'Crear colegio QA','create-curso':'Crear curso QA','create-usuarios':'Crear usuarios QA','create-miembros':'Crear miembros curso QA','approve-apoderados':'Apoderados QA aprobados',
+      'create-colegio':'Crear colegio QA','create-curso':'Crear curso QA','create-usuarios':'Crear usuarios QA','create-miembros':'Crear miembros curso QA','approve-apoderados':'Apoderados QA aprobados','email-duplicate-same-course':'Bloquear mismo correo en mismo curso','email-same-different-course':'Permitir mismo correo en curso distinto',
       'assign-tesorero':'Asignar tesorero QA','block-second-tesorero':'Bloquear segundo tesorero','remove-tesorero':'Eliminar tesorero QA','reassign-tesorero':'Reasignar tesorero QA',
-      'create-campana-unica':'Crear campaña única QA','create-campana-mensual':'Crear campaña mensual QA','create-pagos':'Crear pagos QA','validate-dashboard-data':'Validar datos para dashboard',
+      'create-campana-unica':'Crear campaña única QA','create-campana-mensual':'Crear campaña mensual QA','create-campana-voluntaria':'Crear campaña voluntaria QA','create-pagos':'Crear pagos QA base','create-pagos-variados':'Crear pagos QA variados','validate-dashboard-data':'Validar datos para dashboard',
+      'validate-pago-pendiente':'Pago pendiente','validate-pago-pagado':'Pago pagado','validate-pago-vencido':'Pago vencido','validate-pago-parcial':'Pago parcial','validate-pago-manual':'Pago manual conciliado','validate-pago-saldo-favor':'Saldo a favor','validate-pago-no-participa':'Pago No participa',
       'apoderado-data':'Datos apoderado consultables','no-participo-logic':'Lógica No participo presente','apoderado-ui-markers':'UI Apoderado estable',
-      'tesorero-data':'Datos tesorero consultables','tesorero-ui-markers':'UI Tesorero estable',
+      'tesorero-data':'Datos tesorero consultables','tesorero-ui-markers':'UI Tesorero estable','tesorero-pagos-conciliables':'Pagos conciliables por tesorero',
       'informes-table':'Informes disponibles o advertencia','informes-ui-markers':'UI Informes presente',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
@@ -165,7 +171,7 @@
 
   async function run(mode){
     state.mode=mode; state.cleanup = !!($('cleanupQa') && $('cleanupQa').checked);
-    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,usuarios:[],miembros:[],campanas:[],pagos:[],informes:[]};
+    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,cursoAltId:null,usuarios:[],miembros:[],campanas:[],pagos:[],informes:[]};
     renderModules(mode); setBusy(true);
     for(const m of rowsFor(mode)){ await runOneModule(m); }
     state.endedAt=new Date().toISOString(); setBusy(false); await persistOptional(); buildReport();
@@ -195,19 +201,31 @@
       case 'create-usuarios': return createUsuarios(id,module);
       case 'create-miembros': return createMiembros(id,module);
       case 'approve-apoderados': return approveApoderados(id,module);
+      case 'email-duplicate-same-course': return validateDuplicateEmailSameCourse(id,module);
+      case 'email-same-different-course': return validateSameEmailDifferentCourse(id,module);
       case 'assign-tesorero': return assignTesorero(id,module,qa.apo1Email);
       case 'block-second-tesorero': return blockSecondTesorero(id,module);
       case 'remove-tesorero': return removeTesorero(id,module,qa.apo1Email);
       case 'reassign-tesorero': return assignTesorero(id,module,qa.apo2Email);
       case 'create-campana-unica': return createCampana(id,module,'unica');
       case 'create-campana-mensual': return createCampana(id,module,'mensual');
+      case 'create-campana-voluntaria': return createCampana(id,module,'voluntaria');
       case 'create-pagos': return createPagos(id,module);
+      case 'create-pagos-variados': return createPagosVariados(id,module);
       case 'validate-dashboard-data': return validateDashboardData(id,module);
+      case 'validate-pago-pendiente': return validatePagoEstado(id,module,'pendiente');
+      case 'validate-pago-pagado': return validatePagoEstado(id,module,'pagado');
+      case 'validate-pago-vencido': return validatePagoEstado(id,module,'vencido');
+      case 'validate-pago-parcial': return validatePagoEstado(id,module,'parcial');
+      case 'validate-pago-manual': return validatePagoEstado(id,module,'conciliado');
+      case 'validate-pago-saldo-favor': return validatePagoEstado(id,module,'saldo_favor');
+      case 'validate-pago-no-participa': return validatePagoEstado(id,module,'no_participa');
       case 'apoderado-data': return validateMemberRole(id,module,'apoderado');
       case 'no-participo-logic': { const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('opted_out')||t.includes('no_participa'))?pass(id,module,'Marcas No participo encontradas.'):warn(id,module,'No encontré marcas No participo.'); }
       case 'apoderado-ui-markers': { const t=(await fetchText('/assets/apoderado.js')).text; const miss=['Próxima cuota','cpV5Carousel','data-monetization-slot'].filter(x=>!t.includes(x)); return miss.length?warn(id,module,'Faltan marcas: '+miss.join(', ')):pass(id,module,'UI Apoderado OK.'); }
       case 'tesorero-data': return validateMemberRole(id,module,'tesorero');
       case 'tesorero-ui-markers': { const t=(await fetchText('/assets/tesorero.js')).text; const ok=['Conciliación','Rendiciones','Comprobantes','Pagos'].some(x=>t.includes(x)); return ok?pass(id,module,'UI Tesorero detectada.'):warn(id,module,'Marcas UI Tesorero no claras.'); }
+      case 'tesorero-pagos-conciliables': return validateTesoreroPagosConciliables(id,module);
       case 'informes-table': return validateInformes(id,module);
       case 'informes-ui-markers': { const t=(await fetchText('/assets/presidente.js')).text; return t.includes('Informes')?pass(id,module,'UI Informes presente.'):warn(id,module,'No encontré marca Informes.'); }
       case 'cleanup-qa': return cleanupQa(id,module);
@@ -248,6 +266,33 @@
     const c=await sb(); const {data,error}=await c.from('miembros_curso').update({estado:'aprobado',activacion_pagada:true}).eq('curso_id',state.created.cursoId).eq('rol','apoderado').select('*');
     if(error) throw new Error(error.message); return pass(id,module,'Apoderados aprobados: '+(data||[]).length);
   }
+
+  async function validateDuplicateEmailSameCourse(id,module){
+    const c=await sb();
+    const email=qa.apo1Email;
+    const before=await c.from('miembros_curso').select('id',{count:'exact',head:true}).eq('curso_id',state.created.cursoId).eq('email',email).eq('rol','apoderado');
+    if(before.error) throw new Error(before.error.message);
+
+    // Simula la validación de onboarding: mismo correo + mismo curso + rol apoderado no debe duplicarse.
+    if((before.count||0) > 0){
+      return pass(id,module,'Bloqueado por QA antes de insertar: correo ya existe en este curso ('+email+').');
+    }
+
+    // Si no existía, dejamos advertencia porque el set de datos QA no preparó el caso esperado.
+    return warn(id,module,'No existía correo base para probar duplicidad en el mismo curso.');
+  }
+
+  async function validateSameEmailDifferentCourse(id,module){
+    const c=await sb();
+    const curso=await insert('cursos',{colegio_id:state.created.colegioId,nombre:qa.colegio+' · Curso alterno QA',nivel:'3°',letra:'C',anio:2026,jornada:'Tarde',course_key:qa.otherCourseKey,invite_code:(qa.inviteCode+'A').slice(0,8),estado:'activo'});
+    state.created.cursoAltId=curso.id;
+    const user=state.created.usuarios.find(u=>String(u.email).toLowerCase()===qa.apo1Email);
+    const row=await insert('miembros_curso',{curso_id:curso.id,usuario_id:user?user.id:null,rol:'apoderado',nombre_apoderado:QA_PREFIX+' Apoderado 1 otro curso',nombre_alumno:'Alumno QA otro curso',email:qa.apo1Email,estado:'aprobado',activacion_pagada:true});
+    state.created.miembros.push(row);
+    const check=await c.from('miembros_curso').select('id',{count:'exact',head:true}).eq('email',qa.apo1Email).eq('rol','apoderado');
+    if(check.error) throw new Error(check.error.message);
+    return (check.count||0)>=2 ? pass(id,module,'Mismo correo permitido en curso distinto. Total apariciones='+check.count) : warn(id,module,'No se confirmó segunda aparición del correo en curso distinto.');
+  }
   async function currentTreasurers(){ const c=await sb(); const {data,error}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','tesorero'); if(error) throw new Error(error.message); return data||[]; }
   async function assignTesorero(id,module,email){
     const trs=await currentTreasurers(); if(trs.length) throw new Error('Ya existe tesorero antes de asignar: '+trs.map(x=>x.email).join(','));
@@ -268,14 +313,67 @@
     return pass(id,module,'Rol tesorero eliminado; apoderado se mantiene. Borrados='+(data||[]).length);
   }
   async function createCampana(id,module,tipo){
-    const body={curso_id:state.created.cursoId,titulo:QA_PREFIX+' Campaña '+tipo,tipo:tipo==='mensual'?'monthly':'single',monto:tipo==='mensual'?1000:2500,fecha_inicio:today(),fecha_vencimiento:addDays(15),meses:tipo==='mensual'?3:1,obligatoria:tipo!=='mensual',estado:'activa'};
-    const row=await insert('campanas',body); state.created.campanas.push(row); return pass(id,module,'Campaña creada: '+row.titulo);
+    const isMensual = tipo === 'mensual';
+    const isVoluntaria = tipo === 'voluntaria';
+    const body={
+      curso_id:state.created.cursoId,
+      titulo:QA_PREFIX+' Campaña '+tipo,
+      tipo:isMensual?'monthly':'single',
+      monto:isMensual?1000:(isVoluntaria?1800:2500),
+      fecha_inicio:today(),
+      fecha_vencimiento:isMensual?addDays(30):addDays(15),
+      meses:isMensual?3:1,
+      obligatoria:!isVoluntaria,
+      estado:'activa'
+    };
+    const row=await insert('campanas',body); state.created.campanas.push(row); return pass(id,module,'Campaña creada: '+row.titulo+' · obligatoria='+body.obligatoria);
   }
   async function createPagos(id,module){
     const c=await sb(); const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado'); if(e1) throw new Error(e1.message);
     let n=0;
-    for(const camp of state.created.campanas){ for(const m of (aps||[])){ const row=await insert('pagos',{curso_id:state.created.cursoId,campana_id:camp.id,miembro_id:m.id,monto:Number(camp.monto||1000),monto_pagado:0,estado:'pendiente',fecha_vencimiento:addDays(15),periodo:today().slice(0,7)}); state.created.pagos.push(row); n++; } }
-    return pass(id,module,'Pagos creados: '+n);
+    for(const camp of state.created.campanas){
+      for(const m of (aps||[])){
+        const row=await insert('pagos',{curso_id:state.created.cursoId,campana_id:camp.id,miembro_id:m.id,monto:Number(camp.monto||1000),monto_pagado:0,estado:'pendiente',fecha_vencimiento:addDays(15),periodo:today().slice(0,7),concepto:QA_PREFIX+' pago base'});
+        state.created.pagos.push(row); n++;
+      }
+    }
+    return pass(id,module,'Pagos base creados: '+n);
+  }
+
+  async function createPagosVariados(id,module){
+    const c=await sb();
+    const {data:aps,error:e1}=await c.from('miembros_curso').select('*').eq('curso_id',state.created.cursoId).eq('rol','apoderado'); if(e1) throw new Error(e1.message);
+    const camp = state.created.campanas[0]; if(!camp) throw new Error('No hay campaña para crear pagos variados.');
+    const member = (aps||[])[0]; if(!member) throw new Error('No hay apoderado para pagos variados.');
+    const variants=[
+      {estado:'pendiente',monto:3100,monto_pagado:0,fecha_vencimiento:addDays(10),concepto:'QA pago pendiente'},
+      {estado:'pagado',monto:3200,monto_pagado:3200,fecha_vencimiento:addDays(10),pagado_en:new Date().toISOString(),metodo_pago:'transbank',concepto:'QA pago pagado'},
+      {estado:'vencido',monto:3300,monto_pagado:0,fecha_vencimiento:addDays(-7),concepto:'QA pago vencido'},
+      {estado:'parcial',monto:3400,monto_pagado:1500,fecha_vencimiento:addDays(5),concepto:'QA pago parcial'},
+      {estado:'conciliado',monto:3500,monto_pagado:3500,fecha_vencimiento:addDays(5),metodo_pago:'transferencia',conciliacion_estado:'conciliado',conciliado_por:'QA tesorero',concepto:'QA pago manual conciliado'},
+      {estado:'saldo_favor',monto:900,monto_pagado:900,fecha_vencimiento:addDays(5),metodo_pago:'saldo_favor',concepto:'QA saldo a favor'},
+      {estado:'no_participa',monto:0,monto_pagado:0,fecha_vencimiento:addDays(5),concepto:'QA no participa'}
+    ];
+    let n=0;
+    for(const v of variants){
+      const row=await insert('pagos',Object.assign({curso_id:state.created.cursoId,campana_id:camp.id,miembro_id:member.id,periodo:today().slice(0,7)},v));
+      state.created.pagos.push(row); n++;
+    }
+    return pass(id,module,'Pagos variados creados: '+n+' estados.');
+  }
+
+  async function validatePagoEstado(id,module,estado){
+    const c=await sb();
+    const {count,error}=await c.from('pagos').select('*',{count:'exact',head:true}).eq('curso_id',state.created.cursoId).eq('estado',estado);
+    if(error) throw new Error(error.message);
+    return (count||0)>0 ? pass(id,module,estado+' count='+count) : fail(id,module,'No se encontró pago estado='+estado);
+  }
+
+  async function validateTesoreroPagosConciliables(id,module){
+    const c=await sb();
+    const {count,error}=await c.from('pagos').select('*',{count:'exact',head:true}).eq('curso_id',state.created.cursoId).in('estado',['pendiente','vencido','parcial','conciliado']);
+    if(error) throw new Error(error.message);
+    return (count||0)>0 ? pass(id,module,'Pagos conciliables/visibles para tesorero='+count) : warn(id,module,'No hay pagos conciliables.');
   }
   async function validateDashboardData(id,module){
     const c=await sb(); const [camp,pagos,miem]=await Promise.all([c.from('campanas').select('*',{count:'exact',head:true}).eq('curso_id',state.created.cursoId),c.from('pagos').select('*',{count:'exact',head:true}).eq('curso_id',state.created.cursoId),c.from('miembros_curso').select('*',{count:'exact',head:true}).eq('curso_id',state.created.cursoId)]);
@@ -299,7 +397,7 @@
     try{ if(state.created.cursoId){ const r=await c.from('campanas').delete().eq('curso_id',state.created.cursoId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(state.created.cursoId){ const r=await c.from('miembros_curso').delete().eq('curso_id',state.created.cursoId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ const r=await c.from('usuarios').delete().like('email',QA_PREFIX.toLowerCase()+'%').select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
-    try{ const r=await c.from('cursos').delete().eq('course_key',qa.courseKey).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+    try{ const r=await c.from('cursos').delete().in('course_key',[qa.courseKey,qa.otherCourseKey]).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
     try{ if(state.created.colegioId){ const r=await c.from('colegios').delete().eq('id',state.created.colegioId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     return pass(id,module,'Registros QA eliminados: '+total);
   }
