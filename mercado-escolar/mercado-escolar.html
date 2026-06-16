@@ -29,7 +29,7 @@
     <button data-view="explorar">🔎 Explorar</button>
     <button data-view="publicar">＋ Publicar</button>
     <button data-view="mis">📦 Mis avisos</button>
-    <button data-view="creditos">🎟️ Créditos</button>
+    <!-- Créditos Mercado queda para V2 -->
   </nav>
 
   <section id="view-inicio" class="view active">
@@ -73,6 +73,7 @@
         <label>Categoría<select id="pubCategory"><option>Libros</option><option>Uniformes</option><option>Vestuario</option><option>Deportes</option><option>Otros</option></select></label>
         <label>Tipo<select id="pubType"><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
         <label>Precio<input id="pubPrice" type="number" min="0" value="0"></label>
+        <label>WhatsApp contacto<input id="pubWhatsapp" type="tel" placeholder="Ej: 56912345678"></label>
         <label>Visibilidad<select id="pubScope"><option value="colegio">Solo mi colegio</option><option value="cercanos">Colegios cercanos</option><option value="comuna">Mi comuna</option></select></label>
         <label>Descripción<textarea id="pubDesc" required placeholder="Describe estado, talla, año, etc."></textarea></label>
         <button class="primary" type="submit">Publicar artículo</button>
@@ -87,7 +88,7 @@
     </section>
   </section>
 
-  <section id="view-creditos" class="view">
+  <section id="view-creditos" class="view" style="display:none">
     <section class="panel creditsPanel">
       <div class="panelHead"><div><h2>Créditos Mercado</h2><p>Compra créditos para destacar tus avisos.</p></div><span id="creditBalanceBadge">0 créditos</span></div>
       <div id="creditPackages" class="creditPackageGrid"></div>
@@ -113,7 +114,8 @@
   </nav>
 </main>
 <div id="modal"></div><div id="toast"></div>
-<script src="assets/mercado-escolar.js?v=10"></script>
-<script src="assets/mercado-creditos.js?v=9"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/supabaseClient.js?v=20260616"></script>
+<script src="assets/mercado-escolar.js?v=12"></script>
 </body>
 </html>
