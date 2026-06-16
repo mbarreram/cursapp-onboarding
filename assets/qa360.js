@@ -1457,11 +1457,25 @@
   async function marketCreatePost(id,module){
     const c=await sb();
     const curso=(state.created.stress.cursos||[])[0];
-    const row={curso_id:curso?curso.id:null,vendedor_email:(QA_PREFIX+'.mercado@qa.cursapp.cl').toLowerCase(),vendedor_nombre:QA_PREFIX+' Vendedor Mercado',vendedor_whatsapp:'56912345678',titulo:QA_PREFIX+' Mercado Pack libros QA',descripcion:'Publicación QA Mercado Escolar V1',categoria_nombre:'Libros',tipo:'Venta',precio:9900,estado:'disponible',visibilidad:'colegio',emoji:'📚',imagen_url:'qa://mercado/libros'};
+    const cat=await c.from('mercado_categorias').select('id,nombre').eq('nombre','Libros').maybeSingle();
+    if(cat.error) return fail(id,module,cat.error.message);
+    const row={
+      curso_id:curso?curso.id:null,
+      vendedor_id:null,
+      categoria_id:cat.data?cat.data.id:null,
+      titulo:QA_PREFIX+' Mercado Pack libros QA',
+      descripcion:'Publicación QA Mercado Escolar V1',
+      precio:9900,
+      estado:'disponible',
+      nombre_vendedor:QA_PREFIX+' Vendedor Mercado',
+      whatsapp:'56912345678',
+      imagen_principal:'qa://mercado/libros',
+      activo:true
+    };
     const r=await c.from('mercado_publicaciones').insert([row]).select('*').single();
     if(r.error) return fail(id,module,r.error.message);
     state.created.mercadoPost=r.data;
-    return pass(id,module,'Publicación Mercado QA creada: '+r.data.id);
+    return pass(id,module,'Publicación Mercado QA creada: '+r.data.id+' · categoria_id='+(row.categoria_id||'sin categoria'));
   }
   async function marketListPosts(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
@@ -1473,7 +1487,7 @@
   async function marketContact(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
     if(!p) return warn(id,module,'Sin publicación QA para contacto.');
-    const row={publicacion_id:p.id,curso_id:p.curso_id,comprador_email:(QA_PREFIX+'.comprador@qa.cursapp.cl').toLowerCase(),vendedor_email:p.vendedor_email,canal:'whatsapp',mensaje:'Hola, vi tu publicación en Mercado Escolar Cursapp. ¿Sigue disponible?',whatsapp_url:'https://wa.me/56912345678'};
+    const row={publicacion_id:p.id,interesado_id:null,canal:'whatsapp',mensaje:'Hola, vi tu publicación en Mercado Escolar Cursapp. ¿Sigue disponible?'};
     const r=await c.from('mercado_contactos').insert([row]).select('*').single();
     if(r.error) return fail(id,module,r.error.message);
     state.created.mercadoContacto=r.data;
@@ -1482,7 +1496,7 @@
   async function marketReport(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
     if(!p) return warn(id,module,'Sin publicación QA para reporte.');
-    const r=await c.from('mercado_reportes').insert([{publicacion_id:p.id,curso_id:p.curso_id,reporter_email:(QA_PREFIX+'.reporter@qa.cursapp.cl').toLowerCase(),motivo:'QA reporte Mercado',estado:'pendiente'}]).select('*').single();
+    const r=await c.from('mercado_reportes').insert([{publicacion_id:p.id,usuario_id:null,motivo:'QA reporte Mercado',detalle:'Reporte QA automático Mercado Escolar',estado:'pendiente'}]).select('*').single();
     if(r.error) return fail(id,module,r.error.message);
     state.created.mercadoReporte=r.data;
     return pass(id,module,'Reporte Mercado QA registrado: '+r.data.id);
