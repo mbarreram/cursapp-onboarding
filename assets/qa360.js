@@ -70,6 +70,7 @@
     { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
     { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
     { id:'clicks', name:'Click simulado integrado', tests:['ui-open-role-pages','ui-click-presidente','ui-click-apoderado','ui-click-tesorero','ui-click-qa-evidence'] },
+    { id:'mercado-v1', name:'Mercado Escolar V1', tests:['market-schema','market-create-post','market-list-posts','market-contact','market-report','market-cleanup'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -166,6 +167,7 @@
       'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
       'nav-presidente-apoderado':'Presidente → Apoderado','nav-apoderado-tesorero':'Apoderado → Tesorero','nav-no-banner-flicker':'Sin banner antes de carga','nav-no-selector-repetido':'Sin selector de rol repetido',
       'ui-open-role-pages':'Abrir pantallas en modo UI','ui-click-presidente':'Clicks Presidente','ui-click-apoderado':'Clicks Apoderado','ui-click-tesorero':'Clicks Tesorero','ui-click-qa-evidence':'Evidencia QA descargable',
+      'market-schema':'Tablas Mercado disponibles','market-create-post':'Crear publicación Mercado QA','market-list-posts':'Listar publicación Mercado QA','market-contact':'Registrar contacto WhatsApp QA','market-report':'Reportar publicación QA','market-cleanup':'Limpiar Mercado QA',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -334,6 +336,12 @@
       case 'ui-click-apoderado': return uiClickApoderado(id,module);
       case 'ui-click-tesorero': return uiClickTesorero(id,module);
       case 'ui-click-qa-evidence': return uiClickQaEvidence(id,module);
+      case 'market-schema': return marketSchema(id,module);
+      case 'market-create-post': return marketCreatePost(id,module);
+      case 'market-list-posts': return marketListPosts(id,module);
+      case 'market-contact': return marketContact(id,module);
+      case 'market-report': return marketReport(id,module);
+      case 'market-cleanup': return marketCleanup(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -1431,6 +1439,62 @@
     const frames=sandbox ? sandbox.querySelectorAll('iframe').length : 0;
     if(!jsonBtn || !htmlBtn) return warn(id,module,'Botones de evidencia JSON/HTML no disponibles. Frames UI='+frames);
     return pass(id,module,'Evidencia QA disponible: Descargar JSON/HTML · pantallas cargadas en iframes='+frames);
+  }
+
+
+
+  async function marketSchema(id,module){
+    const c=await sb();
+    const tables=['mercado_categorias','mercado_publicaciones','mercado_contactos','mercado_reportes'];
+    const out=[];
+    for(const t of tables){
+      const r=await c.from(t).select('*',{count:'exact',head:true});
+      if(r.error) return fail(id,module,`${t}: ${r.error.message}`);
+      out.push(`${t}=${r.count}`);
+    }
+    return pass(id,module,'Tablas Mercado OK · '+out.join(' · '));
+  }
+  async function marketCreatePost(id,module){
+    const c=await sb();
+    const curso=(state.created.stress.cursos||[])[0];
+    const row={curso_id:curso?curso.id:null,vendedor_email:(QA_PREFIX+'.mercado@qa.cursapp.cl').toLowerCase(),vendedor_nombre:QA_PREFIX+' Vendedor Mercado',vendedor_whatsapp:'56912345678',titulo:QA_PREFIX+' Mercado Pack libros QA',descripcion:'Publicación QA Mercado Escolar V1',categoria_nombre:'Libros',tipo:'Venta',precio:9900,estado:'disponible',visibilidad:'colegio',emoji:'📚',imagen_url:'qa://mercado/libros'};
+    const r=await c.from('mercado_publicaciones').insert([row]).select('*').single();
+    if(r.error) return fail(id,module,r.error.message);
+    state.created.mercadoPost=r.data;
+    return pass(id,module,'Publicación Mercado QA creada: '+r.data.id);
+  }
+  async function marketListPosts(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para listar.');
+    const r=await c.from('mercado_publicaciones').select('*',{count:'exact'}).eq('id',p.id).eq('estado','disponible');
+    if(r.error) return fail(id,module,r.error.message);
+    return (r.count||0)===1 ? pass(id,module,'Publicación Mercado visible en listado.') : fail(id,module,'Publicación Mercado no aparece disponible.');
+  }
+  async function marketContact(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para contacto.');
+    const row={publicacion_id:p.id,curso_id:p.curso_id,comprador_email:(QA_PREFIX+'.comprador@qa.cursapp.cl').toLowerCase(),vendedor_email:p.vendedor_email,canal:'whatsapp',mensaje:'Hola, vi tu publicación en Mercado Escolar Cursapp. ¿Sigue disponible?',whatsapp_url:'https://wa.me/56912345678'};
+    const r=await c.from('mercado_contactos').insert([row]).select('*').single();
+    if(r.error) return fail(id,module,r.error.message);
+    state.created.mercadoContacto=r.data;
+    return pass(id,module,'Contacto WhatsApp QA registrado: '+r.data.id);
+  }
+  async function marketReport(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para reporte.');
+    const r=await c.from('mercado_reportes').insert([{publicacion_id:p.id,curso_id:p.curso_id,reporter_email:(QA_PREFIX+'.reporter@qa.cursapp.cl').toLowerCase(),motivo:'QA reporte Mercado',estado:'pendiente'}]).select('*').single();
+    if(r.error) return fail(id,module,r.error.message);
+    state.created.mercadoReporte=r.data;
+    return pass(id,module,'Reporte Mercado QA registrado: '+r.data.id);
+  }
+  async function marketCleanup(id,module){
+    const c=await sb(); let total=0;
+    const p=state.created.mercadoPost;
+    if(p && p.id){
+      for(const t of ['mercado_contactos','mercado_reportes']){try{const r=await c.from(t).delete().eq('publicacion_id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}}
+      try{const r=await c.from('mercado_publicaciones').delete().eq('id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    }
+    return pass(id,module,'Registros Mercado QA eliminados: '+total);
   }
 
   async function cleanupStaleQA(id,module){
