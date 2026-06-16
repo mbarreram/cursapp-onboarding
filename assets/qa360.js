@@ -1,4 +1,5 @@
 /* Cursapp QA 360 modular Supabase · activo
+   - V10.3: QA visual con sesión real Supabase por rol antes de abrir iframes
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
    - V8: stress financiero + performance + avisos + gastos/rendiciones + informes publicados + RLS/concurrencia/resiliencia/navegación.
@@ -985,7 +986,7 @@
   async function navApoderadoTesorero(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/tesorero.js')).text; return (t.includes('tesorero') && t.includes('Cargando datos')) ? pass(id,module,'Marcas de transición Apoderado→Tesorero detectadas.') : warn(id,module,'No se detectan marcas claras de transición Apoderado→Tesorero.'); }
   async function navNoBannerFlicker(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('data-monetization-slot') && t.includes('Cargando datos')) ? pass(id,module,'Carga premium y banner coexisten; flicker mitigado.') : warn(id,module,'No se puede confirmar mitigación de flicker desde estático.'); }
   async function navNoSelectorRepetido(id,module){
-    setQaRoleContext('apoderado');
+    await ensureQaVisualRoleInSupabase('apoderado');
     const ctx=validateQaRoleContext('apoderado');
     const sandbox=document.getElementById('qaUiSandbox');
     const visibleChooser=sandbox && String(sandbox.innerText||'').includes('Elegir rol');
@@ -1058,10 +1059,113 @@
       localStorage.setItem('cursapp_active_profile_v1', profile.profileId);
       localStorage.setItem('cursapp_profiles_v1', JSON.stringify(profiles));
       localStorage.setItem('cursapp_role_prompted_v1','1');
-      localStorage.setItem('CURSAPP_QA_ROLE_CONTEXT_V10_2', r);
+      localStorage.setItem('CURSAPP_QA_ROLE_CONTEXT_V10_3', r);
       return session;
     }catch(e){ return null; }
   }
+
+  async function ensureQaVisualRoleInSupabase(role){
+    const r=String(role||'apoderado').toLowerCase().trim();
+    const course=(state.created?.stress?.cursos?.[0])||{};
+    const cursoId=String(course.id||state.created.cursoId||'').trim();
+    const courseKey=String(course.course_key||course.courseKey||qa.courseKey||'').trim();
+    if(!cursoId || !courseKey) return setQaRoleContext(r);
+
+    const email=(QA_PREFIX+'.visual.'+r+'@qa.cursapp.cl').toLowerCase();
+    const name=QA_PREFIX+' Visual '+r;
+    const c=await sb();
+
+    let user=null;
+    let u=await c.from('usuarios').select('*').eq('email',email).limit(1);
+    if(u.error) throw new Error('usuarios visual '+r+': '+u.error.message);
+    if((u.data||[]).length) user=u.data[0];
+    else{
+      u=await c.from('usuarios').insert([{email,nombre:name,rol_global:'usuario',estado:'activo'}]).select('*').single();
+      if(u.error) throw new Error('crear usuario visual '+r+': '+u.error.message);
+      user=u.data;
+      try{ state.created.stress.usuarios.push(user); }catch(_e){}
+    }
+
+    async function ensureMember(memberRole, alumno){
+      const q=await c.from('miembros_curso')
+        .select('*')
+        .eq('curso_id',cursoId)
+        .eq('usuario_id',user.id)
+        .eq('rol',memberRole)
+        .limit(1);
+      if(q.error) throw new Error('miembro visual '+memberRole+': '+q.error.message);
+      if((q.data||[]).length) return q.data[0];
+      const ins=await c.from('miembros_curso').insert([{
+        curso_id:cursoId,
+        usuario_id:user.id,
+        rol:memberRole,
+        nombre_apoderado:name,
+        nombre_alumno:alumno || ('Alumno Visual '+r),
+        email,
+        estado:'aprobado',
+        activacion_pagada:true
+      }]).select('*').single();
+      if(ins.error) throw new Error('crear miembro visual '+memberRole+': '+ins.error.message);
+      try{ state.created.stress.miembros.push(ins.data); }catch(_e){}
+      return ins.data;
+    }
+
+    // Cada rol visual mantiene siempre apoderado para simular multirol real.
+    await ensureMember('apoderado','Alumno Visual '+r);
+    if(r==='presidente') await ensureMember('presidente', null);
+    if(r==='tesorero') await ensureMember('tesorero','Alumno Visual '+r);
+
+    const roles=r==='presidente'?['presidente','apoderado']:(r==='tesorero'?['tesorero','apoderado']:['apoderado']);
+    const session={
+      userId:user.id,
+      email,
+      role:r,
+      currentRole:r,
+      activeRole:r,
+      roles,
+      courseKey,
+      cursoId,
+      course_id:cursoId,
+      qaContext:true,
+      source:'qa360-v10.3-real-session'
+    };
+    const baseProfile={
+      id:['qa_visual',courseKey,email,r].join('|'),
+      profileId:['qa_visual',courseKey,email,r].join('|'),
+      userId:user.id,
+      courseKey,
+      cursoId,
+      course_id:cursoId,
+      status:'aprobado',
+      estado:'aprobado',
+      activation:{required:true,status:'paid'},
+      activacion_pagada:true,
+      apoderado:{email,nombre:name,alumno:'Alumno Visual '+r},
+      user:{email,userId:user.id,role:r,nombre:name},
+      alumno:{nombre:'Alumno Visual '+r},
+      curso:{nombre:course.nombre||'Curso QA Visual',courseKey,cursoId}
+    };
+    const profiles=[];
+    for(const rr of roles){
+      profiles.push(Object.assign({}, baseProfile, {
+        id:['qa_visual',courseKey,email,rr].join('|'),
+        profileId:['qa_visual',courseKey,email,rr].join('|'),
+        role:rr,
+        user:Object.assign({}, baseProfile.user, {role:rr})
+      }));
+    }
+    localStorage.setItem('cursapp_session_v1', JSON.stringify(session));
+    localStorage.setItem('cursapp_active_role_v1', r);
+    localStorage.setItem('cursapp_current_role_v1', r);
+    localStorage.setItem('cursapp_active_course_v1', courseKey);
+    localStorage.setItem('cursapp_active_course_id_v1', cursoId);
+    localStorage.setItem('cursapp_active_profile_v1', profiles[0].profileId);
+    localStorage.setItem('cursapp_profiles_v1', JSON.stringify(profiles));
+    localStorage.setItem('cursapp_role_prompted_v1','1');
+    localStorage.setItem('CURSAPP_QA_ROLE_CONTEXT_V10_3', r);
+    return session;
+  }
+
   function readQaSession(){
     try{ return JSON.parse(localStorage.getItem('cursapp_session_v1')||'null'); }catch(e){ return null; }
   }
@@ -1121,7 +1225,7 @@
     const pages=[['/presidente.html','presidente'],['/apoderado.html','apoderado'],['/tesorero.html','tesorero']];
     const out=[];
     for(const [path,label] of pages){
-      setQaRoleContext(label);
+      await ensureQaVisualRoleInSupabase(label);
       const f=await loadQaFrame(path,label);
       const doc=f.contentDocument;
       const title=(doc && (doc.title || visibleText(doc.body).slice(0,40))) || label;
@@ -1133,7 +1237,7 @@
     return pass(id,module,out.join(' · '));
   }
   async function uiClickPresidente(id,module){
-    setQaRoleContext('presidente');
+    await ensureQaVisualRoleInSupabase('presidente');
     const f=await loadQaFrame('/presidente.html','presidente_click');
     const tests=[['campañas','campana','crear campaña','ver campaña'],['deudores','deudor','morosos'],['avisos','aviso','sobre','mensaje'],['informes','informe','reporte']];
     const out=[]; let ok=0;
@@ -1141,7 +1245,7 @@
     return ok>=2 ? pass(id,module,'Presidente clicks OK · '+out.join(' · ')) : warn(id,module,'Presidente cargó, pero pocos clicks detectados · '+out.join(' · '));
   }
   async function uiClickApoderado(id,module){
-    setQaRoleContext('apoderado');
+    await ensureQaVisualRoleInSupabase('apoderado');
     const f=await loadQaFrame('/apoderado.html','apoderado_click');
     const tests=[['pagar','pago','pagos','cuota'],['detalle','ver detalle','próxima','proxima'],['informes','informe','reporte'],['mercado','escolar'],['avisos','sobre','mis avisos','mensaje']];
     const out=[]; let ok=0;
@@ -1149,7 +1253,7 @@
     return ok>=2 ? pass(id,module,'Apoderado clicks OK · '+out.join(' · ')) : warn(id,module,'Apoderado cargó, pero pocos clicks detectados · '+out.join(' · '));
   }
   async function uiClickTesorero(id,module){
-    setQaRoleContext('tesorero');
+    await ensureQaVisualRoleInSupabase('tesorero');
     const f=await loadQaFrame('/tesorero.html','tesorero_click');
     const tests=[['pagos','conciliar','conciliación','conciliacion'],['rendiciones','rendición','rendicion','gastos'],['comprobantes','comprobante','transferencia'],['informes','informe','reporte']];
     const out=[]; let ok=0;
