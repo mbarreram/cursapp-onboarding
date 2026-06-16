@@ -1009,20 +1009,56 @@
   function setQaRoleContext(role){
     try{
       const r=String(role||'apoderado').toLowerCase().trim();
-      const courseKey=(state.created?.stress?.cursos?.[0]?.course_key)||qa.courseKey||'QA_CLICK_COURSE';
+      const course=(state.created?.stress?.cursos?.[0])||{};
+      const courseKey=String(course.course_key||course.courseKey||qa.courseKey||'QA_CLICK_COURSE');
+      const cursoId=String(course.id||state.created.cursoId||'');
+      const email=('qa.'+r+'@qa.cursapp.cl').toLowerCase();
+      const profileId=['qa_click',courseKey,email,r].join('|');
+      const roles=r==='presidente'?['presidente','apoderado']:(r==='tesorero'?['tesorero','apoderado']:[r]);
       const session={
         userId:'qa_click_'+r,
-        email:'qa.'+r+'@qa.cursapp.cl',
+        email,
         role:r,
         currentRole:r,
         activeRole:r,
-        roles:r==='presidente'?['presidente','apoderado']:(r==='tesorero'?['tesorero','apoderado']:[r]),
-        courseKey
+        roles,
+        courseKey,
+        cursoId,
+        course_id:cursoId,
+        qaContext:true
       };
+      const profile={
+        id:profileId,
+        profileId,
+        userId:session.userId,
+        courseKey,
+        cursoId,
+        course_id:cursoId,
+        role:r,
+        status:'aprobado',
+        estado:'aprobado',
+        activation:{required:true,status:'paid'},
+        activacion_pagada:true,
+        apoderado:{email,nombre:'QA '+r,alumno:'Alumno QA Click'},
+        user:{email,userId:session.userId,role:r,nombre:'QA '+r},
+        alumno:{nombre:'Alumno QA Click'},
+        curso:{nombre:'Curso QA Click',courseKey,cursoId}
+      };
+      const profileApo=Object.assign({}, profile, {role:'apoderado', profileId:profileId+'|apoderado', id:profileId+'|apoderado', user:Object.assign({},profile.user,{role:'apoderado'})});
+      const profileTreas=Object.assign({}, profile, {role:'tesorero', profileId:profileId+'|tesorero', id:profileId+'|tesorero', user:Object.assign({},profile.user,{role:'tesorero'})});
+      const profiles=[];
+      if(r==='presidente') profiles.push(profile, profileApo);
+      else if(r==='tesorero') profiles.push(profile, profileApo);
+      else profiles.push(profileApo);
+      if(!profiles.some(p=>p.role==='tesorero')) profiles.push(profileTreas);
       localStorage.setItem('cursapp_session_v1', JSON.stringify(session));
       localStorage.setItem('cursapp_active_role_v1', r);
+      localStorage.setItem('cursapp_current_role_v1', r);
       localStorage.setItem('cursapp_active_course_v1', courseKey);
+      localStorage.setItem('cursapp_active_profile_v1', profile.profileId);
+      localStorage.setItem('cursapp_profiles_v1', JSON.stringify(profiles));
       localStorage.setItem('cursapp_role_prompted_v1','1');
+      localStorage.setItem('CURSAPP_QA_ROLE_CONTEXT_V10_2', r);
       return session;
     }catch(e){ return null; }
   }
@@ -1085,31 +1121,37 @@
     const pages=[['/presidente.html','presidente'],['/apoderado.html','apoderado'],['/tesorero.html','tesorero']];
     const out=[];
     for(const [path,label] of pages){
+      setQaRoleContext(label);
       const f=await loadQaFrame(path,label);
       const doc=f.contentDocument;
       const title=(doc && (doc.title || visibleText(doc.body).slice(0,40))) || label;
+      const bodyText=(doc && visibleText(doc.body).slice(0,80)) || '';
       const ctx=validateQaRoleContext(label);
-      out.push(label+': cargada · '+title+' · contexto='+(ctx.ok?'OK':('WARN current='+ctx.current+' active='+ctx.active)));
+      const ingreso=/ingreso|login/i.test(title+' '+bodyText);
+      out.push(label+': cargada · '+title+' · contexto='+(ctx.ok?'OK':('WARN current='+ctx.current+' active='+ctx.active))+(ingreso?' · posible login':' · vista rol'));
     }
     return pass(id,module,out.join(' · '));
   }
   async function uiClickPresidente(id,module){
+    setQaRoleContext('presidente');
     const f=await loadQaFrame('/presidente.html','presidente_click');
-    const tests=[['campañas','campana','crear campaña'],['deudores','deudor'],['avisos','aviso'],['informes','informe']];
+    const tests=[['campañas','campana','crear campaña','ver campaña'],['deudores','deudor','morosos'],['avisos','aviso','sobre','mensaje'],['informes','informe','reporte']];
     const out=[]; let ok=0;
     for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
     return ok>=2 ? pass(id,module,'Presidente clicks OK · '+out.join(' · ')) : warn(id,module,'Presidente cargó, pero pocos clicks detectados · '+out.join(' · '));
   }
   async function uiClickApoderado(id,module){
+    setQaRoleContext('apoderado');
     const f=await loadQaFrame('/apoderado.html','apoderado_click');
-    const tests=[['pagar','pago','pagos'],['detalle','ver detalle'],['informes','informe'],['mercado'],['avisos','sobre']];
+    const tests=[['pagar','pago','pagos','cuota'],['detalle','ver detalle','próxima','proxima'],['informes','informe','reporte'],['mercado','escolar'],['avisos','sobre','mis avisos','mensaje']];
     const out=[]; let ok=0;
     for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
     return ok>=2 ? pass(id,module,'Apoderado clicks OK · '+out.join(' · ')) : warn(id,module,'Apoderado cargó, pero pocos clicks detectados · '+out.join(' · '));
   }
   async function uiClickTesorero(id,module){
+    setQaRoleContext('tesorero');
     const f=await loadQaFrame('/tesorero.html','tesorero_click');
-    const tests=[['pagos','conciliar','conciliación'],['rendiciones','rendición'],['comprobantes','comprobante'],['informes','informe']];
+    const tests=[['pagos','conciliar','conciliación','conciliacion'],['rendiciones','rendición','rendicion','gastos'],['comprobantes','comprobante','transferencia'],['informes','informe','reporte']];
     const out=[]; let ok=0;
     for(const words of tests){ const r=await clickWords(f,words); if(r.ok) ok++; out.push(r.detail); }
     return ok>=2 ? pass(id,module,'Tesorero clicks OK · '+out.join(' · ')) : warn(id,module,'Tesorero cargó, pero pocos clicks detectados · '+out.join(' · '));
@@ -1279,3 +1321,5 @@
 })();
 
 /* __CURSAPP_QA_V10_1_CONTEXT_VALIDATION__ */
+
+/* CURSAPP_QA360_V10_2_SESION_VISUAL */
