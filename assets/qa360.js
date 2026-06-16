@@ -1,7 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
-   - V3: pagos según esquema real Supabase + validación formularios vs DB.
+   - V4: regla hermanos mismo curso + migración DB sugerida para campos de formularios.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -43,7 +43,7 @@
   ];
   const MODULES_FULL = [
     ...MODULES_QUICK,
-    { id:'onboarding', name:'Onboarding QA', tests:['create-colegio','create-curso','create-usuarios','create-miembros','approve-apoderados','email-duplicate-same-course','email-same-different-course'] },
+    { id:'onboarding', name:'Onboarding QA', tests:['create-colegio','create-curso','create-usuarios','create-miembros','approve-apoderados','email-same-course-different-student','email-duplicate-same-student-course','email-same-different-course'] },
     { id:'roles', name:'Roles / Tesorero único', tests:['assign-tesorero','block-second-tesorero','remove-tesorero','reassign-tesorero'] },
     { id:'formularios', name:'Formularios vs DB', tests:['schema-pagos','schema-campanas','schema-miembros','schema-form-gaps'] },
     { id:'campanas', name:'Campañas', tests:['create-campana-unica','create-campana-mensual','create-campana-voluntaria','create-pagos','create-pagos-variados','validate-dashboard-data'] },
@@ -112,7 +112,7 @@
       'login-html':'Login carga correctamente','role-html':'Pantallas por rol disponibles','assets':'Assets principales disponibles','supabase-ready':'Cliente Supabase inicializa','supabase-tables':'Tablas base responden','supabase-write':'Permisos escritura QA disponibles',
       'loading':'Loading premium presente','tesorero-markers':'Tesorero único mantiene lógica','banner-dashboard':'Dashboard/Banner estabilizados','qa-button':'Botón QA visible en Login',
       'schema-pagos':'Tabla pagos compatible con formularios','schema-campanas':'Tabla campanas compatible con formularios','schema-miembros':'Tabla miembros_curso compatible con formularios','schema-form-gaps':'Brechas formulario vs DB',
-      'create-colegio':'Crear colegio QA','create-curso':'Crear curso QA','create-usuarios':'Crear usuarios QA','create-miembros':'Crear miembros curso QA','approve-apoderados':'Apoderados QA aprobados','email-duplicate-same-course':'Bloquear mismo correo en mismo curso','email-same-different-course':'Permitir mismo correo en curso distinto',
+      'create-colegio':'Crear colegio QA','create-curso':'Crear curso QA','create-usuarios':'Crear usuarios QA','create-miembros':'Crear miembros curso QA','approve-apoderados':'Apoderados QA aprobados','email-same-course-different-student':'Permitir hermanos en mismo curso','email-duplicate-same-student-course':'Bloquear mismo correo + mismo alumno + mismo curso','email-same-different-course':'Permitir mismo correo en curso distinto',
       'assign-tesorero':'Asignar tesorero QA','block-second-tesorero':'Bloquear segundo tesorero','remove-tesorero':'Eliminar tesorero QA','reassign-tesorero':'Reasignar tesorero QA',
       'create-campana-unica':'Crear campaña única QA','create-campana-mensual':'Crear campaña mensual QA','create-campana-voluntaria':'Crear campaña voluntaria QA','create-pagos':'Crear pagos QA base','create-pagos-variados':'Crear pagos QA variados','validate-dashboard-data':'Validar datos para dashboard',
       'validate-pago-pendiente':'Pago pendiente','validate-pago-pagado':'Pago pagado','validate-pago-vencido':'Pago vencido','validate-pago-parcial':'Pago parcial','validate-pago-manual':'Pago manual conciliado','validate-pago-saldo-favor':'Saldo a favor','validate-pago-no-participa':'Pago No participa',
@@ -208,7 +208,8 @@
       case 'create-usuarios': return createUsuarios(id,module);
       case 'create-miembros': return createMiembros(id,module);
       case 'approve-apoderados': return approveApoderados(id,module);
-      case 'email-duplicate-same-course': return validateDuplicateEmailSameCourse(id,module);
+      case 'email-same-course-different-student': return validateSameEmailSameCourseDifferentStudent(id,module);
+      case 'email-duplicate-same-student-course': return validateDuplicateEmailSameStudentCourse(id,module);
       case 'email-same-different-course': return validateSameEmailDifferentCourse(id,module);
       case 'assign-tesorero': return assignTesorero(id,module,qa.apo1Email);
       case 'block-second-tesorero': return blockSecondTesorero(id,module);
@@ -274,19 +275,68 @@
     if(error) throw new Error(error.message); return pass(id,module,'Apoderados aprobados: '+(data||[]).length);
   }
 
-  async function validateDuplicateEmailSameCourse(id,module){
+  async function validateSameEmailSameCourseDifferentStudent(id,module){
     const c=await sb();
     const email=qa.apo1Email;
-    const before=await c.from('miembros_curso').select('id',{count:'exact',head:true}).eq('curso_id',state.created.cursoId).eq('email',email).eq('rol','apoderado');
-    if(before.error) throw new Error(before.error.message);
+    const user=state.created.usuarios.find(u=>String(u.email).toLowerCase()===email);
 
-    // Simula la validación de onboarding: mismo correo + mismo curso + rol apoderado no debe duplicarse.
-    if((before.count||0) > 0){
-      return pass(id,module,'Bloqueado por QA antes de insertar: correo ya existe en este curso ('+email+').');
+    // Regla Cursapp: un mismo apoderado puede tener hermanos en el mismo curso.
+    // Se permite mismo correo + mismo curso si el alumno es distinto.
+    const siblingName = 'Alumno QA 1 Hermano';
+    const exists=await c.from('miembros_curso')
+      .select('id',{count:'exact',head:true})
+      .eq('curso_id',state.created.cursoId)
+      .eq('email',email)
+      .eq('rol','apoderado')
+      .eq('nombre_alumno',siblingName);
+    if(exists.error) throw new Error(exists.error.message);
+
+    if((exists.count||0)===0){
+      const row=await insert('miembros_curso',{
+        curso_id:state.created.cursoId,
+        usuario_id:user?user.id:null,
+        rol:'apoderado',
+        nombre_apoderado:QA_PREFIX+' Apoderado 1',
+        nombre_alumno:siblingName,
+        email,
+        estado:'aprobado',
+        activacion_pagada:true
+      });
+      state.created.miembros.push(row);
     }
 
-    // Si no existía, dejamos advertencia porque el set de datos QA no preparó el caso esperado.
-    return warn(id,module,'No existía correo base para probar duplicidad en el mismo curso.');
+    const check=await c.from('miembros_curso')
+      .select('id',{count:'exact',head:true})
+      .eq('curso_id',state.created.cursoId)
+      .eq('email',email)
+      .eq('rol','apoderado');
+    if(check.error) throw new Error(check.error.message);
+
+    return (check.count||0)>=2
+      ? pass(id,module,'Permitido: mismo correo en mismo curso con alumnos distintos. Registros apoderado='+check.count)
+      : fail(id,module,'No se permitió crear hermano con mismo correo en el mismo curso.');
+  }
+
+  async function validateDuplicateEmailSameStudentCourse(id,module){
+    const c=await sb();
+    const email=qa.apo1Email;
+    const alumno='Alumno QA 1';
+
+    // Regla Cursapp: se bloquea solo el duplicado exacto
+    // mismo correo + mismo alumno + mismo curso + rol apoderado.
+    const before=await c.from('miembros_curso')
+      .select('id',{count:'exact',head:true})
+      .eq('curso_id',state.created.cursoId)
+      .eq('email',email)
+      .eq('rol','apoderado')
+      .eq('nombre_alumno',alumno);
+    if(before.error) throw new Error(before.error.message);
+
+    if((before.count||0)>0){
+      return pass(id,module,'Bloqueado por QA antes de insertar: ya existe mismo correo + mismo alumno + mismo curso ('+email+' · '+alumno+').');
+    }
+
+    return warn(id,module,'No existía base para probar duplicado exacto de correo + alumno + curso.');
   }
 
   async function validateSameEmailDifferentCourse(id,module){
