@@ -1,7 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
-   - V4: regla hermanos mismo curso + migración DB sugerida para campos de formularios.
+   - V5: stress test multi-colegio/curso con miles de pagos y hermanos.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -15,7 +15,7 @@
     cleanup: true,
     modules: [],
     results: [],
-    created: { colegioId:null, cursoId:null, cursoAltId:null, usuarios:[], miembros:[], campanas:[], pagos:[], informes:[] }
+    created: { colegioId:null, cursoId:null, cursoAltId:null, usuarios:[], miembros:[], campanas:[], pagos:[], informes:[], stress:{colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:0, expected:{}} }
   };
 
   const $ = (id)=>document.getElementById(id);
@@ -54,13 +54,20 @@
     { id:'limpieza', name:'Limpieza QA', tests:['cleanup-qa','verify-cleanup'] }
   ];
 
-  function rowsFor(mode){ return mode === 'full' ? MODULES_FULL : MODULES_QUICK; }
+  const MODULES_STRESS = [
+    ...MODULES_FULL.filter(m => m.id !== 'limpieza'),
+    { id:'stress', name:'Stress multi-curso', tests:['stress-create-dataset','stress-validate-counts','stress-validate-hermanos','stress-dashboard-scale','stress-payment-distribution'] },
+    MODULES_FULL.find(m => m.id === 'limpieza')
+  ];
+
+  function rowsFor(mode){ return mode === 'stress' ? MODULES_STRESS : (mode === 'full' ? MODULES_FULL : MODULES_QUICK); }
 
   function setBusy(on){
-    const a=$('runQuickBtn'), b=$('runFullBtn');
-    if(a) a.disabled=!!on; if(b) b.disabled=!!on;
+    const a=$('runQuickBtn'), b=$('runFullBtn'), c=$('runStressBtn');
+    if(a) a.disabled=!!on; if(b) b.disabled=!!on; if(c) c.disabled=!!on;
     if(a) a.textContent = on ? 'Ejecutando...' : 'QA rápido';
     if(b) b.textContent = on ? 'Ejecutando...' : 'QA completo';
+    if(c) c.textContent = on ? 'Ejecutando stress...' : 'QA stress';
   }
 
   function init(){
@@ -73,6 +80,7 @@
   function bind(){
     $('runQuickBtn') && ($('runQuickBtn').onclick=()=>run('quick'));
     $('runFullBtn') && ($('runFullBtn').onclick=()=>run('full'));
+    $('runStressBtn') && ($('runStressBtn').onclick=()=>run('stress'));
     $('downloadJsonBtn') && ($('downloadJsonBtn').onclick=downloadJson);
     $('downloadHtmlBtn') && ($('downloadHtmlBtn').onclick=downloadHtml);
     $('cleanupOnlyBtn') && ($('cleanupOnlyBtn').onclick=async()=>{ state.mode='cleanup'; state.cleanup=true; setBusy(true); await runOneModule({id:'limpieza',name:'Limpieza QA',tests:['cleanup-qa','verify-cleanup']}); setBusy(false); });
@@ -104,6 +112,7 @@
       apoderado:'Valida datos y marcas visuales de apoderado.',
       tesorero:'Valida datos y marcas visuales de tesorero.',
       informes:'Valida tablas o módulos de informes.',
+      stress:'Crea 2 colegios, 2 cursos, 85 alumnos/apoderados, 16 campañas y miles de pagos para validar escala.',
       limpieza:'Borra solo registros creados por este QA.'
     })[id] || '';
   }
@@ -119,6 +128,7 @@
       'apoderado-data':'Datos apoderado consultables','no-participo-logic':'Lógica No participo presente','apoderado-ui-markers':'UI Apoderado estable',
       'tesorero-data':'Datos tesorero consultables','tesorero-ui-markers':'UI Tesorero estable','tesorero-pagos-conciliables':'Pagos conciliables por tesorero',
       'informes-table':'Informes disponibles o advertencia','informes-ui-markers':'UI Informes presente',
+      'stress-create-dataset':'Crear dataset stress','stress-validate-counts':'Validar conteos stress','stress-validate-hermanos':'Validar hermanos stress','stress-dashboard-scale':'Validar consultas dashboard stress','stress-payment-distribution':'Validar distribución pagos stress',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -174,7 +184,7 @@
 
   async function run(mode){
     state.mode=mode; state.cleanup = !!($('cleanupQa') && $('cleanupQa').checked);
-    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,cursoAltId:null,usuarios:[],miembros:[],campanas:[],pagos:[],informes:[]};
+    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,cursoAltId:null,usuarios:[],miembros:[],campanas:[],pagos:[],informes:[],stress:{colegios:[],cursos:[],usuarios:[],miembros:[],campanas:[],pagos:0,expected:{}}};
     renderModules(mode); setBusy(true);
     for(const m of rowsFor(mode)){ await runOneModule(m); }
     state.endedAt=new Date().toISOString(); setBusy(false); await persistOptional(); buildReport();
@@ -236,6 +246,11 @@
       case 'tesorero-pagos-conciliables': return validateTesoreroPagosConciliables(id,module);
       case 'informes-table': return validateInformes(id,module);
       case 'informes-ui-markers': { const t=(await fetchText('/assets/presidente.js')).text; return t.includes('Informes')?pass(id,module,'UI Informes presente.'):warn(id,module,'No encontré marca Informes.'); }
+      case 'stress-create-dataset': return createStressDataset(id,module);
+      case 'stress-validate-counts': return validateStressCounts(id,module);
+      case 'stress-validate-hermanos': return validateStressHermanos(id,module);
+      case 'stress-dashboard-scale': return validateStressDashboardScale(id,module);
+      case 'stress-payment-distribution': return validateStressPaymentDistribution(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -540,20 +555,158 @@
     for(const table of ['informes','monthly_reports','reportes']){ const {error,count}=await c.from(table).select('*',{count:'exact',head:true}); if(!error) return pass(id,module,'Tabla informes detectada: '+table+' count='+count); }
     return warn(id,module,'No encontré tabla estándar de informes; UI se valida por marcas.');
   }
+  function chunk(arr, size){ const out=[]; for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size)); return out; }
+  async function insertMany(table, rows, size){
+    const c=await sb(); const all=[];
+    for(const part of chunk(rows, size || 250)){
+      const {data,error}=await c.from(table).insert(part).select('*');
+      if(error) throw new Error(table+': '+error.message);
+      all.push(...(data||[]));
+      await sleep(20);
+    }
+    return all;
+  }
+  function stressEstado(i, monthIdx){
+    if(i % 17 === 0 && monthIdx === 1) return 'no_participa';
+    if(i % 13 === 0) return 'vencido';
+    if(i % 11 === 0) return 'parcial';
+    if(i % 7 === 0) return 'conciliado';
+    if(i % 5 === 0) return 'pagado';
+    return 'pendiente';
+  }
+  function stressMontoPagado(estado, monto){
+    if(estado==='pagado' || estado==='conciliado') return monto;
+    if(estado==='parcial') return Math.round(monto/2);
+    return 0;
+  }
+  function addMonthsIso(monthOffset){
+    const d=new Date(); d.setDate(15); d.setMonth(d.getMonth()+monthOffset);
+    return d.toISOString().slice(0,10);
+  }
+  async function createStressDataset(id,module){
+    const t0=performance.now();
+    const hasConcepto = await tableHasColumn('pagos','concepto');
+    const colegios = await insertMany('colegios', [
+      {nombre:QA_PREFIX+' Stress Colegio 01',region:'QA',comuna:'QA',rbd:QA_PREFIX+'_ST01',es_catalogo_demo:true},
+      {nombre:QA_PREFIX+' Stress Colegio 02',region:'QA',comuna:'QA',rbd:QA_PREFIX+'_ST02',es_catalogo_demo:true}
+    ], 50);
+    state.created.stress.colegios.push(...colegios);
+    const cursos = await insertMany('cursos', [
+      {colegio_id:colegios[0].id,nombre:QA_PREFIX+' Stress Curso 44 alumnos',nivel:'4°',letra:'A',anio:2026,jornada:'Mañana',course_key:QA_PREFIX+'_STRESS_COURSE_44',invite_code:(qa.inviteCode+'S1').slice(0,8),estado:'activo'},
+      {colegio_id:colegios[1].id,nombre:QA_PREFIX+' Stress Curso 41 alumnos + hermanos',nivel:'5°',letra:'B',anio:2026,jornada:'Tarde',course_key:QA_PREFIX+'_STRESS_COURSE_41',invite_code:(qa.inviteCode+'S2').slice(0,8),estado:'activo'}
+    ], 50);
+    state.created.stress.cursos.push(...cursos);
+    const userRows=[];
+    for(let i=1;i<=44;i++) userRows.push({email:(QA_PREFIX+'.stress1.apo'+String(i).padStart(2,'0')+'@qa.cursapp.cl').toLowerCase(),nombre:QA_PREFIX+' Stress 1 Apoderado '+i,rol_global:'usuario',estado:'activo'});
+    for(let i=1;i<=39;i++) userRows.push({email:(QA_PREFIX+'.stress2.apo'+String(i).padStart(2,'0')+'@qa.cursapp.cl').toLowerCase(),nombre:QA_PREFIX+' Stress 2 Apoderado '+i,rol_global:'usuario',estado:'activo'});
+    const users = await insertMany('usuarios', userRows, 250);
+    state.created.stress.usuarios.push(...users);
+    const userByEmail = new Map(users.map(u=>[String(u.email).toLowerCase(),u]));
+    const memberRows=[];
+    for(let i=1;i<=44;i++){
+      const email=(QA_PREFIX+'.stress1.apo'+String(i).padStart(2,'0')+'@qa.cursapp.cl').toLowerCase();
+      memberRows.push({curso_id:cursos[0].id,usuario_id:userByEmail.get(email)?.id||null,rol:'apoderado',nombre_apoderado:QA_PREFIX+' Stress 1 Apoderado '+i,nombre_alumno:'Alumno Stress 1-'+String(i).padStart(2,'0'),email,estado:'aprobado',activacion_pagada:true});
+    }
+    for(let i=1;i<=41;i++){
+      let email, apName, alumno;
+      if(i===40){ email=(QA_PREFIX+'.stress2.apo01@qa.cursapp.cl').toLowerCase(); apName=QA_PREFIX+' Stress 2 Apoderado 1'; alumno='Hermano Stress 2-A'; }
+      else if(i===41){ email=(QA_PREFIX+'.stress2.apo02@qa.cursapp.cl').toLowerCase(); apName=QA_PREFIX+' Stress 2 Apoderado 2'; alumno='Hermano Stress 2-B'; }
+      else { email=(QA_PREFIX+'.stress2.apo'+String(i).padStart(2,'0')+'@qa.cursapp.cl').toLowerCase(); apName=QA_PREFIX+' Stress 2 Apoderado '+i; alumno='Alumno Stress 2-'+String(i).padStart(2,'0'); }
+      memberRows.push({curso_id:cursos[1].id,usuario_id:userByEmail.get(email)?.id||null,rol:'apoderado',nombre_apoderado:apName,nombre_alumno:alumno,email,estado:'aprobado',activacion_pagada:true});
+    }
+    const miembros = await insertMany('miembros_curso', memberRows, 250);
+    state.created.stress.miembros.push(...miembros);
+    const campRows=[];
+    for(let i=1;i<=4;i++) campRows.push({curso_id:cursos[0].id,titulo:QA_PREFIX+' ST1 obligatoria única '+i,tipo:'single',monto:2000+i*250,fecha_inicio:today(),fecha_vencimiento:addDays(10+i),meses:1,obligatoria:true,estado:'activa',descripcion:'Stress obligatoria única curso 44',meta:0,goal_total:0});
+    for(let i=1;i<=2;i++) campRows.push({curso_id:cursos[0].id,titulo:QA_PREFIX+' ST1 mensual voluntaria '+i,tipo:'monthly',monto:1000+i*100,fecha_inicio:today(),fecha_vencimiento:addMonthsIso(1),meses:10,obligatoria:false,estado:'activa',descripcion:'Stress mensual no obligatoria curso 44',meta:0,goal_total:0});
+    for(let i=1;i<=6;i++) campRows.push({curso_id:cursos[1].id,titulo:QA_PREFIX+' ST2 obligatoria única '+i,tipo:'single',monto:2200+i*200,fecha_inicio:today(),fecha_vencimiento:addDays(12+i),meses:1,obligatoria:true,estado:'activa',descripcion:'Stress obligatoria única curso 41',meta:0,goal_total:0});
+    for(let i=1;i<=4;i++) campRows.push({curso_id:cursos[1].id,titulo:QA_PREFIX+' ST2 mensual voluntaria '+i,tipo:'monthly',monto:900+i*150,fecha_inicio:today(),fecha_vencimiento:addMonthsIso(1),meses:10,obligatoria:false,estado:'activa',descripcion:'Stress mensual no obligatoria curso 41',meta:0,goal_total:0});
+    const campanas = await insertMany('campanas', campRows, 250);
+    state.created.stress.campanas.push(...campanas);
+    const payments=[];
+    const byCourse = new Map();
+    for(const m of miembros){ const arr=byCourse.get(m.curso_id)||[]; arr.push(m); byCourse.set(m.curso_id,arr); }
+    for(const camp of campanas){
+      const mems = byCourse.get(camp.curso_id)||[];
+      const months = String(camp.tipo)==='monthly' ? Number(camp.meses||10) : 1;
+      mems.forEach((m, idx)=>{
+        for(let month=1; month<=months; month++){
+          const estado = camp.obligatoria ? stressEstado(idx+1+month, month) : stressEstado(idx+1+month*2, month);
+          const monto = Number(camp.monto||1000);
+          const row={curso_id:camp.curso_id,campana_id:camp.id,miembro_id:m.id,monto, monto_pagado:stressMontoPagado(estado,monto), estado, fecha_vencimiento:addMonthsIso(month-1), periodo:addMonthsIso(month-1).slice(0,7), metodo_pago:estado==='conciliado'?'transferencia':(estado==='pagado'?'transbank':'qa')};
+          if(estado==='pagado' || estado==='conciliado' || estado==='saldo_favor') row.paid_at=new Date().toISOString();
+          if(hasConcepto) row.concepto=camp.titulo+' · '+(months>1?('Cuota '+month+'/'+months):'Pago único');
+          payments.push(row);
+        }
+      });
+    }
+    const insertedPayments = await insertMany('pagos', payments, 500);
+    state.created.stress.pagos = insertedPayments.length;
+    state.created.stress.expected = {colegios:2,cursos:2,usuarios:83,miembros:85,campanas:16,pagos:2942,course1:{miembros:44,campanas:6,pagos:1056},course2:{miembros:41,campanas:10,pagos:1886}};
+    const ms=Math.round(performance.now()-t0);
+    return pass(id,module,'Stress creado: 2 colegios · 2 cursos · 85 alumnos · 16 campañas · '+insertedPayments.length+' pagos · '+ms+' ms');
+  }
+  async function validateStressCounts(id,module){
+    const c=await sb(); const exp=state.created.stress.expected||{};
+    const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(courseIds.length!==2) return fail(id,module,'No hay 2 cursos stress en state.');
+    const [miem,camp,pag]=await Promise.all([
+      c.from('miembros_curso').select('*',{count:'exact',head:true}).in('curso_id',courseIds),
+      c.from('campanas').select('*',{count:'exact',head:true}).in('curso_id',courseIds),
+      c.from('pagos').select('*',{count:'exact',head:true}).in('curso_id',courseIds)
+    ]);
+    if(miem.error||camp.error||pag.error) throw new Error((miem.error||camp.error||pag.error).message);
+    const ok=(miem.count===exp.miembros && camp.count===exp.campanas && pag.count===exp.pagos);
+    return ok ? pass(id,module,`Conteos OK · miembros=${miem.count} campañas=${camp.count} pagos=${pag.count}`) : fail(id,module,`Conteos no cuadran · miembros=${miem.count}/${exp.miembros} campañas=${camp.count}/${exp.campanas} pagos=${pag.count}/${exp.pagos}`);
+  }
+  async function validateStressHermanos(id,module){
+    const c=await sb(); const course2=state.created.stress.cursos[1]; if(!course2) throw new Error('No existe curso 2 stress.');
+    const e1=(QA_PREFIX+'.stress2.apo01@qa.cursapp.cl').toLowerCase();
+    const e2=(QA_PREFIX+'.stress2.apo02@qa.cursapp.cl').toLowerCase();
+    const a=await c.from('miembros_curso').select('*',{count:'exact',head:true}).eq('curso_id',course2.id).eq('rol','apoderado').in('email',[e1,e2]);
+    if(a.error) throw new Error(a.error.message);
+    return a.count===4 ? pass(id,module,'Hermanos OK: dos apoderados con dos alumnos cada uno en el mismo curso.') : fail(id,module,'Hermanos no cuadran; registros esperados=4, reales='+a.count);
+  }
+  async function validateStressDashboardScale(id,module){
+    const t0=performance.now(); const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    const [pend,paid,debts]=await Promise.all([
+      c.from('pagos').select('*',{count:'exact',head:true}).in('curso_id',courseIds).in('estado',['pendiente','vencido','parcial']),
+      c.from('pagos').select('*',{count:'exact',head:true}).in('curso_id',courseIds).in('estado',['pagado','conciliado']),
+      c.from('pagos').select('miembro_id').in('curso_id',courseIds).in('estado',['pendiente','vencido','parcial'])
+    ]);
+    if(pend.error||paid.error||debts.error) throw new Error((pend.error||paid.error||debts.error).message);
+    const uniqueDebtors = new Set((debts.data||[]).map(x=>x.miembro_id).filter(Boolean)).size;
+    const ms=Math.round(performance.now()-t0);
+    return pass(id,module,`Consultas dashboard stress OK · pendientes=${pend.count} pagados=${paid.count} deudores_unicos=${uniqueDebtors} · ${ms} ms`);
+  }
+  async function validateStressPaymentDistribution(id,module){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    const estados=['pendiente','pagado','vencido','parcial','conciliado','no_participa'];
+    const out=[];
+    for(const e of estados){ const r=await c.from('pagos').select('*',{count:'exact',head:true}).in('curso_id',courseIds).eq('estado',e); if(r.error) throw new Error(r.error.message); out.push(e+'='+r.count); if(!r.count) return fail(id,module,'Estado sin datos en stress: '+e); }
+    return pass(id,module,'Distribución estados OK · '+out.join(' · '));
+  }
+
   async function cleanupQa(id,module){
     if(!state.cleanup) return warn(id,module,'Limpieza desactivada por usuario.');
     const c=await sb(); let total=0;
-    try{ if(state.created.cursoId){ const r=await c.from('pagos').delete().eq('curso_id',state.created.cursoId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
-    try{ if(state.created.cursoId){ const r=await c.from('campanas').delete().eq('curso_id',state.created.cursoId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
-    try{ if(state.created.cursoId){ const r=await c.from('miembros_curso').delete().eq('curso_id',state.created.cursoId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    const courseIds=[state.created.cursoId,state.created.cursoAltId,...((state.created.stress&&state.created.stress.cursos)||[]).map(x=>x.id)].filter(Boolean);
+    const colegioIds=[state.created.colegioId,...((state.created.stress&&state.created.stress.colegios)||[]).map(x=>x.id)].filter(Boolean);
+    try{ if(courseIds.length){ const r=await c.from('pagos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ if(courseIds.length){ const r=await c.from('campanas').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ if(courseIds.length){ const r=await c.from('miembros_curso').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ const r=await c.from('usuarios').delete().like('email',QA_PREFIX.toLowerCase()+'%').select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
-    try{ const r=await c.from('cursos').delete().in('course_key',[qa.courseKey,qa.otherCourseKey]).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
-    try{ if(state.created.colegioId){ const r=await c.from('colegios').delete().eq('id',state.created.colegioId).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ const keys=[qa.courseKey,qa.otherCourseKey,QA_PREFIX+'_STRESS_COURSE_44',QA_PREFIX+'_STRESS_COURSE_41']; const r=await c.from('cursos').delete().in('course_key',keys).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+    try{ if(colegioIds.length){ const r=await c.from('colegios').delete().in('id',colegioIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     return pass(id,module,'Registros QA eliminados: '+total);
   }
   async function verifyCleanup(id,module){
     const c=await sb(); const {count,error}=await c.from('cursos').select('*',{count:'exact',head:true}).eq('course_key',qa.courseKey); if(error) throw new Error(error.message);
-    return count===0?pass(id,module,'Curso QA no existe tras limpieza.'):warn(id,module,'Curso QA sigue existiendo count='+count);
+    if(count!==0) return warn(id,module,'Curso QA principal sigue existiendo count='+count);
+    const keys=[QA_PREFIX+'_STRESS_COURSE_44',QA_PREFIX+'_STRESS_COURSE_41'];
+    const r=await c.from('cursos').select('*',{count:'exact',head:true}).in('course_key',keys);
+    if(r.error) throw new Error(r.error.message);
+    return (r.count||0)===0 ? pass(id,module,'Cursos QA y stress no existen tras limpieza.') : warn(id,module,'Cursos stress siguen existiendo count='+r.count);
   }
 
   async function persistOptional(){
