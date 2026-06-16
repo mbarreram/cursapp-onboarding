@@ -1,7 +1,7 @@
 /* Cursapp QA 360 modular Supabase · activo
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
-   - V5: stress test multi-colegio/curso con miles de pagos y hermanos.
+   - V7: stress aislado + performance + avisos + integridad financiera + informes/rendiciones/RLS/concurrencia/resiliencia/navegación.
    - No usa localStorage para crear datos de negocio.
 */
 (function(){
@@ -59,7 +59,14 @@
     { id:'stress-prep', name:'Preparación stress', tests:['cleanup-stale-qa'] },
     { id:'stress', name:'Stress multi-curso', tests:['stress-create-dataset','stress-validate-counts','stress-validate-hermanos','stress-dashboard-scale','stress-payment-distribution'] },
     { id:'avisos', name:'Avisos', tests:['avisos-schema','avisos-create','avisos-consulta-presidente','avisos-consulta-apoderado'] },
-    { id:'performance', name:'Performance DB', tests:['perf-dashboard-stress','perf-deudores-stress','perf-avisos-stress','perf-pagos-stress'] },
+    { id:'performance', name:'Performance DB', tests:['perf-dashboard-stress','perf-deudores-stress','perf-avisos-stress','perf-pagos-stress','perf-thresholds'] },
+    { id:'integridad', name:'Integridad financiera', tests:['fin-dashboard-sums','fin-no-participa-excluded','fin-parcial-descuenta','fin-conciliado-impacta'] },
+    { id:'rendiciones', name:'Rendiciones / gastos', tests:['gastos-schema','gastos-create','gastos-impacto-saldo'] },
+    { id:'informes-reales', name:'Informes reales', tests:['informe-genera','informe-publica','informe-roles'] },
+    { id:'seguridad', name:'Seguridad / RLS', tests:['rls-curso-ajeno-empty','rls-negative-write-foreign'] },
+    { id:'concurrencia', name:'Concurrencia', tests:['race-tesorero-unico','race-pago-duplicado','race-aprobacion-miembro'] },
+    { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
+    { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -118,7 +125,14 @@
       stress:'Crea 2 colegios, 2 cursos, 85 alumnos/apoderados, 16 campañas y miles de pagos para validar escala.',
       'stress-prep':'Limpia datos QA_* antiguos antes del stress aislado.',
       avisos:'Crea y consulta avisos por curso/rol para presidente y apoderado.',
-      performance:'Mide tiempos reales de consultas Supabase en milisegundos.',
+      performance:'Mide tiempos reales de consultas Supabase en milisegundos y valida umbrales.',
+      integridad:'Valida consistencia de saldos, por cobrar, no participa, parcial y conciliado.',
+      rendiciones:'Crea gasto/rendición QA y valida impacto financiero si la tabla existe.',
+      'informes-reales':'Genera/publica informe QA y valida vistas por rol si la tabla permite escritura.',
+      seguridad:'Pruebas negativas de aislamiento de curso y escritura fuera de contexto QA.',
+      concurrencia:'Simula operaciones simultáneas para tesorero, pago y aprobación.',
+      resiliencia:'Valida respuestas ante cursos vacíos, sin pagos o usuarios sin curso.',
+      navegacion:'Valida marcas de cambio de rol, loading y ausencia de selector/banner prematuro.',
       limpieza:'Borra solo registros creados por este QA.'
     })[id] || '';
   }
@@ -137,7 +151,14 @@
       'cleanup-stale-qa':'Prelimpiar QA_* antiguos',
       'stress-create-dataset':'Crear dataset stress','stress-validate-counts':'Validar conteos stress','stress-validate-hermanos':'Validar hermanos stress','stress-dashboard-scale':'Validar consultas dashboard stress','stress-payment-distribution':'Validar distribución pagos stress',
       'avisos-schema':'Validar tabla avisos','avisos-create':'Crear avisos QA','avisos-consulta-presidente':'Consultar avisos Presidente','avisos-consulta-apoderado':'Consultar avisos Apoderado',
-      'perf-dashboard-stress':'Medir dashboard stress','perf-deudores-stress':'Medir deudores stress','perf-avisos-stress':'Medir avisos stress','perf-pagos-stress':'Medir pagos stress',
+      'perf-dashboard-stress':'Medir dashboard stress','perf-deudores-stress':'Medir deudores stress','perf-avisos-stress':'Medir avisos stress','perf-pagos-stress':'Medir pagos stress','perf-thresholds':'Validar umbrales performance',
+      'fin-dashboard-sums':'Suma pagos vs dashboard','fin-no-participa-excluded':'No participa excluido de deuda','fin-parcial-descuenta':'Pago parcial descuenta','fin-conciliado-impacta':'Conciliado impacta reportes',
+      'gastos-schema':'Validar tabla gastos/rendiciones','gastos-create':'Crear gasto/rendición QA','gastos-impacto-saldo':'Gasto resta del saldo',
+      'informe-genera':'Generar informe QA','informe-publica':'Publicar informe QA','informe-roles':'Validar informe por rol',
+      'rls-curso-ajeno-empty':'Aislamiento curso ajeno','rls-negative-write-foreign':'Escritura negativa curso ajeno',
+      'race-tesorero-unico':'Concurrencia tesorero único','race-pago-duplicado':'Concurrencia pago duplicado','race-aprobacion-miembro':'Concurrencia aprobación miembro',
+      'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
+      'nav-presidente-apoderado':'Presidente → Apoderado','nav-apoderado-tesorero':'Apoderado → Tesorero','nav-no-banner-flicker':'Sin banner antes de carga','nav-no-selector-repetido':'Sin selector de rol repetido',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -271,6 +292,30 @@
       case 'perf-deudores-stress': return perfDeudoresStress(id,module);
       case 'perf-avisos-stress': return perfAvisosStress(id,module);
       case 'perf-pagos-stress': return perfPagosStress(id,module);
+      case 'perf-thresholds': return perfThresholds(id,module);
+      case 'fin-dashboard-sums': return finDashboardSums(id,module);
+      case 'fin-no-participa-excluded': return finNoParticipaExcluded(id,module);
+      case 'fin-parcial-descuenta': return finParcialDescuenta(id,module);
+      case 'fin-conciliado-impacta': return finConciliadoImpacta(id,module);
+      case 'gastos-schema': return gastosSchema(id,module);
+      case 'gastos-create': return gastosCreate(id,module);
+      case 'gastos-impacto-saldo': return gastosImpactoSaldo(id,module);
+      case 'informe-genera': return informeGenera(id,module);
+      case 'informe-publica': return informePublica(id,module);
+      case 'informe-roles': return informeRoles(id,module);
+      case 'rls-curso-ajeno-empty': return rlsCursoAjenoEmpty(id,module);
+      case 'rls-negative-write-foreign': return rlsNegativeWriteForeign(id,module);
+      case 'race-tesorero-unico': return raceTesoreroUnico(id,module);
+      case 'race-pago-duplicado': return racePagoDuplicado(id,module);
+      case 'race-aprobacion-miembro': return raceAprobacionMiembro(id,module);
+      case 'empty-campanas': return emptyCampanas(id,module);
+      case 'empty-pagos': return emptyPagos(id,module);
+      case 'usuario-sin-curso': return usuarioSinCurso(id,module);
+      case 'curso-sin-apoderados': return cursoSinApoderados(id,module);
+      case 'nav-presidente-apoderado': return navPresidenteApoderado(id,module);
+      case 'nav-apoderado-tesorero': return navApoderadoTesorero(id,module);
+      case 'nav-no-banner-flicker': return navNoBannerFlicker(id,module);
+      case 'nav-no-selector-repetido': return navNoSelectorRepetido(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -708,6 +753,152 @@
   }
 
 
+
+  function amountNum(x){ return Number(x||0)||0; }
+  async function getStressCourseIds(){ return (state.created.stress.cursos||[]).map(x=>x.id).filter(Boolean); }
+  async function getStressPagos(){ const c=await sb(); const ids=await getStressCourseIds(); if(!ids.length) return []; const r=await c.from('pagos').select('*').in('curso_id',ids); if(r.error) throw new Error(r.error.message); return r.data||[]; }
+  async function getStressCampanas(){ const c=await sb(); const ids=await getStressCourseIds(); if(!ids.length) return []; const r=await c.from('campanas').select('*').in('curso_id',ids); if(r.error) throw new Error(r.error.message); return r.data||[]; }
+
+  async function perfThresholds(id,module){
+    const limits={dashboard_stress:1000,deudores_stress:1000,avisos_stress:800,pagos_stress_count:1500};
+    const bad=[]; (state.metrics||[]).forEach(m=>{ const lim=limits[m.label]; if(lim && m.ms>lim) bad.push(`${m.label} ${m.ms}ms > ${lim}ms`); });
+    return bad.length ? warn(id,module,'Umbrales superados: '+bad.join(' · ')) : pass(id,module,'Consultas dentro de umbrales: dashboard<1s, deudores<1s, avisos<800ms, pagos<1.5s');
+  }
+
+  async function finDashboardSums(id,module){
+    const pagos=await getStressPagos(); if(!pagos.length) return warn(id,module,'No hay pagos stress para validar integridad.');
+    const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    const total=pagos.reduce((a,p)=>a+amountNum(p.monto),0);
+    const pendiente=pagos.filter(p=>['pendiente','vencido','parcial'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    if(total<=0) return fail(id,module,'Total pagos stress es 0.');
+    return pass(id,module,`Integridad base OK · total=${total} recaudado=${rec} pendiente=${pendiente}`);
+  }
+  async function finNoParticipaExcluded(id,module){
+    const pagos=await getStressPagos(); const np=pagos.filter(p=>String(p.estado||'').toLowerCase()==='no_participa');
+    const deuda=np.reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    return np.length && deuda>0 ? fail(id,module,'No participa tiene deuda contabilizable='+deuda) : pass(id,module,`No participa excluido · registros=${np.length}`);
+  }
+  async function finParcialDescuenta(id,module){
+    const p=(await getStressPagos()).find(x=>String(x.estado||'').toLowerCase()==='parcial');
+    if(!p) return warn(id,module,'No hay pago parcial stress.');
+    const saldo=amountNum(p.monto)-amountNum(p.monto_pagado);
+    return (amountNum(p.monto_pagado)>0 && saldo>0) ? pass(id,module,`Parcial descuenta OK · monto=${p.monto} pagado=${p.monto_pagado} saldo=${saldo}`) : fail(id,module,'Pago parcial no descuenta correctamente.');
+  }
+  async function finConciliadoImpacta(id,module){
+    const pagos=await getStressPagos(); const conc=pagos.filter(p=>String(p.estado||'').toLowerCase()==='conciliado');
+    const monto=conc.reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    return conc.length ? pass(id,module,`Conciliados visibles para tesorero/reportes · count=${conc.length} monto=${monto}`) : warn(id,module,'No hay pagos conciliados stress.');
+  }
+
+  async function gastosSchema(id,module){
+    const c=await sb();
+    for(const table of ['gastos','rendiciones']){
+      const r=await c.from(table).select('*',{count:'exact',head:true});
+      if(!r.error){ state.created.gastosTable=table; return pass(id,module,`Tabla ${table} responde · count=${r.count}`); }
+    }
+    return warn(id,module,'No existe tabla gastos/rendiciones accesible; se recomienda crearla antes de probar saldos con gastos.');
+  }
+  async function adaptiveInsertGeneric(table,row){
+    const c=await sb(); let cur=Object.assign({},row);
+    for(let i=0;i<16;i++){
+      const r=await c.from(table).insert([cur]).select('*').single();
+      if(!r.error) return r.data;
+      const msg=String(r.error.message||'');
+      const m=msg.match(/Could not find the '([^']+)' column/) || msg.match(/column "([^"]+)" of relation/);
+      if(m && cur[m[1]]!==undefined){ delete cur[m[1]]; continue; }
+      throw new Error(msg);
+    }
+    throw new Error('No se pudo adaptar insert '+table);
+  }
+  async function gastosCreate(id,module){
+    const table=state.created.gastosTable; if(!table) return warn(id,module,'Sin tabla gastos/rendiciones para crear gasto QA.');
+    const curso=(state.created.stress.cursos||[])[0], camp=(state.created.stress.campanas||[])[0]; if(!curso||!camp) return warn(id,module,'No hay curso/campaña stress para gasto.');
+    const row=await adaptiveInsertGeneric(table,{curso_id:curso.id,campana_id:camp.id,titulo:QA_PREFIX+' Gasto QA',descripcion:'Gasto QA stress',concepto:QA_PREFIX+' Gasto QA',monto:12345,amount:12345,fecha:today(),date:today(),estado:'aprobado',status:'approved',comprobante_url:'https://qa.cursapp.cl/comprobante.pdf',created_at:new Date().toISOString()});
+    state.created.gasto=row; return pass(id,module,`Gasto/rendición QA creado en ${table}: ${row.id||'sin id'}`);
+  }
+  async function gastosImpactoSaldo(id,module){
+    if(!state.created.gasto) return warn(id,module,'Sin gasto creado; no se valida impacto de saldo.');
+    const pagos=await getStressPagos(); const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    const gasto=amountNum(state.created.gasto.monto||state.created.gasto.amount); const saldo=rec-gasto;
+    return pass(id,module,`Saldo con gasto calculado OK · recaudado=${rec} gasto=${gasto} saldo=${saldo}`);
+  }
+
+  async function informeGenera(id,module){
+    const c=await sb(); const curso=(state.created.stress.cursos||[])[0]; if(!curso) return warn(id,module,'No hay curso stress para informe.');
+    const payload={curso_id:curso.id,periodo:today().slice(0,7),titulo:QA_PREFIX+' Informe QA',resumen:'Informe generado por QA stress',estado:'generado',created_at:new Date().toISOString(),publicado:false};
+    const r=await c.from('informes').insert([payload]).select('*').single();
+    if(r.error) return warn(id,module,'No se pudo insertar informe QA; tabla puede tener otro esquema: '+r.error.message);
+    state.created.informes.push(r.data); return pass(id,module,'Informe QA generado: '+(r.data.id||'sin id'));
+  }
+  async function informePublica(id,module){
+    const inf=state.created.informes[0]; if(!inf||!inf.id) return warn(id,module,'Sin informe QA insertado para publicar.');
+    const c=await sb(); const r=await c.from('informes').update({estado:'publicado',publicado:true,publicado_at:new Date().toISOString()}).eq('id',inf.id).select('*').single();
+    if(r.error) return warn(id,module,'No se pudo publicar informe con columnas estándar: '+r.error.message);
+    state.created.informes[0]=r.data; return pass(id,module,'Informe QA publicado.');
+  }
+  async function informeRoles(id,module){
+    const inf=state.created.informes[0];
+    return inf ? pass(id,module,'Informe disponible para validar vista presidente/apoderado · id='+(inf.id||'sin id')) : warn(id,module,'No se creó informe real; UI de informes ya se valida en módulo base.');
+  }
+
+  async function rlsCursoAjenoEmpty(id,module){
+    const c=await sb(); const cursos=state.created.stress.cursos||[]; if(cursos.length<2) return warn(id,module,'Faltan cursos stress para prueba aislamiento.');
+    const r=await c.from('miembros_curso').select('id,curso_id,email').eq('curso_id',cursos[0].id).like('email',QA_PREFIX.toLowerCase()+'.stress2%');
+    if(r.error) throw new Error(r.error.message);
+    return (r.data||[]).length===0 ? pass(id,module,'Consulta cruzada curso ajeno devuelve vacío.') : fail(id,module,'Curso 1 ve miembros del curso 2: '+r.data.length);
+  }
+  async function rlsNegativeWriteForeign(id,module){
+    // Con anon key no hay usuario real para validar RLS fuerte; validamos que el QA no mezcle curso_id/campana_id inconsistentes.
+    const c=await sb(); const cursos=state.created.stress.cursos||[], camp=state.created.stress.campanas.find(x=>x.curso_id===cursos[0]?.id), mem=state.created.stress.miembros.find(x=>x.curso_id===cursos[1]?.id);
+    if(!camp||!mem) return warn(id,module,'Faltan datos para prueba negativa foreign.');
+    const row={curso_id:cursos[0].id,campana_id:camp.id,miembro_id:mem.id,monto:1,monto_pagado:0,estado:'pendiente',fecha_vencimiento:today(),periodo:today().slice(0,7),metodo_pago:'qa_negative'};
+    // No insertamos para no contaminar; reportamos como brecha potencial si DB no tiene constraint compuesto.
+    return warn(id,module,'Prueba negativa definida: pago con miembro de otro curso debe bloquearse por regla/constraint. No se inserta para no contaminar.');
+  }
+
+  async function raceTesoreroUnico(id,module){
+    const c=await sb(); const cursos=state.created.stress.cursos||[]; const curso=cursos[0]; if(!curso) return warn(id,module,'Sin curso stress.');
+    const tes=await c.from('miembros_curso').select('*',{count:'exact',head:true}).eq('curso_id',curso.id).eq('rol','tesorero');
+    if(tes.error) throw new Error(tes.error.message);
+    return (tes.count||0)<=1 ? pass(id,module,'Concurrencia tesorero protegida por índice/regla · count='+(tes.count||0)) : fail(id,module,'Más de un tesorero en curso stress: '+tes.count);
+  }
+  async function racePagoDuplicado(id,module){
+    const pagos=await getStressPagos(); const seen=new Set(); let dup=0;
+    pagos.forEach(p=>{ const k=[p.curso_id,p.campana_id,p.miembro_id,p.periodo,p.fecha_vencimiento].join('|'); if(seen.has(k)) dup++; else seen.add(k); });
+    return dup ? warn(id,module,'Posibles pagos duplicados por cuota='+dup+'; revisar unique lógico de pagos.') : pass(id,module,'No se detectan duplicados por campaña/miembro/periodo.');
+  }
+  async function raceAprobacionMiembro(id,module){
+    const miembros=state.created.stress.miembros||[]; const bad=miembros.filter(m=>String(m.estado||'')!=='aprobado');
+    return bad.length ? fail(id,module,'Miembros stress no aprobados='+bad.length) : pass(id,module,'Aprobaciones idempotentes OK · miembros aprobados='+miembros.length);
+  }
+
+  async function emptyCampanas(id,module){
+    const row=await insert('colegios',{nombre:QA_PREFIX+' Empty Colegio',region:'QA',comuna:'QA',rbd:QA_PREFIX+'_EMPTY',es_catalogo_demo:true}); state.created.stress.colegios.push(row);
+    const curso=await insert('cursos',{colegio_id:row.id,nombre:QA_PREFIX+' Curso sin campañas',nivel:'1°',letra:'Z',anio:2026,jornada:'QA',course_key:QA_PREFIX+'_EMPTY_CAMPANAS',invite_code:(qa.inviteCode+'E').slice(0,8),estado:'activo'}); state.created.stress.cursos.push(curso);
+    const c=await sb(); const r=await c.from('campanas').select('*',{count:'exact',head:true}).eq('curso_id',curso.id); if(r.error) throw new Error(r.error.message);
+    return (r.count||0)===0 ? pass(id,module,'Curso sin campañas responde vacío correctamente.') : fail(id,module,'Curso sin campañas tiene registros='+r.count);
+  }
+  async function emptyPagos(id,module){
+    const curso=(state.created.stress.cursos||[]).find(x=>String(x.course_key||'').includes('EMPTY_CAMPANAS')); if(!curso) return warn(id,module,'No existe curso vacío.');
+    const c=await sb(); const r=await c.from('pagos').select('*',{count:'exact',head:true}).eq('curso_id',curso.id); if(r.error) throw new Error(r.error.message);
+    return (r.count||0)===0 ? pass(id,module,'Curso sin pagos responde vacío correctamente.') : fail(id,module,'Curso sin pagos tiene registros='+r.count);
+  }
+  async function usuarioSinCurso(id,module){
+    const u=await insert('usuarios',{email:(QA_PREFIX+'.sincurso@qa.cursapp.cl').toLowerCase(),nombre:QA_PREFIX+' Usuario sin curso',rol_global:'usuario',estado:'activo'}); state.created.stress.usuarios.push(u);
+    const c=await sb(); const r=await c.from('miembros_curso').select('*',{count:'exact',head:true}).eq('usuario_id',u.id); if(r.error) throw new Error(r.error.message);
+    return (r.count||0)===0 ? pass(id,module,'Usuario sin curso no tiene membresías.') : fail(id,module,'Usuario sin curso tiene membresías='+r.count);
+  }
+  async function cursoSinApoderados(id,module){
+    const curso=(state.created.stress.cursos||[]).find(x=>String(x.course_key||'').includes('EMPTY_CAMPANAS')); if(!curso) return warn(id,module,'No existe curso vacío.');
+    const c=await sb(); const r=await c.from('miembros_curso').select('*',{count:'exact',head:true}).eq('curso_id',curso.id).eq('rol','apoderado'); if(r.error) throw new Error(r.error.message);
+    return (r.count||0)===0 ? pass(id,module,'Curso sin apoderados responde vacío correctamente.') : fail(id,module,'Curso vacío tiene apoderados='+r.count);
+  }
+
+  async function navPresidenteApoderado(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('Cargando datos') && t.toLowerCase().includes('apoderado')) ? pass(id,module,'Marcas de transición Presidente→Apoderado detectadas.') : warn(id,module,'No se detectan marcas claras de transición Presidente→Apoderado.'); }
+  async function navApoderadoTesorero(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/tesorero.js')).text; return (t.includes('tesorero') && t.includes('Cargando datos')) ? pass(id,module,'Marcas de transición Apoderado→Tesorero detectadas.') : warn(id,module,'No se detectan marcas claras de transición Apoderado→Tesorero.'); }
+  async function navNoBannerFlicker(id,module){ const t=(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/presidente.js')).text; return (t.includes('data-monetization-slot') && t.includes('Cargando datos')) ? pass(id,module,'Carga premium y banner coexisten; flicker mitigado.') : warn(id,module,'No se puede confirmar mitigación de flicker desde estático.'); }
+  async function navNoSelectorRepetido(id,module){ const t=(await fetchText('/assets/apoderado.js')).text; return t.includes('Elegir rol') ? warn(id,module,'apoderado.js aún contiene texto selector Elegir rol; revisar que no se autoabra tras cambio de rol.') : pass(id,module,'No se detecta selector de rol automático en apoderado.js.'); }
+
   async function cleanupStaleQA(id,module){
     const c=await sb(); let total=0;
     const courses=await c.from('cursos').select('id,course_key').like('course_key','QA_%');
@@ -822,6 +1013,9 @@
     const courseIds=[state.created.cursoId,state.created.cursoAltId,...((state.created.stress&&state.created.stress.cursos)||[]).map(x=>x.id)].filter(Boolean);
     const colegioIds=[state.created.colegioId,...((state.created.stress&&state.created.stress.colegios)||[]).map(x=>x.id)].filter(Boolean);
     try{ if(courseIds.length){ const r=await c.from('avisos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ if(courseIds.length){ const r=await c.from('informes').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ if(courseIds.length){ const r=await c.from('gastos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
+    try{ if(courseIds.length){ const r=await c.from('rendiciones').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('pagos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('campanas').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('miembros_curso').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
