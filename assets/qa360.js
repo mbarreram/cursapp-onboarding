@@ -64,6 +64,7 @@
     { id:'integridad', name:'Integridad financiera', tests:['fin-dashboard-sums','fin-no-participa-excluded','fin-parcial-descuenta','fin-conciliado-impacta'] },
     { id:'rendiciones', name:'Rendiciones / gastos', tests:['gastos-schema','gastos-create','rendicion-create','gastos-impacto-saldo'] },
     { id:'informes-reales', name:'Informes reales', tests:['informe-genera','informe-publica','informe-roles'] },
+    { id:'negocio', name:'Reglas de negocio Cursapp', tests:['biz-mensual-arrears','biz-saldo-favor','biz-no-participa-crossrole','biz-dashboard-financiero','biz-informe-ejecutivo-math'] },
     { id:'seguridad', name:'Seguridad / RLS', tests:['rls-curso-ajeno-empty','rls-negative-write-foreign'] },
     { id:'concurrencia', name:'Concurrencia', tests:['race-tesorero-unico','race-pago-duplicado','race-aprobacion-miembro'] },
     { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
@@ -131,6 +132,7 @@
       integridad:'Valida consistencia de saldos, por cobrar, no participa, parcial y conciliado.',
       rendiciones:'Crea gasto/rendición QA y valida impacto financiero si la tabla existe.',
       'informes-reales':'Genera/publica informe QA y valida vistas por rol si la tabla permite escritura.',
+      negocio:'Valida reglas de negocio críticas: cuotas mensuales, saldo a favor, no participa, dashboard financiero e informe ejecutivo.',
       seguridad:'Pruebas negativas de aislamiento de curso y escritura fuera de contexto QA.',
       concurrencia:'Simula operaciones simultáneas para tesorero, pago y aprobación.',
       resiliencia:'Valida respuestas ante cursos vacíos, sin pagos o usuarios sin curso.',
@@ -158,6 +160,7 @@
       'fin-dashboard-sums':'Suma pagos vs dashboard','fin-no-participa-excluded':'No participa excluido de deuda','fin-parcial-descuenta':'Pago parcial descuenta','fin-conciliado-impacta':'Conciliado impacta reportes',
       'gastos-schema':'Validar tabla gastos/rendiciones','gastos-create':'Crear gasto/rendición QA','gastos-impacto-saldo':'Gasto resta del saldo','rendicion-create':'Crear rendición QA',
       'informe-genera':'Generar informe QA','informe-publica':'Publicar informe QA','informe-roles':'Validar informe por rol',
+      'biz-mensual-arrears':'Campaña mensual 10 cuotas','biz-saldo-favor':'Saldo a favor aplicado','biz-no-participa-crossrole':'No participa impacto roles','biz-dashboard-financiero':'Dashboard financiero matemático','biz-informe-ejecutivo-math':'Informe ejecutivo consistente',
       'rls-curso-ajeno-empty':'Aislamiento curso ajeno','rls-negative-write-foreign':'Escritura negativa curso ajeno',
       'race-tesorero-unico':'Concurrencia tesorero único','race-pago-duplicado':'Concurrencia pago duplicado','race-aprobacion-miembro':'Concurrencia aprobación miembro',
       'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
@@ -308,6 +311,11 @@
       case 'informe-genera': return informeGenera(id,module);
       case 'informe-publica': return informePublica(id,module);
       case 'informe-roles': return informeRoles(id,module);
+      case 'biz-mensual-arrears': return bizMensualArrears(id,module);
+      case 'biz-saldo-favor': return bizSaldoFavor(id,module);
+      case 'biz-no-participa-crossrole': return bizNoParticipaCrossRole(id,module);
+      case 'biz-dashboard-financiero': return bizDashboardFinanciero(id,module);
+      case 'biz-informe-ejecutivo-math': return bizInformeEjecutivoMath(id,module);
       case 'rls-curso-ajeno-empty': return rlsCursoAjenoEmpty(id,module);
       case 'rls-negative-write-foreign': return rlsNegativeWriteForeign(id,module);
       case 'race-tesorero-unico': return raceTesoreroUnico(id,module);
@@ -927,6 +935,163 @@
     const r=await c.from('informes').select('*',{count:'exact'}).eq('id',inf.id).eq('publicado',true);
     if(r.error) return warn(id,module,'No se pudo consultar informe publicado: '+r.error.message);
     return (r.count||0)>0 ? pass(id,module,'Informe publicado consultable para presidente/apoderado · id='+(inf.id||'sin id')) : warn(id,module,'Informe existe pero no aparece como publicado.');
+  }
+
+
+  function monthPeriod(baseDate, offset){
+    const d = new Date(baseDate || new Date());
+    d.setDate(15);
+    d.setMonth(d.getMonth()+offset);
+    return d.toISOString().slice(0,7);
+  }
+  function periodDueDate(period){
+    const [y,m]=String(period).split('-').map(Number);
+    return new Date(y, (m||1)-1, 28).toISOString().slice(0,10);
+  }
+  async function ensureBizContext(){
+    const curso=(state.created.stress.cursos||[])[0];
+    const member=(state.created.stress.miembros||[]).find(x=>x.curso_id===curso?.id && x.rol==='apoderado');
+    if(!curso || !member) throw new Error('Faltan datos stress para reglas de negocio. Ejecuta QA stress.');
+    return {curso, member};
+  }
+
+  async function bizMensualArrears(id,module){
+    const {curso, member}=await ensureBizContext();
+    const camp=await insert('campanas',{
+      curso_id:curso.id,
+      titulo:QA_PREFIX+' BIZ mensual 10 cuotas',
+      tipo:'monthly',
+      monto:1000,
+      fecha_inicio:today(),
+      fecha_vencimiento:addMonthsIso(1),
+      meses:10,
+      obligatoria:true,
+      estado:'activa',
+      descripcion:'QA negocio: enero impago, febrero paga enero+febrero, marzo paga marzo',
+      meta:0,
+      goal_total:0
+    });
+    state.created.stress.campanas.push(camp);
+    const rows=[];
+    for(let i=0;i<10;i++){
+      const periodo=monthPeriod(new Date(), i);
+      const paid = i < 3; // Enero+Febrero+Marzo pagados; resto pendiente.
+      rows.push({
+        curso_id:curso.id,
+        campana_id:camp.id,
+        miembro_id:member.id,
+        monto:1000,
+        monto_pagado:paid?1000:0,
+        estado:paid?'pagado':'pendiente',
+        fecha_vencimiento:periodDueDate(periodo),
+        periodo,
+        metodo_pago:paid?(i<2?'transferencia':'transbank'):'qa',
+        paid_at:paid?new Date().toISOString():null,
+        concepto:'QA mensual cuota '+(i+1)+'/10'
+      });
+    }
+    const inserted=await insertMany('pagos', rows, 50);
+    const c=await sb();
+    const r=await c.from('pagos').select('*',{count:'exact'}).eq('campana_id',camp.id).eq('miembro_id',member.id).order('periodo');
+    if(r.error) throw new Error(r.error.message);
+    const pagos=r.data||[];
+    const paid=pagos.filter(p=>p.estado==='pagado').length;
+    const pend=pagos.filter(p=>p.estado==='pendiente').length;
+    const unique=new Set(pagos.map(p=>p.periodo)).size;
+    if(pagos.length!==10 || paid!==3 || pend!==7 || unique!==10) return fail(id,module,`Mensual no cuadra · cuotas=${pagos.length} pagadas=${paid} pendientes=${pend} periodos=${unique}`);
+    return pass(id,module,'Campaña mensual OK · 10 cuotas · enero+febrero pagados juntos · marzo pagado · 7 pendientes futuras.');
+  }
+
+  async function bizSaldoFavor(id,module){
+    const {curso, member}=await ensureBizContext();
+    const camp=await insert('campanas',{
+      curso_id:curso.id,
+      titulo:QA_PREFIX+' BIZ saldo favor',
+      tipo:'monthly',
+      monto:1000,
+      fecha_inicio:today(),
+      fecha_vencimiento:addMonthsIso(1),
+      meses:2,
+      obligatoria:true,
+      estado:'activa',
+      descripcion:'QA negocio: pago extra aplica a próxima cuota',
+      meta:0,
+      goal_total:0
+    });
+    state.created.stress.campanas.push(camp);
+    const p1=monthPeriod(new Date(),0), p2=monthPeriod(new Date(),1);
+    const rows=[
+      {curso_id:curso.id,campana_id:camp.id,miembro_id:member.id,monto:1000,monto_pagado:1500,estado:'pagado',fecha_vencimiento:periodDueDate(p1),periodo:p1,metodo_pago:'transbank',paid_at:new Date().toISOString(),concepto:'QA saldo favor cuota 1'},
+      {curso_id:curso.id,campana_id:camp.id,miembro_id:member.id,monto:1000,monto_pagado:500,estado:'parcial',fecha_vencimiento:periodDueDate(p2),periodo:p2,metodo_pago:'saldo_favor',concepto:'QA saldo favor aplicado cuota 2'}
+    ];
+    await insertMany('pagos', rows, 50);
+    const c=await sb();
+    const r=await c.from('pagos').select('*').eq('campana_id',camp.id).eq('miembro_id',member.id).order('periodo');
+    if(r.error) throw new Error(r.error.message);
+    const pagos=r.data||[];
+    const extra=Math.max(0,amountNum(pagos[0]?.monto_pagado)-amountNum(pagos[0]?.monto));
+    const saldo2=Math.max(0,amountNum(pagos[1]?.monto)-amountNum(pagos[1]?.monto_pagado));
+    if(extra!==500 || saldo2!==500) return fail(id,module,`Saldo a favor no cuadra · extra=${extra} saldo cuota2=${saldo2}`);
+    return pass(id,module,'Saldo a favor OK · pago extra=500 · aplicado a cuota siguiente · pendiente neto=500.');
+  }
+
+  async function bizNoParticipaCrossRole(id,module){
+    const {curso, member}=await ensureBizContext();
+    const camp=await insert('campanas',{
+      curso_id:curso.id,
+      titulo:QA_PREFIX+' BIZ voluntaria no participa',
+      tipo:'single',
+      monto:3000,
+      fecha_inicio:today(),
+      fecha_vencimiento:addDays(15),
+      meses:1,
+      obligatoria:false,
+      estado:'activa',
+      descripcion:'QA negocio: campaña voluntaria con no participa',
+      meta:0,
+      goal_total:0
+    });
+    state.created.stress.campanas.push(camp);
+    await insert('pagos',{curso_id:curso.id,campana_id:camp.id,miembro_id:member.id,monto:3000,monto_pagado:0,estado:'no_participa',fecha_vencimiento:addDays(15),periodo:today().slice(0,7),metodo_pago:'qa',concepto:'QA no participa trazable'});
+    const c=await sb();
+    const [np,deuda,deudor]=await Promise.all([
+      c.from('pagos').select('*',{count:'exact',head:true}).eq('campana_id',camp.id).eq('estado','no_participa'),
+      c.from('pagos').select('*',{count:'exact',head:true}).eq('campana_id',camp.id).in('estado',['pendiente','vencido','parcial']),
+      c.from('pagos').select('miembro_id').eq('campana_id',camp.id).in('estado',['pendiente','vencido','parcial']).eq('miembro_id',member.id)
+    ]);
+    if(np.error||deuda.error||deudor.error) throw new Error((np.error||deuda.error||deudor.error).message);
+    if((np.count||0)!==1 || (deuda.count||0)!==0 || (deudor.data||[]).length) return fail(id,module,`No participa incorrecto · np=${np.count} deuda=${deuda.count} deudor=${(deudor.data||[]).length}`);
+    return pass(id,module,'No participa OK · trazable · no entra en deudores · no suma deuda para presidente/tesorero/apoderado.');
+  }
+
+  async function bizDashboardFinanciero(id,module){
+    const pagos=await getStressPagos();
+    const gastosMonto=amountNum(state.created.gasto?.monto||state.created.gasto?.amount||0);
+    const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    const pendiente=pagos.filter(p=>['pendiente','vencido','parcial'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    const noPart=pagos.filter(p=>String(p.estado||'').toLowerCase()==='no_participa').reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    const disponible=rec-gastosMonto;
+    if(rec<=0 || pendiente<=0) return fail(id,module,`Dashboard financiero sin base suficiente · rec=${rec} pendiente=${pendiente}`);
+    return pass(id,module,`Dashboard financiero OK · recaudado=${rec} pendiente=${pendiente} no_participa_trazable=${noPart} rendido=${gastosMonto} disponible=${disponible}`);
+  }
+
+  async function bizInformeEjecutivoMath(id,module){
+    const curso=(state.created.stress.cursos||[])[0];
+    if(!curso) return warn(id,module,'Sin curso stress para informe ejecutivo negocio.');
+    const pagos=await getStressPagos();
+    const rec=pagos.filter(p=>['pagado','conciliado'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+amountNum(p.monto_pagado||p.monto),0);
+    const pendiente=pagos.filter(p=>['pendiente','vencido','parcial'].includes(String(p.estado||'').toLowerCase())).reduce((a,p)=>a+Math.max(0,amountNum(p.monto)-amountNum(p.monto_pagado)),0);
+    const rendido=amountNum(state.created.gasto?.monto||state.created.gasto?.amount||0);
+    const disponible=rec-rendido;
+    const contenido=JSON.stringify({qa:true,tipo:'ejecutivo',recaudado:rec,pendiente,rendido,disponible,run:QA_PREFIX});
+    const payload={curso_id:curso.id,tipo:'ejecutivo',titulo:QA_PREFIX+' Informe Ejecutivo Matemático',contenido,publicado:true,publicado_at:new Date().toISOString(),created_at:new Date().toISOString()};
+    const inf=await adaptiveInsertGeneric('informes',payload);
+    state.created.informes.push(inf);
+    const c=await sb();
+    const r=await c.from('informes').select('*').eq('id',inf.id).single();
+    if(r.error) throw new Error(r.error.message);
+    const ok=String(r.data.contenido||'').includes(String(rec)) && !!r.data.publicado;
+    return ok ? pass(id,module,`Informe ejecutivo OK · recaudado=${rec} pendiente=${pendiente} rendido=${rendido} disponible=${disponible}`) : warn(id,module,'Informe creado pero contenido matemático no verificable.');
   }
 
   async function rlsCursoAjenoEmpty(id,module){
