@@ -1,5 +1,5 @@
-/* Cursapp QA 360 modular Supabase · activo
-   - V10.3: QA visual con sesión real Supabase por rol antes de abrir iframes
+/* Cursapp QA 360 modular Supabase · Mercado V2
+   - Mercado V2: modo inspección para conservar publicaciones QA y limpieza manual de Mercado
    - Ejecuta pruebas por módulo.
    - Puede crear registros QA_* en Supabase y limpiarlos al final.
    - V8: stress financiero + performance + avisos + gastos/rendiciones + informes publicados + RLS/concurrencia/resiliencia/navegación.
@@ -25,6 +25,8 @@
   const today = ()=>new Date().toISOString().slice(0,10);
   const addDays = (n)=>{ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
   const q = (v)=>String(v??'');
+  const keepMercadoQa = () => !!($('keepMercadoQa') && $('keepMercadoQa').checked);
+
 
   const qa = {
     courseKey: QA_PREFIX + '_COURSE',
@@ -98,6 +100,7 @@
     $('downloadJsonBtn') && ($('downloadJsonBtn').onclick=downloadJson);
     $('downloadHtmlBtn') && ($('downloadHtmlBtn').onclick=downloadHtml);
     $('cleanupOnlyBtn') && ($('cleanupOnlyBtn').onclick=async()=>{ state.mode='cleanup'; state.cleanup=true; setBusy(true); await runOneModule({id:'limpieza',name:'Limpieza QA',tests:['cleanup-qa','verify-cleanup']}); setBusy(false); });
+    $('cleanupMarketOnlyBtn') && ($('cleanupMarketOnlyBtn').onclick=async()=>{ state.mode='mercado-cleanup'; setBusy(true); await runOneModule({id:'mercado-v1',name:'Mercado Escolar V2',tests:['market-cleanup-by-prefix']}); setBusy(false); });
   }
 
   function renderModules(mode){
@@ -167,7 +170,7 @@
       'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
       'nav-presidente-apoderado':'Presidente → Apoderado','nav-apoderado-tesorero':'Apoderado → Tesorero','nav-no-banner-flicker':'Sin banner antes de carga','nav-no-selector-repetido':'Sin selector de rol repetido',
       'ui-open-role-pages':'Abrir pantallas en modo UI','ui-click-presidente':'Clicks Presidente','ui-click-apoderado':'Clicks Apoderado','ui-click-tesorero':'Clicks Tesorero','ui-click-qa-evidence':'Evidencia QA descargable',
-      'market-schema':'Tablas Mercado disponibles','market-create-post':'Crear publicación Mercado QA','market-list-posts':'Listar publicación Mercado QA','market-contact':'Registrar contacto WhatsApp QA','market-report':'Reportar publicación QA','market-cleanup':'Limpiar Mercado QA',
+      'market-schema':'Tablas Mercado disponibles','market-create-post':'Crear publicación Mercado QA','market-list-posts':'Listar publicación Mercado QA','market-contact':'Registrar contacto WhatsApp QA','market-report':'Reportar publicación QA','market-cleanup':'Limpiar Mercado QA','market-cleanup-by-prefix':'Limpiar Mercado QA conservado',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -342,6 +345,7 @@
       case 'market-contact': return marketContact(id,module);
       case 'market-report': return marketReport(id,module);
       case 'market-cleanup': return marketCleanup(id,module);
+      case 'market-cleanup-by-prefix': return marketCleanupByPrefix(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -1502,13 +1506,30 @@
     return pass(id,module,'Reporte Mercado QA registrado: '+r.data.id);
   }
   async function marketCleanup(id,module){
-    const c=await sb(); let total=0;
     const p=state.created.mercadoPost;
-    if(p && p.id){
-      for(const t of ['mercado_contactos','mercado_reportes']){try{const r=await c.from(t).delete().eq('publicacion_id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}}
-      try{const r=await c.from('mercado_publicaciones').delete().eq('id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    if(!p || !p.id) return warn(id,module,'Sin publicación Mercado QA para limpiar o conservar.');
+    if(!state.cleanup || keepMercadoQa()){
+      return pass(id,module,'Mercado QA conservado para inspección · publicacion_id='+p.id+' · limpieza_general='+(state.cleanup?'activa':'desactivada'));
     }
+    const c=await sb(); let total=0;
+    for(const t of ['mercado_contactos','mercado_reportes']){
+      try{const r=await c.from(t).delete().eq('publicacion_id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    }
+    try{const r=await c.from('mercado_publicaciones').delete().eq('id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
     return pass(id,module,'Registros Mercado QA eliminados: '+total);
+  }
+
+  async function marketCleanupByPrefix(id,module){
+    const c=await sb(); let total=0;
+    const pubs=await c.from('mercado_publicaciones').select('id,titulo').or('titulo.ilike.QA_%,titulo.ilike.% Mercado QA%,titulo.ilike.%Pack libros QA%');
+    if(pubs.error) return fail(id,module,pubs.error.message);
+    const ids=(pubs.data||[]).map(x=>x.id);
+    if(!ids.length) return pass(id,module,'No hay publicaciones Mercado QA conservadas para limpiar.');
+    for(const t of ['mercado_contactos','mercado_reportes']){
+      try{const r=await c.from(t).delete().in('publicacion_id',ids).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    }
+    try{const r=await c.from('mercado_publicaciones').delete().in('id',ids).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    return pass(id,module,'Mercado QA conservado eliminado: '+total+' registros · publicaciones='+ids.length);
   }
 
   async function cleanupStaleQA(id,module){
