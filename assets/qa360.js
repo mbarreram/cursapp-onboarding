@@ -15,7 +15,7 @@
     cleanup: true,
     modules: [],
     results: [],
-    created: { colegioId:null, cursoId:null, cursoAltId:null, usuarios:[], miembros:[], campanas:[], pagos:[], informes:[], stress:{colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:0, expected:{}} }
+    created: { colegioId:null, cursoId:null, cursoAltId:null, usuarios:[], miembros:[], campanas:[], pagos:[], avisos:[], informes:[], stress:{colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], avisos:[], pagos:0, expected:{}} }, metrics: []
   };
 
   const $ = (id)=>document.getElementById(id);
@@ -55,8 +55,11 @@
   ];
 
   const MODULES_STRESS = [
-    ...MODULES_FULL.filter(m => m.id !== 'limpieza'),
+    { id:'infra', name:'Base / Supabase', tests:['login-html','role-html','assets','supabase-ready','supabase-tables'] },
+    { id:'stress-prep', name:'Preparación stress', tests:['cleanup-stale-qa'] },
     { id:'stress', name:'Stress multi-curso', tests:['stress-create-dataset','stress-validate-counts','stress-validate-hermanos','stress-dashboard-scale','stress-payment-distribution'] },
+    { id:'avisos', name:'Avisos', tests:['avisos-schema','avisos-create','avisos-consulta-presidente','avisos-consulta-apoderado'] },
+    { id:'performance', name:'Performance DB', tests:['perf-dashboard-stress','perf-deudores-stress','perf-avisos-stress','perf-pagos-stress'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -113,6 +116,9 @@
       tesorero:'Valida datos y marcas visuales de tesorero.',
       informes:'Valida tablas o módulos de informes.',
       stress:'Crea 2 colegios, 2 cursos, 85 alumnos/apoderados, 16 campañas y miles de pagos para validar escala.',
+      'stress-prep':'Limpia datos QA_* antiguos antes del stress aislado.',
+      avisos:'Crea y consulta avisos por curso/rol para presidente y apoderado.',
+      performance:'Mide tiempos reales de consultas Supabase en milisegundos.',
       limpieza:'Borra solo registros creados por este QA.'
     })[id] || '';
   }
@@ -128,7 +134,10 @@
       'apoderado-data':'Datos apoderado consultables','no-participo-logic':'Lógica No participo presente','apoderado-ui-markers':'UI Apoderado estable',
       'tesorero-data':'Datos tesorero consultables','tesorero-ui-markers':'UI Tesorero estable','tesorero-pagos-conciliables':'Pagos conciliables por tesorero',
       'informes-table':'Informes disponibles o advertencia','informes-ui-markers':'UI Informes presente',
+      'cleanup-stale-qa':'Prelimpiar QA_* antiguos',
       'stress-create-dataset':'Crear dataset stress','stress-validate-counts':'Validar conteos stress','stress-validate-hermanos':'Validar hermanos stress','stress-dashboard-scale':'Validar consultas dashboard stress','stress-payment-distribution':'Validar distribución pagos stress',
+      'avisos-schema':'Validar tabla avisos','avisos-create':'Crear avisos QA','avisos-consulta-presidente':'Consultar avisos Presidente','avisos-consulta-apoderado':'Consultar avisos Apoderado',
+      'perf-dashboard-stress':'Medir dashboard stress','perf-deudores-stress':'Medir deudores stress','perf-avisos-stress':'Medir avisos stress','perf-pagos-stress':'Medir pagos stress',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -179,12 +188,14 @@
   async function sb(){ const x=await waitSupabase(); if(!x) throw new Error('Cliente Supabase no disponible'); return x; }
   async function fetchText(url){ const res=await fetch(url,{cache:'no-store'}); const text=await res.text(); if(!res.ok) throw new Error('HTTP '+res.status+' '+url); return {res,text}; }
   async function tableCount(table){ const c=await sb(); return await c.from(table).select('*',{count:'exact',head:true}); }
+  async function measure(label, fn){ const t0=performance.now(); const result=await fn(); const ms=Math.round(performance.now()-t0); state.metrics.push({label,ms,at:new Date().toISOString()}); return {result,ms}; }
+  function perfLabel(ms){ return ms<500?'OK':(ms<1500?'WARN':'LENTO'); }
   async function insert(table,row){ const c=await sb(); const {data,error}=await c.from(table).insert([row]).select('*').single(); if(error) throw new Error(error.message); return data; }
   async function del(table,filterFn){ const c=await sb(); return await filterFn(c.from(table).delete()); }
 
   async function run(mode){
     state.mode=mode; state.cleanup = !!($('cleanupQa') && $('cleanupQa').checked);
-    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,cursoAltId:null,usuarios:[],miembros:[],campanas:[],pagos:[],informes:[],stress:{colegios:[],cursos:[],usuarios:[],miembros:[],campanas:[],pagos:0,expected:{}}};
+    state.startedAt=new Date().toISOString(); state.endedAt=null; state.results=[]; state.modules=[]; state.created={colegioId:null,cursoId:null,cursoAltId:null,usuarios:[],miembros:[],campanas:[],pagos:[],avisos:[],informes:[],stress:{colegios:[],cursos:[],usuarios:[],miembros:[],campanas:[],avisos:[],pagos:0,expected:{}}}; state.metrics=[];
     renderModules(mode); setBusy(true);
     for(const m of rowsFor(mode)){ await runOneModule(m); }
     state.endedAt=new Date().toISOString(); setBusy(false); await persistOptional(); buildReport();
@@ -203,7 +214,7 @@
       case 'role-html': { const urls=['/presidente.html','/apoderado.html','/tesorero.html']; const out=[]; for(const u of urls){ const r=await fetchText(u); out.push(u+': '+r.res.status); } return pass(id,module,out.join(' · ')); }
       case 'assets': { const urls=['/assets/presidente.js','/assets/apoderado.js','/assets/tesorero.js','/assets/supabaseClient.js']; const out=[]; for(const u of urls){ const r=await fetchText(u); out.push(u.split('/').pop()+': '+r.text.length); } return pass(id,module,out.join(' · ')); }
       case 'supabase-ready': { await sb(); return pass(id,module,'Cliente Supabase listo.'); }
-      case 'supabase-tables': { const tables=['cursos','miembros_curso','campanas']; const out=[]; for(const t of tables){ const {error,count}=await tableCount(t); if(error) throw new Error(t+': '+error.message); out.push(t+'='+count); } return pass(id,module,out.join(' · ')); }
+      case 'supabase-tables': { const tables=['cursos','miembros_curso','campanas','pagos','avisos']; const out=[]; for(const t of tables){ const {error,count}=await tableCount(t); if(error) throw new Error(t+': '+error.message); out.push(t+'='+count); } return pass(id,module,out.join(' · ')); }
       case 'supabase-write': { const c=await sb(); const {error}=await c.from('cursos').select('id',{count:'exact',head:true}); if(error) throw new Error(error.message); return pass(id,module,'Lectura confirmada. Escritura real se valida en QA completo.'); }
       case 'loading': { const a=(await fetchText('/assets/presidente.js')).text+(await fetchText('/assets/apoderado.js')).text+(await fetchText('/assets/tesorero.js')).text; const miss=['Cargando datos','Preparando'].filter(x=>!a.includes(x)); return miss.length?warn(id,module,'Faltan marcas: '+miss.join(', ')):pass(id,module,'Loading detectado en componentes.'); }
       case 'tesorero-markers': { const t=(await fetchText('/assets/presidente.js')).text; const miss=['Ya existe un tesorero','Eliminar tesorero','rol tesorero'].filter(x=>!t.includes(x)); return miss.length?fail(id,module,'Faltan marcas: '+miss.join(', ')):pass(id,module,'Lógica detectada.'); }
@@ -246,11 +257,20 @@
       case 'tesorero-pagos-conciliables': return validateTesoreroPagosConciliables(id,module);
       case 'informes-table': return validateInformes(id,module);
       case 'informes-ui-markers': { const t=(await fetchText('/assets/presidente.js')).text; return t.includes('Informes')?pass(id,module,'UI Informes presente.'):warn(id,module,'No encontré marca Informes.'); }
+      case 'cleanup-stale-qa': return cleanupStaleQA(id,module);
       case 'stress-create-dataset': return createStressDataset(id,module);
       case 'stress-validate-counts': return validateStressCounts(id,module);
       case 'stress-validate-hermanos': return validateStressHermanos(id,module);
       case 'stress-dashboard-scale': return validateStressDashboardScale(id,module);
       case 'stress-payment-distribution': return validateStressPaymentDistribution(id,module);
+      case 'avisos-schema': return validateAvisosSchema(id,module);
+      case 'avisos-create': return createAvisosQA(id,module);
+      case 'avisos-consulta-presidente': return consultaAvisosQA(id,module,'presidente');
+      case 'avisos-consulta-apoderado': return consultaAvisosQA(id,module,'apoderado');
+      case 'perf-dashboard-stress': return perfDashboardStress(id,module);
+      case 'perf-deudores-stress': return perfDeudoresStress(id,module);
+      case 'perf-avisos-stress': return perfAvisosStress(id,module);
+      case 'perf-pagos-stress': return perfPagosStress(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -687,11 +707,121 @@
     return pass(id,module,'Distribución estados OK · '+out.join(' · '));
   }
 
+
+  async function cleanupStaleQA(id,module){
+    const c=await sb(); let total=0;
+    const courses=await c.from('cursos').select('id,course_key').like('course_key','QA_%');
+    if(courses.error) throw new Error(courses.error.message);
+    const courseIds=(courses.data||[]).map(x=>x.id);
+    if(courseIds.length){
+      for(const table of ['avisos','pagos','campanas','miembros_curso']){
+        try{ const r=await c.from(table).delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+      }
+      try{ const r=await c.from('cursos').delete().in('id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+    }
+    try{ const r=await c.from('usuarios').delete().like('email','qa_%@qa.cursapp.cl').select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+    try{ const r=await c.from('colegios').delete().like('rbd','QA_%').select('id'); if(!r.error) total+=(r.data||[]).length; }catch(e){}
+    return pass(id,module,'Prelimpieza QA_* ejecutada · registros eliminados='+total);
+  }
+
+  async function validateAvisosSchema(id,module){
+    const c=await sb();
+    const r=await c.from('avisos').select('*',{count:'exact',head:true});
+    if(r.error) return warn(id,module,'Tabla avisos no disponible o sin permisos: '+r.error.message);
+    return pass(id,module,'Tabla avisos responde · count='+r.count);
+  }
+
+  async function adaptiveInsertAviso(row){
+    const c=await sb();
+    let cur=Object.assign({}, row);
+    for(let i=0;i<12;i++){
+      const {data,error}=await c.from('avisos').insert([cur]).select('*').single();
+      if(!error) return data;
+      const msg=String(error.message||'');
+      const m=msg.match(/Could not find the '([^']+)' column/);
+      if(m && cur[m[1]]!==undefined){ delete cur[m[1]]; continue; }
+      const m2=msg.match(/column "([^"]+)" of relation "avisos" does not exist/);
+      if(m2 && cur[m2[1]]!==undefined){ delete cur[m2[1]]; continue; }
+      throw new Error(msg);
+    }
+    throw new Error('No se pudo adaptar insert de avisos al schema actual.');
+  }
+
+  async function createAvisosQA(id,module){
+    const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para crear avisos.');
+    const rows=[];
+    for(const curso_id of courseIds){
+      rows.push({curso_id,titulo:QA_PREFIX+' Aviso general',mensaje:'Aviso QA para todos los apoderados',contenido:'Aviso QA para todos los apoderados',tipo:'general',rol_destino:'apoderado',destinatario_rol:'apoderado',estado:'publicado',prioridad:'normal',created_at:new Date().toISOString(),fecha_publicacion:new Date().toISOString()});
+      rows.push({curso_id,titulo:QA_PREFIX+' Aviso pago',mensaje:'Recordatorio QA de pago pendiente',contenido:'Recordatorio QA de pago pendiente',tipo:'pago',rol_destino:'apoderado',destinatario_rol:'apoderado',estado:'publicado',prioridad:'alta',created_at:new Date().toISOString(),fecha_publicacion:new Date().toISOString()});
+      rows.push({curso_id,titulo:QA_PREFIX+' Aviso directiva',mensaje:'Aviso QA para directiva/presidente',contenido:'Aviso QA para directiva/presidente',tipo:'directiva',rol_destino:'presidente',destinatario_rol:'presidente',estado:'publicado',prioridad:'normal',created_at:new Date().toISOString(),fecha_publicacion:new Date().toISOString()});
+    }
+    const inserted=[]; const t0=performance.now();
+    for(const row of rows){ inserted.push(await adaptiveInsertAviso(row)); }
+    const ms=Math.round(performance.now()-t0);
+    state.created.avisos.push(...inserted); state.created.stress.avisos.push(...inserted);
+    return pass(id,module,'Avisos QA creados='+inserted.length+' · '+ms+' ms');
+  }
+
+  async function consultaAvisosQA(id,module,rol){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para consultar avisos.');
+    const {result,ms}=await measure('avisos_'+rol, async()=>{
+      let q=c.from('avisos').select('*',{count:'exact'}).in('curso_id',courseIds);
+      return await q;
+    });
+    if(result.error) throw new Error(result.error.message);
+    const rows=result.data||[];
+    const filtered=rows.filter(a=>{
+      const target=String(a.rol_destino||a.destinatario_rol||a.rol||a.tipo_destino||'').toLowerCase();
+      return !target || target.includes(rol) || target.includes('todos') || (rol==='apoderado' && target.includes('apoderado'));
+    });
+    return filtered.length ? pass(id,module,'Avisos '+rol+' consultables='+filtered.length+' · '+ms+' ms') : warn(id,module,'Avisos creados pero no filtrables para '+rol+' · total='+rows.length+' · '+ms+' ms');
+  }
+
+  async function perfDashboardStress(id,module){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para medir dashboard.');
+    const {result,ms}=await measure('dashboard_stress', async()=>Promise.all([
+      c.from('campanas').select('id,curso_id,titulo,tipo,monto,obligatoria,estado',{count:'exact'}).in('curso_id',courseIds),
+      c.from('pagos').select('curso_id,estado,monto,monto_pagado,miembro_id',{count:'exact'}).in('curso_id',courseIds),
+      c.from('miembros_curso').select('id,curso_id,rol,email,nombre_alumno',{count:'exact'}).in('curso_id',courseIds)
+    ]));
+    const err=(result||[]).find(x=>x.error); if(err) throw new Error(err.error.message);
+    return pass(id,module,'Dashboard stress DB '+perfLabel(ms)+' · '+ms+' ms');
+  }
+
+  async function perfDeudoresStress(id,module){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para medir deudores.');
+    const {result,ms}=await measure('deudores_stress', async()=>c.from('pagos').select('miembro_id,estado,monto,fecha_vencimiento',{count:'exact'}).in('curso_id',courseIds).in('estado',['pendiente','vencido','parcial']));
+    if(result.error) throw new Error(result.error.message);
+    const unique=new Set((result.data||[]).map(x=>x.miembro_id).filter(Boolean)).size;
+    return pass(id,module,'Deudores stress DB '+perfLabel(ms)+' · deudores='+unique+' · rows='+result.count+' · '+ms+' ms');
+  }
+
+  async function perfAvisosStress(id,module){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para medir avisos.');
+    const {result,ms}=await measure('avisos_stress', async()=>c.from('avisos').select('*',{count:'exact'}).in('curso_id',courseIds));
+    if(result.error) return warn(id,module,'No se pudo medir avisos: '+result.error.message);
+    return pass(id,module,'Avisos stress DB '+perfLabel(ms)+' · rows='+(result.count||0)+' · '+ms+' ms');
+  }
+
+  async function perfPagosStress(id,module){
+    const c=await sb(); const courseIds=(state.created.stress.cursos||[]).map(x=>x.id);
+    if(!courseIds.length) return warn(id,module,'No hay cursos stress para medir pagos.');
+    const {result,ms}=await measure('pagos_stress_count', async()=>c.from('pagos').select('id,estado,monto,monto_pagado',{count:'exact',head:true}).in('curso_id',courseIds));
+    if(result.error) throw new Error(result.error.message);
+    return pass(id,module,'Pagos stress count '+perfLabel(ms)+' · rows='+(result.count||0)+' · '+ms+' ms');
+  }
+
   async function cleanupQa(id,module){
     if(!state.cleanup) return warn(id,module,'Limpieza desactivada por usuario.');
     const c=await sb(); let total=0;
     const courseIds=[state.created.cursoId,state.created.cursoAltId,...((state.created.stress&&state.created.stress.cursos)||[]).map(x=>x.id)].filter(Boolean);
     const colegioIds=[state.created.colegioId,...((state.created.stress&&state.created.stress.colegios)||[]).map(x=>x.id)].filter(Boolean);
+    try{ if(courseIds.length){ const r=await c.from('avisos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('pagos').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('campanas').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
     try{ if(courseIds.length){ const r=await c.from('miembros_curso').delete().in('curso_id',courseIds).select('id'); if(!r.error) total+=(r.data||[]).length; } }catch(e){}
@@ -718,14 +848,14 @@
   }
   function buildReport(){
     const s=getSummary(); const verdict=s.fail?'REVISAR':(s.warn?'APROBADO CON OBSERVACIONES':'APROBADO');
-    const lines=['QA 360 Cursapp Modular','Fecha: '+new Date().toLocaleString('es-CL'),'Run: '+s.runId,'Modo: '+s.mode,'Curso QA: '+s.courseKey,'','Resultado: '+verdict,'Score: '+s.score+'%','Total: '+s.total,'OK: '+s.pass,'Advertencias: '+s.warn,'Errores: '+s.fail,'','Módulos:',...state.modules.map(m=>`- ${m.name}: ${m.pass}/${m.total} OK · WARN ${m.warn} · ERROR ${m.fail}`),'','Detalle:',...state.results.map(r=>`[${r.status.toUpperCase()}] ${r.module} · ${r.name} — ${r.detail}`)];
+    const lines=['QA 360 Cursapp Modular','Fecha: '+new Date().toLocaleString('es-CL'),'Run: '+s.runId,'Modo: '+s.mode,'Curso QA: '+s.courseKey,'','Resultado: '+verdict,'Score: '+s.score+'%','Total: '+s.total,'OK: '+s.pass,'Advertencias: '+s.warn,'Errores: '+s.fail,'','Módulos:',...state.modules.map(m=>`- ${m.name}: ${m.pass}/${m.total} OK · WARN ${m.warn} · ERROR ${m.fail}`),'','Métricas DB:',...(state.metrics||[]).map(m=>`- ${m.label}: ${m.ms} ms`),'','Detalle:',...state.results.map(r=>`[${r.status.toUpperCase()}] ${r.module} · ${r.name} — ${r.detail}`)];
     $('qaReport') && ($('qaReport').value=lines.join('\n'));
   }
   function download(name,mime,content){ const blob=new Blob([content],{type:mime}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500); }
-  function downloadJson(){ download('cursapp-qa360-modular-'+Date.now()+'.json','application/json',JSON.stringify({summary:getSummary(),modules:state.modules,results:state.results,created:state.created},null,2)); }
+  function downloadJson(){ download('cursapp-qa360-modular-'+Date.now()+'.json','application/json',JSON.stringify({summary:getSummary(),modules:state.modules,results:state.results,metrics:state.metrics,created:state.created},null,2)); }
   function downloadHtml(){
     const s=getSummary(); const body=state.results.map(r=>`<tr><td>${esc(r.module)}</td><td>${esc(r.status)}</td><td>${esc(r.name)}</td><td>${esc(r.detail)}</td></tr>`).join('');
-    download('cursapp-qa360-modular-'+Date.now()+'.html','text/html',`<!doctype html><meta charset="utf-8"><title>QA 360 Cursapp</title><style>body{font-family:Arial;padding:24px}td,th{border:1px solid #ddd;padding:8px}table{border-collapse:collapse;width:100%}.pass{color:green}.fail{color:red}.warn{color:#b45309}</style><h1>QA 360 Cursapp</h1><p>Run ${esc(s.runId)} · Score ${s.score}% · OK ${s.pass} · WARN ${s.warn} · ERROR ${s.fail}</p><table><thead><tr><th>Módulo</th><th>Estado</th><th>Prueba</th><th>Detalle</th></tr></thead><tbody>${body}</tbody></table>`);
+    download('cursapp-qa360-modular-'+Date.now()+'.html','text/html',`<!doctype html><meta charset="utf-8"><title>QA 360 Cursapp</title><style>body{font-family:Arial;padding:24px}td,th{border:1px solid #ddd;padding:8px}table{border-collapse:collapse;width:100%}.pass{color:green}.fail{color:red}.warn{color:#b45309}</style><h1>QA 360 Cursapp</h1><p>Run ${esc(s.runId)} · Score ${s.score}% · OK ${s.pass} · WARN ${s.warn} · ERROR ${s.fail}</p><h2>Métricas DB</h2><ul>${(state.metrics||[]).map(m=>`<li>${esc(m.label)}: ${m.ms} ms</li>`).join('')}</ul><table><thead><tr><th>Módulo</th><th>Estado</th><th>Prueba</th><th>Detalle</th></tr></thead><tbody>${body}</tbody></table>`);
   }
 
   document.addEventListener('DOMContentLoaded', init);
