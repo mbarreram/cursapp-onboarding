@@ -3,79 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Cursapp · QA 360</title>
+  <title>Cursapp · QA 360 Modular</title>
   <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
   <style>
     body{background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:0;}
-    .qaShell{width:min(1080px,100%);margin:0 auto;padding:18px 14px 40px;box-sizing:border-box;}
+    .qaShell{width:min(1080px,100%);margin:0 auto;padding:18px 14px 44px;box-sizing:border-box;}
     .qaTop{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px;}
-    .qaBrand{display:flex;align-items:center;gap:12px;}
-    .qaLogo{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:950;display:grid;place-items:center;font-size:22px;box-shadow:0 16px 34px rgba(124,58,237,.26);}
-    .qaTop h1{font-size:22px;margin:0;font-weight:950;}
-    .qaTop p{margin:3px 0 0;color:#64748b;font-weight:850;font-size:13px;}
-    .qaCard{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:24px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.06);margin-top:12px;}
-    .qaActions{display:flex;gap:10px;flex-wrap:wrap;}
-    .qaBtn{border:0;border-radius:16px;padding:12px 14px;font-weight:950;cursor:pointer;background:#111827;color:#fff;}
-    .qaBtn.primary{background:linear-gradient(135deg,#7c3aed,#9333ea);}
-    .qaBtn.ghost{background:#fff;color:#111827;border:1px solid rgba(15,23,42,.12);}
-    .qaGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px;}
-    @media(max-width:820px){.qaGrid{grid-template-columns:1fr 1fr;}}
-    .qaKpi{border:1px solid rgba(15,23,42,.08);border-radius:18px;padding:12px;background:#f8fafc;}
-    .qaKpi small{display:block;color:#64748b;font-weight:900;}
-    .qaKpi b{display:block;font-size:24px;margin-top:4px;}
-    .qaProgress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:12px;}
-    .qaProgress span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#06b6d4);transition:width .25s ease;}
-    .qaList{display:grid;gap:10px;margin-top:12px;}
-    .qaRow{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:12px;background:#fff;}
-    .qaIcon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:950;background:#eef2ff;}
-    .qaRow.pass .qaIcon{background:#dcfce7;color:#166534}.qaRow.fail .qaIcon{background:#fee2e2;color:#991b1b}.qaRow.warn .qaIcon{background:#fef3c7;color:#92400e}.qaRow.run .qaIcon{background:#e0f2fe;color:#0369a1}
-    .qaName{font-weight:950}.qaDetail{color:#64748b;font-weight:800;font-size:12px;margin-top:3px;white-space:pre-wrap;word-break:break-word;}
-    .qaStatus{font-size:12px;font-weight:950;border-radius:999px;padding:6px 9px;background:#f1f5f9;color:#334155;}
-    .qaReport{width:100%;min-height:160px;border:1px solid rgba(15,23,42,.12);border-radius:16px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;box-sizing:border-box;}
-    .qaNote{color:#64748b;font-weight:850;font-size:13px;line-height:1.45;}
+    .qaBrand{display:flex;align-items:center;gap:12px;}.qaLogo{width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#7c3aed,#06b6d4);color:#fff;font-weight:950;display:grid;place-items:center;font-size:24px;box-shadow:0 16px 34px rgba(124,58,237,.26)}
+    .qaTop h1{font-size:24px;margin:0;font-weight:950}.qaTop p{margin:3px 0 0;color:#64748b;font-weight:850;font-size:13px;line-height:1.35}
+    .qaCard,.qaModule{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:24px;padding:16px;box-shadow:0 14px 34px rgba(15,23,42,.06);margin-top:12px;}
+    .qaActions{display:flex;gap:10px;flex-wrap:wrap}.qaBtn{border:0;border-radius:16px;padding:12px 14px;font-weight:950;cursor:pointer;background:#111827;color:#fff}.qaBtn.primary{background:linear-gradient(135deg,#7c3aed,#9333ea)}.qaBtn.ghost{background:#fff;color:#111827;border:1px solid rgba(15,23,42,.12)}.qaBtn:disabled{opacity:.55;cursor:not-allowed}
+    .qaGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}@media(max-width:820px){.qaGrid{grid-template-columns:1fr 1fr}}
+    .qaKpi{border:1px solid rgba(15,23,42,.08);border-radius:18px;padding:12px;background:#f8fafc}.qaKpi small{display:block;color:#64748b;font-weight:900}.qaKpi b{display:block;font-size:28px;margin-top:4px}
+    .qaProgress{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;margin-top:12px}.qaProgress span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#06b6d4);transition:width .25s ease}
+    .qaModuleHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border-bottom:1px solid rgba(15,23,42,.08);padding-bottom:12px;margin-bottom:12px}.qaModule h3{margin:0;font-size:20px}.qaModule p{margin:4px 0 0;color:#64748b;font-weight:850;font-size:13px}.qaModuleStatus{font-size:12px;font-weight:950;border-radius:999px;padding:8px 10px;background:#f1f5f9;color:#334155}.qaModuleStatus.pass{background:#dcfce7;color:#166534}.qaModuleStatus.warn{background:#fef3c7;color:#92400e}.qaModuleStatus.fail{background:#fee2e2;color:#991b1b}.qaModuleStatus.run{background:#e0f2fe;color:#0369a1}
+    .qaList{display:grid;gap:10px}.qaRow{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:12px;background:#fff}.qaIcon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:950;background:#eef2ff}.qaRow.pass .qaIcon{background:#dcfce7;color:#166534}.qaRow.fail .qaIcon{background:#fee2e2;color:#991b1b}.qaRow.warn .qaIcon{background:#fef3c7;color:#92400e}.qaRow.run .qaIcon{background:#e0f2fe;color:#0369a1}.qaName{font-weight:950}.qaDetail{color:#64748b;font-weight:800;font-size:12px;margin-top:3px;white-space:pre-wrap;word-break:break-word}.qaStatus{font-size:12px;font-weight:950;border-radius:999px;padding:6px 9px;background:#f1f5f9;color:#334155}
+    .qaReport{width:100%;min-height:190px;border:1px solid rgba(15,23,42,.12);border-radius:16px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;box-sizing:border-box}.qaNote{color:#64748b;font-weight:850;font-size:13px;line-height:1.45}.qaCheck{display:flex;gap:8px;align-items:flex-start;color:#334155;font-weight:900;font-size:13px;margin-top:10px}.qaCheck input{margin-top:2px}
   </style>
 </head>
 <body>
   <main class="qaShell">
     <div class="qaTop">
-      <div class="qaBrand">
-        <div class="qaLogo">C</div>
-        <div><h1>QA 360 Cursapp</h1><p>Validación integrada sin localStorage · Supabase first</p></div>
-      </div>
-      <div class="qaActions">
-        <button class="qaBtn ghost" onclick="location.href='/'">Volver al login</button>
-        <button class="qaBtn primary" id="runQaBtn">Ejecutar QA</button>
-      </div>
+      <div class="qaBrand"><div class="qaLogo">C</div><div><h1>QA 360 Cursapp</h1><p>Modular · Supabase first · crea datos QA_* solo en QA completo</p></div></div>
+      <div class="qaActions"><button class="qaBtn ghost" onclick="location.href='/'">Volver al login</button><button class="qaBtn" id="runQuickBtn">QA rápido</button><button class="qaBtn primary" id="runFullBtn">QA completo</button></div>
     </div>
 
     <section class="qaCard">
       <div style="font-weight:950;font-size:18px;">Estado de ejecución</div>
-      <div class="qaNote" style="margin-top:6px;">Este QA no crea registros por defecto. Solo lee Supabase y valida pantallas/recursos. Si en el futuro necesitamos datos de prueba, se crearán con prefijo <b>QA_</b> en Supabase, no en localStorage.</div>
-      <div class="qaGrid">
-        <div class="qaKpi"><small>Total</small><b id="kTotal">0</b></div>
-        <div class="qaKpi"><small>OK</small><b id="kPass">0</b></div>
-        <div class="qaKpi"><small>Advertencias</small><b id="kWarn">0</b></div>
-        <div class="qaKpi"><small>Errores</small><b id="kFail">0</b></div>
-      </div>
+      <div class="qaNote" style="margin-top:6px;">El QA rápido solo valida. El QA completo crea curso, usuarios, miembros, campañas y pagos con prefijo <b>QA_</b> en Supabase y puede limpiarlos al final.</div>
+      <label class="qaCheck"><input id="cleanupQa" type="checkbox" checked /> Limpiar automáticamente los registros QA_* creados al finalizar.</label>
+      <div class="qaActions" style="margin-top:12px;"><button class="qaBtn ghost" id="cleanupOnlyBtn">Limpiar último QA</button><button class="qaBtn ghost" id="downloadJsonBtn">Descargar JSON</button><button class="qaBtn ghost" id="downloadHtmlBtn">Descargar HTML</button></div>
+      <div class="qaGrid"><div class="qaKpi"><small>Total</small><b id="kTotal">0</b></div><div class="qaKpi"><small>OK</small><b id="kPass">0</b></div><div class="qaKpi"><small>Advertencias</small><b id="kWarn">0</b></div><div class="qaKpi"><small>Errores</small><b id="kFail">0</b></div></div>
       <div class="qaProgress"><span id="qaProgressBar"></span></div>
     </section>
 
-    <section class="qaCard">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div><div style="font-weight:950;font-size:18px;">Pruebas</div><div class="qaNote">Carga, rutas, assets, Supabase y componentes estabilizados.</div></div>
-        <div class="qaActions"><button class="qaBtn ghost" id="downloadJsonBtn">Descargar JSON</button><button class="qaBtn ghost" id="downloadHtmlBtn">Descargar HTML</button></div>
-      </div>
-      <div id="qaList" class="qaList"></div>
-    </section>
+    <div id="qaModules"></div>
 
-    <section class="qaCard">
-      <div style="font-weight:950;font-size:18px;margin-bottom:8px;">Informe</div>
-      <textarea id="qaReport" class="qaReport" readonly></textarea>
-    </section>
+    <section class="qaCard"><div style="font-weight:950;font-size:18px;margin-bottom:8px;">Informe</div><textarea id="qaReport" class="qaReport" readonly></textarea></section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/supabaseClient.js?v=20260608" defer></script>
-  <script src="/assets/qa360.js?v=20260616-1" defer></script>
+  <script src="/assets/qa360.js?v=20260616-modular-1" defer></script>
 </body>
 </html>
