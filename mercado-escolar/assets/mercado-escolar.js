@@ -8,8 +8,8 @@
   const now=()=>new Date().toISOString();
   const phoneClean=s=>String(s||"").replace(/[^0-9]/g,"");
   const isUuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s||""));
-  const BUCKET="mercado-publicaciones";
-  const MAX_FILES=5;
+  const BUCKET="mercado-escolar";
+  const MAX_FILES=3;
   const MAX_BYTES=1024*1024;
   const ALLOWED=["image/jpeg","image/png","image/webp"];
   const ALLOWED_EXT=/\.(jpe?g|png|webp)$/i;
@@ -201,7 +201,7 @@
   }
   function renderPreview(files=state.selectedFiles){
     const box=$("#photoPreview"); if(!box) return;
-    box.innerHTML=files.map((f,i)=>`<div class="photoPreviewItem"><img src="${URL.createObjectURL(f)}"><small>${i+1}</small></div>`).join("") || `<p>Agrega hasta ${MAX_FILES} fotos reales. Máx. ${Math.round(MAX_BYTES/1024)} KB c/u.</p>`;
+    box.innerHTML=files.map((f,i)=>`<div class="photoPreviewItem"><img src="${URL.createObjectURL(f)}"><small>${i+1}</small></div>`).join("") || `<p>Agrega hasta ${MAX_FILES} fotos reales: 1 principal y hasta 2 adicionales. Máx. ${Math.round(MAX_BYTES/1024)} KB c/u.</p>`;
   }
   async function uploadImages(postId,files){
     const uploaded=[];
@@ -245,7 +245,10 @@
       titulo:title,
       descripcion:desc,
       precio:Number($("#pubPrice").value||0),
-      estado:violation.blocked?"en_revision":"disponible",
+      // Regla V4: toda publicación queda disponible por defecto.
+      // Si se detecta una palabra restringida, se deja una alerta para Admin,
+      // pero no se oculta automáticamente salvo acción del Admin o denuncias acumuladas.
+      estado:"disponible",
       nombre_vendedor:state.session.name,
       whatsapp,
       activo:true,
@@ -263,7 +266,7 @@
     try{await uploadImages(data.id,fileCheck.files||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
     e.target.reset(); state.selectedFiles=[]; renderPreview([]);
     await loadPosts();
-    toast(violation.blocked?"Publicación enviada a revisión por moderación":"Publicación creada");
+    toast(violation.blocked?"Publicación creada con alerta para revisión del Admin":"Publicación creada");
     showView("mis");
   }
 
@@ -272,7 +275,7 @@
     await state.sb.from("mercado_publicaciones").update({visualizaciones:Number(p.visualizaciones||0)+1}).eq("id",p.id);
     p.visualizaciones=Number(p.visualizaciones||0)+1;
     const imgs=(state.imagesByPost[String(p.id)]||[]).map(i=>i.url_imagen).filter(Boolean);
-    const gallery=[imageForPost(p)].concat(imgs.filter(u=>u!==imageForPost(p))).slice(0,5);
+    const gallery=[imageForPost(p)].concat(imgs.filter(u=>u!==imageForPost(p))).slice(0,3);
     const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     const fav=state.favorites.has(String(p.id));
     $("#modal").innerHTML=`<div class="modal marketDetailModal">
