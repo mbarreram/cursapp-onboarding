@@ -57,7 +57,7 @@
     error:null,
     colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[],
     avisos:[], gastos:[], rendiciones:[], informes:[],
-    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[]
+    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[], mercado_favoritos:[]
   };
 
   async function sbGet(path){
@@ -89,7 +89,7 @@
       const [
         colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw,
         avisosRaw, gastosRaw, rendicionesRaw, informesRaw,
-        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw
+        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw, mercadoFavoritosRaw
       ] = await Promise.all([
         sbGet("colegios?select=*&order=created_at.desc"),
         sbGet("cursos?select=*&order=created_at.desc"),
@@ -105,7 +105,8 @@
         sbGet("mercado_publicaciones?select=*&order=created_at.desc"),
         sbGet("mercado_contactos?select=*&order=created_at.desc"),
         sbGet("mercado_reportes?select=*&order=created_at.desc"),
-        sbGet("mercado_imagenes?select=*&order=created_at.desc")
+        sbGet("mercado_imagenes?select=*&order=created_at.desc"),
+        sbGet("mercado_favoritos?select=*&order=created_at.desc")
       ]);
 
       const byId = (rows)=>{
@@ -175,6 +176,9 @@
       const mercadoImagenes = (mercadoImagenesRaw || []).map(i=>Object.assign({}, i, {
         publicaciones: mercadoPublicacionesById.get(String(i.publicacion_id || "")) || null
       }));
+      const mercadoFavoritos = (mercadoFavoritosRaw || []).map(f=>Object.assign({}, f, {
+        publicaciones: mercadoPublicacionesById.get(String(f.publicacion_id || "")) || null
+      }));
 
       ADMIN_DB.colegios = colegiosRaw;
       ADMIN_DB.cursos = cursos;
@@ -191,12 +195,13 @@
       ADMIN_DB.mercado_contactos = mercadoContactos;
       ADMIN_DB.mercado_reportes = mercadoReportes;
       ADMIN_DB.mercado_imagenes = mercadoImagenes;
+      ADMIN_DB.mercado_favoritos = mercadoFavoritos;
       ADMIN_DB.ready = true;
       try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({
         status:"ok", at:now(),
         cursos:cursos.length, usuarios:usuarios.length, miembros:miembros.length, campanas:campanas.length, pagos:pagos.length,
         avisos:avisos.length, gastos:gastos.length, rendiciones:rendiciones.length, informes:informes.length,
-        mercado_publicaciones:mercadoPublicaciones.length, mercado_contactos:mercadoContactos.length, mercado_reportes:mercadoReportes.length
+        mercado_publicaciones:mercadoPublicaciones.length, mercado_contactos:mercadoContactos.length, mercado_reportes:mercadoReportes.length, mercado_favoritos:mercadoFavoritos.length
       })); }catch(e){}
     }catch(e){
       ADMIN_DB.error = e && e.message ? e.message : String(e);
@@ -309,6 +314,7 @@
   function marketPublications(){ return ADMIN_DB.mercado_publicaciones || []; }
   function marketContacts(){ return ADMIN_DB.mercado_contactos || []; }
   function marketReports(){ return ADMIN_DB.mercado_reportes || []; }
+  function marketFavorites(){ return ADMIN_DB.mercado_favoritos || []; }
   function receipts(){ return []; }
 
   function profiles(){
@@ -595,6 +601,7 @@
     const market = marketPublications();
     const mcontacts = marketContacts();
     const mreports = marketReports();
+    const mfavorites = marketFavorites();
     const ts = tasks();
     const courses = getAllCourses();
 
@@ -609,7 +616,7 @@
 
     const pstats = paymentStats();
 
-    return {ps,us,ens,pays,exps,reps,rends,avis,market,mcontacts,mreports,ts,courses,schools,regions,alumnos,...pstats};
+    return {ps,us,ens,pays,exps,reps,rends,avis,market,mcontacts,mreports,mfavorites,ts,courses,schools,regions,alumnos,...pstats};
   }
 
   function groupCount(list, fn){
@@ -1195,6 +1202,7 @@
     const pubs = marketPublications();
     const contacts = marketContacts();
     const reports = marketReports();
+    const favoritos = marketFavorites();
     const activos = pubs.filter(p=>p.activo!==false && String(p.estado||"")!=="eliminado");
     const vendidos = pubs.filter(p=>String(p.estado||"").toLowerCase()==="vendido");
     const reportesPend = reports.filter(r=>String(r.estado||"pendiente").toLowerCase()==="pendiente");
@@ -1204,6 +1212,7 @@
         ${kpi("🛍️","Publicaciones activas",activos.length,`${pubs.length} totales`)}
         ${kpi("✅","Vendidas",vendidos.length,"Estado vendido")}
         ${kpi("💬","Contactos WhatsApp",contacts.length,"Interacciones")}
+        ${kpi("♥️","Favoritos",favoritos.length,"Guardados")}
         ${kpi("🚩","Reportes pendientes",reportesPend.length,`${reports.length} reportes`)}
       </div>
 
@@ -1253,7 +1262,7 @@
 
       <section class="panel">
         <div class="panelHead"><h2>Detalle publicaciones</h2><span id="marketCount">${pubs.length} publicaciones</span></div>
-        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Vendedor</th><th>WhatsApp</th><th>Métricas</th></tr></thead><tbody>
+        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Vendedor</th><th>WhatsApp</th><th>Métricas</th><th>Favoritos</th></tr></thead><tbody>
           ${pubs.map(p=>`<tr>
             <td>${fmtDate(p.created_at)}</td>
             <td><b>${esc(p.titulo || "—")}</b><br><small>${esc(p.descripcion || "")}</small></td>
@@ -1262,8 +1271,8 @@
             <td>${marketStatusBadge(p.estado)}</td>
             <td>${esc(p.nombre_vendedor || p.vendedor?.nombre || "—")}</td>
             <td>${esc(p.whatsapp || "—")}</td>
-            <td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)}</td>
-          </tr>`).join("") || `<tr><td colspan="8">Sin publicaciones Mercado.</td></tr>`}
+            <td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)}</td><td>♥ ${Number(p.favoritos||0)} · ${favoritos.filter(f=>String(f.publicacion_id)===String(p.id)).length} filas</td>
+          </tr>`).join("") || `<tr><td colspan="9">Sin publicaciones Mercado.</td></tr>`}
         </tbody></table></div>
       </section>
     `;
