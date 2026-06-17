@@ -341,12 +341,58 @@
 
 
 
-/* Cursapp Mercado Funcional Admin DISABLED
-   V1.2: desactivado porque interceptaba Admin.go("mercado") y leía localStorage
-   (cursapp_market_posts_v1) en vez de Supabase.
-   El Mercado Admin oficial queda en admin.js -> renderMercado(), leyendo:
-   mercado_publicaciones, mercado_contactos, mercado_reportes, mercado_categorias, mercado_imagenes.
-*/
+/* Cursapp Mercado Admin Supabase V3 START */
+(function(){
+if(window.__MercadoAdminSupabaseV3)return;window.__MercadoAdminSupabaseV3=true;
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const clp=v=>"$"+Number(v||0).toLocaleString("es-CL");
+const fmt=x=>{try{return new Date(x).toLocaleString("es-CL",{dateStyle:"short",timeStyle:"short"})}catch(e){return x||"—"}};
+const SB_URL="https://ngxistgymgdkoaiulfbq.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+async function api(path,opt={}){const res=await fetch(SB_URL+"/rest/v1/"+path,{...opt,headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/json",Prefer:opt.prefer||"return=representation",...(opt.headers||{})}});const t=await res.text();let data=[];try{data=t?JSON.parse(t):[]}catch(e){data=t}if(!res.ok)throw new Error((data&&data.message)||t||res.statusText);return Array.isArray(data)?data:data?[data]:[]}
+function badge(t,cls){return `<span class="badge ${esc(cls||"purple")}">${esc(t)}</span>`}
+function kpi(i,l,v,d){return `<div class="kpi"><div class="kpiIcon">${i}</div><label>${esc(l)}</label><strong>${esc(v)}</strong><small>${esc(d||"Supabase")}</small></div>`}
+function title(t,s){const a=$("#viewTitle"),b=$("#viewSub");if(a)a.textContent=t;if(b)b.textContent=s||""}
+function app(){return $("#adminApp")}
+function statusBadge(st){const s=String(st||"disponible").toLowerCase();return badge(s,s==="disponible"?"green":s==="reservado"?"orange":s==="vendido"?"purple":s==="en_revision"?"orange":s==="oculto"||s==="bloqueado"?"red":"gray")}
+async function load(){
+ const [cats,pubs,contacts,reports,imgs,reasons,words]=await Promise.all([
+  api("mercado_categorias?select=*&order=nombre.asc"),
+  api("mercado_publicaciones?select=*&order=created_at.desc"),
+  api("mercado_contactos?select=*&order=created_at.desc"),
+  api("mercado_reportes?select=*&order=created_at.desc"),
+  api("mercado_imagenes?select=*&order=orden.asc"),
+  api("mercado_motivos_reporte?select=*&order=orden.asc").catch(()=>[]),
+  api("mercado_palabras_bloqueadas?select=*&order=palabra.asc").catch(()=>[])
+ ]);
+ const catMap=new Map(cats.map(c=>[String(c.id),c])); const pubMap=new Map(pubs.map(p=>[String(p.id),p]));
+ return {cats,pubs,contacts,reports,imgs,reasons,words,catMap,pubMap};
+}
+async function render(){
+ title("Mercado Escolar","Publicaciones, contactos WhatsApp, reportes y moderación desde Supabase");
+ const el=app(); if(!el)return; el.innerHTML=`<section class="panel"><h2>Cargando Mercado Escolar...</h2><p class="muted" style="font-weight:800">Consultando Supabase.</p></section>`;
+ let d; try{d=await load()}catch(e){el.innerHTML=`<section class="panel"><h2>Error Mercado</h2><p style="color:#b42318;font-weight:900">${esc(e.message)}</p></section>`;return}
+ const activos=d.pubs.filter(p=>p.activo!==false && !["eliminado","oculto","bloqueado"].includes(String(p.estado||"").toLowerCase()));
+ const revision=d.pubs.filter(p=>String(p.estado||"").toLowerCase()==="en_revision");
+ const pendientes=d.reports.filter(r=>String(r.estado||"pendiente").toLowerCase()==="pendiente");
+ const destacados=d.pubs.filter(p=>p.destacado===true);
+ el.innerHTML=`<div class="kpis">${kpi("🛍️","Activas",activos.length,`${d.pubs.length} totales`)}${kpi("🟠","En revisión",revision.length,"moderación")}${kpi("🚩","Reportes pendientes",pendientes.length,`${d.reports.length} reportes`)}${kpi("💬","Contactos WhatsApp",d.contacts.length,"interacciones")}${kpi("⭐","Destacadas",destacados.length,"visibilidad")}${kpi("🛡️","Motivos",d.reasons.length,"configurables")}</div>
+ <div class="monTabs"><button class="monTab active" data-mtab="posts">📦 Publicaciones</button><button class="monTab" data-mtab="reports">🚩 Reportes</button><button class="monTab" data-mtab="reasons">⚙️ Motivos</button><button class="monTab" data-mtab="words">🛡️ Palabras</button></div><section id="marketAdminTab"></section>`;
+ $$("[data-mtab]").forEach(b=>b.onclick=()=>{ $$("[data-mtab]").forEach(x=>x.classList.remove("active")); b.classList.add("active"); tab(b.dataset.mtab,d); });
+ tab("posts",d);
+}
+function tab(t,d){const box=$("#marketAdminTab");if(!box)return;
+ if(t==="posts"){box.innerHTML=`<section class="panel"><div class="panelHead"><h2>Publicaciones</h2><button onclick="CursappMarketAdminV3.reload()">Actualizar</button></div><div class="tableWrap"><table><thead><tr><th>Publicación</th><th>Categoría</th><th>Precio</th><th>Vendedor</th><th>Métricas</th><th>Estado</th><th>Moderación</th></tr></thead><tbody>${d.pubs.map(p=>`<tr><td><b>${esc(p.titulo)}</b><br><small>${esc((p.descripcion||"").slice(0,90))}</small></td><td>${esc(d.catMap.get(String(p.categoria_id))?.nombre||p.categoria_id||"—")}</td><td>${clp(p.precio)}</td><td>${esc(p.nombre_vendedor||"—")}<br><small>${esc(p.whatsapp||"—")}</small></td><td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)} · ♥ ${Number(p.favoritos||0)}</td><td>${statusBadge(p.estado)}${p.destacado?"<br>⭐ Destacada":""}<br><small>${fmt(p.created_at)}</small></td><td><button class="adminBtn ghost" onclick="CursappMarketAdminV3.setPost('${p.id}','disponible')">Aprobar</button> <button class="adminBtn ghost" onclick="CursappMarketAdminV3.setPost('${p.id}','oculto')">Ocultar</button> <button class="adminBtn ghost" onclick="CursappMarketAdminV3.setPost('${p.id}','bloqueado')">Bloquear</button> <button class="adminBtn ghost" onclick="CursappMarketAdminV3.toggleFeatured('${p.id}',${p.destacado?"false":"true"})">${p.destacado?"Quitar ⭐":"Destacar ⭐"}</button></td></tr>`).join("")||`<tr><td colspan="7">Sin publicaciones.</td></tr>`}</tbody></table></div></section>`;return}
+ if(t==="reports"){box.innerHTML=`<section class="panel"><h2>Reportes</h2><div class="tableWrap"><table><thead><tr><th>Publicación</th><th>Motivo</th><th>Detalle</th><th>Estado</th><th>Acción</th></tr></thead><tbody>${d.reports.map(r=>{const p=d.pubMap.get(String(r.publicacion_id))||{};return `<tr><td><b>${esc(p.titulo||r.publicacion_id)}</b></td><td>${esc(r.motivo||"—")}</td><td>${esc(r.detalle||"")}</td><td>${statusBadge(r.estado||"pendiente")}</td><td><button class="adminBtn ghost" onclick="CursappMarketAdminV3.resolveReport('${r.id}','revisado')">Marcar revisado</button> <button class="adminBtn ghost" onclick="CursappMarketAdminV3.setPost('${r.publicacion_id}','oculto')">Ocultar publicación</button></td></tr>`}).join("")||`<tr><td colspan="5">Sin reportes.</td></tr>`}</tbody></table></div></section>`;return}
+ if(t==="reasons"){box.innerHTML=`<section class="panel"><div class="panelHead"><h2>Motivos de reporte configurables</h2><button onclick="CursappMarketAdminV3.newReason()">+ Motivo</button></div><div class="tableWrap"><table><thead><tr><th>Orden</th><th>Código</th><th>Nombre</th><th>Detalle</th><th>Activo</th></tr></thead><tbody>${d.reasons.map(r=>`<tr><td>${r.orden||0}</td><td>${esc(r.codigo)}</td><td><b>${esc(r.nombre)}</b></td><td>${r.requiere_detalle?"Sí":"No"}</td><td>${r.activo===false?badge("inactivo","gray"):badge("activo","green")}</td></tr>`).join("")||`<tr><td colspan="5">Sin motivos configurados.</td></tr>`}</tbody></table></div></section>`;return}
+ if(t==="words"){box.innerHTML=`<section class="panel"><div class="panelHead"><h2>Palabras bloqueadas</h2><button onclick="CursappMarketAdminV3.newWord()">+ Palabra</button></div><div class="tableWrap"><table><thead><tr><th>Palabra</th><th>Categoría</th><th>Activo</th></tr></thead><tbody>${d.words.map(w=>`<tr><td><b>${esc(w.palabra)}</b></td><td>${esc(w.categoria||"prohibido")}</td><td>${w.activo===false?badge("inactivo","gray"):badge("activo","green")}</td></tr>`).join("")||`<tr><td colspan="3">Sin palabras configuradas.</td></tr>`}</tbody></table></div></section>`;return}
+}
+window.CursappMarketAdminV3={reload:render,async setPost(id,estado){try{await api(`mercado_publicaciones?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({estado,moderado_por:"admin@cursapp.cl",moderado_at:new Date().toISOString(),updated_at:new Date().toISOString()})});render()}catch(e){alert(e.message)}},async toggleFeatured(id,destacado){try{await api(`mercado_publicaciones?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({destacado,updated_at:new Date().toISOString()})});render()}catch(e){alert(e.message)}},async resolveReport(id,estado){try{await api(`mercado_reportes?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({estado,resuelto_por:"admin@cursapp.cl",resuelto_at:new Date().toISOString()})});render()}catch(e){alert(e.message)}},async newReason(){const nombre=prompt("Nuevo motivo de reporte"); if(!nombre)return; const codigo=nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,""); try{await api("mercado_motivos_reporte",{method:"POST",body:JSON.stringify({codigo,nombre,activo:true,orden:50})});render()}catch(e){alert(e.message)}},async newWord(){const palabra=prompt("Nueva palabra bloqueada"); if(!palabra)return; try{await api("mercado_palabras_bloqueadas",{method:"POST",body:JSON.stringify({palabra:palabra.toLowerCase(),activo:true})});render()}catch(e){alert(e.message)}}};
+function install(){const A=window.Admin;if(A&&!A.__marketSupabaseV3Patched&&typeof A.go==="function"){const old=A.go.bind(A);A.go=function(t){$$(".sideItem").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));document.body.classList.remove("sideOpen");if(t==="mercado"){render();return}return old(t)};A.__marketSupabaseV3Patched=true}}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(install,400)); setTimeout(install,1000);
+})();
+/* Cursapp Mercado Admin Supabase V3 END */
 
 
 
