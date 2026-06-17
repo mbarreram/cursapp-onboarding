@@ -57,7 +57,7 @@
     error:null,
     colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[],
     avisos:[], gastos:[], rendiciones:[], informes:[],
-    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[], mercado_favoritos:[]
+    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[], mercado_favoritos:[], mercado_motivos_reporte:[], mercado_palabras_bloqueadas:[]
   };
 
   async function sbGet(path){
@@ -67,6 +67,27 @@
         "Authorization": "Bearer " + SB_KEY,
         "Content-Type":"application/json"
       }
+    });
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : []; }catch(e){ data = text; }
+    if(!res.ok){
+      const msg = (data && (data.message || data.error || data.hint)) || text || ("HTTP " + res.status);
+      throw new Error(msg);
+    }
+    return Array.isArray(data) ? data : [];
+  }
+
+  async function sbPatch(path, body){
+    const res = await fetch(SB_URL + "/rest/v1/" + path, {
+      method:"PATCH",
+      headers:{
+        "apikey": SB_KEY,
+        "Authorization":"Bearer " + SB_KEY,
+        "Content-Type":"application/json",
+        "Prefer":"return=representation"
+      },
+      body: JSON.stringify(body || {})
     });
     const text = await res.text();
     let data = null;
@@ -89,7 +110,7 @@
       const [
         colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw,
         avisosRaw, gastosRaw, rendicionesRaw, informesRaw,
-        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw, mercadoFavoritosRaw
+        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw, mercadoFavoritosRaw, mercadoMotivosRaw, mercadoPalabrasRaw
       ] = await Promise.all([
         sbGet("colegios?select=*&order=created_at.desc"),
         sbGet("cursos?select=*&order=created_at.desc"),
@@ -106,7 +127,9 @@
         sbGet("mercado_contactos?select=*&order=created_at.desc"),
         sbGet("mercado_reportes?select=*&order=created_at.desc"),
         sbGet("mercado_imagenes?select=*&order=created_at.desc"),
-        sbGet("mercado_favoritos?select=*&order=created_at.desc")
+        sbGet("mercado_favoritos?select=*&order=created_at.desc"),
+        sbGet("mercado_motivos_reporte?select=*&order=nombre.asc"),
+        sbGet("mercado_palabras_bloqueadas?select=*&order=palabra.asc")
       ]);
 
       const byId = (rows)=>{
@@ -196,6 +219,8 @@
       ADMIN_DB.mercado_reportes = mercadoReportes;
       ADMIN_DB.mercado_imagenes = mercadoImagenes;
       ADMIN_DB.mercado_favoritos = mercadoFavoritos;
+      ADMIN_DB.mercado_motivos_reporte = mercadoMotivosRaw || [];
+      ADMIN_DB.mercado_palabras_bloqueadas = mercadoPalabrasRaw || [];
       ADMIN_DB.ready = true;
       try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({
         status:"ok", at:now(),
@@ -1197,6 +1222,20 @@
     `;
   }
 
+  function marketImagesForPost(id){
+    return (ADMIN_DB.mercado_imagenes || [])
+      .filter(i=>String(i.publicacion_id)===String(id))
+      .sort((a,b)=>Number(a.orden||0)-Number(b.orden||0));
+  }
+  function marketImgThumb(p){
+    const imgs = marketImagesForPost(p.id);
+    return p.imagen_principal || (imgs[0] && imgs[0].url_imagen) || "";
+  }
+  function marketModerationNote(p){
+    const note = p.motivo_moderacion || p.motivo_bloqueo || "";
+    return note ? `<small class="warnText">⚠ ${esc(note)}</small>` : "";
+  }
+
   function renderMercado(){
     setTitle("Mercado Escolar", "Publicaciones, contactos WhatsApp y reportes desde Supabase");
     const pubs = marketPublications();
@@ -1262,16 +1301,23 @@
 
       <section class="panel">
         <div class="panelHead"><h2>Detalle publicaciones</h2><span id="marketCount">${pubs.length} publicaciones</span></div>
-        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Título</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Vendedor</th><th>WhatsApp</th><th>Métricas</th><th>Favoritos</th></tr></thead><tbody>
+        <div class="tableWrap"><table><thead><tr><th>Foto</th><th>Fecha</th><th>Título</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Vendedor</th><th>Métricas</th><th>Moderación</th></tr></thead><tbody>
           ${pubs.map(p=>`<tr>
+            <td>${marketImgThumb(p)?`<img src="${esc(marketImgThumb(p))}" style="width:54px;height:54px;object-fit:cover;border-radius:12px">`:"—"}<br><small>${marketImagesForPost(p.id).length} fotos</small></td>
             <td>${fmtDate(p.created_at)}</td>
-            <td><b>${esc(p.titulo || "—")}</b><br><small>${esc(p.descripcion || "")}</small></td>
+            <td><b>${esc(p.titulo || "—")}</b><br><small>${esc(p.descripcion || "")}</small>${marketModerationNote(p)}</td>
             <td>${esc(p.categorias?.nombre || p.categoria_id || "—")}</td>
             <td>${clp(p.precio || 0)}</td>
             <td>${marketStatusBadge(p.estado)}</td>
-            <td>${esc(p.nombre_vendedor || p.vendedor?.nombre || "—")}</td>
-            <td>${esc(p.whatsapp || "—")}</td>
-            <td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)}</td><td>♥ ${Number(p.favoritos||0)} · ${favoritos.filter(f=>String(f.publicacion_id)===String(p.id)).length} filas</td>
+            <td>${esc(p.nombre_vendedor || p.vendedor?.nombre || "—")}<br><small>${esc(p.whatsapp || "—")}</small></td>
+            <td>👁️ ${Number(p.visualizaciones||0)} · 💬 ${Number(p.contactos||0)} · ♥ ${Number(p.favoritos||0)}</td>
+            <td class="rowActions">
+              <button onclick="Admin.marketViewImages('${esc(p.id)}')">Fotos</button>
+              <button onclick="Admin.marketModerate('${esc(p.id)}','disponible')">Aprobar</button>
+              <button onclick="Admin.marketModerate('${esc(p.id)}','en_revision')">Revisión</button>
+              <button onclick="Admin.marketModerate('${esc(p.id)}','oculto')">Ocultar</button>
+              <button onclick="Admin.marketModerate('${esc(p.id)}','bloqueado')">Bloquear</button>
+            </td>
           </tr>`).join("") || `<tr><td colspan="9">Sin publicaciones Mercado.</td></tr>`}
         </tbody></table></div>
       </section>
@@ -1303,6 +1349,27 @@
       if(tab==="mercado") renderMercado();
       if(tab==="auditoria") renderAuditoria();
     },
+    async marketModerate(id, status){
+      const motivo = status === "disponible" ? null : (prompt("Motivo de moderación", status === "en_revision" ? "Revisión manual Admin" : "Moderación Admin") || "Moderación Admin");
+      try{
+        await sbPatch("mercado_publicaciones?id=eq." + encodeURIComponent(id), {
+          estado: status,
+          motivo_moderacion: motivo,
+          moderado_por: "admin",
+          moderado_at: now(),
+          updated_at: now()
+        });
+        await Admin.refresh();
+      }catch(e){ alert("No se pudo moderar: " + e.message); }
+    },
+    marketViewImages(id){
+      const p = (ADMIN_DB.mercado_publicaciones || []).find(x=>String(x.id)===String(id));
+      const imgs = marketImagesForPost(id);
+      const main = p && p.imagen_principal ? [{url_imagen:p.imagen_principal, principal:true, orden:0}] : [];
+      const all = main.concat(imgs.filter(i=>!p || i.url_imagen !== p.imagen_principal)).slice(0,3);
+      openModal(`<h2>Fotos publicación</h2>${all.length?`<div style="display:grid;gap:10px">${all.map(i=>`<img src="${esc(i.url_imagen)}" style="width:100%;max-height:240px;object-fit:cover;border-radius:16px"><small>${i.principal?"Principal":"Foto " + (i.orden||"")}</small>`).join("")}</div>`:`<p class="muted">Sin fotos registradas.</p>`}<button onclick="Admin.closeModal()">Cerrar</button>`);
+    },
+    closeModal(){ closeModal(); },
     async refresh(){
       setTitle("Actualizando datos", "Consultando Supabase...");
       app.innerHTML = `<section class="panel"><div class="panelHead"><h2>Actualizando</h2></div><p class="muted" style="font-weight:800">Consultando datos más recientes...</p></section>`;
