@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
-<link rel="stylesheet" href="assets/mercado-escolar.css?v=30"/>
+<link rel="stylesheet" href="assets/mercado-escolar.css?v=40"/>
 </head>
 <body>
 <main class="marketApp">
@@ -69,7 +69,7 @@
       <p class="muted">Solo artículos escolares permitidos. Cursapp puede ocultar publicaciones denunciadas.</p>
       <form id="publishForm" class="formGrid">
         <label>Fotos reales del producto<input id="pubPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
-        <div id="photoPreview" class="photoPreview"><p>Agrega hasta 5 fotos reales. Máx. 1 MB c/u.</p></div>
+        <div id="photoPreview" class="photoPreview"><p>Agrega hasta 3 fotos reales: 1 principal y hasta 2 adicionales. Máx. 1 MB c/u.</p></div>
         <label>Título<input id="pubTitle" required placeholder="Ej: Pack libros 6° básico"></label>
         <label>Categoría<select id="pubCategory"><option>Libros</option><option>Uniformes</option><option>Vestuario</option><option>Deportes</option><option>Otros</option></select></label>
         <label>Tipo<select id="pubType"><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
@@ -117,6 +117,6 @@
 <div id="modal"></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=30"></script>
+<script src="assets/mercado-escolar.js?v=40"></script>
 </body>
 </html>
