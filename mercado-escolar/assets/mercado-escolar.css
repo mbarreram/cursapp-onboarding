@@ -546,3 +546,4 @@
   .photoPreviewItem{width:64px;height:64px;flex-basis:64px}
   .detailGallery img{width:96px;height:82px}
 }
+.publicacionApp{padding-bottom:32px}.publicacionPanel{margin:18px}.publicacionHero{display:flex;gap:10px;overflow-x:auto;margin-bottom:18px}.publicacionHero img{width:220px;height:180px;object-fit:cover;border-radius:24px;background:#f3f4f8}.bigPrice{font-size:1.25rem;font-weight:900}.metricRow{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.metricRow span{background:#f4f1ff;border-radius:999px;padding:8px 12px;font-weight:800}.primaryLink,.ghostLink,.detailLink{display:inline-block;text-align:center;text-decoration:none;border-radius:18px;padding:12px 16px;margin:8px 6px 0 0;font-weight:900}.primaryLink{background:#7427e8;color:#fff}.ghostLink,.detailLink{background:#f4f1ff;color:#7427e8}.myItem{grid-template-columns:70px 1fr auto auto;gap:8px}.myItem button{margin:2px}

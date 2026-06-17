@@ -28,7 +28,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -80,6 +80,7 @@
       fillCategorySelect();
       renderCategoryRow();
       await loadPosts();
+      await loadMinePosts();
       await loadFavorites();
       bind();
       setLoading(false);
@@ -147,6 +148,56 @@
     (r.data||[]).forEach(i=>{const k=String(i.publicacion_id);state.imagesByPost[k]=state.imagesByPost[k]||[];state.imagesByPost[k].push(i);});
   }
 
+  async function loadImagesForIds(ids){
+    const clean=Array.from(new Set((ids||[]).filter(Boolean).map(String))).filter(id=>!state.imagesByPost[id]);
+    if(!clean.length) return;
+    const r=await state.sb.from("mercado_imagenes").select("*").in("publicacion_id",clean).order("orden",{ascending:true});
+    if(r.error) return;
+    (r.data||[]).forEach(i=>{const k=String(i.publicacion_id);state.imagesByPost[k]=state.imagesByPost[k]||[];state.imagesByPost[k].push(i);});
+  }
+  function isMine(p){
+    const email=String(state.session?.email||"").toLowerCase();
+    const uid=String(state.session?.userId||"");
+    const phone=phoneClean(state.session?.phone||"");
+    return (!!email && String(p.vendedor_email||"").toLowerCase()===email)
+      || (!!email && String(p.usuario_id||"").toLowerCase()===email)
+      || (!!uid && String(p.usuario_id||"")===uid)
+      || (!!uid && String(p.vendedor_id||"")===uid)
+      || (!!phone && phoneClean(p.whatsapp||p.vendedor_whatsapp||"")===phone);
+  }
+  async function loadMinePosts(){
+    state.minePosts=[];
+    if(!state.session?.email && !state.session?.userId) return;
+    const found=new Map();
+    const queries=[];
+    if(state.session.email){
+      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_email",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+    }
+    if(state.session.userId){
+      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+      if(isUuid(state.session.userId)) queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+    }
+    const res=await Promise.allSettled(queries);
+    res.forEach(x=>{if(x.status==="fulfilled" && !x.value.error) (x.value.data||[]).forEach(p=>found.set(String(p.id),p));});
+    // fallback: cualquier publicación visible ya cargada que pertenezca al usuario
+    state.posts.filter(isMine).forEach(p=>found.set(String(p.id),p));
+    state.minePosts=Array.from(found.values()).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    await loadImagesForIds(state.minePosts.map(p=>p.id));
+  }
+  function postUrl(p){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(p.id)}`;}
+  function shareText(p){
+    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
+    return `Hola 👋
+
+Vi esta publicación en Mercado Escolar Cursapp.
+
+📦 ${p.titulo||"Publicación"}
+💰 ${price}
+
+🔗 ${postUrl(p)}`;
+  }
+
   function imageForPost(p){
     if(p.imagen_principal) return p.imagen_principal;
     const imgs=state.imagesByPost[String(p.id)]||[];
@@ -177,9 +228,8 @@
   }
   function renderMine(){
     const box=$("#myPosts"); if(!box) return;
-    const email=state.session.email;
-    const mine=state.posts.filter(p=>String(p.vendedor_email||"").toLowerCase()===email && !["eliminado"].includes(String(p.estado||"").toLowerCase()));
-    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado)} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span></div><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
+    const mine=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>!["eliminado"].includes(String(p.estado||"").toLowerCase()));
+    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos · ${Number(p.favoritos||0)} favoritos</span></div><button data-post="${esc(p.id)}">Ver</button><button data-share="${esc(p.id)}">Compartir</button><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-status="disponible" data-id="${esc(p.id)}">Activar</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -250,6 +300,8 @@
       // pero no se oculta automáticamente salvo acción del Admin o denuncias acumuladas.
       estado:"disponible",
       nombre_vendedor:state.session.name,
+      vendedor_email:state.session.email||null,
+      usuario_id:state.session.userId||state.session.email||null,
       whatsapp,
       activo:true,
       destacado:false,
@@ -266,6 +318,7 @@
     try{await uploadImages(data.id,fileCheck.files||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
     e.target.reset(); state.selectedFiles=[]; renderPreview([]);
     await loadPosts();
+    await loadMinePosts();
     toast(violation.blocked?"Publicación creada con alerta para revisión del Admin":"Publicación creada");
     showView("mis");
   }
@@ -285,6 +338,8 @@
       <p>${esc(p.descripcion||"")}</p>
       <p><b>${esc(p.nombre_vendedor||"Apoderado")}</b> · ${esc(p.curso_id?"Mi colegio":"Comunidad")}</p>
       <button data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
+      <button class="ghost" data-share="${esc(p.id)}">Compartir aviso</button>
+      <a class="ghost detailLink" href="${esc(postUrl(p))}">Abrir detalle</a>
       <button class="ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
       <button class="danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
       <button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button>
@@ -312,10 +367,21 @@
   async function contact(id){
     if(!requireSession()) return;
     const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
-    const msg=`Hola, vi tu publicación en Mercado Escolar Cursapp: ${p.titulo}. ¿Sigue disponible?`;
+    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
+    const msg=`Hola 👋
+
+Vi tu publicación en Mercado Escolar Cursapp.
+
+📦 ${p.titulo||"Publicación"}
+💰 ${price}
+
+¿Sigue disponible?
+
+🔗 Ver publicación:
+${postUrl(p)}`;
     const phone=phoneClean(p.whatsapp||p.vendedor_whatsapp||"");
     const whatsappUrl=phone?`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(msg)}`:"";
-    const row={publicacion_id:p.id,usuario_id:state.session.email,interesado_id:null,canal:"whatsapp",mensaje:msg};
+    const row={publicacion_id:p.id,usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:"whatsapp",mensaje:msg};
     const {error}=await state.sb.from("mercado_contactos").insert([row]);
     if(error){toast("No se pudo registrar contacto: "+error.message);return;}
     p.contactos=Number(p.contactos||0)+1;
@@ -352,9 +418,16 @@
     const {error}=await state.sb.from("mercado_publicaciones").update({estado:status,updated_at:now()}).eq("id",id);
     if(error){toast("No se pudo actualizar: "+error.message);return;}
     const p=state.posts.find(x=>String(x.id)===String(id)); if(p) p.estado=status;
-    toast("Publicación actualizada"); renderProducts(); renderMine();
+    await loadPosts(); await loadMinePosts(); toast("Publicación actualizada"); renderProducts(); renderMine();
   }
   async function removePost(id){if(!confirm("¿Eliminar esta publicación?")) return; await updateStatus(id,"eliminado");}
+  async function sharePost(id){
+    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
+    if(!p) return;
+    const text=shareText(p);
+    if(navigator.share){try{await navigator.share({title:p.titulo||"Mercado Escolar",text,url:postUrl(p)});return;}catch(e){}}
+    try{await navigator.clipboard.writeText(text);toast("Enlace copiado");}catch(e){toast(text);}
+  }
   function rules(){
     $("#modal").innerHTML=`<div class="modal"><h2>Reglas Mercado Escolar</h2><p>• Solo artículos escolares permitidos.</p><p>• No publicar productos prohibidos, ofensivos o ajenos al colegio.</p><p>• Las publicaciones reportadas pueden pasar a revisión u ocultarse.</p><p>• Cursapp no procesa pagos entre apoderados.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div>`;
   }
@@ -368,6 +441,7 @@
       const contactBtn=e.target.closest("[data-contact]"); if(contactBtn){contact(contactBtn.dataset.contact);return;}
       const rep=e.target.closest("[data-report]"); if(rep){openReportModal(rep.dataset.report);return;}
       const del=e.target.closest("[data-delete]"); if(del){removePost(del.dataset.delete);return;}
+      const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
       const st=e.target.closest("[data-status]"); if(st){updateStatus(st.dataset.id,st.dataset.status);return;}
     });
     $("#publishForm")?.addEventListener("submit",publish);
