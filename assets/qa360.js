@@ -72,7 +72,7 @@
     { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
     { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
     { id:'clicks', name:'Click simulado integrado', tests:['ui-open-role-pages','ui-click-presidente','ui-click-apoderado','ui-click-tesorero','ui-click-qa-evidence'] },
-    { id:'mercado-v3', name:'Mercado Escolar V3', tests:['market-schema','market-v3-reasons','market-v3-blocked-words','market-create-post','market-list-posts','market-contact','market-report','market-v3-moderation-hide','market-cleanup'] },
+    { id:'mercado-v4', name:'Mercado Escolar V4', tests:['market-schema','market-v3-reasons','market-v3-blocked-words','market-create-post','market-list-posts','market-v4-storage-upload','market-v4-image-visible','market-v4-available-default','market-contact','market-report','market-v3-moderation-hide','market-cleanup'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -344,6 +344,9 @@
       case 'market-v3-blocked-words': return marketV3BlockedWords(id,module);
       case 'market-create-post': return marketCreatePost(id,module);
       case 'market-list-posts': return marketListPosts(id,module);
+      case 'market-v4-storage-upload': return marketV4StorageUpload(id,module);
+      case 'market-v4-image-visible': return marketV4ImageVisible(id,module);
+      case 'market-v4-available-default': return marketV4AvailableDefault(id,module);
       case 'market-contact': return marketContact(id,module);
       case 'market-report': return marketReport(id,module);
       case 'market-v3-moderation-hide': return marketV3ModerationHide(id,module);
@@ -1489,7 +1492,7 @@
       estado:'disponible',
       nombre_vendedor:QA_PREFIX+' Vendedor Mercado',
       whatsapp:'56912345678',
-      imagen_principal:'qa://mercado/libros',
+      imagen_principal:null,
       destacado:false,
       visualizaciones:0,
       contactos:0,
@@ -1508,6 +1511,50 @@
     if(r.error) return fail(id,module,r.error.message);
     return (r.count||0)===1 ? pass(id,module,'Publicación Mercado visible en listado.') : fail(id,module,'Publicación Mercado no aparece disponible.');
   }
+  function tinyPngBlob(){
+    const b64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=';
+    const bin=atob(b64);
+    const arr=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return new Blob([arr],{type:'image/png'});
+  }
+  async function marketV4StorageUpload(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para subir imagen.');
+    const path=`qa/${p.id}/principal_${Date.now()}.png`;
+    const up=await c.storage.from('mercado-escolar').upload(path,tinyPngBlob(),{contentType:'image/png',upsert:true});
+    if(up.error) return fail(id,module,up.error.message);
+    state.created.mercadoStoragePath=path;
+    const pub=c.storage.from('mercado-escolar').getPublicUrl(path);
+    const url=pub && pub.data ? pub.data.publicUrl : null;
+    if(!url) return fail(id,module,'No se obtuvo URL pública de Storage.');
+    const img=await c.from('mercado_imagenes').insert([{publicacion_id:p.id,url_imagen:url,orden:1,principal:true,nombre_archivo:'principal_qa.png',peso_kb:1,extension:'png'}]).select('*').single();
+    if(img.error) return fail(id,module,img.error.message);
+    state.created.mercadoImagen=img.data;
+    const upd=await c.from('mercado_publicaciones').update({imagen_principal:url}).eq('id',p.id).select('id,imagen_principal').single();
+    if(upd.error) return fail(id,module,upd.error.message);
+    state.created.mercadoPost.imagen_principal=url;
+    return pass(id,module,'Imagen QA subida a Storage y asociada a publicación · bucket=mercado-escolar');
+  }
+  async function marketV4ImageVisible(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para validar imagen.');
+    const r=await c.from('mercado_imagenes').select('*',{count:'exact'}).eq('publicacion_id',p.id);
+    if(r.error) return fail(id,module,r.error.message);
+    const pub=await c.from('mercado_publicaciones').select('id,imagen_principal,estado').eq('id',p.id).single();
+    if(pub.error) return fail(id,module,pub.error.message);
+    return (r.count||0)>=1 && !!pub.data.imagen_principal ? pass(id,module,'Imagen principal visible y galería registrada · fotos='+(r.count||0)) : fail(id,module,'No se encontró imagen principal o galería.');
+  }
+  async function marketV4AvailableDefault(id,module){
+    const c=await sb();
+    const cat=await c.from('mercado_categorias').select('id,nombre').eq('nombre','Libros').maybeSingle();
+    const row={titulo:QA_PREFIX+' Mercado palabra bloqueada disponible QA',descripcion:'Texto QA con palabra hack para alerta admin, sin ocultar automáticamente',precio:0,estado:'disponible',activo:true,categoria_id:cat.data?cat.data.id:null,nombre_vendedor:'QA Mercado',whatsapp:'56912345678',motivo_moderacion:'Palabra restringida detectada: hack'};
+    const r=await c.from('mercado_publicaciones').insert([row]).select('*').single();
+    if(r.error) return fail(id,module,r.error.message);
+    state.created.mercadoPostBlocked=r.data;
+    return String(r.data.estado)==='disponible' ? pass(id,module,'Regla V4 OK · publicación queda disponible por defecto con alerta Admin.') : fail(id,module,'La publicación quedó en estado '+r.data.estado+' y no disponible.');
+  }
+
   async function marketContact(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
     if(!p) return warn(id,module,'Sin publicación QA para contacto.');
@@ -1548,6 +1595,12 @@
     const c=await sb(); let total=0;
     for(const t of ['mercado_contactos','mercado_reportes','mercado_imagenes','mercado_favoritos']){
       try{const r=await c.from(t).delete().eq('publicacion_id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
+    }
+    if(state.created.mercadoPostBlocked && state.created.mercadoPostBlocked.id){
+      try{await c.from('mercado_publicaciones').delete().eq('id',state.created.mercadoPostBlocked.id);}catch(e){}
+    }
+    if(state.created.mercadoStoragePath){
+      try{await c.storage.from('mercado-escolar').remove([state.created.mercadoStoragePath]);}catch(e){}
     }
     try{const r=await c.from('mercado_publicaciones').delete().eq('id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
     return pass(id,module,'Registros Mercado QA eliminados: '+total);
