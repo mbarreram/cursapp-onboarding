@@ -72,7 +72,7 @@
     { id:'resiliencia', name:'Resiliencia', tests:['empty-campanas','empty-pagos','usuario-sin-curso','curso-sin-apoderados'] },
     { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
     { id:'clicks', name:'Click simulado integrado', tests:['ui-open-role-pages','ui-click-presidente','ui-click-apoderado','ui-click-tesorero','ui-click-qa-evidence'] },
-    { id:'mercado-v1', name:'Mercado Escolar V2', tests:['market-schema','market-create-post','market-list-posts','market-favorite','market-contact','market-report','market-cleanup'] },
+    { id:'mercado-v3', name:'Mercado Escolar V3', tests:['market-schema','market-v3-reasons','market-v3-blocked-words','market-create-post','market-list-posts','market-contact','market-report','market-v3-moderation-hide','market-cleanup'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -170,7 +170,7 @@
       'empty-campanas':'Curso sin campañas','empty-pagos':'Curso sin pagos','usuario-sin-curso':'Usuario sin curso','curso-sin-apoderados':'Curso sin apoderados',
       'nav-presidente-apoderado':'Presidente → Apoderado','nav-apoderado-tesorero':'Apoderado → Tesorero','nav-no-banner-flicker':'Sin banner antes de carga','nav-no-selector-repetido':'Sin selector de rol repetido',
       'ui-open-role-pages':'Abrir pantallas en modo UI','ui-click-presidente':'Clicks Presidente','ui-click-apoderado':'Clicks Apoderado','ui-click-tesorero':'Clicks Tesorero','ui-click-qa-evidence':'Evidencia QA descargable',
-      'market-schema':'Tablas Mercado disponibles','market-create-post':'Crear publicación Mercado QA','market-list-posts':'Listar publicación Mercado QA','market-favorite':'Guardar favorito Mercado QA','market-contact':'Registrar contacto WhatsApp QA','market-report':'Reportar publicación QA','market-cleanup':'Limpiar Mercado QA','market-cleanup-by-prefix':'Limpiar Mercado QA conservado',
+      'market-schema':'Tablas Mercado disponibles','market-create-post':'Crear publicación Mercado QA','market-list-posts':'Listar publicación Mercado QA','market-contact':'Registrar contacto WhatsApp QA','market-report':'Reportar publicación QA','market-cleanup':'Limpiar Mercado QA','market-cleanup-by-prefix':'Limpiar Mercado QA conservado',
       'cleanup-qa':'Limpiar registros QA','verify-cleanup':'Verificar limpieza QA'
     })[id] || id;
   }
@@ -340,11 +340,13 @@
       case 'ui-click-tesorero': return uiClickTesorero(id,module);
       case 'ui-click-qa-evidence': return uiClickQaEvidence(id,module);
       case 'market-schema': return marketSchema(id,module);
+      case 'market-v3-reasons': return marketV3Reasons(id,module);
+      case 'market-v3-blocked-words': return marketV3BlockedWords(id,module);
       case 'market-create-post': return marketCreatePost(id,module);
       case 'market-list-posts': return marketListPosts(id,module);
-      case 'market-favorite': return marketFavorite(id,module);
       case 'market-contact': return marketContact(id,module);
       case 'market-report': return marketReport(id,module);
+      case 'market-v3-moderation-hide': return marketV3ModerationHide(id,module);
       case 'market-cleanup': return marketCleanup(id,module);
       case 'market-cleanup-by-prefix': return marketCleanupByPrefix(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
@@ -1450,7 +1452,7 @@
 
   async function marketSchema(id,module){
     const c=await sb();
-    const tables=['mercado_categorias','mercado_publicaciones','mercado_contactos','mercado_reportes','mercado_favoritos'];
+    const tables=['mercado_categorias','mercado_publicaciones','mercado_contactos','mercado_reportes','mercado_imagenes','mercado_motivos_reporte','mercado_palabras_bloqueadas'];
     const out=[];
     for(const t of tables){
       const r=await c.from(t).select('*',{count:'exact',head:true});
@@ -1459,6 +1461,19 @@
     }
     return pass(id,module,'Tablas Mercado OK · '+out.join(' · '));
   }
+  async function marketV3Reasons(id,module){
+    const c=await sb();
+    const r=await c.from('mercado_motivos_reporte').select('*',{count:'exact'}).eq('activo',true);
+    if(r.error) return fail(id,module,r.error.message);
+    return (r.count||0)>=5 ? pass(id,module,'Motivos configurables Mercado OK · activos='+(r.count||0)) : warn(id,module,'Pocos motivos configurados · activos='+(r.count||0));
+  }
+  async function marketV3BlockedWords(id,module){
+    const c=await sb();
+    const r=await c.from('mercado_palabras_bloqueadas').select('*',{count:'exact'}).eq('activo',true);
+    if(r.error) return fail(id,module,r.error.message);
+    return (r.count||0)>=5 ? pass(id,module,'Palabras bloqueadas Mercado OK · activas='+(r.count||0)) : warn(id,module,'Pocas palabras bloqueadas · activas='+(r.count||0));
+  }
+
   async function marketCreatePost(id,module){
     const c=await sb();
     const curso=(state.created.stress.cursos||[])[0];
@@ -1475,6 +1490,10 @@
       nombre_vendedor:QA_PREFIX+' Vendedor Mercado',
       whatsapp:'56912345678',
       imagen_principal:'qa://mercado/libros',
+      destacado:false,
+      visualizaciones:0,
+      contactos:0,
+      favoritos:0,
       activo:true
     };
     const r=await c.from('mercado_publicaciones').insert([row]).select('*').single();
@@ -1489,22 +1508,10 @@
     if(r.error) return fail(id,module,r.error.message);
     return (r.count||0)===1 ? pass(id,module,'Publicación Mercado visible en listado.') : fail(id,module,'Publicación Mercado no aparece disponible.');
   }
-
-  async function marketFavorite(id,module){
-    const c=await sb(); const p=state.created.mercadoPost;
-    if(!p) return warn(id,module,'Sin publicación QA para favorito.');
-    const usuario='qa_'+String(QA_PREFIX||'mercado').toLowerCase()+'@qa.cursapp.cl';
-    const r=await c.from('mercado_favoritos').insert([{publicacion_id:p.id,usuario_id:usuario}]).select('*').single();
-    if(r.error) return fail(id,module,r.error.message);
-    state.created.mercadoFavorito=r.data;
-    try{ await c.from('mercado_publicaciones').update({favoritos:1}).eq('id',p.id); }catch(e){}
-    return pass(id,module,'Favorito Mercado QA registrado: '+r.data.id);
-  }
-
   async function marketContact(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
     if(!p) return warn(id,module,'Sin publicación QA para contacto.');
-    const row={publicacion_id:p.id,canal:'whatsapp',usuario_id:'qa@cursapp.cl',mensaje:'Hola, vi tu publicación en Mercado Escolar Cursapp. ¿Sigue disponible?',whatsapp_url:'https://wa.me/56912345678'};
+    const row={publicacion_id:p.id,interesado_id:null,canal:'whatsapp',mensaje:'Hola, vi tu publicación en Mercado Escolar Cursapp. ¿Sigue disponible?'};
     const r=await c.from('mercado_contactos').insert([row]).select('*').single();
     if(r.error) return fail(id,module,r.error.message);
     state.created.mercadoContacto=r.data;
@@ -1513,11 +1520,25 @@
   async function marketReport(id,module){
     const c=await sb(); const p=state.created.mercadoPost;
     if(!p) return warn(id,module,'Sin publicación QA para reporte.');
-    const r=await c.from('mercado_reportes').insert([{publicacion_id:p.id,usuario_id:null,motivo:'QA reporte Mercado',detalle:'Reporte QA automático Mercado Escolar',estado:'pendiente'}]).select('*').single();
+    const motivo=await c.from('mercado_motivos_reporte').select('id,nombre').eq('activo',true).limit(1).maybeSingle();
+    const row={publicacion_id:p.id,usuario_id:null,motivo:(motivo.data&&motivo.data.nombre)||'QA reporte Mercado',detalle:'Reporte QA automático Mercado Escolar',estado:'pendiente'};
+    if(motivo.data&&motivo.data.id) row.motivo_id=motivo.data.id;
+    const r=await c.from('mercado_reportes').insert([row]).select('*').single();
     if(r.error) return fail(id,module,r.error.message);
     state.created.mercadoReporte=r.data;
     return pass(id,module,'Reporte Mercado QA registrado: '+r.data.id);
   }
+  async function marketV3ModerationHide(id,module){
+    const c=await sb(); const p=state.created.mercadoPost;
+    if(!p) return warn(id,module,'Sin publicación QA para moderar.');
+    const r=await c.from('mercado_publicaciones').update({estado:'oculto',motivo_moderacion:'QA ocultamiento por reporte',moderado_por:'qa360',moderado_at:new Date().toISOString()}).eq('id',p.id).select('id,estado').single();
+    if(r.error) return fail(id,module,r.error.message);
+    const visible=await c.from('mercado_publicaciones').select('id',{count:'exact',head:true}).eq('id',p.id).in('estado',['disponible','reservado']).eq('activo',true);
+    if(visible.error) return fail(id,module,visible.error.message);
+    state.created.mercadoPost.estado='oculto';
+    return (visible.count||0)===0 ? pass(id,module,'Moderación OK · publicación oculta no aparece en Mercado.') : fail(id,module,'Publicación oculta sigue visible.');
+  }
+
   async function marketCleanup(id,module){
     const p=state.created.mercadoPost;
     if(!p || !p.id) return warn(id,module,'Sin publicación Mercado QA para limpiar o conservar.');
@@ -1525,7 +1546,7 @@
       return pass(id,module,'Mercado QA conservado para inspección · publicacion_id='+p.id+' · limpieza_general='+(state.cleanup?'activa':'desactivada'));
     }
     const c=await sb(); let total=0;
-    for(const t of ['mercado_contactos','mercado_reportes','mercado_favoritos']){
+    for(const t of ['mercado_contactos','mercado_reportes','mercado_imagenes','mercado_favoritos']){
       try{const r=await c.from(t).delete().eq('publicacion_id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
     }
     try{const r=await c.from('mercado_publicaciones').delete().eq('id',p.id).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
@@ -1538,7 +1559,7 @@
     if(pubs.error) return fail(id,module,pubs.error.message);
     const ids=(pubs.data||[]).map(x=>x.id);
     if(!ids.length) return pass(id,module,'No hay publicaciones Mercado QA conservadas para limpiar.');
-    for(const t of ['mercado_contactos','mercado_reportes','mercado_favoritos']){
+    for(const t of ['mercado_contactos','mercado_reportes','mercado_imagenes','mercado_favoritos']){
       try{const r=await c.from(t).delete().in('publicacion_id',ids).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
     }
     try{const r=await c.from('mercado_publicaciones').delete().in('id',ids).select('id'); if(!r.error) total+=(r.data||[]).length;}catch(e){}
