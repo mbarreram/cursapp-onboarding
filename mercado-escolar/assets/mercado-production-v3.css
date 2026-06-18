@@ -1,0 +1,34 @@
+/* =========================================================
+   Cursapp · Mercado Escolar V3 Producción
+   Ajustes visuales compactos tipo marketplace.
+   ========================================================= */
+:root{--mk-v3-purple:#6d28d9;--mk-v3-line:#e7edf6;--mk-v3-text:#0f172a;--mk-v3-muted:#64748b;}
+.marketApp{background:linear-gradient(180deg,#fbfcff,#f8fafc)!important;padding-bottom:92px!important;}
+.marketHeader{padding:14px 16px 10px!important;gap:10px!important;}
+.marketHeader .brandIcon{width:40px!important;height:40px!important;border-radius:15px!important;font-size:18px!important;}
+.marketHeader h1{font-size:21px!important;line-height:1.05!important;letter-spacing:-.035em!important;}
+.marketHeader p{font-size:12.5px!important;line-height:1.15!important;}
+.headerBell{width:38px!important;height:38px!important;border-radius:15px!important;}
+.heroRetail{min-height:0!important;max-height:none!important;padding:16px!important;border-radius:24px!important;margin:8px 14px 12px!important;}
+.heroRetail .heroCopy span{font-size:11px!important;letter-spacing:.10em!important;}
+.heroRetail .heroCopy h2{font-size:28px!important;line-height:.96!important;max-width:62%!important;}
+.heroRetail .heroCopy p{font-size:13px!important;line-height:1.12!important;margin-top:8px!important;}
+.heroRetail .heroCopy button{min-height:42px!important;padding:10px 18px!important;border-radius:18px!important;font-size:15px!important;}
+.heroRetail .heroItems{max-height:190px!important;width:48%!important;right:4px!important;object-fit:contain!important;}
+.pillNav{padding:0 14px 10px!important;gap:8px!important;}
+.pillNav button{min-height:38px!important;padding:8px 13px!important;border-radius:16px!important;font-size:13px!important;white-space:nowrap!important;}
+.searchRow{padding:0 14px 10px!important;gap:8px!important;}
+.searchBox{min-height:44px!important;border-radius:18px!important;padding:0 12px!important;}
+.searchBox input{font-size:14px!important;}
+.filterBtn{width:44px!important;height:44px!important;border-radius:18px!important;font-size:20px!important;}
+.locationCard{margin:0 14px 12px!important;padding:13px!important;border-radius:20px!important;gap:10px!important;}
+.locationCard b{font-size:15px!important;line-height:1.05!important;}
+.locationCard span{font-size:12.5px!important;line-height:1.15!important;}
+.locationCard button{min-height:36px!important;padding:8px 12px!important;border-radius:14px!important;font-size:13px!important;}
+.categoryRow{padding:0 14px 8px!important;gap:8px!important;}
+.categoryRow article{min-width:82px!important;padding:10px 9px!important;border-radius:18px!important;}
+.sectionHead{padding:8px 16px!important;}
+.sectionHead h2{font-size:18px!important;}
+.featuredScroller,.grid,.productGrid{gap:10px!important;padding:0 14px 18px!important;}
+.productCard,.marketCard,article.card{border-radius:18px!important;overflow:hidden!important;}
+@media(max-width:420px){.heroRetail .heroCopy h2{font-size:24px!important}.heroRetail .heroItems{max-height:170px!important}.marketHeader h1{font-size:20px!important}}
