@@ -1355,6 +1355,115 @@
     `;
   }
 
+
+  function renderMonetizacion(){
+    setTitle("Monetización", "Créditos Mercado, publicaciones destacadas e ingresos Cursapp desde Supabase");
+    const wallets = creditWallets();
+    const orders = creditOrders();
+    const moves = creditMoves();
+    const featured = featuredPubs();
+    const txs = ADMIN_DB.transacciones_cursapp || [];
+    const paidOrders = orders.filter(o=>String(o.estado||"").toLowerCase()==="pagado");
+    const activeFeatured = featured.filter(f=>String(f.estado||"activo").toLowerCase()==="activo");
+    const totalCreditosVendidos = paidOrders.reduce((a,b)=>a+Number(b.creditos||0),0);
+    const ingresoCreditos = paidOrders.reduce((a,b)=>a+Number(b.ingreso_cursapp || b.monto_total || b.monto || 0),0);
+    const saldoTotal = wallets.reduce((a,b)=>a+Number(b.saldo || b.saldo_creditos || 0),0);
+    const creditosConsumidos = moves
+      .filter(m=>String(m.tipo||"").toLowerCase().includes("consum") || Number(m.cantidad||0)<0 || Number(m.creditos||0)<0)
+      .reduce((a,b)=>a+Math.abs(Number(b.cantidad || b.creditos || 0)),0);
+    const cursappTx = txs.filter(t=>String(t.tipo||"").toLowerCase().includes("credito"));
+    const ingresoLedger = cursappTx.reduce((a,b)=>a+Number(b.ingreso_cursapp||0),0);
+
+    app.innerHTML = `
+      <div class="kpis">
+        ${kpi("💎","Créditos vendidos",totalCreditosVendidos,`${paidOrders.length} compras pagadas`)}
+        ${kpi("💰","Ingreso Cursapp",clp(ingresoCreditos || ingresoLedger),"Compra de créditos")}
+        ${kpi("👛","Saldo en billeteras",saldoTotal,`${wallets.length} usuarios con wallet`)}
+        ${kpi("⭐","Publicaciones destacadas",activeFeatured.length,`${featured.length} registros`)}
+        ${kpi("📉","Créditos consumidos",creditosConsumidos,"Movimientos registrados")}
+        ${kpi("🧾","Ledger créditos",cursappTx.length,clp(ingresoLedger))}
+      </div>
+
+      <div class="gridMain adminGrid4">
+        <section class="panel">
+          <div class="panelHead"><h2>Compras de créditos</h2><span>${orders.length} órdenes</span></div>
+          <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Paquete</th><th>Créditos</th><th>Monto</th><th>Ingreso Cursapp</th><th>Estado</th></tr></thead><tbody>
+            ${orders.slice(0,50).map(o=>`<tr>
+              <td>${fmtDate(o.created_at || o.pagado_at)}</td>
+              <td>${esc(o.email || o.usuario_id || "—")}</td>
+              <td>${esc(o.paquete_nombre || o.paquete_codigo || o.paquete_id || "—")}</td>
+              <td><b>${Number(o.creditos||0)}</b></td>
+              <td>${clp(o.monto_total || o.monto || 0)}</td>
+              <td>${clp(o.ingreso_cursapp || o.monto_total || o.monto || 0)}</td>
+              <td>${badge(o.estado||"—", String(o.estado||"").toLowerCase()==="pagado"?"green":"orange")}</td>
+            </tr>`).join("") || `<tr><td colspan="7">Sin compras de créditos.</td></tr>`}
+          </tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead"><h2>Billeteras de créditos</h2><span>${wallets.length} usuarios</span></div>
+          <div class="tableWrap"><table><thead><tr><th>Usuario</th><th>Email</th><th>Saldo</th><th>Total comprado</th><th>Total consumido</th><th>Actualizado</th></tr></thead><tbody>
+            ${wallets.slice(0,50).map(w=>`<tr>
+              <td>${esc(w.usuario_id || "—")}</td>
+              <td>${esc(w.email || "—")}</td>
+              <td><b>${Number(w.saldo || w.saldo_creditos || 0)}</b></td>
+              <td>${Number(w.total_comprado||0)}</td>
+              <td>${Number(w.total_consumido||0)}</td>
+              <td>${fmtDate(w.updated_at || w.created_at)}</td>
+            </tr>`).join("") || `<tr><td colspan="6">Sin billeteras.</td></tr>`}
+          </tbody></table></div>
+        </section>
+      </div>
+
+      <div class="gridMain adminGrid4">
+        <section class="panel">
+          <div class="panelHead"><h2>Publicaciones destacadas</h2><span>${activeFeatured.length} activas</span></div>
+          <div class="tableWrap"><table><thead><tr><th>Publicación</th><th>Usuario</th><th>Tipo</th><th>Créditos</th><th>Desde</th><th>Hasta</th><th>Estado</th></tr></thead><tbody>
+            ${featured.slice(0,50).map(f=>`<tr>
+              <td>${esc(f.publicacion_id || "—")}</td>
+              <td>${esc(f.usuario_id || "—")}</td>
+              <td>${esc(f.tipo_destacado || f.destacado_tipo || "destacado")}</td>
+              <td>${Number(f.creditos_usados || f.creditos_consumidos || 0)}</td>
+              <td>${fmtDate(f.fecha_inicio || f.created_at)}</td>
+              <td>${fmtDate(f.fecha_fin || f.destacado_hasta)}</td>
+              <td>${badge(f.estado||"activo", String(f.estado||"activo").toLowerCase()==="activo"?"green":"orange")}</td>
+            </tr>`).join("") || `<tr><td colspan="7">Sin publicaciones destacadas.</td></tr>`}
+          </tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead"><h2>Movimientos de créditos</h2><span>${moves.length} movimientos</span></div>
+          <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Cantidad</th><th>Saldo</th><th>Descripción</th></tr></thead><tbody>
+            ${moves.slice(0,50).map(m=>`<tr>
+              <td>${fmtDate(m.created_at)}</td>
+              <td>${esc(m.usuario_id || "—")}</td>
+              <td>${esc(m.tipo || "—")}</td>
+              <td><b>${Number(m.cantidad || m.creditos || 0)}</b></td>
+              <td>${Number(m.saldo_nuevo || 0)}</td>
+              <td>${esc(m.descripcion || "—")}</td>
+            </tr>`).join("") || `<tr><td colspan="6">Sin movimientos.</td></tr>`}
+          </tbody></table></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panelHead"><h2>Separación contable</h2><span>Ingresos Cursapp vs fondos de curso</span></div>
+        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Usuario</th><th>Monto total</th><th>Monto curso</th><th>Comisión</th><th>Ingreso Cursapp</th><th>Estado</th></tr></thead><tbody>
+          ${txs.slice(0,60).map(t=>`<tr>
+            <td>${fmtDate(t.created_at)}</td>
+            <td>${esc(t.tipo || "—")}</td>
+            <td>${esc(t.usuario_id || "—")}</td>
+            <td>${clp(t.monto_total||0)}</td>
+            <td>${clp(t.monto_curso||0)}</td>
+            <td>${clp(t.comision_cursapp||0)}</td>
+            <td><b>${clp(t.ingreso_cursapp||0)}</b></td>
+            <td>${badge(t.estado||"—", String(t.estado||"").toLowerCase()==="pagado"?"green":"orange")}</td>
+          </tr>`).join("") || `<tr><td colspan="8">Sin transacciones registradas.</td></tr>`}
+        </tbody></table></div>
+      </section>
+    `;
+  }
+
   function renderAuditoria(){
     setTitle("Auditoría", "Control de cambios sensibles y acciones administrativas");
     const logs = load(ADMIN_LOGS, []).filter(l=>String(l.type||"").includes("admin") || String(l.type||"").includes("audit") || String(l.type||"").includes("member"));
@@ -1378,6 +1487,7 @@
       if(tab==="avisos") renderAvisos();
       if(tab==="finanzas") renderFinanzas();
       if(tab==="mercado") renderMercado();
+      if(tab==="monetizacion") renderMonetizacion();
       if(tab==="auditoria") renderAuditoria();
     },
     async marketModerate(id, status){

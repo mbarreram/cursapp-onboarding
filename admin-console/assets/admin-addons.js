@@ -287,7 +287,7 @@
       </div>`);
   }
 
-  function install(){if(!window.Admin||window.Admin.__addonsInstalled)return false;const old=window.Admin.go.bind(window.Admin);window.Admin.go=function(tab){$$(".sideItem").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.body.classList.remove("sideOpen");if(tab==="agentes"){renderAgentes();return}if(tab==="monetizacion"){renderMonetizacion();return}if(tab==="alertas"){renderAlertas();return}old(tab)};Object.assign(window.Admin,{__addonsInstalled:true,
+  function install(){if(!window.Admin||window.Admin.__addonsInstalled)return false;const old=window.Admin.go.bind(window.Admin);window.Admin.go=function(tab){$$(".sideItem").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));document.body.classList.remove("sideOpen");if(tab==="agentes"){renderAgentes();return}if(tab==="monetizacion"){old(tab);return}if(tab==="alertas"){renderAlertas();return}old(tab)};Object.assign(window.Admin,{__addonsInstalled:true,
     switchMonetTab:renderMonetTab,
     openBannerModal,
     openAllianceModal,
