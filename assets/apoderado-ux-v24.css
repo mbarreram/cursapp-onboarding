@@ -1,0 +1,340 @@
+/* =========================================================
+   Cursapp · Apoderado UX/UI V2.4 Producción
+   Objetivo: menos morado repetido, home más limpio, carrusel
+   de próximas cuotas conservado pero más compacto.
+   Cargar al final, después de ux-apoderado-compact-v62.css.
+   ========================================================= */
+
+:root{
+  --apo-primary:#6C3DFF;
+  --apo-primary-2:#7C3AED;
+  --apo-text:#0f172a;
+  --apo-muted:#64748b;
+  --apo-soft:#f8fafc;
+  --apo-line:#e8edf5;
+  --apo-card:#ffffff;
+  --apo-success:#22c55e;
+  --apo-warning:#f59e0b;
+  --apo-danger:#ef4444;
+  --apo-shadow:0 14px 34px rgba(15,23,42,.07);
+  --apo-shadow-soft:0 8px 20px rgba(15,23,42,.055);
+}
+
+body.apoderado-ui-v24{
+  background:
+    radial-gradient(circle at 15% 0%, rgba(108,61,255,.07), transparent 25%),
+    linear-gradient(180deg,#fbfcff 0%,#f8fafc 100%)!important;
+  color:var(--apo-text)!important;
+  font-size:14px!important;
+  letter-spacing:-.006em;
+}
+
+body.apoderado-ui-v24 .container{
+  max-width:1120px!important;
+  padding:14px 14px 96px!important;
+}
+
+@media (min-width:768px){
+  body.apoderado-ui-v24 .container{padding:22px 24px 108px!important;}
+}
+@media (min-width:1024px){
+  body.apoderado-ui-v24 .container{padding:28px 34px 110px!important;}
+}
+
+/* Header más sobrio */
+body.apoderado-ui-v24 header{
+  background:rgba(255,255,255,.86)!important;
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(226,232,240,.85)!important;
+}
+body.apoderado-ui-v24 header .topbar{
+  padding:14px 16px 12px!important;
+  min-height:72px!important;
+}
+body.apoderado-ui-v24 header .brand{gap:10px!important;}
+body.apoderado-ui-v24 .logo,
+body.apoderado-ui-v24 header .brand .logo{
+  width:40px!important;height:40px!important;min-width:40px!important;
+  border-radius:15px!important;font-size:18px!important;
+  box-shadow:0 10px 22px rgba(108,61,255,.18)!important;
+}
+body.apoderado-ui-v24 #whoRoleTitle{font-size:16px!important;line-height:1.15!important;}
+body.apoderado-ui-v24 #whoCourseLine{font-size:11px!important;line-height:1.2!important;}
+body.apoderado-ui-v24 #menuBtn,
+body.apoderado-ui-v24 header .btn.ghost{
+  width:42px!important;height:42px!important;min-width:42px!important;
+  border-radius:16px!important;font-size:16px!important;
+  right:14px!important;top:10px!important;
+  background:#fff!important;border:1px solid var(--apo-line)!important;
+  box-shadow:var(--apo-shadow-soft)!important;color:var(--apo-primary)!important;
+}
+
+/* Tarjetas base: menos color, más premium */
+body.apoderado-ui-v24 .card,
+body.apoderado-ui-v24 section,
+body.apoderado-ui-v24 details.cpV5Section{
+  border-color:rgba(226,232,240,.9)!important;
+  box-shadow:var(--apo-shadow-soft)!important;
+}
+body.apoderado-ui-v24 .card{
+  border-radius:20px!important;
+  background:#fff!important;
+  padding:16px!important;
+}
+body.apoderado-ui-v24 .card[style*="rgba(91,92,226"]{
+  background:#fff!important;
+  border-color:var(--apo-line)!important;
+}
+body.apoderado-ui-v24 .kTitle,
+body.apoderado-ui-v24 h1,
+body.apoderado-ui-v24 h2,
+body.apoderado-ui-v24 h3{
+  color:var(--apo-text)!important;
+  letter-spacing:-.035em!important;
+}
+body.apoderado-ui-v24 .kTitle{font-size:16px!important;line-height:1.2!important;}
+body.apoderado-ui-v24 .muted{color:var(--apo-muted)!important;font-weight:650!important;}
+
+/* =========================================================
+   HOME: carrusel de próxima cuota se conserva.
+   ========================================================= */
+body.apoderado-ui-v24 .cpHomeV5{display:block!important;}
+body.apoderado-ui-v24 .cpV5Next{
+  margin:4px 0 14px!important;
+  border-radius:22px!important;
+  background:#fff!important;
+  border:1px solid rgba(226,232,240,.95)!important;
+  box-shadow:var(--apo-shadow)!important;
+  overflow:hidden!important;
+}
+body.apoderado-ui-v24 .cpV5NextHead{
+  padding:14px 16px 6px!important;
+  display:flex!important;align-items:center!important;gap:9px!important;
+}
+body.apoderado-ui-v24 .cpV5Icon{
+  width:32px!important;height:32px!important;min-width:32px!important;
+  border-radius:12px!important;font-size:15px!important;
+  background:rgba(108,61,255,.10)!important;color:var(--apo-primary)!important;
+  box-shadow:none!important;
+}
+body.apoderado-ui-v24 .cpV5Kicker{
+  font-size:12px!important;font-weight:900!important;
+  color:var(--apo-muted)!important;text-transform:none!important;letter-spacing:.01em!important;
+}
+body.apoderado-ui-v24 .cpV5Carousel{
+  padding:0 16px 14px!important;
+  gap:12px!important;
+  scroll-snap-type:x mandatory!important;
+}
+body.apoderado-ui-v24 .cpV5DueCard{
+  min-width:82%!important;
+  max-width:340px!important;
+  padding:14px!important;
+  border-radius:18px!important;
+  background:linear-gradient(135deg,#6C3DFF 0%,#5B21B6 100%)!important;
+  color:#fff!important;
+  box-shadow:0 15px 30px rgba(108,61,255,.22)!important;
+  scroll-snap-align:start!important;
+}
+@media (min-width:760px){
+  body.apoderado-ui-v24 .cpV5DueCard{min-width:300px!important;}
+}
+body.apoderado-ui-v24 .cpV5DueIndex{
+  display:inline-flex!important;align-items:center!important;
+  font-size:10px!important;line-height:1!important;font-weight:900!important;
+  padding:5px 8px!important;border-radius:999px!important;
+  background:rgba(255,255,255,.16)!important;color:#fff!important;
+  margin-bottom:9px!important;
+}
+body.apoderado-ui-v24 .cpV5DueTitle{
+  font-size:16px!important;line-height:1.15!important;
+  font-weight:950!important;letter-spacing:-.025em!important;
+  color:#fff!important;max-width:100%!important;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+body.apoderado-ui-v24 .cpV5DueMeta{
+  margin-top:6px!important;font-size:11px!important;line-height:1.25!important;
+  color:rgba(255,255,255,.82)!important;font-weight:700!important;
+}
+body.apoderado-ui-v24 .cpV5Badge{
+  display:inline-flex!important;vertical-align:middle!important;
+  margin-left:5px!important;font-size:10px!important;
+  padding:4px 7px!important;border-radius:999px!important;
+  color:#3f2c00!important;background:#fde68a!important;
+  font-weight:900!important;
+}
+body.apoderado-ui-v24 .cpV5Amount{
+  margin-top:10px!important;font-size:26px!important;line-height:1!important;
+  color:#fff!important;font-weight:950!important;letter-spacing:-.045em!important;
+}
+body.apoderado-ui-v24 .cpV5Actions{
+  display:flex!important;gap:8px!important;margin-top:12px!important;align-items:center!important;
+}
+body.apoderado-ui-v24 .cpV5Pay,
+body.apoderado-ui-v24 .cpV5Detail{
+  min-height:38px!important;border-radius:13px!important;
+  font-size:12px!important;font-weight:900!important;
+  padding:0 12px!important;line-height:1!important;
+  box-shadow:none!important;
+}
+body.apoderado-ui-v24 .cpV5Pay{
+  background:#fff!important;color:var(--apo-primary)!important;border:0!important;
+  flex:1!important;
+}
+body.apoderado-ui-v24 .cpV5Detail{
+  background:rgba(255,255,255,.12)!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;
+}
+body.apoderado-ui-v24 .cpV5Dots{padding:0 0 13px!important;margin-top:-4px!important;}
+body.apoderado-ui-v24 .cpV5Dot{width:6px!important;height:6px!important;background:#dbe2ee!important;}
+body.apoderado-ui-v24 .cpV5Dot.active{width:18px!important;background:var(--apo-primary)!important;}
+
+/* Ocultar antigua tarjeta duplicada de próxima cuota si queda renderizada */
+body.apoderado-ui-v24 #cardNextDue{display:none!important;}
+
+/* Accesos rápidos / secciones compactas */
+body.apoderado-ui-v24 .cpV5QuickTitle{font-size:14px!important;margin:12px 2px 8px!important;color:var(--apo-text)!important;}
+body.apoderado-ui-v24 .cpV5QuickGrid{gap:10px!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+body.apoderado-ui-v24 .cpV5Quick{
+  min-height:76px!important;border-radius:17px!important;
+  background:#fff!important;border:1px solid var(--apo-line)!important;
+  box-shadow:var(--apo-shadow-soft)!important;color:var(--apo-text)!important;
+  font-size:12px!important;font-weight:850!important;padding:10px 8px!important;
+}
+body.apoderado-ui-v24 .cpV5Quick span{
+  width:30px!important;height:30px!important;border-radius:12px!important;
+  display:grid!important;place-items:center!important;
+  background:rgba(108,61,255,.09)!important;color:var(--apo-primary)!important;
+  font-size:15px!important;margin-bottom:6px!important;
+}
+
+/* Details/colapsables: más limpios, menos morado */
+body.apoderado-ui-v24 details.cpV5Section{
+  border-radius:18px!important;background:#fff!important;
+  border:1px solid var(--apo-line)!important;
+  margin:10px 0!important;box-shadow:var(--apo-shadow-soft)!important;
+}
+body.apoderado-ui-v24 details.cpV5Section summary{
+  min-height:58px!important;padding:11px 12px!important;
+  gap:9px!important;align-items:center!important;
+}
+body.apoderado-ui-v24 .cpV5SecIcon{
+  width:34px!important;height:34px!important;min-width:34px!important;
+  border-radius:13px!important;font-size:15px!important;
+  background:#f3f4f8!important;color:var(--apo-muted)!important;
+}
+body.apoderado-ui-v24 .cpV5SecIcon.pay,
+body.apoderado-ui-v24 .cpV5SecIcon.info,
+body.apoderado-ui-v24 .cpV5SecIcon.chart{
+  background:rgba(108,61,255,.08)!important;color:var(--apo-primary)!important;
+}
+body.apoderado-ui-v24 .cpV5SecTitle{font-size:14px!important;line-height:1.15!important;font-weight:950!important;}
+body.apoderado-ui-v24 .cpV5SecSub{font-size:11px!important;line-height:1.2!important;color:var(--apo-muted)!important;}
+body.apoderado-ui-v24 .cpV5Count{font-size:10.5px!important;padding:4px 7px!important;background:#f1f5f9!important;color:#475569!important;}
+body.apoderado-ui-v24 .cpV5Chevron{font-size:15px!important;color:#94a3b8!important;}
+body.apoderado-ui-v24 .cpV5Body{padding:0 12px 12px!important;}
+body.apoderado-ui-v24 .cpV5Body .card{box-shadow:none!important;border:0!important;padding:8px 0!important;margin:0!important;}
+
+/* Botones globales más pequeños y consistentes */
+body.apoderado-ui-v24 .btnx,
+body.apoderado-ui-v24 button.btnx,
+body.apoderado-ui-v24 .btn,
+body.apoderado-ui-v24 button:not(.navItem):not(#menuBtn):not(.cpV5Pay):not(.cpV5Detail){
+  min-height:40px!important;
+  border-radius:13px!important;
+  font-size:12.5px!important;
+  font-weight:850!important;
+  padding:0 14px!important;
+}
+body.apoderado-ui-v24 .btnx.primary,
+body.apoderado-ui-v24 .primary,
+body.apoderado-ui-v24 button.primary{
+  background:linear-gradient(135deg,var(--apo-primary),#5b21b6)!important;
+  color:#fff!important;
+  box-shadow:0 12px 22px rgba(108,61,255,.18)!important;
+}
+body.apoderado-ui-v24 .tag{
+  font-size:10.5px!important;padding:5px 8px!important;border-radius:999px!important;font-weight:900!important;
+}
+body.apoderado-ui-v24 .helpBtn{
+  width:22px!important;height:22px!important;min-height:22px!important;
+  padding:0!important;border-radius:999px!important;font-size:11px!important;
+}
+
+/* Tarjetas internas de Home */
+body.apoderado-ui-v24 #cardPending,
+body.apoderado-ui-v24 #cardPending + .card,
+body.apoderado-ui-v24 .card[id*="Pending"]{
+  border:1px solid var(--apo-line)!important;
+  background:#fff!important;
+}
+body.apoderado-ui-v24 #homeThisMonthTotal,
+body.apoderado-ui-v24 #homePendingTotal,
+body.apoderado-ui-v24 [id*="Total"]{
+  font-size:22px!important;letter-spacing:-.035em!important;
+}
+
+/* Pagos / informes: compactación sin cambiar lógica */
+body.apoderado-ui-v24 .chip,
+body.apoderado-ui-v24 .tabChip,
+body.apoderado-ui-v24 [class*="chip"]{
+  min-height:34px!important;border-radius:999px!important;
+  font-size:12px!important;padding:0 12px!important;font-weight:850!important;
+}
+body.apoderado-ui-v24 .chip.active,
+body.apoderado-ui-v24 [class*="chip"].active{
+  background:var(--apo-primary)!important;color:#fff!important;
+}
+body.apoderado-ui-v24 .payRow,
+body.apoderado-ui-v24 [class*="PaymentRow"],
+body.apoderado-ui-v24 [class*="payment-row"]{
+  border-radius:16px!important;padding:12px!important;
+}
+
+/* Bottom nav más limpia */
+body.apoderado-ui-v24 .bottomNav{
+  height:72px!important;
+  padding:8px 12px calc(8px + env(safe-area-inset-bottom))!important;
+  background:rgba(255,255,255,.92)!important;
+  backdrop-filter:blur(18px)!important;
+  border-top:1px solid rgba(226,232,240,.95)!important;
+  box-shadow:0 -12px 30px rgba(15,23,42,.06)!important;
+}
+body.apoderado-ui-v24 .bottomNav .navItem{
+  min-height:48px!important;border-radius:16px!important;
+  font-size:17px!important;color:#64748b!important;
+}
+body.apoderado-ui-v24 .bottomNav .navItem span{font-size:10.5px!important;font-weight:850!important;margin-top:2px!important;}
+body.apoderado-ui-v24 .bottomNav .navItem.active{
+  background:rgba(108,61,255,.10)!important;color:var(--apo-primary)!important;
+}
+
+/* Mercado acceso agregado: que no compita */
+body.apoderado-ui-v24 .marketQuickBtn{
+  width:50px!important;height:50px!important;border-radius:18px!important;
+  font-size:22px!important;bottom:84px!important;right:14px!important;
+  box-shadow:0 14px 28px rgba(108,61,255,.20)!important;
+}
+body.apoderado-ui-v24 .marketBottomTab{
+  color:#64748b!important;font-size:12px!important;font-weight:850!important;
+}
+
+/* Responsive desktop/tablet: se ve como app, no web antigua */
+@media (min-width:840px){
+  body.apoderado-ui-v24 .cpHomeV5{
+    display:grid!important;
+    grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr)!important;
+    gap:16px!important;
+    align-items:start!important;
+  }
+  body.apoderado-ui-v24 .cpV5Next{grid-column:1 / -1!important;}
+  body.apoderado-ui-v24 details.cpV5Section{margin:0!important;}
+}
+
+/* Móvil chico: evita desbordes */
+@media (max-width:420px){
+  body.apoderado-ui-v24 .container{padding-left:12px!important;padding-right:12px!important;}
+  body.apoderado-ui-v24 .cpV5DueCard{min-width:86%!important;padding:13px!important;}
+  body.apoderado-ui-v24 .cpV5Amount{font-size:24px!important;}
+  body.apoderado-ui-v24 .cpV5QuickGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+
