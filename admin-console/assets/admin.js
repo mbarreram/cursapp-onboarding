@@ -57,7 +57,7 @@
     error:null,
     colegios:[], cursos:[], usuarios:[], miembros:[], campanas:[], pagos:[],
     avisos:[], gastos:[], rendiciones:[], informes:[],
-    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[], mercado_favoritos:[], mercado_motivos_reporte:[], mercado_palabras_bloqueadas:[]
+    mercado_categorias:[], mercado_publicaciones:[], mercado_contactos:[], mercado_reportes:[], mercado_imagenes:[], mercado_favoritos:[], mercado_motivos_reporte:[], mercado_palabras_bloqueadas:[], creditos_usuario:[], movimientos_creditos:[], ordenes_creditos:[], publicaciones_destacadas:[], transacciones_cursapp:[]
   };
 
   async function sbGet(path){
@@ -110,7 +110,7 @@
       const [
         colegiosRaw, cursosRaw, usuariosRaw, miembrosRaw, campanasRaw, pagosRaw,
         avisosRaw, gastosRaw, rendicionesRaw, informesRaw,
-        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw, mercadoFavoritosRaw, mercadoMotivosRaw, mercadoPalabrasRaw
+        mercadoCategoriasRaw, mercadoPublicacionesRaw, mercadoContactosRaw, mercadoReportesRaw, mercadoImagenesRaw, mercadoFavoritosRaw, mercadoMotivosRaw, mercadoPalabrasRaw, creditosUsuarioRaw, movimientosCreditosRaw, ordenesCreditosRaw, publicacionesDestacadasRaw, transaccionesRaw
       ] = await Promise.all([
         sbGet("colegios?select=*&order=created_at.desc"),
         sbGet("cursos?select=*&order=created_at.desc"),
@@ -129,7 +129,12 @@
         sbGet("mercado_imagenes?select=*&order=created_at.desc"),
         sbGet("mercado_favoritos?select=*&order=created_at.desc"),
         sbGet("mercado_motivos_reporte?select=*&order=nombre.asc"),
-        sbGet("mercado_palabras_bloqueadas?select=*&order=palabra.asc")
+        sbGet("mercado_palabras_bloqueadas?select=*&order=palabra.asc"),
+        sbGet("creditos_usuario?select=*&order=updated_at.desc"),
+        sbGet("movimientos_creditos?select=*&order=created_at.desc"),
+        sbGet("ordenes_creditos?select=*&order=created_at.desc"),
+        sbGet("publicaciones_destacadas?select=*&order=created_at.desc"),
+        sbGet("transacciones_cursapp?select=*&order=created_at.desc")
       ]);
 
       const byId = (rows)=>{
@@ -221,6 +226,11 @@
       ADMIN_DB.mercado_favoritos = mercadoFavoritos;
       ADMIN_DB.mercado_motivos_reporte = mercadoMotivosRaw || [];
       ADMIN_DB.mercado_palabras_bloqueadas = mercadoPalabrasRaw || [];
+      ADMIN_DB.creditos_usuario = creditosUsuarioRaw || [];
+      ADMIN_DB.movimientos_creditos = movimientosCreditosRaw || [];
+      ADMIN_DB.ordenes_creditos = ordenesCreditosRaw || [];
+      ADMIN_DB.publicaciones_destacadas = publicacionesDestacadasRaw || [];
+      ADMIN_DB.transacciones_cursapp = transaccionesRaw || [];
       ADMIN_DB.ready = true;
       try{ localStorage.setItem("cursapp_admin_supabase_status_v1", JSON.stringify({
         status:"ok", at:now(),
@@ -340,6 +350,11 @@
   function marketContacts(){ return ADMIN_DB.mercado_contactos || []; }
   function marketReports(){ return ADMIN_DB.mercado_reportes || []; }
   function marketFavorites(){ return ADMIN_DB.mercado_favoritos || []; }
+  function creditWallets(){ return ADMIN_DB.creditos_usuario || []; }
+  function creditOrders(){ return ADMIN_DB.ordenes_creditos || []; }
+  function creditMoves(){ return ADMIN_DB.movimientos_creditos || []; }
+  function featuredPubs(){ return ADMIN_DB.publicaciones_destacadas || []; }
+  function cursappTransactions(){ return ADMIN_DB.transacciones_cursapp || []; }
   function receipts(){ return []; }
 
   function profiles(){
@@ -696,6 +711,7 @@
         ${kpi("🎫","Tickets abiertos",openTickets,`${tickets.length} tickets totales`)}
         ${kpi("📣","Avisos activos",s.avis.length,"Desde Supabase")}
         ${kpi("🛍️","Mercado escolar",s.market.filter(p=>p.activo!==false && p.estado!=="eliminado").length,`${s.mcontacts.length} contactos · ${s.mreports.length} reportes`)}
+        ${kpi("💎","Créditos Mercado",creditWallets().reduce((a,b)=>a+Number(b.saldo||0),0),`${creditOrders().filter(o=>String(o.estado)==="pagado").length} compras`)}
         ${kpi("📄","Informes publicados",s.reps.filter(r=>r.publicado || r.status==="publicado").length,`${s.rends.length} rendiciones`)}
       </div>
 
@@ -1245,6 +1261,11 @@
     const activos = pubs.filter(p=>p.activo!==false && String(p.estado||"")!=="eliminado");
     const vendidos = pubs.filter(p=>String(p.estado||"").toLowerCase()==="vendido");
     const reportesPend = reports.filter(r=>String(r.estado||"pendiente").toLowerCase()==="pendiente");
+    const wallets = creditWallets();
+    const orders = creditOrders();
+    const paidOrders = orders.filter(o=>String(o.estado||"").toLowerCase()==="pagado");
+    const featured = featuredPubs().filter(x=>String(x.estado||"activo").toLowerCase()==="activo");
+    const creditIncome = paidOrders.reduce((a,b)=>a+Number(b.monto_total||0),0);
 
     app.innerHTML = `
       <div class="kpis">
@@ -1253,6 +1274,8 @@
         ${kpi("💬","Contactos WhatsApp",contacts.length,"Interacciones")}
         ${kpi("♥️","Favoritos",favoritos.length,"Guardados")}
         ${kpi("🚩","Reportes pendientes",reportesPend.length,`${reports.length} reportes`)}
+        ${kpi("💎","Créditos vendidos",paidOrders.reduce((a,b)=>a+Number(b.creditos||0),0),clp(creditIncome))}
+        ${kpi("⭐","Publicaciones destacadas",featured.length,`${wallets.length} billeteras`)}
       </div>
 
       <div class="gridMain adminGrid4">
@@ -1298,6 +1321,14 @@
           </div>
         </section>
       </div>
+
+
+      <section class="panel">
+        <div class="panelHead"><h2>Monetización Mercado</h2><span>${paidOrders.length} compras</span></div>
+        <div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Paquete</th><th>Créditos</th><th>Monto</th><th>Estado</th></tr></thead><tbody>
+          ${orders.slice(0,40).map(o=>`<tr><td>${fmtDate(o.created_at)}</td><td>${esc(o.email || o.usuario_id || "—")}</td><td>${esc(o.paquete_nombre || o.paquete_id || "—")}</td><td>${Number(o.creditos||0)}</td><td>${clp(o.monto_total||0)}</td><td>${badge(o.estado||"—", String(o.estado)==="pagado"?"green":"orange")}</td></tr>`).join("") || `<tr><td colspan="6">Sin compras de créditos.</td></tr>`}
+        </tbody></table></div>
+      </section>
 
       <section class="panel">
         <div class="panelHead"><h2>Detalle publicaciones</h2><span id="marketCount">${pubs.length} publicaciones</span></div>
