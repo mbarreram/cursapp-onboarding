@@ -1742,7 +1742,7 @@
     return pass(id,module,'Tablas monetización OK · '+out.join(' · '));
   }
   async function monetCreateWallet(id,module){
-    const c=await sb(); const user='qa_creditos_'+qa.runId.toLowerCase()+'@qa.cursapp.cl'; state.created.creditUser=user;
+    const c=await sb(); const monetRunId = String((qa && qa.runId) || state.runId || RUN_ID || Date.now()).toLowerCase(); const user='qa_creditos_'+monetRunId+'@qa.cursapp.cl'; state.created.creditUser=user;
     const row={usuario_id:user,email:user,saldo:0,total_comprado:0,total_consumido:0};
     const r=await c.from('creditos_usuario').upsert([row],{onConflict:'usuario_id'}).select('*').single();
     if(r.error) throw new Error(r.error.message);
@@ -1751,9 +1751,9 @@
   }
   async function monetBuyCredits(id,module){
     const c=await sb(); const user=state.created.creditUser; if(!user) throw new Error('Sin billetera QA');
-    const order=await c.from('ordenes_creditos').insert([{usuario_id:user,email:user,paquete_id:'starter',paquete_nombre:'Starter QA',creditos:10,monto_total:990,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+qa.runId,created_at:new Date().toISOString(),pagado_at:new Date().toISOString()}]).select('*').single();
+    const order=await c.from('ordenes_creditos').insert([{usuario_id:user,email:user,paquete_id:'starter',paquete_nombre:'Starter QA',creditos:10,monto_total:990,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+String((qa && qa.runId) || state.runId || RUN_ID || Date.now()),created_at:new Date().toISOString(),pagado_at:new Date().toISOString()}]).select('*').single();
     if(order.error) throw new Error(order.error.message);
-    await c.from('transacciones_cursapp').insert([{tipo:'compra_creditos',referencia_id:order.data.id,usuario_id:user,monto_total:990,monto_curso:0,comision_cursapp:0,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+qa.runId,detalle:'Compra créditos QA'}]);
+    await c.from('transacciones_cursapp').insert([{tipo:'compra_creditos',referencia_id:order.data.id,usuario_id:user,monto_total:990,monto_curso:0,comision_cursapp:0,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+String((qa && qa.runId) || state.runId || RUN_ID || Date.now()),detalle:'Compra créditos QA'}]);
     const up=await c.from('creditos_usuario').update({saldo:10,total_comprado:10,updated_at:new Date().toISOString()}).eq('usuario_id',user).select('*').single();
     if(up.error) throw new Error(up.error.message);
     await c.from('movimientos_creditos').insert([{usuario_id:user,tipo:'compra',creditos:10,saldo_resultante:10,detalle:'Compra paquete Starter QA',orden_id:order.data.id}]);
