@@ -1290,7 +1290,7 @@ if(d.alsoApoderado){
             courseKey
           });
           clearDraft();
-          alert("Curso creado ✅\n\nUsuario y miembros creados directamente en Supabase.");
+          alert("Curso creado exitosamente");
           window.location.href = "/presidente.html";
           return;
         }catch(e){

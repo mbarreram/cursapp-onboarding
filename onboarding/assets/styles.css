@@ -544,3 +544,225 @@ body.onboardingPremium .container{width:min(1040px,100%);}
   .wizardStepsLabels small{display:none;}
   .onbRangeGrid{grid-template-columns:1fr 1fr;}
 }
+
+
+/* =====================================================
+   Producción: Onboarding Visual V2 - ajuste compacto
+   Reduce tipografías/alturas para móvil y elimina sensación de pantalla gigante.
+   ===================================================== */
+body.onboardingPremium .container{
+  padding-top:18px;
+}
+.onbHeroCompact{
+  padding:22px 26px !important;
+  border-radius:26px !important;
+}
+.onbHeroHead{
+  gap:16px !important;
+}
+.onbHeroCompact .onbHeroLogo{
+  width:58px !important;
+  height:58px !important;
+  border-radius:18px !important;
+  font-size:25px !important;
+}
+.onbHeroCopy h1{
+  font-size:clamp(25px,3.2vw,34px) !important;
+  line-height:1.05 !important;
+  letter-spacing:-.035em !important;
+}
+.onbHeroCopy p{
+  margin-top:8px !important;
+  font-size:14px !important;
+}
+.onbEyebrow{
+  font-size:14px !important;
+}
+.wizardLine{
+  margin-top:14px !important;
+}
+.wizardStepsLabels{
+  margin-top:18px !important;
+}
+.wizardStepsLabels .wStep{
+  width:36px !important;
+  height:36px !important;
+  font-size:14px !important;
+}
+.wizardStepsLabels small{
+  font-size:11px !important;
+  line-height:1.15 !important;
+}
+.onbFormCard{
+  padding:22px !important;
+  border-radius:24px !important;
+}
+.onbPremiumIntro{
+  padding:16px !important;
+  border-radius:20px !important;
+}
+.onbPremiumIntro h3,
+.onbReferralBox h3{
+  font-size:18px !important;
+  line-height:1.15 !important;
+}
+.onbPremiumIntro p,
+.onbReferralBox p{
+  font-size:14px !important;
+  line-height:1.35 !important;
+}
+.onbIntroIcon,
+.onbReferralIcon{
+  width:52px !important;
+  height:52px !important;
+  border-radius:17px !important;
+  font-size:22px !important;
+}
+.onbInputGroup label{
+  font-size:13px !important;
+  margin-bottom:7px !important;
+}
+.onbSelectShell{
+  min-height:50px !important;
+  border-radius:16px !important;
+}
+.onbSelectShell select{
+  min-height:48px !important;
+  font-size:14px !important;
+}
+.onbSelectShell span{
+  font-size:18px !important;
+}
+.onbRangeOption{
+  min-height:78px !important;
+  border-radius:16px !important;
+  font-size:14px !important;
+}
+.onbRangeOption span{
+  font-size:22px !important;
+}
+.onbSuccessHero{
+  padding:0 4px 16px !important;
+}
+.onbSuccessIcon{
+  width:68px !important;
+  height:68px !important;
+  border-radius:22px !important;
+  font-size:30px !important;
+  margin-bottom:12px !important;
+}
+.onbSuccessIcon span{
+  width:28px !important;
+  height:28px !important;
+  font-size:15px !important;
+}
+.onbSuccessHero h2{
+  font-size:clamp(24px,3.4vw,30px) !important;
+  line-height:1.08 !important;
+}
+.onbSuccessHero p{
+  font-size:15px !important;
+  max-width:520px !important;
+  line-height:1.38 !important;
+}
+.onbSummaryCard{
+  padding:18px !important;
+  border-radius:20px !important;
+}
+.onbSummaryHead{
+  font-size:18px !important;
+  margin-bottom:8px !important;
+}
+.onbSummaryRows div{
+  padding:11px 0 !important;
+}
+.onbSummaryRows span,
+.onbSummaryRows b{
+  font-size:14px !important;
+}
+.onbNextActions{
+  gap:12px !important;
+}
+.onbActionCard{
+  padding:14px !important;
+  min-height:130px !important;
+}
+.onbActionCard span{
+  font-size:28px !important;
+}
+.onbActionCard b{
+  font-size:16px !important;
+}
+.onbActionCard small{
+  font-size:12px !important;
+}
+.actions .btn,
+.btn.primary,
+button.primary{
+  min-height:52px !important;
+  font-size:15px !important;
+  border-radius:18px !important;
+}
+@media (max-width: 640px){
+  body.onboardingPremium .container{
+    padding-left:12px !important;
+    padding-right:12px !important;
+    padding-top:14px !important;
+  }
+  body.onboardingPremium header{
+    min-height:72px !important;
+  }
+  .onbHeroCompact{
+    padding:18px 16px !important;
+    border-radius:24px !important;
+  }
+  .onbHeroHead{
+    align-items:center !important;
+    gap:12px !important;
+  }
+  .onbHeroCompact .onbHeroLogo{
+    width:48px !important;
+    height:48px !important;
+    border-radius:16px !important;
+    font-size:22px !important;
+  }
+  .onbHeroCopy h1{
+    font-size:25px !important;
+  }
+  .onbHeroCopy p{
+    font-size:13px !important;
+  }
+  .onbEyebrow{
+    font-size:13px !important;
+  }
+  .wizardStepsLabels{
+    margin-top:14px !important;
+  }
+  .wizardStepsLabels .wStep{
+    width:31px !important;
+    height:31px !important;
+    font-size:13px !important;
+  }
+  .wizardStepsLabels small{
+    font-size:10px !important;
+  }
+  .onbFormCard{
+    padding:16px !important;
+    border-radius:22px !important;
+  }
+  .onbSuccessHero h2{
+    font-size:25px !important;
+  }
+  .onbSuccessHero p{
+    font-size:13px !important;
+  }
+  .onbSummaryRows div{
+    grid-template-columns:1fr minmax(0,1fr) !important;
+    gap:10px !important;
+    align-items:start !important;
+  }
+  .onbSummaryRows span,
+  .onbSummaryRows b{
+    font-size:12px !important;
+  }
+}
