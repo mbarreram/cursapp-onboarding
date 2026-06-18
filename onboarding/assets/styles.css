@@ -436,3 +436,111 @@ label,
     min-width:0 !important;
   }
 }
+
+/* ===== Cursapp Onboarding Premium Visual V2 · responsive ===== */
+:root{
+  --onb-bg:#f8fafc;
+  --onb-ink:#0f172a;
+  --onb-soft:#f6f3ff;
+  --onb-border:#e7e5f6;
+  --onb-blue:#2563eb;
+}
+body.onboardingPremium{
+  background:
+    radial-gradient(circle at 85% 4%, rgba(124,58,237,.13), transparent 30%),
+    radial-gradient(circle at 5% 82%, rgba(124,58,237,.08), transparent 34%),
+    linear-gradient(180deg,#fbfaff 0%,#f8fafc 100%);
+}
+body.onboardingPremium header{
+  background:rgba(255,255,255,.82);
+  border-bottom:1px solid rgba(15,23,42,.06);
+}
+body.onboardingPremium .topbar{max-width:1080px;}
+body.onboardingPremium .container{width:min(1040px,100%);}
+.onbHeroCompact{
+  padding:28px !important;
+  border-color:rgba(124,58,237,.10) !important;
+  box-shadow:0 18px 50px rgba(15,23,42,.07) !important;
+}
+.onbHeroHead{display:flex;align-items:center;gap:22px;position:relative;z-index:1;}
+.onbHeroCopy{min-width:0;}
+.onbHeroCopy h1{margin:4px 0 0;font-size:clamp(30px,4vw,44px);line-height:1.02;letter-spacing:-.045em;color:var(--onb-ink);}
+.onbHeroCopy p{margin:12px 0 0;color:#64748b;font-weight:750;font-size:16px;}
+.onbHeroCopy p b{color:#7c3aed;}
+.onbEyebrow{font-weight:950;color:#7c3aed;font-size:16px;display:flex;align-items:center;gap:8px;}
+.onbHeroCompact .onbHeroLogo{margin:0;width:70px;height:70px;border-radius:22px;box-shadow:0 18px 40px rgba(124,58,237,.20);}
+.wizardStepsLabels{align-items:flex-start;margin-top:20px;gap:14px;}
+.wizardStepsLabels .wStepItem{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;flex:1;position:relative;}
+.wizardStepsLabels .wStepItem:not(:first-child):before{content:"";position:absolute;top:19px;right:50%;width:100%;border-top:2px dashed #e4e7ec;z-index:0;}
+.wizardStepsLabels .wStep{position:relative;z-index:1;width:44px;height:44px;font-size:17px;box-shadow:0 8px 20px rgba(15,23,42,.04);}
+.wizardStepsLabels small{font-weight:850;color:#64748b;text-align:center;line-height:1.25;font-size:13px;}
+.wizardStepsLabels .active small,.wizardStepsLabels .done small{color:#7c3aed;}
+.onbFormCard{box-shadow:0 18px 50px rgba(15,23,42,.06) !important;border-color:rgba(15,23,42,.07) !important;}
+.onbInfoSoft{background:linear-gradient(135deg,rgba(124,58,237,.07),rgba(255,255,255,.94)) !important;border-color:rgba(124,58,237,.13) !important;box-shadow:none !important;}
+.onbInputGroup label{font-size:15px;color:#0f172a;letter-spacing:-.01em;}
+.onbSelectShell{display:flex;align-items:center;gap:13px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;padding:0 14px;min-height:58px;transition:.18s ease;}
+.onbSelectShell:focus-within{border-color:#8b5cf6;box-shadow:0 0 0 4px rgba(139,92,246,.12);}
+.onbSelectShell span{font-size:22px;color:#7c3aed;line-height:1;}
+.onbSelectShell select{border:0 !important;box-shadow:none !important;padding:0 !important;min-height:56px;background:transparent;font-size:16px;}
+.onbRangeBox{background:linear-gradient(135deg,#fff,#fbf8ff) !important;}
+.onbRangeGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:12px;}
+.onbRangeOption{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:96px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;cursor:pointer;font-weight:950;color:#0f172a;transition:.18s ease;}
+.onbRangeOption input{position:absolute;opacity:0;pointer-events:none;}
+.onbRangeOption span{font-size:26px;filter:grayscale(.2);}
+.onbRangeOption.active{border-color:#8b5cf6;background:linear-gradient(135deg,#faf5ff,#fff);color:#7c3aed;box-shadow:0 14px 32px rgba(124,58,237,.12);}
+.onbRangeOption.active span{filter:none;}
+.onbSuccessHero{text-align:center;padding:8px 8px 22px;}
+.onbSuccessIcon{width:82px;height:82px;border-radius:26px;margin:0 auto 16px;background:linear-gradient(135deg,#7c3aed,#9333ea);color:#fff;display:grid;place-items:center;font-size:34px;position:relative;box-shadow:0 20px 42px rgba(124,58,237,.18);}
+.onbSuccessIcon span{position:absolute;right:-7px;bottom:-7px;width:32px;height:32px;border-radius:999px;background:#22c55e;border:4px solid #fff;display:grid;place-items:center;font-size:18px;}
+.onbSuccessHero h2{margin:0;font-size:clamp(25px,4vw,34px);letter-spacing:-.035em;color:#0f172a;}
+.onbSuccessHero p{margin:10px auto 0;max-width:620px;color:#64748b;font-weight:700;line-height:1.45;}
+.onbSummaryCard{border:1px solid #e5e7eb;border-radius:22px;background:#fff;padding:22px;margin-top:4px;box-shadow:0 14px 34px rgba(15,23,42,.04);}
+.onbSummaryHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:20px;color:#0f172a;}
+.onbTinyIcon{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:11px;background:#f3e8ff;margin-right:10px;}
+.onbSummaryRows{display:grid;gap:0;}
+.onbSummaryRows div{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,1.4fr);gap:18px;align-items:center;padding:14px 0;border-top:1px solid #edf0f5;}
+.onbSummaryRows span{color:#64748b;font-weight:750;}
+.onbSummaryRows b{color:#0f172a;font-weight:900;overflow-wrap:anywhere;}
+.onbNextActions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px;}
+.onbActionCard{border:1px solid #e9d5ff;border-radius:20px;background:linear-gradient(135deg,#fcfaff,#fff);padding:18px;text-align:center;display:grid;gap:8px;min-height:150px;align-content:center;}
+.onbActionCard span{font-size:34px;}
+.onbActionCard b{font-size:18px;color:#0f172a;}
+.onbActionCard small{color:#64748b;font-weight:700;line-height:1.35;}
+.onbActionCard.green{border-color:#bbf7d0;background:linear-gradient(135deg,#f0fdf4,#fff);}
+#btnPrev,#btnNext{min-width:132px;}
+#btnNext{flex:1;max-width:360px;}
+@media(min-width:900px){
+  body.onboardingPremium .container{padding-left:28px;padding-right:28px;}
+  .onbFormCard{padding:28px !important;}
+  .onbFieldGrid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:720px){
+  body.onboardingPremium .container{padding-left:14px;padding-right:14px;}
+  .onbHeroCompact{padding:20px !important;}
+  .onbHeroHead{gap:14px;align-items:flex-start;}
+  .onbHeroCompact .onbHeroLogo{width:58px !important;height:58px !important;border-radius:19px !important;font-size:26px !important;}
+  .onbHeroCopy h1{font-size:34px;}
+  .onbHeroCopy p{font-size:14px;margin-top:8px;}
+  .wizardStepsLabels{gap:7px;margin-top:15px;}
+  .wizardStepsLabels .wStep{width:34px !important;height:34px !important;font-size:14px !important;}
+  .wizardStepsLabels .wStepItem:not(:first-child):before{top:16px;}
+  .wizardStepsLabels small{font-size:11px;}
+  .onbSelectShell{min-height:54px;border-radius:17px;}
+  .onbSelectShell select{min-height:52px;font-size:15px !important;}
+  .onbRangeGrid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .onbRangeOption{min-height:82px;border-radius:16px;}
+  .onbSummaryCard{padding:16px;border-radius:20px;}
+  .onbSummaryRows div{grid-template-columns:1fr;gap:5px;padding:12px 0;}
+  .onbNextActions{grid-template-columns:1fr;gap:10px;}
+  .onbActionCard{min-height:auto;text-align:left;grid-template-columns:42px 1fr;align-items:center;padding:14px;}
+  .onbActionCard span{font-size:30px;grid-row:span 2;}
+  .onbActionCard b{font-size:16px;}
+  .onbActionCard small{font-size:12px;}
+  #btnPrev{min-width:96px;}
+  #btnNext{max-width:none;}
+}
+@media(max-width:390px){
+  .onbHeroCopy h1{font-size:30px;}
+  .wizardStepsLabels small{display:none;}
+  .onbRangeGrid{grid-template-columns:1fr 1fr;}
+}

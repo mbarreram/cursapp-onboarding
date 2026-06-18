@@ -579,17 +579,27 @@ function uid(prefix = "id") {
 
     const courseObj = getCourseV1();
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
+    const roleName = MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado";
+    const stepTitles = MODE==="directiva"
+      ? ["Datos del curso", "Curso", "Cuenta", "¡Listo!"]
+      : ["Invitación", "Curso", "Cuenta", "Activación"];
+    const currentStepTitle = stepTitles[step-1] || "Onboarding";
 
     root.innerHTML = `
-      <div class="card onbHeroCard" style="margin-top:12px;">
-        <div class="onbHeroLogo">C</div>
-        <div style="font-weight:950;font-size:18px;">Onboarding · ${MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado"}</div>
-        <div class="muted" style="margin-top:6px;">Paso ${step} de ${stepsTotal}</div>
+      <div class="card onbHeroCard onbHeroCompact" style="margin-top:12px;">
+        <div class="onbHeroHead">
+          <div class="onbHeroLogo">C</div>
+          <div class="onbHeroCopy">
+            <div class="onbEyebrow">${MODE==="directiva" ? "👑" : "🔐"} ${roleName}</div>
+            <h1>${step===4 ? (MODE==="directiva" ? "Resumen final" : "Activa tu acceso") : (MODE==="directiva" ? "Crear curso" : "Ingresa a tu curso")}</h1>
+            <p>Paso ${step} de ${stepsTotal} · <b>${progressPct}% completado</b></p>
+          </div>
+        </div>
 
-        <div class="wizardWrap" style="margin-top:10px;">
+        <div class="wizardWrap" style="margin-top:16px;">
           <div class="wizardBar"><div class="wizardFill" style="width:${progressPct}%"></div></div>
-          <div class="wizardSteps" aria-hidden="true">
-            ${[1,2,3,4].map(n=>`<div class="wStep ${step===n?"active":(step>n?"done":"")}"><span>${n}</span></div>`).join("")}
+          <div class="wizardSteps wizardStepsLabels" aria-hidden="true">
+            ${[1,2,3,4].map(n=>`<div class="wStepItem ${step===n?"active":(step>n?"done":"")}"><div class="wStep"><span>${step>n?"✓":n}</span></div><small>${stepTitles[n-1]}</small></div>`).join("")}
           </div>
         </div>
         ${debugLine}
@@ -597,7 +607,7 @@ function uid(prefix = "id") {
 
       ${banner}
 
-      <div class="card" style="margin-top:12px;">
+      <div class="card onbFormCard" style="margin-top:12px;">
         ${step===1 ? `
           ${
             MODE==="apoderado" ? `
@@ -616,48 +626,45 @@ function uid(prefix = "id") {
                 </div>
               </div>
             ` : `
-              <div class="onbPremiumIntro">
+              <div class="onbPremiumIntro onbInfoSoft">
                 <div class="onbIntroIcon">🎓</div>
                 <div>
                   <div style="font-weight:950;">Crear curso como Presidente</div>
-                  <div class="muted" style="margin-top:6px;">Selecciona región, comuna y colegio. Al finalizar se generará el código de invitación para apoderados.</div>
+                  <div class="muted" style="margin-top:6px;">Selecciona región, comuna y colegio. Luego podrás invitar a la directiva y apoderados.</div>
                 </div>
               </div>
 
               <div class="onbFieldGrid">
-                <div>
+                <div class="onbInputGroup">
                   <label style="font-weight:900;">Región</label>
-                  <select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select>
+                  <div class="onbSelectShell"><span>📍</span><select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select></div>
                 </div>
-                <div>
+                <div class="onbInputGroup">
                   <label style="font-weight:900;">Comuna</label>
-                  <select id="onbComuna">${option(comunas,"id","name",comunaId)}</select>
+                  <div class="onbSelectShell"><span>🏙️</span><select id="onbComuna">${option(comunas,"id","name",comunaId)}</select></div>
                 </div>
               </div>
 
-              <div style="margin-top:12px;">
+              <div class="onbInputGroup" style="margin-top:12px;">
                 <label style="font-weight:900;">Colegio</label>
-                <select id="onbSchool">${option(schools,"id","name",schoolId)}</select>
+                <div class="onbSelectShell"><span>🏫</span><select id="onbSchool">${option(schools,"id","name",schoolId)}</select></div>
               </div>
 
-              <div class="onbReferralBox">
+              <div class="onbReferralBox onbRangeBox">
                 <div class="onbReferralHead">
                   <div class="onbReferralIcon">👥</div>
                   <div>
                     <div style="font-weight:950;">Cantidad estimada de alumnos/apoderados</div>
-                    <div class="muted" style="margin-top:4px;">Esto nos ayuda a configurar mejor el curso y medir su avance de incorporación.</div>
+                    <div class="muted" style="margin-top:4px;">Este dato nos ayuda a personalizar tu experiencia.</div>
                   </div>
                 </div>
-                <select id="onbEstimatedStudents">
-                  <option value="" ${!estimatedStudents ? "selected":""}>Seleccionar rango</option>
-                  <option value="20" ${estimatedStudents===20 ? "selected":""}>10 a 20 alumnos/apoderados</option>
-                  <option value="30" ${estimatedStudents===30 ? "selected":""}>21 a 30 alumnos/apoderados</option>
-                  <option value="40" ${estimatedStudents===40 ? "selected":""}>31 a 40 alumnos/apoderados</option>
-                  <option value="50" ${estimatedStudents===50 ? "selected":""}>41 a 50 alumnos/apoderados</option>
-                  <option value="60" ${estimatedStudents===60 ? "selected":""}>51 a 60 alumnos/apoderados</option>
-                </select>
-                <div class="muted" style="margin-top:8px;font-weight:800;">
-                  Puedes continuar con una estimación. Luego el administrador podrá ajustar esta meta si corresponde.
+                <div class="onbRangeGrid" role="radiogroup" aria-label="Cantidad estimada">
+                  ${[
+                    [20,"10-20","👥"],
+                    [30,"21-30","👥"],
+                    [40,"31-40","👥"],
+                    [50,"41+","👥"]
+                  ].map(([val,label,icon])=>`<label class="onbRangeOption ${estimatedStudents===val?"active":""}"><input type="radio" name="onbEstimatedStudentsRadio" value="${val}" ${estimatedStudents===val?"checked":""}/><span>${icon}</span><b>${label}</b></label>`).join("")}
                 </div>
               </div>
 
@@ -875,25 +882,32 @@ function uid(prefix = "id") {
               </div>
             </div>
           ` : `
-            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <div style="font-weight:950;">Resumen</div>
-              <div class="muted" style="margin-top:6px;">Revisa tus datos antes de finalizar.</div>
+            <div class="onbSuccessHero">
+              <div class="onbSuccessIcon">🏫<span>✓</span></div>
+              <h2>Tu curso está listo para crear</h2>
+              <p>Revisa la información antes de finalizar. Después podrás invitar directiva y apoderados.</p>
+            </div>
 
-              <div class="muted" style="margin-top:10px;line-height:1.45;">
-                Te registrarás en el colegio <b>${escapeHtml(String((SCHOOLS.find(s=>s.id===d.schoolId)||{}).name||"").trim())||"—"}</b>,
-                curso <b>${escapeHtml(String(d.level||"").trim())}°${escapeHtml(String(d.letter||"").trim().toUpperCase())}</b>,
-                jornada <b>${escapeHtml(String(d.jornada||"").trim())||"—"}</b>,
-                año <b>${escapeHtml(String(d.year||"").trim())||"—"}</b>.
+            <div class="onbSummaryCard">
+              <div class="onbSummaryHead">
+                <div><span class="onbTinyIcon">📋</span><b>Resumen del curso</b></div>
               </div>
+              <div class="onbSummaryRows">
+                <div><span>Nombre del curso</span><b>${escapeHtml(String(d.level||"").trim())}° ${escapeHtml(String(d.letter||"").trim().toUpperCase())}</b></div>
+                <div><span>Colegio</span><b>${escapeHtml(String((SCHOOLS.find(s=>s.id===d.schoolId)||{}).name||"").trim())||"—"}</b></div>
+                <div><span>Región</span><b>${escapeHtml(String((REGIONS.find(r=>r.id===d.regionId)||{}).name||"").trim())||"—"}</b></div>
+                <div><span>Comuna</span><b>${escapeHtml(String((COMUNAS.find(c=>c.id===d.comunaId)||{}).name||"").trim())||"—"}</b></div>
+                <div><span>Jornada</span><b>${escapeHtml(String(d.jornada||"").trim())||"—"}</b></div>
+                <div><span>Alumnos estimados</span><b>${estimatedStudentsRangeLabel(d.estimatedStudents) || "—"}</b></div>
+                <div><span>Correo de acceso</span><b>${escapeHtml(String(d.pEmail||"").trim().toLowerCase()) || "-"}</b></div>
+                <div><span>Rol</span><b>${escapeHtml((DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : (d.alsoApoderado ? "Presidente · Apoderado" : "Presidente")))}</b></div>
+              </div>
+            </div>
 
-              <div style="margin-top:12px;display:grid;gap:8px;">
-                <div><span class="muted">Correo de acceso:</span> <b>${escapeHtml(String(d.pEmail||"").trim().toLowerCase()) || "-"}</b></div>
-                <div><span class="muted">Rol:</span> <b>${escapeHtml((DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : (d.alsoApoderado ? "Presidente · Apoderado" : "Presidente")))}</b></div>
-              </div>
-
-              <div class="muted" style="margin-top:12px;">
-                Al finalizar, encontrarás el <b>código de invitación</b> en el menú del Presidente → <b>Apoderados</b>.
-              </div>
+            <div class="onbNextActions">
+              <div class="onbActionCard"><span>👥</span><b>Invitar directiva</b><small>Agrega tesorero y secretario del curso.</small></div>
+              <div class="onbActionCard"><span>📨</span><b>Invitar apoderados</b><small>Comparte el código de invitación.</small></div>
+              <div class="onbActionCard green"><span>📈</span><b>Ir al dashboard</b><small>Gestiona campañas, pagos e informes.</small></div>
             </div>
           `}
         `:""}
@@ -967,6 +981,9 @@ function uid(prefix = "id") {
       c && (c.onchange = ()=>{ d.comunaId=c.value; d.schoolId=""; saveDraft(d); render(); });
       s && (s.onchange = ()=>{ d.schoolId=s.value; saveDraft(d); });
       est && (est.onchange = ()=>{ d.estimatedStudents = Number(est.value || 0); saveDraft(d); });
+      document.querySelectorAll('input[name="onbEstimatedStudentsRadio"]').forEach(r=>{
+        r.onchange = ()=>{ d.estimatedStudents = Number(r.value || 0); saveDraft(d); render(); };
+      });
       ref && (ref.oninput = ()=>{
         d.referralCode = normalizeReferralCode(ref.value);
         ref.value = d.referralCode;
