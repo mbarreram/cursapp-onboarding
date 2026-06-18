@@ -479,9 +479,9 @@ function uid(prefix = "id") {
   function courseBanner(courseObj){
     const c = courseObj?.course || {};
     return `
-      <div class="card" style="margin-top:12px;border:1px solid rgba(34,197,94,.20);background:rgba(34,197,94,.06);">
-        <div style="font-weight:950;">Te estás registrando en:</div>
-        <div class="muted" style="margin-top:6px;font-weight:900;">
+      <div class="card onbCourseBanner">
+        <div class="onbCourseBannerTitle">Te estás registrando en:</div>
+        <div class="muted onbCourseBannerText">
           ${c.schoolName} · ${c.level}${c.letter} ${c.year} · ${c.jornada}
         </div>
       </div>
@@ -843,9 +843,9 @@ function uid(prefix = "id") {
 
         ${step===4 ? `
           ${MODE==="apoderado" ? `
-            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:#fff;">
-              <div style="font-weight:950;">Resumen</div>
-              <div class="muted" style="margin-top:6px;">Revisa tus datos antes de finalizar.</div>
+            <div class="onbApoderadoSummaryCard">
+              <div class="onbSectionTitle">Resumen</div>
+              <div class="muted onbSectionSub">Revisa tus datos antes de finalizar.</div>
 
               <div class="muted" style="margin-top:10px;line-height:1.45;">
                 Te registrarás en el colegio <b>${escapeHtml(String((SCHOOLS.find(s=>s.id===d.schoolId)||{}).name||"").trim())||"—"}</b>,
@@ -864,20 +864,20 @@ function uid(prefix = "id") {
               </div>
             </div>
 
-            <div style="border:1px solid rgba(229,231,235,.75);border-radius:16px;padding:12px;background:rgba(248,250,252,1);">
-              <div style="font-weight:950;">Activación por curso</div>
-              <div class="muted" style="margin-top:6px;">Setup único: <b>$7.990</b> por apoderado por curso (demo).</div>
+            <div class="onbActivationCard">
+              <div class="onbSectionTitle">Activación por curso</div>
+              <div class="muted onbSectionSub">Setup único: <b>$7.990</b> por apoderado por curso (demo).</div>
 
-              <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-                <label class="tag" style="cursor:pointer;">
-                  <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> Pagar ahora
+              <div class="onbPayChoices">
+                <label class="tag onbPayOption" style="cursor:pointer;">
+                  <input type="radio" name="pay" value="now" ${payChoice!=="later"?"checked":""}/> <span>Pagar ahora</span>
                 </label>
-                <label class="tag" style="cursor:pointer;">
-                  <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> Pagar después
+                <label class="tag onbPayOption" style="cursor:pointer;">
+                  <input type="radio" name="pay" value="later" ${payChoice==="later"?"checked":""}/> <span>Pagar después</span>
                 </label>
               </div>
 
-              <div class="muted" style="margin-top:8px;">
+              <div class="muted onbActivationNote">
                 Aunque pagues, el ingreso quedará <b>pendiente de aprobación</b> por la directiva.
               </div>
             </div>
