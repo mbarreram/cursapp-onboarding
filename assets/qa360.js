@@ -73,6 +73,7 @@
     { id:'navegacion', name:'Roles / navegación', tests:['nav-presidente-apoderado','nav-apoderado-tesorero','nav-no-banner-flicker','nav-no-selector-repetido'] },
     { id:'clicks', name:'Click simulado integrado', tests:['ui-open-role-pages','ui-click-presidente','ui-click-apoderado','ui-click-tesorero','ui-click-qa-evidence'] },
     { id:'mercado-v4', name:'Mercado Escolar V4', tests:['market-schema','market-v3-reasons','market-v3-blocked-words','market-create-post','market-list-posts','market-v4-storage-upload','market-v4-image-visible','market-v4-available-default','market-contact','market-report','market-v3-moderation-hide','market-cleanup'] },
+    { id:'monetizacion-v1', name:'Monetización V1 · Créditos Mercado', tests:['monet-schema','monet-create-wallet','monet-buy-credits','monet-spend-credit-highlight','monet-ledger-separation','monet-admin-assets'] },
     MODULES_FULL.find(m => m.id === 'limpieza')
   ];
 
@@ -352,6 +353,12 @@
       case 'market-v3-moderation-hide': return marketV3ModerationHide(id,module);
       case 'market-cleanup': return marketCleanup(id,module);
       case 'market-cleanup-by-prefix': return marketCleanupByPrefix(id,module);
+      case 'monet-schema': return monetSchema(id,module);
+      case 'monet-create-wallet': return monetCreateWallet(id,module);
+      case 'monet-buy-credits': return monetBuyCredits(id,module);
+      case 'monet-spend-credit-highlight': return monetSpendCreditHighlight(id,module);
+      case 'monet-ledger-separation': return monetLedgerSeparation(id,module);
+      case 'monet-admin-assets': return monetAdminAssets(id,module);
       case 'cleanup-qa': return cleanupQa(id,module);
       case 'verify-cleanup': return verifyCleanup(id,module);
       default: return warn(id,module,'Prueba no implementada.');
@@ -1725,6 +1732,59 @@
     const {result,ms}=await measure('pagos_stress_count', async()=>c.from('pagos').select('id,estado,monto,monto_pagado',{count:'exact',head:true}).in('curso_id',courseIds));
     if(result.error) throw new Error(result.error.message);
     return pass(id,module,'Pagos stress count '+perfLabel(ms)+' · rows='+(result.count||0)+' · '+ms+' ms');
+  }
+
+
+  async function monetSchema(id,module){
+    const tables=['creditos_usuario','movimientos_creditos','ordenes_creditos','publicaciones_destacadas','transacciones_cursapp'];
+    const out=[];
+    for(const t of tables){ const r=await tableCount(t); if(r.error) throw new Error(t+': '+r.error.message); out.push(t+'='+r.count); }
+    return pass(id,module,'Tablas monetización OK · '+out.join(' · '));
+  }
+  async function monetCreateWallet(id,module){
+    const c=await sb(); const user='qa_creditos_'+qa.runId.toLowerCase()+'@qa.cursapp.cl'; state.created.creditUser=user;
+    const row={usuario_id:user,email:user,saldo:0,total_comprado:0,total_consumido:0};
+    const r=await c.from('creditos_usuario').upsert([row],{onConflict:'usuario_id'}).select('*').single();
+    if(r.error) throw new Error(r.error.message);
+    state.created.creditWallet=r.data;
+    return pass(id,module,'Billetera créditos creada · saldo='+Number(r.data.saldo||0));
+  }
+  async function monetBuyCredits(id,module){
+    const c=await sb(); const user=state.created.creditUser; if(!user) throw new Error('Sin billetera QA');
+    const order=await c.from('ordenes_creditos').insert([{usuario_id:user,email:user,paquete_id:'starter',paquete_nombre:'Starter QA',creditos:10,monto_total:990,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+qa.runId,created_at:new Date().toISOString(),pagado_at:new Date().toISOString()}]).select('*').single();
+    if(order.error) throw new Error(order.error.message);
+    await c.from('transacciones_cursapp').insert([{tipo:'compra_creditos',referencia_id:order.data.id,usuario_id:user,monto_total:990,monto_curso:0,comision_cursapp:0,ingreso_cursapp:990,estado:'pagado',gateway:'transbank_demo',tbk_order:'QA_CRED_'+qa.runId,detalle:'Compra créditos QA'}]);
+    const up=await c.from('creditos_usuario').update({saldo:10,total_comprado:10,updated_at:new Date().toISOString()}).eq('usuario_id',user).select('*').single();
+    if(up.error) throw new Error(up.error.message);
+    await c.from('movimientos_creditos').insert([{usuario_id:user,tipo:'compra',creditos:10,saldo_resultante:10,detalle:'Compra paquete Starter QA',orden_id:order.data.id}]);
+    state.created.creditOrder=order.data; state.created.creditWallet=up.data;
+    return pass(id,module,'Compra créditos OK · +10 · ingreso Cursapp='+990);
+  }
+  async function monetSpendCreditHighlight(id,module){
+    const c=await sb(); const user=state.created.creditUser; const p=state.created.mercadoPost;
+    if(!user) throw new Error('Sin usuario créditos QA'); if(!p||!p.id) throw new Error('Sin publicación Mercado QA para destacar');
+    const hasta=new Date(Date.now()+7*86400000).toISOString();
+    const pub=await c.from('mercado_publicaciones').update({destacado:true,destacado_tipo:'colegio',destacado_hasta:hasta}).eq('id',p.id).select('id,destacado,destacado_hasta').single();
+    if(pub.error) throw new Error(pub.error.message);
+    const d=await c.from('publicaciones_destacadas').insert([{publicacion_id:p.id,usuario_id:user,tipo_destacado:'colegio',creditos_usados:1,fecha_inicio:new Date().toISOString(),fecha_fin:hasta,estado:'activo'}]).select('*').single();
+    if(d.error) throw new Error(d.error.message);
+    const up=await c.from('creditos_usuario').update({saldo:9,total_consumido:1,updated_at:new Date().toISOString()}).eq('usuario_id',user).select('*').single();
+    if(up.error) throw new Error(up.error.message);
+    await c.from('movimientos_creditos').insert([{usuario_id:user,tipo:'consumo',creditos:-1,saldo_resultante:9,detalle:'Destacar publicación QA',publicacion_id:p.id}]);
+    return pass(id,module,'Consumo crédito OK · publicación destacada 7 días · saldo=9');
+  }
+  async function monetLedgerSeparation(id,module){
+    const c=await sb(); const user=state.created.creditUser;
+    const tx=await c.from('transacciones_cursapp').select('*',{count:'exact'}).eq('usuario_id',user).eq('tipo','compra_creditos');
+    if(tx.error) throw new Error(tx.error.message);
+    const bad=(tx.data||[]).filter(x=>Number(x.monto_curso||0)!==0 || Number(x.ingreso_cursapp||0)!==Number(x.monto_total||0));
+    if(bad.length) return fail(id,module,'Transacción créditos mezcla monto curso o ingreso Cursapp incorrecto.');
+    return pass(id,module,'Separación contable OK · compra créditos ingreso 100% Cursapp · monto curso=0');
+  }
+  async function monetAdminAssets(id,module){
+    const a=(await fetchText('/mercado-escolar/assets/mercado-creditos.js')).text+(await fetchText('/admin-console/assets/admin.js')).text;
+    const miss=['creditos_usuario','ordenes_creditos','publicaciones_destacadas','transacciones_cursapp'].filter(x=>!a.includes(x));
+    return miss.length?fail(id,module,'Faltan marcas monetización: '+miss.join(', ')):pass(id,module,'Componentes Monetización/Admin conectados a Supabase.');
   }
 
   async function cleanupQa(id,module){
