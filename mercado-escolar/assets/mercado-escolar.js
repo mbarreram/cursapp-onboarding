@@ -233,7 +233,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return "assets/img/"+(map[name]||"generic.svg");
   }
   function emptyState(icon,title,text,button,view){return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;}
-  function visible(list=state.posts){return list.filter(p=>!["eliminado","oculto","vendido","bloqueado","en_revision"].includes(String(p.estado||"").toLowerCase()))}
+  function visible(list=state.posts){return list.filter(p=>!["eliminado","oculto","vendido","intercambiado","bloqueado","en_revision"].includes(String(p.estado||"").toLowerCase()))}
   function relDate(p){
     try{
       const d=new Date(p.created_at||Date.now()); const diff=Math.max(0,Date.now()-d.getTime());
@@ -267,19 +267,23 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>!["eliminado"].includes(String(p.estado||"").toLowerCase()));
     const current=filter || box.dataset.mineFilter || "activos";
     box.dataset.mineFilter=current;
-    const isIntercambio=p=>String(p.tipo||"").toLowerCase().includes("intercambio") || String(p.estado||"").toLowerCase()==="intercambiado";
-    const isVendido=p=>String(p.estado||"").toLowerCase()==="vendido";
-    const activos=all.filter(p=>!isVendido(p) && String(p.estado||"").toLowerCase()!=="intercambiado");
-    const vendidos=all.filter(isVendido);
-    const intercambiados=all.filter(isIntercambio);
+    const estado=p=>String(p.estado||"disponible").toLowerCase();
+    const vendidos=all.filter(p=>estado(p)==="vendido");
+    const intercambiados=all.filter(p=>estado(p)==="intercambiado");
+    const activos=all.filter(p=>!["vendido","intercambiado","oculto","bloqueado","en_revision"].includes(estado(p)));
     const list=current==="vendidos"?vendidos:(current==="intercambiados"?intercambiados:activos);
-    const tabs=`<div class="mineTabs">
+    const tabs=`<div class="mineTabs mineTabsV13">
       <button class="${current==='activos'?'active':''}" data-mine-filter="activos">Activos (${activos.length})</button>
       <button class="${current==='vendidos'?'active':''}" data-mine-filter="vendidos">Vendidos (${vendidos.length})</button>
       <button class="${current==='intercambiados'?'active':''}" data-mine-filter="intercambiados">Intercambiados (${intercambiados.length})</button>
     </div>`;
     const empty=emptyState("📦", current==="activos"?"Aún no tienes avisos activos":(current==="vendidos"?"Aún no tienes vendidos":"Aún no tienes intercambiados"), "Tus publicaciones aparecerán organizadas aquí.", current==="activos"?"Publicar aviso":"", "publicar");
-    box.innerHTML=tabs+(list.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${esc(p.tipo||"Aviso")} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span></div><div class="myItemActions"><button data-post="${esc(p.id)}">Ver</button><button data-share="${esc(p.id)}">Compartir</button><button data-status="vendido" data-id="${esc(p.id)}">Marcar vendido</button><button data-status="intercambiado" data-id="${esc(p.id)}">Marcar intercambiado</button><button data-status="disponible" data-id="${esc(p.id)}">Activar</button><button data-delete="${esc(p.id)}">Eliminar</button></div></div>`).join("") || empty);
+    const actionHtml=(p)=>{
+      const id=esc(p.id);
+      if(current==="activos") return `<button data-post="${id}">Ver</button><button data-share="${id}">Compartir</button><button data-status="vendido" data-id="${id}">Vendido</button><button data-status="intercambiado" data-id="${id}">Intercambiado</button><button data-delete="${id}" class="dangerMini">Eliminar</button>`;
+      return `<button data-post="${id}">Ver</button><button data-share="${id}">Compartir</button><button data-status="disponible" data-id="${id}">Reactivar</button><button data-delete="${id}" class="dangerMini">Eliminar</button>`;
+    };
+    box.innerHTML=tabs+(list.map(p=>`<div class="myItem myItemV13"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div class="myItemText"><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${esc(p.tipo||"Aviso")} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span></div><div class="myItemActions">${actionHtml(p)}</div></div>`).join("") || empty);
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -400,7 +404,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   async function openDetail(id){
-    const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
+    const p=state.posts.find(x=>String(x.id)===String(id)) || state.minePosts.find(x=>String(x.id)===String(id)); if(!p) return;
     await state.sb.from("mercado_publicaciones").update({visualizaciones:Number(p.visualizaciones||0)+1}).eq("id",p.id);
     p.visualizaciones=Number(p.visualizaciones||0)+1;
     const imgs=(state.imagesByPost[String(p.id)]||[]).map(i=>i.url_imagen).filter(Boolean);
@@ -408,9 +412,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const gallery=[main].concat(imgs.filter(u=>u!==main)).slice(0,3);
     const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     const fav=state.favorites.has(String(p.id));
-    $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet">
+    $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet v13DetailSheet">
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
-      <div class="v6Gallery">${gallery.map(u=>`<img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'">`).join("")}<div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
+      <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
       <div class="v6DetailBody"><small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
@@ -493,8 +497,14 @@ ${postUrl(p)}`;
   async function updateStatus(id,status){
     const {error}=await state.sb.from("mercado_publicaciones").update({estado:status,updated_at:now()}).eq("id",id);
     if(error){toast("No se pudo actualizar: "+error.message);return;}
-    const p=state.posts.find(x=>String(x.id)===String(id)); if(p) p.estado=status;
-    await loadPosts(); await loadMinePosts(); toast("Publicación actualizada"); renderProducts(); renderMine();
+    for(const arr of [state.posts,state.minePosts]){
+      const p=arr.find(x=>String(x.id)===String(id));
+      if(p) p.estado=status;
+    }
+    await loadPosts(); await loadMinePosts();
+    const nextTab=status==="vendido"?"vendidos":(status==="intercambiado"?"intercambiados":"activos");
+    toast(status==="vendido"?"Aviso movido a vendidos":(status==="intercambiado"?"Aviso movido a intercambiados":"Aviso reactivado"));
+    renderProducts(); renderMine(nextTab);
   }
   async function removePost(id){if(!confirm("¿Eliminar esta publicación?")) return; await updateStatus(id,"eliminado");}
   async function sharePost(id){

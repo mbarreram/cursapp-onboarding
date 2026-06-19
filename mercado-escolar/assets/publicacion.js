@@ -36,8 +36,20 @@
   function render(){
     const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);
     const gallery=[imgFor(post)].concat(images.map(i=>i.url_imagen).filter(u=>u&&u!==imgFor(post))).slice(0,3);
-    $("#publicacionRoot").innerHTML=`<div class="publicacionHero">${gallery.map(u=>`<img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'">`).join("")}</div><h2>${esc(post.titulo||"Publicación")}</h2><p class="bigPrice">${esc(price)} · ${esc(categoryName(post))}</p><p>${esc(post.descripcion||"")}</p><p><b>${esc(post.nombre_vendedor||"Apoderado Cursapp")}</b> · ${esc(post.visibilidad||"Comunidad")}</p><div class="metricRow"><span>👁️ ${Number(post.visualizaciones||0)} vistas</span><span>💬 ${Number(post.contactos||0)} contactos</span><span>♥ ${Number(post.favoritos||0)} favoritos</span></div><button id="btnContact" class="primary">Contactar por WhatsApp</button><button id="btnShare" class="ghost">Compartir aviso</button><a class="ghostLink" href="mercado-escolar.html">Volver al mercado</a>`;
-    $("#btnContact").addEventListener("click",contact); $("#btnShare").addEventListener("click",share);
+    $("#publicacionRoot").innerHTML=`
+      <div class="publicacionTopV13"><a class="detailBackV13" href="mercado-escolar.html">←</a><b>Detalle del aviso</b><button id="btnShareTop" class="detailShareV13" type="button">⇧</button></div>
+      <div class="publicacionHero publicacionCarouselV13"><div class="publicacionTrackV13">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
+      <small class="v6Cat">${esc(categoryName(post))}</small>
+      <h2>${esc(post.titulo||"Publicación")}</h2>
+      <p class="bigPrice">${esc(price)}</p>
+      <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(post.visibilidad||"Comunidad")}</span><span>Hoy</span></div>
+      <p>${esc(post.descripcion||"")}</p>
+      <div class="v6Seller"><span>${esc((post.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(post.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
+      <div class="metricRow"><span>👁️ ${Number(post.visualizaciones||0)} vistas</span><span>💬 ${Number(post.contactos||0)} contactos</span><span>♥ ${Number(post.favoritos||0)} favoritos</span></div>
+      <button id="btnContact" class="primary">Contactar por WhatsApp</button>
+      <button id="btnShare" class="ghost">Compartir aviso</button>
+      <a class="ghostLink" href="mercado-escolar.html">Volver al mercado</a>`;
+    $("#btnContact").addEventListener("click",contact); $("#btnShare").addEventListener("click",share); $("#btnShareTop").addEventListener("click",share);
   }
   async function init(){
     session=getSession(); if(!session.email){locked();return;}
