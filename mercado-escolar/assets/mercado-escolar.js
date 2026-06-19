@@ -379,8 +379,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
-      <button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
-      <a class="v6BackCursapp" href="/apoderado.html">↩ Cursapp</a></div>
+      <button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button></div>
     </article></div>`;
   }
   async function toggleFavorite(id){
