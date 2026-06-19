@@ -195,7 +195,6 @@
     const found=new Map();
     const queries=[];
     if(state.session.email){
-      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_email",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
       queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
     }
     if(state.session.userId){
@@ -362,7 +361,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       // pero no se oculta automáticamente salvo acción del Admin o denuncias acumuladas.
       estado:"disponible",
       nombre_vendedor:state.session.name,
-      vendedor_email:state.session.email||null,
+      // vendedor_email se omite: la tabla productiva no tiene esa columna.
       usuario_id:state.session.userId||state.session.email||null,
       whatsapp,
       activo:true,
@@ -375,7 +374,22 @@ Vi esta publicación en Mercado Escolar Cursapp.
       motivo_moderacion:violation.blocked?violation.reason:null
     };
     if(isUuid(state.session.userId)) row.vendedor_id=state.session.userId;
-    const {data,error}=await state.sb.from("mercado_publicaciones").insert([row]).select("*").single();
+    const insertPost=async(payload)=>{
+      let cleaned={...payload};
+      for(let attempt=0; attempt<4; attempt++){
+        const res=await state.sb.from("mercado_publicaciones").insert([cleaned]).select("*").single();
+        if(!res.error) return res;
+        const msg=String(res.error.message||"");
+        const m=msg.match(/'([^']+)' column of 'mercado_publicaciones'/i) || msg.match(/column "([^"]+)"/i);
+        if(m && cleaned[m[1]]!==undefined){
+          delete cleaned[m[1]];
+          continue;
+        }
+        return res;
+      }
+      return await state.sb.from("mercado_publicaciones").insert([cleaned]).select("*").single();
+    };
+    const {data,error}=await insertPost(row);
     if(error){toast("No se pudo publicar: "+error.message);return;}
     try{await uploadImages(data.id,state.selectedFiles||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
     e.target.reset(); state.selectedFiles=[]; renderPreview([]);
