@@ -130,3 +130,17 @@ body.market-v8{background:#f5f6f8!important;}
   .heroV9 .heroCopy p{font-size:10.8px!important;max-width:168px!important;}
   .featuredScroller.productGridV6 .productCard{flex-basis:144px!important;width:144px!important;min-width:144px!important;}
 }
+
+/* V10 fotos: validación visible y selección múltiple acumulativa */
+.photoValidationMsg{display:none;margin:10px 0 14px;padding:13px 14px;border-radius:16px;font-size:13px;line-height:1.35;font-weight:750;border:1px solid transparent;box-shadow:0 10px 24px rgba(15,23,42,.06)}
+.photoValidationMsg.show{display:block!important}
+.photoValidationMsg.error{background:#fff1f2;color:#9f1239;border-color:#fecdd3}
+.photoValidationMsg.ok{background:#ecfdf5;color:#047857;border-color:#bbf7d0}
+.photoPreview{display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;min-height:104px!important}
+.photoPreview p{width:100%;font-size:13px!important;line-height:1.35!important;color:#64748b!important}
+.photoPreview .photoHelp{font-size:12px!important;color:#64748b!important;margin:2px 0 0!important}
+.photoPreviewItem{position:relative!important;width:86px!important;height:86px!important;border-radius:14px!important;overflow:hidden!important;background:#f8fafc!important;border:1px solid #e5e7eb!important;box-shadow:0 8px 18px rgba(15,23,42,.06)!important}
+.photoPreviewItem img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important}
+.photoPreviewItem small{position:absolute!important;right:6px!important;bottom:6px!important;width:22px!important;height:22px!important;border-radius:999px!important;background:#111827!important;color:#fff!important;display:grid!important;place-items:center!important;font-size:12px!important;font-weight:900!important}
+.photoPreviewItem button{position:absolute!important;right:5px!important;top:5px!important;width:24px!important;height:24px!important;border:0!important;border-radius:999px!important;background:rgba(15,23,42,.78)!important;color:#fff!important;font-size:16px!important;line-height:1!important;font-weight:900!important}
+#pubPhotos{font-size:13px!important}

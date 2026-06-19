@@ -56,7 +56,21 @@
     }
     return null;
   }
-  function toast(t){const el=$("#toast"); if(!el){alert(t); return;} el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200)}
+  function toast(t){const el=$("#toast"); if(!el){alert(t); return;} el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),4200)}
+  function photoMessage(msg,type="error"){
+    let el=$("#photoValidationMsg");
+    const preview=$("#photoPreview");
+    if(!preview) return;
+    if(!el){
+      el=document.createElement("div");
+      el.id="photoValidationMsg";
+      el.className="photoValidationMsg";
+      preview.insertAdjacentElement("afterend",el);
+    }
+    if(!msg){el.classList.remove("show","ok","error");el.textContent="";return;}
+    el.className="photoValidationMsg show "+type;
+    el.innerHTML=msg;
+  }
   function setLoading(on,msg){
     state.loading=!!on;
     let box=$("#marketLoading");
@@ -279,16 +293,27 @@ Vi esta publicación en Mercado Escolar Cursapp.
 
   function validateFiles(files){
     const arr=Array.from(files||[]);
-    if(arr.length>MAX_FILES) return {ok:false,msg:`Máximo ${MAX_FILES} imágenes.`};
+    if(arr.length>MAX_FILES) return {ok:false,msg:`<b>Máximo ${MAX_FILES} fotos.</b><br>Ya tienes ${state.selectedFiles.length} seleccionada(s). Elimina una o selecciona menos imágenes.`};
     for(const file of arr){
-      if(!ALLOWED.includes(file.type) || !ALLOWED_EXT.test(file.name)) return {ok:false,msg:`Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`};
-      if(file.size>MAX_BYTES) return {ok:false,msg:`${file.name} pesa ${(file.size/1024).toFixed(0)} KB. Máximo ${Math.round(MAX_BYTES/1024)} KB.`};
+      const name=esc(file.name||"imagen");
+      if(!ALLOWED.includes(file.type) || !ALLOWED_EXT.test(file.name)) return {ok:false,msg:`<b>Formato no permitido.</b><br>${name} no es válido. Usa solo imágenes JPG, PNG o WEBP.`};
+      if(file.size>MAX_BYTES) return {ok:false,msg:`<b>Imagen demasiado pesada.</b><br>${name} pesa ${(file.size/1024).toFixed(0)} KB. Máximo permitido: ${Math.round(MAX_BYTES/1024)} KB por foto.`};
     }
     return {ok:true,files:arr};
   }
+  function fileKey(f){return `${f.name}|${f.size}|${f.lastModified}`;}
+  function mergeSelectedFiles(newFiles){
+    const map=new Map();
+    [...state.selectedFiles,...Array.from(newFiles||[])].forEach(f=>map.set(fileKey(f),f));
+    return Array.from(map.values()).slice(0,MAX_FILES+1);
+  }
   function renderPreview(files=state.selectedFiles){
     const box=$("#photoPreview"); if(!box) return;
-    box.innerHTML=files.map((f,i)=>`<div class="photoPreviewItem"><img src="${URL.createObjectURL(f)}"><small>${i+1}</small></div>`).join("") || `<p>Agrega hasta ${MAX_FILES} fotos reales: 1 principal y hasta 2 adicionales. Máx. ${Math.round(MAX_BYTES/1024)} KB c/u.</p>`;
+    if(!files.length){
+      box.innerHTML=`<p><b>Agrega hasta ${MAX_FILES} fotos reales.</b><br>La primera será la principal. Puedes seleccionar una o varias fotos. Máx. ${Math.round(MAX_BYTES/1024)} KB c/u.</p>`;
+      return;
+    }
+    box.innerHTML=files.map((f,i)=>`<div class="photoPreviewItem"><img src="${URL.createObjectURL(f)}"><small>${i+1}</small><button type="button" data-remove-photo="${i}" aria-label="Quitar foto">×</button></div>`).join("") + `<p class="photoHelp">${files.length}/${MAX_FILES} fotos seleccionadas · toca × para quitar una.</p>`;
   }
   async function uploadImages(postId,files){
     const uploaded=[];
@@ -319,8 +344,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!requireSession()) return;
     const title=$("#pubTitle").value.trim(), desc=$("#pubDesc").value.trim();
     if(!title||!desc){toast("Completa título y descripción");return;}
-    const fileCheck=validateFiles($("#pubPhotos")?.files||[]);
-    if(!fileCheck.ok){toast(fileCheck.msg);return;}
+    const fileCheck=validateFiles(state.selectedFiles||[]);
+    if(!fileCheck.ok){photoMessage(fileCheck.msg,"error");toast("Revisa las fotos seleccionadas");return;}
     const catId=$("#pubCategory").value;
     const selectedCat=categoryById(catId)||state.categories.find(c=>String(c.nombre)===String(catId))||state.categories[0];
     const whatsapp=phoneClean($("#pubWhatsapp")?.value||state.session.phone||"");
@@ -352,7 +377,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(isUuid(state.session.userId)) row.vendedor_id=state.session.userId;
     const {data,error}=await state.sb.from("mercado_publicaciones").insert([row]).select("*").single();
     if(error){toast("No se pudo publicar: "+error.message);return;}
-    try{await uploadImages(data.id,fileCheck.files||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
+    try{await uploadImages(data.id,state.selectedFiles||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
     e.target.reset(); state.selectedFiles=[]; renderPreview([]);
     await loadPosts();
     await loadMinePosts();
@@ -493,7 +518,29 @@ ${postUrl(p)}`;
     $("#searchInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault(); search(e.target.value); showView("explorar");}});
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
-    $("#pubPhotos")?.addEventListener("change",e=>{const chk=validateFiles(e.target.files);if(!chk.ok){toast(chk.msg);e.target.value="";state.selectedFiles=[];renderPreview([]);return;}state.selectedFiles=chk.files;renderPreview();});
+    $("#pubPhotos")?.addEventListener("change",e=>{
+      const merged=mergeSelectedFiles(e.target.files);
+      const chk=validateFiles(merged);
+      if(!chk.ok){
+        photoMessage(chk.msg,"error");
+        toast("No se pudo agregar la foto. Revisa el mensaje en pantalla.");
+        e.target.value="";
+        renderPreview();
+        return;
+      }
+      state.selectedFiles=chk.files;
+      photoMessage(`✅ ${state.selectedFiles.length}/${MAX_FILES} foto(s) lista(s).`,"ok");
+      renderPreview();
+      e.target.value="";
+    });
+    $("#photoPreview")?.addEventListener("click",e=>{
+      const btn=e.target.closest("[data-remove-photo]");
+      if(!btn) return;
+      const i=Number(btn.dataset.removePhoto);
+      state.selectedFiles.splice(i,1);
+      photoMessage(state.selectedFiles.length?`✅ ${state.selectedFiles.length}/${MAX_FILES} foto(s) lista(s).`:"",state.selectedFiles.length?"ok":"error");
+      renderPreview();
+    });
     $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.visibilidad===sc||sc==="colegio"))}));
     renderPreview([]);
   }
