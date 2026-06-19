@@ -15,7 +15,7 @@
   const ALLOWED_EXT=/\.(jpe?g|png|webp)$/i;
 
   const DEFAULT_CATS=[
-    {nombre:"Libros",icono:"📚",orden:1},{nombre:"Uniformes",icono:"👕",orden:2},{nombre:"Útiles escolares",icono:"✏️",orden:3},{nombre:"Instrumentos",icono:"🎸",orden:4},{nombre:"Tecnología",icono:"💻",orden:5},{nombre:"Deportes",icono:"⚽",orden:6},{nombre:"Vestuario",icono:"🎒",orden:7},{nombre:"Servicios",icono:"🧑‍🏫",orden:8},{nombre:"Otros",icono:"🛍️",orden:9}
+    {nombre:"Deportes",icono:"⚽",orden:1},{nombre:"Instrumentos",icono:"🎵",orden:2},{nombre:"Libros",icono:"📚",orden:3},{nombre:"Uniformes",icono:"👕",orden:4},{nombre:"Útiles escolares",icono:"✏️",orden:5},{nombre:"Otros",icono:"📦",orden:6},{nombre:"Tecnología",icono:"💻",orden:7},{nombre:"Vestuario",icono:"🎒",orden:8},{nombre:"Servicios",icono:"🧑‍🏫",orden:9}
   ];
   const DEFAULT_REASONS=[
     {id:null,nombre:"Producto falso o inexistente",codigo:"producto_falso"},
@@ -122,8 +122,11 @@
   }
   function renderCategoryRow(){
     const row=$(".categoryRow"); if(!row) return;
-    const cats=state.categories.slice(0,4);
-    row.innerHTML=cats.map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Más</b></article>`;
+    const preferred=["Deportes","Instrumentos","Libros","Uniformes","Otros"];
+    const ordered=[];
+    preferred.forEach(name=>{const c=state.categories.find(x=>String(x.nombre).toLowerCase().includes(name.toLowerCase())); if(c && !ordered.includes(c)) ordered.push(c);});
+    state.categories.forEach(c=>{if(ordered.length<5 && !ordered.includes(c)) ordered.push(c);});
+    row.innerHTML=ordered.slice(0,5).map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Ver todas</b></article>`;
   }
   function categoryById(id){return state.categories.find(c=>String(c.id)===String(id))||null;}
   function categoryName(p){return p.categoria_nombre||categoryById(p.categoria_id)?.nombre||"Otros";}
@@ -208,23 +211,33 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   function emptyState(icon,title,text,button,view){return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;}
   function visible(list=state.posts){return list.filter(p=>!["eliminado","oculto","vendido","bloqueado","en_revision"].includes(String(p.estado||"").toLowerCase()))}
+  function relDate(p){
+    try{
+      const d=new Date(p.created_at||Date.now()); const diff=Math.max(0,Date.now()-d.getTime());
+      const days=Math.floor(diff/86400000);
+      if(days<=0) return "Hoy"; if(days===1) return "Ayer"; if(days<7) return `Hace ${days} días`;
+      return d.toLocaleDateString("es-CL",{day:"2-digit",month:"short"});
+    }catch(e){return "Hoy"}
+  }
   function card(p){
     const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     const title=p.titulo||"Publicación";
     const fav=state.favorites.has(String(p.id));
-    return `<article class="productCard" data-post="${esc(p.id)}">
-      ${p.destacado?`<span class="tag">DESTACADA</span>`:""}
-      <button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button>
-      <img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'">
-      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>⌖ ${esc(p.curso_id?"Mi colegio":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(p.estado||"disponible")}</small></div></div>
+    return `<article class="productCard v6ProductCard" data-post="${esc(p.id)}">
+      <div class="productImageWrap"><img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
+      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
   function renderProducts(list=visible()){
-    const f=$("#featuredList"), g=$("#marketGrid");
+    const f=$("#featuredList"), g=$("#marketGrid"), recent=$("#marketRecentList");
     const ranked=list.slice().sort((a,b)=>(Number(b.destacado)-Number(a.destacado))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
-    if(f) f.innerHTML=ranked.length?ranked.slice(0,8).map(card).join(""):empty;
+    if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
     if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
+    if(recent){
+      const rows=ranked.slice(0,4);
+      recent.innerHTML=rows.length?rows.map(p=>{const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio); const fav=state.favorites.has(String(p.id)); return `<article class="recentItem" data-post="${esc(p.id)}"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div><b>${esc(p.titulo||"Publicación")}</b><span>${esc(categoryName(p))}</span><strong>${price}</strong></div><button data-fav="${esc(p.id)}" class="favBtn ${fav?"on":""}">${fav?"♥":"♡"}</button></article>`}).join(""):"";
+    }
   }
   function renderMine(){
     const box=$("#myPosts"); if(!box) return;
@@ -234,7 +247,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
     $("#view-"+v)?.classList.add("active");
-    $$(".pillNav button,.bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+    $$(".bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
     if(v==="mis") renderMine();
   }
   function search(q){q=String(q||"").toLowerCase().trim();const list=!q?visible():visible().filter(p=>String((p.titulo||"")+" "+categoryName(p)+" "+(p.descripcion||"")).toLowerCase().includes(q));renderProducts(list);}
@@ -328,22 +341,23 @@ Vi esta publicación en Mercado Escolar Cursapp.
     await state.sb.from("mercado_publicaciones").update({visualizaciones:Number(p.visualizaciones||0)+1}).eq("id",p.id);
     p.visualizaciones=Number(p.visualizaciones||0)+1;
     const imgs=(state.imagesByPost[String(p.id)]||[]).map(i=>i.url_imagen).filter(Boolean);
-    const gallery=[imageForPost(p)].concat(imgs.filter(u=>u!==imageForPost(p))).slice(0,3);
+    const main=imageForPost(p);
+    const gallery=[main].concat(imgs.filter(u=>u!==main)).slice(0,3);
     const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
     const fav=state.favorites.has(String(p.id));
-    $("#modal").innerHTML=`<div class="modal marketDetailModal">
-      <div class="detailGallery">${gallery.map(u=>`<img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'">`).join("")}</div>
-      <h2>${esc(p.titulo)}</h2>
-      <p><b>${price}</b> · ${esc(categoryName(p))}</p>
+    $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet">
+      <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
+      <div class="v6Gallery">${gallery.map(u=>`<img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'">`).join("")}<div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
+      <div class="v6DetailBody"><small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
+      <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
-      <p><b>${esc(p.nombre_vendedor||"Apoderado")}</b> · ${esc(p.curso_id?"Mi colegio":"Comunidad")}</p>
-      <button data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
-      <button class="ghost" data-share="${esc(p.id)}">Compartir aviso</button>
-      <a class="ghost detailLink" href="${esc(postUrl(p))}">Abrir detalle</a>
-      <button class="ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
-      <button class="danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
-      <button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button>
-    </div>`;
+      <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
+      <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
+      <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
+      <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
+      <button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>
+      <a class="v6BackCursapp" href="/apoderado.html">↩ Cursapp</a></div>
+    </article></div>`;
   }
   async function toggleFavorite(id){
     if(!requireSession()) return;
@@ -446,6 +460,7 @@ ${postUrl(p)}`;
     });
     $("#publishForm")?.addEventListener("submit",publish);
     $("#searchInput")?.addEventListener("input",e=>search(e.target.value));
+    $("#searchInputExplore")?.addEventListener("input",e=>search(e.target.value));
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
     $("#pubPhotos")?.addEventListener("change",e=>{const chk=validateFiles(e.target.files);if(!chk.ok){toast(chk.msg);e.target.value="";state.selectedFiles=[];renderPreview([]);return;}state.selectedFiles=chk.files;renderPreview();});
