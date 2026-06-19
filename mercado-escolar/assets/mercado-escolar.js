@@ -251,7 +251,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard" data-post="${esc(p.id)}">
       <div class="productImageWrap"><img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
-      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
+      <div class="productBody">${p.destacado?`<em class="boostBadge">Destacado</em>`:""}<b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
   function renderProducts(list=visible()){
@@ -275,20 +275,26 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const intercambiados=all.filter(p=>estado(p)==="intercambiado");
     const activos=all.filter(p=>!["vendido","intercambiado","oculto","bloqueado","en_revision"].includes(estado(p)));
     const list=current==="vendidos"?vendidos:(current==="intercambiados"?intercambiados:activos);
-    const tabs=`<div class="mineTabs mineTabsV15">
+    const tabs=`<div class="mineTabs v16MineTabs">
       <button class="${current==='activos'?'active':''}" data-mine-filter="activos">Activos <span>${activos.length}</span></button>
       <button class="${current==='vendidos'?'active':''}" data-mine-filter="vendidos">Vendidos <span>${vendidos.length}</span></button>
       <button class="${current==='intercambiados'?'active':''}" data-mine-filter="intercambiados">Intercambiados <span>${intercambiados.length}</span></button>
     </div>`;
     const empty=emptyState("📦", current==="activos"?"Aún no tienes avisos activos":(current==="vendidos"?"Aún no tienes vendidos":"Aún no tienes intercambiados"), "Tus publicaciones aparecerán organizadas aquí.", current==="activos"?"Publicar aviso":"", "publicar");
-    const actionHtml=(p)=>{
-      const id=esc(p.id);
-      const st=estado(p);
-      if(current==="activos") return `<button class="miniBtn" data-post="${id}">Ver</button><button class="miniBtn" data-share="${id}">Compartir</button><details class="mineMenu"><summary>Más</summary><div><button data-status="vendido" data-id="${id}">Marcar vendido</button><button data-status="intercambiado" data-id="${id}">Marcar intercambiado</button><button data-delete="${id}" class="dangerMini">Eliminar</button></div></details>`;
-      const label=st==="vendido"?"Vendido":"Intercambiado";
-      return `<button class="miniBtn" data-post="${id}">Ver</button><span class="statusPill">${label}</span><details class="mineMenu"><summary>Más</summary><div><button data-status="disponible" data-id="${id}">Reactivar</button><button data-delete="${id}" class="dangerMini">Eliminar</button></div></details>`;
-    };
-    box.innerHTML=tabs+(list.map(p=>`<div class="myItem myItemV15"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div class="myItemText"><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${esc(p.tipo||"Aviso")}</span><small>${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</small></div><div class="myItemActions">${actionHtml(p)}</div></div>`).join("") || empty);
+    function actions(p){
+      const id=esc(p.id); const st=estado(p);
+      const canShare=current==='activos' && !["vendido","intercambiado"].includes(st);
+      const statusBtns=current==='activos'
+        ? `<button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
+        : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
+      return `<div class="mineTopActions"><button class="iconAction" data-post="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
+    }
+    const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)}">
+      <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
+      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span></div>
+      ${actions(p)}
+    </article>`).join("");
+    box.innerHTML=tabs+(html||empty);
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -445,6 +451,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
       : `<option value="">Publica un aviso activo primero</option>`;
     sel.disabled=!active.length;
     if(box){
+      box.innerHTML=`
+        <article class="boostOption"><b>Destacado colegio</b><strong>1 crédito · 7 días</strong><span>Mi colegio</span><button type="button" data-boost-rule="colegio" data-cost="1">Destacar</button></article>
+        <article class="boostOption"><b>Portada comuna</b><strong>3 créditos · 7 días</strong><span>Mi comuna</span><button type="button" data-boost-rule="comuna" data-cost="3">Destacar</button></article>
+        <article class="boostOption"><b>Todo Cursapp</b><strong>5 créditos · 7 días</strong><span>Comunidad Cursapp</span><button type="button" data-boost-rule="cursapp" data-cost="5">Destacar</button></article>`;
       box.querySelectorAll("button").forEach(btn=>{
         btn.disabled=!active.length;
         btn.classList.toggle("isDisabled",!active.length);
@@ -454,6 +464,20 @@ Vi esta publicación en Mercado Escolar Cursapp.
       }
       if(active.length) document.getElementById("creditNoActiveMsg")?.remove();
     }
+  }
+  async function boostPost(rule,cost){
+    const sel=document.getElementById("boostPostSelect");
+    const id=sel?.value;
+    if(!id){toast("Selecciona una publicación activa para destacar.");return;}
+    const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
+    if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
+    const until=new Date(Date.now()+7*86400000).toISOString();
+    let r=await state.sb.from("mercado_publicaciones").update({destacado:true}).eq("id",id).select("id,destacado,estado").maybeSingle();
+    if(r.error){toast("No se pudo destacar: "+r.error.message);return;}
+    p.destacado=true;
+    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x) x.destacado=true;}
+    renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
+    toast(`Publicación destacada por 7 días · ${cost} crédito(s)`);
   }
   function creditHelp(){
     document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• El destacado vence automáticamente según la regla elegida.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div>`;
@@ -565,9 +589,20 @@ ${postUrl(p)}`;
     const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
     if(!p) return;
     if(isClosedPost(p)){toast("No se puede compartir una publicación vendida o intercambiada.");return;}
-    const text=shareText(p);
-    if(navigator.share){try{await navigator.share({title:p.titulo||"Mercado Escolar",text,url:postUrl(p)});return;}catch(e){}}
-    try{await navigator.clipboard.writeText(text);toast("Enlace copiado");}catch(e){toast(text);}
+    const url=postUrl(p);
+    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
+    const text=`Hola 👋
+
+Vi esta publicación en Mercado Escolar Cursapp.
+
+📦 ${p.titulo||"Publicación"}
+💰 ${price}`;
+    if(navigator.share){try{await navigator.share({title:p.titulo||"Mercado Escolar",text,url});return;}catch(e){}}
+    try{await navigator.clipboard.writeText(`${text}
+
+🔗 ${url}`);toast("Enlace copiado");}catch(e){toast(`${text}
+
+🔗 ${url}`);}
   }
   function rules(){
     $("#modal").innerHTML=`<div class="modal rulesModal"><h2>Reglas Mercado Escolar</h2><p>• Solo artículos escolares permitidos.</p><p>• No publicar productos prohibidos, ofensivos o ajenos al colegio.</p><p>• Las publicaciones reportadas pueden pasar a revisión u ocultarse.</p><p>• Cursapp no procesa pagos entre apoderados.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div>`;
@@ -580,6 +615,7 @@ ${postUrl(p)}`;
       const del=e.target.closest("[data-delete]"); if(del){e.preventDefault();e.stopPropagation();removePost(del.dataset.delete);return;}
       const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
+      const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}
       const help=e.target.closest("[data-credit-help]"); if(help){e.preventDefault();creditHelp();return;}
       const v=e.target.closest("[data-view]"); if(v){e.preventDefault();showView(v.dataset.view);return;}
       const c=e.target.closest("[data-cat]"); if(c){e.preventDefault();filterCat(c.dataset.cat);return;}
