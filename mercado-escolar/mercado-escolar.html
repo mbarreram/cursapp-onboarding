@@ -5,69 +5,63 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
 <link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
-<link rel="stylesheet" href="assets/mercado-production-v5.css?v=5"/>
+<link rel="stylesheet" href="assets/mercado-production-v6.css?v=6"/>
 </head>
-<body>
+<body class="market-v6">
 <main class="marketApp">
   <header class="marketHeader">
     <div class="brandIcon">🛍️</div>
     <div><h1>Mercado Escolar</h1><p>Comunidad registrada · compra, venta e intercambio</p></div>
-    <button class="headerBell" id="btnRules">🛡️</button>
+    <button class="headerBell" id="btnRules" aria-label="Reglas">🛡️</button>
   </header>
-
-  <section class="heroRetail heroRetailCss">
-    <div class="heroCopy">
-      <span>♻ SEGUNDA VIDA ESCOLAR</span>
-      <h2>Encuentra útiles, libros y vestuario entre apoderados</h2>
-      <p>Sin pagos dentro de Cursapp.<br>Acuerdos entre usuarios registrados.</p>
-      <button type="button" data-view="publicar">+ Publicar →</button>
-    </div>
-    <img class="heroItems" src="assets/img/hero-items-final.png" alt="Polerón, mochila y libros">
-  </section>
-
-  <nav class="pillNav">
-    <button class="active" data-view="inicio">🏠 Inicio</button>
-    <button data-view="explorar">🔎 Explorar</button>
-    <button data-view="publicar">＋ Publicar</button>
-    <button data-view="mis">📦 Mis avisos</button>
-    <button data-view="creditos">💎 Créditos</button>
-  </nav>
 
   <section id="view-inicio" class="view active">
     <div class="searchRow">
-      <div class="searchBox"><span>🔍</span><input id="searchInput" placeholder="Buscar libros, uniforme, traje cueca..."></div>
-      <button class="filterBtn" id="btnClearSearch">×</button>
+      <div class="searchBox"><span>🔍</span><input id="searchInput" placeholder="Buscar productos, libros, uniformes..."></div>
+      <button class="filterBtn" data-view="explorar" aria-label="Filtros">☷</button>
     </div>
+
+    <div class="categoryRow" aria-label="Categorías"></div>
+
+    <section class="heroRetail heroRetailCss">
+      <div class="heroCopy">
+        <span>SEGUNDA VIDA ESCOLAR</span>
+        <h2>Encuentra lo que necesitas en tu comunidad escolar</h2>
+        <p>Compra, vende o intercambia de forma segura y simple.</p>
+        <button type="button" data-view="publicar">+ Publicar aviso</button>
+      </div>
+      <img class="heroItems" src="assets/img/hero-items-final.png" alt="Mochila y útiles escolares">
+    </section>
+
     <section class="locationCard">
       <div class="locIcon">📍</div>
-      <div><b>Mostrando cerca de tu comunidad <em>● Activa</em></b><span>Mi colegio · colegios cercanos · misma comuna</span></div>
-      <button data-view="explorar">Filtros</button>
+      <div><b>Cerca de ti</b><span>Mi colegio · misma comuna · comunidad registrada</span></div>
+      <button data-view="explorar">Filtrar</button>
     </section>
-    <div class="categoryRow">
-      <article data-cat="Libros"><span>📚</span><b>Libros</b></article>
-      <article data-cat="Uniformes"><span>👕</span><b>Uniformes</b></article>
-      <article data-cat="Vestuario"><span>🎭</span><b>18 Sept.</b></article>
-      <article data-cat="Deportes"><span>⚽</span><b>Deportes</b></article>
-      <article data-view="explorar"><span>▦</span><b>Más</b></article>
-    </div>
+
     <section class="sectionHead"><h2>Destacados cerca de ti</h2><button data-view="explorar">Ver todos</button></section>
-    <div id="featuredList" class="featuredScroller"></div>
+    <div id="featuredList" class="featuredScroller productGridV6"></div>
+
+    <section class="sectionHead recentHead"><h2>Avisos recientes</h2><button data-view="explorar">Ver todos</button></section>
+    <div id="marketRecentList" class="recentListV6"></div>
   </section>
 
   <section id="view-explorar" class="view">
+    <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Explorar</h2></div>
+    <div class="searchRow compactSearch"><div class="searchBox"><span>🔍</span><input id="searchInputExplore" placeholder="Buscar en Mercado Escolar..."></div></div>
     <div class="filters">
       <button class="active" data-scope="colegio">Mi colegio</button>
       <button data-scope="cercanos">Cercanos</button>
       <button data-scope="comuna">Mi comuna</button>
-      <button data-scope="todo">Todo Cursapp</button>
+      <button data-scope="todo">Todo</button>
     </div>
-    <div id="marketGrid" class="marketGrid"></div>
+    <div id="marketGrid" class="marketGrid productGridV6"></div>
   </section>
 
   <section id="view-publicar" class="view">
+    <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Publicar aviso</h2></div>
     <section class="panel">
-      <h2>Publicar artículo</h2>
-      <p class="muted">Solo artículos escolares permitidos. Cursapp puede ocultar publicaciones denunciadas.</p>
+      <p class="muted">Solo artículos escolares permitidos. Cursapp no procesa pagos entre apoderados.</p>
       <form id="publishForm" class="formGrid">
         <label>Fotos reales del producto<input id="pubPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
         <div id="photoPreview" class="photoPreview"><p>Agrega hasta 3 fotos reales: 1 principal y hasta 2 adicionales. Máx. 1 MB c/u.</p></div>
@@ -84,10 +78,8 @@
   </section>
 
   <section id="view-mis" class="view">
-    <section class="panel">
-      <div class="panelHead"><h2>Mis publicaciones</h2><button data-view="publicar">+ Nueva</button></div>
-      <div id="myPosts"></div>
-    </section>
+    <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Mis avisos</h2><button data-view="publicar" class="miniAction">+ Nueva</button></div>
+    <section class="panel"><div id="myPosts"></div></section>
   </section>
 
   <section id="view-creditos" class="view" style="display:none">
@@ -95,31 +87,22 @@
       <div class="panelHead"><div><h2>Créditos Mercado</h2><p>Compra créditos para destacar tus avisos.</p></div><span id="creditBalanceBadge">0 créditos</span></div>
       <div id="creditPackages" class="creditPackageGrid"></div>
     </section>
-    <section class="panel creditsPanel">
-      <h2>Canjear visibilidad</h2>
-      <p class="muted">Selecciona una publicación propia y la regla de destacado.</p>
-      <label class="selectFull">Publicación<select id="boostPostSelect"></select></label>
-      <div id="boostOptions" class="boostGrid"></div>
-    </section>
-    <section class="panel creditsPanel">
-      <h2>Historial créditos</h2>
-      <div id="creditHistory"></div>
-    </section>
+    <section class="panel creditsPanel"><h2>Canjear visibilidad</h2><p class="muted">Selecciona una publicación propia y la regla de destacado.</p><label class="selectFull">Publicación<select id="boostPostSelect"></select></label><div id="boostOptions" class="boostGrid"></div></section>
+    <section class="panel creditsPanel"><h2>Historial créditos</h2><div id="creditHistory"></div></section>
   </section>
 
   <nav class="bottomBar">
     <button class="active" data-view="inicio"><span>🏠</span><small>Inicio</small></button>
-    <button data-view="explorar"><span>🔍</span><small>Explorar</small></button>
+    <button data-view="mis"><span>📦</span><small>Mis avisos</small></button>
     <button class="center" data-view="publicar"><span>＋</span><small>Publicar</small></button>
-    <button data-view="mis" class="avisosBtn"><span>📋</span><small>Avisos</small></button>
-    <button data-view="creditos"><span>💎</span><small>Créditos</small></button>
+    <button data-view="explorar"><span>♡</span><small>Explorar</small></button>
     <a href="/apoderado.html" class="returnCursapp"><span>↩️</span><small>Cursapp</small></a>
   </nav>
 </main>
 <div id="modal"></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=41"></script>
+<script src="assets/mercado-escolar.js?v=60"></script>
 <script src="assets/mercado-creditos.js?v=monetizacion-v1"></script>
 </body>
 </html>
