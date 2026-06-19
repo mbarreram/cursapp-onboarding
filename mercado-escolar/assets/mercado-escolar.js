@@ -122,11 +122,18 @@
   }
   function renderCategoryRow(){
     const row=$(".categoryRow"); if(!row) return;
-    const preferred=["Deportes","Instrumentos","Libros","Uniformes","Otros"];
-    const ordered=[];
-    preferred.forEach(name=>{const c=state.categories.find(x=>String(x.nombre).toLowerCase().includes(name.toLowerCase())); if(c && !ordered.includes(c)) ordered.push(c);});
-    state.categories.forEach(c=>{if(ordered.length<5 && !ordered.includes(c)) ordered.push(c);});
-    row.innerHTML=ordered.slice(0,5).map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Ver todas</b></article>`;
+    const defs=[
+      {nombre:"Deportes",icono:"⚽"},
+      {nombre:"Instrumentos",icono:"🎵",label:"Música"},
+      {nombre:"Libros",icono:"📚"},
+      {nombre:"Uniformes",icono:"👔"},
+      {nombre:"Otros",icono:"📦"}
+    ];
+    const cats=defs.map(d=>{
+      const found=state.categories.find(x=>String(x.nombre).toLowerCase().includes(String(d.nombre).toLowerCase()));
+      return found?{...found,icono:d.icono,label:d.label||found.nombre}:{...d,label:d.label||d.nombre};
+    });
+    row.innerHTML=cats.map(c=>`<article data-cat="${esc(c.nombre)}"><span>${esc(c.icono||"🛍️")}</span><b>${esc(c.label||c.nombre)}</b></article>`).join("")+`<article data-view="explorar"><span>▦</span><b>Ver todas</b></article>`;
   }
   function categoryById(id){return state.categories.find(c=>String(c.id)===String(id))||null;}
   function categoryName(p){return p.categoria_nombre||categoryById(p.categoria_id)?.nombre||"Otros";}
@@ -202,11 +209,14 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   function imageForPost(p){
-    if(p.imagen_principal) return p.imagen_principal;
+    // En QA se subieron placeholders verdes antiguos; para pruebas visuales los reemplazamos por fallback neutro.
+    const t=String(p.titulo||"");
+    const isQaPlaceholder=/^QA_|Mercado palabra bloqueada/i.test(t);
+    if(!isQaPlaceholder && p.imagen_principal) return p.imagen_principal;
     const imgs=state.imagesByPost[String(p.id)]||[];
-    if(imgs[0]?.url_imagen) return imgs[0].url_imagen;
+    if(!isQaPlaceholder && imgs[0]?.url_imagen) return imgs[0].url_imagen;
     const name=categoryName(p);
-    const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Tecnología:"mochila.svg",Instrumentos:"generic.svg",Servicios:"generic.svg",Otros:"generic.svg"};
+    const map={Libros:"libros.svg",Uniformes:"poleron.svg",Vestuario:"vestido.svg",Deportes:"balon.svg",Tecnología:"mochila.svg",Instrumentos:"generic.svg",Servicios:"generic.svg",Otros:"generic.svg","Útiles escolares":"generic.svg"};
     return "assets/img/"+(map[name]||"generic.svg");
   }
   function emptyState(icon,title,text,button,view){return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;}
@@ -461,6 +471,12 @@ ${postUrl(p)}`;
     $("#publishForm")?.addEventListener("submit",publish);
     $("#searchInput")?.addEventListener("input",e=>search(e.target.value));
     $("#searchInputExplore")?.addEventListener("input",e=>search(e.target.value));
+    $("#btnMarketSearch")?.addEventListener("click",()=>{
+      const q=$("#searchInput")?.value||"";
+      search(q);
+      showView("explorar");
+    });
+    $("#searchInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault(); search(e.target.value); showView("explorar");}});
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
     $("#pubPhotos")?.addEventListener("change",e=>{const chk=validateFiles(e.target.files);if(!chk.ok){toast(chk.msg);e.target.value="";state.selectedFiles=[];renderPreview([]);return;}state.selectedFiles=chk.files;renderPreview();});
