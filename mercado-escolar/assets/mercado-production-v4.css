@@ -1,0 +1,96 @@
+/* =========================================================
+   Cursapp · Mercado Escolar V4 Producción
+   Corrige layout roto y acerca el módulo a marketplace.
+   ========================================================= */
+:root{--mk4-purple:#6d28d9;--mk4-purple2:#7c3aed;--mk4-text:#0f172a;--mk4-muted:#64748b;--mk4-line:#e7edf6;--mk4-shadow:0 10px 24px rgba(15,23,42,.07)}
+html,body{overflow-x:hidden!important;background:#eef2f7!important;}
+.marketApp{
+  width:100%!important;max-width:430px!important;margin:0 auto!important;
+  padding:12px 14px 92px!important;
+  overflow-x:hidden!important;
+  background:linear-gradient(180deg,#fbfcff 0%,#f7f9fc 100%)!important;
+}
+.marketHeader{display:grid!important;grid-template-columns:42px 1fr 42px!important;gap:10px!important;align-items:center!important;padding:4px 0 8px!important;margin:0 0 8px!important;}
+.marketHeader .brandIcon{width:42px!important;height:42px!important;border-radius:15px!important;font-size:20px!important;}
+.marketHeader h1{font-size:22px!important;line-height:1.04!important;margin:0!important;letter-spacing:-.04em!important;}
+.marketHeader p{font-size:12px!important;line-height:1.12!important;margin:2px 0 0!important;color:#64748b!important;font-weight:760!important;}
+.headerBell{width:42px!important;height:42px!important;border-radius:15px!important;font-size:18px!important;display:grid!important;place-items:center!important;}
+
+/* Hero compacto: ya no rompe ancho */
+.heroRetail,
+.heroRetailCss{
+  position:relative!important;
+  width:100%!important;
+  min-height:156px!important;
+  height:156px!important;
+  max-height:156px!important;
+  margin:6px 0 10px!important;
+  padding:14px!important;
+  border-radius:22px!important;
+  overflow:hidden!important;
+  background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 54%,#a855f7 100%)!important;
+  box-shadow:0 14px 30px rgba(109,40,217,.18)!important;
+}
+.heroRetailCss::before{opacity:.42!important;}
+.heroRetailCss .heroCopy{position:relative!important;z-index:2!important;width:58%!important;color:#fff!important;}
+.heroRetailCss .heroCopy span{font-size:9.5px!important;line-height:1.05!important;letter-spacing:.08em!important;margin:0 0 6px!important;color:#ede9fe!important;}
+.heroRetailCss .heroCopy h2{font-size:22px!important;line-height:.98!important;letter-spacing:-.055em!important;margin:0!important;max-width:100%!important;color:#fff!important;}
+.heroRetailCss .heroCopy p{font-size:10.5px!important;line-height:1.12!important;margin:7px 0 0!important;color:#f5f3ff!important;font-weight:800!important;}
+.heroRetailCss .heroCopy button{min-height:34px!important;height:34px!important;padding:0 15px!important;border-radius:999px!important;font-size:12.5px!important;margin-top:9px!important;}
+.heroRetailCss .heroItems{position:absolute!important;right:-12px!important;bottom:-7px!important;width:49%!important;max-height:142px!important;height:auto!important;object-fit:contain!important;z-index:1!important;}
+.heroRetailCss>img:not(.heroItems){display:none!important;}
+
+/* Navegación superior marketplace */
+.pillNav{display:flex!important;gap:8px!important;overflow-x:auto!important;padding:0 0 8px!important;margin:0 0 8px!important;scrollbar-width:none!important;}
+.pillNav::-webkit-scrollbar,.featuredScroller::-webkit-scrollbar{display:none!important;}
+.pillNav button{min-height:36px!important;padding:8px 12px!important;border-radius:999px!important;font-size:12.5px!important;font-weight:850!important;box-shadow:var(--mk4-shadow)!important;border:1px solid rgba(226,232,240,.9)!important;white-space:nowrap!important;}
+.pillNav button.active{background:linear-gradient(135deg,#6d28d9,#8b5cf6)!important;color:#fff!important;}
+
+.searchRow{display:grid!important;grid-template-columns:1fr 42px!important;gap:8px!important;margin:0 0 10px!important;}
+.searchBox{min-height:42px!important;border-radius:17px!important;padding:0 12px!important;box-shadow:var(--mk4-shadow)!important;min-width:0!important;}
+.searchBox input{font-size:13.5px!important;font-weight:750!important;min-width:0!important;}
+.filterBtn{width:42px!important;height:42px!important;border-radius:17px!important;font-size:19px!important;}
+.locationCard{grid-template-columns:24px 1fr auto!important;gap:8px!important;margin:0 0 12px!important;padding:12px!important;border-radius:18px!important;box-shadow:var(--mk4-shadow)!important;}
+.locationCard b{font-size:14px!important;line-height:1.06!important;}
+.locationCard span{font-size:11.5px!important;line-height:1.12!important;margin-top:3px!important;}
+.locationCard button{min-height:34px!important;padding:7px 11px!important;border-radius:13px!important;font-size:12px!important;}
+.categoryRow{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;margin:0 0 14px!important;}
+.categoryRow article{min-height:76px!important;padding:9px 5px!important;border-radius:16px!important;box-shadow:var(--mk4-shadow)!important;}
+.categoryRow span{width:34px!important;height:34px!important;border-radius:12px!important;font-size:18px!important;margin-bottom:5px!important;}
+.categoryRow b{font-size:10.5px!important;line-height:1.06!important;}
+.sectionHead{margin:4px 0 9px!important;padding:0 2px!important;}
+.sectionHead h2{font-size:18px!important;letter-spacing:-.035em!important;}
+.sectionHead button{font-size:12.5px!important;}
+
+/* Cards de producto: más tipo Mercado Libre y sin desbordes */
+.featuredScroller{display:grid!important;grid-auto-flow:column!important;grid-auto-columns:calc(50% - 5px)!important;gap:10px!important;overflow-x:auto!important;padding:0 0 12px!important;scrollbar-width:none!important;}
+.marketGrid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;}
+.productCard{border-radius:16px!important;overflow:hidden!important;background:#fff!important;box-shadow:var(--mk4-shadow)!important;border:1px solid var(--mk4-line)!important;min-width:0!important;}
+.productCard img{height:110px!important;width:100%!important;object-fit:cover!important;background:#f8fafc!important;}
+.productBody{padding:9px!important;}
+.productBody b{font-size:12.5px!important;line-height:1.18!important;min-height:30px!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;}
+.productBody strong{font-size:15px!important;margin:5px 0 3px!important;color:#6d28d9!important;}
+.productBody span,.productMeta{font-size:10.5px!important;line-height:1.15!important;}
+
+/* Bottom bar no debe tapar ni deformar */
+.bottomBar{height:62px!important;width:min(386px,calc(100% - 24px))!important;bottom:12px!important;border-radius:24px!important;padding:6px!important;grid-template-columns:1fr 1fr 62px 1fr 1fr!important;z-index:9000!important;}
+.bottomBar span{font-size:18px!important;line-height:1!important;margin-bottom:3px!important;}
+.bottomBar small{font-size:9px!important;line-height:1.05!important;white-space:nowrap!important;}
+.bottomBar .center span{width:48px!important;height:48px!important;margin:-15px auto 0!important;font-size:28px!important;}
+.returnCursapp{display:none!important;}
+
+/* Modal publicación: compacto, no gigante */
+#modal:not(:empty){z-index:99999!important;align-items:end!important;padding:14px!important;background:rgba(15,23,42,.50)!important;}
+.modal.marketDetailModal,.modal{width:100%!important;max-width:400px!important;border-radius:24px!important;padding:16px!important;max-height:82vh!important;overflow:auto!important;}
+.marketDetailModal .detailGallery{display:flex!important;gap:8px!important;overflow-x:auto!important;margin-bottom:10px!important;}
+.marketDetailModal .detailGallery img{width:92px!important;height:92px!important;min-width:92px!important;border-radius:16px!important;object-fit:cover!important;}
+.marketDetailModal h2{font-size:22px!important;line-height:1.08!important;letter-spacing:-.035em!important;margin:6px 0 8px!important;}
+.marketDetailModal p{font-size:13.5px!important;line-height:1.3!important;margin:8px 0!important;}
+.marketDetailModal button,.marketDetailModal a.ghost{min-height:42px!important;border-radius:15px!important;padding:10px 12px!important;font-size:13px!important;text-align:center!important;display:block!important;text-decoration:none!important;}
+
+@media(max-width:380px){
+  .heroRetail,.heroRetailCss{height:146px!important;min-height:146px!important;max-height:146px!important;}
+  .heroRetailCss .heroCopy h2{font-size:19px!important;}
+  .heroRetailCss .heroCopy p{display:none!important;}
+  .categoryRow{grid-template-columns:repeat(4,78px)!important;overflow-x:auto!important;}
+}
