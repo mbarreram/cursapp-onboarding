@@ -28,7 +28,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -287,7 +287,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const statusBtns=current==='activos'
         ? `<button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
         : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
-      return `<div class="mineTopActions"><button class="iconAction" data-post="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
+      return `<div class="mineTopActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
     }
     const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)}">
       <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
@@ -434,6 +434,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
+      ${isMine(p) && isActiveMarketPost(p) ? `<button class="v6BoostBtn" data-open-credits="${esc(p.id)}">⭐ Destacar con créditos</button>` : ""}
       <button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button></div>
     </article></div>`;
   }
@@ -449,6 +450,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     sel.innerHTML=active.length
       ? active.map(p=>`<option value="${esc(p.id)}">${esc(p.titulo||"Publicación")}</option>`).join("")
       : `<option value="">Publica un aviso activo primero</option>`;
+    if(state.pendingBoostId && active.some(p=>String(p.id)===String(state.pendingBoostId))) sel.value=state.pendingBoostId;
     sel.disabled=!active.length;
     if(box){
       box.innerHTML=`
@@ -465,19 +467,51 @@ Vi esta publicación en Mercado Escolar Cursapp.
       if(active.length) document.getElementById("creditNoActiveMsg")?.remove();
     }
   }
+  async function insertFlex(table,row){
+    let cleaned={...row};
+    for(let attempt=0; attempt<8; attempt++){
+      const res=await state.sb.from(table).insert([cleaned]).select("*").maybeSingle();
+      if(!res.error) return res;
+      const msg=String(res.error.message||"");
+      const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i) || msg.match(/column "([^"]+)"/i);
+      if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;}
+      return res;
+    }
+    return await state.sb.from(table).insert([cleaned]).select("*").maybeSingle();
+  }
+  async function recordCreditUse(publicacionId,rule,cost){
+    const uid=state.session.userId||state.session.email;
+    const email=state.session.email||null;
+    const until=new Date(Date.now()+7*86400000).toISOString();
+    let spent={ok:true};
+    if(window.CursappMarketCredits && typeof window.CursappMarketCredits.spendCredits==="function"){
+      spent=await window.CursappMarketCredits.spendCredits(Number(cost||0),{publicacion_id:publicacionId,regla:rule,descripcion:`Destacado Mercado Escolar · ${rule} · 7 días`});
+      if(!spent || spent.ok===false) return {ok:false,message:spent?.message||"No se pudieron descontar créditos."};
+    }else{
+      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"egreso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,regla,descripcion:`Destacado Mercado Escolar · ${rule} · 7 días`,created_at:now()});
+    }
+    await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla,tipo:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
+    return {ok:true,until};
+  }
   async function boostPost(rule,cost){
     const sel=document.getElementById("boostPostSelect");
     const id=sel?.value;
     if(!id){toast("Selecciona una publicación activa para destacar.");return;}
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
-    const until=new Date(Date.now()+7*86400000).toISOString();
+    const costNum=Number(cost||1);
+    const spend=await recordCreditUse(id,rule,costNum);
+    if(!spend.ok){toast(spend.message||"No se pudo usar créditos.");return;}
     let r=await state.sb.from("mercado_publicaciones").update({destacado:true}).eq("id",id).select("id,destacado,estado").maybeSingle();
-    if(r.error){toast("No se pudo destacar: "+r.error.message);return;}
+    if(r.error){toast("Créditos registrados, pero no se pudo marcar destacado: "+r.error.message);return;}
     p.destacado=true;
-    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x) x.destacado=true;}
+    p.destacado_hasta=spend.until;
+    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacado_hasta=spend.until;}}
+    await loadPosts();
+    await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
-    toast(`Publicación destacada por 7 días · ${cost} crédito(s)`);
+    if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
+    toast(`Publicación destacada por 7 días · ${costNum} crédito(s) descontado(s)`);
   }
   function creditHelp(){
     document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• El destacado vence automáticamente según la regla elegida.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div>`;
@@ -569,11 +603,12 @@ ${postUrl(p)}`;
 
     let r=await state.sb.from("mercado_publicaciones").update({estado:status}).eq("id",id).select("id,estado").maybeSingle();
     if(r.error){
-      // Fallback para proyectos que tengan updated_at, pero no falla si no existe.
-      r=await state.sb.from("mercado_publicaciones").update({estado:status, updated_at:now()}).eq("id",id).select("id,estado").maybeSingle();
-    }
-    if(r.error){
-      toast("No se pudo guardar el estado: "+r.error.message);
+      const msg=String(r.error.message||"");
+      if(msg.includes("mercado_publicaciones_estado_check") || msg.includes("check constraint")){
+        toast("Falta aplicar SQL V18: habilitar estados vendido/intercambiado en mercado_publicaciones.");
+      }else{
+        toast("No se pudo guardar el estado: "+r.error.message);
+      }
       await loadPosts(); await loadMinePosts();
       renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
       return;
@@ -584,7 +619,7 @@ ${postUrl(p)}`;
     toast(status==="vendido"?"Aviso movido a Vendidos":(status==="intercambiado"?"Aviso movido a Intercambiados":"Aviso reactivado"));
     renderProducts(); renderMine(nextTab); renderCreditVisibilityGuard();
   }
-  async function removePost(id){if(!confirm("¿Eliminar esta publicación?")) return; await updateStatus(id,"eliminado");}
+  async function removePost(id){if(!confirm("¿Eliminar esta publicación? Esta acción la ocultará del Mercado Escolar.")) return; applyLocalStatus(id,"eliminado"); renderProducts(); renderMine("activos"); let r=await state.sb.from("mercado_publicaciones").update({estado:"eliminado",activo:false}).eq("id",id).select("id,estado,activo").maybeSingle(); if(r.error){toast("No se pudo eliminar: "+r.error.message); await loadPosts(); await loadMinePosts(); renderProducts(); renderMine("activos"); return;} await loadPosts(); await loadMinePosts(); renderProducts(); renderMine("activos"); renderCreditVisibilityGuard(); toast("Publicación eliminada");}
   async function sharePost(id){
     const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
     if(!p) return;
@@ -613,6 +648,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const send=e.target.closest("[data-send-report]"); if(send){sendReport(send.dataset.sendReport);return;}
       const st=e.target.closest("[data-status]"); if(st){e.preventDefault();e.stopPropagation();updateStatus(st.dataset.id,st.dataset.status);return;}
       const del=e.target.closest("[data-delete]"); if(del){e.preventDefault();e.stopPropagation();removePost(del.dataset.delete);return;}
+      const open=e.target.closest("[data-open-detail]"); if(open){e.preventDefault();e.stopPropagation();openDetail(open.dataset.openDetail);return;}
+      const openCredits=e.target.closest("[data-open-credits]"); if(openCredits){e.preventDefault();e.stopPropagation();state.pendingBoostId=openCredits.dataset.openCredits;document.getElementById("modal").innerHTML="";showView("creditos");setTimeout(renderCreditVisibilityGuard,80);return;}
       const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
       const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}

@@ -1,116 +1,33 @@
 (function(){
-  "use strict";
-
+  'use strict';
   const $=(s,r=document)=>r.querySelector(s);
-  const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
+  const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const now=()=>new Date().toISOString();
   const PACKAGES=[
-    {id:"starter",nombre:"Starter",creditos:10,precio:990,recomendado:false},
-    {id:"medio",nombre:"Medio",creditos:25,precio:1990,recomendado:true},
-    {id:"pro",nombre:"Pro",creditos:60,precio:3990,recomendado:false}
+    {name:'Básico',credits:10,price:990},
+    {name:'Plus',credits:30,price:1990},
+    {name:'Pro',credits:60,price:3990}
   ];
-  const BOOSTS=[
-    {id:"colegio",nombre:"Destacado colegio",creditos:1,dias:7,alcance:"Mi colegio"},
-    {id:"comuna",nombre:"Portada comuna",creditos:3,dias:7,alcance:"Mi comuna"},
-    {id:"cursapp",nombre:"Todo Cursapp",creditos:5,dias:7,alcance:"Comunidad Cursapp"}
-  ];
-  let sb=null, session=null, wallet=null, posts=[], movements=[];
-
+  function clp(n){return '$'+Number(n||0).toLocaleString('es-CL')}
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
-  function getSession(){
-    const s=readJson("cursapp_session_v1",{})||{};
-    const p=readJson("cursapp_active_profile_v1",{})||{};
-    return {
-      userId:String(s.userId||s.usuario_id||p.usuario_id||p.userId||s.email||p.email||"").toLowerCase(),
-      email:String(s.email||p.email||"").toLowerCase(),
-      name:s.nombre||s.name||p.nombre_apoderado||p.nombre||"Apoderado Cursapp"
-    };
-  }
-  async function waitSupabase(timeoutMs=5000){
-    const start=Date.now();
-    while(Date.now()-start<timeoutMs){
-      if(window.cursappSupabase) return window.cursappSupabase;
-      if(window.initCursappSupabase){try{const x=window.initCursappSupabase(); if(x) return x;}catch(e){}}
-      await new Promise(r=>setTimeout(r,100));
-    }
-    return null;
-  }
-  function toast(t){const el=$("#toast"); if(!el){alert(t);return;} el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200)}
-  function uid(){return String(session?.userId||session?.email||"").toLowerCase()}
-
-  async function loadWallet(){
-    if(!uid()) return null;
-    const r=await sb.from("creditos_usuario").select("*").eq("usuario_id",uid()).maybeSingle();
-    if(r.error && r.error.code!=="PGRST116") throw new Error(r.error.message);
-    if(r.data){ wallet=r.data; return wallet; }
-    const ins=await sb.from("creditos_usuario").insert([{usuario_id:uid(),email:session.email,saldo:0,total_comprado:0,total_consumido:0}]).select("*").single();
-    if(ins.error) throw new Error(ins.error.message);
-    wallet=ins.data; return wallet;
-  }
-  async function loadMovements(){
-    const r=await sb.from("movimientos_creditos").select("*").eq("usuario_id",uid()).order("created_at",{ascending:false}).limit(50);
-    movements=r.error?[]:(r.data||[]);
-  }
-  async function loadPosts(){
-    if(!uid()) {posts=[]; return;}
-    const r=await sb.from("mercado_publicaciones").select("id,titulo,precio,estado,usuario_id,vendedor_id,vendedor_email,destacado,destacado_hasta").or(`usuario_id.eq.${uid()},vendedor_id.eq.${uid()},vendedor_email.eq.${session.email}`);
-    posts=r.error?[]:(r.data||[]).filter(p=>!["eliminado","bloqueado"].includes(String(p.estado||"").toLowerCase()));
-  }
-  function renderBalance(){const el=$("#creditBalanceBadge"); if(el) el.textContent=Number(wallet?.saldo||0)+" créditos";}
-  function renderPackages(){
-    const box=$("#creditPackages"); if(!box) return;
-    box.innerHTML=PACKAGES.map(p=>`<article class="creditPackage ${p.recomendado?'recommended':''}"><h3>${esc(p.nombre)}${p.recomendado?' · Recomendado':''}</h3><p>${p.creditos} créditos Mercado</p><strong>${clp(p.precio)}</strong><button type="button" data-buy-credit="${esc(p.id)}">Comprar créditos</button></article>`).join("");
-  }
-  function renderBoostPostSelect(){
-    const sel=$("#boostPostSelect"); if(!sel) return;
-    sel.innerHTML=posts.length?posts.map(p=>`<option value="${esc(p.id)}">${esc(p.titulo||'Publicación')} ${p.destacado?'⭐':''}</option>`).join(""):`<option value="">Publica un aviso primero</option>`;
-  }
-  function renderBoosts(){
-    const box=$("#boostOptions"); if(!box) return;
-    box.innerHTML=BOOSTS.map(b=>`<article class="boostOption"><b>${esc(b.nombre)}</b><span>${b.creditos} crédito${b.creditos===1?'':'s'} · ${b.dias} días</span><small>${esc(b.alcance)}</small><button type="button" data-boost-credit="${esc(b.id)}">Destacar</button></article>`).join("");
-  }
-  function renderHistory(){
-    const box=$("#creditHistory"); if(!box) return;
-    box.innerHTML=movements.slice(0,20).map(m=>`<div class="historyItem"><b>${Number(m.creditos)>0?'+':''}${Number(m.creditos||0)} créditos</b><span>${esc(m.detalle||m.tipo||'Movimiento')} · ${m.created_at?new Date(m.created_at).toLocaleString('es-CL'):''}</span></div>`).join("")||`<p class="muted">Sin movimientos todavía.</p>`;
-  }
-  function render(){renderBalance();renderPackages();renderBoostPostSelect();renderBoosts();renderHistory();}
-
-  async function buy(packageId){
-    const p=PACKAGES.find(x=>x.id===packageId); if(!p) return toast("Paquete no disponible");
-    const ok=confirm(`Compra de créditos\n\n${p.creditos} créditos por ${clp(p.precio)}\n\nEn producción se pagará con Transbank.`);
-    const order={usuario_id:uid(),email:session.email,paquete_id:p.id,paquete_nombre:p.nombre,creditos:p.creditos,monto_total:p.precio,ingreso_cursapp:p.precio,estado:ok?'pagado':'cancelado',gateway:'transbank_demo',tbk_order:'CRED-'+Date.now(),created_at:now(),pagado_at:ok?now():null};
-    const or=await sb.from("ordenes_creditos").insert([order]).select("*").single();
-    if(or.error) return toast(or.error.message);
-    await sb.from("transacciones_cursapp").insert([{tipo:'compra_creditos',referencia_id:or.data.id,usuario_id:uid(),monto_total:p.precio,monto_curso:0,comision_cursapp:0,ingreso_cursapp:p.precio,estado:order.estado,gateway:'transbank_demo',tbk_order:order.tbk_order,detalle:'Compra paquete '+p.nombre}]);
-    if(!ok) return toast("Compra cancelada");
-    const newSaldo=Number(wallet?.saldo||0)+p.creditos;
-    const up=await sb.from("creditos_usuario").update({saldo:newSaldo,total_comprado:Number(wallet?.total_comprado||0)+p.creditos,updated_at:now()}).eq("usuario_id",uid()).select("*").single();
-    if(up.error) return toast(up.error.message);
-    wallet=up.data;
-    await sb.from("movimientos_creditos").insert([{usuario_id:uid(),tipo:'compra',creditos:p.creditos,saldo_resultante:newSaldo,detalle:'Compra paquete '+p.nombre,orden_id:or.data.id}]);
-    await loadMovements(); render(); toast("Pago aprobado. Créditos agregados.");
-  }
-  async function boost(boostId){
-    const b=BOOSTS.find(x=>x.id===boostId); if(!b) return toast("Regla no disponible");
-    const postId=$("#boostPostSelect")?.value; if(!postId) return toast("Selecciona una publicación");
-    if(Number(wallet?.saldo||0)<b.creditos) return toast("No tienes créditos suficientes");
-    const hasta=new Date(Date.now()+b.dias*86400000).toISOString();
-    const saldo=Number(wallet.saldo||0)-b.creditos;
-    const upPost=await sb.from("mercado_publicaciones").update({destacado:true,destacado_tipo:b.id,destacado_hasta:hasta}).eq("id",postId).select("id").single();
-    if(upPost.error) return toast(upPost.error.message);
-    await sb.from("publicaciones_destacadas").insert([{publicacion_id:postId,usuario_id:uid(),tipo_destacado:b.id,creditos_usados:b.creditos,fecha_inicio:now(),fecha_fin:hasta,estado:'activo'}]);
-    const up=await sb.from("creditos_usuario").update({saldo,total_consumido:Number(wallet.total_consumido||0)+b.creditos,updated_at:now()}).eq("usuario_id",uid()).select("*").single();
-    if(up.error) return toast(up.error.message);
-    wallet=up.data;
-    await sb.from("movimientos_creditos").insert([{usuario_id:uid(),tipo:'consumo',creditos:-b.creditos,saldo_resultante:saldo,detalle:'Destacar publicación · '+b.nombre,publicacion_id:postId}]);
-    await loadMovements(); await loadPosts(); render(); toast("Publicación destacada por "+b.dias+" días");
-  }
-  async function refresh(){
-    session=getSession(); sb=await waitSupabase(); if(!sb||!uid()) return;
-    try{await loadWallet(); await loadMovements(); await loadPosts(); render();}catch(e){console.warn('Créditos Mercado:',e);}
-  }
-  function bind(){document.addEventListener("click",e=>{const buyBtn=e.target.closest("[data-buy-credit]"); if(buyBtn){e.preventDefault(); buy(buyBtn.dataset.buyCredit); return;} const boostBtn=e.target.closest("[data-boost-credit]"); if(boostBtn){e.preventDefault(); boost(boostBtn.dataset.boostCredit);}})}
-  window.CursappMarketCredits={render,refresh,buy,boost,balance:()=>Number(wallet?.saldo||0),packages:PACKAGES,boosts:BOOSTS};
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",()=>{bind(); setTimeout(refresh,200);}); else {bind(); setTimeout(refresh,200);} 
+  function session(){const s=readJson('cursapp_session_v1',{})||{};const p=readJson('cursapp_active_profile_v1',{})||{};return {userId:s.userId||s.usuario_id||p.usuario_id||p.userId||null,email:String(s.email||p.email||'').toLowerCase(),name:s.nombre||s.name||p.nombre||'Apoderado Cursapp'};}
+  function toast(t){const el=$('#toast'); if(!el){alert(t);return;} el.textContent=t; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4200)}
+  async function waitSb(){for(let i=0;i<50;i++){if(window.cursappSupabase) return window.cursappSupabase;if(window.initCursappSupabase){try{const x=window.initCursappSupabase(); if(x) return x}catch(e){}} await new Promise(r=>setTimeout(r,100));}return null}
+  let sb=null, me=null, wallet=null, balanceCol='saldo';
+  async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
+  async function updateFlex(table,idCol,id,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle();}
+  function uid(){return me.userId||me.email}
+  function detectBalanceCol(row){if(!row) return 'saldo'; return ['saldo','saldo_actual','creditos','creditos_disponibles'].find(k=>row[k]!==undefined)||'saldo'}
+  async function loadWallet(){if(!sb) sb=await waitSb(); me=session(); if(!sb||!uid()) return null; const keys=[uid(),me.email].filter(Boolean); for(const key of keys){const r=await sb.from('creditos_usuario').select('*').eq('usuario_id',key).maybeSingle(); if(!r.error && r.data){wallet=r.data; balanceCol=detectBalanceCol(wallet); return wallet;}}
+    const ins=await insertFlex('creditos_usuario',{usuario_id:uid(),email:me.email,saldo:0,total_comprado:0,total_usado:0,created_at:now(),updated_at:now()}); if(!ins.error){wallet=ins.data; balanceCol=detectBalanceCol(wallet); return wallet;} return null;}
+  function balance(){return Number(wallet?.[balanceCol]||0)}
+  async function recordMovement(tipo,cantidad,extra={}){if(!sb) sb=await waitSb(); me=session(); return insertFlex('movimientos_creditos',{usuario_id:uid(),email:me.email,tipo,cantidad,creditos:cantidad,monto:extra.monto||0,publicacion_id:extra.publicacion_id||null,regla:extra.regla||null,concepto:extra.concepto||tipo,descripcion:extra.descripcion||'',created_at:now()});}
+  async function refresh(){await loadWallet(); const b=$('#creditBalanceBadge'); if(b) b.textContent=balance()+' créditos'; renderPackages(); renderHistory();}
+  function renderPackages(){const box=$('#creditPackages'); if(!box) return; box.innerHTML=PACKAGES.map(p=>`<article class="creditPack"><b>${esc(p.name)}</b><span>${p.credits} créditos Mercado</span><strong>${clp(p.price)}</strong><button type="button" data-buy-credits="${p.credits}" data-price="${p.price}">Comprar créditos</button></article>`).join('');}
+  async function buyCredits(credits,price){await loadWallet(); const current=balance(); const next=current+Number(credits||0); let r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_comprado:Number(wallet?.total_comprado||0)+Number(credits||0),updated_at:now()}); if(r.error){toast('No se pudo actualizar saldo: '+r.error.message);return false;} wallet=r.data||{...wallet,[balanceCol]:next}; await recordMovement('compra',Number(credits||0),{monto:Number(price||0),concepto:'compra_creditos',descripcion:`Compra ${credits} créditos Mercado`}); await insertFlex('ordenes_creditos',{usuario_id:uid(),email:me.email,creditos:Number(credits||0),monto:Number(price||0),estado:'pagada',created_at:now()}); toast(`Compra registrada: +${credits} créditos`); refresh(); return true;}
+  async function spendCredits(cost,extra={}){await loadWallet(); const c=Number(cost||0); if(balance()<c){toast('No tienes créditos suficientes para destacar. Compra créditos primero.'); return {ok:false,message:'No tienes créditos suficientes.'};} const next=balance()-c; const r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_usado:Number(wallet?.total_usado||0)+c,updated_at:now()}); if(r.error){toast('No se pudo descontar créditos: '+r.error.message); return {ok:false,message:r.error.message};} wallet=r.data||{...wallet,[balanceCol]:next}; await recordMovement('uso',-Math.abs(c),{publicacion_id:extra.publicacion_id,regla:extra.regla,concepto:'destacado_mercado',descripcion:extra.descripcion||`Uso de ${c} crédito(s)`}); refresh(); return {ok:true,balance:next};}
+  function renderHistory(){const box=$('#creditHistory'); if(!box||!sb||!uid()) return; sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(20).then(r=>{if(r.error||!r.data||!r.data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;} box.innerHTML=r.data.map(m=>`<div class="creditMove"><b>${esc(m.descripcion||m.concepto||m.tipo||'Movimiento')}</b><span>${Number(m.cantidad||m.creditos||0)>0?'+':''}${Number(m.cantidad||m.creditos||0)} crédito(s)</span></div>`).join('');});}
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
+  window.CursappMarketCredits={refresh,buyCredits,spendCredits,getBalance:()=>balance(),loadWallet};
 })();
