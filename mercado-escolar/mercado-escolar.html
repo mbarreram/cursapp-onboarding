@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
 <link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
-<link rel="stylesheet" href="assets/mercado-production-v6.css?v=6"/>
+<link rel="stylesheet" href="assets/mercado-production-v7.css?v=7"/>
 </head>
 <body class="market-v6">
 <main class="marketApp">
@@ -16,9 +16,9 @@
   </header>
 
   <section id="view-inicio" class="view active">
-    <div class="searchRow">
+    <div class="searchRow marketSearchV7">
       <div class="searchBox"><span>🔍</span><input id="searchInput" placeholder="Buscar productos, libros, uniformes..."></div>
-      <button class="filterBtn" data-view="explorar" aria-label="Filtros">☷</button>
+      <button class="searchBtnV7" id="btnMarketSearch" type="button">Buscar</button>
     </div>
 
     <div class="categoryRow" aria-label="Categorías"></div>
@@ -91,18 +91,18 @@
     <section class="panel creditsPanel"><h2>Historial créditos</h2><div id="creditHistory"></div></section>
   </section>
 
-  <nav class="bottomBar">
+  <nav class="bottomBar bottomBarV7">
     <button class="active" data-view="inicio"><span>🏠</span><small>Inicio</small></button>
-    <button data-view="mis"><span>📦</span><small>Mis avisos</small></button>
+    <button data-view="explorar"><span>🔎</span><small>Explorar</small></button>
     <button class="center" data-view="publicar"><span>＋</span><small>Publicar</small></button>
-    <button data-view="explorar"><span>♡</span><small>Explorar</small></button>
+    <button data-view="mis"><span>📦</span><small>Mis avisos</small></button>
     <a href="/apoderado.html" class="returnCursapp"><span>↩️</span><small>Cursapp</small></a>
   </nav>
 </main>
 <div id="modal"></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=60"></script>
+<script src="assets/mercado-escolar.js?v=70"></script>
 <script src="assets/mercado-creditos.js?v=monetizacion-v1"></script>
 </body>
 </html>
