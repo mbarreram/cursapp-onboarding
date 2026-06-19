@@ -154,7 +154,7 @@
   function categoryIconByName(name){return (state.categories.find(c=>String(c.nombre).toLowerCase()===String(name).toLowerCase())||{}).icono||"🛍️";}
 
   async function loadPosts(){
-    let query=state.sb.from("mercado_publicaciones").select("*").eq("activo",true).in("estado",["disponible","reservado"]);
+    let query=state.sb.from("mercado_publicaciones").select("*").eq("activo",true).in("estado",["activo","disponible","reservado"]);
     query=query.order("destacado",{ascending:false}).order("created_at",{ascending:false}).limit(120);
     const {data,error}=await query;
     if(error){renderError("No se pudieron cargar publicaciones: "+error.message);return;}
@@ -233,9 +233,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return "assets/img/"+(map[name]||"generic.svg");
   }
   function emptyState(icon,title,text,button,view){return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;}
-  function postStatus(p){return String(p?.estado||"disponible").toLowerCase();}
+  function postStatus(p){return String(p?.estado||"activo").toLowerCase();}
   function isClosedPost(p){return ["vendido","intercambiado"].includes(postStatus(p));}
   function isActiveMarketPost(p){return !["eliminado","oculto","vendido","intercambiado","bloqueado","en_revision"].includes(postStatus(p));}
+  function isBoosted(p){ const until=p?.destacado_hasta||p?.destacada_hasta; return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now()); }
   function visible(list=state.posts){return list.filter(isActiveMarketPost)}
   function relDate(p){
     try{
@@ -251,12 +252,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard" data-post="${esc(p.id)}">
       <div class="productImageWrap"><img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
-      <div class="productBody">${p.destacado?`<em class="boostBadge">Destacado</em>`:""}<b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
+      <div class="productBody">${isBoosted(p)?`<em class="boostBadge">⭐ Destacado</em>`:""}<b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
   function renderProducts(list=visible()){
     const f=$("#featuredList"), g=$("#marketGrid"), recent=$("#marketRecentList");
-    const ranked=list.slice().sort((a,b)=>(Number(b.destacado)-Number(a.destacado))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    const ranked=list.slice().sort((a,b)=>(Number(isBoosted(b))-Number(isBoosted(a)))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
     if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
     if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
@@ -375,7 +376,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       // Regla V4: toda publicación queda disponible por defecto.
       // Si se detecta una palabra restringida, se deja una alerta para Admin,
       // pero no se oculta automáticamente salvo acción del Admin o denuncias acumuladas.
-      estado:"disponible",
+      estado:"activo",
       nombre_vendedor:state.session.name,
       // vendedor_email se omite: la tabla productiva no tiene esa columna.
       usuario_id:state.session.userId||state.session.email||null,
@@ -427,7 +428,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet v13DetailSheet">
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
       <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
-      <div class="v6DetailBody"><small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
+      <div class="v6DetailBody">${isBoosted(p)?`<em class="boostBadge detailBoost">⭐ Destacado</em>`:""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
@@ -479,6 +480,27 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     return await state.sb.from(table).insert([cleaned]).select("*").maybeSingle();
   }
+  function marketConfirm({title="Confirmar",body="",ok="Aceptar",cancel="Cancelar",danger=false}={}){
+    return new Promise(resolve=>{
+      const modal=document.getElementById("modal");
+      if(!modal){ resolve(confirm(title)); return; }
+      modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>${esc(title)}</h2><div class="v19ConfirmBody">${body}</div><div class="v19ConfirmActions"><button type="button" class="ghost" data-confirm-no>${esc(cancel)}</button><button type="button" class="${danger?'dangerBtn':'primaryBtn'}" data-confirm-yes>${esc(ok)}</button></div></section></div>`;
+      modal.querySelector('[data-confirm-no]')?.addEventListener('click',()=>{modal.innerHTML=''; resolve(false);},{once:true});
+      modal.querySelector('[data-confirm-yes]')?.addEventListener('click',()=>{modal.innerHTML=''; resolve(true);},{once:true});
+    });
+  }
+  async function updatePostFlex(id,row){
+    let cleaned={...row};
+    for(let attempt=0; attempt<10; attempt++){
+      const res=await state.sb.from("mercado_publicaciones").update(cleaned).eq("id",id).select("*").maybeSingle();
+      if(!res.error) return res;
+      const msg=String(res.error.message||"");
+      const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i) || msg.match(/column "([^"]+)"/i);
+      if(m && cleaned[m[1]]!==undefined){ delete cleaned[m[1]]; continue; }
+      return res;
+    }
+    return state.sb.from("mercado_publicaciones").update(cleaned).eq("id",id).select("*").maybeSingle();
+  }
   async function recordCreditUse(publicacionId,rule,cost){
     const uid=state.session.userId||state.session.email;
     const email=state.session.email||null;
@@ -500,13 +522,20 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
     const costNum=Number(cost||1);
+    const ruleLabel=rule==='cursapp'?'Todo Cursapp':(rule==='comuna'?'Portada comuna':'Destacado colegio');
+    const ok=await marketConfirm({
+      title:'Confirmar destacado',
+      body:`<p>Vas a usar <b>${costNum} crédito(s)</b> para destacar <b>${esc(p.titulo||'esta publicación')}</b> durante <b>7 días</b>.</p><p class="muted">El aviso aparecerá por sobre publicaciones no destacadas y mostrará la etiqueta ⭐ Destacado.</p>`,
+      ok:'Usar créditos'
+    });
+    if(!ok) return;
     const spend=await recordCreditUse(id,rule,costNum);
     if(!spend.ok){toast(spend.message||"No se pudo usar créditos.");return;}
-    let r=await state.sb.from("mercado_publicaciones").update({destacado:true}).eq("id",id).select("id,destacado,estado").maybeSingle();
+    let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_hasta:spend.until,destacada_hasta:spend.until,creditos_usados:Number(p.creditos_usados||0)+costNum,updated_at:now()});
     if(r.error){toast("Créditos registrados, pero no se pudo marcar destacado: "+r.error.message);return;}
-    p.destacado=true;
-    p.destacado_hasta=spend.until;
-    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacado_hasta=spend.until;}}
+    p.destacado=true; p.destacada=true;
+    p.destacado_hasta=spend.until; p.destacada_hasta=spend.until;
+    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_hasta=spend.until;x.destacada_hasta=spend.until;}}
     await loadPosts();
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
