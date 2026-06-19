@@ -249,10 +249,24 @@ Vi esta publicación en Mercado Escolar Cursapp.
       recent.innerHTML=rows.length?rows.map(p=>{const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio); const fav=state.favorites.has(String(p.id)); return `<article class="recentItem" data-post="${esc(p.id)}"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div><b>${esc(p.titulo||"Publicación")}</b><span>${esc(categoryName(p))}</span><strong>${price}</strong></div><button data-fav="${esc(p.id)}" class="favBtn ${fav?"on":""}">${fav?"♥":"♡"}</button></article>`}).join(""):"";
     }
   }
-  function renderMine(){
+  function renderMine(filter){
     const box=$("#myPosts"); if(!box) return;
-    const mine=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>!["eliminado"].includes(String(p.estado||"").toLowerCase()));
-    box.innerHTML=mine.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos · ${Number(p.favoritos||0)} favoritos</span></div><button data-post="${esc(p.id)}">Ver</button><button data-share="${esc(p.id)}">Compartir</button><button data-status="vendido" data-id="${esc(p.id)}">Vendido</button><button data-status="disponible" data-id="${esc(p.id)}">Activar</button><button data-delete="${esc(p.id)}">Eliminar</button></div>`).join("") || emptyState("📦","Aún no tienes avisos","Publica tu primer artículo para vender o intercambiar dentro de la comunidad.","Publicar aviso","publicar");
+    const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>!["eliminado"].includes(String(p.estado||"").toLowerCase()));
+    const current=filter || box.dataset.mineFilter || "activos";
+    box.dataset.mineFilter=current;
+    const isIntercambio=p=>String(p.tipo||"").toLowerCase().includes("intercambio") || String(p.estado||"").toLowerCase()==="intercambiado";
+    const isVendido=p=>String(p.estado||"").toLowerCase()==="vendido";
+    const activos=all.filter(p=>!isVendido(p) && String(p.estado||"").toLowerCase()!=="intercambiado");
+    const vendidos=all.filter(isVendido);
+    const intercambiados=all.filter(isIntercambio);
+    const list=current==="vendidos"?vendidos:(current==="intercambiados"?intercambiados:activos);
+    const tabs=`<div class="mineTabs">
+      <button class="${current==='activos'?'active':''}" data-mine-filter="activos">Activos (${activos.length})</button>
+      <button class="${current==='vendidos'?'active':''}" data-mine-filter="vendidos">Vendidos (${vendidos.length})</button>
+      <button class="${current==='intercambiados'?'active':''}" data-mine-filter="intercambiados">Intercambiados (${intercambiados.length})</button>
+    </div>`;
+    const empty=emptyState("📦", current==="activos"?"Aún no tienes avisos activos":(current==="vendidos"?"Aún no tienes vendidos":"Aún no tienes intercambiados"), "Tus publicaciones aparecerán organizadas aquí.", current==="activos"?"Publicar aviso":"", "publicar");
+    box.innerHTML=tabs+(list.map(p=>`<div class="myItem"><img src="${esc(imageForPost(p))}"><div><b>${esc(p.titulo)}</b><span>${esc(p.estado||"disponible")} · ${esc(p.tipo||"Aviso")} · ${Number(p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span></div><div class="myItemActions"><button data-post="${esc(p.id)}">Ver</button><button data-share="${esc(p.id)}">Compartir</button><button data-status="vendido" data-id="${esc(p.id)}">Marcar vendido</button><button data-status="intercambiado" data-id="${esc(p.id)}">Marcar intercambiado</button><button data-status="disponible" data-id="${esc(p.id)}">Activar</button><button data-delete="${esc(p.id)}">Eliminar</button></div></div>`).join("") || empty);
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -466,6 +480,7 @@ ${postUrl(p)}`;
       const rep=e.target.closest("[data-report]"); if(rep){openReportModal(rep.dataset.report);return;}
       const del=e.target.closest("[data-delete]"); if(del){removePost(del.dataset.delete);return;}
       const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
+      const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
       const st=e.target.closest("[data-status]"); if(st){updateStatus(st.dataset.id,st.dataset.status);return;}
     });
     $("#publishForm")?.addEventListener("submit",publish);
