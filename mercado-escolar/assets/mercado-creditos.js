@@ -29,7 +29,7 @@
   async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
   async function safeInsert(table,row){try{return await insertFlex(table,row)}catch(e){return {error:e}}}
   function uniqById(rows){const seen=new Set();return (rows||[]).filter(r=>{const k=String(r.id||r.voucher||r.numero_voucher||JSON.stringify(r)); if(seen.has(k)) return false; seen.add(k); return true;});}
-  function movementDate(m){return m.created_at||m.fecha||m.fecha_creacion||m.createdon||m.inserted_at||null;}
+  function movementDate(m){return m.fecha||m.created_at||m.fecha_creacion||m.createdon||m.inserted_at||null;}
   function movementVoucher(m){return m.numero_voucher||m.voucher||m.codigo_voucher||`CR-${String(m.id||'').slice(0,8)}`;}
   function movementQty(m){return Number(m.cantidad??m.creditos??m.monto_creditos??m.monto??0);}
   function localKey(){return 'cursapp_mercado_creditos_movs_'+String(uid()||session().email||'anon').toLowerCase();}

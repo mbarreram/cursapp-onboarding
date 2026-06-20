@@ -38,7 +38,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -340,7 +340,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
           <div class="mineIconActions v28IconActions">
             <button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>
             ${(!closed&&current==='activos')?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:''}
-            <details class="mineMore"><summary>⋯</summary><div><button type="button" data-open-detail="${id}">Ver detalle</button>${(!closed&&current==='activos')?`<button type="button" data-open-boost-modal="${id}">${boosted?'Renovar destacado':'Destacar'}</button>`:''}<button type="button" class="danger" data-delete="${id}">Eliminar</button></div></details>
+            <details class="mineMore"><summary>⋯</summary><div><button type="button" data-open-detail="${id}">Ver detalle</button>${(!closed&&current==='activos')?`<button type="button" data-edit="${id}">Editar aviso</button><button type="button" data-open-boost-modal="${id}">${boosted?'Renovar destacado':'Destacar'}</button>`:''}<button type="button" class="danger" data-delete="${id}">Eliminar</button></div></details>
           </div>
         </div>
         ${rowActions(p)}
@@ -406,6 +406,35 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return hit ? {blocked:true,word:hit,reason:`Palabra restringida detectada: ${hit}`} : {blocked:false};
   }
 
+  function fillPublishForm(post){
+    if(!post) return;
+    state.editingPostId=post.id;
+    const set=(sel,val)=>{const el=$(sel); if(el) el.value=val??'';};
+    set('#pubTitle',post.titulo||'');
+    set('#pubDesc',post.descripcion||'');
+    set('#pubPrice',Number(post.precio||0));
+    set('#pubWhatsapp',post.whatsapp||state.session.phone||'');
+    set('#pubType',post.tipo||'Venta');
+    set('#pubScope',post.visibilidad||'mi_comuna');
+    const cat=categoryName(post);
+    const catObj=state.categories.find(c=>String(c.nombre)===String(cat)||String(c.id)===String(post.categoria_id));
+    if(catObj) set('#pubCategory',catObj.id||catObj.nombre);
+    state.selectedFiles=[];
+    renderPreview([]);
+    const title=$('#view-publicar h2');
+    if(title) title.textContent='Editar aviso';
+    const submit=$('#postForm button[type="submit"], #postForm .primaryBtn');
+    if(submit) submit.textContent='Guardar cambios';
+    showView('publicar');
+    setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),40);
+  }
+  function editPost(id){
+    const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
+    if(!p){toast('No encontré el aviso para editar.');return;}
+    if(["vendido","intercambiado","eliminado"].includes(String(p.estado||'').toLowerCase())){toast('Solo puedes editar avisos activos.');return;}
+    fillPublishForm(p);
+  }
+
   async function publish(e){
     e.preventDefault();
     if(!requireSession()) return;
@@ -457,6 +486,28 @@ Vi esta publicación en Mercado Escolar Cursapp.
       }
       return await state.sb.from("mercado_publicaciones").insert([cleaned]).select("*").single();
     };
+    if(state.editingPostId){
+      const editId=state.editingPostId;
+      const updatePayload={...row,updated_at:now()};
+      delete updatePayload.usuario_id;
+      delete updatePayload.vendedor_id;
+      delete updatePayload.visualizaciones;
+      delete updatePayload.contactos;
+      delete updatePayload.favoritos;
+      delete updatePayload.destacado;
+      delete updatePayload.activo;
+      let upd=await updatePostFlex(editId,updatePayload);
+      if(upd.error){toast("No se pudo editar: "+upd.error.message);return;}
+      if((state.selectedFiles||[]).length){try{await uploadImages(editId,state.selectedFiles||[]);}catch(uploadErr){toast("Cambios guardados, pero falló imagen: "+uploadErr.message);}}
+      state.editingPostId=null;
+      e.target.reset(); state.selectedFiles=[]; renderPreview([]);
+      const titleEl=$('#view-publicar h2'); if(titleEl) titleEl.textContent='Publicar aviso';
+      const submit=$('#postForm button[type="submit"], #postForm .primaryBtn'); if(submit) submit.textContent='Publicar aviso';
+      await loadPosts(); await loadMinePosts();
+      toast("Aviso actualizado");
+      showView("mis");
+      return;
+    }
     const {data,error}=await insertPost(row);
     if(error){toast("No se pudo publicar: "+error.message);return;}
     try{await uploadImages(data.id,state.selectedFiles||[]);}catch(uploadErr){toast("Publicación creada, pero falló imagen: "+uploadErr.message);}
@@ -802,6 +853,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const send=e.target.closest("[data-send-report]"); if(send){sendReport(send.dataset.sendReport);return;}
       const st=e.target.closest("[data-status]"); if(st){e.preventDefault();e.stopPropagation();updateStatus(st.dataset.id,st.dataset.status);return;}
       const del=e.target.closest("[data-delete]"); if(del){e.preventDefault();e.stopPropagation();removePost(del.dataset.delete);return;}
+      const edit=e.target.closest("[data-edit]"); if(edit){e.preventDefault();e.stopPropagation();editPost(edit.dataset.edit);return;}
       const open=e.target.closest("[data-open-detail]"); if(open){e.preventDefault();e.stopPropagation();openDetail(open.dataset.openDetail);return;}
       const openBoost=e.target.closest("[data-open-boost-modal]"); if(openBoost){e.preventDefault();e.stopPropagation();openBoostModal(openBoost.dataset.openBoostModal);return;}
       const directBoost=e.target.closest("[data-direct-boost]"); if(directBoost){e.preventDefault();e.stopPropagation(); directBoost.disabled=true; directBoost.classList.add("disabled"); boostPost(directBoost.dataset.rule,directBoost.dataset.cost||"1",directBoost.dataset.directBoost);return;}
@@ -810,7 +862,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
       const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}
       const help=e.target.closest("[data-credit-help]"); if(help){e.preventDefault();creditHelp();return;}
-      const v=e.target.closest("[data-view]"); if(v){e.preventDefault();showView(v.dataset.view);return;}
+      const v=e.target.closest("[data-view]"); if(v){e.preventDefault(); if(v.dataset.view==='publicar'){state.editingPostId=null; const titleEl=$('#view-publicar h2'); if(titleEl) titleEl.textContent='Publicar aviso'; const submit=$('#postForm button[type="submit"], #postForm .primaryBtn'); if(submit) submit.textContent='Publicar aviso';} showView(v.dataset.view);return;}
       const c=e.target.closest("[data-cat]"); if(c){e.preventDefault();filterCat(c.dataset.cat);return;}
       const pc=e.target.closest("[data-post]"); if(pc){e.preventDefault();openDetail(pc.dataset.post);return;}
       const contactBtn=e.target.closest("[data-contact]"); if(contactBtn){contact(contactBtn.dataset.contact);return;}
