@@ -247,11 +247,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function postStatus(p){return String(p?.estado||"activo").toLowerCase();}
   function isClosedPost(p){return ["vendido","intercambiado"].includes(postStatus(p));}
   function isActiveMarketPost(p){return !["eliminado","oculto","vendido","intercambiado","bloqueado","en_revision"].includes(postStatus(p));}
-  function boostUntil(p){return p?.destacado_hasta||p?.destacada_hasta||p?.vence_at||null;}
-  function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||'').toLowerCase();}
+  function boostUntil(p){return p?.destacado_hasta||p?.destacada_hasta||p?.vence_at||p?.fecha_fin||p?.fecha_expiracion||null;}
+  function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||p?.tipo||'').toLowerCase();}
   function boostPriority(rule){return boostRuleInfo(rule).priority||0;}
   function boostCost(rule){return boostRuleInfo(rule).cost||0;}
-  function isBoosted(p){ const until=boostUntil(p); return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now()); }
+  function isBoosted(p){ const until=boostUntil(p); const flag=!!(p?.destacado||p?.destacada||p?.destacado_tipo||p?.tipo_destacado||p?.regla_destacado); return flag && (!until || Date.parse(until)>Date.now()); }
   function canBoost(p){ return isActiveMarketPost(p) && !isBoosted(p); }
   function isOwnerViewPost(p){ return isMine(p); }
   function boostedRank(p){return isBoosted(p) ? (boostPriority(activeBoostRule(p))||1) : 0;}
@@ -276,14 +276,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function renderProducts(list=visible()){
     const f=$("#featuredList"), g=$("#marketGrid"), recent=$("#marketRecentList");
     const ranked=list.slice().sort((a,b)=>(boostedRank(b)-boostedRank(a))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
-    const featured=ranked.filter(isBoosted);
-    const latest=list.slice().sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
-    const emptyFeatured=emptyState("⭐","Aún no hay destacados cerca de ti","Las publicaciones destacadas con créditos aparecerán en esta sección.","Ver créditos","creditos");
-    if(f) f.innerHTML=featured.length?featured.slice(0,8).map(card).join(""):emptyFeatured;
-    if(g) g.innerHTML=latest.length?latest.map(card).join(""):empty;
+    if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
+    if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
     if(recent){
-      const rows=latest.slice(0,6);
+      const rows=ranked.slice(0,4);
       recent.innerHTML=rows.length?rows.map(p=>{const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio); const fav=state.favorites.has(String(p.id)); return `<article class="recentItem" data-post="${esc(p.id)}"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div><b>${esc(p.titulo||"Publicación")}</b><span>${esc(categoryName(p))}</span><strong>${price}</strong></div><button data-fav="${esc(p.id)}" class="favBtn ${fav?"on":""}">${fav?"♥":"♡"}</button></article>`}).join(""):"";
     }
   }
@@ -314,7 +311,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)}">
       <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
-      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
+      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
       ${actions(p)}
     </article>`).join("");
     box.innerHTML=tabs+(html||empty);
@@ -546,8 +543,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
         descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`
       });
       if(!spent || spent.ok===false) return {ok:false,message:spent?.message||"No se pudieron descontar créditos."};
+      await insertFlex("mercado_creditos_historial",{usuario_id:uid,email,tipo_operacion:"uso",operacion:"uso",creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,fecha:now()});
+      await insertFlex("mercado_vouchers",{voucher,usuario_id:uid,publicacion_id:publicacionId,operacion:"uso",descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,creditos:-Math.abs(Number(cost||0)),saldo_anterior:before,saldo_posterior:after,fecha_expiracion:until,fecha:now()});
     }else{
-      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"uso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',regla,regla_label:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,numero_voucher:voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,created_at:now()});
+      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"uso",tipo_operacion:"uso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',regla,regla_label:info.label,destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,numero_voucher:voucher,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,created_at:now(),fecha:now()});
+      await insertFlex("mercado_creditos_historial",{usuario_id:uid,email,tipo_operacion:"uso",operacion:"uso",creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,fecha:now()});
     }
     await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla,tipo:rule,tipo_destacado:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
     return {ok:true,until,voucher,saldoAnterior:before,saldoPosterior:after};
@@ -609,7 +609,6 @@ Vi esta publicación en Mercado Escolar Cursapp.
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
-    setTimeout(()=>{renderProducts(); renderMine("activos"); if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();},600);
     document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
     toast(`Aviso destacado: ${newInfo.label}`);
   }
