@@ -111,7 +111,9 @@
     for(const t of tables){
       try{
         let q=sb.from(t).select('*');
-        if(ids.length===1) q=q.eq('usuario_id',ids[0]); else q=q.in('usuario_id',ids);
+        // Soporta datos guardados por usuario_id o por email, según versión previa.
+        if(me.email && uid()) q=q.or(`usuario_id.eq.${uid()},usuario_id.eq.${me.email},email.eq.${me.email}`);
+        else if(uid()) q=q.eq('usuario_id',uid());
         const r=await q.limit(limit+10);
         if(!r.error && r.data) all=all.concat(r.data);
       }catch(e){}

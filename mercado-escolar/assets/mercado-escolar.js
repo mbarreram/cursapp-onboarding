@@ -13,6 +13,7 @@
   const MAX_BYTES=1024*1024;
   const ALLOWED=["image/jpeg","image/png","image/webp"];
   const ALLOWED_EXT=/\.(jpe?g|png|webp)$/i;
+  const boostInFlight=new Set();
   const BOOST_RULES={
     colegio:{label:'Destacado colegio',cost:1,priority:1,days:7},
     comuna:{label:'Destacado comuna',cost:3,priority:2,days:7},
@@ -251,7 +252,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||p?.tipo||'').toLowerCase();}
   function boostPriority(rule){return boostRuleInfo(rule).priority||0;}
   function boostCost(rule){return boostRuleInfo(rule).cost||0;}
-  function isBoosted(p){ const until=boostUntil(p); const flag=!!(p?.destacado||p?.destacada||p?.destacado_tipo||p?.tipo_destacado||p?.regla_destacado); return flag && (!until || Date.parse(until)>Date.now()); }
+  function isBoosted(p){
+    const until=boostUntil(p);
+    const t=until ? Date.parse(until) : NaN;
+    const flag=!!(p?.destacado===true||p?.destacada===true||p?.destacado_tipo||p?.tipo_destacado||p?.regla_destacado||p?.creditos_usados>0);
+    return flag && (!until || Number.isNaN(t) || t>Date.now());
+  }
   function canBoost(p){ return isActiveMarketPost(p) && !isBoosted(p); }
   function isOwnerViewPost(p){ return isMine(p); }
   function boostedRank(p){return isBoosted(p) ? (boostPriority(activeBoostRule(p))||1) : 0;}
@@ -309,7 +315,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
         : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
       return `<div class="mineTopActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
     }
-    const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)}">
+    const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)} ${isBoosted(p)?'is-boosted':''}">
       <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
       <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
       ${actions(p)}
@@ -573,6 +579,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const sel=document.getElementById("boostPostSelect");
     const id=idOverride || sel?.value;
     if(!id){toast("Selecciona una publicación activa para destacar.");return;}
+    if(boostInFlight.has(String(id))){toast("Ya estamos procesando este destacado.");return;}
+    boostInFlight.add(String(id));
+    try{
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
     if(isBoosted(p)){
@@ -580,6 +589,17 @@ Vi esta publicación en Mercado Escolar Cursapp.
       openBoostModal(id);
       return;
     }
+    // Validación en Supabase para evitar doble descuento si la vista local quedó desactualizada.
+    try{
+      const fresh=await state.sb.from("mercado_publicaciones").select("id,estado,destacado,destacada,destacado_hasta,destacada_hasta,tipo_destacado,destacado_tipo,regla_destacado,creditos_usados").eq("id",id).maybeSingle();
+      if(!fresh.error && fresh.data && isBoosted(fresh.data)){
+        for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x) Object.assign(x,fresh.data);}
+        renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
+        toast("Esta publicación ya tiene un destacado vigente.");
+        openBoostModal(id);
+        return;
+      }
+    }catch(e){}
     const newInfo=boostRuleInfo(rule);
     const costNum=Number(cost||newInfo.cost||1);
     if(window.CursappMarketCredits?.loadWallet) await window.CursappMarketCredits.loadWallet();
@@ -605,12 +625,16 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
 
     for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_desde=now();x.destacado_hasta=until;x.destacada_hasta=until;x.tipo_destacado=rule;x.destacado_tipo=rule;x.regla_destacado=rule;x.creditos_usados=costNum;}}
+    renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     await loadPosts();
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
     document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
     toast(`Aviso destacado: ${newInfo.label}`);
+    } finally {
+      boostInFlight.delete(String(id));
+    }
   }
 
   function creditHelp(){
@@ -752,7 +776,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const del=e.target.closest("[data-delete]"); if(del){e.preventDefault();e.stopPropagation();removePost(del.dataset.delete);return;}
       const open=e.target.closest("[data-open-detail]"); if(open){e.preventDefault();e.stopPropagation();openDetail(open.dataset.openDetail);return;}
       const openBoost=e.target.closest("[data-open-boost-modal]"); if(openBoost){e.preventDefault();e.stopPropagation();openBoostModal(openBoost.dataset.openBoostModal);return;}
-      const directBoost=e.target.closest("[data-direct-boost]"); if(directBoost){e.preventDefault();e.stopPropagation();boostPost(directBoost.dataset.rule,directBoost.dataset.cost||"1",directBoost.dataset.directBoost);return;}
+      const directBoost=e.target.closest("[data-direct-boost]"); if(directBoost){e.preventDefault();e.stopPropagation(); directBoost.disabled=true; directBoost.classList.add("disabled"); boostPost(directBoost.dataset.rule,directBoost.dataset.cost||"1",directBoost.dataset.directBoost);return;}
       const openCredits=e.target.closest("[data-open-credits]"); if(openCredits){e.preventDefault();e.stopPropagation();state.pendingBoostId=openCredits.dataset.openCredits;document.getElementById("modal").innerHTML="";showView("creditos");setTimeout(renderCreditVisibilityGuard,80);return;}
       const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
