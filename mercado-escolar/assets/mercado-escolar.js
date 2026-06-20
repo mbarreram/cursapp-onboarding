@@ -276,11 +276,14 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function renderProducts(list=visible()){
     const f=$("#featuredList"), g=$("#marketGrid"), recent=$("#marketRecentList");
     const ranked=list.slice().sort((a,b)=>(boostedRank(b)-boostedRank(a))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    const featured=ranked.filter(isBoosted);
+    const latest=list.slice().sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
-    if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
-    if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
+    const emptyFeatured=emptyState("⭐","Aún no hay destacados cerca de ti","Las publicaciones destacadas con créditos aparecerán en esta sección.","Ver créditos","creditos");
+    if(f) f.innerHTML=featured.length?featured.slice(0,8).map(card).join(""):emptyFeatured;
+    if(g) g.innerHTML=latest.length?latest.map(card).join(""):empty;
     if(recent){
-      const rows=ranked.slice(0,4);
+      const rows=latest.slice(0,6);
       recent.innerHTML=rows.length?rows.map(p=>{const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio); const fav=state.favorites.has(String(p.id)); return `<article class="recentItem" data-post="${esc(p.id)}"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div><b>${esc(p.titulo||"Publicación")}</b><span>${esc(categoryName(p))}</span><strong>${price}</strong></div><button data-fav="${esc(p.id)}" class="favBtn ${fav?"on":""}">${fav?"♥":"♡"}</button></article>`}).join(""):"";
     }
   }
@@ -303,7 +306,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     function actions(p){
       const id=esc(p.id); const st=estado(p);
       const canShare=current==='activos' && !["vendido","intercambiado"].includes(st);
-      const boostBtn = canBoost(p) ? `<button class="mineAction boostMine" data-open-boost-modal="${id}">⭐ Destacar</button>` : (isBoosted(p) ? `<div class="mineBoostActive">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</div>` : ``);
+      const boostBtn = canBoost(p) ? `<button class="mineAction boostMine" data-open-boost-modal="${id}">⭐ Destacar</button>` : ``;
       const statusBtns=current==='activos'
         ? `${boostBtn}<button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
         : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
@@ -311,7 +314,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)}">
       <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
-      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
+      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||p.visualizaciones||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
       ${actions(p)}
     </article>`).join("");
     box.innerHTML=tabs+(html||empty);
@@ -606,6 +609,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
+    setTimeout(()=>{renderProducts(); renderMine("activos"); if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();},600);
     document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
     toast(`Aviso destacado: ${newInfo.label}`);
   }

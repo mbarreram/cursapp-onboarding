@@ -36,13 +36,28 @@
   async function recordMovement(tipo,cantidad,extra={}){
     if(!sb) sb=await waitSb(); me=session();
     const numero=extra.voucher||voucherNo();
-    return insertFlex('movimientos_creditos',{
-      usuario_id:uid(),email:me.email,tipo,cantidad,creditos:cantidad,monto:extra.monto||0,
-      publicacion_id:extra.publicacion_id||null,publicacion_titulo:extra.publicacion_titulo||null,
-      regla:extra.regla||null,regla_label:extra.regla_label||null,dias:extra.dias||null,vence_at:extra.vence_at||null,
-      saldo_anterior:extra.saldo_anterior??null,saldo_posterior:extra.saldo_posterior??null,
-      numero_voucher:numero,concepto:extra.concepto||tipo,descripcion:extra.descripcion||'',created_at:now()
-    });
+    const fecha=now();
+    const cantidadNum=Number(cantidad||0);
+    const operacion = tipo==='compra' || cantidadNum>0 ? 'compra' : 'uso';
+    const descripcion = extra.descripcion || (operacion==='compra' ? `Compra ${Math.abs(cantidadNum)} créditos Mercado` : `${extra.regla_label||'Destacado Mercado Escolar'} · ${extra.publicacion_titulo||'publicación'}${extra.dias?` · ${extra.dias} días`:''}`);
+    const common={
+      usuario_id:uid(), email:me.email, publicacion_id:extra.publicacion_id||null,
+      voucher:numero, numero_voucher:numero, operacion, tipo_operacion:operacion, tipo:operacion,
+      cantidad:cantidadNum, creditos:cantidadNum, monto:extra.monto||0,
+      descripcion, concepto:extra.concepto||operacion,
+      publicacion_titulo:extra.publicacion_titulo||null,
+      regla:extra.regla||null, regla_label:extra.regla_label||null, destacado_tipo:extra.regla||null,
+      dias:extra.dias||null, vence_at:extra.vence_at||null, fecha_expiracion:extra.vence_at||null,
+      saldo_anterior:extra.saldo_anterior??null, saldo_posterior:extra.saldo_posterior??null,
+      fecha, created_at:fecha
+    };
+    // Tabla oficial V22/V23
+    const h=await insertFlex('mercado_creditos_historial', common);
+    // Voucher trazable para reclamos
+    await insertFlex('mercado_vouchers', common);
+    // Compatibilidad con versiones anteriores si existe
+    await insertFlex('movimientos_creditos', common);
+    return h;
   }
   async function refresh(){await loadWallet(); const b=$('#creditBalanceBadge'); if(b) b.textContent=balance()+' créditos'; renderPackages(); historyPage=1; renderHistory();}
   function renderPackages(){const box=$('#creditPackages'); if(!box) return; box.innerHTML=PACKAGES.map(p=>`<article class="creditPack"><b>${esc(p.name)}</b><span>${p.credits} créditos Mercado</span><strong>${clp(p.price)}</strong><button type="button" data-buy-credits="${p.credits}" data-price="${p.price}">Comprar créditos</button></article>`).join('');}
@@ -86,18 +101,22 @@
   function renderHistory(){
     const box=$('#creditHistory'); if(!box||!sb||!uid()) return;
     const limit=historyPage*HISTORY_PAGE_SIZE;
-    sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(limit+1).then(r=>{
+    sb.from('vw_mercado_creditos_historial').select('*').eq('usuario_id',uid()).order('fecha',{ascending:false}).limit(limit+1).then(async r=>{
+      if(r.error){
+        r = await sb.from('mercado_creditos_historial').select('*').eq('usuario_id',uid()).order('fecha',{ascending:false}).limit(limit+1);
+      }
       if(r.error||!r.data||!r.data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;}
       const hasMore=r.data.length>limit;
       const rows=r.data.slice(0,limit);
       box.innerHTML=rows.map((m,i)=>{
-        const qty=Number(m.cantidad||m.creditos||0);
-        const isCompra = qty>0 || m.tipo==='compra' || m.concepto==='compra_creditos';
+        const qty=Number(m.creditos ?? m.cantidad ?? 0);
+        const isCompra = qty>0 || m.tipo_operacion==='compra' || m.operacion==='compra' || m.tipo==='compra' || m.concepto==='compra_creditos';
         const rawDesc = String(m.descripcion||'');
-        const title = m.publicacion_titulo || (isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (rawDesc.split('·')[1]||rawDesc||'Destacado Mercado Escolar').trim());
-        const op = isCompra ? 'Compra créditos Mercado' : (m.regla_label?`⭐ ${esc(m.regla_label)}`:'⭐ Destacado Mercado Escolar');
-        const meta = `${op}${m.dias?` · ${m.dias} días`:''}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}`;
-        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}</small><small>${meta}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
+        const pubTitle = m.publicacion_titulo || rawDesc.split('·')[1]?.trim() || '';
+        const title = isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (pubTitle || 'Destacado Mercado Escolar');
+        const ruleLabel = m.regla_label || (m.destacado_tipo ? `Destacado ${String(m.destacado_tipo).replace('_',' ')}` : 'Destacado Mercado Escolar');
+        const meta = isCompra ? 'Compra créditos Mercado' : `⭐ ${ruleLabel}${m.dias?` · ${m.dias} días`:''}${(m.vence_at||m.fecha_expiracion)?` · vence ${fmtDateTime(m.vence_at||m.fecha_expiracion)} · quedan ${daysLeft(m.vence_at||m.fecha_expiracion)} día(s)`:''}`;
+        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.fecha||m.created_at)}</small><small>${esc(meta)}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
       }).join('') + (hasMore?`<button type="button" class="ghost creditMore" data-credit-more>Ver más movimientos</button>`:'');
       window.__creditMovements=rows;
     });
@@ -105,10 +124,10 @@
   function showVoucher(index){
     const m=(window.__creditMovements||[])[Number(index)]; if(!m) return;
     const qty=Number(m.cantidad||m.creditos||0);
-    const voucher=m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
+    const voucher=m.voucher||m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
     const modal=document.getElementById('modal');
     if(!modal) return;
-    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.created_at)}</b></p><p><span>Operación</span><b>${esc((Number(m.cantidad||m.creditos||0)>0||m.tipo==='compra')?'Compra créditos Mercado':(m.regla_label||m.concepto||m.tipo||'Movimiento'))}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
+    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.fecha||m.created_at)}</b></p><p><span>Operación</span><b>${esc((Number(m.cantidad||m.creditos||0)>0||m.tipo==='compra')?'Compra créditos Mercado':(m.regla_label||m.descripcion||m.concepto||m.tipo_operacion||m.tipo||'Movimiento'))}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
   }
   document.addEventListener('click',e=>{const more=e.target.closest('[data-credit-more]'); if(more){e.preventDefault();historyPage++;renderHistory();return;} const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
