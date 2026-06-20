@@ -252,6 +252,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function boostPriority(rule){return boostRuleInfo(rule).priority||0;}
   function boostCost(rule){return boostRuleInfo(rule).cost||0;}
   function isBoosted(p){ const until=boostUntil(p); return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now()); }
+  function canBoost(p){ return isActiveMarketPost(p) && !isBoosted(p); }
+  function isOwnerViewPost(p){ return isMine(p); }
   function boostedRank(p){return isBoosted(p) ? (boostPriority(activeBoostRule(p))||1) : 0;}
   function visible(list=state.posts){return list.filter(isActiveMarketPost)}
   function relDate(p){
@@ -301,8 +303,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     function actions(p){
       const id=esc(p.id); const st=estado(p);
       const canShare=current==='activos' && !["vendido","intercambiado"].includes(st);
+      const boostBtn = canBoost(p) ? `<button class="mineAction boostMine" data-open-boost-modal="${id}">⭐ Destacar</button>` : (isBoosted(p) ? `<div class="mineBoostActive">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</div>` : ``);
       const statusBtns=current==='activos'
-        ? `<button class="mineAction boostMine" data-open-boost-modal="${id}">⭐ Destacar</button><button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
+        ? `${boostBtn}<button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
         : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
       return `<div class="mineTopActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
     }
@@ -444,19 +447,19 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet v13DetailSheet">
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
       <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
-      <div class="v6DetailBody">${isBoosted(p)?`<em class="boostBadge detailBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</em>`:""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
+      <div class="v6DetailBody">${isBoosted(p)?(isMine(p)?`<em class="boostBadge detailBoost ownerOnly">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</em>`:`<em class="boostBadge detailBoost publicOnly">⭐ Destacado</em>`):""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
       <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
-      ${isMine(p) && isActiveMarketPost(p) ? `<button class="v6BoostBtn" data-open-boost-modal="${esc(p.id)}">⭐ Destacar con créditos</button>` : ""}
+      ${isMine(p) && canBoost(p) ? `<button class="v6BoostBtn" data-open-boost-modal="${esc(p.id)}">⭐ Destacar con créditos</button>` : (isMine(p) && isBoosted(p) ? `<div class="ownerBoostBox">⭐ Ya está destacado · vence en ${daysLeft(boostUntil(p))} día(s)</div>` : "")}
       ${!isMine(p) ? `<button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>` : ""}</div>
     </article></div>`;
   }
   function activeMinePosts(){
-    const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>isActiveMarketPost(p));
+    const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>isActiveMarketPost(p) && !isBoosted(p));
     return all.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
   }
   function renderCreditVisibilityGuard(){
@@ -549,17 +552,18 @@ Vi esta publicación en Mercado Escolar Cursapp.
   async function openBoostModal(id){
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
+    if(isBoosted(p)){
+      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Destacado actual</p><b>⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)}</b><p class="muted">Vence ${fmtDateTime(boostUntil(p))} · quedan ${daysLeft(boostUntil(p))} día(s)</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
+      return;
+    }
     if(window.CursappMarketCredits?.loadWallet) await window.CursappMarketCredits.loadWallet();
     const saldo=Number(window.CursappMarketCredits?.getBalance ? window.CursappMarketCredits.getBalance() : 0);
-    const currentRule=activeBoostRule(p);
-    const currentInfo=isBoosted(p)?boostRuleInfo(currentRule):null;
+    const noCredits = saldo<=0;
     const options=Object.entries(BOOST_RULES).map(([rule,info])=>{
-      const currentCost=currentInfo ? (boostCost(currentRule)||Number(p.creditos_usados||0)||0) : 0;
-      const diff=currentInfo ? Math.max(0,info.cost-currentCost) : info.cost;
-      const disabled=currentInfo && (info.priority<=currentInfo.priority);
-      return `<button type="button" class="boostChoice ${disabled?'disabled':''}" ${disabled?'disabled':''} data-direct-boost="${esc(id)}" data-rule="${esc(rule)}" data-cost="${diff}"><b>${esc(info.label)}</b><span>${disabled?'Ya cubierto':`${diff} crédito(s) · ${info.days} días`}</span></button>`;
+      const disabled = saldo < info.cost;
+      return `<button type="button" class="boostChoice ${disabled?'disabled':''}" ${disabled?'disabled':''} data-direct-boost="${esc(id)}" data-rule="${esc(rule)}" data-cost="${info.cost}"><b>${esc(info.label)}</b><span>${info.cost} crédito(s) · ${info.days} días</span></button>`;
     }).join('');
-    document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm boostPicker"><h2>Destacar publicación</h2><p class="muted">Elige dónde quieres promocionar tu aviso. Se descuenta al confirmar.</p><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b>${currentInfo?`<p class="ownerBoostInfo">Actual: ⭐ ${esc(currentInfo.label)} · quedan ${daysLeft(boostUntil(p))} día(s)</p>`:''}<div class="creditSummary"><span>Saldo disponible</span><b>${saldo}</b></div></div><div class="boostChoices">${options}</div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
+    document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm boostPicker"><h2>Destacar publicación</h2><p class="muted">Elige dónde quieres promocionar tu aviso. Se descuenta solo al confirmar.</p><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><div class="creditSummary"><span>Saldo disponible</span><b>${saldo}</b></div></div>${noCredits?`<div class="creditHelpBox warn"><b>No tienes créditos disponibles.</b><br>Compra créditos para destacar esta publicación.</div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">Comprar créditos</button></div>`:`<div class="boostChoices">${options}</div>`}<div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
   }
 
   async function boostPost(rule,cost,idOverride){
@@ -568,36 +572,44 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!id){toast("Selecciona una publicación activa para destacar.");return;}
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
-    const newInfo=boostRuleInfo(rule);
-    const currentRule=activeBoostRule(p);
-    const currentlyBoosted=isBoosted(p);
-    let currentCost=currentlyBoosted ? (boostCost(currentRule)||Number(p.creditos_usados||0)||0) : 0;
-    let currentPriority=currentlyBoosted ? (boostPriority(currentRule)||1) : 0;
-    if(currentlyBoosted && currentPriority>=newInfo.priority){
-      toast(`Esta publicación ya tiene un destacado vigente (${boostRuleInfo(currentRule).label}). Vence el ${fmtDateTime(boostUntil(p))}.`);
+    if(isBoosted(p)){
+      toast(`Esta publicación ya tiene un destacado vigente. Vence el ${fmtDateTime(boostUntil(p))}.`);
+      openBoostModal(id);
       return;
     }
-    const costNum=currentlyBoosted ? Math.max(0,newInfo.cost-currentCost) : Number(cost||newInfo.cost||1);
-    if(costNum<=0){toast("No hay créditos adicionales que descontar para este destacado.");return;}
+    const newInfo=boostRuleInfo(rule);
+    const costNum=Number(cost||newInfo.cost||1);
     if(window.CursappMarketCredits?.loadWallet) await window.CursappMarketCredits.loadWallet();
     const saldoActual=Number(window.CursappMarketCredits?.getBalance ? window.CursappMarketCredits.getBalance() : 0);
-    if(saldoActual<costNum){toast("No tienes créditos suficientes para esta acción.");return;}
+    if(saldoActual<costNum){
+      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>No tienes créditos suficientes</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><div class="creditSummary"><span>Saldo disponible</span><b>${saldoActual}</b></div><div class="creditSummary"><span>Costo</span><b>${costNum}</b></div></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">Comprar créditos</button><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
+      return;
+    }
     const until=new Date(Date.now()+newInfo.days*86400000).toISOString();
-    const body=`<div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><hr><p>Tipo de destacado</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Duración: ${newInfo.days} días · vence ${fmtDateTime(until)}</p><div class="creditSummary"><span>Saldo actual</span><b>${saldoActual}</b></div><div class="creditSummary"><span>Costo</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div>${currentlyBoosted?`<p class="muted">Se cobrará solo la diferencia del upgrade.</p>`:''}</div>`;
+    const body=`<div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><hr><p>Tipo de destacado</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Duración: ${newInfo.days} días · vence ${fmtDateTime(until)}</p><div class="creditSummary"><span>Saldo actual</span><b>${saldoActual}</b></div><div class="creditSummary"><span>Costo</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div></div>`;
     const ok=await marketConfirm({title:'Confirmar destacado',body,ok:'Confirmar y usar créditos'});
     if(!ok) return;
+
+    // Primero marcamos la publicación. Si falla, no descontamos créditos.
+    let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()});
+    if(r.error){toast("No se pudo activar el destacado: "+r.error.message);return;}
+
     const spend=await recordCreditUse(id,rule,costNum,{titulo:p.titulo||'',until,saldoAnterior:saldoActual,saldoPosterior:saldoActual-costNum});
-    if(!spend.ok){toast(spend.message||"No se pudo usar créditos.");return;}
-    let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_hasta:spend.until,destacada_hasta:spend.until,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:Number(p.creditos_usados||0)+costNum,updated_at:now()});
-    if(r.error){toast("Créditos registrados, pero no se pudo marcar destacado: "+r.error.message);return;}
-    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_hasta=spend.until;x.destacada_hasta=spend.until;x.tipo_destacado=rule;x.destacado_tipo=rule;x.regla_destacado=rule;x.creditos_usados=Number(x.creditos_usados||0)+costNum;}}
+    if(!spend.ok){
+      await updatePostFlex(id,{destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,creditos_usados:0,updated_at:now()});
+      toast(spend.message||"No se pudo usar créditos.");
+      return;
+    }
+
+    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_desde=now();x.destacado_hasta=until;x.destacada_hasta=until;x.tipo_destacado=rule;x.destacado_tipo=rule;x.regla_destacado=rule;x.creditos_usados=costNum;}}
     await loadPosts();
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
-    document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(spend.until)} · quedan ${daysLeft(spend.until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
-    toast(`Aviso destacado: ${newInfo.label} · vence ${fmtDateTime(spend.until)}`);
+    document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
+    toast(`Aviso destacado: ${newInfo.label}`);
   }
+
   function creditHelp(){
     document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• Colegio: 1 crédito por 7 días.</p><p>• Comuna: 3 créditos por 7 días.</p><p>• Todo Cursapp: 5 créditos por 7 días.</p><p>• Solo se permite un destacado vigente por publicación. Puedes mejorar de nivel pagando solo la diferencia.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div>`;
   }
@@ -674,7 +686,7 @@ ${postUrl(p)}`;
   function applyLocalStatus(id,status){
     for(const arr of [state.posts,state.minePosts]){
       const p=arr.find(x=>String(x.id)===String(id));
-      if(p) p.estado=status;
+      if(p){ p.estado=status; if(["vendido","intercambiado","eliminado"].includes(status)){p.destacado=false;p.destacada=false;p.destacado_hasta=null;p.destacada_hasta=null;p.tipo_destacado=null;p.destacado_tipo=null;p.regla_destacado=null;} }
     }
   }
   async function updateStatus(id,status){
@@ -686,7 +698,9 @@ ${postUrl(p)}`;
     renderMine(status==="vendido"?"vendidos":(status==="intercambiado"?"intercambiados":"activos"));
     renderCreditVisibilityGuard();
 
-    let r=await state.sb.from("mercado_publicaciones").update({estado:status}).eq("id",id).select("id,estado").maybeSingle();
+    const closeBoost = (status==="vendido"||status==="intercambiado"||status==="eliminado");
+    const statusPayload = closeBoost ? {estado:status,destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,updated_at:now()} : {estado:status,updated_at:now()};
+    let r=await updatePostFlex(id,statusPayload);
     if(r.error){
       const msg=String(r.error.message||"");
       if(msg.includes("mercado_publicaciones_estado_check") || msg.includes("check constraint")){

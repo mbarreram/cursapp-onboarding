@@ -92,9 +92,12 @@
       const rows=r.data.slice(0,limit);
       box.innerHTML=rows.map((m,i)=>{
         const qty=Number(m.cantidad||m.creditos||0);
-        const title=m.publicacion_titulo || (m.concepto==='compra_creditos'?m.descripcion:'Movimiento de créditos');
-        const op=m.regla_label?`⭐ ${esc(m.regla_label)}`:(m.concepto==='compra_creditos'?'Compra créditos Mercado':esc(m.concepto||m.tipo||'Movimiento'));
-        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}</small><small>${op}${m.dias?` · ${m.dias} días`:''}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
+        const isCompra = qty>0 || m.tipo==='compra' || m.concepto==='compra_creditos';
+        const rawDesc = String(m.descripcion||'');
+        const title = m.publicacion_titulo || (isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (rawDesc.split('·')[1]||rawDesc||'Destacado Mercado Escolar').trim());
+        const op = isCompra ? 'Compra créditos Mercado' : (m.regla_label?`⭐ ${esc(m.regla_label)}`:'⭐ Destacado Mercado Escolar');
+        const meta = `${op}${m.dias?` · ${m.dias} días`:''}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}`;
+        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}</small><small>${meta}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
       }).join('') + (hasMore?`<button type="button" class="ghost creditMore" data-credit-more>Ver más movimientos</button>`:'');
       window.__creditMovements=rows;
     });
@@ -105,7 +108,7 @@
     const voucher=m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
     const modal=document.getElementById('modal');
     if(!modal) return;
-    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.created_at)}</b></p><p><span>Operación</span><b>${esc(m.tipo||m.concepto||'Movimiento')}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
+    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.created_at)}</b></p><p><span>Operación</span><b>${esc((Number(m.cantidad||m.creditos||0)>0||m.tipo==='compra')?'Compra créditos Mercado':(m.regla_label||m.concepto||m.tipo||'Movimiento'))}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
   }
   document.addEventListener('click',e=>{const more=e.target.closest('[data-credit-more]'); if(more){e.preventDefault();historyPage++;renderHistory();return;} const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
