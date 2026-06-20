@@ -13,6 +13,14 @@
   const MAX_BYTES=1024*1024;
   const ALLOWED=["image/jpeg","image/png","image/webp"];
   const ALLOWED_EXT=/\.(jpe?g|png|webp)$/i;
+  const BOOST_RULES={
+    colegio:{label:'Destacado colegio',cost:1,priority:1,days:7},
+    comuna:{label:'Destacado comuna',cost:3,priority:2,days:7},
+    cursapp:{label:'Destacado Todo Cursapp',cost:5,priority:3,days:7}
+  };
+  function boostRuleInfo(rule){return BOOST_RULES[rule]||BOOST_RULES.colegio;}
+  function fmtDateTime(v){try{return new Date(v).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''}}
+  function daysLeft(v){const ms=Date.parse(v||'')-Date.now(); return Math.max(0,Math.ceil(ms/86400000));}
 
   const DEFAULT_CATS=[
     {nombre:"Deportes",icono:"⚽",orden:1},{nombre:"Instrumentos",icono:"🎵",orden:2},{nombre:"Libros",icono:"📚",orden:3},{nombre:"Uniformes",icono:"👕",orden:4},{nombre:"Útiles escolares",icono:"✏️",orden:5},{nombre:"Otros",icono:"📦",orden:6},{nombre:"Tecnología",icono:"💻",orden:7},{nombre:"Vestuario",icono:"🎒",orden:8},{nombre:"Servicios",icono:"🧑‍🏫",orden:9}
@@ -97,6 +105,9 @@
       await loadMinePosts();
       await loadFavorites();
       bind();
+      const qs=new URLSearchParams(location.search);
+      const boostId=qs.get("boost");
+      if(boostId){state.pendingBoostId=boostId;showView("creditos");setTimeout(renderCreditVisibilityGuard,120);}
       setLoading(false);
     }catch(e){
       setLoading(false);
@@ -236,7 +247,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function postStatus(p){return String(p?.estado||"activo").toLowerCase();}
   function isClosedPost(p){return ["vendido","intercambiado"].includes(postStatus(p));}
   function isActiveMarketPost(p){return !["eliminado","oculto","vendido","intercambiado","bloqueado","en_revision"].includes(postStatus(p));}
-  function isBoosted(p){ const until=p?.destacado_hasta||p?.destacada_hasta; return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now()); }
+  function boostUntil(p){return p?.destacado_hasta||p?.destacada_hasta||p?.vence_at||null;}
+  function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||'').toLowerCase();}
+  function boostPriority(rule){return boostRuleInfo(rule).priority||0;}
+  function boostCost(rule){return boostRuleInfo(rule).cost||0;}
+  function isBoosted(p){ const until=boostUntil(p); return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now()); }
+  function boostedRank(p){return isBoosted(p) ? (boostPriority(activeBoostRule(p))||1) : 0;}
   function visible(list=state.posts){return list.filter(isActiveMarketPost)}
   function relDate(p){
     try{
@@ -252,12 +268,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard" data-post="${esc(p.id)}">
       <div class="productImageWrap"><img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
-      <div class="productBody">${isBoosted(p)?`<em class="boostBadge">⭐ Destacado</em>`:""}<b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
+      <div class="productBody">${isBoosted(p)?`<em class="boostBadge">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</em>`:""}<b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
   function renderProducts(list=visible()){
     const f=$("#featuredList"), g=$("#marketGrid"), recent=$("#marketRecentList");
-    const ranked=list.slice().sort((a,b)=>(Number(isBoosted(b))-Number(isBoosted(a)))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    const ranked=list.slice().sort((a,b)=>(boostedRank(b)-boostedRank(a))||Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
     if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
     if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
@@ -428,7 +444,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet v13DetailSheet">
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
       <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
-      <div class="v6DetailBody">${isBoosted(p)?`<em class="boostBadge detailBoost">⭐ Destacado</em>`:""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
+      <div class="v6DetailBody">${isBoosted(p)?`<em class="boostBadge detailBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</em>`:""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
@@ -455,9 +471,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     sel.disabled=!active.length;
     if(box){
       box.innerHTML=`
-        <article class="boostOption"><b>Destacado colegio</b><strong>1 crédito · 7 días</strong><span>Mi colegio</span><button type="button" data-boost-rule="colegio" data-cost="1">Destacar</button></article>
-        <article class="boostOption"><b>Portada comuna</b><strong>3 créditos · 7 días</strong><span>Mi comuna</span><button type="button" data-boost-rule="comuna" data-cost="3">Destacar</button></article>
-        <article class="boostOption"><b>Todo Cursapp</b><strong>5 créditos · 7 días</strong><span>Comunidad Cursapp</span><button type="button" data-boost-rule="cursapp" data-cost="5">Destacar</button></article>`;
+        <article class="boostOption"><b>Destacado colegio</b><strong>1 crédito · 7 días</strong><span>Primero en tu colegio</span><button type="button" data-boost-rule="colegio" data-cost="1">Destacar</button></article>
+        <article class="boostOption"><b>Destacado comuna</b><strong>3 créditos · 7 días</strong><span>Prioridad sobre avisos de la comuna</span><button type="button" data-boost-rule="comuna" data-cost="3">Destacar</button></article>
+        <article class="boostOption"><b>Todo Cursapp</b><strong>5 créditos · 7 días</strong><span>Máxima prioridad en el marketplace</span><button type="button" data-boost-rule="cursapp" data-cost="5">Destacar</button></article>`;
       box.querySelectorAll("button").forEach(btn=>{
         btn.disabled=!active.length;
         btn.classList.toggle("isDisabled",!active.length);
@@ -501,19 +517,34 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     return state.sb.from("mercado_publicaciones").update(cleaned).eq("id",id).select("*").maybeSingle();
   }
-  async function recordCreditUse(publicacionId,rule,cost){
+  async function recordCreditUse(publicacionId,rule,cost,ctx={}){
     const uid=state.session.userId||state.session.email;
     const email=state.session.email||null;
-    const until=new Date(Date.now()+7*86400000).toISOString();
-    let spent={ok:true};
+    const info=boostRuleInfo(rule);
+    const until=ctx.until || new Date(Date.now()+info.days*86400000).toISOString();
+    const before=Number(ctx.saldoAnterior ?? (window.CursappMarketCredits?.getBalance ? window.CursappMarketCredits.getBalance() : 0));
+    const after=Math.max(0,before-Number(cost||0));
+    const voucher=`CR-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Date.now()).slice(-6)}`;
+    let spent={ok:true,balance:after};
     if(window.CursappMarketCredits && typeof window.CursappMarketCredits.spendCredits==="function"){
-      spent=await window.CursappMarketCredits.spendCredits(Number(cost||0),{publicacion_id:publicacionId,regla:rule,descripcion:`Destacado Mercado Escolar · ${rule} · 7 días`});
+      spent=await window.CursappMarketCredits.spendCredits(Number(cost||0),{
+        publicacion_id:publicacionId,
+        publicacion_titulo:ctx.titulo||'',
+        regla:rule,
+        regla_label:info.label,
+        dias:info.days,
+        vence_at:until,
+        saldo_anterior:before,
+        saldo_posterior:after,
+        voucher,
+        descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`
+      });
       if(!spent || spent.ok===false) return {ok:false,message:spent?.message||"No se pudieron descontar créditos."};
     }else{
-      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"egreso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,regla,descripcion:`Destacado Mercado Escolar · ${rule} · 7 días`,created_at:now()});
+      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"uso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',regla,regla_label:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,numero_voucher:voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,created_at:now()});
     }
-    await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla,tipo:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
-    return {ok:true,until};
+    await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla,tipo:rule,tipo_destacado:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
+    return {ok:true,until,voucher,saldoAnterior:before,saldoPosterior:after};
   }
   async function boostPost(rule,cost){
     const sel=document.getElementById("boostPostSelect");
@@ -521,29 +552,37 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!id){toast("Selecciona una publicación activa para destacar.");return;}
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
-    const costNum=Number(cost||1);
-    const ruleLabel=rule==='cursapp'?'Todo Cursapp':(rule==='comuna'?'Portada comuna':'Destacado colegio');
-    const ok=await marketConfirm({
-      title:'Confirmar destacado',
-      body:`<p>Vas a usar <b>${costNum} crédito(s)</b> para destacar <b>${esc(p.titulo||'esta publicación')}</b> durante <b>7 días</b>.</p><p class="muted">El aviso aparecerá por sobre publicaciones no destacadas y mostrará la etiqueta ⭐ Destacado.</p>`,
-      ok:'Usar créditos'
-    });
+    const newInfo=boostRuleInfo(rule);
+    const currentRule=activeBoostRule(p);
+    const currentlyBoosted=isBoosted(p);
+    let currentCost=currentlyBoosted ? (boostCost(currentRule)||Number(p.creditos_usados||0)||0) : 0;
+    let currentPriority=currentlyBoosted ? (boostPriority(currentRule)||1) : 0;
+    if(currentlyBoosted && currentPriority>=newInfo.priority){
+      toast(`Esta publicación ya tiene un destacado vigente (${boostRuleInfo(currentRule).label}). Vence el ${fmtDateTime(boostUntil(p))}.`);
+      return;
+    }
+    const costNum=currentlyBoosted ? Math.max(0,newInfo.cost-currentCost) : Number(cost||newInfo.cost||1);
+    if(costNum<=0){toast("No hay créditos adicionales que descontar para este destacado.");return;}
+    if(window.CursappMarketCredits?.loadWallet) await window.CursappMarketCredits.loadWallet();
+    const saldoActual=Number(window.CursappMarketCredits?.getBalance ? window.CursappMarketCredits.getBalance() : 0);
+    if(saldoActual<costNum){toast("No tienes créditos suficientes para esta acción.");return;}
+    const until=new Date(Date.now()+newInfo.days*86400000).toISOString();
+    const body=`<div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><hr><p>Tipo de destacado</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Duración: ${newInfo.days} días · vence ${fmtDateTime(until)}</p><div class="creditSummary"><span>Saldo actual</span><b>${saldoActual}</b></div><div class="creditSummary"><span>Costo</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div>${currentlyBoosted?`<p class="muted">Se cobrará solo la diferencia del upgrade.</p>`:''}</div>`;
+    const ok=await marketConfirm({title:'Confirmar destacado',body,ok:'Confirmar y usar créditos'});
     if(!ok) return;
-    const spend=await recordCreditUse(id,rule,costNum);
+    const spend=await recordCreditUse(id,rule,costNum,{titulo:p.titulo||'',until,saldoAnterior:saldoActual,saldoPosterior:saldoActual-costNum});
     if(!spend.ok){toast(spend.message||"No se pudo usar créditos.");return;}
-    let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_hasta:spend.until,destacada_hasta:spend.until,creditos_usados:Number(p.creditos_usados||0)+costNum,updated_at:now()});
+    let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_hasta:spend.until,destacada_hasta:spend.until,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:Number(p.creditos_usados||0)+costNum,updated_at:now()});
     if(r.error){toast("Créditos registrados, pero no se pudo marcar destacado: "+r.error.message);return;}
-    p.destacado=true; p.destacada=true;
-    p.destacado_hasta=spend.until; p.destacada_hasta=spend.until;
-    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_hasta=spend.until;x.destacada_hasta=spend.until;}}
+    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_hasta=spend.until;x.destacada_hasta=spend.until;x.tipo_destacado=rule;x.destacado_tipo=rule;x.regla_destacado=rule;x.creditos_usados=Number(x.creditos_usados||0)+costNum;}}
     await loadPosts();
     await loadMinePosts();
     renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
     if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
-    toast(`Publicación destacada por 7 días · ${costNum} crédito(s) descontado(s)`);
+    toast(`Aviso destacado: ${newInfo.label} · vence ${fmtDateTime(spend.until)}`);
   }
   function creditHelp(){
-    document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• El destacado vence automáticamente según la regla elegida.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div>`;
+    document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• Colegio: 1 crédito por 7 días.</p><p>• Comuna: 3 créditos por 7 días.</p><p>• Todo Cursapp: 5 créditos por 7 días.</p><p>• Solo se permite un destacado vigente por publicación. Puedes mejorar de nivel pagando solo la diferencia.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div>`;
   }
 
   async function toggleFavorite(id){

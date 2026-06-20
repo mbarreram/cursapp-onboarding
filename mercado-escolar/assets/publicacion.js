@@ -17,6 +17,11 @@
     $("#publicacionRoot").innerHTML=`<div class="emptyState"><div class="emptyIcon">🔒</div><h3>Publicación protegida</h3><p>Esta publicación pertenece a una comunidad escolar registrada. Inicia sesión para verla.</p><a class="primaryLink" href="/login.html">Iniciar sesión</a><a class="ghostLink" href="/index.html">Volver</a></div>`;
   }
   function imgFor(p){return p.imagen_principal || (images[0]&&images[0].url_imagen) || "assets/img/generic.svg";}
+  function boostUntil(p){return p?.destacado_hasta||p?.destacada_hasta||p?.vence_at||null;}
+  function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||'').toLowerCase();}
+  function isBoosted(p){const until=boostUntil(p); return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now());}
+  function daysLeft(v){const ms=Date.parse(v||'')-Date.now();return Math.max(0,Math.ceil(ms/86400000));}
+  function boostLabel(rule){return {colegio:'Destacado colegio',comuna:'Destacado comuna',cursapp:'Destacado Todo Cursapp'}[rule]||'Destacado';}
   function categoryName(p){return p.categoria_nombre||p.categoria||"Otros";}
   function shareUrl(){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(post.id)}`;}
   function message(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi tu publicación en Mercado Escolar Cursapp.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n¿Sigue disponible?\n\n🔗 Ver publicación:\n${shareUrl()}`;}
@@ -39,6 +44,7 @@
     $("#publicacionRoot").innerHTML=`
       <div class="publicacionTopV13"><a class="detailBackV13" href="mercado-escolar.html">←</a><b>Detalle del aviso</b><button id="btnShareTop" class="detailShareV13" type="button">⇧</button></div>
       <div class="publicacionHero publicacionCarouselV13"><div class="publicacionTrackV13">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
+      ${isBoosted(post)?`<em class="boostBadge detailBoost">⭐ ${esc(boostLabel(activeBoostRule(post)))} · quedan ${daysLeft(boostUntil(post))} día(s)</em>`:""}
       <small class="v6Cat">${esc(categoryName(post))}</small>
       <h2>${esc(post.titulo||"Publicación")}</h2>
       <p class="bigPrice">${esc(price)}</p>
@@ -48,6 +54,7 @@
       <div class="metricRow"><span>👁️ ${Number(post.visualizaciones||0)} vistas</span><span>💬 ${Number(post.contactos||0)} contactos</span><span>♥ ${Number(post.favoritos||0)} favoritos</span></div>
       <button id="btnContact" class="primary">Contactar por WhatsApp</button>
       <button id="btnShare" class="ghost">Compartir aviso</button>
+      <a class="ghostLink promoteLink" href="mercado-escolar.html?boost=${encodeURIComponent(post.id)}">⭐ Promocionar aviso</a>
       <a class="ghostLink" href="mercado-escolar.html">Volver al mercado</a>`;
     $("#btnContact").addEventListener("click",contact); $("#btnShare").addEventListener("click",share); $("#btnShareTop").addEventListener("click",share);
   }

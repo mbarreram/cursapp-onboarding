@@ -3,6 +3,9 @@
   const $=(s,r=document)=>r.querySelector(s);
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const now=()=>new Date().toISOString();
+  function voucherNo(){return `CR-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Date.now()).slice(-6)}`;}
+  function fmtDateTime(v){try{return new Date(v).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''}}
+  function daysLeft(v){const ms=Date.parse(v||'')-Date.now(); return Math.max(0,Math.ceil(ms/86400000));}
   const PACKAGES=[
     {name:'Básico',credits:10,price:990},
     {name:'Plus',credits:30,price:1990},
@@ -30,13 +33,79 @@
   async function loadWallet(){if(!sb) sb=await waitSb(); me=session(); if(!sb||!uid()) return null; const keys=[uid(),me.email].filter(Boolean); for(const key of keys){const r=await sb.from('creditos_usuario').select('*').eq('usuario_id',key).maybeSingle(); if(!r.error && r.data){wallet=r.data; balanceCol=detectBalanceCol(wallet); return wallet;}}
     const ins=await insertFlex('creditos_usuario',{usuario_id:uid(),email:me.email,saldo:0,total_comprado:0,total_usado:0,created_at:now(),updated_at:now()}); if(!ins.error){wallet=ins.data; balanceCol=detectBalanceCol(wallet); return wallet;} return null;}
   function balance(){return Number(wallet?.[balanceCol]||0)}
-  async function recordMovement(tipo,cantidad,extra={}){if(!sb) sb=await waitSb(); me=session(); return insertFlex('movimientos_creditos',{usuario_id:uid(),email:me.email,tipo,cantidad,creditos:cantidad,monto:extra.monto||0,publicacion_id:extra.publicacion_id||null,regla:extra.regla||null,concepto:extra.concepto||tipo,descripcion:extra.descripcion||'',created_at:now()});}
+  async function recordMovement(tipo,cantidad,extra={}){
+    if(!sb) sb=await waitSb(); me=session();
+    const numero=extra.voucher||voucherNo();
+    return insertFlex('movimientos_creditos',{
+      usuario_id:uid(),email:me.email,tipo,cantidad,creditos:cantidad,monto:extra.monto||0,
+      publicacion_id:extra.publicacion_id||null,publicacion_titulo:extra.publicacion_titulo||null,
+      regla:extra.regla||null,regla_label:extra.regla_label||null,dias:extra.dias||null,vence_at:extra.vence_at||null,
+      saldo_anterior:extra.saldo_anterior??null,saldo_posterior:extra.saldo_posterior??null,
+      numero_voucher:numero,concepto:extra.concepto||tipo,descripcion:extra.descripcion||'',created_at:now()
+    });
+  }
   async function refresh(){await loadWallet(); const b=$('#creditBalanceBadge'); if(b) b.textContent=balance()+' créditos'; renderPackages(); renderHistory();}
   function renderPackages(){const box=$('#creditPackages'); if(!box) return; box.innerHTML=PACKAGES.map(p=>`<article class="creditPack"><b>${esc(p.name)}</b><span>${p.credits} créditos Mercado</span><strong>${clp(p.price)}</strong><button type="button" data-buy-credits="${p.credits}" data-price="${p.price}">Comprar créditos</button></article>`).join('');}
-  async function buyCredits(credits,price){await loadWallet(); const current=balance(); const ok=await confirmCredit({title:'Comprar créditos Mercado',body:`<p>Comprarás <b>${credits} créditos</b> por <b>${clp(price)}</b>.</p><p class="muted">Saldo actual: ${current} · saldo final: ${current+Number(credits||0)} créditos.</p>`,ok:'Comprar créditos'}); if(!ok) return false; const next=current+Number(credits||0); let r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_comprado:Number(wallet?.total_comprado||0)+Number(credits||0),updated_at:now()}); if(r.error){toast('No se pudo actualizar saldo: '+r.error.message);return false;} wallet=r.data||{...wallet,[balanceCol]:next}; await recordMovement('compra',Number(credits||0),{monto:Number(price||0),concepto:'compra_creditos',descripcion:`Compra ${credits} créditos Mercado`}); await insertFlex('ordenes_creditos',{usuario_id:uid(),email:me.email,creditos:Number(credits||0),monto:Number(price||0),estado:'pagada',created_at:now()}); toast(`Compra registrada: +${credits} créditos`); refresh(); return true;}
-  async function spendCredits(cost,extra={}){await loadWallet(); const c=Number(cost||0); if(balance()<c){toast('No tienes créditos suficientes para destacar. Compra créditos primero.'); return {ok:false,message:'No tienes créditos suficientes.'};} const next=balance()-c; const r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_usado:Number(wallet?.total_usado||0)+c,updated_at:now()}); if(r.error){toast('No se pudo descontar créditos: '+r.error.message); return {ok:false,message:r.error.message};} wallet=r.data||{...wallet,[balanceCol]:next}; await recordMovement('uso',-Math.abs(c),{publicacion_id:extra.publicacion_id,regla:extra.regla,concepto:'destacado_mercado',descripcion:extra.descripcion||`Uso de ${c} crédito(s)`}); refresh(); return {ok:true,balance:next};}
-  function renderHistory(){const box=$('#creditHistory'); if(!box||!sb||!uid()) return; sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(20).then(r=>{if(r.error||!r.data||!r.data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;} box.innerHTML=r.data.map(m=>`<div class="creditMove"><b>${esc(m.descripcion||m.concepto||m.tipo||'Movimiento')}</b><span>${Number(m.cantidad||m.creditos||0)>0?'+':''}${Number(m.cantidad||m.creditos||0)} crédito(s)</span></div>`).join('');});}
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
+  async function buyCredits(credits,price){
+    await loadWallet();
+    const current=balance();
+    const next=current+Number(credits||0);
+    const ok=await confirmCredit({
+      title:'Comprar créditos Mercado',
+      body:`<div class="boostConfirmCard"><p>Comprarás</p><b>${credits} créditos Mercado</b><p class="muted">Monto: ${clp(price)}</p><div class="creditSummary"><span>Saldo actual</span><b>${current}</b></div><div class="creditSummary"><span>Compra</span><b>+${credits}</b></div><div class="creditSummary strong"><span>Saldo posterior</span><b>${next}</b></div></div>`,
+      ok:'Confirmar compra'
+    });
+    if(!ok) return false;
+    const voucher=voucherNo();
+    let r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_comprado:Number(wallet?.total_comprado||0)+Number(credits||0),updated_at:now()});
+    if(r.error){toast('No se pudo actualizar saldo: '+r.error.message);return false;}
+    wallet=r.data||{...wallet,[balanceCol]:next};
+    await recordMovement('compra',Number(credits||0),{monto:Number(price||0),concepto:'compra_creditos',descripcion:`Compra ${credits} créditos Mercado`,saldo_anterior:current,saldo_posterior:next,voucher});
+    await insertFlex('ordenes_creditos',{usuario_id:uid(),email:me.email,creditos:Number(credits||0),monto:Number(price||0),estado:'pagada',numero_voucher:voucher,created_at:now()});
+    toast(`Compra registrada: +${credits} créditos · voucher ${voucher}`);
+    refresh();
+    return true;
+  }
+  async function spendCredits(cost,extra={}){
+    await loadWallet();
+    const c=Number(cost||0);
+    if(balance()<c){toast('No tienes créditos suficientes para destacar. Compra créditos primero.'); return {ok:false,message:'No tienes créditos suficientes.'};}
+    const before=Number(extra.saldo_anterior ?? balance());
+    const next=before-c;
+    const voucher=extra.voucher||voucherNo();
+    const r=await updateFlex('creditos_usuario','usuario_id',uid(),{[balanceCol]:next,total_usado:Number(wallet?.total_usado||0)+c,updated_at:now()});
+    if(r.error){toast('No se pudo descontar créditos: '+r.error.message); return {ok:false,message:r.error.message};}
+    wallet=r.data||{...wallet,[balanceCol]:next};
+    await recordMovement('uso',-Math.abs(c),{
+      publicacion_id:extra.publicacion_id,publicacion_titulo:extra.publicacion_titulo,regla:extra.regla,regla_label:extra.regla_label,dias:extra.dias,vence_at:extra.vence_at,
+      saldo_anterior:before,saldo_posterior:next,voucher,concepto:'destacado_mercado',descripcion:extra.descripcion||`Uso de ${c} crédito(s)`
+    });
+    refresh();
+    return {ok:true,balance:next,voucher};
+  }
+  function renderHistory(){
+    const box=$('#creditHistory'); if(!box||!sb||!uid()) return;
+    sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(30).then(r=>{
+      if(r.error||!r.data||!r.data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;}
+      box.innerHTML=r.data.map((m,i)=>{
+        const qty=Number(m.cantidad||m.creditos||0);
+        const isUse=qty<0;
+        const title=m.publicacion_titulo||m.descripcion||m.concepto||m.tipo||'Movimiento';
+        const voucher=m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
+        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}</small>${m.regla_label?`<small>⭐ ${esc(m.regla_label)}${m.dias?` · ${m.dias} días`:''}</small>`:''}</div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button><script type="application/json" id="voucher-${i}">${esc(JSON.stringify(m))}</script></div>`;
+      }).join('');
+      window.__creditMovements=r.data;
+    });
+  }
+  function showVoucher(index){
+    const m=(window.__creditMovements||[])[Number(index)]; if(!m) return;
+    const qty=Number(m.cantidad||m.creditos||0);
+    const voucher=m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
+    const modal=document.getElementById('modal');
+    if(!modal) return;
+    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.created_at)}</b></p><p><span>Operación</span><b>${esc(m.tipo||m.concepto||'Movimiento')}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
+  }
+  document.addEventListener('click',e=>{const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
   window.CursappMarketCredits={refresh,buyCredits,spendCredits,getBalance:()=>balance(),loadWallet};
 })();
