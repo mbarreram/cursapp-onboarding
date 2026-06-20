@@ -31,7 +31,10 @@
   function uniqById(rows){const seen=new Set();return (rows||[]).filter(r=>{const k=String(r.id||r.voucher||r.numero_voucher||JSON.stringify(r)); if(seen.has(k)) return false; seen.add(k); return true;});}
   function movementDate(m){return m.created_at||m.fecha||m.fecha_creacion||m.createdon||m.inserted_at||null;}
   function movementVoucher(m){return m.numero_voucher||m.voucher||m.codigo_voucher||`CR-${String(m.id||'').slice(0,8)}`;}
-  function movementQty(m){return Number(m.cantidad??m.creditos??m.monto_creditos??0);}
+  function movementQty(m){return Number(m.cantidad??m.creditos??m.monto_creditos??m.monto??0);}
+  function localKey(){return 'cursapp_mercado_creditos_movs_'+String(uid()||session().email||'anon').toLowerCase();}
+  function saveLocalMovement(row){try{const k=localKey(); const arr=JSON.parse(localStorage.getItem(k)||'[]'); arr.unshift(row); localStorage.setItem(k,JSON.stringify(arr.slice(0,80)));}catch(e){}}
+  function localMovements(){try{return JSON.parse(localStorage.getItem(localKey())||'[]')}catch(e){return []}}
   function ownerKeys(){
     me=session();
     return Array.from(new Set([
@@ -74,6 +77,7 @@
       descripcion:extra.descripcion||'',
       created_at:now(), fecha:now()
     };
+    saveLocalMovement({...base,__table:'local_cache'});
     const r1=await safeInsert('movimientos_creditos',base);
     await safeInsert('mercado_creditos_historial',base);
     await safeInsert('mercado_vouchers',{
@@ -140,6 +144,7 @@
         }
       }
     }
+    all=all.concat(localMovements());
     return uniqById(all).sort((a,b)=>Date.parse(movementDate(b)||0)-Date.parse(movementDate(a)||0));
   }
   async function renderHistory(){

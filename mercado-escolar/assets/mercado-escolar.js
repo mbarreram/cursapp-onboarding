@@ -315,21 +315,33 @@ Vi esta publicación en Mercado Escolar Cursapp.
     </div>`;
     const empty=emptyState("📦", current==="activos"?"Aún no tienes avisos activos":(current==="vendidos"?"Aún no tienes vendidos":"Aún no tienes intercambiados"), "Tus publicaciones aparecerán organizadas aquí.", current==="activos"?"Publicar aviso":"", "publicar");
     function rowActions(p){
-      const id=esc(p.id); const st=estado(p); const closed=["vendido","intercambiado"].includes(st);
+      const id=esc(p.id); const st=estado(p);
       if(current==='activos'){
-        return `<div class="mineChipActions"><button type="button" data-status="vendido" data-id="${id}">✓ Vendido</button><button type="button" data-status="intercambiado" data-id="${id}">⇄ Intercambiar</button><button type="button" class="moreDanger" data-delete="${id}">Eliminar</button></div>`;
+        return `<div class="mineChipActions v28Actions">
+          <button type="button" class="softChip" data-status="vendido" data-id="${id}">✓ Vendido</button>
+          <button type="button" class="softChip" data-status="intercambiado" data-id="${id}">⇄ Intercambiar</button>
+        </div>`;
       }
-      return `<div class="mineChipActions"><button type="button" data-status="disponible" data-id="${id}">Reactivar</button><button type="button" class="moreDanger" data-delete="${id}">Eliminar</button></div>`;
+      return `<div class="mineChipActions v28Actions"><button type="button" class="softChip" data-status="disponible" data-id="${id}">Reactivar</button></div>`;
     }
     function card(p){
       const id=esc(p.id); const boosted=isBoosted(p); const closed=["vendido","intercambiado"].includes(estado(p));
       const title=esc(p.titulo||"Publicación"); const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
-      const badge=boosted?`<small class="ownerBoostInfo v27OwnerBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${daysLeft(boostUntil(p))} día(s)</small>`:(current==='activos'?`<button type="button" class="miniBoostLink" data-open-boost-modal="${id}">⭐ Destacar</button>`:``);
-      return `<article class="minePostCard v27MineCard ${estado(p)} ${boosted?'is-boosted':''}">
-        <div class="mineCardHead">
+      const badge=boosted?`<small class="ownerBoostInfo v28OwnerBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${daysLeft(boostUntil(p))} día(s)</small>`:(current==='activos'?`<button type="button" class="miniBoostLink v28BoostBtn" data-open-boost-modal="${id}">⭐ Destacar</button>`:``);
+      return `<article class="minePostCard v27MineCard v28MineCard ${estado(p)} ${boosted?'is-boosted':''}">
+        <div class="mineCardHead v28CardHead">
           <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
-          <div class="mineInfo"><b>${title}</b><span>${esc(categoryName(p))} · ${esc(p.tipo||'Aviso')} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span><strong>${price}</strong>${badge}</div>
-          <div class="mineIconActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${(!closed&&current==='activos')?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:''}</div>
+          <div class="mineInfo v28MineInfo">
+            <b>${title}</b>
+            <strong>${price}</strong>
+            <span>${esc(estado(p))} · ${esc(p.tipo||'Aviso')} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>
+            ${badge}
+          </div>
+          <div class="mineIconActions v28IconActions">
+            <button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>
+            ${(!closed&&current==='activos')?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:''}
+            <details class="mineMore"><summary>⋯</summary><div><button type="button" data-open-detail="${id}">Ver detalle</button>${(!closed&&current==='activos')?`<button type="button" data-open-boost-modal="${id}">${boosted?'Renovar destacado':'Destacar'}</button>`:''}<button type="button" class="danger" data-delete="${id}">Eliminar</button></div></details>
+          </div>
         </div>
         ${rowActions(p)}
       </article>`;
