@@ -25,7 +25,7 @@
     });
   }
   async function waitSb(){for(let i=0;i<50;i++){if(window.cursappSupabase) return window.cursappSupabase;if(window.initCursappSupabase){try{const x=window.initCursappSupabase(); if(x) return x}catch(e){}} await new Promise(r=>setTimeout(r,100));}return null}
-  let sb=null, me=null, wallet=null, balanceCol='saldo';
+  let sb=null, me=null, wallet=null, balanceCol='saldo', historyPage=1; const HISTORY_PAGE_SIZE=8;
   async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
   async function updateFlex(table,idCol,id,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle();}
   function uid(){return me.userId||me.email}
@@ -44,7 +44,7 @@
       numero_voucher:numero,concepto:extra.concepto||tipo,descripcion:extra.descripcion||'',created_at:now()
     });
   }
-  async function refresh(){await loadWallet(); const b=$('#creditBalanceBadge'); if(b) b.textContent=balance()+' créditos'; renderPackages(); renderHistory();}
+  async function refresh(){await loadWallet(); const b=$('#creditBalanceBadge'); if(b) b.textContent=balance()+' créditos'; renderPackages(); historyPage=1; renderHistory();}
   function renderPackages(){const box=$('#creditPackages'); if(!box) return; box.innerHTML=PACKAGES.map(p=>`<article class="creditPack"><b>${esc(p.name)}</b><span>${p.credits} créditos Mercado</span><strong>${clp(p.price)}</strong><button type="button" data-buy-credits="${p.credits}" data-price="${p.price}">Comprar créditos</button></article>`).join('');}
   async function buyCredits(credits,price){
     await loadWallet();
@@ -85,16 +85,18 @@
   }
   function renderHistory(){
     const box=$('#creditHistory'); if(!box||!sb||!uid()) return;
-    sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(30).then(r=>{
+    const limit=historyPage*HISTORY_PAGE_SIZE;
+    sb.from('movimientos_creditos').select('*').eq('usuario_id',uid()).order('created_at',{ascending:false}).limit(limit+1).then(r=>{
       if(r.error||!r.data||!r.data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;}
-      box.innerHTML=r.data.map((m,i)=>{
+      const hasMore=r.data.length>limit;
+      const rows=r.data.slice(0,limit);
+      box.innerHTML=rows.map((m,i)=>{
         const qty=Number(m.cantidad||m.creditos||0);
-        const isUse=qty<0;
-        const title=m.publicacion_titulo||m.descripcion||m.concepto||m.tipo||'Movimiento';
-        const voucher=m.numero_voucher||`CR-${String(m.id||'').slice(0,8)}`;
-        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}</small>${m.regla_label?`<small>⭐ ${esc(m.regla_label)}${m.dias?` · ${m.dias} días`:''}</small>`:''}</div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button><script type="application/json" id="voucher-${i}">${esc(JSON.stringify(m))}</script></div>`;
-      }).join('');
-      window.__creditMovements=r.data;
+        const title=m.publicacion_titulo || (m.concepto==='compra_creditos'?m.descripcion:'Movimiento de créditos');
+        const op=m.regla_label?`⭐ ${esc(m.regla_label)}`:(m.concepto==='compra_creditos'?'Compra créditos Mercado':esc(m.concepto||m.tipo||'Movimiento'));
+        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(m.created_at)}</small><small>${op}${m.dias?` · ${m.dias} días`:''}${m.vence_at?` · vence ${fmtDateTime(m.vence_at)} · quedan ${daysLeft(m.vence_at)} día(s)`:''}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
+      }).join('') + (hasMore?`<button type="button" class="ghost creditMore" data-credit-more>Ver más movimientos</button>`:'');
+      window.__creditMovements=rows;
     });
   }
   function showVoucher(index){
@@ -105,7 +107,7 @@
     if(!modal) return;
     modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(m.created_at)}</b></p><p><span>Operación</span><b>${esc(m.tipo||m.concepto||'Movimiento')}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
   }
-  document.addEventListener('click',e=>{const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
+  document.addEventListener('click',e=>{const more=e.target.closest('[data-credit-more]'); if(more){e.preventDefault();historyPage++;renderHistory();return;} const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
   window.CursappMarketCredits={refresh,buyCredits,spendCredits,getBalance:()=>balance(),loadWallet};
 })();
