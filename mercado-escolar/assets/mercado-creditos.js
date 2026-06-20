@@ -32,11 +32,31 @@
   function movementDate(m){return m.created_at||m.fecha||m.fecha_creacion||m.createdon||m.inserted_at||null;}
   function movementVoucher(m){return m.numero_voucher||m.voucher||m.codigo_voucher||`CR-${String(m.id||'').slice(0,8)}`;}
   function movementQty(m){return Number(m.cantidad??m.creditos??m.monto_creditos??0);}
+  function ownerKeys(){
+    me=session();
+    return Array.from(new Set([
+      uid(), me.email, wallet?.usuario_id, wallet?.email,
+      me.userId && String(me.userId).toLowerCase(), me.email && String(me.email).toLowerCase()
+    ].filter(Boolean).map(String)));
+  }
+  function newestRow(rows){
+    return (rows||[]).slice().sort((a,b)=>Date.parse(b.updated_at||b.fecha||b.created_at||0)-Date.parse(a.updated_at||a.fecha||a.created_at||0))[0]||null;
+  }
   async function updateFlex(table,idCol,id,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle(); if(!res.error) return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m && cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).update(cleaned).eq(idCol,id).select('*').maybeSingle();}
   function uid(){return me.userId||me.email}
   function detectBalanceCol(row){if(!row) return 'saldo'; return ['saldo','saldo_actual','creditos','creditos_disponibles'].find(k=>row[k]!==undefined)||'saldo'}
-  async function loadWallet(){if(!sb) sb=await waitSb(); me=session(); if(!sb||!uid()) return null; const keys=[uid(),me.email].filter(Boolean); for(const key of keys){const r=await sb.from('creditos_usuario').select('*').eq('usuario_id',key).maybeSingle(); if(!r.error && r.data){wallet=r.data; balanceCol=detectBalanceCol(wallet); return wallet;}}
-    const ins=await insertFlex('creditos_usuario',{usuario_id:uid(),email:me.email,saldo:0,total_comprado:0,total_usado:0,created_at:now(),updated_at:now()}); if(!ins.error){wallet=ins.data; balanceCol=detectBalanceCol(wallet); return wallet;} return null;}
+  async function loadWallet(){
+    if(!sb) sb=await waitSb(); me=session(); if(!sb||!uid()) return null;
+    const keys=ownerKeys(); let found=[];
+    for(const key of keys){
+      try{const r=await sb.from('creditos_usuario').select('*').eq('usuario_id',key).limit(10); if(!r.error && r.data?.length) found=found.concat(r.data);}catch(e){}
+      try{const r=await sb.from('creditos_usuario').select('*').eq('email',key).limit(10); if(!r.error && r.data?.length) found=found.concat(r.data);}catch(e){}
+    }
+    found=uniqById(found);
+    if(found.length){wallet=newestRow(found); balanceCol=detectBalanceCol(wallet); return wallet;}
+    const ins=await insertFlex('creditos_usuario',{usuario_id:uid(),email:me.email,saldo:0,total_comprado:0,total_usado:0,created_at:now(),updated_at:now()});
+    if(!ins.error){wallet=ins.data; balanceCol=detectBalanceCol(wallet); return wallet;} return null;
+  }
   function balance(){return Number(wallet?.[balanceCol]||0)}
   async function recordMovement(tipo,cantidad,extra={}){
     if(!sb) sb=await waitSb(); me=session();
@@ -106,22 +126,18 @@
   }
   async function fetchMovements(limit){
     if(!sb) sb=await waitSb();
-    me=session();
-    const keys=Array.from(new Set([uid(),me.email,wallet?.usuario_id,wallet?.email].filter(Boolean).map(String)));
-    const tables=['mercado_creditos_historial','movimientos_creditos'];
+    await loadWallet();
+    const keys=ownerKeys();
+    const tables=['mercado_creditos_historial','movimientos_creditos','mercado_creditos_movimientos','creditos_movimientos','marketplace_creditos_historial'];
     let all=[];
     for(const t of tables){
       for(const key of keys){
-        try{
-          const r=await sb.from(t).select('*').eq('usuario_id',key).limit(limit+20);
-          if(!r.error && r.data) all=all.concat(r.data);
-        }catch(e){}
-      }
-      if(me.email){
-        try{
-          const r=await sb.from(t).select('*').eq('email',me.email).limit(limit+20);
-          if(!r.error && r.data) all=all.concat(r.data);
-        }catch(e){}
+        for(const col of ['usuario_id','email','user_id','apoderado_id']){
+          try{
+            const r=await sb.from(t).select('*').eq(col,key).limit(limit+40);
+            if(!r.error && r.data?.length) all=all.concat(r.data.map(x=>({...x,__table:t})));
+          }catch(e){}
+        }
       }
     }
     return uniqById(all).sort((a,b)=>Date.parse(movementDate(b)||0)-Date.parse(movementDate(a)||0));
@@ -130,7 +146,7 @@
     const box=$('#creditHistory'); if(!box) return; if(!sb) sb=await waitSb(); me=session(); if(!uid()){box.innerHTML='<p class="muted">Ingresa para ver movimientos.</p>'; return;}
     const limit=historyPage*HISTORY_PAGE_SIZE;
     fetchMovements(limit+1).then(data=>{
-      if(!data||!data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;}
+      if(!data||!data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>'; window.__creditMovements=[]; return;}
       const hasMore=data.length>limit;
       const rows=data.slice(0,limit);
       box.innerHTML=rows.map((m,i)=>{
@@ -156,5 +172,5 @@
   }
   document.addEventListener('click',e=>{const more=e.target.closest('[data-credit-more]'); if(more){e.preventDefault();historyPage++;renderHistory();return;} const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
-  window.CursappMarketCredits={refresh,buyCredits,spendCredits,getBalance:()=>balance(),loadWallet};
+  window.CursappMarketCredits={refresh,buyCredits,spendCredits,getBalance:()=>balance(),loadWallet,renderHistory,fetchMovements};
 })();

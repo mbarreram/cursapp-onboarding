@@ -308,27 +308,33 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const intercambiados=all.filter(p=>estado(p)==="intercambiado");
     const activos=all.filter(p=>!["vendido","intercambiado","oculto","bloqueado","en_revision"].includes(estado(p)));
     const list=current==="vendidos"?vendidos:(current==="intercambiados"?intercambiados:activos);
-    const tabs=`<div class="mineTabs v16MineTabs">
+    const tabs=`<div class="mineTabs v27MineTabs">
       <button class="${current==='activos'?'active':''}" data-mine-filter="activos">Activos <span>${activos.length}</span></button>
       <button class="${current==='vendidos'?'active':''}" data-mine-filter="vendidos">Vendidos <span>${vendidos.length}</span></button>
       <button class="${current==='intercambiados'?'active':''}" data-mine-filter="intercambiados">Intercambiados <span>${intercambiados.length}</span></button>
     </div>`;
     const empty=emptyState("📦", current==="activos"?"Aún no tienes avisos activos":(current==="vendidos"?"Aún no tienes vendidos":"Aún no tienes intercambiados"), "Tus publicaciones aparecerán organizadas aquí.", current==="activos"?"Publicar aviso":"", "publicar");
-    function actions(p){
-      const id=esc(p.id); const st=estado(p);
-      const canShare=current==='activos' && !["vendido","intercambiado"].includes(st);
-      const boostBtn = canBoost(p) ? `<button class="mineAction boostMine" data-open-boost-modal="${id}">⭐ Destacar</button>` : ``;
-      const statusBtns=current==='activos'
-        ? `${boostBtn}<button class="mineAction primaryLight" data-status="vendido" data-id="${id}">Vendido</button><button class="mineAction primaryLight" data-status="intercambiado" data-id="${id}">Intercambiado</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`
-        : `<button class="mineAction primaryLight" data-status="disponible" data-id="${id}">Reactivar</button><button class="mineAction dangerText" data-delete="${id}">Eliminar</button>`;
-      return `<div class="mineTopActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${canShare?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:""}</div><div class="mineActionsV16">${statusBtns}</div>`;
+    function rowActions(p){
+      const id=esc(p.id); const st=estado(p); const closed=["vendido","intercambiado"].includes(st);
+      if(current==='activos'){
+        return `<div class="mineChipActions"><button type="button" data-status="vendido" data-id="${id}">✓ Vendido</button><button type="button" data-status="intercambiado" data-id="${id}">⇄ Intercambiar</button><button type="button" class="moreDanger" data-delete="${id}">Eliminar</button></div>`;
+      }
+      return `<div class="mineChipActions"><button type="button" data-status="disponible" data-id="${id}">Reactivar</button><button type="button" class="moreDanger" data-delete="${id}">Eliminar</button></div>`;
     }
-    const html=list.map(p=>`<article class="minePostCard v16MineCard ${estado(p)} ${isBoosted(p)?'is-boosted':''}">
-      <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
-      <div class="mineInfo"><b>${esc(p.titulo||"Publicación")}</b><span>${esc(estado(p))} · ${esc(p.tipo||"Aviso")} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>${isBoosted(p)?`<small class="ownerBoostInfo">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${daysLeft(boostUntil(p))} día(s)</small>`:''}</div>
-      ${actions(p)}
-    </article>`).join("");
-    box.innerHTML=tabs+(html||empty);
+    function card(p){
+      const id=esc(p.id); const boosted=isBoosted(p); const closed=["vendido","intercambiado"].includes(estado(p));
+      const title=esc(p.titulo||"Publicación"); const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
+      const badge=boosted?`<small class="ownerBoostInfo v27OwnerBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${daysLeft(boostUntil(p))} día(s)</small>`:(current==='activos'?`<button type="button" class="miniBoostLink" data-open-boost-modal="${id}">⭐ Destacar</button>`:``);
+      return `<article class="minePostCard v27MineCard ${estado(p)} ${boosted?'is-boosted':''}">
+        <div class="mineCardHead">
+          <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
+          <div class="mineInfo"><b>${title}</b><span>${esc(categoryName(p))} · ${esc(p.tipo||'Aviso')} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span><strong>${price}</strong>${badge}</div>
+          <div class="mineIconActions"><button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>${(!closed&&current==='activos')?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:''}</div>
+        </div>
+        ${rowActions(p)}
+      </article>`;
+    }
+    box.innerHTML=tabs+`<div class="v27MineList">${list.map(card).join("") || empty}</div>`;
   }
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
@@ -639,7 +645,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     setTimeout(async()=>{
       try{ await loadPosts(); await loadMinePosts(); renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard(); }catch(e){}
     },250);
-    if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh();
+    if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh(); if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
     document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div></section></div>`;
     toast(`Aviso destacado: ${newInfo.label}`);
     } finally {
