@@ -105,23 +105,29 @@
     return {ok:true,balance:next,voucher};
   }
   async function fetchMovements(limit){
-    const ids=[uid(),me.email].filter(Boolean);
+    if(!sb) sb=await waitSb();
+    me=session();
+    const keys=Array.from(new Set([uid(),me.email,wallet?.usuario_id,wallet?.email].filter(Boolean).map(String)));
     const tables=['mercado_creditos_historial','movimientos_creditos'];
     let all=[];
     for(const t of tables){
-      try{
-        let q=sb.from(t).select('*');
-        // Soporta datos guardados por usuario_id o por email, según versión previa.
-        if(me.email && uid()) q=q.or(`usuario_id.eq.${uid()},usuario_id.eq.${me.email},email.eq.${me.email}`);
-        else if(uid()) q=q.eq('usuario_id',uid());
-        const r=await q.limit(limit+10);
-        if(!r.error && r.data) all=all.concat(r.data);
-      }catch(e){}
+      for(const key of keys){
+        try{
+          const r=await sb.from(t).select('*').eq('usuario_id',key).limit(limit+20);
+          if(!r.error && r.data) all=all.concat(r.data);
+        }catch(e){}
+      }
+      if(me.email){
+        try{
+          const r=await sb.from(t).select('*').eq('email',me.email).limit(limit+20);
+          if(!r.error && r.data) all=all.concat(r.data);
+        }catch(e){}
+      }
     }
     return uniqById(all).sort((a,b)=>Date.parse(movementDate(b)||0)-Date.parse(movementDate(a)||0));
   }
-  function renderHistory(){
-    const box=$('#creditHistory'); if(!box||!sb||!uid()) return;
+  async function renderHistory(){
+    const box=$('#creditHistory'); if(!box) return; if(!sb) sb=await waitSb(); me=session(); if(!uid()){box.innerHTML='<p class="muted">Ingresa para ver movimientos.</p>'; return;}
     const limit=historyPage*HISTORY_PAGE_SIZE;
     fetchMovements(limit+1).then(data=>{
       if(!data||!data.length){box.innerHTML='<p class="muted">Sin movimientos todavía.</p>';return;}
@@ -131,7 +137,7 @@
         const qty=movementQty(m);
         const isCompra = qty>0 || m.tipo==='compra' || m.tipo_operacion==='compra' || m.operacion==='compra' || m.concepto==='compra_creditos';
         const rawDesc = String(m.descripcion||'');
-        const title = m.publicacion_titulo || (isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (rawDesc.split('·')[1]||rawDesc||'Destacado Mercado Escolar').trim());
+        const title = isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (m.publicacion_titulo || (rawDesc.split('·')[1]||rawDesc||'Publicación').trim());
         const label=m.regla_label||m.destacado_tipo||m.regla||'';
         const op = isCompra ? 'Compra créditos Mercado' : (label?`⭐ ${esc(label)}`:'⭐ Destacado Mercado Escolar');
         const meta = `${op}${m.dias?` · ${m.dias} días`:''}${(m.vence_at||m.fecha_expiracion)?` · vence ${fmtDateTime(m.vence_at||m.fecha_expiracion)} · quedan ${daysLeft(m.vence_at||m.fecha_expiracion)} día(s)`:''}`;
