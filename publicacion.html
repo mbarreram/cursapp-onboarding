@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Cursapp · Publicación Mercado Escolar</title>
+<link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
+<link rel="stylesheet" href="assets/mercado-production-v23.css?v=23"/>
+</head>
+<body>
+<main class="marketApp publicacionApp">
+  <header class="marketHeader">
+    <div class="brandIcon">🛍️</div>
+    <div><h1>Mercado Escolar</h1><p>Publicación de comunidad registrada</p></div>
+    <a class="headerBell" href="mercado-escolar.html">←</a>
+  </header>
+  <section id="publicacionRoot" class="panel publicacionPanel">
+    <div class="emptyState"><div class="emptyIcon">🛍️</div><h3>Cargando publicación...</h3><p>Un momento.</p></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/supabaseClient.js?v=20260616"></script>
+<script src="assets/publicacion.js?v=18"></script>
+</body>
+</html>
