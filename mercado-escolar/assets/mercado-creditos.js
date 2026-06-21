@@ -4,7 +4,7 @@
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const now=()=>new Date().toISOString();
   function voucherNo(){return `CR-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Date.now()).slice(-6)}`;}
-  function fmtDateTime(v){try{return new Date(v).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''}}
+  function fmtDateTime(v){try{return new Date(v).toLocaleString('es-CL',{timeZone:'America/Santiago',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''}}
   function daysLeft(v){const ms=Date.parse(v||'')-Date.now(); return Math.max(0,Math.ceil(ms/86400000));}
   const PACKAGES=[
     {name:'Básico',credits:10,price:990},
@@ -138,7 +138,9 @@
       for(const key of keys){
         for(const col of ['usuario_id','email','user_id','apoderado_id']){
           try{
-            const r=await sb.from(t).select('*').eq(col,key).limit(limit+40);
+            let r=await sb.from(t).select('*').eq(col,key).order('fecha',{ascending:false}).limit(limit+80);
+            if(r.error) r=await sb.from(t).select('*').eq(col,key).order('created_at',{ascending:false}).limit(limit+80);
+            if(r.error) r=await sb.from(t).select('*').eq(col,key).limit(limit+80);
             if(!r.error && r.data?.length) all=all.concat(r.data.map(x=>({...x,__table:t})));
           }catch(e){}
         }
@@ -158,7 +160,7 @@
         const qty=movementQty(m);
         const isCompra = qty>0 || m.tipo==='compra' || m.tipo_operacion==='compra' || m.operacion==='compra' || m.concepto==='compra_creditos';
         const rawDesc = String(m.descripcion||'');
-        const title = isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (m.publicacion_titulo || (rawDesc.split('·')[1]||rawDesc||'Publicación').trim());
+        const title = isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (m.publicacion_titulo || (rawDesc.split('·')[1]||rawDesc||m.regla_label||m.destacado_tipo||'Publicación').trim());
         const label=m.regla_label||m.destacado_tipo||m.regla||'';
         const op = isCompra ? 'Compra créditos Mercado' : (label?`⭐ ${esc(label)}`:'⭐ Destacado Mercado Escolar');
         const meta = `${op}${m.dias?` · ${m.dias} días`:''}${(m.vence_at||m.fecha_expiracion)?` · vence ${fmtDateTime(m.vence_at||m.fecha_expiracion)} · quedan ${daysLeft(m.vence_at||m.fecha_expiracion)} día(s)`:''}`;

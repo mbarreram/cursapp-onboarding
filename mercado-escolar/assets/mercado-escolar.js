@@ -340,7 +340,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
           <div class="mineIconActions v28IconActions">
             <button class="iconAction" data-open-detail="${id}" title="Ver">👁️</button>
             ${(!closed&&current==='activos')?`<button class="iconAction" data-share="${id}" title="Compartir">↗️</button>`:''}
-            <details class="mineMore"><summary>⋯</summary><div><button type="button" data-open-detail="${id}">Ver detalle</button>${(!closed&&current==='activos')?`<button type="button" data-edit="${id}">Editar aviso</button><button type="button" data-open-boost-modal="${id}">${boosted?'Renovar destacado':'Destacar'}</button>`:''}<button type="button" class="danger" data-delete="${id}">Eliminar</button></div></details>
+            <button class="iconAction" data-mine-options="${id}" title="Opciones">⋯</button>
           </div>
         </div>
         ${rowActions(p)}
@@ -545,6 +545,16 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>isActiveMarketPost(p) && !isBoosted(p));
     return all.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
   }
+
+  function openMineOptions(id){
+    const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
+    if(!p){toast('No encontré el aviso.');return;}
+    const st=String(p.estado||'activo').toLowerCase();
+    const closed=["vendido","intercambiado","eliminado"].includes(st);
+    const canAct=!closed && isActiveMarketPost(p);
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm mineOptionsSheet"><h2>Opciones del aviso</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">${esc(st)} · ${Number(p.visualizaciones||p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</p></div><div class="mineOptionList"><button type="button" data-open-detail="${esc(id)}">👁️ Ver detalle</button>${canAct?`<button type="button" data-edit="${esc(id)}">✏️ Editar aviso</button><button type="button" data-open-boost-modal="${esc(id)}">⭐ ${isBoosted(p)?'Ver destacado':'Destacar con créditos'}</button>`:''}<button type="button" class="danger" data-delete="${esc(id)}">🗑️ Eliminar aviso</button></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
+  }
+
   function renderCreditVisibilityGuard(){
     const sel=document.getElementById("boostPostSelect");
     const box=document.getElementById("boostOptions");
@@ -854,7 +864,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const st=e.target.closest("[data-status]"); if(st){e.preventDefault();e.stopPropagation();updateStatus(st.dataset.id,st.dataset.status);return;}
       const del=e.target.closest("[data-delete]"); if(del){e.preventDefault();e.stopPropagation();removePost(del.dataset.delete);return;}
       const edit=e.target.closest("[data-edit]"); if(edit){e.preventDefault();e.stopPropagation();editPost(edit.dataset.edit);return;}
-      const open=e.target.closest("[data-open-detail]"); if(open){e.preventDefault();e.stopPropagation();openDetail(open.dataset.openDetail);return;}
+      const options=e.target.closest("[data-mine-options]"); if(options){e.preventDefault();e.stopPropagation();openMineOptions(options.dataset.mineOptions);return;}
+      const open=e.target.closest("[data-open-detail]"); if(open){e.preventDefault();e.stopPropagation();document.getElementById('modal').innerHTML='';openDetail(open.dataset.openDetail);return;}
       const openBoost=e.target.closest("[data-open-boost-modal]"); if(openBoost){e.preventDefault();e.stopPropagation();openBoostModal(openBoost.dataset.openBoostModal);return;}
       const directBoost=e.target.closest("[data-direct-boost]"); if(directBoost){e.preventDefault();e.stopPropagation(); directBoost.disabled=true; directBoost.classList.add("disabled"); boostPost(directBoost.dataset.rule,directBoost.dataset.cost||"1",directBoost.dataset.directBoost);return;}
       const openCredits=e.target.closest("[data-open-credits]"); if(openCredits){e.preventDefault();e.stopPropagation();state.pendingBoostId=openCredits.dataset.openCredits;document.getElementById("modal").innerHTML="";showView("creditos");setTimeout(renderCreditVisibilityGuard,80);return;}
