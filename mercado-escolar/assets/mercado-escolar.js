@@ -887,17 +887,37 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   function canUseChat(p){return p.contacto_chat !== false && String(p.contacto_chat).toLowerCase() !== 'false';}
   function currentUserKey(){return state.session?.userId || state.session?.email || 'anon';}
-  function sellerKey(p){return p.vendedor_id || p.usuario_id || p.vendedor_email || p.email || p.nombre_vendedor || 'vendedor';}
+  function currentUserUuid(){return isUuid(state.session?.userId)?state.session.userId:null;}
+  function sellerUuid(p){return isUuid(p?.vendedor_id)?p.vendedor_id:(isUuid(p?.usuario_id)?p.usuario_id:null);}
+  function sellerKey(p){return sellerUuid(p) || p.vendedor_email || p.email || p.usuario_id || p.vendedor_id || p.nombre_vendedor || 'vendedor';}
   function contactMsgDefault(p){return `Hola, ¿sigue disponible ${p?.titulo||'este aviso'}?`;}
   async function loadConversations(){
     state.conversations=[]; state.unreadConversations=0;
     if(!state.sb || (!state.session?.email && !state.session?.userId)){renderConversationBadge();return;}
-    const me=String(currentUserKey());
-    const queries=[state.sb.from('mercado_conversaciones').select('*').eq('comprador_id',me).order('fecha',{ascending:false}).limit(80),state.sb.from('mercado_conversaciones').select('*').eq('vendedor_id',me).order('fecha',{ascending:false}).limit(80)];
-    const res=await Promise.allSettled(queries);
+    const meUuid=currentUserUuid();
+    const meEmail=String(state.session?.email||'').toLowerCase();
+    const legacyKey=String(currentUserKey());
+    const requests=[];
+    const addReq=q=>{ if(q) requests.push(q.limit ? q.limit(80) : q); };
+    const safeOrder=q=>{ try{return q.order('fecha',{ascending:false});}catch(e){return q;} };
+
+    // Compatibilidad V38/V38.1: algunas instalaciones guardan ids UUID y otras guardan email/texto.
+    try{ if(meUuid) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('comprador_id',meUuid))); }catch(e){}
+    try{ if(meUuid) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('vendedor_id',meUuid))); }catch(e){}
+    try{ if(meEmail) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('comprador_email',meEmail))); }catch(e){}
+    try{ if(meEmail) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('vendedor_email',meEmail))); }catch(e){}
+    try{ if(legacyKey && legacyKey!==meUuid && legacyKey!==meEmail) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('comprador_id',legacyKey))); }catch(e){}
+    try{ if(legacyKey && legacyKey!==meUuid && legacyKey!==meEmail) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('vendedor_id',legacyKey))); }catch(e){}
+
+    if(!requests.length){renderConversationBadge();renderConversations();return;}
+    const res=await Promise.allSettled(requests);
     const found=new Map();
-    res.forEach(x=>{if(x.status==='fulfilled' && !x.value.error)(x.value.data||[]).forEach(c=>found.set(String(c.id),c));});
-    state.conversations=Array.from(found.values()).sort((a,b)=>Date.parse(b.fecha||b.created_at||0)-Date.parse(a.fecha||a.created_at||0));
+    res.forEach(x=>{
+      if(x.status==='fulfilled' && !x.value.error){
+        (x.value.data||[]).forEach(c=>found.set(String(c.id||c.conversacion_id||`${c.publicacion_id}-${c.comprador_id||c.comprador_email}-${c.vendedor_id||c.vendedor_email}`),c));
+      }
+    });
+    state.conversations=Array.from(found.values()).sort((a,b)=>Date.parse(b.fecha||b.updated_at||b.created_at||0)-Date.parse(a.fecha||a.updated_at||a.created_at||0));
     state.unreadConversations=state.conversations.filter(c=>['nueva','nuevo','abierta'].includes(String(c.estado||'').toLowerCase())).length;
     renderConversationBadge(); renderConversations();
   }
@@ -909,58 +929,61 @@ Vi esta publicación en Mercado Escolar Cursapp.
     box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
   }
   async function createInternalConversation(p,message){
-    const me=String(currentUserKey());
-    const seller=String(sellerKey(p));
+    const buyerUuid=currentUserUuid();
+    const buyerKey=String(currentUserKey());
+    const buyerEmail=String(state.session?.email||'').toLowerCase();
+    const sellerId=sellerUuid(p);
+    const sellerText=String(sellerKey(p));
+    const sellerEmail=String(p.vendedor_email||p.email||'').toLowerCase();
     const timestamp=now();
 
-    // Fila amplia: insertFlex elimina columnas inexistentes según el schema real de Supabase.
-    const fullRow={
+    const common={
       publicacion_id:p.id,
       publicacion_titulo:p.titulo||'Publicación',
-      comprador_id:me,
-      comprador_email:state.session?.email||'',
+      comprador_email:buyerEmail,
       comprador_nombre:state.session?.name||'Apoderado Cursapp',
-      vendedor_id:seller,
-      vendedor_email:p.vendedor_email||p.email||p.usuario_id||'',
+      vendedor_email:sellerEmail,
       vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',
       medio_contacto:'chat_interno',
-      mensaje,
+      mensaje:message,
       ultimo_mensaje:message,
       estado:'nueva',
       fecha:timestamp,
+      updated_at:timestamp,
       created_at:timestamp
     };
 
-    let conv=await insertFlex('mercado_conversaciones',fullRow);
+    const convRows=[];
+    // Esquema recomendado: ids UUID cuando existen + emails para búsqueda/badge.
+    convRows.push({...common, comprador_id:buyerUuid||buyerKey, vendedor_id:sellerId||sellerText});
+    if(buyerUuid || sellerId) convRows.push({...common, comprador_id:buyerUuid||null, vendedor_id:sellerId||null});
+    // Esquema legacy/texto.
+    convRows.push({...common, comprador_id:buyerKey, vendedor_id:sellerText});
+    // Esquema mínimo.
+    convRows.push({publicacion_id:p.id, comprador_id:buyerUuid||buyerKey, vendedor_id:sellerId||sellerText, estado:'nueva', ultimo_mensaje:message, fecha:timestamp, created_at:timestamp});
 
-    // Fallback para instalaciones donde la tabla V38 quedó con estructura mínima.
-    if(conv.error){
-      const minimalRow={
-        publicacion_id:p.id,
-        vendedor_id:seller,
-        comprador_id:me,
-        estado:'nueva',
-        ultimo_mensaje:timestamp,
-        created_at:timestamp
-      };
-      conv=await insertFlex('mercado_conversaciones',minimalRow);
+    let conv=null;
+    for(const row of convRows){
+      conv=await insertFlex('mercado_conversaciones',row);
+      if(!conv.error) break;
+      console.warn('[CHAT] intento conversación falló', conv.error?.message||conv.error);
     }
-
-    if(conv.error) return conv;
+    if(!conv || conv.error) return conv||{error:{message:'No se pudo crear la conversación'}};
 
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
     const msgRows=[
-      {conversacion_id:convId,publicacion_id:p.id,remitente_id:me,emisor_id:me,receptor_id:seller,mensaje,estado:'enviado',leido:false,fecha:timestamp,created_at:timestamp},
-      {conversacion_id:convId,remitente_id:me,mensaje,leido:false,created_at:timestamp}
+      {conversacion_id:convId,publicacion_id:p.id,remitente_id:buyerUuid||buyerKey,emisor_id:buyerUuid||buyerKey,receptor_id:sellerId||sellerText,emisor_email:buyerEmail,receptor_email:sellerEmail,mensaje:message,estado:'enviado',leido:false,fecha:timestamp,created_at:timestamp},
+      {conversacion_id:convId,publicacion_id:p.id,emisor_id:buyerUuid||null,receptor_id:sellerId||null,mensaje:message,estado:'enviado',fecha:timestamp,created_at:timestamp},
+      {conversacion_id:convId,remitente_id:buyerUuid||buyerKey,mensaje:message,leido:false,created_at:timestamp},
+      {publicacion_id:p.id,mensaje:message,estado:'enviado',created_at:timestamp}
     ];
 
     let msgRes=null;
     for(const row of msgRows){
       msgRes=await insertFlex('mercado_mensajes',row);
       if(!msgRes.error) break;
+      console.warn('[CHAT] intento mensaje falló', msgRes.error?.message||msgRes.error);
     }
-
-    // Si el mensaje falla, igual devolvemos el error para que no parezca enviado.
     if(msgRes?.error) return msgRes;
 
     return conv;
@@ -1010,7 +1033,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       p.contactos=Number(p.contactos||0)+1;
       try{state.sb.from('mercado_publicaciones').update({contactos:p.contactos}).eq('id',p.id).then(()=>{});}catch(e){}
 
-      document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">El vendedor verá tu consulta en Conversaciones.</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button><button type="button" class="ghost" data-view="conversaciones" onclick="document.getElementById('modal').innerHTML=''">Ver conversaciones</button></div></section></div>`;
+      document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">El vendedor verá tu consulta en Conversaciones.</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.showView&&window.CursappMarket.showView('conversaciones'); window.CursappMarket&&window.CursappMarket.loadConversations&&window.CursappMarket.loadConversations();">Ver conversaciones</button></div></section></div>`;
 
       toast('Consulta enviada correctamente');
       try{await loadConversations();}catch(e){console.warn('[CHAT] loadConversations',e);}
