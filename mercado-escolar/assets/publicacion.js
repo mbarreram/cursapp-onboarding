@@ -26,13 +26,36 @@
   function categoryName(p){return p.categoria_nombre||p.categoria||"Otros";}
   function shareUrl(){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(post.id)}`;}
   function message(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi tu publicación en Mercado Escolar Cursapp.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n¿Sigue disponible?\n\n🔗 Ver publicación:\n${shareUrl()}`;}
+  function canUseWhatsapp(post){const phone=phoneClean(post.whatsapp||post.vendedor_whatsapp||""); const consent=post.contacto_whatsapp===true||post.whatsapp_consent===true||post.permite_whatsapp===true||String(post.contacto_whatsapp).toLowerCase()==='true'||String(post.whatsapp_consent).toLowerCase()==='true'||String(post.permite_whatsapp).toLowerCase()==='true'; return !!phone&&consent;}
+  function canUseChat(post){return post.contacto_chat!==false && String(post.contacto_chat).toLowerCase()!=='false';}
+  async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error)return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m&&cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
   async function contact(){
-    const phone=phoneClean(post.whatsapp||post.vendedor_whatsapp||"");
-    const row={publicacion_id:post.id,usuario_id:session.userId||session.email,canal:"whatsapp",mensaje:message()};
-    const {error}=await sb.from("mercado_contactos").insert([row]);
-    if(error){toast("No se pudo registrar contacto: "+error.message);return;}
-    const next=Number(post.contactos||0)+1; post.contactos=next; sb.from("mercado_publicaciones").update({contactos:next}).eq("id",post.id).then(()=>{});
-    if(phone) location.href=`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(message())}`;
+    if(isMine()){toast('Esta publicación es tuya.'); return;}
+    const wa=canUseWhatsapp(post), chat=canUseChat(post);
+    const waBtn=wa?`<button type="button" id="contactWa" class="waContactBtn">WhatsApp autorizado</button>`:'';
+    const chatBtn=chat?`<button type="button" id="contactChat" class="primary">Enviar consulta</button>`:'';
+    const privacy=!wa?`<p class="privacyContactNote">Este vendedor usa chat interno para proteger su privacidad.</p>`:`<p class="privacyContactNote">El vendedor autorizó contacto por WhatsApp. También puedes usar chat interno.</p>`;
+    const modal=document.createElement('div'); modal.id='contactDetailModal'; modal.className='v19ConfirmOverlay';
+    modal.innerHTML=`<section class="v19Confirm contactModalV38"><h2>Contactar vendedor</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(post.titulo||'Publicación')}</b>${privacy}<label>Mensaje<textarea id="detailContactMsg" rows="3">Hola, ¿sigue disponible ${esc(post.titulo||'este aviso')}?</textarea></label></div><div class="v19ConfirmActions">${chatBtn}${waBtn}<button type="button" class="ghost" id="closeContactDetail">Cancelar</button></div></section>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#closeContactDetail')?.addEventListener('click',()=>modal.remove());
+    modal.querySelector('#contactChat')?.addEventListener('click',async()=>{
+      const msg=(modal.querySelector('#detailContactMsg')?.value||message()).trim();
+      const comprador=session.userId||session.email, vendedor=post.vendedor_id||post.usuario_id||post.vendedor_email||post.nombre_vendedor||'vendedor';
+      const conv=await insertFlex('mercado_conversaciones',{publicacion_id:post.id,publicacion_titulo:post.titulo||'Publicación',comprador_id:String(comprador),comprador_email:session.email||'',comprador_nombre:session.name||'Apoderado Cursapp',vendedor_id:String(vendedor),vendedor_nombre:post.nombre_vendedor||'Vendedor Cursapp',medio_contacto:'chat_interno',mensaje:msg,ultimo_mensaje:msg,estado:'nueva',fecha:new Date().toISOString(),created_at:new Date().toISOString()});
+      if(conv.error){toast('No se pudo crear conversación: '+conv.error.message);return;}
+      await insertFlex('mercado_mensajes',{conversacion_id:conv.data?.id||null,publicacion_id:post.id,emisor_id:String(comprador),receptor_id:String(vendedor),mensaje:msg,estado:'enviado',fecha:new Date().toISOString(),created_at:new Date().toISOString()});
+      await insertFlex('mercado_contactos',{publicacion_id:post.id,usuario_id:comprador,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:new Date().toISOString(),created_at:new Date().toISOString()});
+      const next=Number(post.contactos||0)+1; post.contactos=next; sb.from('mercado_publicaciones').update({contactos:next}).eq('id',post.id).then(()=>{});
+      modal.innerHTML=`<section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><p>El vendedor verá tu consulta en Conversaciones.</p><button class="primary" id="okContact">Entendido</button></section>`;
+      modal.querySelector('#okContact')?.addEventListener('click',()=>modal.remove());
+    });
+    modal.querySelector('#contactWa')?.addEventListener('click',async()=>{
+      if(!canUseWhatsapp(post)){toast('El vendedor no autorizó WhatsApp.');return;}
+      await insertFlex('mercado_contactos',{publicacion_id:post.id,usuario_id:session.userId||session.email,canal:'whatsapp',medio_contacto:'whatsapp',mensaje:message(),fecha:new Date().toISOString(),created_at:new Date().toISOString()});
+      const next=Number(post.contactos||0)+1; post.contactos=next; sb.from('mercado_publicaciones').update({contactos:next}).eq('id',post.id).then(()=>{});
+      const phone=phoneClean(post.whatsapp||post.vendedor_whatsapp||''); location.href=`https://wa.me/${phone.startsWith('56')?phone:'56'+phone}?text=${encodeURIComponent(message())}`;
+    });
   }
   async function share(){
     const text=message();
@@ -53,7 +76,7 @@
       <p>${esc(post.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((post.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(post.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
       <div class="metricRow"><span>👁️ ${Number(post.visualizaciones||0)} vistas</span><span>💬 ${Number(post.contactos||0)} contactos</span><span>♥ ${Number(post.favoritos||0)} favoritos</span></div>
-      <button id="btnContact" class="primary">Contactar por WhatsApp</button>
+      <button id="btnContact" class="primary">Contactar vendedor</button>
       <button id="btnShare" class="ghost">Compartir aviso</button>
       ${isMine() && !isBoosted(post) ? `<a class="ghostLink promoteLink" href="mercado-escolar.html?boost=${encodeURIComponent(post.id)}">⭐ Promocionar aviso</a>` : ``}
       <a class="ghostLink" href="mercado-escolar.html">Volver al mercado</a>`;

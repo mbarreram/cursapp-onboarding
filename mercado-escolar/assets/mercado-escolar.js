@@ -47,7 +47,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -115,6 +115,7 @@
       await loadPosts();
       await loadMinePosts();
       await loadFavorites();
+      await loadConversations();
       bind();
       const qs=new URLSearchParams(location.search);
       const boostId=qs.get("boost");
@@ -435,6 +436,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
     set('#pubDesc',post.descripcion||'');
     set('#pubPrice',Number(post.precio||0));
     set('#pubWhatsapp',post.whatsapp||state.session.phone||'');
+    const chatEl=$('#pubChatEnabled'); if(chatEl) chatEl.checked = post.contacto_chat !== false;
+    const waEl=$('#pubWhatsappConsent'); if(waEl) waEl.checked = !!(post.contacto_whatsapp || post.whatsapp_consent || post.whatsapp_autorizado || post.permite_whatsapp);
     set('#pubType',post.tipo||'Venta');
     set('#pubScope',post.visibilidad||'mi_comuna');
     const cat=categoryName(post);
@@ -466,6 +469,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const catId=$("#pubCategory").value;
     const selectedCat=categoryById(catId)||state.categories.find(c=>String(c.nombre)===String(catId))||state.categories[0];
     const whatsapp=phoneClean($("#pubWhatsapp")?.value||state.session.phone||"");
+    const chatEnabled=$("#pubChatEnabled") ? $("#pubChatEnabled").checked : true;
+    const whatsappConsent=$("#pubWhatsappConsent") ? $("#pubWhatsappConsent").checked : false;
     const violation=detectViolation(title,desc);
     const row={
       curso_id:isUuid(state.session.courseId)?state.session.courseId:null,
@@ -481,7 +486,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
       nombre_vendedor:state.session.name,
       // vendedor_email se omite: la tabla productiva no tiene esa columna.
       usuario_id:state.session.userId||state.session.email||null,
-      whatsapp,
+      whatsapp: whatsappConsent ? whatsapp : "",
+      contacto_chat: chatEnabled,
+      contacto_whatsapp: whatsappConsent,
+      whatsapp_consent: whatsappConsent,
+      permite_whatsapp: whatsappConsent,
       activo:true,
       destacado:false,
       visualizaciones:0,
@@ -555,7 +564,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
-      <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar por WhatsApp</button>
+      <button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar vendedor</button>
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
       ${isMine(p) && canBoost(p) ? `<button class="v6BoostBtn" data-open-boost-modal="${esc(p.id)}">⭐ Destacar con créditos</button>` : (isMine(p) && isBoosted(p) ? `<div class="ownerBoostBox">⭐ Ya está destacado · vence en ${daysLeft(boostUntil(p))} día(s)</div>` : "")}
@@ -870,6 +879,66 @@ Vi esta publicación en Mercado Escolar Cursapp.
     document.getElementById("modal").innerHTML=`<div class="modal rulesModal creditHelpModal"><h2>¿Qué es canjear visibilidad?</h2><p>Usas créditos para destacar una publicación activa y que aparezca con mayor prioridad.</p><p>• Solo aplica a publicaciones activas.</p><p>• No se puede usar en avisos vendidos o intercambiados.</p><p>• Colegio: 1 crédito por 7 días.</p><p>• Comuna: 3 créditos por 7 días.</p><p>• Todo Cursapp: 5 créditos por 7 días.</p><p>• Solo se permite un destacado vigente por publicación. Puedes mejorar de nivel pagando solo la diferencia.</p><p>• Las publicaciones vendidas o intercambiadas salen de Inicio, Destacados y Créditos.</p><button class="ghost" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div>`;
   }
 
+
+  function canUseWhatsapp(p){
+    const phone=phoneClean(p.whatsapp||p.vendedor_whatsapp||"");
+    const consent = p.contacto_whatsapp===true || p.whatsapp_consent===true || p.permite_whatsapp===true || String(p.contacto_whatsapp).toLowerCase()==='true' || String(p.whatsapp_consent).toLowerCase()==='true' || String(p.permite_whatsapp).toLowerCase()==='true';
+    return !!phone && consent;
+  }
+  function canUseChat(p){return p.contacto_chat !== false && String(p.contacto_chat).toLowerCase() !== 'false';}
+  function currentUserKey(){return state.session?.userId || state.session?.email || 'anon';}
+  function sellerKey(p){return p.vendedor_id || p.usuario_id || p.vendedor_email || p.email || p.nombre_vendedor || 'vendedor';}
+  function contactMsgDefault(p){return `Hola, ¿sigue disponible ${p?.titulo||'este aviso'}?`;}
+  async function loadConversations(){
+    state.conversations=[]; state.unreadConversations=0;
+    if(!state.sb || (!state.session?.email && !state.session?.userId)){renderConversationBadge();return;}
+    const me=String(currentUserKey());
+    const queries=[state.sb.from('mercado_conversaciones').select('*').eq('comprador_id',me).order('fecha',{ascending:false}).limit(80),state.sb.from('mercado_conversaciones').select('*').eq('vendedor_id',me).order('fecha',{ascending:false}).limit(80)];
+    const res=await Promise.allSettled(queries);
+    const found=new Map();
+    res.forEach(x=>{if(x.status==='fulfilled' && !x.value.error)(x.value.data||[]).forEach(c=>found.set(String(c.id),c));});
+    state.conversations=Array.from(found.values()).sort((a,b)=>Date.parse(b.fecha||b.created_at||0)-Date.parse(a.fecha||a.created_at||0));
+    state.unreadConversations=state.conversations.filter(c=>['nueva','nuevo','abierta'].includes(String(c.estado||'').toLowerCase())).length;
+    renderConversationBadge(); renderConversations();
+  }
+  function renderConversationBadge(){const b=document.getElementById('conversationBadge'); if(!b)return; const n=Number(state.unreadConversations||0); b.textContent=n; b.style.display=n>0?'grid':'none';}
+  function conversationStatusLabel(st){st=String(st||'nueva').toLowerCase(); if(st==='respondida')return 'Respondida'; if(st==='cerrada')return 'Cerrada'; if(st==='venta_concretada')return 'Venta concretada'; return 'Nueva';}
+  function renderConversations(){
+    const box=document.getElementById('conversationsList'); if(!box)return;
+    if(!state.conversations.length){box.innerHTML=`<div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div>`;return;}
+    box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
+  }
+  async function createInternalConversation(p,message){
+    const me=String(currentUserKey()), seller=String(sellerKey(p));
+    const row={publicacion_id:p.id,publicacion_titulo:p.titulo||'Publicación',comprador_id:me,comprador_email:state.session.email||'',comprador_nombre:state.session.name||'Apoderado Cursapp',vendedor_id:seller,vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',medio_contacto:'chat_interno',mensaje,ultimo_mensaje:message,estado:'nueva',fecha:now(),created_at:now()};
+    const conv=await insertFlex('mercado_conversaciones',row); if(conv.error)return conv;
+    await insertFlex('mercado_mensajes',{conversacion_id:conv.data?.id||null,publicacion_id:p.id,emisor_id:me,receptor_id:seller,mensaje,estado:'enviado',fecha:now(),created_at:now()});
+    return conv;
+  }
+  function contactModal(p){
+    const chat=canUseChat(p), wa=canUseWhatsapp(p), msg=contactMsgDefault(p);
+    const waBtn=wa?`<button type="button" class="waContactBtn" data-contact-whatsapp="${esc(p.id)}">WhatsApp autorizado</button>`:'';
+    const chatBtn=chat?`<button type="button" class="primaryBtn" data-send-internal-chat="${esc(p.id)}">Enviar consulta</button>`:'';
+    const privacy=!wa?`<p class="privacyContactNote">Este vendedor usa chat interno para proteger su privacidad.</p>`:`<p class="privacyContactNote">El vendedor autorizó contacto por WhatsApp. También puedes usar chat interno.</p>`;
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm contactModalV38"><h2>Contactar vendedor</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b>${privacy}<label>Mensaje<textarea id="internalContactMsg" rows="3">${esc(msg)}</textarea></label></div><div class="v19ConfirmActions">${chatBtn}${waBtn}<button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
+  }
+  async function sendInternalChat(id){
+    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id)); if(!p)return;
+    const msg=(document.getElementById('internalContactMsg')?.value||contactMsgDefault(p)).trim(); if(!msg){toast('Escribe un mensaje.');return;}
+    const conv=await createInternalConversation(p,msg); if(conv.error){toast('No se pudo crear conversación: '+conv.error.message);return;}
+    await insertFlex('mercado_contactos',{publicacion_id:p.id,usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()});
+    p.contactos=Number(p.contactos||0)+1; state.sb.from('mercado_publicaciones').update({contactos:p.contactos}).eq('id',p.id).then(()=>{});
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">El vendedor verá tu consulta en Conversaciones.</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button><button type="button" class="ghost" data-view="conversaciones" onclick="document.getElementById('modal').innerHTML=''">Ver conversaciones</button></div></section></div>`;
+    await loadConversations(); renderProducts();
+  }
+  async function contactWhatsapp(id){
+    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id)); if(!p)return;
+    if(!canUseWhatsapp(p)){toast('El vendedor no autorizó contacto por WhatsApp. Usa chat interno.');return;}
+    const phone=phoneClean(p.whatsapp||p.vendedor_whatsapp||''), msg=shareText(p).replace('Vi esta publicación','Estoy interesado en esta publicación');
+    await insertFlex('mercado_contactos',{publicacion_id:p.id,usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:'whatsapp',medio_contacto:'whatsapp',mensaje:msg,fecha:now(),created_at:now()});
+    p.contactos=Number(p.contactos||0)+1; state.sb.from('mercado_publicaciones').update({contactos:p.contactos}).eq('id',p.id).then(()=>{});
+    toast('Contacto registrado. Abriendo WhatsApp...'); window.open(`https://wa.me/${phone.startsWith('56')?phone:'56'+phone}?text=${encodeURIComponent(msg)}`,'_blank');
+  }
   async function toggleFavorite(id){
     if(!requireSession()) return;
     const has=state.favorites.has(String(id));
@@ -891,28 +960,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   async function contact(id){
     if(!requireSession()) return;
-    const p=state.posts.find(x=>String(x.id)===String(id)); if(!p) return;
-    const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
-    const msg=`Hola 👋
-
-Vi tu publicación en Mercado Escolar Cursapp.
-
-📦 ${p.titulo||"Publicación"}
-💰 ${price}
-
-¿Sigue disponible?
-
-🔗 Ver publicación:
-${postUrl(p)}`;
-    const phone=phoneClean(p.whatsapp||p.vendedor_whatsapp||"");
-    const whatsappUrl=phone?`https://wa.me/${phone.startsWith("56")?phone:"56"+phone}?text=${encodeURIComponent(msg)}`:"";
-    const row={publicacion_id:p.id,usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:"whatsapp",mensaje:msg};
-    const {error}=await state.sb.from("mercado_contactos").insert([row]);
-    if(error){toast("No se pudo registrar contacto: "+error.message);return;}
-    p.contactos=Number(p.contactos||0)+1;
-    state.sb.from("mercado_publicaciones").update({contactos:p.contactos}).eq("id",p.id).then(()=>{});
-    toast("Contacto registrado"+(whatsappUrl?". Abriendo WhatsApp...":"."));
-    if(whatsappUrl) window.open(whatsappUrl,"_blank");
+    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
+    if(!p) return;
+    if(isMine(p)){toast('Esta publicación es tuya.'); return;}
+    contactModal(p);
   }
   function openReportModal(id){
     if(!requireSession()) return;
@@ -1013,6 +1064,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
       const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}
       const help=e.target.closest("[data-credit-help]"); if(help){e.preventDefault();creditHelp();return;}
+      const sendChat=e.target.closest("[data-send-internal-chat]"); if(sendChat){e.preventDefault();sendInternalChat(sendChat.dataset.sendInternalChat);return;}
+      const sendWa=e.target.closest("[data-contact-whatsapp]"); if(sendWa){e.preventDefault();contactWhatsapp(sendWa.dataset.contactWhatsapp);return;}
       const v=e.target.closest("[data-view]"); if(v){e.preventDefault(); if(v.dataset.view==='publicar'){state.editingPostId=null; const titleEl=$('#view-publicar h2'); if(titleEl) titleEl.textContent='Publicar aviso'; const submit=$('#postForm button[type="submit"], #postForm .primaryBtn'); if(submit) submit.textContent='Publicar aviso';} showView(v.dataset.view);return;}
       const c=e.target.closest("[data-cat]"); if(c){e.preventDefault();filterCat(c.dataset.cat);return;}
       const pc=e.target.closest("[data-post]"); if(pc){e.preventDefault();openDetail(pc.dataset.post);return;}
@@ -1030,6 +1083,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#searchInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault(); search(e.target.value); showView("explorar");}});
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
+    $("#btnConversations")?.addEventListener("click",async()=>{showView('conversaciones'); await loadConversations();});
+    $("#btnMarketAlerts")?.addEventListener("click",()=>toast('Notificaciones de Mercado Escolar próximamente.'));
+    $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" onclick="alert('Reputación disponible en la siguiente fase')">⭐ Mi reputación</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
+    document.addEventListener('click',ev=>{ if(ev.target.closest('[data-open-rules]')){ev.preventDefault(); rules();} });
     $("#pubPhotos")?.addEventListener("change",e=>{
       const merged=mergeSelectedFiles(e.target.files);
       const chk=validateFiles(merged);
