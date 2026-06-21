@@ -30,7 +30,20 @@
   async function safeInsert(table,row){try{return await insertFlex(table,row)}catch(e){return {error:e}}}
   function uniqById(rows){const seen=new Set();return (rows||[]).filter(r=>{const k=String(r.id||r.voucher||r.numero_voucher||JSON.stringify(r)); if(seen.has(k)) return false; seen.add(k); return true;});}
   function movementDate(m){return m.fecha||m.created_at||m.fecha_creacion||m.createdon||m.inserted_at||null;}
-  function movementVoucher(m){return m.numero_voucher||m.voucher||m.codigo_voucher||`CR-${String(m.id||'').slice(0,8)}`;}
+  function movementVoucher(m){return m.codigo_operacion||m.numero_operacion||m.numero_voucher||m.voucher||m.codigo_voucher||`CR-${String(m.id||'').slice(0,8)}`;}
+  function operationType(m){
+    const raw=String((typeof m==='string'?m:(m?.tipo_operacion||m?.operacion||m?.tipo||m?.concepto||''))||'').toLowerCase();
+    if(raw.includes('compra')) return 'COMPRA_CREDITOS';
+    if(raw.includes('uso') || raw.includes('destacado') || raw.includes('canje')) return 'USO_CREDITOS';
+    if(raw.includes('devol')) return 'DEVOLUCION_CREDITOS';
+    return raw ? raw.toUpperCase() : 'MOVIMIENTO_CREDITOS';
+  }
+  function operationDescription(m){
+    const qty=movementQty(m);
+    const type=operationType(m);
+    if(type==='COMPRA_CREDITOS') return m.descripcion || `Compra ${Math.abs(qty)} créditos Mercado`;
+    return m.regla_label||m.destacado_tipo||m.descripcion||m.concepto||'Uso de créditos Mercado';
+  }
   function movementQty(m){return Number(m.cantidad??m.creditos??m.monto_creditos??m.monto??0);}
   function localKey(){return 'cursapp_mercado_creditos_movs_'+String(uid()||session().email||'anon').toLowerCase();}
   function saveLocalMovement(row){try{const k=localKey(); const arr=JSON.parse(localStorage.getItem(k)||'[]'); arr.unshift(row); localStorage.setItem(k,JSON.stringify(arr.slice(0,80)));}catch(e){}}
@@ -65,14 +78,14 @@
     if(!sb) sb=await waitSb(); me=session();
     const numero=extra.voucher||voucherNo();
     const base={
-      usuario_id:uid(), email:me.email, tipo, tipo_operacion:tipo, operacion:tipo,
+      usuario_id:uid(), email:me.email, tipo, tipo_operacion:operationType(tipo), operacion:operationType(tipo),
       cantidad, creditos:cantidad, monto:extra.monto||0,
       publicacion_id:extra.publicacion_id||null, publicacion_titulo:extra.publicacion_titulo||null,
       regla:extra.regla||null, regla_label:extra.regla_label||extra.destacado_tipo||null,
       destacado_tipo:extra.regla_label||extra.destacado_tipo||extra.regla||null,
       dias:extra.dias||null, vence_at:extra.vence_at||extra.fecha_expiracion||null,
       saldo_anterior:extra.saldo_anterior??null, saldo_posterior:extra.saldo_posterior??null,
-      numero_voucher:numero, voucher:numero,
+      numero_voucher:numero, voucher:numero, codigo_operacion:numero, numero_operacion:numero,
       concepto:extra.concepto||tipo,
       descripcion:extra.descripcion||'',
       created_at:now(), fecha:now()
@@ -81,8 +94,8 @@
     const r1=await safeInsert('movimientos_creditos',base);
     await safeInsert('mercado_creditos_historial',base);
     await safeInsert('mercado_vouchers',{
-      voucher:numero, usuario_id:uid(), publicacion_id:extra.publicacion_id||null,
-      operacion:tipo, descripcion:base.descripcion||base.concepto,
+      voucher:numero, codigo_operacion:numero, numero_operacion:numero, usuario_id:uid(), publicacion_id:extra.publicacion_id||null,
+      operacion:operationType(tipo), tipo_operacion:operationType(tipo), descripcion:base.descripcion||base.concepto,
       creditos:cantidad, monto:extra.monto||0,
       saldo_anterior:base.saldo_anterior, saldo_posterior:base.saldo_posterior,
       fecha_expiracion:base.vence_at, fecha:now(), created_at:now()
@@ -158,13 +171,17 @@
       const rows=data.slice(0,limit);
       box.innerHTML=rows.map((m,i)=>{
         const qty=movementQty(m);
-        const isCompra = qty>0 || m.tipo==='compra' || m.tipo_operacion==='compra' || m.operacion==='compra' || m.concepto==='compra_creditos';
+        const type=operationType(m);
+        const isCompra = type==='COMPRA_CREDITOS';
         const rawDesc = String(m.descripcion||'');
         const title = isCompra ? (rawDesc || `Compra ${Math.abs(qty)} créditos Mercado`) : (m.publicacion_titulo || (rawDesc.split('·')[1]||rawDesc||m.regla_label||m.destacado_tipo||'Publicación').trim());
         const label=m.regla_label||m.destacado_tipo||m.regla||'';
-        const op = isCompra ? 'Compra créditos Mercado' : (label?`⭐ ${esc(label)}`:'⭐ Destacado Mercado Escolar');
-        const meta = `${op}${m.dias?` · ${m.dias} días`:''}${(m.vence_at||m.fecha_expiracion)?` · vence ${fmtDateTime(m.vence_at||m.fecha_expiracion)} · quedan ${daysLeft(m.vence_at||m.fecha_expiracion)} día(s)`:''}`;
-        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(movementDate(m))}</small><small>${meta}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
+        const metaParts=[`Tipo: ${type}`];
+        if(!isCompra && label) metaParts.push(`Destacado: ${label}`);
+        if(m.dias) metaParts.push(`${m.dias} días`);
+        if(m.vence_at||m.fecha_expiracion) metaParts.push(`vence ${fmtDateTime(m.vence_at||m.fecha_expiracion)}`);
+        const meta=metaParts.join(' · ');
+        return `<div class="creditMove v20CreditMove"><div><b>${esc(title)}</b><small>${fmtDateTime(movementDate(m))}</small><small>${esc(meta)}</small></div><span class="${qty>=0?'pos':'neg'}">${qty>0?'+':''}${qty} crédito(s)</span><button type="button" data-voucher-index="${i}">📄 Ver voucher</button></div>`;
       }).join('') + (hasMore?`<button type="button" class="ghost creditMore" data-credit-more>Ver más movimientos</button>`:'');
       window.__creditMovements=rows;
     });
@@ -175,7 +192,9 @@
     const voucher=movementVoucher(m);
     const modal=document.getElementById('modal');
     if(!modal) return;
-    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Fecha</span><b>${fmtDateTime(movementDate(m))}</b></p><p><span>Operación</span><b>${esc((Number(m.cantidad||m.creditos||0)>0||m.tipo==='compra')?'Compra créditos Mercado':(m.regla_label||m.concepto||m.tipo||'Movimiento'))}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${m.regla_label?`<p><span>Destacado</span><b>${esc(m.regla_label)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${m.vence_at?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
+    const type=operationType(m);
+    const desc=operationDescription(m);
+    modal.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm voucherModal"><h2>Voucher ${esc(voucher)}</h2><div class="voucherRows"><p><span>Código operación</span><b>${esc(voucher)}</b></p><p><span>Tipo operación</span><b>${esc(type)}</b></p><p><span>Descripción</span><b>${esc(desc)}</b></p><p><span>Fecha</span><b>${fmtDateTime(movementDate(m))}</b></p>${m.publicacion_titulo?`<p><span>Publicación</span><b>${esc(m.publicacion_titulo)}</b></p>`:''}${(m.regla_label||m.destacado_tipo)?`<p><span>Destacado</span><b>${esc(m.regla_label||m.destacado_tipo)}</b></p>`:''}${m.dias?`<p><span>Vigencia</span><b>${m.dias} días</b></p>`:''}${(m.vence_at||m.fecha_expiracion)?`<p><span>Vence</span><b>${fmtDateTime(m.vence_at||m.fecha_expiracion)}</b></p>`:''}<p><span>Créditos</span><b>${qty>0?'+':''}${qty}</b></p>${m.monto?`<p><span>Monto</span><b>${clp(m.monto)}</b></p>`:''}<p><span>Saldo anterior</span><b>${m.saldo_anterior??'—'}</b></p><p><span>Saldo posterior</span><b>${m.saldo_posterior??'—'}</b></p><p><span>Estado</span><b>Registrado</b></p></div><div class="v19ConfirmActions"><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;
   }
   document.addEventListener('click',e=>{const more=e.target.closest('[data-credit-more]'); if(more){e.preventDefault();historyPage++;renderHistory();return;} const v=e.target.closest('[data-voucher-index]'); if(v){e.preventDefault();showVoucher(v.dataset.voucherIndex);return;} const b=e.target.closest('[data-buy-credits]'); if(!b) return; e.preventDefault(); buyCredits(Number(b.dataset.buyCredits||0),Number(b.dataset.price||0));});
   document.addEventListener('DOMContentLoaded',()=>{setTimeout(refresh,700);});
