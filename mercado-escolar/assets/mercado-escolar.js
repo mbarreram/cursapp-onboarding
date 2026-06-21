@@ -348,6 +348,18 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     box.innerHTML=tabs+`<div class="v27MineList">${list.map(card).join("") || empty}</div>`;
   }
+  async function reloadAll(preserveMineFilter=true){
+    try{
+      await loadPosts();
+      await loadMinePosts();
+      renderProducts();
+      renderMine(preserveMineFilter ? (document.getElementById('myPosts')?.dataset.mineFilter||"activos") : "activos");
+      renderCreditVisibilityGuard();
+      if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
+      if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
+    }catch(e){ console.warn('reloadAll mercado', e); }
+  }
+
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
     $("#view-"+v)?.classList.add("active");
@@ -711,16 +723,33 @@ Vi esta publicación en Mercado Escolar Cursapp.
       return;
     }
 
+    const updatedPayload={
+      destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,
+      tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()
+    };
     recentlyBoosted.set(String(id),{rule,until});
-    for(const arr of [state.posts,state.minePosts]){const x=arr.find(z=>String(z.id)===String(id)); if(x){x.destacado=true;x.destacada=true;x.destacado_desde=now();x.destacado_hasta=until;x.destacada_hasta=until;x.tipo_destacado=rule;x.destacado_tipo=rule;x.regla_destacado=rule;x.creditos_usados=costNum;}}
-    // Refresco inmediato sin esperar roundtrip: Inicio, Mis avisos y Créditos quedan consistentes al cerrar modal.
-    renderProducts(); renderMine("activos"); renderCreditVisibilityGuard();
-    setTimeout(async()=>{
-      try{ await loadPosts(); await loadMinePosts(); renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard(); }catch(e){}
-    },250);
-    if(window.CursappMarketCredits?.refresh) window.CursappMarketCredits.refresh(); if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
-    document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>✅ Destacado activado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos descontados</span><b>-${costNum}</b></div><div class="creditSummary"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div></section></div>`;
-    toast(`Aviso destacado: ${newInfo.label}`);
+    for(const arr of [state.posts,state.minePosts]){
+      const x=arr.find(z=>String(z.id)===String(id));
+      if(x) Object.assign(x, updatedPayload, r.data||{});
+    }
+
+    // Refresco visual inmediato: actualiza Home, Mis avisos y Créditos antes de mostrar el OK.
+    renderProducts();
+    renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos");
+    renderCreditVisibilityGuard();
+    if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
+    if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
+
+    const successHtml=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Transacción exitosa</h2><div class="boostConfirmCard"><p>Publicación destacada</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos usados</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo disponible</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-close-success-boost>Entendido</button></div></section></div>`;
+    document.getElementById("modal").innerHTML=successHtml;
+    document.querySelector('[data-close-success-boost]')?.addEventListener('click',async()=>{
+      document.getElementById('modal').innerHTML='';
+      await reloadAll(true);
+    },{once:true});
+    toast(`Destacado activado: ${newInfo.label}`);
+
+    // Segundo refresco corto para recoger lo que devuelva Supabase y evitar que el usuario tenga que moverse.
+    setTimeout(()=>reloadAll(true),350);
     } finally {
       boostInFlight.delete(String(id));
     }
@@ -918,5 +947,5 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   document.addEventListener("DOMContentLoaded",init);
-  window.CursappMarket={reload:loadPosts,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal};
+  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal};
 })();
