@@ -909,27 +909,119 @@ Vi esta publicación en Mercado Escolar Cursapp.
     box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
   }
   async function createInternalConversation(p,message){
-    const me=String(currentUserKey()), seller=String(sellerKey(p));
-    const row={publicacion_id:p.id,publicacion_titulo:p.titulo||'Publicación',comprador_id:me,comprador_email:state.session.email||'',comprador_nombre:state.session.name||'Apoderado Cursapp',vendedor_id:seller,vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',medio_contacto:'chat_interno',mensaje,ultimo_mensaje:message,estado:'nueva',fecha:now(),created_at:now()};
-    const conv=await insertFlex('mercado_conversaciones',row); if(conv.error)return conv;
-    await insertFlex('mercado_mensajes',{conversacion_id:conv.data?.id||null,publicacion_id:p.id,emisor_id:me,receptor_id:seller,mensaje,estado:'enviado',fecha:now(),created_at:now()});
+    const me=String(currentUserKey());
+    const seller=String(sellerKey(p));
+    const timestamp=now();
+
+    // Fila amplia: insertFlex elimina columnas inexistentes según el schema real de Supabase.
+    const fullRow={
+      publicacion_id:p.id,
+      publicacion_titulo:p.titulo||'Publicación',
+      comprador_id:me,
+      comprador_email:state.session?.email||'',
+      comprador_nombre:state.session?.name||'Apoderado Cursapp',
+      vendedor_id:seller,
+      vendedor_email:p.vendedor_email||p.email||p.usuario_id||'',
+      vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',
+      medio_contacto:'chat_interno',
+      mensaje,
+      ultimo_mensaje:message,
+      estado:'nueva',
+      fecha:timestamp,
+      created_at:timestamp
+    };
+
+    let conv=await insertFlex('mercado_conversaciones',fullRow);
+
+    // Fallback para instalaciones donde la tabla V38 quedó con estructura mínima.
+    if(conv.error){
+      const minimalRow={
+        publicacion_id:p.id,
+        vendedor_id:seller,
+        comprador_id:me,
+        estado:'nueva',
+        ultimo_mensaje:timestamp,
+        created_at:timestamp
+      };
+      conv=await insertFlex('mercado_conversaciones',minimalRow);
+    }
+
+    if(conv.error) return conv;
+
+    const convId=conv.data?.id||conv.data?.conversacion_id||null;
+    const msgRows=[
+      {conversacion_id:convId,publicacion_id:p.id,remitente_id:me,emisor_id:me,receptor_id:seller,mensaje,estado:'enviado',leido:false,fecha:timestamp,created_at:timestamp},
+      {conversacion_id:convId,remitente_id:me,mensaje,leido:false,created_at:timestamp}
+    ];
+
+    let msgRes=null;
+    for(const row of msgRows){
+      msgRes=await insertFlex('mercado_mensajes',row);
+      if(!msgRes.error) break;
+    }
+
+    // Si el mensaje falla, igual devolvemos el error para que no parezca enviado.
+    if(msgRes?.error) return msgRes;
+
     return conv;
   }
   function contactModal(p){
     const chat=canUseChat(p), wa=canUseWhatsapp(p), msg=contactMsgDefault(p);
     const waBtn=wa?`<button type="button" class="waContactBtn" data-contact-whatsapp="${esc(p.id)}">WhatsApp autorizado</button>`:'';
-    const chatBtn=chat?`<button type="button" class="primaryBtn" data-send-internal-chat="${esc(p.id)}">Enviar consulta</button>`:'';
+    const chatBtn=chat?`<button type="button" class="primaryBtn" data-send-internal-chat="${esc(p.id)}" onclick="window.CursappMarket&&window.CursappMarket.sendInternalChat&&window.CursappMarket.sendInternalChat('${esc(p.id)}')">Enviar consulta</button>`:'';
     const privacy=!wa?`<p class="privacyContactNote">Este vendedor usa chat interno para proteger su privacidad.</p>`:`<p class="privacyContactNote">El vendedor autorizó contacto por WhatsApp. También puedes usar chat interno.</p>`;
     document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm contactModalV38"><h2>Contactar vendedor</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b>${privacy}<label>Mensaje<textarea id="internalContactMsg" rows="3">${esc(msg)}</textarea></label></div><div class="v19ConfirmActions">${chatBtn}${waBtn}<button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
   }
   async function sendInternalChat(id){
-    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id)); if(!p)return;
-    const msg=(document.getElementById('internalContactMsg')?.value||contactMsgDefault(p)).trim(); if(!msg){toast('Escribe un mensaje.');return;}
-    const conv=await createInternalConversation(p,msg); if(conv.error){toast('No se pudo crear conversación: '+conv.error.message);return;}
-    await insertFlex('mercado_contactos',{publicacion_id:p.id,usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()});
-    p.contactos=Number(p.contactos||0)+1; state.sb.from('mercado_publicaciones').update({contactos:p.contactos}).eq('id',p.id).then(()=>{});
-    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">El vendedor verá tu consulta en Conversaciones.</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button><button type="button" class="ghost" data-view="conversaciones" onclick="document.getElementById('modal').innerHTML=''">Ver conversaciones</button></div></section></div>`;
-    await loadConversations(); renderProducts();
+    if(!requireSession()) return;
+
+    const btn=document.querySelector(`[data-send-internal-chat="${String(id).replace(/"/g,'\\"')}"]`);
+    if(btn){btn.disabled=true; btn.dataset.originalText=btn.textContent; btn.textContent='Enviando...';}
+
+    try{
+      const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
+      if(!p){toast('No se encontró la publicación para enviar la consulta.'); return;}
+      if(isMine(p)){toast('Esta publicación es tuya.'); return;}
+
+      const msg=(document.getElementById('internalContactMsg')?.value||contactMsgDefault(p)).trim();
+      if(!msg){toast('Escribe un mensaje.'); return;}
+
+      const conv=await createInternalConversation(p,msg);
+      if(conv.error){
+        console.error('[CHAT] createInternalConversation error',conv.error);
+        toast('No se pudo crear conversación: '+(conv.error.message||JSON.stringify(conv.error)));
+        return;
+      }
+
+      // Registro de contacto: no bloquea el envío si esta tabla tiene columnas distintas.
+      try{
+        const contactRows=[
+          {publicacion_id:p.id,vendedor_id:sellerKey(p),comprador_id:currentUserKey(),usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()},
+          {publicacion_id:p.id,vendedor_id:sellerKey(p),comprador_id:currentUserKey(),medio_contacto:'chat_interno',created_at:now()}
+        ];
+        for(const row of contactRows){
+          const r=await insertFlex('mercado_contactos',row);
+          if(!r.error) break;
+        }
+      }catch(contactError){
+        console.warn('[CHAT] contacto no bloqueante',contactError);
+      }
+
+      p.contactos=Number(p.contactos||0)+1;
+      try{state.sb.from('mercado_publicaciones').update({contactos:p.contactos}).eq('id',p.id).then(()=>{});}catch(e){}
+
+      document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Consulta enviada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">El vendedor verá tu consulta en Conversaciones.</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button><button type="button" class="ghost" data-view="conversaciones" onclick="document.getElementById('modal').innerHTML=''">Ver conversaciones</button></div></section></div>`;
+
+      toast('Consulta enviada correctamente');
+      try{await loadConversations();}catch(e){console.warn('[CHAT] loadConversations',e);}
+      renderProducts();
+
+    }catch(error){
+      console.error('[CHAT ERROR]',error);
+      toast('No se pudo enviar la consulta: '+(error?.message||String(error)));
+    }finally{
+      if(btn){btn.disabled=false; btn.textContent=btn.dataset.originalText||'Enviar consulta';}
+    }
   }
   async function contactWhatsapp(id){
     const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id)); if(!p)return;
@@ -1115,5 +1207,5 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   document.addEventListener("DOMContentLoaded",init);
-  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal};
+  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal,sendInternalChat,contactModal,loadConversations};
 })();
