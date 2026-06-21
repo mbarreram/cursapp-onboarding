@@ -5,14 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
 <link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
-<link rel="stylesheet" href="assets/mercado-production-v35.css?v=35"/>
+<link rel="stylesheet" href="assets/mercado-production-v38.css?v=38"/>
 </head>
 <body class="market-v8">
 <main class="marketApp">
   <header class="marketHeader">
     <div class="brandIcon">🛍️</div>
     <div><h1>Mercado Escolar</h1><p>Comunidad registrada · compra, venta e intercambio</p></div>
-    <button class="headerBell" id="btnRules" aria-label="Reglas">🛡️</button>
+    <div class="marketHeaderActions">
+      <button class="headerIconBtn chatHeaderBtn" id="btnConversations" aria-label="Conversaciones">💬<em id="conversationBadge" style="display:none">0</em></button>
+      <button class="headerIconBtn" id="btnMarketAlerts" aria-label="Notificaciones">🔔<em id="marketAlertsBadge" style="display:none">0</em></button>
+      <button class="headerIconBtn" id="btnMarketMenu" aria-label="Menú Mercado">☰</button>
+    </div>
   </header>
 
   <section id="view-inicio" class="view active">
@@ -75,7 +79,13 @@
         <label>Categoría<select id="pubCategory"><option>Libros</option><option>Uniformes</option><option>Vestuario</option><option>Deportes</option><option>Otros</option></select></label>
         <label>Tipo<select id="pubType"><option>Venta</option><option>Intercambio</option><option>Venta o intercambio</option></select></label>
         <label>Precio<input id="pubPrice" type="number" min="0" value="0"></label>
-        <label>WhatsApp contacto<input id="pubWhatsapp" type="tel" placeholder="Ej: 56912345678"></label>
+        <section class="contactPrefsBox">
+          <h3>Métodos de contacto</h3>
+          <label class="contactCheck"><input id="pubChatEnabled" type="checkbox" checked> Chat interno Cursapp <small>Recomendado para cuidar privacidad</small></label>
+          <label class="contactCheck"><input id="pubWhatsappConsent" type="checkbox"> Permitir contacto por WhatsApp</label>
+          <label class="whatsappField">WhatsApp contacto<input id="pubWhatsapp" type="tel" placeholder="Ej: 56912345678"></label>
+          <p class="contactPrivacyHint">Tu número solo se usará si autorizas WhatsApp. Si no, los interesados contactan por chat interno.</p>
+        </section>
         <label>Visibilidad<select id="pubScope"><option value="colegio">Solo mi colegio</option><option value="cercanos">Colegios cercanos</option><option value="comuna">Mi comuna</option></select></label>
         <label>Descripción<textarea id="pubDesc" required placeholder="Describe estado, talla, año, etc."></textarea></label>
         <button class="primary" type="submit">Publicar artículo</button>
@@ -86,6 +96,14 @@
   <section id="view-mis" class="view">
     <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Mis avisos</h2><button data-view="publicar" class="miniAction">+ Nueva</button></div>
     <section class="panel myMarketPanel"><div id="myPosts"></div></section>
+  </section>
+
+
+  <section id="view-conversaciones" class="view">
+    <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Conversaciones</h2></div>
+    <section class="panel conversationsPanel">
+      <div id="conversationsList" class="conversationsList"><div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div></div>
+    </section>
   </section>
 
   <section id="view-creditos" class="view" style="display:none">
@@ -108,7 +126,7 @@
 <div id="modal"></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=37"></script>
-<script src="assets/mercado-creditos.js?v=37"></script>
+<script src="assets/mercado-escolar.js?v=38"></script>
+<script src="assets/mercado-creditos.js?v=38"></script>
 </body>
 </html>
