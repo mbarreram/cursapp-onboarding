@@ -6,6 +6,13 @@
   const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
   const now=()=>new Date().toISOString();
+  function debugBoostAlert(step, data){
+    try{
+      const msg='[DEBUG DESTACADO] '+step+(data?'\n'+(typeof data==='string'?data:JSON.stringify(data,null,2)):'');
+      alert(msg);
+      console.log(msg, data||'');
+    }catch(e){console.warn('debugBoostAlert',e,data);}
+  }
   const phoneClean=s=>String(s||"").replace(/[^0-9]/g,"");
   const isUuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s||""));
   const BUCKET="mercado-escolar";
@@ -731,6 +738,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   async function boostPost(rule,cost,idOverride){
     const sel=document.getElementById("boostPostSelect");
     const id=idOverride || sel?.value;
+    debugBoostAlert("1. boostPost() iniciado", {id, rule, cost});
     if(!id){toast("Selecciona una publicación activa para destacar.");return;}
     if(boostInFlight.has(String(id))){toast("Ya estamos procesando este destacado.");return;}
     boostInFlight.add(String(id));
@@ -770,10 +778,13 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     const until=new Date(Date.now()+newInfo.days*86400000).toISOString();
     const body=`<div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><hr><p>Tipo de destacado</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Duración: ${newInfo.days} días · vence ${fmtDateTime(until)}</p><div class="creditSummary"><span>Saldo actual</span><b>${saldoActual}</b></div><div class="creditSummary"><span>Costo</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo posterior</span><b>${saldoActual-costNum}</b></div></div>`;
+    debugBoostAlert("2. Se abrió modal de confirmación", {id, titulo:p.titulo, rule, cost:costNum, saldoActual, saldoPosterior:saldoActual-costNum, until});
     const ok=await marketConfirm({title:'Confirmar destacado',body,ok:'Confirmar y usar créditos'});
+    debugBoostAlert("3. Resultado botón confirmar", {ok, id, rule});
     if(!ok) return;
 
     // Revalidación final: evita doble descuento si el usuario toca dos veces o viene desde Detalle.
+    debugBoostAlert("4. Revalidando si ya existe destacado antes de descontar", {id});
     const existingAfterConfirm=await dbActiveBoost(id);
     if(existingAfterConfirm){
       applyBoostToLocal(id, existingAfterConfirm.rule, existingAfterConfirm.until, existingAfterConfirm.row||{});
@@ -784,10 +795,14 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
 
     // Primero marcamos la publicación. Si falla, no descontamos créditos.
+    debugBoostAlert("5. Llamando updatePostFlex() para marcar publicación destacada", {id, rule, until, costNum});
     let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()});
+    debugBoostAlert("6. Respuesta updatePostFlex()", {error:r.error?String(r.error.message||r.error):null, data:r.data||null});
     if(r.error){toast("No se pudo activar el destacado: "+r.error.message);return;}
 
+    debugBoostAlert("7. Llamando recordCreditUse() para descontar y registrar historial", {id, rule, costNum, saldoAnterior:saldoActual, saldoPosterior:saldoActual-costNum});
     const spend=await recordCreditUse(id,rule,costNum,{titulo:p.titulo||'',until,saldoAnterior:saldoActual,saldoPosterior:saldoActual-costNum});
+    debugBoostAlert("8. Respuesta recordCreditUse()", spend);
     if(!spend.ok){
       await updatePostFlex(id,{destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,creditos_usados:0,updated_at:now()});
       toast(spend.message||"No se pudo usar créditos.");
@@ -798,6 +813,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,
       tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()
     };
+    debugBoostAlert("9. Aplicando destacado en estado local", {id, rule, until});
     applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
 
     // Actualización optimista inmediata: la tarjeta debe verse destacada apenas termina la transacción,
@@ -805,10 +821,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     renderProducts();
     renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos");
     renderCreditVisibilityGuard();
+    debugBoostAlert("10. Render inmediato ejecutado", {posts:state.posts.length, minePosts:state.minePosts.length});
 
     const successHtml=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Transacción exitosa</h2><div class="boostConfirmCard"><p>Publicación destacada</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos usados</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo disponible</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-close-success-boost>Entendido</button></div></section></div>`;
     const modalEl=document.getElementById("modal");
     if(modalEl) modalEl.innerHTML=successHtml;
+    debugBoostAlert("11. Modal de éxito pintado", {modalExiste:!!modalEl, voucher:spend.voucher||null});
     document.querySelector('[data-close-success-boost]')?.addEventListener('click',async()=>{
       document.getElementById('modal').innerHTML='';
       await reloadAll(true);
@@ -820,7 +838,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
       try{
         if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
         if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
+        debugBoostAlert("12. Ejecutando reloadAll(true) post-destacado", {id});
         await reloadAll(true);
+        debugBoostAlert("13. reloadAll(true) terminado", {id});
       }catch(e){ console.warn('post-boost refresh', e); }
     },250);
     } finally {
