@@ -625,6 +625,55 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
     return state.sb.from("mercado_publicaciones").update(cleaned).eq("id",id).select("*").maybeSingle();
   }
+  async function dbActiveBoost(publicacionId){
+    const id=String(publicacionId||"");
+    if(!id || !state.sb) return null;
+    const activeWords=["activa","activo","vigente"];
+    try{
+      let r=await state.sb.from("publicaciones_destacadas")
+        .select("*")
+        .eq("publicacion_id",id)
+        .in("estado",activeWords)
+        .order("fecha_fin",{ascending:false})
+        .limit(5);
+      if(r.error){
+        r=await state.sb.from("publicaciones_destacadas")
+          .select("*")
+          .eq("publicacion_id",id)
+          .eq("activo",true)
+          .limit(5);
+      }
+      const rows=(r.data||[]).filter(x=>{
+        const until=x.fecha_fin||x.vence_at||x.destacado_hasta||x.hasta;
+        return !until || Number.isNaN(Date.parse(until)) || Date.parse(until)>Date.now();
+      });
+      if(rows.length){
+        const row=rows[0];
+        return {
+          rule:String(row.regla||row.tipo||row.tipo_destacado||row.destacado_tipo||row.destacado||"colegio").toLowerCase(),
+          until:row.fecha_fin||row.vence_at||row.destacado_hasta||row.hasta||null,
+          row
+        };
+      }
+    }catch(e){}
+    try{
+      const r=await state.sb.from("mercado_publicaciones")
+        .select("id,estado,destacado,destacada,destacado_hasta,destacada_hasta,tipo_destacado,destacado_tipo,regla_destacado,creditos_usados")
+        .eq("id",id).maybeSingle();
+      if(!r.error && r.data && isBoosted(r.data)){
+        return {rule:activeBoostRule(r.data)||"colegio",until:boostUntil(r.data),row:r.data};
+      }
+    }catch(e){}
+    return null;
+  }
+  function applyBoostToLocal(id, rule, until, extra={}){
+    const payload={destacado:true,destacada:true,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,destacado_hasta:until,destacada_hasta:until, ...extra};
+    recentlyBoosted.set(String(id),{rule,until});
+    for(const arr of [state.posts,state.minePosts]){
+      const x=arr.find(z=>String(z.id)===String(id));
+      if(x) Object.assign(x,payload);
+    }
+  }
   async function recordCreditUse(publicacionId,rule,cost,ctx={}){
     const uid=state.session.userId||state.session.email;
     const email=state.session.email||null;
@@ -660,6 +709,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
   async function openBoostModal(id){
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
+    const existing=await dbActiveBoost(id);
+    if(existing){
+      applyBoostToLocal(id, existing.rule, existing.until, existing.row||{});
+      renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard();
+    }
     if(isBoosted(p)){
       document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Destacado actual</p><b>⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)}</b><p class="muted">Vence ${fmtDateTime(boostUntil(p))} · quedan ${daysLeft(boostUntil(p))} día(s)</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div></section></div>`;
       return;
@@ -683,6 +737,13 @@ Vi esta publicación en Mercado Escolar Cursapp.
     try{
     const p=state.minePosts.find(x=>String(x.id)===String(id))||state.posts.find(x=>String(x.id)===String(id));
     if(!p || !isActiveMarketPost(p)){toast("Solo puedes destacar publicaciones activas.");return;}
+    const existingDb=await dbActiveBoost(id);
+    if(existingDb){
+      applyBoostToLocal(id, existingDb.rule, existingDb.until, existingDb.row||{});
+      renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard();
+      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Destacado actual</p><b>⭐ ${esc(boostRuleInfo(existingDb.rule).label)}</b><p class="muted">Vence ${fmtDateTime(existingDb.until)} · quedan ${daysLeft(existingDb.until)} día(s)</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
+      return;
+    }
     if(isBoosted(p)){
       toast(`Esta publicación ya tiene un destacado vigente. Vence el ${fmtDateTime(boostUntil(p))}.`);
       openBoostModal(id);
@@ -712,6 +773,16 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const ok=await marketConfirm({title:'Confirmar destacado',body,ok:'Confirmar y usar créditos'});
     if(!ok) return;
 
+    // Revalidación final: evita doble descuento si el usuario toca dos veces o viene desde Detalle.
+    const existingAfterConfirm=await dbActiveBoost(id);
+    if(existingAfterConfirm){
+      applyBoostToLocal(id, existingAfterConfirm.rule, existingAfterConfirm.until, existingAfterConfirm.row||{});
+      renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard();
+      toast("Esta publicación ya tiene un destacado vigente. No se descontaron créditos.");
+      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">Vigente hasta ${fmtDateTime(existingAfterConfirm.until)} · quedan ${daysLeft(existingAfterConfirm.until)} día(s)</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''">Entendido</button></div></section></div>`;
+      return;
+    }
+
     // Primero marcamos la publicación. Si falla, no descontamos créditos.
     let r=await updatePostFlex(id,{destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()});
     if(r.error){toast("No se pudo activar el destacado: "+r.error.message);return;}
@@ -727,11 +798,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,
       tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()
     };
-    recentlyBoosted.set(String(id),{rule,until});
-    for(const arr of [state.posts,state.minePosts]){
-      const x=arr.find(z=>String(z.id)===String(id));
-      if(x) Object.assign(x, updatedPayload, r.data||{});
-    }
+    applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
 
     // Refresco visual inmediato: actualiza Home, Mis avisos y Créditos antes de mostrar el OK.
     renderProducts();
