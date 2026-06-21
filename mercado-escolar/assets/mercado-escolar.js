@@ -709,10 +709,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
       // spendCredits ya registra movimiento, historial y voucher. Evita duplicados.
 
     }else{
-      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"uso",tipo_operacion:"uso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',regla,regla_label:info.label,destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,numero_voucher:voucher,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,created_at:now(),fecha:now()});
+      await insertFlex("movimientos_creditos",{usuario_id:uid,email,tipo:"uso",tipo_operacion:"uso",concepto:"destacado_mercado",cantidad:-Math.abs(Number(cost||0)),creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',regla:rule,regla_label:info.label,destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,numero_voucher:voucher,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,created_at:now(),fecha:now()});
       await insertFlex("mercado_creditos_historial",{usuario_id:uid,email,tipo_operacion:"uso",operacion:"uso",creditos:-Math.abs(Number(cost||0)),publicacion_id:publicacionId,publicacion_titulo:ctx.titulo||'',destacado_tipo:info.label,dias:info.days,vence_at:until,saldo_anterior:before,saldo_posterior:after,voucher,descripcion:`${info.label} · ${ctx.titulo||'publicación'} · ${info.days} días`,fecha:now()});
     }
-    await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla,tipo:rule,tipo_destacado:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
+    await insertFlex("publicaciones_destacadas",{publicacion_id:publicacionId,usuario_id:uid,email,regla:rule,tipo:rule,tipo_destacado:rule,creditos_usados:Number(cost||0),creditos:Number(cost||0),fecha_inicio:now(),fecha_fin:until,vence_at:until,estado:"activa",activo:true,created_at:now()});
     return {ok:true,until,voucher,saldoAnterior:before,saldoPosterior:after};
   }
   async function openBoostModal(id){
