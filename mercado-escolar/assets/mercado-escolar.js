@@ -6,7 +6,9 @@
   const esc=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   const clp=n=>"$"+Number(n||0).toLocaleString("es-CL");
   const now=()=>new Date().toISOString();
+  const DEBUG_BOOST=false;
   function debugBoostAlert(step, data){
+    if(!DEBUG_BOOST) return;
     try{
       const msg='[DEBUG DESTACADO] '+step+(data?'\n'+(typeof data==='string'?data:JSON.stringify(data,null,2)):'');
       alert(msg);
@@ -800,47 +802,63 @@ Vi esta publicación en Mercado Escolar Cursapp.
     debugBoostAlert("6. Respuesta updatePostFlex()", {error:r.error?String(r.error.message||r.error):null, data:r.data||null});
     if(r.error){toast("No se pudo activar el destacado: "+r.error.message);return;}
 
-    debugBoostAlert("7. Llamando recordCreditUse() para descontar y registrar historial", {id, rule, costNum, saldoAnterior:saldoActual, saldoPosterior:saldoActual-costNum});
-    const spend=await recordCreditUse(id,rule,costNum,{titulo:p.titulo||'',until,saldoAnterior:saldoActual,saldoPosterior:saldoActual-costNum});
-    debugBoostAlert("8. Respuesta recordCreditUse()", spend);
-    if(!spend.ok){
-      await updatePostFlex(id,{destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,creditos_usados:0,updated_at:now()});
-      toast(spend.message||"No se pudo usar créditos.");
-      return;
-    }
-
     const updatedPayload={
       destacado:true,destacada:true,destacado_desde:now(),destacado_hasta:until,destacada_hasta:until,
       tipo_destacado:rule,destacado_tipo:rule,regla_destacado:rule,creditos_usados:costNum,updated_at:now()
     };
-    debugBoostAlert("9. Aplicando destacado en estado local", {id, rule, until});
-    applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
 
-    // Actualización optimista inmediata: la tarjeta debe verse destacada apenas termina la transacción,
-    // sin obligar al usuario a salir/volver a entrar a Cursapp.
+    // V35: actualización visual inmediata apenas Supabase confirma la publicación.
+    // Antes quedaba esperando el registro de crédito/historial y el usuario debía salir/volver.
+    applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
+    const activeTab=document.getElementById('myPosts')?.dataset.mineFilter||"activos";
     renderProducts();
-    renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos");
+    renderMine(activeTab);
     renderCreditVisibilityGuard();
-    debugBoostAlert("10. Render inmediato ejecutado", {posts:state.posts.length, minePosts:state.minePosts.length});
+
+    const modalEl=document.getElementById("modal");
+    if(modalEl){
+      modalEl.innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>Procesando destacado</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">Estamos registrando la transacción y el voucher.</p></div></section></div>`;
+    }
+
+    let spend;
+    try{
+      spend=await recordCreditUse(id,rule,costNum,{titulo:p.titulo||'',until,saldoAnterior:saldoActual,saldoPosterior:saldoActual-costNum});
+    }catch(e){
+      spend={ok:false,message:e?.message||String(e)};
+    }
+    if(!spend || !spend.ok){
+      await updatePostFlex(id,{destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,creditos_usados:0,updated_at:now()});
+      for(const arr of [state.posts,state.minePosts]){
+        const x=arr.find(z=>String(z.id)===String(id));
+        if(x){Object.assign(x,{destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,creditos_usados:0});}
+      }
+      renderProducts(); renderMine(activeTab); renderCreditVisibilityGuard();
+      if(modalEl) modalEl.innerHTML='';
+      toast(spend?.message||"No se pudo usar créditos.");
+      return;
+    }
 
     const successHtml=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Transacción exitosa</h2><div class="boostConfirmCard"><p>Publicación destacada</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos usados</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo disponible</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-close-success-boost>Entendido</button></div></section></div>`;
-    const modalEl=document.getElementById("modal");
     if(modalEl) modalEl.innerHTML=successHtml;
-    debugBoostAlert("11. Modal de éxito pintado", {modalExiste:!!modalEl, voucher:spend.voucher||null});
     document.querySelector('[data-close-success-boost]')?.addEventListener('click',async()=>{
       document.getElementById('modal').innerHTML='';
-      await reloadAll(true);
+      renderProducts();
+      renderMine(document.getElementById('myPosts')?.dataset.mineFilter||activeTab);
+      renderCreditVisibilityGuard();
+      setTimeout(()=>reloadAll(true).catch(console.warn),50);
     },{once:true});
     toast(`Destacado activado: ${newInfo.label}`);
 
-    // Refrescos no bloqueantes: nunca deben impedir la confirmación ni borrar la actualización local.
+    // Refrescos no bloqueantes: actualizan historial/saldo sin borrar el estado local recién aplicado.
     setTimeout(async()=>{
       try{
         if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
         if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
-        debugBoostAlert("12. Ejecutando reloadAll(true) post-destacado", {id});
         await reloadAll(true);
-        debugBoostAlert("13. reloadAll(true) terminado", {id});
+        applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
+        renderProducts();
+        renderMine(document.getElementById('myPosts')?.dataset.mineFilter||activeTab);
+        renderCreditVisibilityGuard();
       }catch(e){ console.warn('post-boost refresh', e); }
     },250);
     } finally {
