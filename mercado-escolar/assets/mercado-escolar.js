@@ -800,23 +800,29 @@ Vi esta publicación en Mercado Escolar Cursapp.
     };
     applyBoostToLocal(id, rule, until, {...updatedPayload, ...(r.data||{})});
 
-    // Refresco visual inmediato: actualiza Home, Mis avisos y Créditos antes de mostrar el OK.
+    // Actualización optimista inmediata: la tarjeta debe verse destacada apenas termina la transacción,
+    // sin obligar al usuario a salir/volver a entrar a Cursapp.
     renderProducts();
     renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos");
     renderCreditVisibilityGuard();
-    if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
-    if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
 
     const successHtml=`<div class="v19ConfirmOverlay"><section class="v19Confirm successBoostModal"><h2>✅ Transacción exitosa</h2><div class="boostConfirmCard"><p>Publicación destacada</p><b>${esc(p.titulo||'Publicación')}</b><p>Tipo</p><b>⭐ ${esc(newInfo.label)}</b><p class="muted">Vigente hasta ${fmtDateTime(until)} · quedan ${daysLeft(until)} día(s)</p><div class="creditSummary"><span>Créditos usados</span><b>-${costNum}</b></div><div class="creditSummary strong"><span>Saldo disponible</span><b>${saldoActual-costNum}</b></div><p class="muted">Voucher: ${esc(spend.voucher||'registrado')}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-close-success-boost>Entendido</button></div></section></div>`;
-    document.getElementById("modal").innerHTML=successHtml;
+    const modalEl=document.getElementById("modal");
+    if(modalEl) modalEl.innerHTML=successHtml;
     document.querySelector('[data-close-success-boost]')?.addEventListener('click',async()=>{
       document.getElementById('modal').innerHTML='';
       await reloadAll(true);
     },{once:true});
     toast(`Destacado activado: ${newInfo.label}`);
 
-    // Segundo refresco corto para recoger lo que devuelva Supabase y evitar que el usuario tenga que moverse.
-    setTimeout(()=>reloadAll(true),350);
+    // Refrescos no bloqueantes: nunca deben impedir la confirmación ni borrar la actualización local.
+    setTimeout(async()=>{
+      try{
+        if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
+        if(window.CursappMarketCredits?.renderHistory) window.CursappMarketCredits.renderHistory();
+        await reloadAll(true);
+      }catch(e){ console.warn('post-boost refresh', e); }
+    },250);
     } finally {
       boostInFlight.delete(String(id));
     }
