@@ -937,7 +937,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const legacyKey=String(currentUserKey());
     const requests=[];
     const addReq=q=>{ if(q) requests.push(q.limit ? q.limit(80) : q); };
-    const safeOrder=q=>{ try{return q.order('fecha',{ascending:false});}catch(e){return q;} };
+    const safeOrder=q=>{ try{return q.order('created_at',{ascending:false});}catch(e){return q;} };
 
     // Compatibilidad V38/V38.1: algunas instalaciones guardan ids UUID y otras guardan email/texto.
     try{ if(meUuid) addReq(safeOrder(state.sb.from('mercado_conversaciones').select('*').eq('comprador_id',meUuid))); }catch(e){}
@@ -964,7 +964,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function renderConversations(){
     const box=document.getElementById('conversationsList'); if(!box)return;
     if(!state.conversations.length){box.innerHTML=`<div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div>`;return;}
-    box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
+    box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.ultimo_mensaje||c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
   }
   async function createInternalConversation(p,message){
     const buyerUuid=await resolveCurrentUserUuid();
@@ -991,7 +991,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       comprador_id:buyerUuid,
       vendedor_id:sellerId,
       estado:'nueva',
-      ultimo_mensaje:message,
+      ultimo_mensaje:timestamp,
       created_at:timestamp
     };
 
