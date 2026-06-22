@@ -862,3 +862,5 @@ body.market-v8{background:#f5f6f8!important;}
 .chatReplyBox textarea:focus{border-color:#c4b5fd!important;box-shadow:0 0 0 3px rgba(109,40,217,.10)!important;}
 .stickyChatActions .primaryBtn:disabled{opacity:.55!important;filter:grayscale(.2)!important;cursor:not-allowed!important;}
 @media(max-width:420px){.chatReplyBox textarea{min-height:86px!important}.stickyChatActions{gap:8px!important}.stickyChatActions button{min-height:46px!important}}
+/* V38.6: Ver aviso dentro del mismo detalle del marketplace */
+button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;font-family:inherit}

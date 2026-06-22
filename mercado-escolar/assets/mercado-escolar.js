@@ -1010,6 +1010,37 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return raw ? `MKT-${raw.slice(-6)}` : 'MKT-S/C';
   }
   function productPublicUrl(p){return p?.id ? postUrl(p) : '#';}
+  async function findExistingConversationForPost(p){
+    if(!p || !state.sb) return null;
+    const buyerUuid=await resolveCurrentUserUuid();
+    const sellerId=sellerUuid(p);
+    if(!buyerUuid || !sellerId || !p.id) return null;
+    try{
+      const r=await state.sb.from('mercado_conversaciones')
+        .select('*')
+        .eq('publicacion_id',p.id)
+        .eq('comprador_id',buyerUuid)
+        .eq('vendedor_id',sellerId)
+        .order('created_at',{ascending:false})
+        .limit(1)
+        .maybeSingle();
+      if(!r.error && r.data) return r.data;
+    }catch(e){ console.warn('[CHAT] buscar conversación existente',e); }
+    return null;
+  }
+  async function openExistingConversationForPost(p){
+    const existing=await findExistingConversationForPost(p);
+    if(!existing) return false;
+    state.conversations=state.conversations||[];
+    if(!state.conversations.some(c=>String(c.id)===String(existing.id))){
+      state.conversations.unshift(existing);
+    }
+    state.conversationPosts=state.conversationPosts||{};
+    state.conversationPosts[String(p.id)]=p;
+    try{await hydrateConversationUsers(await resolveCurrentUserUuid());}catch(e){}
+    await openConversation(existing.id);
+    return true;
+  }
   function maskEmail(email){
     const e=String(email||'').trim().toLowerCase();
     if(!e || !e.includes('@')) return '';
@@ -1104,7 +1135,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel"><div><b>Acciones del vendedor</b><small>Cambia el estado cuando cierres el trato. Esto bloquea nuevas consultas.</small></div><div class="chatSellerActions"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Marcar vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Marcar intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
     const replyBox=closed?`<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div>`:`<div class="chatReplyBox"><label for="chatReplyText">Responder</label><textarea id="chatReplyText" rows="4" placeholder="Escribe tu respuesta..." autocomplete="off"></textarea></div>`;
     const sendBtn=closed?'':`<button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar respuesta</button>`;
-    const viewLink=p?.id?`<a class="chatProductLink" href="${esc(productPublicUrl(p))}">Ver aviso</a>`:'';
+    const viewLink=p?.id?`<button type="button" class="chatProductLink" data-open-detail="${esc(p.id)}">Ver aviso</button>`:'';
     document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b> <span class="productCodeInline">${esc(productCode(p))}</span> ${viewLink}</p><p class="chatWith">Conversas con <b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions stickyChatActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar chat</button></div></section></div>`;
     const replyEl=document.getElementById('chatReplyText');
     const replyBtn=document.querySelector(`[data-send-conversation-reply="${String(c.id).replace(/"/g,'\\"')}"]`);
@@ -1131,7 +1162,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(btn){btn.disabled=true; btn.textContent='Enviando...';}
     const timestamp=now();
     try{
-      const msg=await insertFlex('mercado_mensajes',{conversacion_id:c.id,remitente_id:me,mensaje:text,leido:false,created_at:timestamp});
+      const msg=await state.sb.from('mercado_mensajes').insert([{conversacion_id:c.id,remitente_id:me,mensaje:text,leido:false,created_at:timestamp}]).select('*').maybeSingle();
       if(msg.error) throw msg.error;
       const estado=String(c.vendedor_id)===String(me)?'respondida':'nueva';
       try{await state.sb.from('mercado_conversaciones').update({ultimo_mensaje:timestamp,estado}).eq('id',c.id);}catch(e){console.warn('[CHAT] update conversacion',e);}
@@ -1191,23 +1222,21 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }catch(e){ console.warn('[CHAT] búsqueda conversación existente falló', e); }
 
     if(!conv){
-      conv=await insertFlex('mercado_conversaciones',convRow);
+      conv=await state.sb.from('mercado_conversaciones').insert([convRow]).select('*').maybeSingle();
     }
     if(!conv || conv.error) return conv||{error:{message:'No se pudo crear la conversación'}};
 
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
     if(!convId) return {error:{message:'Conversación creada sin ID. No se pudo registrar el mensaje.'}};
 
-    // Esquema real V38.1 de mercado_mensajes:
-    // id, conversacion_id, remitente_id, mensaje, leido, created_at.
-    // No enviar fecha/estado/publicacion_id para evitar que Supabase interprete el texto como timestamp.
-    const msgRes=await insertFlex('mercado_mensajes',{
+    // Insert exacto: el texto del mensaje solo va en mercado_mensajes.mensaje.
+    const msgRes=await state.sb.from('mercado_mensajes').insert([{
       conversacion_id:convId,
       remitente_id:buyerUuid,
       mensaje:message,
       leido:false,
       created_at:timestamp
-    });
+    }]).select('*').maybeSingle();
     if(msgRes?.error) return msgRes;
 
     try{await state.sb.from('mercado_conversaciones').update({ultimo_mensaje:timestamp,estado:'nueva'}).eq('id',convId);}catch(e){console.warn('[CHAT] actualizar último mensaje',e);}
@@ -1310,10 +1339,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   async function contact(id){
     if(!requireSession()) return;
-    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id));
+    const p=state.posts.find(x=>String(x.id)===String(id))||state.minePosts.find(x=>String(x.id)===String(id))||state.conversationPosts?.[String(id)];
     if(!p) return;
     if(isMine(p)){toast('Esta publicación es tuya.'); return;}
     if(isClosedPost(p)){toast('Esta publicación ya no está disponible.'); return;}
+    const opened=await openExistingConversationForPost(p);
+    if(opened) return;
     contactModal(p);
   }
   function openReportModal(id){
@@ -1522,5 +1553,5 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   document.addEventListener("DOMContentLoaded",init);
-  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal,sendInternalChat,contactModal,loadConversations,openConversation,sendConversationReply,closePostFromConversation};
+  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal,sendInternalChat,contactModal,loadConversations,openConversation,sendConversationReply,closePostFromConversation,openExistingConversationForPost};
 })();
