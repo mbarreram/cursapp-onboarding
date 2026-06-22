@@ -47,7 +47,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set()};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -955,8 +955,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
         (x.value.data||[]).forEach(c=>found.set(String(c.id||c.conversacion_id||`${c.publicacion_id}-${c.comprador_id||c.comprador_email}-${c.vendedor_id||c.vendedor_email}`),c));
       }
     });
-    state.conversations=Array.from(found.values()).sort((a,b)=>Date.parse(b.fecha||b.updated_at||b.created_at||0)-Date.parse(a.fecha||a.updated_at||a.created_at||0));
+    state.conversations=Array.from(found.values()).sort((a,b)=>Date.parse(b.ultimo_mensaje||b.fecha||b.updated_at||b.created_at||0)-Date.parse(a.ultimo_mensaje||a.fecha||a.updated_at||a.created_at||0));
     state.unreadConversations=state.conversations.filter(c=>['nueva','nuevo','abierta'].includes(String(c.estado||'').toLowerCase())).length;
+    await hydrateUnreadForConversations();
     renderConversationBadge(); renderConversations();
   }
   function renderConversationBadge(){const b=document.getElementById('conversationBadge'); if(!b)return; const n=Number(state.unreadConversations||0); b.textContent=n; b.style.display=n>0?'grid':'none';}
@@ -964,7 +965,76 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function renderConversations(){
     const box=document.getElementById('conversationsList'); if(!box)return;
     if(!state.conversations.length){box.innerHTML=`<div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div>`;return;}
-    box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.ultimo_mensaje||c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
+    box.innerHTML=state.conversations.map(c=>{
+      const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};
+      const unread=Number(c.__unread||0);
+      const status=unread>0?'nueva':(c.estado||'abierta');
+      return `<article class="conversationCard" data-open-conversation="${esc(c.id)}"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.__lastText||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.ultimo_mensaje||c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(status).toLowerCase())}">${unread>0?'Nueva':esc(conversationStatusLabel(c.estado))}</em></article>`;
+    }).join('');
+  }
+  async function hydrateUnreadForConversations(){
+    const me=await resolveCurrentUserUuid();
+    const ids=(state.conversations||[]).map(c=>c.id).filter(Boolean);
+    if(!state.sb || !me || !ids.length) return;
+    try{
+      const r=await state.sb.from('mercado_mensajes').select('*').in('conversacion_id',ids).order('created_at',{ascending:true});
+      if(r.error) return;
+      const byConv=new Map();
+      (r.data||[]).forEach(m=>{
+        const k=String(m.conversacion_id); if(!byConv.has(k)) byConv.set(k,[]); byConv.get(k).push(m);
+      });
+      state.conversations.forEach(c=>{
+        const msgs=byConv.get(String(c.id))||[];
+        c.__unread=msgs.filter(m=>String(m.remitente_id)!==String(me) && m.leido===false).length;
+        const last=msgs[msgs.length-1];
+        if(last?.mensaje) c.__lastText=last.mensaje;
+      });
+      state.unreadConversations=state.conversations.filter(c=>Number(c.__unread||0)>0).length;
+    }catch(e){console.warn('[CHAT] unread hydrate',e);}
+  }
+  async function openConversation(conversationId){
+    if(!requireSession()) return;
+    const me=await resolveCurrentUserUuid();
+    const c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId));
+    if(!c){toast('No se encontró la conversación.');return;}
+    if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes abrir esta conversación.');return;}
+    const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};
+    let msgs=[];
+    try{
+      const r=await state.sb.from('mercado_mensajes').select('*').eq('conversacion_id',c.id).order('created_at',{ascending:true});
+      if(r.error) throw r.error;
+      msgs=r.data||[];
+    }catch(e){toast('No se pudieron cargar los mensajes: '+(e.message||e));return;}
+    try{
+      await state.sb.from('mercado_mensajes').update({leido:true}).eq('conversacion_id',c.id).neq('remitente_id',me);
+    }catch(e){console.warn('[CHAT] marcar leido',e);}
+    const rows=msgs.map(m=>`<div class="chatBubble ${String(m.remitente_id)===String(me)?'mine':'theirs'}"><p>${esc(m.mensaje||'')}</p><small>${fmtDateTime(m.created_at||m.fecha||new Date())}</small></div>`).join('') || '<p class="muted">Sin mensajes todavía.</p>';
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Chat interno Mercado Escolar</p></div></div><div id="chatThreadMessages" class="chatThreadMessages">${rows}</div><label class="chatReplyBox">Responder<textarea id="chatReplyText" rows="3" placeholder="Escribe tu respuesta..."></textarea></label><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}">Enviar respuesta</button><button type="button" class="ghost" data-close-chat-thread>Cerrar</button></div></section></div>`;
+    setTimeout(()=>{const box=document.getElementById('chatThreadMessages'); if(box) box.scrollTop=box.scrollHeight;},50);
+    try{await loadConversations();}catch(e){}
+  }
+  async function sendConversationReply(conversationId){
+    if(!requireSession()) return;
+    const btn=document.querySelector(`[data-send-conversation-reply="${String(conversationId).replace(/"/g,'\\"')}"]`);
+    if(btn?.disabled) return;
+    const text=(document.getElementById('chatReplyText')?.value||'').trim();
+    if(!text){toast('Escribe una respuesta.');return;}
+    const me=await resolveCurrentUserUuid();
+    const c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId));
+    if(!me || !c){toast('No se pudo validar la conversación.');return;}
+    if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes responder esta conversación.');return;}
+    if(btn){btn.disabled=true; btn.textContent='Enviando...';}
+    const timestamp=now();
+    try{
+      const msg=await insertFlex('mercado_mensajes',{conversacion_id:c.id,remitente_id:me,mensaje:text,leido:false,created_at:timestamp});
+      if(msg.error) throw msg.error;
+      const estado=String(c.vendedor_id)===String(me)?'respondida':'nueva';
+      try{await state.sb.from('mercado_conversaciones').update({ultimo_mensaje:timestamp,estado}).eq('id',c.id);}catch(e){console.warn('[CHAT] update conversacion',e);}
+      toast('Respuesta enviada');
+      await loadConversations();
+      await openConversation(c.id);
+    }catch(e){toast('No se pudo enviar la respuesta: '+(e.message||e));}
+    finally{ if(btn){btn.disabled=false; btn.textContent='Enviar respuesta';} }
   }
   async function createInternalConversation(p,message){
     const buyerUuid=await resolveCurrentUserUuid();
@@ -982,6 +1052,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!sellerId){
       return {error:{message:'La publicación no tiene vendedor_id/usuario_id UUID. Revisa la publicación en mercado_publicaciones.'}};
     }
+    if(String(buyerUuid)===String(sellerId)){
+      return {error:{message:'No puedes contactar tus propias publicaciones.'}};
+    }
 
     // Esquema real V38.1 de mercado_conversaciones:
     // id, publicacion_id, vendedor_id, comprador_id, estado, ultimo_mensaje, created_at.
@@ -995,7 +1068,23 @@ Vi esta publicación en Mercado Escolar Cursapp.
       created_at:timestamp
     };
 
-    const conv=await insertFlex('mercado_conversaciones',convRow);
+    // Evitar conversaciones duplicadas para la misma publicación/comprador/vendedor.
+    let conv=null;
+    try{
+      const existing=await state.sb.from('mercado_conversaciones')
+        .select('*')
+        .eq('publicacion_id',p.id)
+        .eq('comprador_id',buyerUuid)
+        .eq('vendedor_id',sellerId)
+        .order('created_at',{ascending:false})
+        .limit(1)
+        .maybeSingle();
+      if(!existing.error && existing.data) conv=existing;
+    }catch(e){ console.warn('[CHAT] búsqueda conversación existente falló', e); }
+
+    if(!conv){
+      conv=await insertFlex('mercado_conversaciones',convRow);
+    }
     if(!conv || conv.error) return conv||{error:{message:'No se pudo crear la conversación'}};
 
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
@@ -1019,12 +1108,16 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function contactModal(p){
     const chat=canUseChat(p), wa=canUseWhatsapp(p), msg=contactMsgDefault(p);
     const waBtn=wa?`<button type="button" class="waContactBtn" data-contact-whatsapp="${esc(p.id)}">WhatsApp autorizado</button>`:'';
-    const chatBtn=chat?`<button type="button" class="primaryBtn" data-send-internal-chat="${esc(p.id)}" onclick="window.CursappMarket&&window.CursappMarket.sendInternalChat&&window.CursappMarket.sendInternalChat('${esc(p.id)}')">Enviar consulta</button>`:'';
+    const chatBtn=chat?`<button type="button" class="primaryBtn" data-send-internal-chat="${esc(p.id)}">Enviar consulta</button>`:'';
     const privacy=!wa?`<p class="privacyContactNote">Este vendedor usa chat interno para proteger su privacidad.</p>`:`<p class="privacyContactNote">El vendedor autorizó contacto por WhatsApp. También puedes usar chat interno.</p>`;
     document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm contactModalV38"><h2>Contactar vendedor</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b>${privacy}<label>Mensaje<textarea id="internalContactMsg" rows="3">${esc(msg)}</textarea></label></div><div class="v19ConfirmActions">${chatBtn}${waBtn}<button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
   }
   async function sendInternalChat(id){
     if(!requireSession()) return;
+
+    const sendKey=String(id||'');
+    if(state.chatSending?.has(sendKey)) return;
+    state.chatSending.add(sendKey);
 
     const btn=document.querySelector(`[data-send-internal-chat="${String(id).replace(/"/g,'\\"')}"]`);
     if(btn){btn.disabled=true; btn.dataset.originalText=btn.textContent; btn.textContent='Enviando...';}
@@ -1073,6 +1166,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       console.error('[CHAT ERROR]',error);
       toast('No se pudo enviar la consulta: '+(error?.message||String(error)));
     }finally{
+      state.chatSending?.delete(sendKey);
       if(btn){btn.disabled=false; btn.textContent=btn.dataset.originalText||'Enviar consulta';}
     }
   }
@@ -1209,6 +1303,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
       const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}
       const help=e.target.closest("[data-credit-help]"); if(help){e.preventDefault();creditHelp();return;}
+      const openConv=e.target.closest("[data-open-conversation]"); if(openConv){e.preventDefault();openConversation(openConv.dataset.openConversation);return;}
+      const sendReply=e.target.closest("[data-send-conversation-reply]"); if(sendReply){e.preventDefault();sendConversationReply(sendReply.dataset.sendConversationReply);return;}
+      const closeThread=e.target.closest("[data-close-chat-thread]"); if(closeThread){e.preventDefault();document.getElementById('modal').innerHTML='';return;}
       const sendChat=e.target.closest("[data-send-internal-chat]"); if(sendChat){e.preventDefault();sendInternalChat(sendChat.dataset.sendInternalChat);return;}
       const sendWa=e.target.closest("[data-contact-whatsapp]"); if(sendWa){e.preventDefault();contactWhatsapp(sendWa.dataset.contactWhatsapp);return;}
       const v=e.target.closest("[data-view]"); if(v){e.preventDefault(); if(v.dataset.view==='publicar'){state.editingPostId=null; const titleEl=$('#view-publicar h2'); if(titleEl) titleEl.textContent='Publicar aviso'; const submit=$('#postForm button[type="submit"], #postForm .primaryBtn'); if(submit) submit.textContent='Publicar aviso';} showView(v.dataset.view);return;}
@@ -1260,5 +1357,5 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
 
   document.addEventListener("DOMContentLoaded",init);
-  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal,sendInternalChat,contactModal,loadConversations};
+  window.CursappMarket={reload:reloadAll,showView,getState:()=>state,activeMinePosts,renderCreditVisibilityGuard,openBoostModal,sendInternalChat,contactModal,loadConversations,openConversation,sendConversationReply};
 })();

@@ -811,3 +811,11 @@ body.market-v8{background:#f5f6f8!important;}
 .contactModalV38 textarea{width:100%;min-height:82px;border:1px solid #e7edf6;border-radius:14px;padding:10px;font:inherit;resize:vertical}.privacyContactNote{background:#f8fafc;border:1px solid #e7edf6;border-radius:14px;padding:10px;color:#475569;font-size:13px;line-height:1.35}.waContactBtn{border:0;background:#16a34a;color:#fff;border-radius:14px;padding:11px 14px;font-weight:900}
 .marketMenuSheet .mineOptionList button{text-align:left;justify-content:flex-start;background:#fff;border:1px solid #e7edf6;color:#0f172a;border-radius:14px;min-height:42px}
 @media(max-width:420px){.marketHeaderActions{gap:6px}.headerIconBtn{width:36px;height:36px;border-radius:13px}.conversationCard{grid-template-columns:38px 1fr;}.convStatus{grid-column:2;justify-self:start}.conversationCard span{max-width:190px}}
+
+/* V38.1 chat interno: hilo y respuestas */
+.conversationCard{cursor:pointer}.conversationCard:hover{transform:translateY(-1px);box-shadow:0 14px 28px rgba(15,23,42,.08)}
+.chatThreadModal{max-width:560px!important}.chatThreadHead{display:flex;align-items:center;gap:10px;margin-bottom:8px}.chatThreadHead h2{margin:0;font-size:22px}.chatThreadHead .muted{margin:2px 0 0;color:#64748b;font-size:12px}
+.chatThreadMessages{display:grid;gap:8px;max-height:46vh;overflow:auto;background:#f8fafc;border:1px solid #e7edf6;border-radius:18px;padding:12px;margin:10px 0}
+.chatBubble{max-width:82%;border-radius:16px;padding:9px 11px;border:1px solid #e7edf6;background:#fff;box-shadow:0 8px 18px rgba(15,23,42,.04)}
+.chatBubble.mine{justify-self:end;background:#f3edff;border-color:#d9c8ff}.chatBubble.theirs{justify-self:start;background:#fff}.chatBubble p{margin:0;color:#0f172a;font-size:13px;line-height:1.35}.chatBubble small{display:block;margin-top:4px;color:#94a3b8;font-size:10.5px}
+.chatReplyBox{display:grid;gap:6px;font-weight:800;color:#0f172a}.chatReplyBox textarea{width:100%;min-height:78px;border:1px solid #e7edf6;border-radius:14px;padding:10px;font:inherit;resize:vertical}
