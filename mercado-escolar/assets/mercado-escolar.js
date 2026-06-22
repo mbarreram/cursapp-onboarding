@@ -31,7 +31,8 @@
   };
   function boostRuleInfo(rule){return BOOST_RULES[rule]||BOOST_RULES.colegio;}
   function fmtDateTime(v){try{return new Date(v).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ''}}
-  function daysLeft(v){const ms=Date.parse(v||'')-Date.now(); return Math.max(0,Math.ceil(ms/86400000));}
+  function daysLeft(v){const t=Date.parse(v||''); if(!v || Number.isNaN(t)) return null; const ms=t-Date.now(); return Math.max(0,Math.ceil(ms/86400000));}
+  function boostDaysText(p){const d=daysLeft(boostUntil(p)); return d===null?'sin fecha de vencimiento':`quedan ${d} día(s)`;}
 
   const DEFAULT_CATS=[
     {nombre:"Deportes",icono:"⚽",orden:1},{nombre:"Instrumentos",icono:"🎵",orden:2},{nombre:"Libros",icono:"📚",orden:3},{nombre:"Uniformes",icono:"👕",orden:4},{nombre:"Útiles escolares",icono:"✏️",orden:5},{nombre:"Otros",icono:"📦",orden:6},{nombre:"Tecnología",icono:"💻",orden:7},{nombre:"Vestuario",icono:"🎒",orden:8},{nombre:"Servicios",icono:"🧑‍🏫",orden:9}
@@ -256,7 +257,16 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return "assets/img/"+(map[name]||"generic.svg");
   }
   function emptyState(icon,title,text,button,view){return `<div class="emptyState"><div class="emptyIcon">${icon}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${button?`<button data-view="${esc(view||"publicar")}">${esc(button)}</button>`:""}</div>`;}
-  function postStatus(p){return String(p?.estado_publicacion||p?.estado||"activo").toLowerCase();}
+  function postStatus(p){
+    const ep=String(p?.estado_publicacion||'').toLowerCase();
+    const e=String(p?.estado||'').toLowerCase();
+    const closed=['vendido','intercambiado','cerrado'];
+    if(closed.includes(ep)) return ep;
+    if(closed.includes(e)) return e;
+    if(ep && !['activo','activa','disponible','publicado','publicada'].includes(ep)) return ep;
+    if(e && !['activo','activa','disponible','publicado','publicada'].includes(e)) return e;
+    return 'disponible';
+  }
   function isClosedPost(p){return ["vendido","intercambiado","cerrado"].includes(postStatus(p));}
   function postStatusLabel(p){
     const st=postStatus(p);
@@ -272,6 +282,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(st==="cerrado") return "🔒";
     return "🟢";
   }
+  function statusBadge(p){return isClosedPost(p)?`<span class="marketStatusBadge ${esc(postStatus(p))}">${postStatusIcon(p)} ${postStatusLabel(p)}</span>`:'';}
+  function detailStatusChip(p){return isClosedPost(p)?`<span class="statusChip ${esc(postStatus(p))}">${postStatusIcon(p)} ${postStatusLabel(p)}</span>`:'';}
   function closeMessageForStatus(status){
     const st=String(status||"cerrado").toLowerCase();
     if(st==="vendido") return "[SISTEMA] Esta publicación fue marcada como VENDIDA por el vendedor. La conversación quedó cerrada.";
@@ -313,7 +325,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const title=p.titulo||"Publicación";
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard ${isBoosted(p)?'isBoosted':''}" data-post="${esc(p.id)}">
-      <div class="productImageWrap">${isBoosted(p)?`<span class="boostStar" title="Destacado">⭐</span>`:""}<span class="marketStatusBadge ${esc(postStatus(p))}">${postStatusIcon(p)} ${postStatusLabel(p)}</span><img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
+      <div class="productImageWrap">${isBoosted(p)?`<span class="boostStar" title="Destacado">⭐</span>`:""}${statusBadge(p)}<img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
       <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
@@ -333,7 +345,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const all=(state.minePosts.length?state.minePosts:state.posts.filter(isMine)).filter(p=>!["eliminado"].includes(String(p.estado||"").toLowerCase()));
     const current=filter || box.dataset.mineFilter || "activos";
     box.dataset.mineFilter=current;
-    const estado=p=>String(p.estado||"disponible").toLowerCase();
+    const estado=p=>postStatus(p);
     const vendidos=all.filter(p=>estado(p)==="vendido");
     const intercambiados=all.filter(p=>estado(p)==="intercambiado");
     const activos=all.filter(p=>!["vendido","intercambiado","oculto","bloqueado","en_revision"].includes(estado(p)));
@@ -357,7 +369,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     function card(p){
       const id=esc(p.id); const boosted=isBoosted(p); const closed=["vendido","intercambiado"].includes(estado(p));
       const title=esc(p.titulo||"Publicación"); const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio);
-      const badge=boosted?`<small class="ownerBoostInfo v28OwnerBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${daysLeft(boostUntil(p))} día(s)</small>`:(current==='activos'?`<button type="button" class="miniBoostLink v28BoostBtn" data-open-boost-modal="${id}">⭐ Destacar</button>`:``);
+      const badge=boosted?`<small class="ownerBoostInfo v28OwnerBoost">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${boostDaysText(p)}</small>`:(current==='activos'?`<button type="button" class="miniBoostLink v28BoostBtn" data-open-boost-modal="${id}">⭐ Destacar</button>`:``);
       return `<article class="minePostCard v27MineCard v28MineCard ${estado(p)} ${boosted?'is-boosted':''}">
         <div class="mineCardHead v28CardHead">
           <img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'">
@@ -580,14 +592,14 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#modal").innerHTML=`<div class="v6DetailOverlay"><article class="v6DetailSheet v13DetailSheet">
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
       <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
-      <div class="v6DetailBody">${isBoosted(p)?(isMine(p)?`<em class="boostBadge detailBoost ownerOnly">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · quedan ${daysLeft(boostUntil(p))} día(s)</em>`:`<em class="boostBadge detailBoost publicOnly">⭐ Destacado</em>`):""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
-      <div class="v6Chips"><span>${postStatusIcon(p)} ${postStatusLabel(p)}</span><span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
+      <div class="v6DetailBody">${isBoosted(p)?(isMine(p)?`<em class="boostBadge detailBoost ownerOnly">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${boostDaysText(p)}</em>`:`<em class="boostBadge detailBoost publicOnly">⭐ Destacado</em>`):""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
+      <div class="v6Chips">${detailStatusChip(p)}<span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
       ${(!isMine(p) && !isClosedPost(p)) ? `<button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar vendedor</button>` : (isClosedPost(p)?`<div class="chatClosedNotice detailClosed">${postStatusIcon(p)} ${postStatusLabel(p)}. No se aceptan nuevas consultas.</div>`:'')}
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
-      ${isMine(p) && canBoost(p) ? `<button class="v6BoostBtn" data-open-boost-modal="${esc(p.id)}">⭐ Destacar con créditos</button>` : (isMine(p) && isBoosted(p) ? `<div class="ownerBoostBox">⭐ Ya está destacado · vence en ${daysLeft(boostUntil(p))} día(s)</div>` : "")}
+      ${isMine(p) && canBoost(p) ? `<button class="v6BoostBtn" data-open-boost-modal="${esc(p.id)}">⭐ Destacar con créditos</button>` : (isMine(p) && isBoosted(p) ? `<div class="ownerBoostBox">⭐ Ya está destacado · ${boostDaysText(p)}</div>` : "")}
       ${!isMine(p) ? `<button class="v6Danger" data-report="${esc(p.id)}">🚩 Reportar publicación</button>` : ""}</div>
     </article></div>`;
   }
@@ -753,7 +765,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       renderProducts(); renderMine(document.getElementById('myPosts')?.dataset.mineFilter||"activos"); renderCreditVisibilityGuard();
     }
     if(isBoosted(p)){
-      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Destacado actual</p><b>⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)}</b><p class="muted">Vence ${fmtDateTime(boostUntil(p))} · quedan ${daysLeft(boostUntil(p))} día(s)</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div></section></div>`;
+      document.getElementById("modal").innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm"><h2>Publicación ya destacada</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p>Destacado actual</p><b>⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)}</b><p class="muted">Vence ${fmtDateTime(boostUntil(p))} · ${boostDaysText(p)}</p></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" onclick="document.getElementById('modal').innerHTML=''; window.CursappMarket&&window.CursappMarket.reload&&window.CursappMarket.reload();">Entendido</button></div></section></div>`;
       return;
     }
     if(window.CursappMarketCredits?.loadWallet) await window.CursappMarketCredits.loadWallet();
@@ -1051,10 +1063,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const other=conversationOtherName(c,p,me);
     const sellerMode=String(c.vendedor_id)===String(me);
     const closed=isConversationClosed(c,p);
-    const sellerActions=(sellerMode && !closed)?`<div class="chatSellerActions"><button type="button" class="softChip" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Marcar vendido</button><button type="button" class="softChip" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Marcar intercambiado</button><button type="button" class="softChip" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">🔒 Cerrar conversación</button></div>`:'';
+    const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel"><div><b>Acciones del vendedor</b><small>Actualiza el estado cuando cierres el trato.</small></div><div class="chatSellerActions"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">🔒 Cerrar</button></div></div>`:'';
     const replyBox=closed?`<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div>`:`<label class="chatReplyBox">Responder<textarea id="chatReplyText" rows="3" placeholder="Escribe tu respuesta..."></textarea></label>`;
     const sendBtn=closed?'':`<button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}">Enviar respuesta</button>`;
-    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Conversas con: <b>${esc(other)}</b> · ${postStatusIcon(p)} ${postStatusLabel(p)}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar</button></div></section></div>`;
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b></p><p class="chatWith">Conversas con <b>${esc(other)}</b>${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar</button></div></section></div>`;
     setTimeout(()=>{const box=document.getElementById('chatThreadMessages'); if(box) box.scrollTop=box.scrollHeight;},50);
     try{await loadConversations();}catch(e){}
   }
@@ -1285,7 +1297,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function applyLocalStatus(id,status){
     for(const arr of [state.posts,state.minePosts]){
       const p=arr.find(x=>String(x.id)===String(id));
-      if(p){ p.estado=status; if(["vendido","intercambiado","eliminado"].includes(status)){p.destacado=false;p.destacada=false;p.destacado_hasta=null;p.destacada_hasta=null;p.tipo_destacado=null;p.destacado_tipo=null;p.regla_destacado=null;} }
+      if(p){ p.estado=status; p.estado_publicacion=status; if(["vendido","intercambiado","eliminado"].includes(status)){p.destacado=false;p.destacada=false;p.destacado_hasta=null;p.destacada_hasta=null;p.tipo_destacado=null;p.destacado_tipo=null;p.regla_destacado=null;} }
     }
   }
   async function updateConversationFlex(id,row){

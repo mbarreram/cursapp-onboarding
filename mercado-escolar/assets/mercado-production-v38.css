@@ -827,3 +827,13 @@ body.market-v8{background:#f5f6f8!important;}
 .chatSellerActions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}.chatSellerActions .softChip{border:1px solid #e7edf6;background:#fff;border-radius:999px;padding:8px 10px;font-size:12px;font-weight:900;color:#0f172a}
 .chatClosedNotice{border:1px solid #e7edf6;background:#f8fafc;border-radius:16px;padding:11px 12px;color:#475569;font-size:13px;font-weight:800;line-height:1.35}.chatClosedNotice.detailClosed{margin:10px 0}
 .chatBubble.system{justify-self:center;max-width:92%;background:#fff7ed;border-color:#fed7aa;text-align:center}.chatBubble.system p{font-weight:850;color:#9a3412}.dangerBtn{border:0;background:#dc2626;color:#fff;border-radius:14px;padding:11px 14px;font-weight:900}
+
+/* V38.3: limpieza visual estado y acciones chat */
+.marketStatusBadge.disponible{display:none!important}
+.statusChip{font-weight:900}.statusChip.vendido{background:#f8fafc;color:#334155;border-color:#cbd5e1}.statusChip.intercambiado{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.statusChip.cerrado{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.chatThreadHead{align-items:flex-start;background:#fff;border:1px solid #e7edf6;border-radius:18px;padding:10px;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+.chatThreadHead .ghost{min-width:38px;height:38px;border-radius:14px;padding:0}.chatThreadHead h2{font-size:20px;line-height:1.1}.chatThreadHead .chatWith{margin:2px 0 0;color:#0f172a;font-size:12.5px;font-weight:700}.chatThreadHead .chatWith b{color:#6d28d9}
+.chatSellerPanel{display:grid;grid-template-columns:1fr;gap:10px;margin:10px 0;padding:12px;border:1px solid #eadcff;background:linear-gradient(135deg,#fbf8ff,#fff);border-radius:18px;box-shadow:0 12px 28px rgba(109,40,217,.08)}
+.chatSellerPanel b{display:block;color:#0f172a;font-size:13px}.chatSellerPanel small{display:block;color:#64748b;font-size:11.5px;margin-top:2px}.chatSellerActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0}.chatSellerActions .softChip{border-radius:14px;padding:10px 8px;font-size:11.5px;box-shadow:0 8px 18px rgba(15,23,42,.05)}
+.chatSellerActions .softChip.success{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}.chatSellerActions .softChip.info{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.chatSellerActions .softChip.lock{background:#f8fafc;color:#475569;border-color:#cbd5e1}
+@media(max-width:420px){.chatSellerActions{grid-template-columns:1fr}.chatThreadHead h2{font-size:18px}}
