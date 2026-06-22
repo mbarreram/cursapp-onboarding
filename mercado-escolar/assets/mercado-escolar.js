@@ -110,6 +110,14 @@
     const email=String(state.session.email||'').toLowerCase().trim();
     const uid=String(state.session.userId||'').trim();
     try{
+      // 0) Resolver UUID real del usuario desde usuarios.email.
+      // Esto evita que Mis Avisos quede vacío cuando la sesión trae email,
+      // pero las publicaciones usan vendedor_id UUID.
+      if(email && !isUuid(state.session.userId)){
+        const ur=await state.sb.from('usuarios').select('id,email,nombre').ilike('email',email).maybeSingle();
+        if(!ur.error && ur.data?.id) state.session.userId=ur.data.id;
+      }
+
       // 1) Si la sesión ya trae curso, buscar su colegio.
       if(isUuid(state.session.courseId) && !isUuid(state.session.colegioId)){
         const cr=await state.sb.from('cursos').select('id,colegio_id').eq('id',state.session.courseId).maybeSingle();
@@ -143,6 +151,7 @@
       }
       try{
         const raw=readJson('cursapp_session_v1',{})||{};
+        if(state.session.userId) raw.usuario_id=state.session.userId;
         if(state.session.courseId) raw.curso_id=state.session.courseId;
         if(state.session.colegioId) raw.colegio_id=state.session.colegioId;
         if(state.session.comuna) raw.comuna=state.session.comuna;
@@ -290,8 +299,8 @@
       queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
     }
     if(state.session.userId){
-      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
-      if(isUuid(state.session.userId)) queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(200));
+      if(isUuid(state.session.userId)) queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(200));
     }
     const res=await Promise.allSettled(queries);
     res.forEach(x=>{if(x.status==="fulfilled" && !x.value.error) (x.value.data||[]).forEach(p=>found.set(String(p.id),p));});
