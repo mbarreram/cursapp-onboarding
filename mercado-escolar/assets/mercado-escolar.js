@@ -48,7 +48,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -104,6 +104,56 @@
     return true;
   }
 
+  async function resolveMarketContext(){
+    if(!state.sb) return;
+    state.session=getSession();
+    const email=String(state.session.email||'').toLowerCase().trim();
+    const uid=String(state.session.userId||'').trim();
+    try{
+      // 1) Si la sesión ya trae curso, buscar su colegio.
+      if(isUuid(state.session.courseId) && !isUuid(state.session.colegioId)){
+        const cr=await state.sb.from('cursos').select('id,colegio_id').eq('id',state.session.courseId).maybeSingle();
+        if(!cr.error && cr.data?.colegio_id) state.session.colegioId=cr.data.colegio_id;
+      }
+      // 2) Si falta curso/colegio, resolver desde miembros_curso.
+      if(!isUuid(state.session.courseId) || !isUuid(state.session.colegioId)){
+        let mr=null;
+        if(isUuid(uid)){
+          const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').eq('usuario_id',uid).order('created_at',{ascending:false}).limit(1).maybeSingle();
+          if(!r.error && r.data) mr=r.data;
+        }
+        if(!mr && email){
+          const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').ilike('email',email).order('created_at',{ascending:false}).limit(1).maybeSingle();
+          if(!r.error && r.data) mr=r.data;
+        }
+        if(mr?.curso_id){
+          state.session.courseId=state.session.courseId||mr.curso_id;
+          const cr=await state.sb.from('cursos').select('id,colegio_id').eq('id',mr.curso_id).maybeSingle();
+          if(!cr.error && cr.data?.colegio_id) state.session.colegioId=state.session.colegioId||cr.data.colegio_id;
+        }
+      }
+      // 3) Traer datos del colegio para filtro comuna/cercanos.
+      if(isUuid(state.session.colegioId)){
+        const gr=await state.sb.from('colegios').select('id,nombre,comuna,region').eq('id',state.session.colegioId).maybeSingle();
+        if(!gr.error && gr.data){
+          state.session.colegioNombre=gr.data.nombre||state.session.colegioNombre||'';
+          state.session.comuna=gr.data.comuna||state.session.comuna||'';
+          state.session.region=gr.data.region||state.session.region||'';
+        }
+      }
+      try{
+        const raw=readJson('cursapp_session_v1',{})||{};
+        if(state.session.courseId) raw.curso_id=state.session.courseId;
+        if(state.session.colegioId) raw.colegio_id=state.session.colegioId;
+        if(state.session.comuna) raw.comuna=state.session.comuna;
+        if(state.session.region) raw.region=state.session.region;
+        localStorage.setItem('cursapp_session_v1',JSON.stringify(raw));
+      }catch(e){}
+    }catch(e){
+      console.warn('No se pudo resolver contexto colegio/curso Mercado Escolar',e);
+    }
+  }
+
   async function init(){
     setLoading(true,"Preparando Mercado Escolar...");
     state.sb=await waitSupabase();
@@ -111,6 +161,7 @@
     if(!state.sb){setLoading(false);renderError("Supabase no disponible. Revisa conexión.");return;}
     try{
       await Promise.all([loadCategories(),loadReasons(),loadBlockedWords()]);
+      await resolveMarketContext();
       fillCategorySelect();
       renderCategoryRow();
       await loadPosts();
@@ -311,7 +362,33 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function canBoost(p){ return isActiveMarketPost(p) && !isBoosted(p); }
   function isOwnerViewPost(p){ return isMine(p); }
   function boostedRank(p){return isBoosted(p) ? (boostPriority(activeBoostRule(p))||1) : 0;}
-  function visible(list=state.posts){return list.filter(isActiveMarketPost)}
+  function postVisibility(p){return String(p?.visibilidad||'colegio').toLowerCase();}
+  function sameColegio(p){return !!(isUuid(state.session?.colegioId) && isUuid(p?.colegio_id) && String(p.colegio_id)===String(state.session.colegioId));}
+  function sameComuna(p){
+    const userComuna=String(state.session?.comuna||'').toLowerCase().trim();
+    const postComuna=String(p?.comuna||p?.colegio_comuna||p?.colegio?.comuna||'').toLowerCase().trim();
+    if(userComuna && postComuna) return userComuna===postComuna;
+    // Si no tenemos comuna en la publicación, al menos exige mismo colegio cuando la visibilidad es local.
+    return sameColegio(p);
+  }
+  function canViewPost(p){
+    if(!p || !isActiveMarketPost(p)) return false;
+    if(isMine(p)) return true;
+    const v=postVisibility(p);
+    if(['todo','cursapp','publico','publica','todos'].includes(v)) return true;
+    if(['colegio','mi_colegio','solo_mi_colegio'].includes(v)) return sameColegio(p);
+    if(['comuna','mi_comuna','cercanos','cercano'].includes(v)) return sameComuna(p);
+    return sameColegio(p);
+  }
+  function visible(list=state.posts){return list.filter(canViewPost)}
+  function filterByScope(scope){
+    const sc=String(scope||'colegio').toLowerCase();
+    const base=state.posts.filter(isActiveMarketPost);
+    if(sc==='todo') return base.filter(p=>isMine(p)||['todo','cursapp','publico','publica','todos'].includes(postVisibility(p))||sameColegio(p)||sameComuna(p));
+    if(sc==='colegio') return base.filter(p=>isMine(p)||sameColegio(p));
+    if(sc==='comuna' || sc==='cercanos') return base.filter(p=>isMine(p)||sameComuna(p));
+    return visible(base);
+  }
   function relDate(p){
     try{
       const d=new Date(p.created_at||Date.now()); const diff=Math.max(0,Date.now()-d.getTime());
@@ -504,6 +581,13 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const chatEnabled=$("#pubChatEnabled") ? $("#pubChatEnabled").checked : true;
     const whatsappConsent=$("#pubWhatsappConsent") ? $("#pubWhatsappConsent").checked : false;
     const violation=detectViolation(title,desc);
+    await resolveMarketContext();
+    const scope=String($('#pubScope')?.value||'colegio').toLowerCase();
+    const requiresContext=['colegio','mi_colegio','solo_mi_colegio','comuna','mi_comuna','cercanos'].includes(scope);
+    if(requiresContext && !isUuid(state.session.colegioId)){
+      toast('No se pudo identificar tu colegio. Vuelve a ingresar a Cursapp antes de publicar.');
+      return;
+    }
     const row={
       curso_id:isUuid(state.session.courseId)?state.session.courseId:null,
       colegio_id:isUuid(state.session.colegioId)?state.session.colegioId:null,
@@ -528,7 +612,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       visualizaciones:0,
       contactos:0,
       favoritos:0,
-      visibilidad:$("#pubScope").value,
+      visibilidad:scope,
       tipo:$("#pubType").value,
       motivo_moderacion:violation.blocked?violation.reason:null
     };
@@ -582,6 +666,10 @@ Vi esta publicación en Mercado Escolar Cursapp.
 
   async function openDetail(id){
     const p=state.posts.find(x=>String(x.id)===String(id)) || state.minePosts.find(x=>String(x.id)===String(id)); if(!p) return;
+    if(!canViewPost(p)){
+      toast('Esta publicación pertenece a otro colegio o no está disponible para tu comunidad.');
+      return;
+    }
     await state.sb.from("mercado_publicaciones").update({visualizaciones:Number(p.visualizaciones||0)+1}).eq("id",p.id);
     p.visualizaciones=Number(p.visualizaciones||0)+1;
     const imgs=(state.imagesByPost[String(p.id)]||[]).map(i=>i.url_imagen).filter(Boolean);
@@ -1563,7 +1651,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       photoMessage(state.selectedFiles.length?`✅ ${state.selectedFiles.length}/${MAX_FILES} foto(s) lista(s).`:"",state.selectedFiles.length?"ok":"error");
       renderPreview();
     });
-    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(sc==="todo"?visible():visible().filter(p=>p.visibilidad===sc||sc==="colegio"))}));
+    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(filterByScope(sc));}));
     renderPreview([]);
   }
 
