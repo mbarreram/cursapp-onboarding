@@ -929,38 +929,61 @@ Vi esta publicación en Mercado Escolar Cursapp.
     box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
   }
   async function createInternalConversation(p,message){
-    const buyerUuid=currentUserUuid();
-    const buyerKey=String(currentUserKey());
+    let buyerUuid=currentUserUuid();
+    // V38.1 fix: Supabase usa UUID en mercado_conversaciones.comprador_id/vendedor_id
+    // y mercado_mensajes.remitente_id. Si la sesión local trae email, obtener el UUID real
+    // desde auth antes de insertar.
+    if(!buyerUuid && state.sb?.auth?.getUser){
+      try{
+        const authRes=await state.sb.auth.getUser();
+        const authId=authRes?.data?.user?.id;
+        if(isUuid(authId)) buyerUuid=authId;
+      }catch(e){console.warn('[CHAT] no se pudo obtener auth user',e);}
+    }
+
     const buyerEmail=String(state.session?.email||'').toLowerCase();
     const sellerId=sellerUuid(p);
-    const sellerText=String(sellerKey(p));
     const sellerEmail=String(p.vendedor_email||p.email||'').toLowerCase();
     const timestamp=now();
 
-    const common={
-      publicacion_id:p.id,
-      publicacion_titulo:p.titulo||'Publicación',
-      comprador_email:buyerEmail,
-      comprador_nombre:state.session?.name||'Apoderado Cursapp',
-      vendedor_email:sellerEmail,
-      vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',
-      medio_contacto:'chat_interno',
-      mensaje:message,
-      ultimo_mensaje:message,
-      estado:'nueva',
-      fecha:timestamp,
-      updated_at:timestamp,
-      created_at:timestamp
-    };
+    if(!isUuid(p.id)){
+      return {error:{message:'La publicación no tiene ID UUID válido para crear conversación.'}};
+    }
+    if(!buyerUuid){
+      return {error:{message:'No se pudo obtener el UUID del comprador. Cierra sesión y vuelve a ingresar.'}};
+    }
+    if(!sellerId){
+      return {error:{message:'La publicación no tiene vendedor_id/usuario_id UUID. Revisa la publicación en mercado_publicaciones.'}};
+    }
 
-    const convRows=[];
-    // Esquema recomendado: ids UUID cuando existen + emails para búsqueda/badge.
-    convRows.push({...common, comprador_id:buyerUuid||buyerKey, vendedor_id:sellerId||sellerText});
-    if(buyerUuid || sellerId) convRows.push({...common, comprador_id:buyerUuid||null, vendedor_id:sellerId||null});
-    // Esquema legacy/texto.
-    convRows.push({...common, comprador_id:buyerKey, vendedor_id:sellerText});
-    // Esquema mínimo.
-    convRows.push({publicacion_id:p.id, comprador_id:buyerUuid||buyerKey, vendedor_id:sellerId||sellerText, estado:'nueva', ultimo_mensaje:message, fecha:timestamp, created_at:timestamp});
+    const convRows=[
+      {
+        publicacion_id:p.id,
+        comprador_id:buyerUuid,
+        vendedor_id:sellerId,
+        estado:'nueva',
+        ultimo_mensaje:message,
+        created_at:timestamp,
+        ultimo_mensaje_at:timestamp
+      },
+      {
+        publicacion_id:p.id,
+        comprador_id:buyerUuid,
+        vendedor_id:sellerId,
+        estado:'nueva',
+        ultimo_mensaje:message,
+        fecha:timestamp,
+        updated_at:timestamp,
+        created_at:timestamp,
+        publicacion_titulo:p.titulo||'Publicación',
+        comprador_email:buyerEmail,
+        comprador_nombre:state.session?.name||'Apoderado Cursapp',
+        vendedor_email:sellerEmail,
+        vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',
+        medio_contacto:'chat_interno',
+        mensaje:message
+      }
+    ];
 
     let conv=null;
     for(const row of convRows){
@@ -971,11 +994,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!conv || conv.error) return conv||{error:{message:'No se pudo crear la conversación'}};
 
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
+    if(!convId) return {error:{message:'Conversación creada sin ID. No se pudo registrar el mensaje.'}};
+
     const msgRows=[
-      {conversacion_id:convId,publicacion_id:p.id,remitente_id:buyerUuid||buyerKey,emisor_id:buyerUuid||buyerKey,receptor_id:sellerId||sellerText,emisor_email:buyerEmail,receptor_email:sellerEmail,mensaje:message,estado:'enviado',leido:false,fecha:timestamp,created_at:timestamp},
-      {conversacion_id:convId,publicacion_id:p.id,emisor_id:buyerUuid||null,receptor_id:sellerId||null,mensaje:message,estado:'enviado',fecha:timestamp,created_at:timestamp},
-      {conversacion_id:convId,remitente_id:buyerUuid||buyerKey,mensaje:message,leido:false,created_at:timestamp},
-      {publicacion_id:p.id,mensaje:message,estado:'enviado',created_at:timestamp}
+      {conversacion_id:convId,remitente_id:buyerUuid,mensaje:message,leido:false,created_at:timestamp},
+      {conversacion_id:convId,remitente_id:buyerUuid,mensaje:message,leido:false,fecha:timestamp,created_at:timestamp,estado:'enviado',publicacion_id:p.id}
     ];
 
     let msgRes=null;
@@ -1018,9 +1041,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
 
       // Registro de contacto: no bloquea el envío si esta tabla tiene columnas distintas.
       try{
+        const compradorUuid=currentUserUuid();
+        const vendedorUuid=sellerUuid(p);
         const contactRows=[
-          {publicacion_id:p.id,vendedor_id:sellerKey(p),comprador_id:currentUserKey(),usuario_id:state.session.userId||state.session.email,interesado_id:isUuid(state.session.userId)?state.session.userId:null,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()},
-          {publicacion_id:p.id,vendedor_id:sellerKey(p),comprador_id:currentUserKey(),medio_contacto:'chat_interno',created_at:now()}
+          {publicacion_id:p.id,vendedor_id:vendedorUuid,comprador_id:compradorUuid,usuario_id:compradorUuid,interesado_id:compradorUuid,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()},
+          {publicacion_id:p.id,usuario_email:state.session.email,vendedor_email:String(p.vendedor_email||p.email||'').toLowerCase(),medio_contacto:'chat_interno',mensaje:msg,created_at:now()}
         ];
         for(const row of contactRows){
           const r=await insertFlex('mercado_contactos',row);
