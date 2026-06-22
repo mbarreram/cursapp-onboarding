@@ -1102,10 +1102,17 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const sellerMode=String(c.vendedor_id)===String(me);
     const closed=isConversationClosed(c,p);
     const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel"><div><b>Acciones del vendedor</b><small>Cambia el estado cuando cierres el trato. Esto bloquea nuevas consultas.</small></div><div class="chatSellerActions"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Marcar vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Marcar intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
-    const replyBox=closed?`<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div>`:`<label class="chatReplyBox">Responder<textarea id="chatReplyText" rows="3" placeholder="Escribe tu respuesta..."></textarea></label>`;
-    const sendBtn=closed?'':`<button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}">Enviar respuesta</button>`;
+    const replyBox=closed?`<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div>`:`<div class="chatReplyBox"><label for="chatReplyText">Responder</label><textarea id="chatReplyText" rows="4" placeholder="Escribe tu respuesta..." autocomplete="off"></textarea></div>`;
+    const sendBtn=closed?'':`<button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar respuesta</button>`;
     const viewLink=p?.id?`<a class="chatProductLink" href="${esc(productPublicUrl(p))}">Ver aviso</a>`:'';
-    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b> <span class="productCodeInline">${esc(productCode(p))}</span> ${viewLink}</p><p class="chatWith">Conversas con <b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions stickyChatActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar</button></div></section></div>`;
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b> <span class="productCodeInline">${esc(productCode(p))}</span> ${viewLink}</p><p class="chatWith">Conversas con <b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions stickyChatActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar chat</button></div></section></div>`;
+    const replyEl=document.getElementById('chatReplyText');
+    const replyBtn=document.querySelector(`[data-send-conversation-reply="${String(c.id).replace(/"/g,'\\"')}"]`);
+    if(replyEl && replyBtn){
+      const syncReplyBtn=()=>{ replyBtn.disabled=!replyEl.value.trim(); };
+      replyEl.addEventListener('input',syncReplyBtn);
+      syncReplyBtn();
+    }
     setTimeout(()=>{const box=document.getElementById('chatThreadMessages'); if(box) box.scrollTop=box.scrollHeight;},50);
     try{await loadConversations();}catch(e){}
   }
@@ -1191,18 +1198,19 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
     if(!convId) return {error:{message:'Conversación creada sin ID. No se pudo registrar el mensaje.'}};
 
-    const msgRows=[
-      {conversacion_id:convId,remitente_id:buyerUuid,mensaje:message,leido:false,created_at:timestamp},
-      {conversacion_id:convId,remitente_id:buyerUuid,mensaje:message,leido:false,fecha:timestamp,created_at:timestamp,estado:'enviado',publicacion_id:p.id}
-    ];
-
-    let msgRes=null;
-    for(const row of msgRows){
-      msgRes=await insertFlex('mercado_mensajes',row);
-      if(!msgRes.error) break;
-      console.warn('[CHAT] intento mensaje falló', msgRes.error?.message||msgRes.error);
-    }
+    // Esquema real V38.1 de mercado_mensajes:
+    // id, conversacion_id, remitente_id, mensaje, leido, created_at.
+    // No enviar fecha/estado/publicacion_id para evitar que Supabase interprete el texto como timestamp.
+    const msgRes=await insertFlex('mercado_mensajes',{
+      conversacion_id:convId,
+      remitente_id:buyerUuid,
+      mensaje:message,
+      leido:false,
+      created_at:timestamp
+    });
     if(msgRes?.error) return msgRes;
+
+    try{await state.sb.from('mercado_conversaciones').update({ultimo_mensaje:timestamp,estado:'nueva'}).eq('id',convId);}catch(e){console.warn('[CHAT] actualizar último mensaje',e);}
 
     return conv;
   }

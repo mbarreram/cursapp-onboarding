@@ -853,3 +853,12 @@ body.market-v8{background:#f5f6f8!important;}
 .chatSellerActions .softChip.lock{background:#fff7ed!important;color:#9a3412!important;border-color:#fed7aa!important}
 .chatBubble p{white-space:pre-wrap;line-height:1.28}
 @media(min-width:520px){.chatSellerActions{grid-template-columns:1fr 1fr 1fr!important}}
+
+/* V38.5 - respuesta visible y acciones fijas */
+.chatThreadModal{max-height:88vh!important;overflow:hidden!important;}
+.chatReplyBox{display:block!important;flex:0 0 auto!important;margin:8px 0 0!important;color:#0f172a!important;font-weight:900!important;}
+.chatReplyBox label{display:block!important;margin:0 0 6px!important;font-size:13px!important;color:#0f172a!important;font-weight:900!important;}
+.chatReplyBox textarea{display:block!important;width:100%!important;min-height:96px!important;max-height:150px!important;box-sizing:border-box!important;border:1px solid #e7edf6!important;border-radius:16px!important;background:#fff!important;color:#0f172a!important;padding:12px!important;font:inherit!important;font-size:14px!important;line-height:1.35!important;resize:vertical!important;outline:none!important;}
+.chatReplyBox textarea:focus{border-color:#c4b5fd!important;box-shadow:0 0 0 3px rgba(109,40,217,.10)!important;}
+.stickyChatActions .primaryBtn:disabled{opacity:.55!important;filter:grayscale(.2)!important;cursor:not-allowed!important;}
+@media(max-width:420px){.chatReplyBox textarea{min-height:86px!important}.stickyChatActions{gap:8px!important}.stickyChatActions button{min-height:46px!important}}
