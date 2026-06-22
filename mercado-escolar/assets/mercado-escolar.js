@@ -888,13 +888,51 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function canUseChat(p){return p.contacto_chat !== false && String(p.contacto_chat).toLowerCase() !== 'false';}
   function currentUserKey(){return state.session?.userId || state.session?.email || 'anon';}
   function currentUserUuid(){return isUuid(state.session?.userId)?state.session.userId:null;}
+  async function resolveCurrentUserUuid(){
+    let uid=currentUserUuid();
+    if(uid) return uid;
+
+    const email=String(state.session?.email||'').toLowerCase().trim();
+
+    // Cursapp usa sesión propia con email; las tablas del chat usan usuarios.id (uuid).
+    // Por eso se mapea email -> usuarios.id antes de insertar en columnas UUID.
+    if(state.sb && email){
+      try{
+        const res=await state.sb.from('usuarios').select('id').eq('email',email).maybeSingle();
+        const found=res?.data?.id;
+        if(isUuid(found)){
+          state.session.userId=found;
+          try{
+            const raw=readJson('cursapp_session_v1',{})||{};
+            raw.userId=found; raw.usuario_id=found;
+            localStorage.setItem('cursapp_session_v1',JSON.stringify(raw));
+          }catch(e){}
+          return found;
+        }
+      }catch(e){console.warn('[CHAT] no se pudo mapear email a usuarios.id',e);}
+    }
+
+    // Fallback si el proyecto está autenticado también con Supabase Auth.
+    if(state.sb?.auth?.getUser){
+      try{
+        const authRes=await state.sb.auth.getUser();
+        const authId=authRes?.data?.user?.id;
+        if(isUuid(authId)){
+          state.session.userId=authId;
+          return authId;
+        }
+      }catch(e){console.warn('[CHAT] no se pudo obtener auth user',e);}
+    }
+
+    return null;
+  }
   function sellerUuid(p){return isUuid(p?.vendedor_id)?p.vendedor_id:(isUuid(p?.usuario_id)?p.usuario_id:null);}
   function sellerKey(p){return sellerUuid(p) || p.vendedor_email || p.email || p.usuario_id || p.vendedor_id || p.nombre_vendedor || 'vendedor';}
   function contactMsgDefault(p){return `Hola, ¿sigue disponible ${p?.titulo||'este aviso'}?`;}
   async function loadConversations(){
     state.conversations=[]; state.unreadConversations=0;
     if(!state.sb || (!state.session?.email && !state.session?.userId)){renderConversationBadge();return;}
-    const meUuid=currentUserUuid();
+    const meUuid=await resolveCurrentUserUuid();
     const meEmail=String(state.session?.email||'').toLowerCase();
     const legacyKey=String(currentUserKey());
     const requests=[];
@@ -929,18 +967,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     box.innerHTML=state.conversations.map(c=>{const p=state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||{};return `<article class="conversationCard"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')}</b><span>${esc(c.ultimo_mensaje||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(c.estado||'nueva').toLowerCase())}">${esc(conversationStatusLabel(c.estado))}</em></article>`;}).join('');
   }
   async function createInternalConversation(p,message){
-    let buyerUuid=currentUserUuid();
-    // V38.1 fix: Supabase usa UUID en mercado_conversaciones.comprador_id/vendedor_id
-    // y mercado_mensajes.remitente_id. Si la sesión local trae email, obtener el UUID real
-    // desde auth antes de insertar.
-    if(!buyerUuid && state.sb?.auth?.getUser){
-      try{
-        const authRes=await state.sb.auth.getUser();
-        const authId=authRes?.data?.user?.id;
-        if(isUuid(authId)) buyerUuid=authId;
-      }catch(e){console.warn('[CHAT] no se pudo obtener auth user',e);}
-    }
-
+    const buyerUuid=await resolveCurrentUserUuid();
     const buyerEmail=String(state.session?.email||'').toLowerCase();
     const sellerId=sellerUuid(p);
     const sellerEmail=String(p.vendedor_email||p.email||'').toLowerCase();
@@ -1041,7 +1068,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
 
       // Registro de contacto: no bloquea el envío si esta tabla tiene columnas distintas.
       try{
-        const compradorUuid=currentUserUuid();
+        const compradorUuid=await resolveCurrentUserUuid();
         const vendedorUuid=sellerUuid(p);
         const contactRows=[
           {publicacion_id:p.id,vendedor_id:vendedorUuid,comprador_id:compradorUuid,usuario_id:compradorUuid,interesado_id:compradorUuid,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:now(),created_at:now()},
