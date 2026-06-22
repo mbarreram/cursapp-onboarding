@@ -819,3 +819,11 @@ body.market-v8{background:#f5f6f8!important;}
 .chatBubble{max-width:82%;border-radius:16px;padding:9px 11px;border:1px solid #e7edf6;background:#fff;box-shadow:0 8px 18px rgba(15,23,42,.04)}
 .chatBubble.mine{justify-self:end;background:#f3edff;border-color:#d9c8ff}.chatBubble.theirs{justify-self:start;background:#fff}.chatBubble p{margin:0;color:#0f172a;font-size:13px;line-height:1.35}.chatBubble small{display:block;margin-top:4px;color:#94a3b8;font-size:10.5px}
 .chatReplyBox{display:grid;gap:6px;font-weight:800;color:#0f172a}.chatReplyBox textarea{width:100%;min-height:78px;border:1px solid #e7edf6;border-radius:14px;padding:10px;font:inherit;resize:vertical}
+
+/* V38.2: cierre de conversaciones y estado publicación */
+.marketStatusBadge{position:absolute;left:8px;bottom:8px;z-index:2;border-radius:999px;padding:4px 8px;background:rgba(255,255,255,.94);border:1px solid #e7edf6;color:#0f172a;font-size:10.5px;font-weight:900;box-shadow:0 8px 18px rgba(15,23,42,.08)}
+.marketStatusBadge.vendido{background:#f8fafc;color:#334155;border-color:#cbd5e1}.marketStatusBadge.intercambiado{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.marketStatusBadge.cerrado{background:#f1f5f9;color:#475569;border-color:#cbd5e1}
+.convStatus.vendido,.convStatus.cerrado{background:#f8fafc;color:#334155;border-color:#cbd5e1}.convStatus.intercambiado{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.chatSellerActions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}.chatSellerActions .softChip{border:1px solid #e7edf6;background:#fff;border-radius:999px;padding:8px 10px;font-size:12px;font-weight:900;color:#0f172a}
+.chatClosedNotice{border:1px solid #e7edf6;background:#f8fafc;border-radius:16px;padding:11px 12px;color:#475569;font-size:13px;font-weight:800;line-height:1.35}.chatClosedNotice.detailClosed{margin:10px 0}
+.chatBubble.system{justify-self:center;max-width:92%;background:#fff7ed;border-color:#fed7aa;text-align:center}.chatBubble.system p{font-weight:850;color:#9a3412}.dangerBtn{border:0;background:#dc2626;color:#fff;border-radius:14px;padding:11px 14px;font-weight:900}
