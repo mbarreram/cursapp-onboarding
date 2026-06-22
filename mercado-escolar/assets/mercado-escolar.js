@@ -110,14 +110,6 @@
     const email=String(state.session.email||'').toLowerCase().trim();
     const uid=String(state.session.userId||'').trim();
     try{
-      // 0) Resolver UUID real del usuario desde usuarios.email.
-      // Esto evita que Mis Avisos quede vacío cuando la sesión trae email,
-      // pero las publicaciones usan vendedor_id UUID.
-      if(email && !isUuid(state.session.userId)){
-        const ur=await state.sb.from('usuarios').select('id,email,nombre').ilike('email',email).maybeSingle();
-        if(!ur.error && ur.data?.id) state.session.userId=ur.data.id;
-      }
-
       // 1) Si la sesión ya trae curso, buscar su colegio.
       if(isUuid(state.session.courseId) && !isUuid(state.session.colegioId)){
         const cr=await state.sb.from('cursos').select('id,colegio_id').eq('id',state.session.courseId).maybeSingle();
@@ -151,7 +143,6 @@
       }
       try{
         const raw=readJson('cursapp_session_v1',{})||{};
-        if(state.session.userId) raw.usuario_id=state.session.userId;
         if(state.session.courseId) raw.curso_id=state.session.courseId;
         if(state.session.colegioId) raw.colegio_id=state.session.colegioId;
         if(state.session.comuna) raw.comuna=state.session.comuna;
@@ -299,8 +290,8 @@
       queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.email).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
     }
     if(state.session.userId){
-      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(200));
-      if(isUuid(state.session.userId)) queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(200));
+      queries.push(state.sb.from("mercado_publicaciones").select("*").eq("usuario_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
+      if(isUuid(state.session.userId)) queries.push(state.sb.from("mercado_publicaciones").select("*").eq("vendedor_id",state.session.userId).neq("estado","eliminado").order("created_at",{ascending:false}).limit(100));
     }
     const res=await Promise.allSettled(queries);
     res.forEach(x=>{if(x.status==="fulfilled" && !x.value.error) (x.value.data||[]).forEach(p=>found.set(String(p.id),p));});
@@ -1554,10 +1545,27 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }catch(e){console.warn('[CHAT] cierre conversaciones',e);return;}
     for(const c of convs){
       try{
-        await updateConversationFlex(c.id,{estado:'cerrada',ultimo_mensaje:timestamp,fecha_cierre:timestamp,motivo_cierre:status,updated_at:timestamp});
+        await updateConversationFlex(c.id,{estado:'cerrada',estado_conversacion:'cerrada',ultimo_mensaje:timestamp,fecha_cierre:timestamp,motivo_cierre:status,updated_at:timestamp});
         const remitente=isUuid(c.vendedor_id)?c.vendedor_id:(await resolveCurrentUserUuid());
         await insertFlex('mercado_mensajes',{conversacion_id:c.id,remitente_id:remitente,mensaje:closeMessageForStatus(status),leido:false,created_at:timestamp,fecha:timestamp,estado:'sistema'});
       }catch(e){console.warn('[CHAT] mensaje sistema cierre',e);}
+    }
+  }
+  async function reopenConversationsForPost(publicacionId){
+    if(!state.sb || !publicacionId) return;
+    try{
+      await state.sb
+        .from('mercado_conversaciones')
+        .update({
+          estado:'abierta',
+          estado_conversacion:'abierta',
+          fecha_cierre:null,
+          motivo_cierre:null,
+          updated_at:now()
+        })
+        .eq('publicacion_id', publicacionId);
+    }catch(e){
+      console.warn('[CHAT] reapertura conversaciones', e);
     }
   }
   async function closePostFromConversation(conversationId,status){
@@ -1592,7 +1600,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     renderCreditVisibilityGuard();
 
     const closeBoost = (status==="vendido"||status==="intercambiado"||status==="eliminado");
-    const statusPayload = closeBoost ? {estado:status,estado_publicacion:status,destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,updated_at:now()} : {estado:status,estado_publicacion:status,updated_at:now()};
+    const reopened = (status==="disponible"||status==="activo");
+    const statusPayload = closeBoost
+      ? {estado:status,estado_publicacion:status,destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,updated_at:now()}
+      : (reopened
+          ? {estado:'activo',estado_publicacion:'disponible',activo:true,updated_at:now()}
+          : {estado:status,estado_publicacion:status,updated_at:now()});
     let r=await updatePostFlex(id,statusPayload);
     if(r.error){
       const msg=String(r.error.message||"");
@@ -1606,6 +1619,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       return;
     }
     if(closeBoost) await closeConversationsForPost(id,status);
+    else if(reopened) await reopenConversationsForPost(id);
     await loadPosts();
     await loadMinePosts();
     const nextTab=status==="vendido"?"vendidos":(status==="intercambiado"?"intercambiados":"activos");
