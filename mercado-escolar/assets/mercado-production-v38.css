@@ -837,3 +837,19 @@ body.market-v8{background:#f5f6f8!important;}
 .chatSellerPanel b{display:block;color:#0f172a;font-size:13px}.chatSellerPanel small{display:block;color:#64748b;font-size:11.5px;margin-top:2px}.chatSellerActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0}.chatSellerActions .softChip{border-radius:14px;padding:10px 8px;font-size:11.5px;box-shadow:0 8px 18px rgba(15,23,42,.05)}
 .chatSellerActions .softChip.success{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}.chatSellerActions .softChip.info{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}.chatSellerActions .softChip.lock{background:#f8fafc;color:#475569;border-color:#cbd5e1}
 @media(max-width:420px){.chatSellerActions{grid-template-columns:1fr}.chatThreadHead h2{font-size:18px}}
+
+/* V38.4 - mejoras chat marketplace */
+.chatThreadModal{position:relative!important;display:flex!important;flex-direction:column!important;max-height:88vh!important;overflow:hidden!important;padding-bottom:14px!important}
+.chatStickyClose{position:absolute;top:10px;right:10px;z-index:3;width:36px;height:36px;border-radius:14px;border:1px solid #e7edf6;background:#fff;color:#0f172a;font-weight:900;box-shadow:0 10px 24px rgba(15,23,42,.12)}
+.chatThreadHead{padding-right:48px!important;flex:0 0 auto!important}
+.chatThreadMessages{flex:1 1 auto!important;max-height:none!important;min-height:180px!important}
+.stickyChatActions{position:sticky;bottom:0;background:#fff;padding-top:10px;z-index:2;flex:0 0 auto!important}
+.productCodeInline{display:inline-flex;align-items:center;gap:4px;margin-left:5px;padding:3px 7px;border:1px solid #e7edf6;border-radius:999px;background:#f8fafc;color:#475569;font-size:11px;font-weight:900;vertical-align:middle}
+.chatProductLink{display:inline-flex;margin-left:6px;color:#6d28d9;font-weight:900;text-decoration:none;font-size:11.5px}
+.maskedEmail{display:inline-flex;margin-left:6px;padding:2px 7px;border-radius:999px;background:#f8fafc;border:1px solid #e7edf6;color:#64748b;font-size:11px;font-weight:800}
+.chatSellerPanel{background:linear-gradient(135deg,#fcfaff,#fff)!important}
+.chatSellerActions{grid-template-columns:1fr!important}
+.chatSellerActions .softChip{min-height:44px!important;font-size:13px!important}
+.chatSellerActions .softChip.lock{background:#fff7ed!important;color:#9a3412!important;border-color:#fed7aa!important}
+.chatBubble p{white-space:pre-wrap;line-height:1.28}
+@media(min-width:520px){.chatSellerActions{grid-template-columns:1fr 1fr 1fr!important}}
