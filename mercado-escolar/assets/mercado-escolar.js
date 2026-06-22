@@ -51,20 +51,41 @@
   const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+  function readRaw(k,d=''){try{return localStorage.getItem(k) ?? d}catch(e){return d}}
+  function pickActiveProfile(session){
+    const rawActive=String(readRaw('cursapp_active_profile_v1','')||'').trim();
+    const sessionProfileId=String(session?.profileId||session?.profile_id||'').trim();
+    const profiles=readJson('cursapp_profiles_v1',[])||[];
+    const activeId=rawActive || sessionProfileId;
+    let profile={};
+    if(Array.isArray(profiles) && activeId){
+      profile=profiles.find(p=>String(p?.profileId||p?.id||'')===activeId) || {};
+    }
+    // Compatibilidad: en algunas versiones cursapp_active_profile_v1 puede ser un objeto JSON.
+    const activeObj=readJson('cursapp_active_profile_v1',null);
+    if(activeObj && typeof activeObj==='object' && !Array.isArray(activeObj)) profile={...activeObj,...profile};
+    return profile || {};
+  }
+  function profileCourseId(p){return p?.supabase?.curso_id || p?.curso_id || p?.cursoId || p?.course?.curso_id || p?.course?.id || null;}
+  function profileColegioId(p){return p?.supabase?.colegio_id || p?.colegio_id || p?.colegioId || p?.course?.colegio_id || p?.course?.colegioId || null;}
   function getSession(){
     const s=readJson("cursapp_session_v1",{})||{};
-    const p=readJson("cursapp_active_profile_v1",{})||{};
-    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||"apoderado";
+    const p=pickActiveProfile(s);
+    const ap=p.apoderado||{};
+    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||p.role||"apoderado";
+    // Regla Marketplace: el colegio/curso activo viene del perfil activo. Solo si no existe, se usa la sesión legacy.
+    const courseId=profileCourseId(p) || s.curso_id || s.cursoId || null;
+    const colegioId=profileColegioId(p) || s.colegio_id || s.colegioId || null;
     return {
       raw:s, profile:p,
-      userId:s.userId||s.usuario_id||p.usuario_id||p.userId||null,
-      email:String(s.email||p.email||"").toLowerCase(),
-      name:s.nombre||s.name||p.nombre_apoderado||p.nombre||"Apoderado Cursapp",
+      userId:s.userId||s.usuario_id||p.supabase?.usuario_id||p.usuario_id||p.userId||null,
+      email:String(s.email||p.email||ap.email||"").toLowerCase(),
+      name:s.nombre||s.name||ap.name||p.nombre_apoderado||p.nombre||"Apoderado Cursapp",
       role,
-      courseId:s.curso_id||s.cursoId||p.curso_id||p.cursoId||null,
-      colegioId:s.colegio_id||s.colegioId||p.colegio_id||p.colegioId||null,
+      courseId,
+      colegioId,
       courseKey:s.courseKey||s.course_key||p.courseKey||p.course_key||"",
-      phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""
+      phone:s.whatsapp||s.telefono||ap.phone||p.whatsapp||p.telefono||""
     };
   }
   async function waitSupabase(timeoutMs=5000){
@@ -123,6 +144,7 @@
           if(!r.error && r.data) mr=r.data;
         }
         if(!mr && email){
+          // Fallback legacy: solo si no hay perfil activo. Si el usuario está en varios colegios, el perfil activo manda.
           const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').ilike('email',email).order('created_at',{ascending:false}).limit(1).maybeSingle();
           if(!r.error && r.data) mr=r.data;
         }
@@ -384,7 +406,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function filterByScope(scope){
     const sc=String(scope||'colegio').toLowerCase();
     const base=state.posts.filter(isActiveMarketPost);
-    if(sc==='todo') return base.filter(p=>isMine(p)||['todo','cursapp','publico','publica','todos'].includes(postVisibility(p))||sameColegio(p)||sameComuna(p));
+    if(['todo','cursapp','todos'].includes(sc)) return base.filter(p=>canViewPost(p));
     if(sc==='colegio') return base.filter(p=>isMine(p)||sameColegio(p));
     if(sc==='comuna' || sc==='cercanos') return base.filter(p=>isMine(p)||sameComuna(p));
     return visible(base);
