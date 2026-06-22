@@ -864,3 +864,12 @@ body.market-v8{background:#f5f6f8!important;}
 @media(max-width:420px){.chatReplyBox textarea{min-height:86px!important}.stickyChatActions{gap:8px!important}.stickyChatActions button{min-height:46px!important}}
 /* V38.6: Ver aviso dentro del mismo detalle del marketplace */
 button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;font-family:inherit}
+
+/* V38.7 - respuesta chat siempre visible */
+.chatThreadModal{position:relative!important;display:flex!important;flex-direction:column!important;max-height:88vh!important;overflow:hidden!important;}
+.chatThreadMessages{flex:1 1 auto!important;min-height:120px!important;max-height:38vh!important;overflow:auto!important;}
+.chatReplyFooter{flex:0 0 auto!important;position:sticky!important;bottom:0!important;background:#fff!important;padding-top:10px!important;z-index:4!important;}
+.chatReplyFooter .chatReplyBox{display:block!important;margin:0 0 8px!important;}
+.chatReplyFooter .chatReplyBox textarea{display:block!important;width:100%!important;min-height:92px!important;max-height:130px!important;background:#fff!important;color:#0f172a!important;border:1px solid #e7edf6!important;border-radius:16px!important;padding:12px!important;box-sizing:border-box!important;font:inherit!important;line-height:1.35!important;resize:vertical!important;}
+.chatReplyFooter .stickyChatActions{position:static!important;padding-top:0!important;background:#fff!important;}
+@media(max-width:420px){.chatThreadMessages{max-height:34vh!important;min-height:100px!important}.chatReplyFooter .chatReplyBox textarea{min-height:86px!important}}

@@ -1133,10 +1133,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const sellerMode=String(c.vendedor_id)===String(me);
     const closed=isConversationClosed(c,p);
     const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel"><div><b>Acciones del vendedor</b><small>Cambia el estado cuando cierres el trato. Esto bloquea nuevas consultas.</small></div><div class="chatSellerActions"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Marcar vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Marcar intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
-    const replyBox=closed?`<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div>`:`<div class="chatReplyBox"><label for="chatReplyText">Responder</label><textarea id="chatReplyText" rows="4" placeholder="Escribe tu respuesta..." autocomplete="off"></textarea></div>`;
-    const sendBtn=closed?'':`<button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar respuesta</button>`;
+    const replyFooter=closed
+      ? `<div class="chatClosedNotice">${postStatusIcon(p)} ${postStatusLabel(p)}. El historial queda visible, pero el chat está cerrado.</div><div class="v19ConfirmActions stickyChatActions"><button type="button" class="ghost" data-close-chat-thread>Cerrar chat</button></div>`
+      : `<div class="chatReplyFooter"><div class="chatReplyBox"><label for="chatReplyText">Responder</label><textarea id="chatReplyText" rows="4" placeholder="Escribe tu respuesta..." autocomplete="off"></textarea></div><div class="v19ConfirmActions stickyChatActions"><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar respuesta</button><button type="button" class="ghost" data-close-chat-thread>Cerrar chat</button></div></div>`;
     const viewLink=p?.id?`<button type="button" class="chatProductLink" data-open-detail="${esc(p.id)}">Ver aviso</button>`:'';
-    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b> <span class="productCodeInline">${esc(productCode(p))}</span> ${viewLink}</p><p class="chatWith">Conversas con <b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyBox}<div class="v19ConfirmActions stickyChatActions">${sendBtn}<button type="button" class="ghost" data-close-chat-thread>Cerrar chat</button></div></section></div>`;
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead"><button type="button" class="ghost" data-close-chat-thread>←</button><div><h2>${esc(p.titulo||'Conversación')}</h2><p class="muted">Producto: <b>${esc(p.titulo||'Publicación')}</b> <span class="productCodeInline">${esc(productCode(p))}</span> ${viewLink}</p><p class="chatWith">Conversas con <b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${isClosedPost(p)?` · ${postStatusIcon(p)} ${postStatusLabel(p)}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyFooter}</section></div>`;
     const replyEl=document.getElementById('chatReplyText');
     const replyBtn=document.querySelector(`[data-send-conversation-reply="${String(c.id).replace(/"/g,'\\"')}"]`);
     if(replyEl && replyBtn){
@@ -1154,7 +1155,19 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const text=(document.getElementById('chatReplyText')?.value||'').trim();
     if(!text){toast('Escribe una respuesta.');return;}
     const me=await resolveCurrentUserUuid();
-    const c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId));
+    let c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId));
+    if(!c && state.sb){
+      try{
+        const cr=await state.sb.from('mercado_conversaciones').select('*').eq('id',conversationId).maybeSingle();
+        if(!cr.error && cr.data){
+          c=cr.data;
+          state.conversations=state.conversations||[];
+          state.conversations.unshift(c);
+          await hydrateConversationPosts();
+          await hydrateConversationUsers(me);
+        }
+      }catch(e){console.warn('[CHAT] recargar conversación para responder',e);}
+    }
     if(!me || !c){toast('No se pudo validar la conversación.');return;}
     const p=conversationPost(c);
     if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes responder esta conversación.');return;}
