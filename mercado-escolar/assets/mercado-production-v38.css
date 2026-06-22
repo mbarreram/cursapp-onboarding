@@ -1069,3 +1069,58 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
   .chatThreadModalV39 .chatThreadMessages{min-height:300px!important;}
   .chatThreadModalV39 .chatBubble{max-width:84%!important;}
 }
+
+/* V40.2 Marketplace: colegio real, filtro inicial y conversaciones agrupadas */
+.sellerActionHelp{
+  margin:6px 0 8px!important;
+  font-size:11px!important;
+  line-height:1.25!important;
+  color:#64748b!important;
+  font-weight:700!important;
+}
+.conversationProductGroup{
+  border:1px solid #e9eef7!important;
+  border-radius:24px!important;
+  background:#fff!important;
+  box-shadow:0 12px 32px rgba(15,23,42,.06)!important;
+  padding:12px!important;
+  margin:0 0 14px!important;
+}
+.conversationProductGroupHead{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:6px 6px 12px!important;
+  border-bottom:1px solid #eef2f7!important;
+  margin-bottom:8px!important;
+}
+.conversationProductGroupHead b{
+  display:block!important;
+  font-size:16px!important;
+  color:#0f172a!important;
+}
+.conversationProductGroupHead small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  margin-top:3px!important;
+}
+.conversationProductGroupHead button{
+  border:0!important;
+  border-radius:999px!important;
+  padding:8px 12px!important;
+  font-weight:900!important;
+  color:#6d28d9!important;
+  background:#f3e8ff!important;
+  white-space:nowrap!important;
+}
+.conversationProductGroupRows{display:grid!important;gap:10px!important;}
+.conversationCard.grouped{
+  margin:0!important;
+  box-shadow:none!important;
+  border:1px solid #edf2f7!important;
+  border-radius:20px!important;
+}
+.conversationCard.grouped .maskedEmail{font-size:11px!important;color:#64748b!important;font-weight:800!important;}

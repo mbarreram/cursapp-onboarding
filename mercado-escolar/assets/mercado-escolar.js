@@ -51,41 +51,20 @@
   const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
-  function readRaw(k,d=''){try{return localStorage.getItem(k) ?? d}catch(e){return d}}
-  function pickActiveProfile(session){
-    const rawActive=String(readRaw('cursapp_active_profile_v1','')||'').trim();
-    const sessionProfileId=String(session?.profileId||session?.profile_id||'').trim();
-    const profiles=readJson('cursapp_profiles_v1',[])||[];
-    const activeId=rawActive || sessionProfileId;
-    let profile={};
-    if(Array.isArray(profiles) && activeId){
-      profile=profiles.find(p=>String(p?.profileId||p?.id||'')===activeId) || {};
-    }
-    // Compatibilidad: en algunas versiones cursapp_active_profile_v1 puede ser un objeto JSON.
-    const activeObj=readJson('cursapp_active_profile_v1',null);
-    if(activeObj && typeof activeObj==='object' && !Array.isArray(activeObj)) profile={...activeObj,...profile};
-    return profile || {};
-  }
-  function profileCourseId(p){return p?.supabase?.curso_id || p?.curso_id || p?.cursoId || p?.course?.curso_id || p?.course?.id || null;}
-  function profileColegioId(p){return p?.supabase?.colegio_id || p?.colegio_id || p?.colegioId || p?.course?.colegio_id || p?.course?.colegioId || null;}
   function getSession(){
     const s=readJson("cursapp_session_v1",{})||{};
-    const p=pickActiveProfile(s);
-    const ap=p.apoderado||{};
-    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||p.role||"apoderado";
-    // Regla Marketplace: el colegio/curso activo viene del perfil activo. Solo si no existe, se usa la sesión legacy.
-    const courseId=profileCourseId(p) || s.curso_id || s.cursoId || null;
-    const colegioId=profileColegioId(p) || s.colegio_id || s.colegioId || null;
+    const p=readJson("cursapp_active_profile_v1",{})||{};
+    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||"apoderado";
     return {
       raw:s, profile:p,
-      userId:s.userId||s.usuario_id||p.supabase?.usuario_id||p.usuario_id||p.userId||null,
-      email:String(s.email||p.email||ap.email||"").toLowerCase(),
-      name:s.nombre||s.name||ap.name||p.nombre_apoderado||p.nombre||"Apoderado Cursapp",
+      userId:s.userId||s.usuario_id||p.usuario_id||p.userId||p.supabase?.usuario_id||p.supabase?.userId||null,
+      email:String(s.email||p.email||p.supabase?.email||"").toLowerCase(),
+      name:s.nombre||s.name||p.nombre_apoderado||p.nombre||p.supabase?.nombre||"Apoderado Cursapp",
       role,
-      courseId,
-      colegioId,
+      courseId:p.supabase?.curso_id||p.supabase?.cursoId||p.curso_id||p.cursoId||s.curso_id||s.cursoId||null,
+      colegioId:p.supabase?.colegio_id||p.supabase?.colegioId||p.colegio_id||p.colegioId||s.colegio_id||s.colegioId||null,
       courseKey:s.courseKey||s.course_key||p.courseKey||p.course_key||"",
-      phone:s.whatsapp||s.telefono||ap.phone||p.whatsapp||p.telefono||""
+      phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""
     };
   }
   async function waitSupabase(timeoutMs=5000){
@@ -144,7 +123,6 @@
           if(!r.error && r.data) mr=r.data;
         }
         if(!mr && email){
-          // Fallback legacy: solo si no hay perfil activo. Si el usuario está en varios colegios, el perfil activo manda.
           const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').ilike('email',email).order('created_at',{ascending:false}).limit(1).maybeSingle();
           if(!r.error && r.data) mr=r.data;
         }
@@ -249,6 +227,22 @@
   function categoryById(id){return state.categories.find(c=>String(c.id)===String(id))||null;}
   function categoryName(p){return p.categoria_nombre||categoryById(p.categoria_id)?.nombre||"Otros";}
   function categoryIconByName(name){return (state.categories.find(c=>String(c.nombre).toLowerCase()===String(name).toLowerCase())||{}).icono||"🛍️";}
+  function colegioNameForPost(p){
+    const id=String(p?.colegio_id||'');
+    return p?.colegio_nombre || p?.nombre_colegio || p?.colegio?.nombre || (id && state.colegioCache?.[id]?.nombre) || (sameColegio(p)?(state.session?.colegioNombre||'Mi colegio'):'Comunidad');
+  }
+  async function hydratePostSchools(list){
+    if(!state.sb) return;
+    state.colegioCache=state.colegioCache||{};
+    const ids=[...new Set((list||[]).map(p=>String(p?.colegio_id||'')).filter(isUuid))].filter(id=>!state.colegioCache[id]);
+    if(!ids.length) return;
+    try{
+      const r=await state.sb.from('colegios').select('id,nombre,comuna,region').in('id',ids);
+      if(!r.error){
+        (r.data||[]).forEach(c=>{state.colegioCache[String(c.id)]={nombre:c.nombre||'Colegio',comuna:c.comuna||'',region:c.region||''};});
+      }
+    }catch(e){console.warn('[MERCADO] no se pudieron cargar nombres de colegios',e);}
+  }
 
   async function loadPosts(){
     let query=state.sb.from("mercado_publicaciones").select("*").eq("activo",true).in("estado",["activo","disponible","reservado"]);
@@ -256,8 +250,9 @@
     const {data,error}=await query;
     if(error){renderError("No se pudieron cargar publicaciones: "+error.message);return;}
     state.posts=data||[];
+    await hydratePostSchools(state.posts);
     await loadImagesForPosts();
-    renderProducts();
+    renderProducts(filterByScope(activeExploreScope()));
     renderMine();
   }
   async function loadImagesForPosts(){
@@ -303,6 +298,7 @@
     // fallback: cualquier publicación visible ya cargada que pertenezca al usuario
     state.posts.filter(isMine).forEach(p=>found.set(String(p.id),p));
     state.minePosts=Array.from(found.values()).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    await hydratePostSchools(state.minePosts);
     await loadImagesForIds(state.minePosts.map(p=>p.id));
   }
   function postUrl(p){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(p.id)}`;}
@@ -388,7 +384,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function sameColegio(p){return !!(isUuid(state.session?.colegioId) && isUuid(p?.colegio_id) && String(p.colegio_id)===String(state.session.colegioId));}
   function sameComuna(p){
     const userComuna=String(state.session?.comuna||'').toLowerCase().trim();
-    const postComuna=String(p?.comuna||p?.colegio_comuna||p?.colegio?.comuna||'').toLowerCase().trim();
+    const cid=String(p?.colegio_id||'');
+    const cached=cid && state.colegioCache?.[cid];
+    const postComuna=String(p?.comuna||p?.colegio_comuna||p?.colegio?.comuna||cached?.comuna||'').toLowerCase().trim();
     if(userComuna && postComuna) return userComuna===postComuna;
     // Si no tenemos comuna en la publicación, al menos exige mismo colegio cuando la visibilidad es local.
     return sameColegio(p);
@@ -403,10 +401,19 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return sameColegio(p);
   }
   function visible(list=state.posts){return list.filter(canViewPost)}
+  function activeExploreScope(){
+    const btn=document.querySelector('.filters button.active');
+    return btn?.dataset?.scope || 'colegio';
+  }
+  function applyExploreFilter(scope){
+    const sc=String(scope||activeExploreScope()||'colegio').toLowerCase();
+    $$('.filters button').forEach(b=>b.classList.toggle('active',String(b.dataset.scope||'').toLowerCase()===sc));
+    renderProducts(filterByScope(sc));
+  }
   function filterByScope(scope){
     const sc=String(scope||'colegio').toLowerCase();
     const base=state.posts.filter(isActiveMarketPost);
-    if(['todo','cursapp','todos'].includes(sc)) return base.filter(p=>canViewPost(p));
+    if(sc==='todo') return base.filter(p=>isMine(p)||['todo','cursapp','publico','publica','todos'].includes(postVisibility(p))||sameColegio(p)||sameComuna(p));
     if(sc==='colegio') return base.filter(p=>isMine(p)||sameColegio(p));
     if(sc==='comuna' || sc==='cercanos') return base.filter(p=>isMine(p)||sameComuna(p));
     return visible(base);
@@ -425,7 +432,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard ${isBoosted(p)?'isBoosted':''}" data-post="${esc(p.id)}">
       <div class="productImageWrap">${isBoosted(p)?`<span class="boostStar" title="Destacado">⭐</span>`:""}${statusBadge(p)}<img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
-      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
+      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(colegioNameForPost(p))}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
     </article>`;
   }
   function renderProducts(list=visible()){
@@ -493,7 +500,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     try{
       await loadPosts();
       await loadMinePosts();
-      renderProducts();
+      renderProducts(filterByScope(activeExploreScope()));
       renderMine(preserveMineFilter ? (document.getElementById('myPosts')?.dataset.mineFilter||"activos") : "activos");
       renderCreditVisibilityGuard();
       if(window.CursappMarketCredits?.refresh) await window.CursappMarketCredits.refresh();
@@ -506,10 +513,11 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#view-"+v)?.classList.add("active");
     $$(".bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
     if(v==="mis") renderMine();
+    if(v==="explorar") setTimeout(()=>applyExploreFilter(activeExploreScope()),0);
     if(v==="creditos") setTimeout(renderCreditVisibilityGuard,120);
   }
-  function search(q){q=String(q||"").toLowerCase().trim();const list=!q?visible():visible().filter(p=>String((p.titulo||"")+" "+categoryName(p)+" "+(p.descripcion||"")).toLowerCase().includes(q));renderProducts(list);}
-  function filterCat(cat){showView("explorar"); renderProducts(visible().filter(p=>categoryName(p)===cat));}
+  function search(q){q=String(q||"").toLowerCase().trim();const scoped=filterByScope(activeExploreScope());const list=!q?scoped:scoped.filter(p=>String((p.titulo||"")+" "+categoryName(p)+" "+(p.descripcion||"")).toLowerCase().includes(q));renderProducts(list);}
+  function filterCat(cat){showView("explorar"); renderProducts(filterByScope(activeExploreScope()).filter(p=>categoryName(p)===cat));}
 
   function validateFiles(files){
     const arr=Array.from(files||[]);
@@ -703,7 +711,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       <div class="v6DetailTop"><button class="v6IconBack" onclick="document.getElementById('modal').innerHTML=''">←</button><b>Detalle del aviso</b><button class="v6IconBack" data-share="${esc(p.id)}">⇧</button></div>
       <div class="v13Gallery"><div class="v13GalleryTrack">${gallery.map(u=>`<figure><img src="${esc(u)}" onerror="this.src='assets/img/generic.svg'"></figure>`).join("")}</div><div class="v6Dots">${gallery.map((_,i)=>`<span class="${i===0?'active':''}"></span>`).join("")}</div></div>
       <div class="v6DetailBody">${isBoosted(p)?(isMine(p)?`<em class="boostBadge detailBoost ownerOnly">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${boostDaysText(p)}</em>`:`<em class="boostBadge detailBoost publicOnly">⭐ Destacado</em>`):""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
-      <div class="v6Chips">${detailStatusChip(p)}<span>⌖ ${esc(p.curso_id?"Colegio Central":"Comunidad")}</span><span>${esc(relDate(p))}</span></div>
+      <div class="v6Chips">${detailStatusChip(p)}<span>⌖ ${esc(colegioNameForPost(p))}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
       <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
       ${(!isMine(p) && !isClosedPost(p)) ? `<button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar vendedor</button>` : (isClosedPost(p)?`<div class="chatClosedNotice detailClosed">${postStatusIcon(p)} ${postStatusLabel(p)}. No se aceptan nuevas consultas.</div>`:'')}
@@ -1111,7 +1119,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!state.sb || !missing.length) return;
     try{
       const r=await state.sb.from('mercado_publicaciones').select('*').in('id',missing);
-      if(!r.error){ (r.data||[]).forEach(p=>{state.conversationPosts[String(p.id)]=p;}); }
+      if(!r.error){ (r.data||[]).forEach(p=>{state.conversationPosts[String(p.id)]=p;}); await hydratePostSchools(r.data||[]); }
     }catch(e){console.warn('[CHAT] hydrate publicaciones conversación',e);}
   }
   function conversationPost(c){return state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||state.conversationPosts?.[String(c.publicacion_id)]||{};}
@@ -1191,14 +1199,25 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function renderConversations(){
     const box=document.getElementById('conversationsList'); if(!box)return;
     if(!state.conversations.length){box.innerHTML=`<div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div>`;return;}
-    box.innerHTML=state.conversations.map(c=>{
-      const p=conversationPost(c);
-      const unread=Number(c.__unread||0);
-      const status=unread>0?'nueva':(isConversationClosed(c,p)?postStatus(p):c.estado||'abierta');
-      const me=state.session?.userId||'';
-      const other=conversationOtherName(c,p,me);
-      const masked=conversationOtherMaskedEmail(c,me);
-      return `<article class="conversationCard" data-open-conversation="${esc(c.id)}"><div class="conversationAvatar">💬</div><div><b>${esc(c.publicacion_titulo||p.titulo||'Publicación')} <small class="productCodeInline">${esc(productCode(p))}</small></b><span>Con: ${esc(other)}${masked?` · ${esc(masked)}`:''} · ${esc(c.__lastText||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${postStatusIcon(p)} ${postStatusLabel(p)} · ${fmtDateTime(c.ultimo_mensaje||c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(status).toLowerCase())}">${unread>0?'Nueva':esc(isConversationClosed(c,p)?postStatusLabel(p):conversationStatusLabel(c.estado))}</em></article>`;
+    const me=state.session?.userId||'';
+    const groups=new Map();
+    (state.conversations||[]).forEach(c=>{
+      const key=String(c.publicacion_id||c.id);
+      if(!groups.has(key)) groups.set(key,{post:conversationPost(c),items:[]});
+      groups.get(key).items.push(c);
+    });
+    box.innerHTML=Array.from(groups.values()).map(g=>{
+      const p=g.post||{};
+      const items=g.items.sort((a,b)=>Date.parse(b.ultimo_mensaje||b.created_at||0)-Date.parse(a.ultimo_mensaje||a.created_at||0));
+      const head=`<div class="conversationProductGroupHead"><div><b>📦 ${esc(p.titulo||items[0]?.publicacion_titulo||'Publicación')}</b><small>${esc(productCode(p))} · ${items.length} consulta${items.length===1?'':'s'} · ${postStatusIcon(p)} ${postStatusLabel(p)}</small></div>${p.id?`<button type="button" data-open-detail="${esc(p.id)}">Ver aviso</button>`:''}</div>`;
+      const rows=items.map(c=>{
+        const unread=Number(c.__unread||0);
+        const status=unread>0?'nueva':(isConversationClosed(c,p)?postStatus(p):c.estado||'abierta');
+        const other=conversationOtherName(c,p,me);
+        const masked=conversationOtherMaskedEmail(c,me);
+        return `<article class="conversationCard grouped" data-open-conversation="${esc(c.id)}"><div class="conversationAvatar">💬</div><div><b>${esc(other)}${masked?` <small class="maskedEmail">${esc(masked)}</small>`:''}</b><span>${esc(c.__lastText||c.mensaje||'Consulta por Mercado Escolar')}</span><small>${fmtDateTime(c.ultimo_mensaje||c.fecha||c.created_at||new Date())}</small></div><em class="convStatus ${esc(String(status).toLowerCase())}">${unread>0?'Nueva':esc(isConversationClosed(c,p)?postStatusLabel(p):conversationStatusLabel(c.estado))}</em></article>`;
+      }).join('');
+      return `<section class="conversationProductGroup">${head}<div class="conversationProductGroupRows">${rows}</div></section>`;
     }).join('');
   }
   async function hydrateUnreadForConversations(){
@@ -1244,7 +1263,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const closed=isConversationClosed(c,p);
     const msgCount=msgs.length;
     const statusPill=`<span class="chatStatusPill ${esc(String(postStatusLabel(p)).toLowerCase())}">${postStatusIcon(p)} ${esc(postStatusLabel(p))}</span>`;
-    const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel compact"><div class="chatSellerStatus">${statusPill}</div><div class="chatSellerActions compact"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
+    const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel compact"><div class="chatSellerStatus">${statusPill}</div><p class="sellerActionHelp">Acciones del vendedor: úsalo cuando cierres el trato. Esto bloquea nuevas consultas para este aviso.</p><div class="chatSellerActions compact"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
     const replyFooter=closed
       ? `<div class="chatClosedNotice compact">${postStatusIcon(p)} ${postStatusLabel(p)}. Historial visible, chat cerrado.</div>`
       : `<div class="chatReplyFooter compact"><textarea id="chatReplyText" rows="1" placeholder="Escribe un mensaje..." autocomplete="off"></textarea><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar</button></div>`;
@@ -1673,7 +1692,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       photoMessage(state.selectedFiles.length?`✅ ${state.selectedFiles.length}/${MAX_FILES} foto(s) lista(s).`:"",state.selectedFiles.length?"ok":"error");
       renderPreview();
     });
-    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>{$$(".filters button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");const sc=btn.dataset.scope;renderProducts(filterByScope(sc));}));
+    $$(".filters button").forEach(btn=>btn.addEventListener("click",()=>applyExploreFilter(btn.dataset.scope)));
     renderPreview([]);
   }
 
