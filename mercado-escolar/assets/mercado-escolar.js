@@ -983,41 +983,19 @@ Vi esta publicación en Mercado Escolar Cursapp.
       return {error:{message:'La publicación no tiene vendedor_id/usuario_id UUID. Revisa la publicación en mercado_publicaciones.'}};
     }
 
-    const convRows=[
-      {
-        publicacion_id:p.id,
-        comprador_id:buyerUuid,
-        vendedor_id:sellerId,
-        estado:'nueva',
-        ultimo_mensaje:message,
-        created_at:timestamp,
-        ultimo_mensaje_at:timestamp
-      },
-      {
-        publicacion_id:p.id,
-        comprador_id:buyerUuid,
-        vendedor_id:sellerId,
-        estado:'nueva',
-        ultimo_mensaje:message,
-        fecha:timestamp,
-        updated_at:timestamp,
-        created_at:timestamp,
-        publicacion_titulo:p.titulo||'Publicación',
-        comprador_email:buyerEmail,
-        comprador_nombre:state.session?.name||'Apoderado Cursapp',
-        vendedor_email:sellerEmail,
-        vendedor_nombre:p.nombre_vendedor||'Vendedor Cursapp',
-        medio_contacto:'chat_interno',
-        mensaje:message
-      }
-    ];
+    // Esquema real V38.1 de mercado_conversaciones:
+    // id, publicacion_id, vendedor_id, comprador_id, estado, ultimo_mensaje, created_at.
+    // No enviar nombres, emails, titulo_publicacion, fecha ni updated_at porque no existen en Supabase.
+    const convRow={
+      publicacion_id:p.id,
+      comprador_id:buyerUuid,
+      vendedor_id:sellerId,
+      estado:'nueva',
+      ultimo_mensaje:message,
+      created_at:timestamp
+    };
 
-    let conv=null;
-    for(const row of convRows){
-      conv=await insertFlex('mercado_conversaciones',row);
-      if(!conv.error) break;
-      console.warn('[CHAT] intento conversación falló', conv.error?.message||conv.error);
-    }
+    const conv=await insertFlex('mercado_conversaciones',convRow);
     if(!conv || conv.error) return conv||{error:{message:'No se pudo crear la conversación'}};
 
     const convId=conv.data?.id||conv.data?.conversacion_id||null;
