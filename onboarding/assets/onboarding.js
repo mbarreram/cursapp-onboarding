@@ -249,6 +249,62 @@ function uid(prefix = "id") {
   const SB_KEY_ONB_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
 
   function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+
+  async function sbAuthFetch(path, body){
+    const key = SB_KEY_ONB_REAL;
+    const res = await fetch(SB_URL_ONB + "/auth/v1/" + path, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body || {})
+    });
+    const txt = await res.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }
+    if(!res.ok){
+      const msg = (data && (data.msg || data.message || data.error_description || data.error)) || txt || ("HTTP " + res.status);
+      const err = new Error(String(msg));
+      err.authData = data;
+      throw err;
+    }
+    return data;
+  }
+
+  async function signInAuthUser(email, password){
+    return await sbAuthFetch("token?grant_type=password", {
+      email: String(email || "").trim().toLowerCase(),
+      password: String(password || "")
+    });
+  }
+
+  async function ensureAuthUser(email, password, metadata){
+    email = String(email || "").trim().toLowerCase();
+    password = String(password || "");
+    if(!email) throw new Error("Email vacío al crear usuario Auth.");
+    if(password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+
+    try{
+      const created = await sbAuthFetch("signup", {
+        email,
+        password,
+        data: Object.assign({ app:"cursapp" }, metadata || {})
+      });
+      if(created && created.user && created.user.id) return created.user;
+    }catch(e){
+      // Si el correo ya existe en Auth, validamos la contraseña con signIn.
+      // Esto permite registrar el mismo apoderado en otro curso sin duplicar cuenta.
+      const msg = String(e && e.message || e || "");
+      if(!/already|registered|exists|user/i.test(msg)) throw e;
+    }
+
+    const signed = await signInAuthUser(email, password);
+    if(!signed || !signed.user || !signed.user.id){
+      throw new Error("No se pudo validar la cuenta Auth existente.");
+    }
+    return signed.user;
+  }
   function sbCleanDate(v){ const s = String(v || "").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
   async function sbOnb(path, opts){
     const key = SB_KEY_ONB_REAL;
@@ -320,13 +376,19 @@ function uid(prefix = "id") {
     if(!email) throw new Error("email vacío al crear usuario");
     let row = await sbSelectOne("usuarios", "email=eq." + sbQ(email) + "&select=*");
     if(row && row.id) return row;
-    row = await sbInsert("usuarios", {
+
+    const body = {
       email,
       nombre: payload.nombre || payload.name || null,
       telefono: payload.telefono || payload.phone || null,
       rol_global: "usuario",
       estado: "activo"
-    });
+    };
+    // Para cuentas nuevas, alineamos usuarios.id con auth.users.id.
+    // Si el registro ya existía, se mantiene el id anterior por compatibilidad.
+    if(payload.auth_user_id) body.id = payload.auth_user_id;
+
+    row = await sbInsert("usuarios", body);
     return row;
   }
   async function ensureMiembroDB(payload){
@@ -390,8 +452,9 @@ function uid(prefix = "id") {
     try{ localStorage.setItem("cursapp_active_role_v1", clean.role || ""); }catch(e){}
   }
   async function registerPresidentSupabaseOnly(courseObj, data){
+    const authUser = await ensureAuthUser(data.email, data.password, { nombre:data.name, rol_inicial:"presidente" });
     const curso = await ensureCursoDB(courseObj);
-    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "" });
+    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "", auth_user_id:authUser.id });
     await ensureMiembroDB({
       curso_id: curso.id,
       usuario_id: usuario.id,
@@ -416,8 +479,9 @@ function uid(prefix = "id") {
     return { curso, usuario };
   }
   async function registerApoderadoSupabaseOnly(courseKey, courseObj, data){
+    const authUser = await ensureAuthUser(data.email, data.password, { nombre:data.name, rol_inicial:"apoderado" });
     const curso = await ensureCursoDB(courseObj || { courseKey, course:{} });
-    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "" });
+    const usuario = await ensureUsuarioDB({ email:data.email, nombre:data.name, telefono:data.phone || "", auth_user_id:authUser.id });
     const miembro = await ensureMiembroDB({
       curso_id: curso.id,
       usuario_id: usuario.id,
@@ -1276,6 +1340,7 @@ if(d.alsoApoderado){
           const pEmailNorm = String(d.pEmail||"").trim().toLowerCase();
           const db = await registerPresidentSupabaseOnly(courseObj, {
             email: pEmailNorm,
+            password: d.pPass,
             name: d.name,
             phone: d.dPhone || "",
             alsoApoderado: !!d.alsoApoderado,
@@ -1323,6 +1388,7 @@ if(d.alsoApoderado){
           };
           await registerApoderadoSupabaseOnly(d.courseKey || courseKey, courseObj, {
             email: String(d.email||"").trim().toLowerCase(),
+            password: d.pass,
             name: d.name,
             phone: d.phone || "",
             alumno: d.alumno,
