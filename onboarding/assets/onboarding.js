@@ -290,8 +290,18 @@ function uid(prefix = "id") {
   async function ensureAuthUser(email, password, metadata){
     email = String(email || "").trim().toLowerCase();
     password = String(password || "");
-    if(!email) throw new Error("Email vacío al crear usuario Auth.");
+
+    if(!email) throw new Error("Email vacío.");
     if(password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+
+    try{
+      const signed = await signInAuthUser(email, password);
+      if(signed && signed.user && signed.user.id){
+        return signed.user;
+      }
+    }catch(_e){
+      // continua a creación
+    }
 
     try{
       const created = await sbAuthFetch("signup", {
@@ -299,19 +309,21 @@ function uid(prefix = "id") {
         password,
         data: Object.assign({ app:"cursapp" }, metadata || {})
       });
-      if(created && created.user && created.user.id) return created.user;
+
+      if(created && created.user && created.user.id){
+        return created.user;
+      }
     }catch(e){
-      // Si el correo ya existe en Auth, validamos la contraseña con signIn.
-      // Esto permite registrar el mismo apoderado en otro curso sin duplicar cuenta.
       const msg = String(e && e.message || e || "");
-      if(!/already|registered|exists|user/i.test(msg)) throw e;
+
+      if(/already|registered|exists|user/i.test(msg)){
+        throw new Error("Este correo ya existe. Debes ingresar la contraseña correcta o recuperar tu contraseña.");
+      }
+
+      throw e;
     }
 
-    const signed = await signInAuthUser(email, password);
-    if(!signed || !signed.user || !signed.user.id){
-      throw new Error("No se pudo validar la cuenta Auth existente.");
-    }
-    return signed.user;
+    throw new Error("No fue posible crear o validar la cuenta.");
   }
   function sbCleanDate(v){ const s = String(v || "").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
   async function sbOnb(path, opts){
