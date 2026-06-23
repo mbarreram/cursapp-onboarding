@@ -1124,3 +1124,41 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
   border-radius:20px!important;
 }
 .conversationCard.grouped .maskedEmail{font-size:11px!important;color:#64748b!important;font-weight:800!important;}
+
+
+/* V40.5 - Mis avisos: evitar corte de vistas/contactos y mejorar lectura */
+.v28MineCard .v28CardHead{
+  grid-template-columns:58px minmax(0,1fr) auto!important;
+  align-items:start!important;
+}
+.v28MineCard .v28MineInfo span{
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  line-height:1.25!important;
+}
+.v28MineCard .v28IconActions{
+  flex-wrap:nowrap!important;
+  max-width:108px!important;
+}
+.v28MineCard .v28Actions{
+  justify-content:flex-end!important;
+  flex-wrap:wrap!important;
+}
+@media (max-width:420px){
+  .v28MineCard{padding:12px!important}
+  .v28MineCard .v28CardHead{grid-template-columns:54px minmax(0,1fr) auto!important;gap:8px!important}
+  .v28MineCard .v28IconActions .iconAction{width:30px!important;height:30px!important;min-width:30px!important}
+}
+
+/* V40.5 - Avisos eliminados: mensaje consistente */
+.chatClosedNotice.eliminado,
+.statusChip.eliminado,
+.marketStatusBadge.eliminado{
+  background:#fff1f2!important;
+  color:#9f1239!important;
+  border-color:#fecdd3!important;
+}
