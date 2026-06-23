@@ -51,7 +51,7 @@ const esc = (s) =>
   // ===== storage helpers =====
 
   // --- DEBUG LOGIN (alerts) ---
-  const LOGIN_JS_VERSION = "20260214154124";
+  const LOGIN_JS_VERSION = "420-debug-alumno";
   const DEBUG_LOGIN = (() => {
     try {
       const qs = new URLSearchParams(window.location.search || "");
@@ -273,6 +273,7 @@ function loadJSON(k, def) {
   // ===== routing by role =====
   function go(role, userEmail, courseKey, profile) {
     const pid = profile ? profileIdOf(userEmail, profile) : "";
+    try{ alert("[LOGIN DEBUG] Entrando a rol:\n" + JSON.stringify({role, email:userEmail, courseKey, pid, alumno: profile && profile.apoderado && profile.apoderado.alumno, profileId: profile && profile.profileId, miembroId: profile && profile.supabase && profile.supabase.miembro_id}, null, 2)); }catch(e){}
     try { if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache(); } catch(e) {}
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
@@ -456,6 +457,7 @@ function loadJSON(k, def) {
 
     function setAlumnoContext(row){
       try {
+        alert("[LOGIN DEBUG] Alumno seleccionado:\n" + JSON.stringify({alumno: row && row.alumno, enrollmentId: row && row.enrollmentId, profileId: row && row.profile && (row.profile.profileId || row.profile.id), miembroId: row && row.profile && row.profile.supabase && row.profile.supabase.miembro_id, courseKey: courseKey, email: userEmail}, null, 2));
         const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
         u.apoderado = u.apoderado || {};
         u.apoderado.alumno = row.alumno || "";

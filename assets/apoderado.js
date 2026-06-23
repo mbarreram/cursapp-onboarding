@@ -69,6 +69,7 @@ function __cursappNormalizeRoleContextV101(expectedRole){
 }
 
 const session = __cursappNormalizeRoleContextV101('apoderado');
+try{ alert('[APODERADO DEBUG] apoderado.js cargado v420-debug\n' + JSON.stringify({session: session, activeCourse: localStorage.getItem('cursapp_active_course_v1'), activeProfile: localStorage.getItem('cursapp_active_profile_v1'), activeMiembro: localStorage.getItem('cursapp_active_miembro_id_v1'), alumnoActivo: localStorage.getItem('cursapp_alumno_activo_v1')}, null, 2)); }catch(e){}
 
 if (!session || !session.userId) {
   console.warn('Cursapp Apoderado: sesión sin userId; se mostrará estado vacío controlado.', session);
@@ -1049,6 +1050,7 @@ function dueBadge(iso){
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
+    try{ alert("[APODERADO DEBUG] Perfil elegido para pintar:\n" + JSON.stringify({activeCourse: localStorage.getItem("cursapp_active_course_v1"), activeProfile: localStorage.getItem("cursapp_active_profile_v1"), activeMiembro: localStorage.getItem("cursapp_active_miembro_id_v1"), alumnoActivo: localStorage.getItem("cursapp_alumno_activo_v1"), profileId: p && p.profileId, miembroId: p && p.supabase && p.supabase.miembro_id, alumno: p && p.apoderado && p.apoderado.alumno, email: p && p.apoderado && p.apoderado.email, courseKey: p && p.courseKey}, null, 2)); }catch(e){}
     if(!p || !p.course){
       whoCourseLine.textContent = "Curso no seleccionado";
       return;
