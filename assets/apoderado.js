@@ -1000,13 +1000,31 @@ function dueBadge(iso){
     // Fallback legacy
     if(!mine.length) mine = profiles.slice();
 
-    // 2) Si hay profileId activo guardado, úsalo
+    // 2) Prioridad máxima: miembro/alumno elegido en el login (hermanos mismo curso)
+    const activeMiembroId = String(localStorage.getItem("cursapp_active_miembro_id_v1") || s.miembroId || "").trim();
+    const activeAlumno = String(localStorage.getItem("cursapp_active_alumno_v1") || s.alumno || s.studentName || "").trim().toLowerCase();
+
+    if(activeMiembroId){
+      const byMember = mine.find(p => String(p?.supabase?.miembro_id || "") === activeMiembroId);
+      if(byMember) return byMember;
+    }
+
+    // 3) Si hay profileId activo guardado, úsalo
     if(activeProfileId){
       const byId = mine.find(p => String(p?.profileId || p?.id || "") === String(activeProfileId));
       if(byId) return byId;
     }
 
-    // 3) Si no, cae por courseKey pero dentro de mis perfiles
+    // 4) Si hay alumno activo, úsalo dentro del curso activo
+    if(activeCourse && activeAlumno){
+      const byStudent = mine.find(p =>
+        String(p?.courseKey || "") === String(activeCourse) &&
+        String(p?.apoderado?.alumno || p?.studentName || p?.alumno || "").trim().toLowerCase() === activeAlumno
+      );
+      if(byStudent) return byStudent;
+    }
+
+    // 5) Si no, cae por courseKey pero dentro de mis perfiles
     if(activeCourse){
       const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
       if(byCourse) return byCourse;
