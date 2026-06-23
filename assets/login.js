@@ -419,19 +419,155 @@ function loadJSON(k, def) {
     if (hasPresidente && !byRole.presidente) byRole.presidente = byRole.apoderado || null;
     try { saveJSON(KEY_ROLES_AVAILABLE, roles); } catch(e) {}
 
+    function normAlumnoName(v){
+      return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+    }
+
+    function apoderadoProfilesForCourse(){
+      let all = [];
+      try { all = loadJSON(KEY_PROFILES, []); } catch(e) { all = []; }
+      if(!Array.isArray(all)) all = [];
+      const emailNorm = String(userEmail || "").trim().toLowerCase();
+      const rows = all.filter(p =>
+        String(p?.courseKey || "") === String(courseKey || "") &&
+        String(p?.role || "").toLowerCase().trim() === "apoderado" &&
+        (!p?.apoderado?.email || String(p.apoderado.email || "").trim().toLowerCase() === emailNorm)
+      );
+      const explicit = profilesForCourse
+        .filter(x => String(x?.role || "").toLowerCase().trim() === "apoderado" && x.profile)
+        .map(x => x.profile);
+      const byId = new Map();
+      [...rows, ...explicit].forEach(pr => {
+        const k = String(pr?.profileId || pr?.id || pr?.supabase?.miembro_id || Math.random());
+        if(pr && !byId.has(k)) byId.set(k, pr);
+      });
+      return Array.from(byId.values());
+    }
+
+    function profileForEnrollment(enr, fallback){
+      const targetAlumno = normAlumnoName(enr?.alumno || "");
+      const all = apoderadoProfilesForCourse();
+      const byAlumno = all.find(p => normAlumnoName(p?.apoderado?.alumno || "") === targetAlumno);
+      if(byAlumno) return byAlumno;
+      const enrId = String(enr?.enrollmentId || "");
+      const byId = all.find(p => enrId && enrId.includes(String(p?.supabase?.miembro_id || p?.profileId || "__NO__")));
+      return byId || fallback || all[0] || null;
+    }
+
+    function setAlumnoContext(row){
+      try {
+        const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
+        u.apoderado = u.apoderado || {};
+        u.apoderado.alumno = row.alumno || "";
+        u.apoderado.email = userEmail;
+        localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
+        localStorage.setItem(KEY_ACTIVE_ENROLL, row.enrollmentId || "");
+        if(row.profile?.profileId) localStorage.setItem("cursapp_active_member_profile_v1", row.profile.profileId);
+        if(row.profile?.supabase?.miembro_id) localStorage.setItem("cursapp_active_miembro_id_v1", row.profile.supabase.miembro_id);
+      } catch (e) {}
+    }
+
+    function buildAlumnoRows(fallbackProfile){
+      const rows = [];
+      const seen = new Set();
+      const push = (row) => {
+        const k = normAlumnoName(row.alumno || "") || String(row.enrollmentId || row.profile?.profileId || rows.length);
+        if(seen.has(k)) return;
+        seen.add(k);
+        rows.push(row);
+      };
+
+      apoderadoProfilesForCourse().forEach(pr => {
+        const alumno = pr?.apoderado?.alumno || "";
+        if(!alumno) return;
+        const st = String(pr?.status || "aprobado").toLowerCase();
+        push({
+          alumno,
+          status: (st === "pendiente" || st === "pending") ? "pending" : "approved",
+          profile: pr,
+          enrollmentId: pr?.supabase?.miembro_id ? ("sb_enr_" + pr.supabase.miembro_id) : (pr?.profileId || "")
+        });
+      });
+
+      (findEnrollments(userEmail, courseKey) || []).forEach(enr => {
+        push({
+          alumno: enr.alumno || "Alumno/a",
+          status: enr.status || "pending",
+          profile: profileForEnrollment(enr, fallbackProfile),
+          enrollmentId: enr.enrollmentId || ""
+        });
+      });
+      return rows;
+    }
+
+    function enterApoderado(it){
+      const fallbackProfile = it?.profile || byRole.apoderado || null;
+      const alumnoRows = buildAlumnoRows(fallbackProfile);
+
+      if(alumnoRows.length > 1){
+        const items = alumnoRows.map(row => ({
+          label: row.alumno || "Alumno/a",
+          meta: row.status === "approved" ? "Aprobado" : "Pendiente",
+          desc: "Selecciona este alumno para ver sus pagos, avisos y movimientos.",
+          icon: "🎒",
+          row
+        }));
+        renderChooser("Elegir alumno/a", "Selecciona con qué hijo/a deseas ingresar", items, (pick) => {
+          const row = pick.row;
+          if(!row || row.status !== "approved"){
+            showErr(row ? "La solicitud de este alumno está pendiente de aprobación." : "Solicitud inválida.");
+            return;
+          }
+          setAlumnoContext(row);
+          go("apoderado", userEmail, courseKey, row.profile || fallbackProfile);
+        });
+        return;
+      }
+
+      if(alumnoRows.length === 1){
+        const row = alumnoRows[0];
+        if(row.status !== "approved"){
+          showErr("Tu solicitud está pendiente de aprobación por la directiva.");
+          return;
+        }
+        setAlumnoContext(row);
+        go("apoderado", userEmail, courseKey, row.profile || fallbackProfile);
+        return;
+      }
+
+      // Sin alumnos explícitos: solo permitir bypass si la directiva tiene perfil apoderado virtual.
+      if (canAutoApproveApoderado(roles)) {
+        try {
+          const ap = (fallbackProfile && fallbackProfile.apoderado) ? fallbackProfile.apoderado : {};
+          const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
+          u.apoderado = u.apoderado || {};
+          u.apoderado.alumno = ap.alumno || u.apoderado.alumno || "Alumno";
+          u.apoderado.email = userEmail;
+          localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
+          localStorage.setItem(KEY_ACTIVE_ENROLL, "");
+        } catch (e) {}
+        go("apoderado", userEmail, courseKey, fallbackProfile);
+        return;
+      }
+
+      if (!requireApproved(userEmail, courseKey, roles, fallbackProfile)) return;
+      go("apoderado", userEmail, courseKey, fallbackProfile);
+    }
+
     if (roles.length === 1) {
       const role = roles[0];
-      if (role === "apoderado" && !requireApproved(userEmail, courseKey, roles)) return;
-      go(role, userEmail, courseKey, byRole[role]);
+      if (role === "apoderado") enterApoderado({ role, profile: byRole[role] });
+      else go(role, userEmail, courseKey, byRole[role]);
       return;
     }
 
     const roleItems = roles.map(r => {
   if (r === "apoderado") {
+    const n = buildAlumnoRows(byRole[r]).length;
     return {
       label: "Apoderado",
-      meta: "Gestión de apoderados",
-      desc: "Ingresa para ver avisos, pagos y movimientos de tu curso.",
+      meta: n > 1 ? (n + " alumnos") : "Gestión de apoderados",
+      desc: n > 1 ? "Elige este rol y luego selecciona el hijo/a." : "Ingresa para ver avisos, pagos y movimientos de tu curso.",
       icon: "👥",
       role: r,
       profile: byRole[r]
@@ -471,69 +607,7 @@ function loadJSON(k, def) {
 
     renderChooser("Elegir rol", "Selecciona cómo deseas ingresar", roleItems, (it) => {
       if (it.role === "apoderado") {
-
-        // ✅ Si es presidente en este curso: entra como apoderado sin enrollments
-        if (canAutoApproveApoderado(roles)) {
-          // intenta setear alumno desde perfil si existe
-          try {
-            const ap = (it.profile && it.profile.apoderado) ? it.profile.apoderado : {};
-            const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
-            u.apoderado = u.apoderado || {};
-            u.apoderado.alumno = ap.alumno || u.apoderado.alumno || "Alumno";
-            u.apoderado.email = userEmail;
-            localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
-            localStorage.setItem(KEY_ACTIVE_ENROLL, "");
-          } catch (e) {}
-          go("apoderado", userEmail, courseKey, it.profile);
-          return;
-        }
-
-        // flujo normal apoderado: requiere enrollment(s)
-        const list = findEnrollments(userEmail, courseKey);
-        if (!list || !list.length) {
-          showErr("No existe una solicitud para este curso. Completa onboarding como apoderado para enviar tu solicitud.");
-          return;
-        }
-
-        // Si hay más de un alumno, elegir cuál gestionar (separación de cuotas)
-        if (list.length > 1) {
-          const items = list.map(e => ({
-            name: e.alumno || "Alumno/a",
-            meta: (e.status === "approved" ? "Aprobado" : "Pendiente"),
-            enr: e
-          }));
-          renderChooser("Elegir alumno/a", "Selecciona el alumno para gestionar pagos y cuotas", items, (pick) => {
-            const enr = pick.enr;
-            if (!enr || enr.status !== "approved") {
-              showErr(enr && enr.status !== "approved" ? "La solicitud de este alumno está pendiente de aprobación." : "Solicitud inválida.");
-              return;
-            }
-            try {
-              const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
-              u.apoderado = u.apoderado || {};
-              u.apoderado.alumno = enr.alumno || "";
-              u.apoderado.email = userEmail;
-              localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
-              localStorage.setItem(KEY_ACTIVE_ENROLL, enr.enrollmentId || "");
-            } catch (e) {}
-            go("apoderado", userEmail, courseKey, it.profile);
-          });
-          return;
-        }
-
-        // Solo 1 alumno/enrollment
-        if (!requireApproved(userEmail, courseKey, roles, it.profile)) return;
-        try {
-          const enr = list[0];
-          const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
-          u.apoderado = u.apoderado || {};
-          u.apoderado.alumno = enr.alumno || "";
-          u.apoderado.email = userEmail;
-          localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
-          localStorage.setItem(KEY_ACTIVE_ENROLL, enr.enrollmentId || "");
-        } catch (e) {}
-
-        go("apoderado", userEmail, courseKey, it.profile);
+        enterApoderado(it);
         return;
       }
 
