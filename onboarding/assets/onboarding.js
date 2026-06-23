@@ -1142,10 +1142,13 @@ function uid(prefix = "id") {
           d.aOtpCode = "";
           d.aOtp = "";
           d.aOtpVerifiedEmail = "";
+          const ok = $("otpOkA"); if(ok) ok.style.display = "none";
+          const hint = $("otpHintA"); if(hint) hint.style.display = "none";
+          if(otpInp) otpInp.value = "";
         }
         d.email = emailInp.value;
         saveDraft(d);
-        render();
+        // No llamar render() aquí: en iPhone cierra el teclado y pierde el foco.
       });
       otpInp && (otpInp.oninput = ()=>{ d.aOtp = otpInp.value; saveDraft(d); });
 
@@ -1197,10 +1200,13 @@ function uid(prefix = "id") {
           d.pOtpCode = "";
           d.pOtp = "";
           d.pOtpVerifiedEmail = "";
+          const ok = $("otpOk"); if(ok) ok.style.display = "none";
+          const hint = $("otpHint"); if(hint) hint.style.display = "none";
+          if(pOtp) pOtp.value = "";
         }
         d.pEmail = pEmail.value;
         saveDraft(d);
-        render();
+        // No llamar render() aquí: evita perder foco/teclado en móvil.
       });
       pOtp && (pOtp.oninput = ()=>{ d.pOtp = pOtp.value; saveDraft(d); });
       $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
