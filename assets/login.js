@@ -273,7 +273,6 @@ function loadJSON(k, def) {
   // ===== routing by role =====
   function go(role, userEmail, courseKey, profile) {
     const pid = profile ? profileIdOf(userEmail, profile) : "";
-    try{ alert("[LOGIN DEBUG] Entrando a rol:\n" + JSON.stringify({role, email:userEmail, courseKey, pid, alumno: profile && profile.apoderado && profile.apoderado.alumno, profileId: profile && profile.profileId, miembroId: profile && profile.supabase && profile.supabase.miembro_id}, null, 2)); }catch(e){}
     try { if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache(); } catch(e) {}
     setActiveCourseKey(courseKey || "");
     setActiveProfileId(pid || "");
@@ -457,7 +456,6 @@ function loadJSON(k, def) {
 
     function setAlumnoContext(row){
       try {
-        alert("[LOGIN DEBUG] Alumno seleccionado:\n" + JSON.stringify({alumno: row && row.alumno, enrollmentId: row && row.enrollmentId, profileId: row && row.profile && (row.profile.profileId || row.profile.id), miembroId: row && row.profile && row.profile.supabase && row.profile.supabase.miembro_id, courseKey: courseKey, email: userEmail}, null, 2));
         const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
         u.apoderado = u.apoderado || {};
         u.apoderado.alumno = row.alumno || "";
@@ -467,13 +465,14 @@ function loadJSON(k, def) {
 
         const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
         const miembroId = String(row?.profile?.supabase?.miembro_id || "").trim();
+
         if(profileId){
           localStorage.setItem(KEY_ACTIVE_PROFILE, profileId);
           localStorage.setItem("cursapp_active_member_profile_v1", profileId);
         }
         if(miembroId) localStorage.setItem("cursapp_active_miembro_id_v1", miembroId);
 
-        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify({
+        const alumnoActivo = {
           nombre: row.alumno || "",
           alumno: row.alumno || "",
           email: userEmail,
@@ -481,7 +480,34 @@ function loadJSON(k, def) {
           profileId,
           miembroId,
           enrollmentId: row.enrollmentId || ""
-        }));
+        };
+        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumnoActivo));
+
+        // Persistir también el perfil elegido en profiles.
+        // El bug venía de que el selector sabía cuál alumno era, pero apoderado.js
+        // no encontraba ese profileId en la caché y caía al último perfil del curso.
+        if(row && row.profile){
+          const profiles = loadJSON(KEY_PROFILES, []);
+          const list = Array.isArray(profiles) ? profiles.slice() : [];
+          const selected = Object.assign({}, row.profile);
+          selected.profileId = profileId || selected.profileId || selected.id || ("sel_" + Date.now());
+          selected.id = selected.profileId;
+          selected.role = "apoderado";
+          selected.courseKey = courseKey || selected.courseKey || "";
+          selected.apoderado = Object.assign({}, selected.apoderado || {}, {
+            alumno: row.alumno || selected?.apoderado?.alumno || "",
+            email: userEmail
+          });
+          selected.supabase = Object.assign({}, selected.supabase || {});
+          if(miembroId) selected.supabase.miembro_id = miembroId;
+          const idx = list.findIndex(p =>
+            String(p?.profileId || p?.id || "") === String(selected.profileId || "") ||
+            (miembroId && String(p?.supabase?.miembro_id || "") === miembroId)
+          );
+          if(idx >= 0) list[idx] = Object.assign({}, list[idx], selected);
+          else list.unshift(selected);
+          localStorage.setItem(KEY_PROFILES, JSON.stringify(list));
+        }
       } catch (e) {}
     }
 

@@ -69,7 +69,6 @@ function __cursappNormalizeRoleContextV101(expectedRole){
 }
 
 const session = __cursappNormalizeRoleContextV101('apoderado');
-try{ alert('[APODERADO DEBUG] apoderado.js cargado v420-debug\n' + JSON.stringify({session: session, activeCourse: localStorage.getItem('cursapp_active_course_v1'), activeProfile: localStorage.getItem('cursapp_active_profile_v1'), activeMiembro: localStorage.getItem('cursapp_active_miembro_id_v1'), alumnoActivo: localStorage.getItem('cursapp_alumno_activo_v1')}, null, 2)); }catch(e){}
 
 if (!session || !session.userId) {
   console.warn('Cursapp Apoderado: sesión sin userId; se mostrará estado vacío controlado.', session);
@@ -1036,7 +1035,30 @@ function dueBadge(iso){
       if(byId) return byId;
     }
 
-    // 4) Si no, cae por courseKey pero dentro de mis perfiles
+    // 4) Si no existe el profileId en caché, crear un perfil sintético con el alumno activo.
+    // Esto cubre el caso de hermanos donde login eligió Matías/Javiera correctamente,
+    // pero la caché local de profiles todavía trae otro alumno del mismo curso.
+    if(activeAlumnoName || activeAlumnoProfileId || activeAlumnoMiembroId || activeMiembroId){
+      const base = mine.find(p => String(p?.courseKey || "") === String(activeCourse)) || mine[0] || profiles[0];
+      if(base){
+        const cloned = JSON.parse(JSON.stringify(base));
+        cloned.profileId = activeAlumnoProfileId || activeProfileId || cloned.profileId || cloned.id || "";
+        cloned.id = cloned.profileId || cloned.id;
+        cloned.role = "apoderado";
+        cloned.courseKey = activeCourse || cloned.courseKey || "";
+        cloned.apoderado = cloned.apoderado || {};
+        if(activeAlumnoName){
+          cloned.apoderado.alumno = activeAlumno?.nombre || activeAlumno?.alumno || cloned.apoderado.alumno || "";
+        }
+        cloned.apoderado.email = sessionEmail || cloned.apoderado.email || "";
+        cloned.supabase = cloned.supabase || {};
+        const mid = activeAlumnoMiembroId || activeMiembroId || "";
+        if(mid) cloned.supabase.miembro_id = mid;
+        return cloned;
+      }
+    }
+
+    // 5) Si no, cae por courseKey pero dentro de mis perfiles
     if(activeCourse){
       const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
       if(byCourse) return byCourse;
@@ -1050,7 +1072,6 @@ function dueBadge(iso){
   function setHeader(){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
-    try{ alert("[APODERADO DEBUG] Perfil elegido para pintar:\n" + JSON.stringify({activeCourse: localStorage.getItem("cursapp_active_course_v1"), activeProfile: localStorage.getItem("cursapp_active_profile_v1"), activeMiembro: localStorage.getItem("cursapp_active_miembro_id_v1"), alumnoActivo: localStorage.getItem("cursapp_alumno_activo_v1"), profileId: p && p.profileId, miembroId: p && p.supabase && p.supabase.miembro_id, alumno: p && p.apoderado && p.apoderado.alumno, email: p && p.apoderado && p.apoderado.email, courseKey: p && p.courseKey}, null, 2)); }catch(e){}
     if(!p || !p.course){
       whoCourseLine.textContent = "Curso no seleccionado";
       return;
