@@ -297,7 +297,11 @@ function loadJSON(k, def) {
       userId: userEmail,
       email: userEmail,
       courseKey: courseKey || "",
-      profileId: pid || "",
+      profileId: (localStorage.getItem(KEY_ACTIVE_PROFILE) || pid || ""),
+      miembroId: localStorage.getItem("cursapp_active_miembro_id_v1") || "",
+      activeEnrollmentId: localStorage.getItem(KEY_ACTIVE_ENROLL) || "",
+      alumno: localStorage.getItem("cursapp_active_alumno_v1") || (profile?.apoderado?.alumno || ""),
+      studentName: localStorage.getItem("cursapp_active_alumno_v1") || (profile?.apoderado?.alumno || ""),
 
       // 🔒 Nuevo: roles y rol activo (mantiene compat con "role")
       roles: rolesAvail,
@@ -461,9 +465,34 @@ function loadJSON(k, def) {
         u.apoderado.alumno = row.alumno || "";
         u.apoderado.email = userEmail;
         localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
-        localStorage.setItem(KEY_ACTIVE_ENROLL, row.enrollmentId || "");
-        if(row.profile?.profileId) localStorage.setItem("cursapp_active_member_profile_v1", row.profile.profileId);
-        if(row.profile?.supabase?.miembro_id) localStorage.setItem("cursapp_active_miembro_id_v1", row.profile.supabase.miembro_id);
+
+        const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
+        const miembroId = String(row?.profile?.supabase?.miembro_id || "").trim();
+        const enrollId = String(row?.enrollmentId || (miembroId ? ("sb_enr_" + miembroId) : "")).trim();
+
+        localStorage.setItem(KEY_ACTIVE_ENROLL, enrollId);
+        if(profileId){
+          localStorage.setItem(KEY_ACTIVE_PROFILE, profileId);
+          localStorage.setItem("cursapp_active_member_profile_v1", profileId);
+        }
+        if(miembroId) localStorage.setItem("cursapp_active_miembro_id_v1", miembroId);
+        localStorage.setItem("cursapp_active_alumno_v1", String(row.alumno || ""));
+        localStorage.setItem("cursapp_selected_student_v1", JSON.stringify({
+          alumno: row.alumno || "",
+          profileId,
+          miembroId,
+          enrollmentId: enrollId,
+          courseKey,
+          email: userEmail
+        }));
+
+        const s = loadJSON(KEY_SESSION, {}) || {};
+        s.alumno = row.alumno || "";
+        s.studentName = row.alumno || "";
+        s.profileId = profileId || s.profileId || "";
+        s.miembroId = miembroId || s.miembroId || "";
+        s.activeEnrollmentId = enrollId || s.activeEnrollmentId || "";
+        saveJSON(KEY_SESSION, s);
       } catch (e) {}
     }
 
