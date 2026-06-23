@@ -630,6 +630,42 @@ function loadJSON(k, def) {
 
   function supaQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
 
+  async function supaAuthSignInPassword(email, passwordPlain){
+    const res = await fetch(SUPA_LOGIN_URL + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: {
+        "apikey": SUPA_LOGIN_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: String(email || "").trim().toLowerCase(),
+        password: String(passwordPlain || "")
+      })
+    });
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch(e){ data = txt; }
+    if(!res.ok){
+      const raw = (data && (data.msg || data.message || data.error_description || data.error)) || txt || "Credenciales inválidas.";
+      const msg = /invalid login|invalid credentials|email not confirmed|not found|bad_jwt|signup/i.test(String(raw))
+        ? "Correo o contraseña incorrectos."
+        : String(raw);
+      throw new Error(msg);
+    }
+    if(!data || !data.user || !data.access_token){
+      throw new Error("No se pudo iniciar sesión con Supabase Auth.");
+    }
+    try{
+      localStorage.setItem("cursapp_supabase_auth_session_v1", JSON.stringify({
+        access_token:data.access_token,
+        refresh_token:data.refresh_token || "",
+        expires_at:data.expires_at || null,
+        user:data.user
+      }));
+    }catch(e){}
+    return data;
+  }
+
   async function findSupabaseUserByEmail(email){
     const rows = await supaFetch("usuarios?email=eq." + supaQ(email) + "&select=*&limit=1");
     return Array.isArray(rows) ? (rows[0] || null) : null;
@@ -770,18 +806,16 @@ function loadJSON(k, def) {
   }
 
   async function loginFromSupabase(email, passwordPlain){
-    const user = await findSupabaseUserByEmail(email);
-    if(!user) return null;
-
-    // Si más adelante agregamos passwordHashDemo en Supabase, se validará automáticamente.
-    // Hoy la tabla usuarios no guarda contraseña; en DEV aceptamos contraseña no vacía para login cross-browser.
-    if(user.passwordHashDemo && user.passwordHashDemo !== hashDemo(passwordPlain)){
-      throw new Error("Contraseña incorrecta.");
-    }
-    if(user.password_hash_demo && user.password_hash_demo !== hashDemo(passwordPlain)){
-      throw new Error("Contraseña incorrecta.");
-    }
     if(!String(passwordPlain||"")) throw new Error("Ingresa tu contraseña.");
+
+    // Seguridad real: primero valida credenciales contra Supabase Auth.
+    // Si la contraseña no coincide, NO se consulta usuarios/miembros ni se crea sesión local.
+    const authSession = await supaAuthSignInPassword(email, passwordPlain);
+
+    // Perfil operativo Cursapp: usuarios/miembros_curso siguen siendo la fuente de roles/curso.
+    // Se busca por email para mantener compatibilidad con registros creados antes de usar auth.users.id.
+    const user = await findSupabaseUserByEmail(email);
+    if(!user) throw new Error("Usuario autenticado, pero no existe perfil Cursapp asociado.");
 
     const members = await findSupabaseMembersByUser(user);
     if(!members.length){
