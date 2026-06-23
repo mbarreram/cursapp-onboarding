@@ -505,7 +505,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
           <div class="mineInfo v28MineInfo">
             <b>${title}</b>
             <strong>${price}</strong>
-            <span>${esc(estado(p))} · ${esc(p.tipo||'Aviso')} · ${Number(p.visualizaciones||p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>
+            <span>${esc(estado(p))} · ${esc(p.tipo||'Aviso')} · ${Number(p.vistas||0)} vistas · ${Number(p.contactos||0)} contactos</span>
             ${badge}
           </div>
           <div class="mineIconActions v28IconActions">
@@ -1141,12 +1141,20 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   async function hydrateConversationPosts(){
     state.conversationPosts=state.conversationPosts||{};
-    const ids=(state.conversations||[]).map(c=>c.publicacion_id).filter(Boolean);
-    const missing=[...new Set(ids.map(String))].filter(id=>!state.posts.find(p=>String(p.id)===id)&&!state.minePosts.find(p=>String(p.id)===id)&&!state.conversationPosts[id]);
-    if(!state.sb || !missing.length) return;
+    const ids=[...new Set((state.conversations||[]).map(c=>c.publicacion_id).filter(Boolean).map(String))];
+    if(!state.sb || !ids.length) return;
     try{
-      const r=await state.sb.from('mercado_publicaciones').select('*').in('id',missing);
-      if(!r.error){ (r.data||[]).forEach(p=>{state.conversationPosts[String(p.id)]=p;}); await hydratePostSchools(r.data||[]); }
+      // Refrescar siempre: el estado de la publicación puede cambiar (vendido/reactivado/eliminado)
+      // y no debe quedar pegado en caché entre pantallas.
+      const r=await state.sb.from('mercado_publicaciones').select('*').in('id',ids);
+      if(!r.error){
+        (r.data||[]).forEach(p=>{
+          state.conversationPosts[String(p.id)]=p;
+          const replaceIn=(arr)=>{ const i=(arr||[]).findIndex(x=>String(x.id)===String(p.id)); if(i>=0) arr[i]=Object.assign({},arr[i],p); };
+          replaceIn(state.posts); replaceIn(state.minePosts);
+        });
+        await hydratePostSchools(r.data||[]);
+      }
     }catch(e){console.warn('[CHAT] hydrate publicaciones conversación',e);}
   }
   function conversationPost(c){return state.posts.find(x=>String(x.id)===String(c.publicacion_id))||state.minePosts.find(x=>String(x.id)===String(c.publicacion_id))||state.conversationPosts?.[String(c.publicacion_id)]||{};}
@@ -1221,13 +1229,13 @@ Vi esta publicación en Mercado Escolar Cursapp.
     return maskEmail(prof?.email || (isSeller?c.comprador_email:c.vendedor_email));
   }
   function isConversationClosed(c,p){
-    const conv=String(c?.estado_conversacion||'').toLowerCase();
-    const legacy=String(c?.estado||'').toLowerCase();
-    // Si la conversación fue reabierta explícitamente, no usar el estado legacy 'cerrada' ni mensajes históricos.
-    if(['abierta','open'].includes(conv)) return isClosedPost(p);
-    if(['cerrada','cerrado'].includes(conv)) return true;
-    if(!conv && ['cerrada','cerrado'].includes(legacy)) return true;
-    return isClosedPost(p);
+    const stPost=postStatus(p);
+    if(['vendido','intercambiado','cerrado','eliminado','oculto','bloqueado'].includes(stPost)) return true;
+    // estado_conversacion es la fuente de verdad para el hilo. El campo estado puede guardar
+    // 'nueva/respondida/cerrada' histórico y no debe cerrar un chat reactivado si ya quedó 'abierta'.
+    const stConv=String(c?.estado_conversacion || '').toLowerCase();
+    if(stConv) return ['cerrada','cerrado'].includes(stConv);
+    return ['cerrada','cerrado'].includes(String(c?.estado||'').toLowerCase());
   }
   function renderConversationBadge(){const b=document.getElementById('conversationBadge'); if(!b)return; const n=Number(state.unreadConversations||0); b.textContent=n; b.style.display=n>0?'grid':'none';}
   function conversationStatusLabel(st){st=String(st||'nueva').toLowerCase(); if(st==='respondida')return 'Respondida'; if(st==='cerrada')return 'Cerrada'; if(st==='venta_concretada')return 'Venta concretada'; return 'Nueva';}
@@ -1275,36 +1283,39 @@ Vi esta publicación en Mercado Escolar Cursapp.
       state.unreadConversations=state.conversations.filter(c=>Number(c.__unread||0)>0).length;
     }catch(e){console.warn('[CHAT] unread hydrate',e);}
   }
-  async function openConversation(conversationId){
-    if(!requireSession()) return;
-    const me=await resolveCurrentUserUuid();
-    let c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId));
-    // Siempre refrescar la conversación y su publicación antes de decidir si el chat está cerrado.
-    // Así evitamos que un mensaje sistema antiguo de VENDIDO bloquee el hilo después de Reactivar.
+  async function refreshConversationAndPost(conversationId){
+    let conv=(state.conversations||[]).find(x=>String(x.id)===String(conversationId))||null;
+    if(!state.sb || !conversationId) return {conversation:conv, post:conv?conversationPost(conv):{}};
     try{
       const cr=await state.sb.from('mercado_conversaciones').select('*').eq('id',conversationId).maybeSingle();
       if(!cr.error && cr.data){
-        c={...(c||{}),...cr.data};
-        const idx=(state.conversations||[]).findIndex(x=>String(x.id)===String(conversationId));
-        if(idx>=0) state.conversations[idx]=c; else {state.conversations=state.conversations||[]; state.conversations.unshift(c);}
+        conv=cr.data;
+        state.conversations=state.conversations||[];
+        const i=state.conversations.findIndex(x=>String(x.id)===String(conversationId));
+        if(i>=0) state.conversations[i]=Object.assign({},state.conversations[i],conv); else state.conversations.unshift(conv);
       }
-    }catch(e){console.warn('[CHAT] refrescar conversación',e);}
-    if(!c){toast('No se encontró la conversación.');return;}
-    if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes abrir esta conversación.');return;}
-    let p=conversationPost(c);
-    try{
-      if(c.publicacion_id){
-        const pr=await state.sb.from('mercado_publicaciones').select('*').eq('id',c.publicacion_id).maybeSingle();
+      if(conv?.publicacion_id){
+        const pr=await state.sb.from('mercado_publicaciones').select('*').eq('id',conv.publicacion_id).maybeSingle();
         if(!pr.error && pr.data){
-          p=pr.data;
-          state.conversationPosts[String(c.publicacion_id)]=pr.data;
-          for(const arr of [state.posts,state.minePosts]){
-            const i=arr.findIndex(x=>String(x.id)===String(c.publicacion_id));
-            if(i>=0) arr[i]={...arr[i],...pr.data};
-          }
+          state.conversationPosts=state.conversationPosts||{};
+          state.conversationPosts[String(pr.data.id)]=pr.data;
+          const replaceIn=(arr)=>{ const j=(arr||[]).findIndex(x=>String(x.id)===String(pr.data.id)); if(j>=0) arr[j]=Object.assign({},arr[j],pr.data); };
+          replaceIn(state.posts); replaceIn(state.minePosts);
+          return {conversation:conv, post:pr.data};
         }
       }
-    }catch(e){console.warn('[CHAT] refrescar publicación conversación',e);}
+    }catch(e){console.warn('[CHAT] refresh conversación/publicación',e);}
+    return {conversation:conv, post:conv?conversationPost(conv):{}};
+  }
+
+  async function openConversation(conversationId){
+    if(!requireSession()) return;
+    const me=await resolveCurrentUserUuid();
+    const refreshed=await refreshConversationAndPost(conversationId);
+    const c=refreshed.conversation;
+    if(!c){toast('No se encontró la conversación.');return;}
+    if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes abrir esta conversación.');return;}
+    const p=refreshed.post || conversationPost(c);
     let msgs=[];
     try{
       const r=await state.sb.from('mercado_mensajes').select('*').eq('conversacion_id',c.id).order('created_at',{ascending:true});
@@ -1322,9 +1333,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const msgCount=msgs.length;
     const statusPill=`<span class="chatStatusPill ${esc(String(postStatusLabel(p)).toLowerCase())}">${postStatusIcon(p)} ${esc(postStatusLabel(p))}</span>`;
     const sellerActions=(sellerMode && !closed)?`<div class="chatSellerPanel compact"><div class="chatSellerStatus">${statusPill}</div><p class="sellerActionHelp">Acciones del vendedor: úsalo cuando cierres el trato. Esto bloquea nuevas consultas para este aviso.</p><div class="chatSellerActions compact"><button type="button" class="softChip success" data-close-post-from-chat="vendido" data-conversation-id="${esc(c.id)}">✓ Vendido</button><button type="button" class="softChip info" data-close-post-from-chat="intercambiado" data-conversation-id="${esc(c.id)}">⇄ Intercambiado</button><button type="button" class="softChip lock" data-close-post-from-chat="cerrado" data-conversation-id="${esc(c.id)}">📁 Cerrar venta</button></div></div>`:'';
+    const footerStateText = closed
+      ? `${postStatusIcon(p)} ${postStatusLabel(p)}. Historial visible, chat cerrado.`
+      : `🟢 Disponible. Puedes continuar la conversación.`;
     const replyFooter=closed
-      ? `<div class="chatClosedNotice compact">${postStatusIcon(p)} ${postStatusLabel(p)}. Historial visible, chat cerrado.</div>`
-      : `<div class="chatReplyFooter compact"><textarea id="chatReplyText" rows="1" placeholder="Escribe un mensaje..." autocomplete="off"></textarea><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar</button></div>`;
+      ? `<div class="chatClosedNotice compact">${footerStateText}</div>`
+      : `<div class="chatReplyFooter compact"><textarea id="chatReplyText" rows="1" placeholder="Escribe un mensaje..." autocomplete="off"></textarea><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar</button></div><div class="chatClosedNotice compact openState">${footerStateText}</div>`;
     const viewLink=p?.id?`<button type="button" class="chatProductLink" data-open-detail="${esc(p.id)}">🔗 Ver aviso</button>`:'';
     document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal chatThreadModalV39"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead compact"><button type="button" class="ghost chatBackBtn" data-close-chat-thread>←</button><div class="chatHeadMain"><h2>${esc(p.titulo||'Conversación')}</h2><p class="chatMeta"><span class="productCodeInline">${esc(productCode(p))}</span> · ${msgCount} mensaje${msgCount===1?'':'s'} ${viewLink}</p><p class="chatWith"><b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${closed?` · ${statusPill}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyFooter}</section></div>`;
     const replyEl=document.getElementById('chatReplyText');
@@ -1358,17 +1372,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
       }catch(e){console.warn('[CHAT] recargar conversación para responder',e);}
     }
     if(!me || !c){toast('No se pudo validar la conversación.');return;}
-    try{
-      const cr=await state.sb.from('mercado_conversaciones').select('*').eq('id',conversationId).maybeSingle();
-      if(!cr.error && cr.data) c={...c,...cr.data};
-    }catch(e){console.warn('[CHAT] refrescar conversación al responder',e);}
-    let p=conversationPost(c);
-    try{
-      if(c.publicacion_id){
-        const pr=await state.sb.from('mercado_publicaciones').select('*').eq('id',c.publicacion_id).maybeSingle();
-        if(!pr.error && pr.data){p=pr.data; state.conversationPosts[String(c.publicacion_id)]=pr.data;}
-      }
-    }catch(e){console.warn('[CHAT] refrescar publicación al responder',e);}
+    const refreshed=await refreshConversationAndPost(conversationId);
+    if(refreshed.conversation) c=refreshed.conversation;
+    const p=refreshed.post || conversationPost(c);
     if(String(c.comprador_id)!==String(me) && String(c.vendedor_id)!==String(me)){toast('No puedes responder esta conversación.');return;}
     if(isConversationClosed(c,p)){toast('Esta conversación está cerrada.');return;}
     if(btn){btn.disabled=true; btn.textContent='Enviando...';}
@@ -1587,7 +1593,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
   function applyLocalStatus(id,status){
     for(const arr of [state.posts,state.minePosts]){
       const p=arr.find(x=>String(x.id)===String(id));
-      if(p){ p.estado=status; p.estado_publicacion=(status==='eliminado'?'cerrado':status); if(["vendido","intercambiado","eliminado"].includes(status)){p.destacado=false;p.destacada=false;p.destacado_hasta=null;p.destacada_hasta=null;p.tipo_destacado=null;p.destacado_tipo=null;p.regla_destacado=null;} }
+      if(p){ p.estado=status; p.estado_publicacion=status; if(["vendido","intercambiado","eliminado"].includes(status)){p.destacado=false;p.destacada=false;p.destacado_hasta=null;p.destacada_hasta=null;p.tipo_destacado=null;p.destacado_tipo=null;p.regla_destacado=null;} }
     }
   }
   async function updateConversationFlex(id,row){
@@ -1621,27 +1627,35 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   async function reopenConversationsForPost(publicacionId){
     if(!state.sb || !publicacionId) return;
+    const timestamp=now();
     try{
-      const r=await state.sb.from('mercado_conversaciones').select('id').eq('publicacion_id',publicacionId);
-      if(r.error) throw r.error;
-      const ids=(r.data||[]).map(x=>x.id).filter(Boolean);
-      for(const id of ids){
-        await updateConversationFlex(id,{
+      const r=await state.sb.from('mercado_conversaciones').select('*').eq('publicacion_id', publicacionId);
+      const convs=r.error?[]:(r.data||[]);
+      await state.sb
+        .from('mercado_conversaciones')
+        .update({
           estado:'abierta',
           estado_conversacion:'abierta',
           fecha_cierre:null,
           motivo_cierre:null,
-          updated_at:now()
-        });
+          ultimo_mensaje:timestamp,
+          updated_at:timestamp
+        })
+        .eq('publicacion_id', publicacionId);
+      const me=await resolveCurrentUserUuid();
+      for(const c of convs){
+        try{
+          await insertFlex('mercado_mensajes',{
+            conversacion_id:c.id,
+            remitente_id:isUuid(me)?me:(isUuid(c.vendedor_id)?c.vendedor_id:c.comprador_id),
+            mensaje:'[SISTEMA] La publicación fue reactivada por el vendedor. La conversación vuelve a estar disponible.',
+            leido:false,
+            created_at:timestamp,
+            fecha:timestamp,
+            estado:'sistema'
+          });
+        }catch(e){console.warn('[CHAT] mensaje sistema reapertura',e);}
       }
-      (state.conversations||[]).forEach(c=>{
-        if(String(c.publicacion_id)===String(publicacionId)){
-          c.estado='abierta';
-          c.estado_conversacion='abierta';
-          c.fecha_cierre=null;
-          c.motivo_cierre=null;
-        }
-      });
     }catch(e){
       console.warn('[CHAT] reapertura conversaciones', e);
     }
@@ -1680,7 +1694,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const closeBoost = (status==="vendido"||status==="intercambiado"||status==="eliminado");
     const reopened = (status==="disponible"||status==="activo");
     const statusPayload = closeBoost
-      ? {estado:status,estado_publicacion:status,destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,updated_at:now()}
+      ? {estado:status,estado_publicacion:(status==='eliminado'?'cerrado':status),destacado:false,destacada:false,destacado_hasta:null,destacada_hasta:null,tipo_destacado:null,destacado_tipo:null,regla_destacado:null,updated_at:now()}
       : (reopened
           ? {estado:'activo',estado_publicacion:'disponible',activo:true,updated_at:now()}
           : {estado:status,estado_publicacion:status,updated_at:now()});
@@ -1700,10 +1714,9 @@ Vi esta publicación en Mercado Escolar Cursapp.
     else if(reopened) await reopenConversationsForPost(id);
     await loadPosts();
     await loadMinePosts();
-    await loadConversations();
     const nextTab=status==="vendido"?"vendidos":(status==="intercambiado"?"intercambiados":"activos");
     toast(status==="vendido"?"Aviso movido a Vendidos":(status==="intercambiado"?"Aviso movido a Intercambiados":"Aviso reactivado"));
-    renderProducts(filterByScope(activeExploreScope())); renderMine(nextTab); renderConversations(); renderCreditVisibilityGuard();
+    renderProducts(); renderMine(nextTab); renderCreditVisibilityGuard();
   }
   async function removePost(id){
     if(!confirm("¿Eliminar esta publicación? Esta acción la ocultará del Mercado Escolar y cerrará sus conversaciones.")) return;
