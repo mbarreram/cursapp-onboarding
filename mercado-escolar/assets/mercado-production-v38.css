@@ -1162,3 +1162,18 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
   color:#9f1239!important;
   border-color:#fecdd3!important;
 }
+
+/* V40.6: Mis Avisos - evitar corte de vistas/contactos */
+.v28MineInfo span,
+.v27MineCard .mineInfo span{
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  display:block!important;
+  line-height:1.18!important;
+  max-width:100%!important;
+}
+.v28MineCard .mineCardHead,
+.mineCardHead.v28CardHead{
+  grid-template-columns:64px minmax(0,1fr) auto!important;
+}
