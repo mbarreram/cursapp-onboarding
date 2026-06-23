@@ -249,6 +249,14 @@ function uid(prefix = "id") {
   const SB_KEY_ONB_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
 
   function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
+  function normText(v){
+    return String(v || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
 
   async function sbAuthFetch(path, body){
     const key = SB_KEY_ONB_REAL;
@@ -395,9 +403,36 @@ function uid(prefix = "id") {
     if(!payload.curso_id) throw new Error("curso_id vacío al crear miembro");
     const email = String(payload.email || "").trim().toLowerCase();
     const rol = String(payload.rol || "apoderado").toLowerCase();
-    let row = await sbSelectOne("miembros_curso", "curso_id=eq." + sbQ(payload.curso_id) + "&email=eq." + sbQ(email) + "&rol=eq." + sbQ(rol) + "&select=*");
-    if(row && row.id) return row;
-    row = await sbInsert("miembros_curso", {
+    const alumnoNorm = normText(payload.nombre_alumno || "");
+
+    // Regla hermanos:
+    // - mismo correo + mismo curso + mismo alumno => bloquear duplicado
+    // - mismo correo + mismo curso + distinto alumno => permitir
+    // - mismo correo + distinto curso => permitir
+    if(rol === "apoderado"){
+      const existingRows = await sbOnb(
+        "miembros_curso?curso_id=eq." + sbQ(payload.curso_id) +
+        "&email=eq." + sbQ(email) +
+        "&rol=eq.apoderado&select=*"
+      );
+      const sameAlumno = (Array.isArray(existingRows) ? existingRows : []).find(r =>
+        normText(r.nombre_alumno || "") === alumnoNorm
+      );
+      if(sameAlumno && sameAlumno.id){
+        throw new Error("Este apoderado ya tiene registrado a este alumno/a en este curso.");
+      }
+    }else{
+      let row = await sbSelectOne(
+        "miembros_curso",
+        "curso_id=eq." + sbQ(payload.curso_id) +
+        "&email=eq." + sbQ(email) +
+        "&rol=eq." + sbQ(rol) +
+        "&select=*"
+      );
+      if(row && row.id) return row;
+    }
+
+    const row = await sbInsert("miembros_curso", {
       curso_id: payload.curso_id,
       usuario_id: payload.usuario_id || null,
       rol,
@@ -1086,16 +1121,20 @@ function uid(prefix = "id") {
       const otpInp = $("aOtp");
       const sendBtn = $("btnSendOtpA");
       const verBtn = $("btnVerifyOtpA");
-      // Si ya está verificado, bloquear correo y envío
-      if(d.aOtpVerified){
-        try{
-          if(emailInp) emailInp.disabled = true;
-          if(sendBtn) sendBtn.disabled = true;
-        }catch(e){}
-      }
-
-
-      emailInp && (emailInp.oninput = ()=>{ d.email = emailInp.value; saveDraft(d); });
+      // Si cambia el correo después de validar OTP, se debe validar de nuevo.
+      emailInp && (emailInp.oninput = ()=>{
+        const nuevo = String(emailInp.value || "").trim().toLowerCase();
+        if(String(d.email || "").trim().toLowerCase() !== nuevo){
+          d.aOtpVerified = false;
+          d.aOtpSent = false;
+          d.aOtpCode = "";
+          d.aOtp = "";
+          d.aOtpVerifiedEmail = "";
+        }
+        d.email = emailInp.value;
+        saveDraft(d);
+        render();
+      });
       otpInp && (otpInp.oninput = ()=>{ d.aOtp = otpInp.value; saveDraft(d); });
 
       sendBtn && (sendBtn.onclick = ()=>{
@@ -1117,6 +1156,7 @@ function uid(prefix = "id") {
         if(Date.now() - (d.aOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
         if(code !== String(d.aOtpCode||"")){ alert("Código incorrecto."); return; }
         d.aOtpVerified = true;
+        d.aOtpVerifiedEmail = String(d.email || emailInp?.value || "").trim().toLowerCase();
         saveDraft(d);
         // Mostrar estado verificado en UI
         render();
@@ -1137,18 +1177,22 @@ function uid(prefix = "id") {
       const sendBtn = $("btnSendOtp");
       const verBtn = $("btnVerifyOtp");
 
-      pEmail && (pEmail.oninput = ()=>{ d.pEmail = pEmail.value; saveDraft(d); });
+      pEmail && (pEmail.oninput = ()=>{
+        const nuevo = String(pEmail.value || "").trim().toLowerCase();
+        if(String(d.pEmail || "").trim().toLowerCase() !== nuevo){
+          d.pOtpVerified = false;
+          d.pOtpSent = false;
+          d.pOtpCode = "";
+          d.pOtp = "";
+          d.pOtpVerifiedEmail = "";
+        }
+        d.pEmail = pEmail.value;
+        saveDraft(d);
+        render();
+      });
       pOtp && (pOtp.oninput = ()=>{ d.pOtp = pOtp.value; saveDraft(d); });
       $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
       $("pPass2") && ($("pPass2").oninput = ()=>{ d.pPass2 = $("pPass2").value; saveDraft(d); });
-
-      // Si ya está verificado, bloquear correo y envío
-      if(d.pOtpVerified){
-        try{
-          if(pEmail) pEmail.disabled = true;
-          if(sendBtn) sendBtn.disabled = true;
-        }catch(e){}
-      }
 
 sendBtn && (sendBtn.onclick = ()=>{
         const e = String(pEmail?.value||"").trim().toLowerCase();
@@ -1168,6 +1212,7 @@ render();
         if(Date.now() - (d.pOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
         if(code !== String(d.pOtpCode||"")){ alert("Código incorrecto."); return; }
         d.pOtpVerified = true;
+        d.pOtpVerifiedEmail = String(d.pEmail || pEmail?.value || "").trim().toLowerCase();
         saveDraft(d);
         // Mostrar estado verificado en UI
         render();
@@ -1228,6 +1273,7 @@ render();
         d.pEmail = String($("pEmail")?.value || "").trim().toLowerCase();
         if(!validateEmail(d.pEmail)){ alert("Correo inválido."); return; }
         if(!d.pOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
+        if(String(d.pOtpVerifiedEmail || "").trim().toLowerCase() !== d.pEmail){ alert("Cambiaste el correo. Debes volver a validar el código (OTP)."); return; }
 
         d.pPass = String($("pPass")?.value || "");
 d.pPass2 = String($("pPass2")?.value || "");
@@ -1251,6 +1297,7 @@ if(d.alsoApoderado){
         d.email = String($("onbEmail")?.value || "").trim().toLowerCase();
         if(!validateEmail(d.email)){ alert("Correo inválido."); return; }
         if(!d.aOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
+        if(String(d.aOtpVerifiedEmail || "").trim().toLowerCase() !== d.email){ alert("Cambiaste el correo. Debes volver a validar el código (OTP)."); return; }
 
         d.phone = String($("onbPhone")?.value || "").trim();
         d.pass = String($("onbPass")?.value || "");
