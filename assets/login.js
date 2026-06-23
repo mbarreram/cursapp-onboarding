@@ -298,10 +298,6 @@ function loadJSON(k, def) {
       email: userEmail,
       courseKey: courseKey || "",
       profileId: pid || "",
-      activeProfileId: pid || localStorage.getItem(KEY_ACTIVE_PROFILE) || "",
-      activeMiembroId: localStorage.getItem("cursapp_active_miembro_id_v1") || "",
-      activeEnrollmentId: localStorage.getItem(KEY_ACTIVE_ENROLL) || "",
-      activeAlumno: localStorage.getItem("cursapp_active_alumno_nombre_v1") || "",
 
       // 🔒 Nuevo: roles y rol activo (mantiene compat con "role")
       roles: rolesAvail,
@@ -460,46 +456,30 @@ function loadJSON(k, def) {
 
     function setAlumnoContext(row){
       try {
-        const alumno = String(row?.alumno || "").trim();
-        const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
-        const miembroId = String(row?.profile?.supabase?.miembro_id || "").trim();
-        const enrollmentId = String(row?.enrollmentId || (miembroId ? ("sb_enr_" + miembroId) : "")).trim();
-
         const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
         u.apoderado = u.apoderado || {};
-        u.apoderado.alumno = alumno;
+        u.apoderado.alumno = row.alumno || "";
         u.apoderado.email = userEmail;
-        u.apoderado.miembro_id = miembroId;
         localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
+        localStorage.setItem(KEY_ACTIVE_ENROLL, row.enrollmentId || "");
 
-        localStorage.setItem(KEY_ACTIVE_ENROLL, enrollmentId);
-        localStorage.setItem("cursapp_active_alumno_nombre_v1", alumno);
-        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify({
-          nombre: alumno,
-          name: alumno,
-          alumno: alumno,
-          enrollmentId: enrollmentId,
-          profileId: profileId,
-          miembro_id: miembroId,
-          courseKey: courseKey,
-          email: userEmail
-        }));
-
+        const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
+        const miembroId = String(row?.profile?.supabase?.miembro_id || "").trim();
         if(profileId){
           localStorage.setItem(KEY_ACTIVE_PROFILE, profileId);
           localStorage.setItem("cursapp_active_member_profile_v1", profileId);
         }
-        if(miembroId){
-          localStorage.setItem("cursapp_active_miembro_id_v1", miembroId);
-        }
+        if(miembroId) localStorage.setItem("cursapp_active_miembro_id_v1", miembroId);
 
-        const sess = loadJSON(KEY_SESSION, {}) || {};
-        sess.activeAlumno = alumno;
-        sess.activeAlumnoName = alumno;
-        sess.activeEnrollmentId = enrollmentId;
-        sess.activeProfileId = profileId;
-        sess.activeMiembroId = miembroId;
-        saveJSON(KEY_SESSION, sess);
+        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify({
+          nombre: row.alumno || "",
+          alumno: row.alumno || "",
+          email: userEmail,
+          courseKey: courseKey || "",
+          profileId,
+          miembroId,
+          enrollmentId: row.enrollmentId || ""
+        }));
       } catch (e) {}
     }
 

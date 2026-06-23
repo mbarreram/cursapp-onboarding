@@ -987,50 +987,51 @@ function dueBadge(iso){
 
     const s = getSession() || {};
     const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
-    const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
-    const activeProfileId = String(localStorage.getItem(KEY_ACTIVE_PROFILE) || s.profileId || s.activeProfileId || "").trim();
-    const activeMiembroId = String(localStorage.getItem("cursapp_active_miembro_id_v1") || s.activeMiembroId || "").trim();
-    const activeEnrollmentId = String(localStorage.getItem("cursapp_active_enrollment_v1") || s.activeEnrollmentId || "").trim();
-    const activeAlumnoName = String(localStorage.getItem("cursapp_active_alumno_nombre_v1") || s.activeAlumno || s.activeAlumnoName || "").trim().toLowerCase();
+    const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || String(s.courseKey || "");
+    const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || String(s.profileId || "");
+    const activeMiembroId = localStorage.getItem("cursapp_active_miembro_id_v1") || "";
+    let activeAlumno = null;
+    try { activeAlumno = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e) { activeAlumno = null; }
+    const activeAlumnoName = String(activeAlumno?.nombre || activeAlumno?.alumno || "").trim().toLowerCase();
+    const activeAlumnoProfileId = String(activeAlumno?.profileId || "").trim();
+    const activeAlumnoMiembroId = String(activeAlumno?.miembroId || "").trim();
 
     // 1) Perfiles SOLO del usuario logueado (evita cruces entre apoderados del mismo curso)
     let mine = profiles.filter(p=>{
       const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
       const pUserId = String(p?.userId || p?.user?.userId || "");
-      return (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
+      const pCourse = String(p?.courseKey || "");
+      const sameUser = (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
+      const sameCourse = !activeCourse || pCourse === String(activeCourse);
+      return sameUser && sameCourse;
     });
 
     // Fallback legacy
     if(!mine.length) mine = profiles.slice();
 
-    // 2) Si hay miembro/alumno activo guardado, úsalo primero.
-    // Esto evita que hermanos del mismo curso caigan siempre en el último perfil cacheado.
+    // 2) Si viene miembro_id/alumno activo desde el selector de hermanos, tiene prioridad absoluta.
+    const byMiembro = (id) => mine.find(p => String(p?.supabase?.miembro_id || "") === String(id || ""));
+    const byProfileId = (id) => mine.find(p => String(p?.profileId || p?.id || "") === String(id || ""));
     if(activeMiembroId){
-      const byMiembro = mine.find(p => String(p?.supabase?.miembro_id || "") === String(activeMiembroId));
-      if(byMiembro) return byMiembro;
+      const found = byMiembro(activeMiembroId);
+      if(found) return found;
     }
-
-    if(activeEnrollmentId){
-      const rawId = String(activeEnrollmentId).replace(/^sb_enr_/, "");
-      const byEnrollment = mine.find(p => {
-        const mid = String(p?.supabase?.miembro_id || "");
-        const pid = String(p?.profileId || p?.id || "");
-        return (mid && (activeEnrollmentId.includes(mid) || rawId === mid)) || (pid && activeEnrollmentId.includes(pid));
-      });
-      if(byEnrollment) return byEnrollment;
+    if(activeAlumnoMiembroId){
+      const found = byMiembro(activeAlumnoMiembroId);
+      if(found) return found;
     }
-
-    if(activeAlumnoName && activeCourse){
-      const byAlumno = mine.find(p =>
-        String(p?.courseKey || "") === String(activeCourse) &&
-        String(p?.apoderado?.alumno || "").trim().toLowerCase() === activeAlumnoName
-      );
-      if(byAlumno) return byAlumno;
+    if(activeAlumnoProfileId){
+      const found = byProfileId(activeAlumnoProfileId);
+      if(found) return found;
+    }
+    if(activeAlumnoName){
+      const found = mine.find(p => String(p?.apoderado?.alumno || "").trim().toLowerCase() === activeAlumnoName);
+      if(found) return found;
     }
 
     // 3) Si hay profileId activo guardado, úsalo
     if(activeProfileId){
-      const byId = mine.find(p => String(p?.profileId || p?.id || "") === String(activeProfileId));
+      const byId = byProfileId(activeProfileId);
       if(byId) return byId;
     }
 
@@ -1109,10 +1110,6 @@ function dueBadge(iso){
   // 2) Buscar alumno guardado (si existe)
   let alumno = null;
   try { alumno = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e){}
-  try {
-    const activeName = localStorage.getItem("cursapp_active_alumno_nombre_v1") || "";
-    if(activeName) alumno = Object.assign({}, alumno || {}, { nombre: activeName, name: activeName });
-  } catch(e){}
 
   // 3) Si no existe, intenta tomar el primero desde datos del apoderado (si los tienes)
   if (!alumno) {
