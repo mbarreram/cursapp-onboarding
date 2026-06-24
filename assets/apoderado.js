@@ -981,6 +981,44 @@ function dueBadge(iso){
 
 
   // -------- Profile / Header --------
+  function readAlumnoActivo(){
+    let raw = null;
+    try { raw = localStorage.getItem("cursapp_alumno_activo_v1"); } catch(e) { raw = null; }
+    if(!raw) return null;
+    try {
+      let obj = JSON.parse(raw);
+      // En algunas versiones quedó guardado como JSON doble: "{...}"
+      if(typeof obj === "string"){
+        try { obj = JSON.parse(obj); } catch(e) {}
+      }
+      return obj && typeof obj === "object" ? obj : null;
+    } catch(e) {
+      return null;
+    }
+  }
+
+  function normTxt(v){
+    return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function cloneWithAlumno(base, alumnoObj, sessionEmail, activeCourse){
+    if(!base) return null;
+    const cloned = JSON.parse(JSON.stringify(base));
+    const nombre = alumnoObj?.nombre || alumnoObj?.alumno || alumnoObj?.name || cloned?.apoderado?.alumno || "";
+    cloned.role = "apoderado";
+    cloned.courseKey = activeCourse || alumnoObj?.courseKey || cloned.courseKey || "";
+    cloned.apoderado = cloned.apoderado || {};
+    cloned.apoderado.alumno = nombre;
+    cloned.apoderado.email = sessionEmail || alumnoObj?.email || cloned.apoderado.email || "";
+    cloned.supabase = cloned.supabase || {};
+    if(alumnoObj?.miembroId) cloned.supabase.miembro_id = alumnoObj.miembroId;
+    if(alumnoObj?.profileId){
+      cloned.profileId = alumnoObj.profileId;
+      cloned.id = alumnoObj.profileId;
+    }
+    return cloned;
+  }
+
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
@@ -990,13 +1028,12 @@ function dueBadge(iso){
     const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || String(s.courseKey || "");
     const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || String(s.profileId || "");
     const activeMiembroId = localStorage.getItem("cursapp_active_miembro_id_v1") || "";
-    let activeAlumno = null;
-    try { activeAlumno = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e) { activeAlumno = null; }
-    const activeAlumnoName = String(activeAlumno?.nombre || activeAlumno?.alumno || "").trim().toLowerCase();
-    const activeAlumnoProfileId = String(activeAlumno?.profileId || "").trim();
-    const activeAlumnoMiembroId = String(activeAlumno?.miembroId || "").trim();
+    const alumnoActivo = readAlumnoActivo();
+    const alumnoName = normTxt(alumnoActivo?.nombre || alumnoActivo?.alumno || alumnoActivo?.name || "");
+    const alumnoProfileId = String(alumnoActivo?.profileId || "").trim();
+    const alumnoMiembroId = String(alumnoActivo?.miembroId || "").trim();
 
-    // 1) Perfiles SOLO del usuario logueado (evita cruces entre apoderados del mismo curso)
+    // Perfiles SOLO del usuario logueado y curso activo
     let mine = profiles.filter(p=>{
       const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
       const pUserId = String(p?.userId || p?.user?.userId || "");
@@ -1006,59 +1043,32 @@ function dueBadge(iso){
       return sameUser && sameCourse;
     });
 
-    // Fallback legacy
     if(!mine.length) mine = profiles.slice();
 
-    // 2) Si viene miembro_id/alumno activo desde el selector de hermanos, tiene prioridad absoluta.
     const byMiembro = (id) => mine.find(p => String(p?.supabase?.miembro_id || "") === String(id || ""));
     const byProfileId = (id) => mine.find(p => String(p?.profileId || p?.id || "") === String(id || ""));
+    const byAlumno = (name) => mine.find(p => normTxt(p?.apoderado?.alumno || p?.studentName || p?.alumno || "") === name);
+
+    // Prioridad absoluta: alumno elegido en el selector.
+    // Si no existe como perfil local, clona un perfil base del curso y sobreescribe alumno.
+    if(alumnoActivo && (alumnoName || alumnoProfileId || alumnoMiembroId || activeMiembroId)){
+      const found = byMiembro(alumnoMiembroId || activeMiembroId) || byProfileId(alumnoProfileId) || byAlumno(alumnoName);
+      if(found) return cloneWithAlumno(found, alumnoActivo, sessionEmail, activeCourse);
+      const base = mine.find(p => String(p?.courseKey || "") === String(activeCourse)) || mine[0] || profiles[0];
+      const synthetic = cloneWithAlumno(base, alumnoActivo, sessionEmail, activeCourse);
+      if(synthetic) return synthetic;
+    }
+
     if(activeMiembroId){
       const found = byMiembro(activeMiembroId);
       if(found) return found;
     }
-    if(activeAlumnoMiembroId){
-      const found = byMiembro(activeAlumnoMiembroId);
-      if(found) return found;
-    }
-    if(activeAlumnoProfileId){
-      const found = byProfileId(activeAlumnoProfileId);
-      if(found) return found;
-    }
-    if(activeAlumnoName){
-      const found = mine.find(p => String(p?.apoderado?.alumno || "").trim().toLowerCase() === activeAlumnoName);
-      if(found) return found;
-    }
 
-    // 3) Si hay profileId activo guardado, úsalo
     if(activeProfileId){
       const byId = byProfileId(activeProfileId);
       if(byId) return byId;
     }
 
-    // 4) Si no existe el profileId en caché, crear un perfil sintético con el alumno activo.
-    // Esto cubre el caso de hermanos donde login eligió Matías/Javiera correctamente,
-    // pero la caché local de profiles todavía trae otro alumno del mismo curso.
-    if(activeAlumnoName || activeAlumnoProfileId || activeAlumnoMiembroId || activeMiembroId){
-      const base = mine.find(p => String(p?.courseKey || "") === String(activeCourse)) || mine[0] || profiles[0];
-      if(base){
-        const cloned = JSON.parse(JSON.stringify(base));
-        cloned.profileId = activeAlumnoProfileId || activeProfileId || cloned.profileId || cloned.id || "";
-        cloned.id = cloned.profileId || cloned.id;
-        cloned.role = "apoderado";
-        cloned.courseKey = activeCourse || cloned.courseKey || "";
-        cloned.apoderado = cloned.apoderado || {};
-        if(activeAlumnoName){
-          cloned.apoderado.alumno = activeAlumno?.nombre || activeAlumno?.alumno || cloned.apoderado.alumno || "";
-        }
-        cloned.apoderado.email = sessionEmail || cloned.apoderado.email || "";
-        cloned.supabase = cloned.supabase || {};
-        const mid = activeAlumnoMiembroId || activeMiembroId || "";
-        if(mid) cloned.supabase.miembro_id = mid;
-        return cloned;
-      }
-    }
-
-    // 5) Si no, cae por courseKey pero dentro de mis perfiles
     if(activeCourse){
       const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
       if(byCourse) return byCourse;

@@ -51,7 +51,7 @@ const esc = (s) =>
   // ===== storage helpers =====
 
   // --- DEBUG LOGIN (alerts) ---
-  const LOGIN_JS_VERSION = "420-debug-alumno";
+  const LOGIN_JS_VERSION = "20260214154124";
   const DEBUG_LOGIN = (() => {
     try {
       const qs = new URLSearchParams(window.location.search || "");
@@ -481,33 +481,8 @@ function loadJSON(k, def) {
           miembroId,
           enrollmentId: row.enrollmentId || ""
         };
+        // Guardar como objeto JSON normal, no como string JSON doble.
         localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumnoActivo));
-
-        // Persistir también el perfil elegido en profiles.
-        // El bug venía de que el selector sabía cuál alumno era, pero apoderado.js
-        // no encontraba ese profileId en la caché y caía al último perfil del curso.
-        if(row && row.profile){
-          const profiles = loadJSON(KEY_PROFILES, []);
-          const list = Array.isArray(profiles) ? profiles.slice() : [];
-          const selected = Object.assign({}, row.profile);
-          selected.profileId = profileId || selected.profileId || selected.id || ("sel_" + Date.now());
-          selected.id = selected.profileId;
-          selected.role = "apoderado";
-          selected.courseKey = courseKey || selected.courseKey || "";
-          selected.apoderado = Object.assign({}, selected.apoderado || {}, {
-            alumno: row.alumno || selected?.apoderado?.alumno || "",
-            email: userEmail
-          });
-          selected.supabase = Object.assign({}, selected.supabase || {});
-          if(miembroId) selected.supabase.miembro_id = miembroId;
-          const idx = list.findIndex(p =>
-            String(p?.profileId || p?.id || "") === String(selected.profileId || "") ||
-            (miembroId && String(p?.supabase?.miembro_id || "") === miembroId)
-          );
-          if(idx >= 0) list[idx] = Object.assign({}, list[idx], selected);
-          else list.unshift(selected);
-          localStorage.setItem(KEY_PROFILES, JSON.stringify(list));
-        }
       } catch (e) {}
     }
 
