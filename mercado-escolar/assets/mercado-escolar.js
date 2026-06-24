@@ -49,6 +49,7 @@
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
   const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}, sellerStats:{}, myRatings:{}};
+  let mineRefreshSeq=0;
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -595,11 +596,26 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }catch(e){ console.warn('reloadAll mercado', e); }
   }
 
+  async function refreshMineView(filter){
+    const box=$("#myPosts");
+    const current=filter || box?.dataset.mineFilter || "activos";
+    renderMine(current);
+    const seq=++mineRefreshSeq;
+    try{
+      await loadMinePosts();
+      if(seq===mineRefreshSeq && $("#view-mis")?.classList.contains("active")){
+        renderMine(current);
+      }
+    }catch(e){
+      console.warn('[MIS AVISOS] refreshMineView', e);
+    }
+  }
+
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
     $("#view-"+v)?.classList.add("active");
     $$(".bottomBar button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
-    if(v==="mis") renderMine();
+    if(v==="mis") refreshMineView();
     if(v==="explorar") setTimeout(()=>applyExploreFilter(activeExploreScope()),0);
     if(v==="creditos") setTimeout(renderCreditVisibilityGuard,120);
   }
@@ -1881,7 +1897,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const directBoost=e.target.closest("[data-direct-boost]"); if(directBoost){e.preventDefault();e.stopPropagation(); directBoost.disabled=true; directBoost.classList.add("disabled"); boostPost(directBoost.dataset.rule,directBoost.dataset.cost||"1",directBoost.dataset.directBoost);return;}
       const openCredits=e.target.closest("[data-open-credits]"); if(openCredits){e.preventDefault();e.stopPropagation();state.pendingBoostId=openCredits.dataset.openCredits;document.getElementById("modal").innerHTML="";showView("creditos");setTimeout(renderCreditVisibilityGuard,80);return;}
       const share=e.target.closest("[data-share]"); if(share){e.preventDefault();e.stopPropagation();sharePost(share.dataset.share);return;}
-      const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();renderMine(mf.dataset.mineFilter);return;}
+      const mf=e.target.closest("[data-mine-filter]"); if(mf){e.preventDefault();refreshMineView(mf.dataset.mineFilter);return;}
       const boost=e.target.closest("[data-boost-rule]"); if(boost){e.preventDefault();boostPost(boost.dataset.boostRule,boost.dataset.cost||"1");return;}
       const help=e.target.closest("[data-credit-help]"); if(help){e.preventDefault();creditHelp();return;}
       const openConv=e.target.closest("[data-open-conversation]"); if(openConv){e.preventDefault();openConversation(openConv.dataset.openConversation);return;}

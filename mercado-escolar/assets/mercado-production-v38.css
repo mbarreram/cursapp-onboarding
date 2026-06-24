@@ -1207,3 +1207,54 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
 .compact.emptyState{padding:18px}
 .chatThreadModal .sellerRep{margin:4px 0 0 0}
 .chatThreadModal .sellerRepDetail{display:inline-flex;background:#f8fafc;border-color:#e2e8f0;padding:6px 8px}
+
+/* V48 - Rating home compacto y alineado */
+.productBody .sellerRepCard{
+  margin-top:6px!important;
+  gap:1px!important;
+}
+.productBody .sellerRatingLine{
+  display:flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  height:14px!important;
+  line-height:14px!important;
+}
+.productBody .sellerRatingLine b{
+  display:inline-flex!important;
+  align-items:center!important;
+  height:14px!important;
+  line-height:14px!important;
+  transform:translateY(1px)!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+}
+.productBody .sellerRatingCount{
+  display:inline-flex!important;
+  align-items:center!important;
+  height:14px!important;
+  line-height:14px!important;
+  transform:translateY(1px)!important;
+}
+.productBody .sellerStars{
+  display:inline-flex!important;
+  align-items:center!important;
+  height:14px!important;
+  line-height:14px!important;
+  letter-spacing:-1px!important;
+}
+.productBody .sellerStars span{
+  display:inline-flex!important;
+  align-items:center!important;
+  height:14px!important;
+  line-height:14px!important;
+  font-size:10.5px!important;
+  color:#cbd5e1!important;
+}
+.productBody .sellerStars span.on{
+  color:#f59e0b!important;
+}
+.productBody .sellerRepCard small{
+  margin-top:1px!important;
+  color:#64748b!important;
+}
