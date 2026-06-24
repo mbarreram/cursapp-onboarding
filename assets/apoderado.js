@@ -70,6 +70,14 @@ function __cursappNormalizeRoleContextV101(expectedRole){
 
 const session = __cursappNormalizeRoleContextV101('apoderado');
 
+alert('DEBUG SESSION\n'+JSON.stringify(session,null,2));
+try{
+ const profile=JSON.parse(localStorage.getItem('cursapp_active_profile_v1')||'{}');
+ alert('DEBUG ACTIVE PROFILE\n'+JSON.stringify(profile,null,2));
+}catch(e){alert('DEBUG PROFILE ERROR '+e.message);}
+alert('DEBUG ACTIVE COURSE\n'+(localStorage.getItem('cursapp_active_course_v1')||'NULL'));
+
+
 if (!session || !session.userId) {
   console.warn('Cursapp Apoderado: sesión sin userId; se mostrará estado vacío controlado.', session);
 }
@@ -1053,30 +1061,7 @@ function dueBadge(iso){
     }
     if(!mine.length) mine = profiles.slice();
 
-    // 2) Si el login dejó un hijo/a activo, ese alumno manda antes de cualquier fallback por ID antiguo.
-    const alumnoName = norm(alumnoActivo && (alumnoActivo.alumno || alumnoActivo.nombre || alumnoActivo.name));
-    if(alumnoName){
-      const byAlumnoFirst = mine.find(p => norm(p?.apoderado?.alumno || p?.alumno || p?.nombre_alumno) === alumnoName);
-      if(byAlumnoFirst){
-        try{
-          localStorage.setItem(KEY_ACTIVE_PROFILE, String(byAlumnoFirst.profileId || byAlumnoFirst.id || ""));
-          localStorage.setItem("cursapp_active_member_profile_v1", String(byAlumnoFirst.profileId || byAlumnoFirst.id || ""));
-          if(byAlumnoFirst?.supabase?.miembro_id) localStorage.setItem("cursapp_active_miembro_id_v1", String(byAlumnoFirst.supabase.miembro_id));
-          const fixedAlumno = Object.assign({}, alumnoActivo || {}, {
-            nombre: byAlumnoFirst?.apoderado?.alumno || alumnoActivo?.nombre || "",
-            alumno: byAlumnoFirst?.apoderado?.alumno || alumnoActivo?.alumno || "",
-            email: byAlumnoFirst?.apoderado?.email || sessionEmail || "",
-            courseKey: byAlumnoFirst?.courseKey || activeCourse || "",
-            profileId: byAlumnoFirst?.profileId || byAlumnoFirst?.id || "",
-            miembroId: byAlumnoFirst?.supabase?.miembro_id || alumnoActivo?.miembroId || ""
-          });
-          localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(fixedAlumno));
-        }catch(e){}
-        return byAlumnoFirst;
-      }
-    }
-
-    // 3) Match estricto por profileId/id.
+    // 2) Match estricto por profileId/id.
     for(const id of idCandidates){
       const byId = mine.find(p => String(p?.profileId || p?.id || "") === id);
       if(byId){
@@ -1094,7 +1079,8 @@ function dueBadge(iso){
       }
     }
 
-    // 5) Match por alumno seleccionado + curso + email (fallback repetido seguro).
+    // 4) Match por alumno seleccionado + curso + email.
+    const alumnoName = norm(alumnoActivo && (alumnoActivo.alumno || alumnoActivo.nombre || alumnoActivo.name));
     if(alumnoName){
       const byAlumno = mine.find(p => norm(p?.apoderado?.alumno || p?.alumno || p?.nombre_alumno) === alumnoName);
       if(byAlumno){
