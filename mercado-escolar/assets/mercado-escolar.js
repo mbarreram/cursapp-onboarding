@@ -48,7 +48,7 @@
   ];
   const DEFAULT_BLOCKED=["arma","armas","cuchillo","navaja","alcohol","cigarro","vape","droga","medicamento","rifle","pistola","porno","casino","apuesta"];
 
-  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}};
+  const state={sb:null, session:null, categories:[], posts:[], minePosts:[], imagesByPost:{}, favorites:new Set(), reasons:DEFAULT_REASONS, blocked:DEFAULT_BLOCKED, selectedFiles:[], loading:false, pendingBoostId:null, editingPostId:null, conversations:[], unreadConversations:0, chatSending:new Set(), conversationPosts:{}, userProfiles:{}, colegioCache:{}, sellerStats:{}, myRatings:{}};
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
   function getSession(){
@@ -252,6 +252,7 @@
     state.posts=data||[];
     await hydratePostSchools(state.posts);
     await loadImagesForPosts();
+    await loadSellerReputationForPosts(state.posts);
     renderProducts(filterByScope(activeExploreScope()));
     renderMine();
   }
@@ -312,6 +313,7 @@
     state.minePosts=Array.from(found.values()).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
     await hydratePostSchools(state.minePosts);
     await loadImagesForIds(state.minePosts.map(p=>p.id));
+    await loadSellerReputationForPosts(state.minePosts);
   }
   function postUrl(p){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(p.id)}`;}
   function shareText(p){
@@ -372,6 +374,67 @@ Vi esta publicación en Mercado Escolar Cursapp.
   }
   function statusBadge(p){return isClosedPost(p)?`<span class="marketStatusBadge ${esc(postStatus(p))}">${postStatusIcon(p)} ${postStatusLabel(p)}</span>`:'';}
   function detailStatusChip(p){return (isClosedPost(p)||isDeletedPost(p))?`<span class="statusChip ${esc(postStatus(p))}">${postStatusIcon(p)} ${postStatusLabel(p)}</span>`:'';}
+
+  function sellerStats(id){return state.sellerStats?.[String(id||'')]||{count:0,avg:0,recomienda:0,ventas:0};}
+  function sellerLevel(stats){
+    const n=Number(stats?.ventas||stats?.count||0), avg=Number(stats?.avg||0);
+    if(n>=21 && avg>=4.6) return 'Excelente vendedor';
+    if(n>=6 && avg>=4.2) return 'Buen vendedor';
+    if(n>=1) return 'Vendedor activo';
+    return 'Nuevo vendedor';
+  }
+  function stars(avg){
+    const n=Math.round(Number(avg||0));
+    return '★★★★★'.split('').map((x,i)=>`<span class="${i<n?'on':''}">★</span>`).join('');
+  }
+  function sellerReputationHtml(p,mode='card'){
+    const id=sellerUuid(p);
+    const st=sellerStats(id);
+    const avg=Number(st.avg||0);
+    if(!id || !st.count){
+      return mode==='detail'
+        ? `<div class="sellerRep sellerRepDetail new"><b>⭐ Nuevo vendedor</b><small>Aún sin calificaciones verificadas</small></div>`
+        : `<div class="sellerRep sellerRepCard new">⭐ Nuevo vendedor</div>`;
+    }
+    const rec=Number(st.recomienda||0);
+    const txt=`${avg.toFixed(1)} · ${st.count} calificación${st.count===1?'':'es'} · ${rec}% recomienda`;
+    return mode==='detail'
+      ? `<div class="sellerRep sellerRepDetail"><div class="sellerStars">${stars(avg)}</div><b>${avg.toFixed(1)} · ${sellerLevel(st)}</b><small>${st.count} calificación${st.count===1?'':'es'} · ${rec}% recomienda</small></div>`
+      : `<div class="sellerRep sellerRepCard"><span class="sellerStars">${stars(avg)}</span><b>${avg.toFixed(1)}</b><small>${sellerLevel(st)}</small></div>`;
+  }
+  async function loadSellerReputationForPosts(list){
+    if(!state.sb) return;
+    const ids=[...new Set((list||[]).map(sellerUuid).filter(isUuid).map(String))];
+    if(!ids.length) return;
+    try{
+      const r=await state.sb.from('mercado_calificaciones').select('vendedor_id,estrellas,recomienda').in('vendedor_id',ids).limit(1000);
+      if(r.error){ console.warn('[REPUTACION] tabla no disponible aún', r.error.message); return; }
+      const agg={};
+      ids.forEach(id=>agg[id]={count:0,sum:0,recomiendaCount:0});
+      (r.data||[]).forEach(x=>{
+        const id=String(x.vendedor_id||''); if(!agg[id]) agg[id]={count:0,sum:0,recomiendaCount:0};
+        agg[id].count++; agg[id].sum+=Number(x.estrellas||0); if(x.recomienda) agg[id].recomiendaCount++;
+      });
+      Object.entries(agg).forEach(([id,a])=>{
+        state.sellerStats[id]={count:a.count,ventas:a.count,avg:a.count?(a.sum/a.count):0,recomienda:a.count?Math.round((a.recomiendaCount/a.count)*100):0};
+      });
+    }catch(e){console.warn('[REPUTACION] no se pudo cargar',e);}
+  }
+  function recommendPosts(list){
+    const base=(list||[]).filter(p=>!isMine(p)&&isActiveMarketPost(p));
+    return base.slice().sort((a,b)=>{
+      const sa=sellerStats(sellerUuid(a)); const sb=sellerStats(sellerUuid(b));
+      const ra=(isBoosted(a)?100:0)+(Number(sa.avg||0)*10)+Number(sa.count||0)+(sameColegio(a)?8:0)+(sameComuna(a)?4:0);
+      const rb=(isBoosted(b)?100:0)+(Number(sb.avg||0)*10)+Number(sb.count||0)+(sameColegio(b)?8:0)+(sameComuna(b)?4:0);
+      return rb-ra || Date.parse(b.created_at||0)-Date.parse(a.created_at||0);
+    }).slice(0,6);
+  }
+  function renderRecommendations(list){
+    const box=document.getElementById('marketRecommendationsList');
+    if(!box) return;
+    const recs=recommendPosts(list);
+    box.innerHTML=recs.length?recs.map(card).join(''):`<div class="emptyState compact"><div class="emptyIcon">✨</div><h3>Pronto tendremos recomendaciones</h3><p>Se activan con publicaciones y calificaciones.</p></div>`;
+  }
   function closeMessageForStatus(status){
     const st=String(status||"cerrado").toLowerCase();
     if(st==="vendido") return "[SISTEMA] Esta publicación fue marcada como VENDIDA por el vendedor. La conversación quedó cerrada.";
@@ -455,7 +518,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const fav=state.favorites.has(String(p.id));
     return `<article class="productCard v6ProductCard ${isBoosted(p)?'isBoosted':''}" data-post="${esc(p.id)}">
       <div class="productImageWrap">${isBoosted(p)?`<span class="boostStar" title="Destacado">⭐</span>`:""}${statusBadge(p)}<img src="${esc(imageForPost(p))}" alt="${esc(title)}" onerror="this.src='assets/img/generic.svg'"><button class="favBtn ${fav?"on":""}" data-fav="${esc(p.id)}" title="Favorito">${fav?"♥":"♡"}</button></div>
-      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(colegioNameForPost(p))}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div></div>
+      <div class="productBody"><b>${esc(title)}</b><strong>${price}</strong><span>${esc(colegioNameForPost(p))}</span><div class="productMeta"><small>${esc(categoryName(p))}</small><small>${esc(relDate(p))}</small></div>${sellerReputationHtml(p,'card')}</div>
     </article>`;
   }
   function renderProducts(list=visible()){
@@ -464,6 +527,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const empty=emptyState("🛍️","Aún no hay publicaciones","Cuando los apoderados publiquen artículos, aparecerán acá.","Publicar primer aviso","publicar");
     if(f) f.innerHTML=ranked.length?ranked.slice(0,6).map(card).join(""):empty;
     if(g) g.innerHTML=ranked.length?ranked.map(card).join(""):empty;
+    renderRecommendations(ranked);
     if(recent){
       const rows=ranked.slice(0,4);
       recent.innerHTML=rows.length?rows.map(p=>{const price=Number(p.precio||0)===0?"Intercambio":clp(p.precio); const fav=state.favorites.has(String(p.id)); return `<article class="recentItem" data-post="${esc(p.id)}"><img src="${esc(imageForPost(p))}" onerror="this.src='assets/img/generic.svg'"><div><b>${esc(p.titulo||"Publicación")}</b><span>${esc(categoryName(p))}</span><strong>${price}</strong></div><button data-fav="${esc(p.id)}" class="favBtn ${fav?"on":""}">${fav?"♥":"♡"}</button></article>`}).join(""):"";
@@ -740,7 +804,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
       <div class="v6DetailBody">${isBoosted(p)?(isMine(p)?`<em class="boostBadge detailBoost ownerOnly">⭐ ${esc(boostRuleInfo(activeBoostRule(p)).label)} · ${boostDaysText(p)}</em>`:`<em class="boostBadge detailBoost publicOnly">⭐ Destacado</em>`):""}<small class="v6Cat">${esc(categoryName(p))}</small><h2>${esc(p.titulo)}</h2><strong class="v6Price">${price}</strong>
       <div class="v6Chips">${detailStatusChip(p)}<span>⌖ ${esc(colegioNameForPost(p))}</span><span>${esc(relDate(p))}</span></div>
       <p>${esc(p.descripcion||"")}</p>
-      <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
+      <div class="v6Seller"><span>${esc((p.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(p.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small>${sellerReputationHtml(p,'detail')}</div></div>
       ${(!isMine(p) && !isClosedPost(p)) ? `<button class="v6Whatsapp" data-contact="${esc(p.id)}">Contactar vendedor</button>` : (isClosedPost(p)?`<div class="chatClosedNotice detailClosed">${postStatusIcon(p)} ${postStatusLabel(p)}. No se aceptan nuevas consultas.</div>`:'')}
       <button class="v6Ghost" data-share="${esc(p.id)}">Compartir aviso</button>
       <button class="v6Ghost" data-fav="${esc(p.id)}">${fav?"♥ Quitar favorito":"♡ Guardar favorito"}</button>
@@ -1336,11 +1400,12 @@ Vi esta publicación en Mercado Escolar Cursapp.
     const footerStateText = closed
       ? `${postStatusIcon(p)} ${postStatusLabel(p)}. Historial visible, chat cerrado.`
       : `🟢 Disponible. Puedes continuar la conversación.`;
+    const canRate=closed && !sellerMode && ['vendido','intercambiado'].includes(postStatus(p));
     const replyFooter=closed
-      ? `<div class="chatClosedNotice compact">${footerStateText}</div>`
+      ? `<div class="chatClosedNotice compact">${footerStateText}</div>${canRate?`<button type="button" class="primaryBtn rateSellerBtn" data-rate-conversation="${esc(c.id)}">⭐ Calificar vendedor</button>`:''}`
       : `<div class="chatReplyFooter compact"><textarea id="chatReplyText" rows="1" placeholder="Escribe un mensaje..." autocomplete="off"></textarea><button type="button" class="primaryBtn" data-send-conversation-reply="${esc(c.id)}" disabled>Enviar</button></div><div class="chatClosedNotice compact openState">${footerStateText}</div>`;
     const viewLink=p?.id?`<button type="button" class="chatProductLink" data-open-detail="${esc(p.id)}">🔗 Ver aviso</button>`:'';
-    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal chatThreadModalV39"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead compact"><button type="button" class="ghost chatBackBtn" data-close-chat-thread>←</button><div class="chatHeadMain"><h2>${esc(p.titulo||'Conversación')}</h2><p class="chatMeta"><span class="productCodeInline">${esc(productCode(p))}</span> · ${msgCount} mensaje${msgCount===1?'':'s'} ${viewLink}</p><p class="chatWith"><b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${closed?` · ${statusPill}`:''}</p></div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyFooter}</section></div>`;
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm chatThreadModal chatThreadModalV39"><button type="button" class="chatStickyClose" data-close-chat-thread aria-label="Cerrar conversación">✕</button><div class="chatThreadHead compact"><button type="button" class="ghost chatBackBtn" data-close-chat-thread>←</button><div class="chatHeadMain"><h2>${esc(p.titulo||'Conversación')}</h2><p class="chatMeta"><span class="productCodeInline">${esc(productCode(p))}</span> · ${msgCount} mensaje${msgCount===1?'':'s'} ${viewLink}</p><p class="chatWith"><b>${esc(other)}</b>${otherEmail?` <span class="maskedEmail">${esc(otherEmail)}</span>`:''}${closed?` · ${statusPill}`:''}</p>${sellerReputationHtml(p,'chat')}</div></div>${sellerActions}<div id="chatThreadMessages" class="chatThreadMessages">${rows}</div>${replyFooter}</section></div>`;
     const replyEl=document.getElementById('chatReplyText');
     const replyBtn=document.querySelector(`[data-send-conversation-reply="${String(c.id).replace(/"/g,'\\"')}"]`);
     if(replyEl && replyBtn){
@@ -1461,6 +1526,42 @@ Vi esta publicación en Mercado Escolar Cursapp.
 
     return conv;
   }
+  async function hasRating(conversationId,publicacionId,compradorId){
+    try{
+      const r=await state.sb.from('mercado_calificaciones').select('id').eq('conversacion_id',conversationId).eq('comprador_id',compradorId).limit(1).maybeSingle();
+      if(!r.error && r.data) return true;
+      const r2=await state.sb.from('mercado_calificaciones').select('id').eq('publicacion_id',publicacionId).eq('comprador_id',compradorId).limit(1).maybeSingle();
+      return !r2.error && !!r2.data;
+    }catch(e){return false;}
+  }
+  async function openRatingModal(conversationId){
+    if(!requireSession()) return;
+    const me=await resolveCurrentUserUuid();
+    const refreshed=await refreshConversationAndPost(conversationId);
+    const c=refreshed.conversation; const p=refreshed.post || conversationPost(c);
+    if(!c||!p){toast('No se pudo abrir la calificación.');return;}
+    if(String(c.comprador_id)!==String(me)){toast('Solo el comprador puede calificar esta venta.');return;}
+    if(!['vendido','intercambiado'].includes(postStatus(p))){toast('Solo se puede calificar una venta cerrada.');return;}
+    if(await hasRating(c.id,p.id,me)){toast('Ya calificaste esta venta.');return;}
+    const tags=['Producto igual a la publicación','Buena comunicación','Entrega rápida','Puntual','Recomendado'];
+    document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm ratingModal"><h2>⭐ Calificar vendedor</h2><div class="boostConfirmCard"><p>Publicación</p><b>${esc(p.titulo||'Publicación')}</b><p class="muted">Tu calificación ayuda a otros apoderados.</p><label>Estrellas<select id="ratingStars"><option value="5">★★★★★ Excelente</option><option value="4">★★★★ Bueno</option><option value="3">★★★ Regular</option><option value="2">★★ Malo</option><option value="1">★ Muy malo</option></select></label><label class="contactCheck"><input id="ratingRecommend" type="checkbox" checked> Recomiendo este vendedor</label><div class="ratingTags">${tags.map(t=>`<label><input type="checkbox" value="${esc(t)}"> ${esc(t)}</label>`).join('')}</div><label>Comentario opcional<textarea id="ratingComment" maxlength="200" rows="3" placeholder="Máximo 200 caracteres"></textarea></label></div><div class="v19ConfirmActions"><button type="button" class="primaryBtn" data-submit-rating="${esc(c.id)}">Enviar calificación</button><button type="button" class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cancelar</button></div></section></div>`;
+  }
+  async function submitRating(conversationId){
+    const me=await resolveCurrentUserUuid();
+    const c=(state.conversations||[]).find(x=>String(x.id)===String(conversationId)) || (await refreshConversationAndPost(conversationId)).conversation;
+    const p=conversationPost(c||{});
+    if(!me||!c||!p){toast('No se pudo guardar la calificación.');return;}
+    const estrellas=Math.max(1,Math.min(5,Number(document.getElementById('ratingStars')?.value||5)));
+    const etiquetas=Array.from(document.querySelectorAll('.ratingTags input:checked')).map(x=>x.value);
+    const row={publicacion_id:p.id,conversacion_id:c.id,vendedor_id:c.vendedor_id,comprador_id:me,estrellas,recomienda:!!document.getElementById('ratingRecommend')?.checked,comentario:(document.getElementById('ratingComment')?.value||'').slice(0,200),etiquetas_json:etiquetas,created_at:now()};
+    const r=await insertFlex('mercado_calificaciones',row);
+    if(r.error){toast('No se pudo calificar: '+(r.error.message||JSON.stringify(r.error)));return;}
+    toast('Calificación enviada. ¡Gracias!');
+    await loadSellerReputationForPosts([p]);
+    await loadConversations();
+    document.getElementById('modal').innerHTML='';
+  }
+
   function contactModal(p){
     if(isClosedPost(p)){toast('Esta publicación ya no está disponible.');return;}
     const chat=canUseChat(p), wa=canUseWhatsapp(p), msg=contactMsgDefault(p);
@@ -1787,6 +1888,8 @@ Vi esta publicación en Mercado Escolar Cursapp.
       const sendReply=e.target.closest("[data-send-conversation-reply]"); if(sendReply){e.preventDefault();sendConversationReply(sendReply.dataset.sendConversationReply);return;}
       const closeThread=e.target.closest("[data-close-chat-thread]"); if(closeThread){e.preventDefault();document.getElementById('modal').innerHTML='';return;}
       const closeFromChat=e.target.closest("[data-close-post-from-chat]"); if(closeFromChat){e.preventDefault();closePostFromConversation(closeFromChat.dataset.conversationId,closeFromChat.dataset.closePostFromChat);return;}
+      const rate=e.target.closest("[data-rate-conversation]"); if(rate){e.preventDefault();openRatingModal(rate.dataset.rateConversation);return;}
+      const submitRatingBtn=e.target.closest("[data-submit-rating]"); if(submitRatingBtn){e.preventDefault();submitRating(submitRatingBtn.dataset.submitRating);return;}
       const sendChat=e.target.closest("[data-send-internal-chat]"); if(sendChat){e.preventDefault();sendInternalChat(sendChat.dataset.sendInternalChat);return;}
       const sendWa=e.target.closest("[data-contact-whatsapp]"); if(sendWa){e.preventDefault();contactWhatsapp(sendWa.dataset.contactWhatsapp);return;}
       const v=e.target.closest("[data-view]"); if(v){e.preventDefault(); if(v.dataset.view==='publicar'){state.editingPostId=null; const titleEl=$('#view-publicar h2'); if(titleEl) titleEl.textContent='Publicar aviso'; const submit=$('#postForm button[type="submit"], #postForm .primaryBtn'); if(submit) submit.textContent='Publicar aviso';} showView(v.dataset.view);return;}
@@ -1808,7 +1911,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#btnRules")?.addEventListener("click",rules);
     $("#btnConversations")?.addEventListener("click",async()=>{showView('conversaciones'); await loadConversations();});
     $("#btnMarketAlerts")?.addEventListener("click",()=>toast('Notificaciones de Mercado Escolar próximamente.'));
-    $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" onclick="alert('Reputación disponible en la siguiente fase')">⭐ Mi reputación</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
+    $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" onclick="alert('Reputación activa: se mostrará automáticamente en publicaciones, detalle y chat cuando recibas calificaciones verificadas.')">⭐ Mi reputación</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
     document.addEventListener('click',ev=>{ if(ev.target.closest('[data-open-rules]')){ev.preventDefault(); rules();} });
     $("#pubPhotos")?.addEventListener("change",e=>{
       const merged=mergeSelectedFiles(e.target.files);
