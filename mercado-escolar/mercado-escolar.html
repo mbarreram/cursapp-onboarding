@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Cursapp · Mercado Escolar</title>
 <link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
-<link rel="stylesheet" href="assets/mercado-production-v38.css?v=46"/>
+<link rel="stylesheet" href="assets/mercado-production-v38.css?v=53"/>
 </head>
 <body class="market-v8">
 <main class="marketApp">
@@ -109,6 +109,16 @@
     </section>
   </section>
 
+
+  <section id="view-reputacion" class="view" style="display:none">
+    <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Mi perfil de vendedor</h2></div>
+    <section class="panel reputationPanel">
+      <div id="mySellerProfile">
+        <div class="emptyState compact"><div class="emptyIcon">⭐</div><h3>Cargando reputación</h3><p>Estamos preparando tu perfil de vendedor.</p></div>
+      </div>
+    </section>
+  </section>
+
   <section id="view-creditos" class="view" style="display:none">
     <section class="panel creditsPanel">
       <div class="panelHead"><div><h2>Créditos Mercado</h2><p>Compra créditos para destacar tus avisos.</p></div><span id="creditBalanceBadge">0 créditos</span></div>
@@ -129,7 +139,7 @@
 <div id="modal"></div><div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=46"></script>
+<script src="assets/mercado-escolar.js?v=53"></script>
 <script src="assets/mercado-creditos.js?v=38"></script>
 </body>
 </html>
