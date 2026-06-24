@@ -293,11 +293,18 @@ function loadJSON(k, def) {
     rolesAvail = Array.from(new Set(rolesAvail.map(r => String(r || "").toLowerCase().trim()).filter(Boolean)));
     if (!rolesAvail.includes(String(role || "").toLowerCase().trim())) rolesAvail.push(String(role || "").toLowerCase().trim());
 
+    let alumnoActivoForSession = null;
+    try { alumnoActivoForSession = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e) { alumnoActivoForSession = null; }
+    const activeMiembroForSession = localStorage.getItem("cursapp_active_miembro_id_v1") || (alumnoActivoForSession && alumnoActivoForSession.miembroId) || "";
+
     setSession({
       userId: userEmail,
       email: userEmail,
       courseKey: courseKey || "",
       profileId: pid || "",
+      activeProfile: pid || "",
+      activeMiembro: activeMiembroForSession || "",
+      alumnoActivo: alumnoActivoForSession || null,
 
       // 🔒 Nuevo: roles y rol activo (mantiene compat con "role")
       roles: rolesAvail,
@@ -456,33 +463,41 @@ function loadJSON(k, def) {
 
     function setAlumnoContext(row){
       try {
+        const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
+        const miembroId = String(row?.profile?.supabase?.miembro_id || row?.miembroId || "").trim();
+        const alumnoObj = {
+          nombre: row?.alumno || "",
+          alumno: row?.alumno || "",
+          email: userEmail,
+          courseKey: courseKey || "",
+          profileId: profileId,
+          miembroId: miembroId,
+          enrollmentId: row?.enrollmentId || ""
+        };
+
         const u = JSON.parse(localStorage.getItem(KEY_DEMO_USER) || "{}");
         u.apoderado = u.apoderado || {};
-        u.apoderado.alumno = row.alumno || "";
+        u.apoderado.alumno = row?.alumno || "";
         u.apoderado.email = userEmail;
         localStorage.setItem(KEY_DEMO_USER, JSON.stringify(u));
-        localStorage.setItem(KEY_ACTIVE_ENROLL, row.enrollmentId || "");
 
-        const profileId = String(row?.profile?.profileId || row?.profile?.id || "").trim();
-        const miembroId = String(row?.profile?.supabase?.miembro_id || "").trim();
-
+        localStorage.setItem(KEY_ACTIVE_ENROLL, row?.enrollmentId || "");
+        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumnoObj));
         if(profileId){
-          localStorage.setItem(KEY_ACTIVE_PROFILE, profileId);
           localStorage.setItem("cursapp_active_member_profile_v1", profileId);
+          setActiveProfileId(profileId);
         }
         if(miembroId) localStorage.setItem("cursapp_active_miembro_id_v1", miembroId);
 
-        const alumnoActivo = {
-          nombre: row.alumno || "",
-          alumno: row.alumno || "",
-          email: userEmail,
-          courseKey: courseKey || "",
-          profileId,
-          miembroId,
-          enrollmentId: row.enrollmentId || ""
-        };
-        // Guardar como objeto JSON normal, no como string JSON doble.
-        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumnoActivo));
+        // Actualiza sesión si ya existe. go() la volverá a guardar, pero esto evita carreras.
+        const sess = loadJSON(KEY_SESSION, {}) || {};
+        sess.email = userEmail;
+        sess.userId = userEmail;
+        sess.courseKey = courseKey || sess.courseKey || "";
+        if(profileId) sess.profileId = profileId;
+        if(miembroId) sess.activeMiembro = miembroId;
+        sess.alumnoActivo = alumnoObj;
+        saveJSON(KEY_SESSION, sess);
       } catch (e) {}
     }
 

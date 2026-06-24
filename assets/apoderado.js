@@ -981,94 +981,120 @@ function dueBadge(iso){
 
 
   // -------- Profile / Header --------
-  function readAlumnoActivo(){
-    let raw = null;
-    try { raw = localStorage.getItem("cursapp_alumno_activo_v1"); } catch(e) { raw = null; }
-    if(!raw) return null;
-    try {
-      let obj = JSON.parse(raw);
-      // En algunas versiones quedó guardado como JSON doble: "{...}"
-      if(typeof obj === "string"){
-        try { obj = JSON.parse(obj); } catch(e) {}
-      }
-      return obj && typeof obj === "object" ? obj : null;
-    } catch(e) {
-      return null;
-    }
-  }
-
-  function normTxt(v){
-    return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  }
-
-  function cloneWithAlumno(base, alumnoObj, sessionEmail, activeCourse){
-    if(!base) return null;
-    const cloned = JSON.parse(JSON.stringify(base));
-    const nombre = alumnoObj?.nombre || alumnoObj?.alumno || alumnoObj?.name || cloned?.apoderado?.alumno || "";
-    cloned.role = "apoderado";
-    cloned.courseKey = activeCourse || alumnoObj?.courseKey || cloned.courseKey || "";
-    cloned.apoderado = cloned.apoderado || {};
-    cloned.apoderado.alumno = nombre;
-    cloned.apoderado.email = sessionEmail || alumnoObj?.email || cloned.apoderado.email || "";
-    cloned.supabase = cloned.supabase || {};
-    if(alumnoObj?.miembroId) cloned.supabase.miembro_id = alumnoObj.miembroId;
-    if(alumnoObj?.profileId){
-      cloned.profileId = alumnoObj.profileId;
-      cloned.id = alumnoObj.profileId;
-    }
-    return cloned;
-  }
-
   function getActiveProfile(){
     const profiles = load(KEY_PROFILES, []);
     if(!profiles.length) return null;
 
     const s = getSession() || {};
     const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
-    const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || String(s.courseKey || "");
-    const activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || String(s.profileId || "");
-    const activeMiembroId = localStorage.getItem("cursapp_active_miembro_id_v1") || "";
-    const alumnoActivo = readAlumnoActivo();
-    const alumnoName = normTxt(alumnoActivo?.nombre || alumnoActivo?.alumno || alumnoActivo?.name || "");
-    const alumnoProfileId = String(alumnoActivo?.profileId || "").trim();
-    const alumnoMiembroId = String(alumnoActivo?.miembroId || "").trim();
+    const activeCourse = String(localStorage.getItem(KEY_ACTIVE_COURSE) || s.courseKey || "").trim();
 
-    // Perfiles SOLO del usuario logueado y curso activo
+    function parseMaybeJson(raw){
+      if(raw == null) return null;
+      if(typeof raw === "object") return raw;
+      const str = String(raw || "").trim();
+      if(!str) return null;
+      try{
+        let obj = JSON.parse(str);
+        // Soporta JSON doble: "{\"alumno\":...}"
+        if(typeof obj === "string" && obj.trim().startsWith("{")) obj = JSON.parse(obj);
+        return obj;
+      }catch(e){ return null; }
+    }
+
+    function norm(v){
+      return String(v || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+    }
+
+    const alumnoLocal = parseMaybeJson(localStorage.getItem("cursapp_alumno_activo_v1"));
+    const alumnoSession = parseMaybeJson(s.alumnoActivo);
+    const alumnoActivo = alumnoSession || alumnoLocal || null;
+
+    const idCandidates = [];
+    const addId = (v)=>{ const x = String(v || "").trim(); if(x && !idCandidates.includes(x)) idCandidates.push(x); };
+
+    addId(s.profileId);
+    addId(s.activeProfile);
+    addId(s.activeProfileId);
+    addId(localStorage.getItem("cursapp_active_member_profile_v1"));
+    addId(alumnoActivo && alumnoActivo.profileId);
+
+    const rawActiveProfile = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
+    const parsedActiveProfile = parseMaybeJson(rawActiveProfile);
+    if(parsedActiveProfile){
+      addId(parsedActiveProfile.profileId || parsedActiveProfile.id || parsedActiveProfile.activeProfile);
+      if(!alumnoActivo && (parsedActiveProfile.alumno || parsedActiveProfile.nombre)){
+        try{ localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(parsedActiveProfile)); }catch(e){}
+      }
+    }else{
+      addId(rawActiveProfile);
+    }
+
+    const miembroCandidates = [];
+    const addMiembro = (v)=>{ const x = String(v || "").trim(); if(x && !miembroCandidates.includes(x)) miembroCandidates.push(x); };
+    addMiembro(s.activeMiembro);
+    addMiembro(s.miembroId);
+    addMiembro(localStorage.getItem("cursapp_active_miembro_id_v1"));
+    addMiembro(alumnoActivo && alumnoActivo.miembroId);
+    addMiembro(parsedActiveProfile && parsedActiveProfile.miembroId);
+
+    // 1) Perfiles solo del usuario logueado y, si existe, del curso activo.
     let mine = profiles.filter(p=>{
       const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
       const pUserId = String(p?.userId || p?.user?.userId || "");
-      const pCourse = String(p?.courseKey || "");
-      const sameUser = (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
-      const sameCourse = !activeCourse || pCourse === String(activeCourse);
-      return sameUser && sameCourse;
+      const okUser = (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
+      const okCourse = !activeCourse || String(p?.courseKey || "") === String(activeCourse);
+      return okUser && okCourse;
     });
 
+    // Fallback: si no encontró por usuario, al menos respeta curso.
+    if(!mine.length && activeCourse){
+      mine = profiles.filter(p => String(p?.courseKey || "") === String(activeCourse));
+    }
     if(!mine.length) mine = profiles.slice();
 
-    const byMiembro = (id) => mine.find(p => String(p?.supabase?.miembro_id || "") === String(id || ""));
-    const byProfileId = (id) => mine.find(p => String(p?.profileId || p?.id || "") === String(id || ""));
-    const byAlumno = (name) => mine.find(p => normTxt(p?.apoderado?.alumno || p?.studentName || p?.alumno || "") === name);
-
-    // Prioridad absoluta: alumno elegido en el selector.
-    // Si no existe como perfil local, clona un perfil base del curso y sobreescribe alumno.
-    if(alumnoActivo && (alumnoName || alumnoProfileId || alumnoMiembroId || activeMiembroId)){
-      const found = byMiembro(alumnoMiembroId || activeMiembroId) || byProfileId(alumnoProfileId) || byAlumno(alumnoName);
-      if(found) return cloneWithAlumno(found, alumnoActivo, sessionEmail, activeCourse);
-      const base = mine.find(p => String(p?.courseKey || "") === String(activeCourse)) || mine[0] || profiles[0];
-      const synthetic = cloneWithAlumno(base, alumnoActivo, sessionEmail, activeCourse);
-      if(synthetic) return synthetic;
+    // 2) Match estricto por profileId/id.
+    for(const id of idCandidates){
+      const byId = mine.find(p => String(p?.profileId || p?.id || "") === id);
+      if(byId){
+        try{ localStorage.setItem(KEY_ACTIVE_PROFILE, String(byId.profileId || byId.id || id)); }catch(e){}
+        return byId;
+      }
     }
 
-    if(activeMiembroId){
-      const found = byMiembro(activeMiembroId);
-      if(found) return found;
+    // 3) Match por miembro_id de Supabase.
+    for(const mid of miembroCandidates){
+      const byMid = mine.find(p => String(p?.supabase?.miembro_id || p?.miembro_id || "") === mid);
+      if(byMid){
+        try{ localStorage.setItem(KEY_ACTIVE_PROFILE, String(byMid.profileId || byMid.id || "")); }catch(e){}
+        return byMid;
+      }
     }
 
-    if(activeProfileId){
-      const byId = byProfileId(activeProfileId);
-      if(byId) return byId;
+    // 4) Match por alumno seleccionado + curso + email.
+    const alumnoName = norm(alumnoActivo && (alumnoActivo.alumno || alumnoActivo.nombre || alumnoActivo.name));
+    if(alumnoName){
+      const byAlumno = mine.find(p => norm(p?.apoderado?.alumno || p?.alumno || p?.nombre_alumno) === alumnoName);
+      if(byAlumno){
+        try{
+          localStorage.setItem(KEY_ACTIVE_PROFILE, String(byAlumno.profileId || byAlumno.id || ""));
+          localStorage.setItem("cursapp_active_member_profile_v1", String(byAlumno.profileId || byAlumno.id || ""));
+          if(byAlumno?.supabase?.miembro_id) localStorage.setItem("cursapp_active_miembro_id_v1", String(byAlumno.supabase.miembro_id));
+          const fixedAlumno = Object.assign({}, alumnoActivo || {}, {
+            nombre: byAlumno?.apoderado?.alumno || alumnoActivo?.nombre || "",
+            alumno: byAlumno?.apoderado?.alumno || alumnoActivo?.alumno || "",
+            email: byAlumno?.apoderado?.email || sessionEmail || "",
+            courseKey: byAlumno?.courseKey || activeCourse || "",
+            profileId: byAlumno?.profileId || byAlumno?.id || "",
+            miembroId: byAlumno?.supabase?.miembro_id || alumnoActivo?.miembroId || ""
+          });
+          localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(fixedAlumno));
+        }catch(e){}
+        return byAlumno;
+      }
     }
 
+    // 5) Último fallback: perfil activo por curso.
     if(activeCourse){
       const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
       if(byCourse) return byCourse;
