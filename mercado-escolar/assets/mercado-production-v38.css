@@ -1429,3 +1429,127 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
 }
 .confirmBullets{margin:8px 0 10px!important;padding-left:18px!important;color:#475569!important;font-size:13px!important;line-height:1.35!important;}
 .confirmBullets li{margin:4px 0!important;}
+
+/* V52 - Chat más calmado, título + ver aviso, cierre compacto y scroll */
+.chatThreadModalV52{
+  width:min(96vw,560px)!important;
+  max-height:92vh!important;
+  padding:12px!important;
+  overflow:hidden!important;
+}
+.chatThreadModalV52 .chatThreadHeadV51{
+  padding:2px 46px 8px 0!important;
+  margin-bottom:4px!important;
+}
+.chatThreadModalV52 .chatTitleRow{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+.chatThreadModalV52 .chatTitleRow h2{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.chatThreadModalV52 .chatProductLink{
+  flex:0 0 auto!important;
+  border:0!important;
+  background:transparent!important;
+  padding:0!important;
+  margin:0!important;
+  font-size:13px!important;
+  color:#6d28d9!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+.chatThreadModalV52 .chatWith{
+  margin-top:2px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  flex-wrap:wrap!important;
+}
+.chatThreadModalV52 .sellerRepChat{
+  margin-top:3px!important;
+  line-height:1.12!important;
+}
+.chatThreadModalV52 .sellerRepChat>div{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:5px!important;
+}
+.chatThreadModalV52 .sellerRepChat small{
+  font-size:12px!important;
+  color:#64748b!important;
+  font-weight:800!important;
+}
+.chatThreadModalV52 .sellerRepChat em{display:none!important;}
+.chatThreadModalV52 .chatHeadLinks{
+  margin-top:4px!important;
+  gap:8px!important;
+}
+.chatThreadModalV52 .chatHeadLinks:empty{display:none!important;}
+.chatThreadModalV52 .chatStatusPill{
+  font-size:12px!important;
+  padding:5px 9px!important;
+  border-radius:999px!important;
+}
+.chatThreadModalV52 .chatMsgCount{
+  font-size:11px!important;
+  color:#94a3b8!important;
+}
+.chatThreadModalV52 .chatDealClose{
+  margin:2px 0 6px!important;
+  padding:6px 0 8px!important;
+}
+.chatThreadModalV52 .chatDealTop{margin-bottom:5px!important;}
+.chatThreadModalV52 .chatDealTitle{
+  font-size:12px!important;
+  color:#334155!important;
+}
+.chatThreadModalV52 .chatSellerActions.compact{
+  gap:8px!important;
+}
+.chatThreadModalV52 .chatSellerActions.compact .softChip{
+  min-width:0!important;
+  height:32px!important;
+  padding:0 12px!important;
+  font-size:12px!important;
+  border-radius:18px!important;
+}
+.chatThreadModalV52 .sellerActionHelp{
+  margin-top:5px!important;
+  font-size:10.5px!important;
+  line-height:1.25!important;
+}
+.chatThreadModalV52 .chatSectionDivider{
+  margin:5px 0 6px!important;
+  font-size:10.5px!important;
+}
+.chatThreadModalV52 .chatThreadMessages{
+  flex:1 1 auto!important;
+  min-height:220px!important;
+  max-height:calc(92vh - 310px)!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  padding:10px!important;
+  margin:0 0 8px!important;
+}
+.chatThreadModalV52 .chatReplyFooter.compact{
+  margin-top:0!important;
+}
+.chatThreadModalV52 .chatClosedNotice.compact{
+  margin-top:6px!important;
+  padding:8px 10px!important;
+  font-size:12px!important;
+}
+@media(max-width:420px){
+  .chatThreadModalV52{width:96vw!important;max-height:92vh!important;padding:10px!important;}
+  .chatThreadModalV52 .chatThreadMessages{min-height:260px!important;max-height:calc(92vh - 300px)!important;}
+  .chatThreadModalV52 .chatSellerActions.compact .softChip{height:31px!important;font-size:11.5px!important;padding:0 9px!important;}
+}
