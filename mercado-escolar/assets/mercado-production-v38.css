@@ -1289,3 +1289,143 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
 .saleBuyerOption span{font-size:12px;color:#64748b;font-weight:800}
 .saleBuyerOption small{font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .saleBuyerOption:active{transform:scale(.99)}
+
+/* V51 - Chat marketplace limpio: cerrar trato desde conversación */
+.chatThreadModalV51 .chatThreadHeadV51{
+  background:#fff!important;
+  border:0!important;
+  border-bottom:1px solid #eef2f7!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:4px 48px 10px 0!important;
+  margin-bottom:6px!important;
+}
+.chatThreadModalV51 .chatBackBtn{
+  background:#f1f5f9!important;
+  border:0!important;
+  color:#2563eb!important;
+}
+.chatThreadModalV51 .chatThreadHead h2{
+  font-size:19px!important;
+  line-height:1.12!important;
+  margin:0 0 4px!important;
+  letter-spacing:-.02em!important;
+}
+.chatThreadModalV51 .chatWith{
+  margin:0!important;
+  font-size:13px!important;
+  color:#475569!important;
+  font-weight:800!important;
+}
+.chatThreadModalV51 .chatWith b{color:#0f172a!important;}
+.chatThreadModalV51 .sellerRepChat{
+  margin-top:5px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  display:block!important;
+  color:#64748b!important;
+}
+.chatThreadModalV51 .sellerRepChat>div{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  margin-right:4px!important;
+}
+.chatThreadModalV51 .sellerRepChat .sellerStars span{font-size:13px!important;}
+.chatThreadModalV51 .sellerRepChat b{font-size:13px!important;color:#0f172a!important;}
+.chatThreadModalV51 .sellerRepChat small,
+.chatThreadModalV51 .sellerRepChat em{
+  display:inline!important;
+  font-size:12px!important;
+  color:#64748b!important;
+  font-weight:800!important;
+  font-style:normal!important;
+}
+.chatThreadModalV51 .sellerRepChat em{color:#16a34a!important;margin-left:4px!important;}
+.chatHeadLinks{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  margin-top:7px!important;
+}
+.chatHeadLinks .chatProductLink{
+  margin-left:0!important;
+  font-size:12px!important;
+  color:#6d28d9!important;
+}
+.chatMsgCount{
+  font-size:11px!important;
+  color:#94a3b8!important;
+  font-weight:800!important;
+}
+.chatDealClose{
+  margin:4px 0 8px!important;
+  padding:8px 0 10px!important;
+  border:0!important;
+  border-bottom:1px solid #eef2f7!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.chatDealTop{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  margin-bottom:7px!important;
+}
+.chatDealTitle{
+  font-size:12px!important;
+  font-weight:900!important;
+  color:#475569!important;
+}
+.chatDealStatus .chatStatusPill{margin-left:auto!important;}
+.chatDealClose .chatSellerActions.compact{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+}
+.chatDealClose .chatSellerActions.compact .softChip{
+  flex:1 1 0!important;
+  min-width:132px!important;
+  height:36px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  box-shadow:none!important;
+}
+.chatDealClose .sellerActionHelp{
+  margin:7px 0 0!important;
+  font-size:11px!important;
+  line-height:1.3!important;
+  color:#64748b!important;
+  font-weight:700!important;
+}
+.chatSectionDivider{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  margin:6px 0 8px!important;
+  color:#94a3b8!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+}
+.chatSectionDivider:before,
+.chatSectionDivider:after{
+  content:""!important;
+  height:1px!important;
+  background:#eef2f7!important;
+  flex:1!important;
+}
+.chatThreadModalV51 .chatThreadMessages{
+  border:0!important;
+  background:#f8fafc!important;
+  border-radius:18px!important;
+  margin-top:0!important;
+}
+.confirmBullets{margin:8px 0 10px!important;padding-left:18px!important;color:#475569!important;font-size:13px!important;line-height:1.35!important;}
+.confirmBullets li{margin:4px 0!important;}
