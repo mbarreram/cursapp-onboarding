@@ -394,13 +394,13 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(!id || !st.count){
       return mode==='detail'
         ? `<div class="sellerRep sellerRepDetail new"><b>⭐ Nuevo vendedor</b><small>Aún sin calificaciones verificadas</small></div>`
-        : `<div class="sellerRep sellerRepCard new">⭐ Nuevo vendedor</div>`;
+        : `<div class="sellerRep sellerRepCard new"><small>Nuevo vendedor</small><em>Sin calificaciones aún</em></div>`;
     }
     const rec=Number(st.recomienda||0);
-    const txt=`${avg.toFixed(1)} · ${st.count} calificación${st.count===1?'':'es'} · ${rec}% recomienda`;
+    const countLabel=`(${st.count})`;
     return mode==='detail'
       ? `<div class="sellerRep sellerRepDetail"><div class="sellerStars">${stars(avg)}</div><b>${avg.toFixed(1)} · ${sellerLevel(st)}</b><small>${st.count} calificación${st.count===1?'':'es'} · ${rec}% recomienda</small></div>`
-      : `<div class="sellerRep sellerRepCard"><span class="sellerStars">${stars(avg)}</span><b>${avg.toFixed(1)}</b><small>${sellerLevel(st)}</small></div>`;
+      : `<div class="sellerRep sellerRepCard"><div class="sellerRatingLine"><span class="sellerStars">${stars(avg)}</span><b>${avg.toFixed(1)}</b><span class="sellerRatingCount">${countLabel}</span></div><small>${sellerLevel(st)}</small></div>`;
   }
   async function loadSellerReputationForPosts(list){
     if(!state.sb) return;
