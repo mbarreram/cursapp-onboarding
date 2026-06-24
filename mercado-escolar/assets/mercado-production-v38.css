@@ -1590,3 +1590,94 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
 .repBadges span{border:1px solid #e5e7eb;background:#f8fafc;color:#94a3b8;border-radius:16px;padding:11px 12px;font-weight:900;}
 .repBadges span.on{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
 @media (min-width:640px){.repBadges div{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* V54 - Chat vendedor: altura segura + scroll real de mensajes */
+.chatThreadModalV54,
+.chatThreadModalV52.chatThreadModalV54{
+  width:min(96vw,560px)!important;
+  height:auto!important;
+  max-height:82dvh!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  padding:10px!important;
+  box-sizing:border-box!important;
+}
+.chatThreadModalV54 .chatThreadHeadV51{
+  flex:0 0 auto!important;
+  padding:0 44px 7px 0!important;
+  margin:0 0 5px!important;
+}
+.chatThreadModalV54 .sellerRepChat,
+.chatThreadModalV54 .chatHeadLinks{
+  flex:0 0 auto!important;
+}
+.chatThreadModalV54 .chatDealClose{
+  flex:0 0 auto!important;
+  margin:0 0 5px!important;
+  padding:5px 0 6px!important;
+}
+.chatThreadModalV54 .chatDealClose .chatSellerActions.compact{
+  gap:7px!important;
+}
+.chatThreadModalV54 .chatDealClose .chatSellerActions.compact .softChip{
+  height:29px!important;
+  min-height:29px!important;
+  padding:0 10px!important;
+  font-size:11px!important;
+  border-radius:999px!important;
+}
+.chatThreadModalV54 .sellerActionHelp{
+  margin:4px 0 0!important;
+  font-size:10px!important;
+  line-height:1.18!important;
+}
+.chatThreadModalV54 .chatSectionDivider{
+  flex:0 0 auto!important;
+  margin:4px 0 5px!important;
+}
+.chatThreadModalV54 .chatThreadMessages{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  touch-action:pan-y!important;
+  margin:0 0 7px!important;
+  padding:10px!important;
+}
+.chatThreadModalV54 .chatReplyFooter.compact{
+  flex:0 0 auto!important;
+  margin:0!important;
+  padding:7px!important;
+}
+.chatThreadModalV54 .chatReplyFooter.compact textarea{
+  min-height:36px!important;
+  height:36px!important;
+  max-height:72px!important;
+  padding:8px 10px!important;
+}
+.chatThreadModalV54 .chatReplyFooter.compact .primaryBtn{
+  height:36px!important;
+  min-width:70px!important;
+}
+.chatThreadModalV54 .chatClosedNotice.compact{
+  flex:0 0 auto!important;
+  margin:5px 0 0!important;
+  padding:7px 9px!important;
+  font-size:11.5px!important;
+}
+@media(max-width:420px){
+  .chatThreadModalV54,
+  .chatThreadModalV52.chatThreadModalV54{
+    width:96vw!important;
+    max-height:80dvh!important;
+    padding:9px!important;
+  }
+  .chatThreadModalV54 .chatThreadMessages{
+    min-height:0!important;
+    max-height:none!important;
+  }
+}
