@@ -70,12 +70,6 @@ function __cursappNormalizeRoleContextV101(expectedRole){
 
 const session = __cursappNormalizeRoleContextV101('apoderado');
 
-alert('DEBUG SESSION\n'+JSON.stringify(session,null,2));
-try{
- const profile=JSON.parse(localStorage.getItem('cursapp_active_profile_v1')||'{}');
- alert('DEBUG ACTIVE PROFILE\n'+JSON.stringify(profile,null,2));
-}catch(e){alert('DEBUG PROFILE ERROR '+e.message);}
-alert('DEBUG ACTIVE COURSE\n'+(localStorage.getItem('cursapp_active_course_v1')||'NULL'));
 
 
 if (!session || !session.userId) {

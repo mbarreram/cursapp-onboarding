@@ -234,19 +234,6 @@
     var enrol = getEnrollmentByEmailOrUser(courseKey, email, session.userId, session);
 
     var alumnoCtx = getAlumnoActivoContext(session);
-    try {
-      alert(
-        "[PERFIL DEBUG] Selección activa\n" +
-        JSON.stringify({
-          sessionAlumnoActivo: session.alumnoActivo || null,
-          localAlumnoActivo: parseMaybeJSON(localStorage.getItem("cursapp_alumno_activo_v1"), null),
-          activeProfileRaw: localStorage.getItem("cursapp_active_profile_v1"),
-          activeMiembro: localStorage.getItem("cursapp_active_miembro_id_v1"),
-          activeEnrollment: localStorage.getItem("cursapp_active_enrollment_v1"),
-          enrollmentElegido: enrol || null
-        }, null, 2)
-      );
-    } catch (e) {}
 
     var apoderadoName = (enrol && enrol.apoderadoName) ? enrol.apoderadoName : (session.name || "");
     var alumnoName = (enrol && enrol.alumno) ? enrol.alumno : (session.alumno || "");
