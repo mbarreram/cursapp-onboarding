@@ -629,6 +629,91 @@ Vi esta publicación en Mercado Escolar Cursapp.
     }
   }
 
+
+  function reputationLevelName(stats){
+    const n=Number(stats?.count||0), avg=Number(stats?.avg||0);
+    if(n>=21 && avg>=4.6) return 'Vendedor excelente';
+    if(n>=6 && avg>=4.2) return 'Buen vendedor';
+    if(n>=1) return 'Vendedor activo';
+    return 'Nuevo vendedor';
+  }
+  function monthName(v){try{return new Date(v).toLocaleDateString('es-CL',{month:'long',year:'numeric'});}catch(e){return 'junio 2026';}}
+  function relativeDate(v){
+    const t=Date.parse(v||''); if(!t) return '';
+    const d=Math.max(0,Math.floor((Date.now()-t)/86400000));
+    if(d===0) return 'Hoy'; if(d===1) return 'Ayer'; if(d<7) return `Hace ${d} días`; if(d<31) return `Hace ${Math.round(d/7)} semana(s)`; return `Hace ${Math.round(d/30)} mes(es)`;
+  }
+  function ratingBarsHtml(ratings){
+    const total=ratings.length||0;
+    return [5,4,3,2,1].map(n=>{
+      const c=ratings.filter(r=>Number(r.estrellas||0)===n).length;
+      const pct=total?Math.round((c/total)*100):0;
+      return `<div class="repBar"><span>${'★'.repeat(n)}${'☆'.repeat(5-n)}</span><div><i style="width:${pct}%"></i></div><b>${c}</b></div>`;
+    }).join('');
+  }
+  function topTagsHtml(ratings){
+    const map={};
+    ratings.forEach(r=>{
+      const tags=Array.isArray(r.etiquetas)?r.etiquetas:(Array.isArray(r.etiquetas_json)?r.etiquetas_json:[]);
+      tags.forEach(t=>{t=String(t||'').trim(); if(t) map[t]=(map[t]||0)+1;});
+    });
+    const arr=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(!arr.length) return '<p class="muted">Aún no hay etiquetas destacadas.</p>';
+    return `<div class="repTagList">${arr.map(([t,n])=>`<span>✓ ${esc(t)} <small>${n}</small></span>`).join('')}</div>`;
+  }
+  function latestOpinionsHtml(ratings){
+    const items=ratings.filter(r=>String(r.comentario||'').trim() || Number(r.estrellas||0)>0).slice(0,5);
+    if(!items.length) return '<p class="muted">Aún no tienes opiniones recibidas.</p>';
+    return `<div class="repOpinionList">${items.map(r=>`<article><div><span class="sellerStars">${stars(Number(r.estrellas||0))}</span><b>${Number(r.estrellas||0).toFixed(1)}</b></div>${String(r.comentario||'').trim()?`<p>“${esc(r.comentario)}”</p>`:''}<small>${relativeDate(r.created_at)}</small></article>`).join('')}</div>`;
+  }
+  async function loadMyReputation(){
+    const box=document.getElementById('mySellerProfile'); if(!box) return;
+    box.innerHTML=`<div class="emptyState compact"><div class="emptyIcon">⭐</div><h3>Cargando reputación</h3><p>Estamos consultando tus ventas y calificaciones.</p></div>`;
+    if(!state.sb || !requireSession()){box.innerHTML=emptyState('🔒','Debes ingresar','Inicia sesión para ver tu perfil de vendedor.');return;}
+    try{
+      const meUuid=await resolveCurrentUserUuid();
+      await loadMinePosts();
+      let ratings=[];
+      if(isUuid(meUuid)){
+        const r=await state.sb.from('mercado_calificaciones').select('*').eq('vendedor_id',meUuid).order('created_at',{ascending:false}).limit(200);
+        if(!r.error) ratings=r.data||[];
+      }
+      const count=ratings.length;
+      const avg=count?ratings.reduce((a,r)=>a+Number(r.estrellas||0),0)/count:0;
+      const rec=count?Math.round((ratings.filter(r=>r.recomienda).length/count)*100):0;
+      const mine=(state.minePosts||[]).filter(p=>!['eliminado'].includes(String(p.estado||'').toLowerCase()));
+      const sold=mine.filter(p=>postStatus(p)==='vendido').length;
+      const swaps=mine.filter(p=>postStatus(p)==='intercambiado').length;
+      const views=mine.reduce((a,p)=>a+Number(p.vistas||p.views||0),0);
+      const contacts=mine.reduce((a,p)=>a+Number(p.contactos||p.consultas||0),0);
+      const favs=mine.reduce((a,p)=>a+Number(p.favoritos||0),0);
+      const firstDate=[...mine.map(p=>p.created_at),...ratings.map(r=>r.created_at)].filter(Boolean).sort()[0]||new Date().toISOString();
+      const level=reputationLevelName({count,avg});
+      const nextNeed=count===0?1:count<6?6-count:count<21?21-count:count<51?51-count:0;
+      box.innerHTML=`
+        <section class="sellerProfileHero">
+          <div class="sellerProfileIcon">⭐</div>
+          <div class="sellerProfileMain">
+            <h2>Mi reputación</h2>
+            ${count?`<div class="sellerProfileStars"><span class="sellerStars">${stars(avg)}</span><b>${avg.toFixed(1)}</b></div><p>${level}</p><small>${count} calificación${count===1?'':'es'} · ${rec}% recomienda</small>`:`<p>Nuevo vendedor</p><small>Sin calificaciones aún</small>`}
+            <em>Miembro desde ${monthName(firstDate)}</em>
+          </div>
+        </section>
+        <section class="repMetricsGrid">
+          <article><b>${sold+swaps}</b><span>Ventas concretadas</span></article>
+          <article><b>${mine.length}</b><span>Avisos publicados</span></article>
+          <article><b>${sold}</b><span>Avisos vendidos</span></article>
+          <article><b>${swaps}</b><span>Intercambios</span></article>
+        </section>
+        <section class="repSection"><h3>Distribución de calificaciones</h3>${ratingBarsHtml(ratings)}</section>
+        <section class="repSection"><h3>Lo que más destacan</h3>${topTagsHtml(ratings)}</section>
+        <section class="repSection"><h3>Últimas opiniones</h3>${latestOpinionsHtml(ratings)}</section>
+        <section class="repSection repProgress"><h3>Progreso del vendedor</h3><div><b>Nivel actual</b><span>${level}</span></div>${nextNeed>0?`<p>Te faltan <b>${nextNeed}</b> calificación${nextNeed===1?'':'es'} para el próximo nivel.</p>`:`<p>Ya estás en un nivel destacado dentro de la comunidad.</p>`}</section>
+        <section class="repBadges"><h3>Insignias</h3><div><span class="${sold+swaps>=1?'on':''}">🏅 Primera venta</span><span class="${count>=5?'on':''}">🥇 5 calificaciones</span><span class="${count>=1&&rec===100?'on':''}">⭐ 100% recomendado</span><span class="${swaps>=1?'on':''}">🤝 Intercambios exitosos</span><span class="${sold+swaps>=10?'on':''}">🎯 10 ventas</span></div></section>
+        <section class="repSection"><h3>Último mes</h3><div class="repMetricsGrid slim"><article><b>${views}</b><span>Visitas</span></article><article><b>${contacts}</b><span>Conversaciones</span></article><article><b>${sold+swaps}</b><span>Tratos cerrados</span></article><article><b>${favs}</b><span>Favoritos</span></article></div></section>`;
+    }catch(e){console.error('[MI REPUTACION]',e);box.innerHTML=emptyState('⚠️','No se pudo cargar','Intenta nuevamente en unos segundos.');}
+  }
+
   function showView(v){
     $$(".view").forEach(x=>x.classList.remove("active"));
     $("#view-"+v)?.classList.add("active");
@@ -636,6 +721,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     if(v==="mis") refreshMineView();
     if(v==="explorar") setTimeout(()=>applyExploreFilter(activeExploreScope()),0);
     if(v==="creditos") setTimeout(renderCreditVisibilityGuard,120);
+    if(v==="reputacion") setTimeout(loadMyReputation,80);
   }
   function search(q){q=String(q||"").toLowerCase().trim();const scoped=filterByScope(activeExploreScope());const list=!q?scoped:scoped.filter(p=>String((p.titulo||"")+" "+categoryName(p)+" "+(p.descripcion||"")).toLowerCase().includes(q));renderProducts(list);}
   function filterCat(cat){showView("explorar"); renderProducts(filterByScope(activeExploreScope()).filter(p=>categoryName(p)===cat));}
@@ -2044,7 +2130,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#btnRules")?.addEventListener("click",rules);
     $("#btnConversations")?.addEventListener("click",async()=>{showView('conversaciones'); await loadConversations();});
     $("#btnMarketAlerts")?.addEventListener("click",()=>toast('Notificaciones de Mercado Escolar próximamente.'));
-    $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" onclick="alert('Reputación activa: se mostrará automáticamente en publicaciones, detalle y chat cuando recibas calificaciones verificadas.')">⭐ Mi reputación</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
+    $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" data-view="reputacion" onclick="document.getElementById('modal').innerHTML=''">⭐ Mi perfil de vendedor</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
     document.addEventListener('click',ev=>{ if(ev.target.closest('[data-open-rules]')){ev.preventDefault(); rules();} });
     $("#pubPhotos")?.addEventListener("change",e=>{
       const merged=mergeSelectedFiles(e.target.files);

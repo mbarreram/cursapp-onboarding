@@ -1553,3 +1553,40 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
   .chatThreadModalV52 .chatThreadMessages{min-height:260px!important;max-height:calc(92vh - 300px)!important;}
   .chatThreadModalV52 .chatSellerActions.compact .softChip{height:31px!important;font-size:11.5px!important;padding:0 9px!important;}
 }
+
+/* V53 Mi perfil de vendedor */
+.reputationPanel{padding:18px 16px 110px;}
+.sellerProfileHero{display:flex;gap:14px;align-items:flex-start;padding:18px;border:1px solid #e9eef5;border-radius:24px;background:linear-gradient(135deg,#fff 0%,#fff8e8 100%);box-shadow:0 12px 32px rgba(15,23,42,.06);}
+.sellerProfileIcon{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;background:#fff4cc;font-size:28px;flex:0 0 auto;}
+.sellerProfileMain h2{margin:0 0 8px;font-size:28px;line-height:1.05;color:#0f172a;}
+.sellerProfileMain p{margin:4px 0;font-weight:900;color:#0f172a;font-size:18px;}
+.sellerProfileMain small,.sellerProfileMain em{display:block;color:#64748b;font-weight:800;font-style:normal;margin-top:3px;}
+.sellerProfileStars{display:flex;align-items:center;gap:8px;margin-top:2px;}
+.sellerProfileStars b{font-size:24px;color:#0f172a;}
+.repMetricsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0;}
+.repMetricsGrid article{border:1px solid #e9eef5;border-radius:18px;background:#fff;padding:14px;box-shadow:0 8px 24px rgba(15,23,42,.04);}
+.repMetricsGrid article b{display:block;font-size:24px;color:#0f172a;line-height:1;}
+.repMetricsGrid article span{display:block;color:#64748b;font-weight:800;margin-top:5px;font-size:13px;}
+.repMetricsGrid.slim{margin:8px 0 0;}
+.repSection,.repBadges{border:1px solid #e9eef5;border-radius:22px;background:#fff;padding:16px;margin:14px 0;box-shadow:0 8px 24px rgba(15,23,42,.04);}
+.repSection h3,.repBadges h3{margin:0 0 12px;color:#0f172a;font-size:20px;}
+.repBar{display:grid;grid-template-columns:86px 1fr 24px;gap:10px;align-items:center;margin:8px 0;color:#64748b;font-weight:900;}
+.repBar span{font-size:13px;color:#f5b301;letter-spacing:-1px;}
+.repBar div{height:9px;border-radius:999px;background:#eef2f7;overflow:hidden;}
+.repBar i{display:block;height:100%;background:#f5b301;border-radius:999px;}
+.repBar b{text-align:right;color:#334155;}
+.repTagList{display:flex;flex-wrap:wrap;gap:8px;}
+.repTagList span{border:1px solid #d9f5df;background:#f0fff4;color:#166534;border-radius:999px;padding:8px 10px;font-weight:900;font-size:13px;}
+.repTagList small{color:#64748b;margin-left:4px;}
+.repOpinionList article{padding:12px 0;border-top:1px solid #eef2f7;}
+.repOpinionList article:first-child{border-top:0;padding-top:0;}
+.repOpinionList article div{display:flex;gap:8px;align-items:center;}
+.repOpinionList article p{margin:6px 0;color:#0f172a;font-weight:700;}
+.repOpinionList article small{color:#64748b;font-weight:800;}
+.repProgress div{display:flex;justify-content:space-between;gap:10px;border-radius:16px;background:#f8fafc;padding:12px;font-weight:900;color:#0f172a;}
+.repProgress div span{color:#7c3aed;}
+.repProgress p{margin:12px 0 0;color:#64748b;font-weight:800;}
+.repBadges div{display:grid;grid-template-columns:1fr;gap:8px;}
+.repBadges span{border:1px solid #e5e7eb;background:#f8fafc;color:#94a3b8;border-radius:16px;padding:11px 12px;font-weight:900;}
+.repBadges span.on{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
+@media (min-width:640px){.repBadges div{grid-template-columns:repeat(2,minmax(0,1fr));}}
