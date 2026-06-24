@@ -81,17 +81,84 @@
     return c;
   }
 
-  function getEnrollmentByEmailOrUser(courseKey, email, userId) {
+  function parseMaybeJson(raw, fallback) {
+    try {
+      if (raw == null) return fallback;
+      if (typeof raw === "object") return raw;
+      var str = String(raw || "").trim();
+      if (!str) return fallback;
+      var obj = JSON.parse(str);
+      // Soporta JSON doble guardado como string.
+      if (typeof obj === "string" && obj.trim().charAt(0) === "{") obj = JSON.parse(obj);
+      return obj || fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function normText(v) {
+    return String(v || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  function getActiveAlumnoContext(session) {
+    session = session || {};
+    var fromSession = parseMaybeJson(session.alumnoActivo, null);
+    var fromLocal = parseMaybeJson(localStorage.getItem("cursapp_alumno_activo_v1"), null);
+    var ctx = fromSession || fromLocal || null;
+
+    // Complementos guardados por login.js.
+    if (!ctx) ctx = {};
+    if (!ctx.profileId) ctx.profileId = session.profileId || session.activeProfile || session.activeProfileId || localStorage.getItem("cursapp_active_member_profile_v1") || localStorage.getItem("cursapp_active_profile_v1") || "";
+    if (!ctx.miembroId) ctx.miembroId = session.activeMiembro || session.miembroId || localStorage.getItem("cursapp_active_miembro_id_v1") || "";
+    if (!ctx.courseKey) ctx.courseKey = session.courseKey || localStorage.getItem("cursapp_active_course_v1") || "";
+    return ctx;
+  }
+
+  function getEnrollmentByEmailOrUser(courseKey, email, userId, session) {
     var arr = getJSON("cursapp_enrollments_v1", []);
     if (!Array.isArray(arr)) arr = [];
+
+    var emailNorm = normText(email || userId || "");
+    var active = getActiveAlumnoContext(session || {});
+    var activeAlumno = normText(active.alumno || active.nombre || active.name || "");
+    var activeProfile = String(active.profileId || active.id || "").trim();
+    var activeMiembro = String(active.miembroId || active.miembro_id || active.enrollmentId || "").trim();
+
+    var mine = [];
     for (var i = 0; i < arr.length; i++) {
       var e = arr[i] || {};
-      if (courseKey && e.courseKey && e.courseKey !== courseKey) continue;
-      if (email && e.email && String(e.email).toLowerCase() === String(email).toLowerCase()) return e;
-      // fallback: userId sometimes equals email; compare loosely
-      if (userId && e.email && String(e.email).toLowerCase() === String(userId).toLowerCase()) return e;
+      if (courseKey && e.courseKey && String(e.courseKey) !== String(courseKey)) continue;
+      var eEmail = normText(e.email || e.apoderadoEmail || e.userEmail || "");
+      var eUser = String(e.userId || e.usuario_id || "").trim();
+      if (emailNorm && (eEmail === emailNorm || normText(eUser) === emailNorm)) mine.push(e);
     }
-    return null;
+
+    // 1) Si venimos del selector de hermanos, el alumno activo manda.
+    if (activeAlumno) {
+      for (var a = 0; a < mine.length; a++) {
+        if (normText(mine[a].alumno || mine[a].nombre_alumno || "") === activeAlumno) return mine[a];
+      }
+    }
+
+    // 2) Match por ids del miembro/perfil.
+    if (activeProfile || activeMiembro) {
+      for (var b = 0; b < mine.length; b++) {
+        var e2 = mine[b] || {};
+        var ids = [e2.profileId, e2.id, e2.miembroId, e2.miembro_id, e2.enrollmentId];
+        for (var j = 0; j < ids.length; j++) {
+          var idv = String(ids[j] || "").trim();
+          if (idv && (idv === activeProfile || idv === activeMiembro)) return e2;
+        }
+      }
+    }
+
+    // 3) Fallback anterior.
+    return mine[0] || null;
   }
 
   function getProfiles() {
@@ -162,11 +229,31 @@
     paintHeader(session, course);
 
     var email = session.email || session.userId || "";
-    var enrol = getEnrollmentByEmailOrUser(courseKey, email, session.userId);
+    var enrol = getEnrollmentByEmailOrUser(courseKey, email, session.userId, session);
 
     var apoderadoName = (enrol && enrol.apoderadoName) ? enrol.apoderadoName : (session.name || "");
-    var alumnoName = (enrol && enrol.alumno) ? enrol.alumno : (session.alumno || "");
+    var alumnoName = (enrol && enrol.alumno) ? enrol.alumno : (getActiveAlumnoContext(session).alumno || getActiveAlumnoContext(session).nombre || session.alumno || "");
     var phone = (enrol && enrol.phone) ? enrol.phone : (session.phone || "");
+
+    // Mantener sesión/localStorage alineados con el hijo/a realmente elegido.
+    try {
+      var ctxFix = getActiveAlumnoContext(session);
+      if (alumnoName) {
+        ctxFix.nombre = alumnoName;
+        ctxFix.alumno = alumnoName;
+        ctxFix.email = email;
+        ctxFix.courseKey = courseKey;
+        if (enrol) {
+          ctxFix.profileId = enrol.profileId || enrol.id || ctxFix.profileId || "";
+          ctxFix.miembroId = enrol.miembroId || enrol.id || ctxFix.miembroId || "";
+          ctxFix.enrollmentId = enrol.enrollmentId || enrol.id || ctxFix.enrollmentId || "";
+        }
+        localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(ctxFix));
+        session.alumno = alumnoName;
+        session.alumnoActivo = ctxFix;
+        setJSON("cursapp_session_v1", session);
+      }
+    } catch (e) {}
     var status = (enrol && enrol.status) ? enrol.status : (session.status || "approved");
     var statusLabel = (String(status).toLowerCase() === "approved") ? "Aprobado" : titleCase(status);
 
@@ -285,10 +372,21 @@
         var arr = getJSON("cursapp_enrollments_v1", []);
         if (!Array.isArray(arr)) arr = [];
         var updated = false;
+        var activeCtxSave = getActiveAlumnoContext(session);
+        var activeAlumnoSave = normText(activeCtxSave.alumno || activeCtxSave.nombre || "");
+        var targetIdSave = String((enrol && (enrol.id || enrol.profileId || enrol.miembroId || enrol.enrollmentId)) || activeCtxSave.profileId || activeCtxSave.miembroId || "").trim();
         for (var i = 0; i < arr.length; i++) {
           var e = arr[i] || {};
           if (courseKey && e.courseKey && e.courseKey !== courseKey) continue;
-          if (e.email && String(e.email).toLowerCase() === String(email).toLowerCase()) {
+          var sameEmail = e.email && String(e.email).toLowerCase() === String(email).toLowerCase();
+          var sameAlumno = activeAlumnoSave && normText(e.alumno || e.nombre_alumno || "") === activeAlumnoSave;
+          var sameId = targetIdSave && (
+            String(e.id || "") === targetIdSave ||
+            String(e.profileId || "") === targetIdSave ||
+            String(e.miembroId || "") === targetIdSave ||
+            String(e.enrollmentId || "") === targetIdSave
+          );
+          if (sameEmail && (sameId || sameAlumno || !targetIdSave && !activeAlumnoSave)) {
             e.apoderadoName = nameVal || e.apoderadoName;
             e.phone = phoneVal;
             e.alumno = alumnoVal || e.alumno;
