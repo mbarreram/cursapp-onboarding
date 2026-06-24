@@ -1258,3 +1258,34 @@ button.chatProductLink{border:0;background:transparent;padding:0;cursor:pointer;
   margin-top:1px!important;
   color:#64748b!important;
 }
+
+/* === V49/V50 Reputación: chat, opiniones y venta asociada === */
+.sellerRepChat{
+  display:grid!important;
+  gap:2px!important;
+  margin-top:5px!important;
+  padding:6px 8px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:12px!important;
+  background:#f8fafc!important;
+  width:max-content!important;
+  max-width:100%!important;
+}
+.sellerRepChat>div{display:flex!important;align-items:center!important;gap:5px!important;line-height:1!important}
+.sellerRepChat b{font-size:12px!important;color:#0f172a!important;line-height:1!important}
+.sellerRepChat small{font-size:11px!important;color:#64748b!important;font-weight:800!important;line-height:1.1!important}
+.sellerRepChat em{font-style:normal!important;font-size:11px!important;color:#16a34a!important;font-weight:900!important;line-height:1.1!important}
+.sellerLatestRatings{margin-top:10px;border-top:1px solid rgba(15,23,42,.08);padding-top:10px;display:grid;gap:8px}
+.sellerLatestRatings h3{font-size:15px;margin:0;color:#0f172a}
+.sellerLatestRatings article{border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;padding:8px 10px;display:grid;gap:3px}
+.sellerLatestRatings article>div{display:flex;align-items:center;gap:6px}
+.sellerLatestRatings article b{font-size:12px;color:#0f172a}
+.sellerLatestRatings p{margin:0;color:#334155;font-size:12px;line-height:1.25}
+.sellerLatestRatings small{color:#64748b;font-size:11px;font-weight:800;line-height:1.2}
+.saleBuyerSheet{max-width:430px}
+.saleBuyerList{display:grid;gap:8px;margin:12px 0}
+.saleBuyerOption{width:100%;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:16px;padding:12px;display:grid;gap:3px;color:#0f172a}
+.saleBuyerOption b{font-size:15px}
+.saleBuyerOption span{font-size:12px;color:#64748b;font-weight:800}
+.saleBuyerOption small{font-size:12px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saleBuyerOption:active{transform:scale(.99)}
