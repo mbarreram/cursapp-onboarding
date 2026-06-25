@@ -109,5 +109,51 @@
 </script>
 
   <script defer src="/assets/monetization-banners.js?v=20"></script>
+
+<script id="cursappMarketFlowDebug">
+(function(){
+  if(window.__CURSAPP_MARKET_FLOW_DEBUG__) return;
+  window.__CURSAPP_MARKET_FLOW_DEBUG__ = true;
+  function read(k){ try{return localStorage.getItem(k)||'';}catch(e){return '';} }
+  function obj(k){ try{var v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch(e){return read(k);} }
+  function pickSession(){
+    var s=obj('cursapp_session_v1')||{};
+    var p=obj('cursapp_active_profile_v1')||{};
+    var alumno=obj('cursapp_alumno_activo_v1')||{};
+    return {
+      page:'APODERADO',
+      role: read('cursapp_active_role_v1') || s.currentRole || s.role || s.activeRole || '',
+      email: (s.email || p.email || alumno.email || read('cursapp_user_email') || ''),
+      cursoKey: read('cursapp_active_course_v1') || s.activeCourse || s.courseKey || p.courseKey || alumno.courseKey || '',
+      cursoId: s.curso_id || s.courseId || (p.supabase&&p.supabase.curso_id) || p.curso_id || p.courseId || alumno.curso_id || alumno.cursoId || '',
+      profileId: read('cursapp_active_profile_id_v1') || s.activeProfile || s.profileId || p.profileId || p.id || alumno.profileId || '',
+      miembroId: s.miembroId || (p.supabase&&p.supabase.miembro_id) || p.miembroId || p.miembro_id || alumno.miembroId || alumno.miembro_id || '',
+      alumno: alumno.alumno || alumno.nombre || p.alumno || p.nombre_alumno || '',
+      paymentsBadge: (document.body.innerText.match(/Pagos pendientes[\s\S]{0,120}/)||[''])[0].slice(0,160)
+    };
+  }
+  function show(label){
+    try{ alert('[DEBUG '+label+']\n'+JSON.stringify(pickSession(), null, 2)); }catch(e){ alert('[DEBUG '+label+'] error '+(e.message||e)); }
+  }
+  document.addEventListener('click', function(ev){
+    var a=ev.target && ev.target.closest && ev.target.closest('a,button');
+    if(!a) return;
+    var href=a.getAttribute('href')||'';
+    var txt=(a.textContent||'').toLowerCase();
+    if(href.indexOf('/mercado-escolar')>=0 || txt.indexOf('mercado')>=0){
+      try{ localStorage.setItem('cursapp_debug_return_from_market_v1','1'); }catch(e){}
+      show('ANTES DE IR A MERCADO');
+    }
+  }, true);
+  window.addEventListener('pageshow', function(){
+    var flag=''; try{ flag=localStorage.getItem('cursapp_debug_return_from_market_v1')||''; }catch(e){}
+    if(flag==='1'){
+      try{ localStorage.removeItem('cursapp_debug_return_from_market_v1'); }catch(e){}
+      setTimeout(function(){ show('VOLVIENDO DESDE MERCADO'); }, 450);
+      setTimeout(function(){ show('APODERADO 2 SEG DESPUES DE VOLVER'); }, 2000);
+    }
+  });
+})();
+</script>
 </body>
 </html>
