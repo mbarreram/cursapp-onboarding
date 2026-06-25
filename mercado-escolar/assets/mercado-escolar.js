@@ -52,19 +52,67 @@
   let mineRefreshSeq=0;
 
   function readJson(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+  function writeJson(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  function parseMaybeJson(v,d){try{if(v==null||v==='')return d; if(typeof v==='string')return JSON.parse(v); return v;}catch(e){return d;}}
+  function profileIdOf(p){return String(p?.profileId||p?.profile_id||p?.id||p?.supabase?.profile_id||p?.supabase?.miembro_id||'').trim();}
+  function courseKeyOf(p){return String(p?.courseKey||p?.course_key||p?.cursoKey||p?.curso_key||p?.supabase?.course_key||'').trim();}
+  function cursoIdOf(p){return String(p?.curso_id||p?.cursoId||p?.courseId||p?.supabase?.curso_id||p?.supabase?.cursoId||'').trim();}
+  function colegioIdOf(p){return String(p?.colegio_id||p?.colegioId||p?.supabase?.colegio_id||p?.supabase?.colegioId||'').trim();}
+  function miembroIdOf(p){return String(p?.miembroId||p?.miembro_id||p?.supabase?.miembro_id||p?.supabase?.miembroId||'').trim();}
+  function profiles(){const a=readJson('cursapp_profiles_v1',[])||readJson('cursapp_demo_profiles_v1',[])||[]; return Array.isArray(a)?a:[];}
+  function resolveProtectedProfile(){
+    const rawS=readJson('cursapp_session_v1',{})||{};
+    const activeCourse=String(localStorage.getItem('cursapp_active_course_v1')||rawS.activeCourse||rawS.courseKey||rawS.course_key||'').trim();
+    const activeRole=String(localStorage.getItem('cursapp_active_role_v1')||rawS.currentRole||rawS.role||'apoderado').toLowerCase().trim();
+    const rawActive=localStorage.getItem('cursapp_active_profile_v1');
+    const obj=parseMaybeJson(rawActive,null);
+    const activeId=String(localStorage.getItem('cursapp_active_profile_id_v1')||localStorage.getItem('cursapp_active_member_profile_v1')||(obj&&typeof obj==='object'?profileIdOf(obj):'')||(!String(rawActive||'').trim().startsWith('{')?rawActive:'')||rawS.activeProfile||rawS.activeProfileId||'').trim();
+    if(obj&&typeof obj==='object'&&(courseKeyOf(obj)||cursoIdOf(obj))) return obj;
+    const all=profiles();
+    if(activeId){const byId=all.find(p=>profileIdOf(p)===activeId||miembroIdOf(p)===activeId); if(byId) return byId;}
+    let cand=all.filter(p=>!activeCourse||courseKeyOf(p)===activeCourse);
+    if(activeRole){ cand=cand.filter(p=>{const r=String(p?.role||p?.user?.role||'').toLowerCase(); const rs=Array.isArray(p?.roles)?p.roles.map(x=>String(x).toLowerCase()):[]; return !r&&!rs.length?true:r===activeRole||rs.includes(activeRole);}); }
+    return cand[0]||null;
+  }
+  function getProtectedContext(){
+    const s=readJson('cursapp_session_v1',{})||{};
+    const p=resolveProtectedProfile()||parseMaybeJson(localStorage.getItem('cursapp_active_profile_v1'),{})||{};
+    const role=String(localStorage.getItem('cursapp_active_role_v1')||s.currentRole||s.role||p.role||'apoderado').toLowerCase().trim();
+    const courseKey=String(localStorage.getItem('cursapp_active_course_v1')||s.activeCourse||s.courseKey||s.course_key||courseKeyOf(p)||'').trim();
+    const courseId=String(cursoIdOf(p)||s.curso_id||s.cursoId||s.courseId||'').trim();
+    const colegioId=String(colegioIdOf(p)||s.colegio_id||s.colegioId||'').trim();
+    const miembroId=String(miembroIdOf(p)||s.activeMiembro||s.miembroId||'').trim();
+    const profileId=String(profileIdOf(p)||s.activeProfile||s.activeProfileId||'').trim();
+    try{
+      if(courseKey) localStorage.setItem('cursapp_active_course_v1',courseKey);
+      if(role) localStorage.setItem('cursapp_active_role_v1',role);
+      if(profileId) localStorage.setItem('cursapp_active_profile_id_v1',profileId);
+      const raw=Object.assign({},s);
+      if(courseKey){raw.courseKey=courseKey; raw.activeCourse=courseKey;}
+      if(courseId){raw.curso_id=courseId; raw.courseId=courseId;}
+      if(colegioId){raw.colegio_id=colegioId; raw.colegioId=colegioId;}
+      if(miembroId){raw.activeMiembro=miembroId; raw.miembroId=miembroId;}
+      if(profileId){raw.activeProfile=profileId; raw.activeProfileId=profileId;}
+      if(role){raw.currentRole=role; raw.role=role;}
+      writeJson('cursapp_session_v1',raw);
+      writeJson('cursapp_active_context_v1',{role,courseKey,cursoId:courseId,courseId,colegioId,miembroId,profileId,source:'mercado_guard'});
+    }catch(e){}
+    return {role,courseKey,courseId,colegioId,miembroId,profileId,profile:p};
+  }
   function getSession(){
     const s=readJson("cursapp_session_v1",{})||{};
-    const p=readJson("cursapp_active_profile_v1",{})||{};
-    const role=localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||"apoderado";
+    const protectedCtx=getProtectedContext();
+    const p=protectedCtx.profile||{};
+    const role=protectedCtx.role||localStorage.getItem("cursapp_active_role_v1")||s.currentRole||s.role||"apoderado";
     return {
       raw:s, profile:p,
       userId:s.userId||s.usuario_id||p.usuario_id||p.userId||p.supabase?.usuario_id||p.supabase?.userId||null,
       email:String(s.email||p.email||p.supabase?.email||"").toLowerCase(),
       name:s.nombre||s.name||p.nombre_apoderado||p.nombre||p.supabase?.nombre||"Apoderado Cursapp",
       role,
-      courseId:p.supabase?.curso_id||p.supabase?.cursoId||p.curso_id||p.cursoId||s.curso_id||s.cursoId||null,
-      colegioId:p.supabase?.colegio_id||p.supabase?.colegioId||p.colegio_id||p.colegioId||s.colegio_id||s.colegioId||null,
-      courseKey:s.courseKey||s.course_key||p.courseKey||p.course_key||"",
+      courseId:protectedCtx.courseId||p.supabase?.curso_id||p.supabase?.cursoId||p.curso_id||p.cursoId||s.curso_id||s.cursoId||null,
+      colegioId:protectedCtx.colegioId||p.supabase?.colegio_id||p.supabase?.colegioId||p.colegio_id||p.colegioId||s.colegio_id||s.colegioId||null,
+      courseKey:protectedCtx.courseKey||s.courseKey||s.course_key||p.courseKey||p.course_key||"",
       phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""
     };
   }
@@ -117,13 +165,25 @@
         if(!cr.error && cr.data?.colegio_id) state.session.colegioId=cr.data.colegio_id;
       }
       // 2) Si falta curso/colegio, resolver desde miembros_curso.
+      // IMPORTANTE V58.3: si existe curso activo/perfil activo, NO elegir el último por email,
+      // porque el mismo correo puede estar inscrito en más de un curso.
       if(!isUuid(state.session.courseId) || !isUuid(state.session.colegioId)){
         let mr=null;
-        if(isUuid(uid)){
-          const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').eq('usuario_id',uid).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        const protectedCtx=getProtectedContext();
+        if(isUuid(protectedCtx.courseId)){
+          mr={curso_id:protectedCtx.courseId};
+        }else if(isUuid(uid)){
+          let r=null;
+          if(state.session.courseKey){
+            try{ r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at,course_key').eq('usuario_id',uid).eq('course_key',state.session.courseKey).limit(1).maybeSingle(); }catch(_){ r=null; }
+          }
+          if(!r || r.error || !r.data){
+            r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').eq('usuario_id',uid).order('created_at',{ascending:false}).limit(1).maybeSingle();
+          }
           if(!r.error && r.data) mr=r.data;
         }
         if(!mr && email){
+          // Fallback sólo si no hay curso activo. Mantener compatibilidad para usuarios antiguos.
           const r=await state.sb.from('miembros_curso').select('curso_id,usuario_id,email,estado,created_at').ilike('email',email).order('created_at',{ascending:false}).limit(1).maybeSingle();
           if(!r.error && r.data) mr=r.data;
         }
