@@ -20,6 +20,9 @@
     .qaList{display:grid;gap:10px}.qaRow{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:start;border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:12px;background:#fff}.qaIcon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:950;background:#eef2ff}.qaRow.pass .qaIcon{background:#dcfce7;color:#166534}.qaRow.fail .qaIcon{background:#fee2e2;color:#991b1b}.qaRow.warn .qaIcon{background:#fef3c7;color:#92400e}.qaRow.run .qaIcon{background:#e0f2fe;color:#0369a1}.qaName{font-weight:950}.qaDetail{color:#64748b;font-weight:800;font-size:12px;margin-top:3px;white-space:pre-wrap;word-break:break-word}.qaStatus{font-size:12px;font-weight:950;border-radius:999px;padding:6px 9px;background:#f1f5f9;color:#334155}
     .qaReport{width:100%;min-height:190px;border:1px solid rgba(15,23,42,.12);border-radius:16px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;box-sizing:border-box}.qaNote{color:#64748b;font-weight:850;font-size:13px;line-height:1.45}.qaCheck{display:flex;gap:8px;align-items:flex-start;color:#334155;font-weight:900;font-size:13px;margin-top:10px}.qaCheck input{margin-top:2px}
   </style>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
+  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=55">
 </head>
 <body>
   <main class="qaShell">
@@ -46,5 +49,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/supabaseClient.js?v=20260608" defer></script>
   <script src="/assets/qa360.js?v=20260617-mercado-v2" defer></script>
+  <script defer src="/assets/cursapp-platform.js?v=55"></script>
 </body>
 </html>
