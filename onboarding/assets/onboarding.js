@@ -1329,6 +1329,12 @@ if(d.alsoApoderado){
 
     // Step 4 finalize
     if(step===4){
+      // V55.1: consentimiento general obligatorio antes de crear usuario/curso.
+      // Si ya fue aceptado, continúa sin mostrar modal.
+      if(window.CURSAPP_CONSENT && typeof window.CURSAPP_CONSENT.ensureGeneral === "function"){
+        const okConsent = await window.CURSAPP_CONSENT.ensureGeneral({ source:"onboarding_before_finalize", mode:MODE, role:DIRECTIVA_ROLE });
+        if(!okConsent) return;
+      }
       const region = REGIONS.find(r=>r.id===d.regionId);
       const comuna = COMUNAS.find(c=>c.id===d.comunaId);
       const school = SCHOOLS.find(s=>s.id===d.schoolId);
