@@ -83,6 +83,22 @@
     return payload;
   }
 
+
+  function hasAuthenticatedUser(){
+    const u=getUser();
+    return !!(u && (u.id || u.email));
+  }
+  function isPublicEntryPage(){
+    const path=String(location.pathname || '').toLowerCase();
+    return path.endsWith('/') || path.endsWith('/index.html') || path.endsWith('/login.html') || path.endsWith('/landing.html');
+  }
+  function isOnboardingPage(){
+    return String(location.pathname || '').toLowerCase().indexOf('/onboarding/') >= 0;
+  }
+  function canUsePlatformUI(){
+    return hasAuthenticatedUser() && !isPublicEntryPage() && !isOnboardingPage();
+  }
+
   function hasConsent(key, version){ const c=readJson(key,null); return !!(c && c.accepted && c.version===version); }
 
   function showGeneralConsent(){
@@ -178,6 +194,7 @@
 
   const notifIcons={chat:'💬',calificacion:'⭐',favorito:'❤️',pago:'💰',campana:'📅',aviso:'📢',mercado:'🛍️',ticket:'🛠️',sistema:'🔔'};
   async function loadNotifications(){
+    if(!canUsePlatformUI()) return [];
     const u=getUser();
     let rows=[];
     try{
@@ -219,6 +236,7 @@
     document.querySelectorAll('.cursapp-notif-item[data-url]').forEach(el=>{el.onclick=()=>{const u=el.dataset.url; if(u) location.href=u;};});
   }
   function ensureBell(){
+    if(!canUsePlatformUI()) return;
     if(document.querySelector('[data-cursapp-bell]')) return;
     let host=$('#avisosBellHost') || $('.marketHeaderActions') || $('.topbar') || document.body;
     const btn=document.createElement('button');
@@ -234,6 +252,7 @@
 
   window.addEventListener('beforeinstallprompt', e=>{ try{ e.preventDefault(); deferredInstallPrompt=e; }catch(_){ } });
   function canShowInstall(){
+    if(!canUsePlatformUI()) return false;
     const until=Number(localStorage.getItem(KEY_INSTALL_LATER)||0); if(Date.now()<until) return false;
     if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
     return true;
@@ -271,7 +290,7 @@
 
   document.addEventListener('DOMContentLoaded', async()=>{
     try{ registerSW(); }catch(e){}
-    try{ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); }catch(e){}
+    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); } }catch(e){}
     try{ syncStoredConsents(); }catch(e){}
     // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
     try{ maybeShowMarketplaceConsent(); }catch(e){}

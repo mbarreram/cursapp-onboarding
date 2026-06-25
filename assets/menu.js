@@ -37,6 +37,9 @@
   function normRole(r) {
     return String(r || "").toLowerCase().trim();
   }
+  function normEmail(e) {
+    return String(e || "").toLowerCase().trim();
+  }
   function getRolesAvailable() {
     var raw = null;
     try { raw = localStorage.getItem("cursapp_roles_v1"); } catch (_) {}
@@ -455,6 +458,7 @@ function getRoleFromSession() {
 
       parts.push(btnHTML("Pagos", "goTab('payments'); closeMenu();", "💳"));
       parts.push(btnHTML("Informes", "goTab('informes'); closeMenu();", "📄"));
+      parts.push(btnHTML("Mercado Escolar", "location.href='/mercado-escolar/mercado-escolar.html';", "🛍️"));
       parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "location.href='/perfil.html';", "👤"));
 
@@ -492,8 +496,7 @@ function getRoleFromSession() {
 
     dd.innerHTML = parts.join("");
 
-    // Compatibilidad con scripts antiguos (aunque ya no dependemos de ellos)
-    ensureLegacyButtons(dd);
+    // Menú productivo: no insertar botones legacy/debug/reset.
 
     // Toggle iOS robusto
     bindMenuToggle(dd);
