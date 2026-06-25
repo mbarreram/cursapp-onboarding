@@ -1,10 +1,10 @@
 
-/* Cursapp V58 · Consentimientos, notificaciones inteligentes por rol/curso y PWA */
+/* Cursapp V58.1 · Notificaciones persistentes por rol/curso + Avisos del curso */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
-  if(window.__CURSAPP_PLATFORM_V58__) return;
-  window.__CURSAPP_PLATFORM_V58__ = true;
+  if(window.__CURSAPP_PLATFORM_V581__) return;
+  window.__CURSAPP_PLATFORM_V581__ = true;
 
   const POLICY_VERSION = '1.0.0';
   const MARKET_POLICY_VERSION = '1.0.0';
@@ -256,7 +256,13 @@
   }
   async function markAllRead(){
     const u=getUser();
-    try{ const sb=await waitSb(); if(sb && u.id) await sb.from('notificaciones').update({leida:true}).eq('user_id',u.id); }catch(e){}
+    try{ const sb=await waitSb(); if(sb && (u.id||u.email)){
+      let q=sb.from('notificaciones').update({leida:true, leida_at:nowISO()});
+      if(u.id && u.email) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id},email.eq.${u.email},destinatario_email.eq.${u.email}`);
+      else if(u.id) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id}`);
+      else q=q.or(`email.eq.${u.email},destinatario_email.eq.${u.email}`);
+      await q;
+    } }catch(e){}
     const local=readJson('cursapp_notificaciones_local_v1',[]).map(n=>({...n,leida:true})); writeJson('cursapp_notificaciones_local_v1',local); refreshBell();
   }
   async function openNotifications(){
@@ -461,6 +467,7 @@
       if(sb){
         await sb.from('notificaciones').insert({
           user_id:n.user_id || null,
+          usuario_id:n.user_id || null,
           email:n.email || null,
           destinatario_email:n.destinatario_email || n.email || null,
           curso_id:n.curso_id || null,
@@ -490,6 +497,118 @@
   function notifyForRole(payload, role){
     return createNotification(Object.assign({}, payload||{}, {rol_destino:role || (payload&&payload.rol_destino) || getActiveContext().role}));
   }
+
+
+  async function loadCourseNotices(){
+    const ctx=getActiveContext();
+    let rows=[];
+    try{
+      const sb=await waitSb();
+      if(sb){
+        if(ctx.cursoId){
+          const r1=await sb.from('avisos_curso').select('*').eq('curso_id',ctx.cursoId).eq('visible',true).order('created_at',{ascending:false}).limit(40);
+          if(!r1.error && Array.isArray(r1.data)) rows=rows.concat(r1.data);
+        }
+        if(!rows.length && ctx.cursoId){
+          const r2=await sb.from('avisos').select('*').eq('curso_id',ctx.cursoId).order('created_at',{ascending:false}).limit(40);
+          if(!r2.error && Array.isArray(r2.data)) rows=rows.concat(r2.data);
+        }
+      }
+    }catch(e){}
+    const local=(readJson('cursapp_avisos_curso_v1',[])||[]).filter(a=>{
+      if(ctx.cursoId && a.curso_id && String(a.curso_id)!==String(ctx.cursoId)) return false;
+      if(ctx.cursoKey && a.courseKey && String(a.courseKey)!==String(ctx.cursoKey)) return false;
+      return true;
+    });
+    const byKey={};
+    rows.concat(local).forEach(a=>{ const k=String(a.id||a.created_at||a.titulo||Math.random()); if(!byKey[k]) byKey[k]=a; });
+    return Object.values(byKey).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+  }
+
+  async function openCourseNotices(){
+    const rows=await loadCourseNotices();
+    const html=rows.length ? rows.map(a=>`<div class="cursapp-notif-item"><div class="cursapp-notif-icon">📢</div><div><div class="cursapp-notif-title">${esc(a.titulo||'Aviso del curso')}</div><div class="cursapp-notif-detail">${esc(a.mensaje||a.detalle||a.descripcion||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(a.created_at))}</div></div>`).join('') : `<div class="cursapp-notif-empty"><b>Aún no hay avisos.</b><p>Los comunicados importantes de la directiva aparecerán aquí aunque no tengas Push activadas.</p></div>`;
+    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card compact"><div class="cursapp-notif-head"><div><h2>Avisos del curso</h2><p>Comunicados enviados por la directiva.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${html}</div></div></div>`);
+  }
+
+  function bindCourseNoticeButtons(){
+    if(String(getActiveContext().role||'').toLowerCase()!=='apoderado') return;
+    document.addEventListener('click', function(ev){
+      const t=ev.target && ev.target.closest ? ev.target.closest('button, .card, .section, [role="button"], div') : null;
+      if(!t) return;
+      const txt=(t.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(txt.includes('avisos del curso')){
+        ev.preventDefault(); ev.stopPropagation(); openCourseNotices();
+      }
+    }, true);
+  }
+
+  async function notifyCourseApoderados(payload){
+    const ctx=getActiveContext();
+    const base=Object.assign({tipo:'campana',origen:'campanas',rol_destino:'apoderado',curso_id:ctx.cursoId||null,curso_key:ctx.cursoKey||null,fallback_aviso_curso:true},payload||{});
+    // Siempre crea aviso del curso como respaldo visible para todos los apoderados del curso.
+    await saveCourseNoticeFallback(base);
+    try{
+      const sb=await waitSb();
+      if(!sb || !ctx.cursoId) throw new Error('sin supabase/curso');
+      const {data:miembros,error}=await sb.from('miembros_curso').select('*').eq('curso_id',ctx.cursoId).limit(250);
+      if(error || !Array.isArray(miembros) || !miembros.length) throw error || new Error('sin miembros');
+      const inserts=[];
+      miembros.forEach(m=>{
+        const j=m||{};
+        const role=String(j.rol || j.role || (Array.isArray(j.roles)?j.roles.join(','):'') || '').toLowerCase();
+        if(role && !role.includes('apoderado')) return;
+        const status=String(j.estado || j.status || j.aprobado || '').toLowerCase();
+        if(status && /rechaz|bloque|pending|pendiente/.test(status)) return;
+        const uid=j.usuario_id || j.user_id || j.auth_user_id || j.profile_id || null;
+        const email=String(j.email || j.correo || j.apoderado_email || '').toLowerCase().trim() || null;
+        if(!uid && !email) return;
+        inserts.push({usuario_id:uid,user_id:uid,email:email,destinatario_email:email,curso_id:ctx.cursoId,curso_key:ctx.cursoKey||null,colegio_id:ctx.colegioId||null,rol_destino:'apoderado',tipo:base.tipo,titulo:base.titulo,detalle:base.detalle,url_destino:base.url_destino||'/apoderado.html',icono:base.icono||'📅',origen:base.origen||'campanas',prioridad:base.prioridad||'normal',leida:false,push_enviado:false,metadata:base.metadata||{}});
+      });
+      if(inserts.length) await sb.from('notificaciones').insert(inserts);
+    }catch(e){
+      // Si no se pueden enumerar miembros por RLS, al menos queda aviso curso y notificación local para QA.
+      console.warn('No se pudo crear notificaciones masivas a apoderados', e);
+    }
+    addLocalNotification(base);
+    refreshBell();
+  }
+
+  function normalizeCampaignPayload(raw){
+    let obj=raw||{};
+    if(Array.isArray(obj)) obj=obj[0]||{};
+    const title=obj.titulo || obj.nombre || obj.concepto || obj.descripcion || 'Nueva campaña';
+    const monto=obj.monto || obj.valor || obj.total || obj.monto_cuota || '';
+    const vence=obj.fecha_vencimiento || obj.vencimiento || obj.fecha_fin || obj.due_date || '';
+    let detail='Se creó una nueva campaña para tu curso.';
+    if(monto || vence) detail += `${monto?' Monto: $'+String(monto).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'.':''}${vence?' Vence: '+String(vence).slice(0,10)+'.':''}`;
+    return {titulo:'Nueva campaña: '+String(title), detalle:detail, metadata:{campana:obj}};
+  }
+
+  function installCampaignCreatedWatcher(){
+    if(window.__CURSAPP_CAMPAIGN_WATCHER_V581__) return;
+    window.__CURSAPP_CAMPAIGN_WATCHER_V581__=true;
+    const originalFetch=window.fetch;
+    if(typeof originalFetch!=='function') return;
+    window.fetch=async function(input, init){
+      const url=String((input&&input.url)||input||'');
+      const method=String((init&&init.method)||'GET').toUpperCase();
+      const isCampaignInsert=/\/rest\/v1\/campanas(\?|$)/.test(url) && method==='POST';
+      let bodyPayload=null;
+      if(isCampaignInsert){
+        try{ bodyPayload=JSON.parse(init && init.body || '{}'); }catch(e){}
+      }
+      const res=await originalFetch.apply(this, arguments);
+      if(isCampaignInsert && res && res.ok){
+        setTimeout(async()=>{
+          let data=bodyPayload;
+          try{ data=await res.clone().json(); }catch(e){}
+          await notifyCourseApoderados(Object.assign(normalizeCampaignPayload(data), {url_destino:'/apoderado.html', tipo:'campana', icono:'📅'}));
+        },250);
+      }
+      return res;
+    };
+  }
   function openNotificationPreferences(){
     const info=pushSupportInfo();
     const state=readJson(KEY_PUSH_STATE,{})||{};
@@ -508,13 +627,13 @@
 
   document.addEventListener('DOMContentLoaded', async()=>{
     try{ registerSW(); }catch(e){}
-    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); } }catch(e){}
+    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); } }catch(e){}
     try{ syncStoredConsents(); }catch(e){}
     // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
     try{ maybeShowMarketplaceConsent(); }catch(e){}
     // No mostrar instalación automáticamente. Se abre desde menú/botón explícito.
   });
-  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, context:getActiveContext };
+  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, context:getActiveContext, openCourseNotices:openCourseNotices, notifyCourseApoderados:notifyCourseApoderados };
   window.CURSAPP_NOTIFY = { create:createNotification, apoderado:(p)=>notifyForRole(p,'apoderado'), presidente:(p)=>notifyForRole(p,'presidente'), tesorero:(p)=>notifyForRole(p,'tesorero') };
   window.CURSAPP_INSTALL = { open: installCursapp };
   if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
