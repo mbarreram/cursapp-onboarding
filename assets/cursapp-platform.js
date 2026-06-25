@@ -2,6 +2,7 @@
 /* Cursapp V55/V56/V57 · Consentimientos, notificaciones e instalación PWA */
 (function(){
   'use strict';
+  window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
   if(window.__CURSAPP_PLATFORM_V55__) return;
   window.__CURSAPP_PLATFORM_V55__ = true;
 
@@ -231,7 +232,7 @@
     host.appendChild(btn);
   }
 
-  window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstallPrompt=e; maybeShowInstallBanner(); });
+  window.addEventListener('beforeinstallprompt', e=>{ try{ e.preventDefault(); deferredInstallPrompt=e; }catch(_){ } });
   function canShowInstall(){
     const until=Number(localStorage.getItem(KEY_INSTALL_LATER)||0); if(Date.now()<until) return false;
     if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
@@ -256,10 +257,27 @@
   }
   function registerSW(){ if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); } }
 
+  function openConsentSummary(){
+    const gen=readJson(KEY_GENERAL,null);
+    const market=readJson(KEY_MARKET,null);
+    function row(label, data){
+      const ok=!!(data && data.accepted);
+      const date=data && data.accepted_at ? new Date(data.accepted_at).toLocaleString('es-CL') : 'Pendiente';
+      const ver=data && data.version ? data.version : '-';
+      return `<div class="cursapp-consent-status-row"><div><b>${esc(label)}</b><p>Versión ${esc(ver)} · ${esc(date)}</p></div><span class="${ok?'ok':'pending'}">${ok?'Aceptado':'Pendiente'}</span></div>`;
+    }
+    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Mis consentimientos</h2><p>Registro de aceptaciones vigentes en este dispositivo.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-consent-status">${row('Política de Privacidad y Términos de Uso', gen)}${row('Condiciones de Mercado Escolar', market)}</div><div class="cursapp-consent-note">El registro legal queda asociado al usuario cuando se acepta durante el onboarding o al ingresar a Mercado Escolar.</div></div></div>`);
+  }
+
   document.addEventListener('DOMContentLoaded', async()=>{
-    registerSW(); ensureBell(); refreshBell(); setTimeout(refreshBell,1200); try{ syncStoredConsents(); }catch(e){}
-    if(!showGeneralConsent()) maybeShowMarketplaceConsent();
-    setTimeout(maybeShowInstallBanner,1200);
+    try{ registerSW(); }catch(e){}
+    try{ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); }catch(e){}
+    try{ syncStoredConsents(); }catch(e){}
+    // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
+    try{ maybeShowMarketplaceConsent(); }catch(e){}
+    // No mostrar instalación automáticamente. Se abre desde menú/botón explícito.
   });
   window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications };
+  window.CURSAPP_INSTALL = { open: installCursapp };
+  if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
 })();

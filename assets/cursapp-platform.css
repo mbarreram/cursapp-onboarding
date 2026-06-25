@@ -29,3 +29,12 @@
 .cursapp-install-banner{position:fixed;left:14px;right:14px;bottom:18px;z-index:99990;background:#111827;color:#fff;border-radius:22px;padding:14px;box-shadow:0 18px 50px rgba(15,23,42,.35);display:none;gap:12px;align-items:center}.cursapp-install-banner.show{display:flex}.cursapp-install-banner strong{display:block;font-size:14px}.cursapp-install-banner span{display:block;color:#cbd5e1;font-size:12px;font-weight:700;margin-top:2px}.cursapp-install-banner .spacer{flex:1}.cursapp-install-banner button{border:0;border-radius:999px;padding:9px 12px;font-weight:950}.cursapp-install-banner .install{background:#fff;color:#111827}.cursapp-install-banner .later{background:rgba(255,255,255,.12);color:#fff}
 .cursapp-install-card h2{margin:0;font-size:22px;font-weight:950}.cursapp-install-steps{margin-top:14px;display:grid;gap:10px}.cursapp-install-step{padding:12px;border-radius:18px;background:#f8fafc;border:1px solid rgba(15,23,42,.08);font-weight:800;color:#334155}
 @media(max-width:560px){.cursapp-bell-btn.floating{right:62px;top:10px}.cursapp-consent-card,.cursapp-notif-card,.cursapp-install-card{border-radius:24px 24px 18px 18px}.cursapp-notif-item{grid-template-columns:34px 1fr;}.cursapp-notif-time{grid-column:2}.cursapp-install-banner{bottom:76px}}
+
+/* V55.2: Mis consentimientos */
+.cursapp-consent-status{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.cursapp-consent-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(226,232,240,.95);border-radius:18px;padding:14px;background:#fff}
+.cursapp-consent-status-row p{margin:4px 0 0;color:#64748b;font-size:13px;font-weight:700}
+.cursapp-consent-status-row span{font-size:13px;font-weight:900;border-radius:999px;padding:7px 10px;white-space:nowrap}
+.cursapp-consent-status-row span.ok{background:#dcfce7;color:#166534}
+.cursapp-consent-status-row span.pending{background:#f1f5f9;color:#64748b}
+.cursapp-consent-note{margin-top:12px;color:#64748b;font-size:13px;font-weight:700;line-height:1.35}

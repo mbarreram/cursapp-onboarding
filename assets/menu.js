@@ -362,6 +362,13 @@ function getRoleFromSession() {
     return '<div style="height:1px;background:rgba(229,231,235,.9);margin:6px 0;"></div>';
   }
 
+  function addPlatformItems(parts){
+    parts.push(dividerHTML());
+    parts.push(btnHTML("Notificaciones", "if(window.CURSAPP_NOTIFICATIONS){CURSAPP_NOTIFICATIONS.open()} closeMenu();", "🔔"));
+    parts.push(btnHTML("Mis consentimientos", "if(window.CURSAPP_CONSENT&&CURSAPP_CONSENT.openSummary){CURSAPP_CONSENT.openSummary()} closeMenu();", "📄"));
+    parts.push(btnHTML("Instalar Cursapp", "if(window.CURSAPP_INSTALL&&CURSAPP_INSTALL.open){CURSAPP_INSTALL.open()} closeMenu();", "📲"));
+  }
+
   // -------- Toggle binding --------
   function bindMenuToggle(dd) {
   var menuBtn = qs("#menuBtn");
@@ -451,9 +458,7 @@ function getRoleFromSession() {
       parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
       parts.push(btnHTML("Mi perfil", "location.href='/perfil.html';", "👤"));
 
-      parts.push(dividerHTML());
-
-      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      addPlatformItems(parts);
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -468,9 +473,7 @@ function getRoleFromSession() {
       parts.push(btnHTML("Mi perfil", "location.href='/perfil.html';", "👤"));
       parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
-      parts.push(dividerHTML());
-
-      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      addPlatformItems(parts);
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
@@ -483,9 +486,7 @@ function getRoleFromSession() {
       parts.push(btnHTML("Mi perfil", "location.href='/perfil.html';", "👤"));
       parts.push(btnHTML("Ayuda", "if(window.openHelp){openHelp('general')} else {openHelpFallback()} closeMenu();", "❓"));
 
-      parts.push(dividerHTML());
-
-      parts.push(btnHTML("Reset total (dev)", "if(window.CURSAPP&&CURSAPP.hardReset){CURSAPP.hardReset()} closeMenu();", "🧨"));
+      addPlatformItems(parts);
       parts.push(btnHTML("Cerrar sesión", "logout();", "🚪"));
     }
 
