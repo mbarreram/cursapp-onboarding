@@ -67,3 +67,24 @@
 .cursapp-toast-notif.show{opacity:1;transform:translateY(0)}
 .cursapp-toast-notif .ico{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:22px}
 .cursapp-toast-notif b{display:block;font-weight:950;font-size:15px;line-height:1.15}.cursapp-toast-notif span{display:block;margin-top:3px;font-size:12px;font-weight:750;color:#dbe4f0;line-height:1.25}
+
+/* V58.2 · Estabilización visual campana/preferencias en iPhone/Safari */
+#avisosBellHost{display:block!important;position:absolute!important;right:66px!important;top:14px!important;z-index:2147483000!important;min-width:42px!important;min-height:42px!important;pointer-events:auto!important;}
+#avisosBellHost .cursapp-bell-btn,
+body.apoderado-ui-v24 #avisosBellHost .cursapp-bell-btn{display:inline-grid!important;visibility:visible!important;opacity:1!important;width:42px!important;height:42px!important;min-width:42px!important;border-radius:16px!important;background:#fff!important;border:1px solid #eef2f7!important;box-shadow:0 8px 20px rgba(15,23,42,.08)!important;font-size:18px!important;color:#111827!important;z-index:2147483001!important;}
+#avisosBellHost .cursapp-bell-btn em{right:-7px!important;top:-7px!important;z-index:2147483002!important;}
+.cursapp-notif-backdrop{z-index:2147483500!important;align-items:flex-end!important;}
+.cursapp-notif-card{width:min(760px,calc(100vw - 28px))!important;max-height:min(82vh,720px)!important;border-radius:26px 26px 18px 18px!important;}
+.cursapp-notif-card.compact{max-height:min(72vh,620px)!important;}
+.cursapp-notif-list{max-height:calc(82vh - 150px)!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;}
+.cursapp-push-panel{overflow:auto!important;-webkit-overflow-scrolling:touch!important;max-height:calc(82vh - 108px)!important;padding-bottom:24px!important;}
+.cursapp-push-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important;align-items:center!important;}
+.cursapp-push-actions .cursapp-btn{min-width:0!important;white-space:normal!important;}
+@media(max-width:560px){
+  #avisosBellHost{right:66px!important;top:14px!important;}
+  .cursapp-notif-head h2{font-size:28px!important;line-height:1.05!important;}
+  .cursapp-notif-head p{font-size:17px!important;line-height:1.2!important;}
+  .cursapp-notif-item{grid-template-columns:42px 1fr!important;gap:12px!important;padding:14px 18px!important;}
+  .cursapp-notif-time{grid-column:2!important;}
+  .cursapp-push-actions{grid-template-columns:1fr!important;}
+}
