@@ -50,3 +50,11 @@
     header{padding-top:0!important;}
   }
 }
+
+/* V58 · Preferencias y categorías de notificaciones */
+.cursapp-notif-prefs{margin-top:14px;border-top:1px solid rgba(15,23,42,.08);padding-top:12px;display:grid;gap:8px}
+.cursapp-notif-prefs h3{margin:0 0 4px;font-size:15px;color:#0f172a}
+.cursapp-pref-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;font-weight:800;color:#334155}
+.cursapp-pref-row input{width:20px;height:20px;accent-color:#6d28d9}
+.cursapp-btn[disabled]{opacity:.55;cursor:not-allowed}
+.cursapp-notif-item.unread{background:#f8f5ff;border-left:4px solid #7c3aed}

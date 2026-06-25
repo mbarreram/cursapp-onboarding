@@ -1,10 +1,10 @@
 
-/* Cursapp V55/V56/V57 · Consentimientos, notificaciones e instalación PWA */
+/* Cursapp V58 · Consentimientos, notificaciones inteligentes por rol/curso y PWA */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
-  if(window.__CURSAPP_PLATFORM_V55__) return;
-  window.__CURSAPP_PLATFORM_V55__ = true;
+  if(window.__CURSAPP_PLATFORM_V58__) return;
+  window.__CURSAPP_PLATFORM_V58__ = true;
 
   const POLICY_VERSION = '1.0.0';
   const MARKET_POLICY_VERSION = '1.0.0';
@@ -29,10 +29,35 @@
   function getUser(){
     const s=getSession();
     const p=readJson('cursapp_active_profile_v1',{})||{};
-    const userId = s.userId || s.usuario_id || s.supabase?.usuario_id || p.supabase?.usuario_id || p.userId || p.usuario_id || s.email || p.email || '';
+    const userId = s.auth_user_id || s.authUserId || s.user_uuid || s.usuario_id || s.supabase?.auth_user_id || s.supabase?.usuario_id || p.supabase?.auth_user_id || p.supabase?.usuario_id || p.userId || p.usuario_id || s.userId || s.email || p.email || '';
     const email = String(s.email || p.email || s.userId || '').toLowerCase().trim();
     const nombre = s.nombre || s.name || p.nombre || p.nombre_apoderado || p.apoderado?.name || 'Usuario Cursapp';
     return { id:String(userId||email||'').trim(), email, nombre };
+  }
+
+  function getActiveContext(){
+    const s=getSession() || {};
+    const p=readJson('cursapp_active_profile_v1',{}) || {};
+    const role = String(localStorage.getItem('cursapp_active_role_v1') || s.currentRole || s.activeRole || s.role || p.role || '').toLowerCase().trim();
+    const cursoKey = String(localStorage.getItem('cursapp_active_course_v1') || s.courseKey || s.course_key || p.courseKey || p.course_key || '').trim();
+    const cursoId = String(s.curso_id || s.courseId || s.supabase?.curso_id || p.supabase?.curso_id || p.curso_id || '').trim();
+    const colegioId = String(s.colegio_id || s.colegioId || s.supabase?.colegio_id || p.supabase?.colegio_id || p.colegio_id || '').trim();
+    return { role: role || 'apoderado', cursoKey, cursoId, colegioId };
+  }
+
+  function shouldShowNotificationForContext(n){
+    const ctx=getActiveContext();
+    const nRole=String(n?.rol_destino || n?.role || '').toLowerCase().trim();
+    const nCursoId=String(n?.curso_id || '').trim();
+    const nCursoKey=String(n?.curso_key || n?.courseKey || '').trim();
+    if(nRole && ctx.role && nRole !== ctx.role && nRole !== 'todos') return false;
+    if(nCursoId && ctx.cursoId && nCursoId !== ctx.cursoId) return false;
+    if(nCursoKey && ctx.cursoKey && nCursoKey !== ctx.cursoKey) return false;
+    return true;
+  }
+
+  function pushIsEnabled(){
+    try{ return ('Notification' in window && Notification.permission === 'granted') || readJson(KEY_PUSH_STATE,{})?.enabled === true; }catch(e){ return false; }
   }
   async function waitSb(ms=2500){
     const start=Date.now();
@@ -197,19 +222,25 @@
   async function loadNotifications(){
     if(!canUsePlatformUI()) return [];
     const u=getUser();
+    const ctx=getActiveContext();
     let rows=[];
     try{
       const sb=await waitSb();
       if(sb && (u.id||u.email)){
-        let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(50);
-        if(u.id) q=q.eq('user_id',u.id);
+        let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(80);
+        // Compatibilidad: algunos ambientes guardan user_id como UUID y otros sólo email.
+        if(u.id && u.email) q=q.or(`user_id.eq.${u.id},email.eq.${u.email},destinatario_email.eq.${u.email}`);
+        else if(u.id) q=q.eq('user_id',u.id);
+        else if(u.email) q=q.or(`email.eq.${u.email},destinatario_email.eq.${u.email}`);
         const {data,error}=await q;
         if(!error && Array.isArray(data)) rows=data;
       }
     }catch(e){}
     if(!rows.length) rows=readJson('cursapp_notificaciones_local_v1',[]);
-    return rows||[];
+    rows=(rows||[]).filter(shouldShowNotificationForContext);
+    return rows;
   }
+
   function timeAgo(v){
     const t=Date.parse(v||''); if(!t) return '';
     const s=Math.max(1,Math.floor((Date.now()-t)/1000));
@@ -366,19 +397,113 @@
     }
   }
   function addLocalNotification(n){
+    const ctx=getActiveContext();
     const rows=readJson('cursapp_notificaciones_local_v1',[])||[];
-    rows.unshift(Object.assign({id:'local_'+Date.now(),created_at:nowISO(),leida:false},n||{}));
-    writeJson('cursapp_notificaciones_local_v1', rows.slice(0,50));
+    rows.unshift(Object.assign({id:'local_'+Date.now(),created_at:nowISO(),leida:false, curso_key:ctx.cursoKey, curso_id:ctx.cursoId, rol_destino:ctx.role},n||{}));
+    writeJson('cursapp_notificaciones_local_v1', rows.slice(0,80));
+  }
+
+  async function saveCourseNoticeFallback(n){
+    // Fallback para Apoderados: si no hay Push, los avisos importantes de curso quedan visibles en "Avisos del curso".
+    const ctx=getActiveContext();
+    const role=String(n?.rol_destino || ctx.role || '').toLowerCase();
+    if(role !== 'apoderado' && role !== 'todos') return;
+    if(!n?.fallback_aviso_curso && !['aviso','campana','cuota','pago','curso'].includes(String(n?.tipo||''))) return;
+    const title=String(n?.titulo || 'Aviso Cursapp').trim();
+    const detail=String(n?.detalle || '').trim();
+    try{
+      const sb=await waitSb();
+      if(sb && ctx.cursoId){
+        await sb.from('avisos').insert({
+          curso_id:ctx.cursoId,
+          titulo:title,
+          mensaje:detail,
+          tipo:'notificacion',
+          destino:'curso'
+        });
+      }
+    }catch(e){
+      // fallback local legacy, útil para QA y módulos que aún leen localStorage
+      try{
+        const arr=readJson('cursapp_avisos_curso_v1',[])||[];
+        arr.unshift({id:'aviso_local_'+Date.now(), curso_id:ctx.cursoId, courseKey:ctx.cursoKey, titulo:title, mensaje:detail, tipo:'notificacion', created_at:nowISO()});
+        writeJson('cursapp_avisos_curso_v1', arr.slice(0,80));
+      }catch(_){}
+    }
+  }
+
+  async function createNotification(payload){
+    const u=getUser();
+    const ctx=getActiveContext();
+    const n=Object.assign({
+      tipo:'sistema',
+      titulo:'Cursapp',
+      detalle:'',
+      url_destino:location.pathname,
+      origen:'sistema',
+      leida:false,
+      push_enviado:false,
+      rol_destino:ctx.role,
+      curso_id:ctx.cursoId || null,
+      curso_key:ctx.cursoKey || null,
+      colegio_id:ctx.colegioId || null,
+      user_id:u.id || null,
+      email:u.email || null,
+      destinatario_email:u.email || null,
+      created_at:nowISO()
+    }, payload || {});
+
+    // Siempre guarda en campana interna/local aunque Push no esté activo.
+    addLocalNotification(n);
+
+    try{
+      const sb=await waitSb();
+      if(sb){
+        await sb.from('notificaciones').insert({
+          user_id:n.user_id || null,
+          email:n.email || null,
+          destinatario_email:n.destinatario_email || n.email || null,
+          curso_id:n.curso_id || null,
+          curso_key:n.curso_key || null,
+          colegio_id:n.colegio_id || null,
+          rol_destino:n.rol_destino || null,
+          tipo:n.tipo,
+          titulo:n.titulo,
+          detalle:n.detalle,
+          url_destino:n.url_destino,
+          icono:n.icono || notifIcons[n.tipo] || '🔔',
+          origen:n.origen || n.tipo || 'sistema',
+          prioridad:n.prioridad || 'normal',
+          leida:false,
+          push_enviado:false,
+          metadata:n.metadata || {}
+        });
+      }
+    }catch(e){ console.warn('No se pudo guardar notificación Supabase', e); }
+
+    // Si no hay Push y corresponde a un aviso de curso para apoderados, duplicar como Aviso del curso.
+    if(!pushIsEnabled()) await saveCourseNoticeFallback(n);
+    refreshBell();
+    return n;
+  }
+
+  function notifyForRole(payload, role){
+    return createNotification(Object.assign({}, payload||{}, {rol_destino:role || (payload&&payload.rol_destino) || getActiveContext().role}));
   }
   function openNotificationPreferences(){
     const info=pushSupportInfo();
     const state=readJson(KEY_PUSH_STATE,{})||{};
     const enabled=(info.permission==='granted') || state.enabled===true;
     const status = !info.hasNotification ? 'No soportadas' : (enabled ? 'Activas' : (info.permission==='denied' ? 'Bloqueadas' : 'No configuradas'));
-    const iosNote = (info.isiOS && !info.standalone) ? '<div class="cursapp-consent-note">En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar push.</div>' : '';
-    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Preferencias de notificaciones</h2><p>Activa avisos del sistema y prueba notificaciones web.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-push-panel"><div class="cursapp-consent-status-row"><div><b>🔔 Notificaciones Push</b><p>Estado: ${esc(status)} · Permiso: ${esc(info.permission)}</p></div><span class="${enabled?'ok':'pending'}">${enabled?'Activas':'Pendiente'}</span></div>${iosNote}<div class="cursapp-push-actions"><button class="cursapp-btn primary" id="cursappEnablePush">Activar notificaciones</button><button class="cursapp-btn" id="cursappTestPush">Enviar prueba</button></div><div class="cursapp-consent-note">Esta prueba muestra una notificación local de la PWA. Para envíos automáticos desde Supabase quedará usada la tabla <b>push_suscripciones</b> y una Edge Function con VAPID.</div></div></div></div>`);
-    $('#cursappEnablePush').onclick=async()=>{ await enablePushNotifications(); closePlatformModal(); openNotificationPreferences(); };
-    $('#cursappTestPush').onclick=async()=>{ await sendTestNotification(); };
+    const iosNote = (info.isiOS && !info.standalone) ? '<div class="cursapp-consent-note">En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar push. En Chrome iPhone usa Safari para instalar Cursapp.</div>' : '';
+    const noPushNote = !enabled ? '<div class="cursapp-consent-note"><b>Puedes seguir usando Cursapp normalmente.</b> Si no activas Push, las alertas seguirán llegando a la campana interna. Los avisos importantes del curso para apoderados también aparecerán en Avisos del curso.</div>' : '';
+    const prefs=readJson('cursapp_notif_prefs_v1',{chat:true,mercado:true,cuotas:true,pagos:true,campanas:true,avisos:true,tickets:true,push:true,email:true});
+    const cats=[['chat','💬 Chat y mensajes'],['mercado','🛍️ Mercado Escolar'],['cuotas','⏰ Cuotas por vencer'],['pagos','💰 Pagos y comprobantes'],['campanas','📅 Campañas'],['avisos','📢 Avisos del curso'],['tickets','🛠️ Soporte y tickets']];
+    const catHtml=cats.map(([k,label])=>`<label class="cursapp-pref-row"><span>${label}</span><input type="checkbox" data-pref="${k}" ${prefs[k]!==false?'checked':''}></label>`).join('');
+    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Preferencias de notificaciones</h2><p>Elige qué quieres recibir por rol y curso activo.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-push-panel"><div class="cursapp-consent-status-row"><div><b>🔔 Notificaciones Push</b><p>Estado: ${esc(status)} · Permiso: ${esc(info.permission)}</p></div><span class="${enabled?'ok':'pending'}">${enabled?'Activas':'Pendiente'}</span></div>${iosNote}${noPushNote}<div class="cursapp-push-actions"><button class="cursapp-btn primary" id="cursappEnablePush" ${enabled?'disabled':''}>${enabled?'Notificaciones activas':'Activar notificaciones'}</button><button class="cursapp-btn" id="cursappTestPush" ${enabled?'':'disabled'}>Enviar prueba</button></div><div class="cursapp-notif-prefs"><h3>Categorías</h3>${catHtml}</div><div class="cursapp-consent-note">V58 separa notificaciones por <b>curso activo</b> y <b>rol</b> para evitar cruces entre cursos o directivas.</div></div></div></div>`);
+    const en=$('#cursappEnablePush'); if(en) en.onclick=async()=>{ await enablePushNotifications(); closePlatformModal(); openNotificationPreferences(); };
+    const ts=$('#cursappTestPush'); if(ts) ts.onclick=async()=>{ await sendTestNotification(); };
+    document.querySelectorAll('[data-pref]').forEach(ch=>{ ch.onchange=()=>{ const p=readJson('cursapp_notif_prefs_v1',{})||{}; p[ch.dataset.pref]=!!ch.checked; writeJson('cursapp_notif_prefs_v1',p); }; });
   }
 
   document.addEventListener('DOMContentLoaded', async()=>{
@@ -389,7 +514,8 @@
     try{ maybeShowMarketplaceConsent(); }catch(e){}
     // No mostrar instalación automáticamente. Se abre desde menú/botón explícito.
   });
-  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification };
+  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, context:getActiveContext };
+  window.CURSAPP_NOTIFY = { create:createNotification, apoderado:(p)=>notifyForRole(p,'apoderado'), presidente:(p)=>notifyForRole(p,'presidente'), tesorero:(p)=>notifyForRole(p,'tesorero') };
   window.CURSAPP_INSTALL = { open: installCursapp };
   if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
 })();
