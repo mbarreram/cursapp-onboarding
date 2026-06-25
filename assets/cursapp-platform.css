@@ -38,3 +38,15 @@
 .cursapp-consent-status-row span.ok{background:#dcfce7;color:#166534}
 .cursapp-consent-status-row span.pending{background:#f1f5f9;color:#64748b}
 .cursapp-consent-note{margin-top:12px;color:#64748b;font-size:13px;font-weight:700;line-height:1.35}
+
+
+/* V56 Push + PWA safe area */
+.cursapp-push-panel{padding:16px 18px 18px;display:grid;gap:12px}
+.cursapp-push-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+@supports (padding: max(0px)){
+  @media (display-mode: standalone){
+    body{padding-top:env(safe-area-inset-top);}
+    .cursapp-bell-btn.floating{top:calc(env(safe-area-inset-top) + 10px);}
+    header{padding-top:0!important;}
+  }
+}

@@ -12,6 +12,7 @@
   const KEY_MARKET = 'cursapp_consent_market_v1';
   const KEY_INSTALL_LATER = 'cursapp_install_later_until_v1';
   const KEY_INSTALL_COUNT = 'cursapp_install_seen_count_v1';
+  const KEY_PUSH_STATE = 'cursapp_push_state_v1';
   let deferredInstallPrompt = null;
   let sbCache = null;
 
@@ -232,7 +233,7 @@
     const list=rows.length?rows.map(n=>`<div class="cursapp-notif-item ${n.leida?'':'unread'}" data-url="${esc(n.url_destino||'')}"><div class="cursapp-notif-icon">${notifIcons[n.tipo]||'🔔'}</div><div><div class="cursapp-notif-title">${esc(n.titulo||'Notificación')}</div><div class="cursapp-notif-detail">${esc(n.detalle||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(n.created_at))}</div></div>`).join(''):`<div class="cursapp-notif-empty"><div style="font-size:38px">🔔</div><b>Sin notificaciones</b><p>Aquí aparecerán mensajes, avisos, pagos, calificaciones y actividad de Mercado Escolar.</p></div>`;
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
-    $('#cursappNotifPrefs').onclick=()=>alert('Preferencias de notificaciones quedarán disponibles en la siguiente etapa.');
+    $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
     document.querySelectorAll('.cursapp-notif-item[data-url]').forEach(el=>{el.onclick=()=>{const u=el.dataset.url; if(u) location.href=u;};});
   }
   function ensureBell(){
@@ -288,6 +289,98 @@
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Mis consentimientos</h2><p>Registro de aceptaciones vigentes en este dispositivo.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-consent-status">${row('Política de Privacidad y Términos de Uso', gen)}${row('Condiciones de Mercado Escolar', market)}</div><div class="cursapp-consent-note">El registro legal queda asociado al usuario cuando se acepta durante el onboarding o al ingresar a Mercado Escolar.</div></div></div>`);
   }
 
+
+
+  function isStandalonePWA(){
+    try{ return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || !!window.navigator.standalone; }catch(e){ return false; }
+  }
+  function pushSupportInfo(){
+    const hasNotification = 'Notification' in window;
+    const hasSW = 'serviceWorker' in navigator;
+    const permission = hasNotification ? Notification.permission : 'unsupported';
+    const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    return { hasNotification, hasSW, permission, isiOS, standalone:isStandalonePWA() };
+  }
+  function savePushState(patch){
+    const cur=readJson(KEY_PUSH_STATE,{})||{};
+    const next=Object.assign({},cur,patch||{}, {updated_at:nowISO()});
+    writeJson(KEY_PUSH_STATE,next);
+    return next;
+  }
+  async function persistPushState(state){
+    const u=getUser();
+    try{
+      const sb=await waitSb();
+      if(sb && (u.id||u.email)){
+        await sb.from('push_suscripciones').insert({
+          usuario_id:u.id||null,
+          email:u.email||null,
+          endpoint:state.endpoint||'local-device-notifications',
+          permiso:state.permission||null,
+          navegador:navigator.userAgent,
+          activo:state.enabled===true,
+          metadata:{standalone:!!state.standalone, mode:state.mode||'local_test'}
+        });
+      }
+    }catch(e){ console.warn('No se pudo guardar estado push', e); }
+  }
+  async function enablePushNotifications(){
+    const info=pushSupportInfo();
+    if(!info.hasNotification || !info.hasSW){
+      alert('Este navegador no permite notificaciones web en Cursapp.');
+      return false;
+    }
+    if(info.isiOS && !info.standalone){
+      alert('En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar notificaciones.');
+      return false;
+    }
+    try{ await navigator.serviceWorker.register('/sw.js'); }catch(e){}
+    let permission=Notification.permission;
+    if(permission !== 'granted'){
+      permission = await Notification.requestPermission();
+    }
+    const state = savePushState({permission, enabled:permission==='granted', standalone:info.standalone, mode:'permission'});
+    await persistPushState(state);
+    if(permission === 'granted'){
+      alert('Notificaciones activadas correctamente.');
+      return true;
+    }
+    if(permission === 'denied') alert('El permiso quedó bloqueado. Debes habilitar notificaciones para Cursapp desde la configuración del dispositivo/navegador.');
+    else alert('No se activaron las notificaciones.');
+    return false;
+  }
+  async function sendTestNotification(){
+    const ok = (('Notification' in window) && Notification.permission==='granted') || await enablePushNotifications();
+    if(!ok) return;
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      if(reg && reg.active){
+        reg.active.postMessage({type:'CURSAPP_TEST_NOTIFICATION', title:'Cursapp', body:'Notificación de prueba activada correctamente.'});
+      }else if(reg && reg.showNotification){
+        reg.showNotification('Cursapp', { body:'Notificación de prueba activada correctamente.', icon:'/assets/icons/cursapp-icon-192.png', badge:'/assets/icons/cursapp-icon-192.png', data:{url:'/'} });
+      }
+      addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:'Push local enviada correctamente.',url_destino:location.pathname,leida:false});
+      refreshBell();
+    }catch(e){
+      try{ new Notification('Cursapp', { body:'Notificación de prueba activada correctamente.' }); }catch(_){ alert('No se pudo mostrar la notificación de prueba.'); }
+    }
+  }
+  function addLocalNotification(n){
+    const rows=readJson('cursapp_notificaciones_local_v1',[])||[];
+    rows.unshift(Object.assign({id:'local_'+Date.now(),created_at:nowISO(),leida:false},n||{}));
+    writeJson('cursapp_notificaciones_local_v1', rows.slice(0,50));
+  }
+  function openNotificationPreferences(){
+    const info=pushSupportInfo();
+    const state=readJson(KEY_PUSH_STATE,{})||{};
+    const enabled=(info.permission==='granted') || state.enabled===true;
+    const status = !info.hasNotification ? 'No soportadas' : (enabled ? 'Activas' : (info.permission==='denied' ? 'Bloqueadas' : 'No configuradas'));
+    const iosNote = (info.isiOS && !info.standalone) ? '<div class="cursapp-consent-note">En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar push.</div>' : '';
+    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Preferencias de notificaciones</h2><p>Activa avisos del sistema y prueba notificaciones web.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-push-panel"><div class="cursapp-consent-status-row"><div><b>🔔 Notificaciones Push</b><p>Estado: ${esc(status)} · Permiso: ${esc(info.permission)}</p></div><span class="${enabled?'ok':'pending'}">${enabled?'Activas':'Pendiente'}</span></div>${iosNote}<div class="cursapp-push-actions"><button class="cursapp-btn primary" id="cursappEnablePush">Activar notificaciones</button><button class="cursapp-btn" id="cursappTestPush">Enviar prueba</button></div><div class="cursapp-consent-note">Esta prueba muestra una notificación local de la PWA. Para envíos automáticos desde Supabase quedará usada la tabla <b>push_suscripciones</b> y una Edge Function con VAPID.</div></div></div></div>`);
+    $('#cursappEnablePush').onclick=async()=>{ await enablePushNotifications(); closePlatformModal(); openNotificationPreferences(); };
+    $('#cursappTestPush').onclick=async()=>{ await sendTestNotification(); };
+  }
+
   document.addEventListener('DOMContentLoaded', async()=>{
     try{ registerSW(); }catch(e){}
     try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); } }catch(e){}
@@ -296,7 +389,7 @@
     try{ maybeShowMarketplaceConsent(); }catch(e){}
     // No mostrar instalación automáticamente. Se abre desde menú/botón explícito.
   });
-  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications };
+  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification };
   window.CURSAPP_INSTALL = { open: installCursapp };
   if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
 })();
