@@ -88,3 +88,19 @@ body.apoderado-ui-v24 #avisosBellHost .cursapp-bell-btn{display:inline-grid!impo
   .cursapp-notif-time{grid-column:2!important;}
   .cursapp-push-actions{grid-template-columns:1fr!important;}
 }
+
+
+/* V58.3 · Campana y preferencias más estables en apoderado */
+body.apoderado-ui-v24 #avisosBellHost{right:78px!important;top:14px!important;}
+body.apoderado-ui-v24 #avisosBellHost .cursapp-bell-btn{position:relative!important;}
+.cursapp-notif-card{overscroll-behavior:contain!important;}
+.cursapp-notif-card .cursapp-notif-list{padding-bottom:96px!important;}
+.cursapp-notif-card.compact .cursapp-notif-list{padding-bottom:22px!important;}
+.cursapp-notif-head .cursapp-btn{flex:0 0 auto!important;}
+@media(max-width:560px){
+  .cursapp-notif-card{max-height:78vh!important;}
+  .cursapp-push-panel{max-height:calc(78vh - 124px)!important;}
+  .cursapp-notif-head{padding:16px!important;}
+  .cursapp-notif-head h2{font-size:24px!important;}
+  .cursapp-notif-head p{font-size:15px!important;}
+}

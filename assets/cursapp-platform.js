@@ -1,10 +1,10 @@
 
-/* Cursapp V58.2 · Estabilización notificaciones por curso/rol */
+/* Cursapp V58.3 · Contexto estable curso/rol + notificaciones */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
-  if(window.__CURSAPP_PLATFORM_V582__) return;
-  window.__CURSAPP_PLATFORM_V582__ = true;
+  if(window.__CURSAPP_PLATFORM_V583__) return;
+  window.__CURSAPP_PLATFORM_V583__ = true;
 
   const POLICY_VERSION = '1.0.0';
   const MARKET_POLICY_VERSION = '1.0.0';
@@ -35,19 +35,114 @@
     return { id:String(userId||email||'').trim(), email, nombre };
   }
 
-  function getActiveContext(){
+  function parseMaybeJson(v, d){
+    try{
+      if(v == null || v === '') return d;
+      if(typeof v === 'string') return JSON.parse(v);
+      return v;
+    }catch(e){ return d; }
+  }
+
+  function getProfiles(){
+    const arr = readJson('cursapp_profiles_v1', []) || readJson('cursapp_demo_profiles_v1', []) || [];
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function profileIdOf(p){
+    return String(p?.profileId || p?.profile_id || p?.id || p?.supabase?.profile_id || p?.supabase?.miembro_id || '').trim();
+  }
+
+  function courseKeyOf(p){
+    return String(p?.courseKey || p?.course_key || p?.cursoKey || p?.curso_key || p?.supabase?.course_key || '').trim();
+  }
+
+  function cursoIdOf(p){
+    return String(p?.curso_id || p?.cursoId || p?.courseId || p?.supabase?.curso_id || p?.supabase?.cursoId || '').trim();
+  }
+
+  function colegioIdOf(p){
+    return String(p?.colegio_id || p?.colegioId || p?.supabase?.colegio_id || p?.supabase?.colegioId || '').trim();
+  }
+
+  function miembroIdOf(p){
+    return String(p?.miembroId || p?.miembro_id || p?.supabase?.miembro_id || p?.supabase?.miembroId || '').trim();
+  }
+
+  function findCanonicalProfile(){
     const s=getSession() || {};
-    const p=readJson('cursapp_active_profile_v1',{}) || {};
-    const alumnoActivoRaw = localStorage.getItem('alumnoActivo') || localStorage.getItem('cursapp_alumno_activo_v1') || s.alumnoActivo || p.alumnoActivo || null;
-    let alumnoActivo={};
-    try{ alumnoActivo = typeof alumnoActivoRaw==='string' ? JSON.parse(alumnoActivoRaw) : (alumnoActivoRaw||{}); }catch(_){ alumnoActivo={}; }
-    const role = String(localStorage.getItem('cursapp_active_role_v1') || s.currentRole || s.activeRole || s.role || p.role || '').toLowerCase().trim();
-    const cursoKey = String(localStorage.getItem('cursapp_active_course_v1') || s.activeCourse || s.courseKey || s.course_key || p.courseKey || p.course_key || alumnoActivo.courseKey || '').trim();
-    const cursoId = String(s.curso_id || s.courseId || s.supabase?.curso_id || p.supabase?.curso_id || p.curso_id || alumnoActivo.cursoId || alumnoActivo.curso_id || '').trim();
-    const profileId = String(localStorage.getItem('cursapp_active_profile_id_v1') || s.activeProfile || s.profileId || s.profile_id || p.profileId || p.profileId || alumnoActivo.profileId || alumnoActivo.profile_id || '').trim();
-    const miembroId = String(s.activeMiembro || s.miembroId || s.miembro_id || p.miembroId || alumnoActivo.miembroId || alumnoActivo.miembro_id || '').trim();
-    const colegioId = String(s.colegio_id || s.colegioId || s.supabase?.colegio_id || p.supabase?.colegio_id || p.colegio_id || '').trim();
-    return { role: role || 'apoderado', cursoKey, cursoId, colegioId, profileId, miembroId };
+    const rawActiveProfile = localStorage.getItem('cursapp_active_profile_v1');
+    const rawActiveProfileId = localStorage.getItem('cursapp_active_profile_id_v1') || localStorage.getItem('cursapp_active_member_profile_v1');
+    const activeProfileObj = parseMaybeJson(rawActiveProfile, null);
+    const activeProfileId = String(
+      rawActiveProfileId ||
+      (activeProfileObj && typeof activeProfileObj === 'object' ? profileIdOf(activeProfileObj) : '') ||
+      (rawActiveProfile && !String(rawActiveProfile).trim().startsWith('{') ? rawActiveProfile : '') ||
+      s.activeProfile || s.activeProfileId || s.profileId || ''
+    ).trim();
+
+    const activeCourse = String(localStorage.getItem('cursapp_active_course_v1') || s.activeCourse || s.courseKey || s.course_key || '').trim();
+    const role = String(localStorage.getItem('cursapp_active_role_v1') || s.currentRole || s.activeRole || s.role || '').toLowerCase().trim();
+    const alumno = parseMaybeJson(localStorage.getItem('cursapp_alumno_activo_v1') || s.alumnoActivo, {}) || {};
+    const alumnoName = String(alumno.alumno || alumno.nombre || alumno.name || '').toLowerCase().trim();
+    const email = String(s.email || s.userId || '').toLowerCase().trim();
+    const profiles=getProfiles();
+
+    if(activeProfileObj && typeof activeProfileObj === 'object' && (courseKeyOf(activeProfileObj) || cursoIdOf(activeProfileObj))) return activeProfileObj;
+    if(activeProfileId){
+      const byId=profiles.find(p=>profileIdOf(p)===activeProfileId || miembroIdOf(p)===activeProfileId);
+      if(byId) return byId;
+    }
+    let candidates=profiles.filter(p=>!activeCourse || courseKeyOf(p)===activeCourse);
+    if(role) candidates=candidates.filter(p=>{
+      const pr=String(p?.role || p?.user?.role || p?.currentRole || '').toLowerCase();
+      const roles=Array.isArray(p?.roles)?p.roles.map(x=>String(x).toLowerCase()):[];
+      return !pr && !roles.length ? true : pr===role || roles.includes(role);
+    });
+    if(alumnoName){
+      const byAlumno=candidates.find(p=>String(p?.apoderado?.alumno || p?.alumno || p?.nombre_alumno || p?.nombre || '').toLowerCase().trim()===alumnoName);
+      if(byAlumno) return byAlumno;
+    }
+    if(email){
+      const byEmail=candidates.find(p=>String(p?.email || p?.userId || p?.user?.email || p?.apoderado?.email || p?.supabase?.email || '').toLowerCase().trim()===email);
+      if(byEmail) return byEmail;
+    }
+    return candidates[0] || profiles.find(p=>activeCourse && courseKeyOf(p)===activeCourse) || null;
+  }
+
+  function normalizeActiveContext(){
+    const s=getSession() || {};
+    const p0=readJson('cursapp_active_profile_v1', null);
+    const p = findCanonicalProfile() || (p0 && typeof p0==='object' ? p0 : {}) || {};
+    const alumno = parseMaybeJson(localStorage.getItem('cursapp_alumno_activo_v1') || s.alumnoActivo, {}) || {};
+    const role = String(localStorage.getItem('cursapp_active_role_v1') || s.currentRole || s.activeRole || s.role || p.role || p.user?.role || 'apoderado').toLowerCase().trim();
+    const cursoKey = String(localStorage.getItem('cursapp_active_course_v1') || s.activeCourse || s.courseKey || s.course_key || courseKeyOf(p) || alumno.courseKey || '').trim();
+    const cursoId = String(cursoIdOf(p) || s.curso_id || s.courseId || s.supabase?.curso_id || alumno.cursoId || alumno.curso_id || '').trim();
+    const profileId = String(profileIdOf(p) || localStorage.getItem('cursapp_active_profile_id_v1') || s.activeProfile || s.profileId || alumno.profileId || alumno.profile_id || '').trim();
+    const miembroId = String(miembroIdOf(p) || s.activeMiembro || s.miembroId || s.miembro_id || alumno.miembroId || alumno.miembro_id || '').trim();
+    const colegioId = String(colegioIdOf(p) || s.colegio_id || s.colegioId || s.supabase?.colegio_id || '').trim();
+    const ctx={ role:role||'apoderado', cursoKey, cursoId, colegioId, profileId, miembroId, updated_at:nowISO() };
+
+    try{
+      if(cursoKey) localStorage.setItem('cursapp_active_course_v1', cursoKey);
+      if(role) localStorage.setItem('cursapp_active_role_v1', role);
+      if(profileId) localStorage.setItem('cursapp_active_profile_id_v1', profileId);
+      if(miembroId) localStorage.setItem('cursapp_active_miembro_id_v1', miembroId);
+      const raw=readJson('cursapp_session_v1',{})||{};
+      if(cursoKey){ raw.courseKey=cursoKey; raw.activeCourse=cursoKey; }
+      if(cursoId){ raw.curso_id=cursoId; raw.courseId=cursoId; }
+      if(colegioId){ raw.colegio_id=colegioId; raw.colegioId=colegioId; }
+      if(profileId){ raw.activeProfile=profileId; raw.activeProfileId=profileId; }
+      if(miembroId){ raw.activeMiembro=miembroId; raw.miembroId=miembroId; }
+      if(role){ raw.currentRole=role; raw.role=role; raw.activeRole=role; }
+      writeJson('cursapp_session_v1', raw);
+      writeJson('cursapp_active_context_v1', ctx);
+    }catch(e){}
+    return ctx;
+  }
+
+  function getActiveContext(){
+    const ctx = normalizeActiveContext();
+    return ctx || { role:'apoderado', cursoKey:'', cursoId:'', colegioId:'', profileId:'', miembroId:'' };
   }
 
   function shouldShowNotificationForContext(n){
@@ -540,6 +635,12 @@
           const r2=await sb.from('avisos').select('*').eq('curso_id',ctx.cursoId).order('created_at',{ascending:false}).limit(40);
           if(!r2.error && Array.isArray(r2.data)) add=add.concat(r2.data);
         }
+        // Complemento: notificaciones por curso, aunque no hayan quedado asociadas al usuario actual.
+        if(ctx.cursoId){
+          try{ const ri=await sb.from('notificaciones').select('*').eq('curso_id',ctx.cursoId).in('tipo',importantTypes).order('created_at',{ascending:false}).limit(40);
+            if(!ri.error && Array.isArray(ri.data)) add=add.concat(ri.data.map(n=>({id:'notif_'+(n.id||n.created_at),curso_id:n.curso_id,curso_key:n.curso_key,titulo:n.titulo,mensaje:n.detalle||'',tipo:n.tipo,created_at:n.created_at})));
+          }catch(_){}
+        }
         // Algunas versiones guardan sólo course_key/curso_key.
         if(ctx.cursoKey){
           try{ const rk=await sb.from('notificaciones').select('*').eq('curso_key',ctx.cursoKey).in('tipo',importantTypes).order('created_at',{ascending:false}).limit(40);
@@ -551,6 +652,11 @@
     }catch(e){}
 
     // 3) Fallback local, siempre separado por curso activo.
+    const localNotifs=(readJson('cursapp_notificaciones_local_v1',[])||[])
+      .filter(n=>importantTypes.includes(String(n.tipo||'')) && shouldShowNotificationForContext(n))
+      .map(n=>({id:'notif_local_'+(n.id||n.created_at),curso_id:n.curso_id,curso_key:n.curso_key||n.courseKey,titulo:n.titulo,mensaje:n.detalle||'',tipo:n.tipo,created_at:n.created_at}));
+    rows=rows.concat(localNotifs);
+
     const local=(readJson('cursapp_avisos_curso_v1',[])||[]).filter(a=>{
       const aCid=String(a.curso_id||''); const aKey=String(a.curso_key||a.courseKey||'');
       if(ctx.cursoId && aCid && aCid!==ctx.cursoId) return false;
@@ -710,14 +816,17 @@
   }
 
   document.addEventListener('DOMContentLoaded', async()=>{
+    try{ normalizeActiveContext(); }catch(e){}
     try{ registerSW(); }catch(e){}
-    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(()=>{ensureBell(); refreshBell();},800); setTimeout(()=>{ensureBell(); refreshBell();},1800); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); installPaymentClickWatcher(); } }catch(e){ console.warn('init platform', e); }
+    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(()=>{normalizeActiveContext(); ensureBell(); refreshBell();},800); setTimeout(()=>{normalizeActiveContext(); ensureBell(); refreshBell();},1800); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); installPaymentClickWatcher(); } }catch(e){ console.warn('init platform', e); }
     try{ syncStoredConsents(); }catch(e){}
     // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
     try{ maybeShowMarketplaceConsent(); }catch(e){}
     // No mostrar instalación automáticamente. Se abre desde menú/botón explícito.
   });
-  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, context:getActiveContext, openCourseNotices:openCourseNotices, notifyCourseApoderados:notifyCourseApoderados };
+  window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, context:getActiveContext, normalize:normalizeActiveContext, openCourseNotices:openCourseNotices, notifyCourseApoderados:notifyCourseApoderados };
+  window.addEventListener('pageshow', function(){ try{ normalizeActiveContext(); ensureBell(); refreshBell(); }catch(e){} });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ normalizeActiveContext(); ensureBell(); refreshBell(); }catch(e){} } });
   window.CURSAPP_NOTIFY = { create:createNotification, apoderado:(p)=>notifyForRole(p,'apoderado'), presidente:(p)=>notifyForRole(p,'presidente'), tesorero:(p)=>notifyForRole(p,'tesorero') };
   window.CURSAPP_INSTALL = { open: installCursapp };
   if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
