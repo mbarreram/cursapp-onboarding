@@ -1,10 +1,10 @@
 
-/* Cursapp V58.1 · Notificaciones persistentes por rol/curso + Avisos del curso */
+/* Cursapp V58.1.1 · Fix watcher campañas/pagos + campana robusta */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
-  if(window.__CURSAPP_PLATFORM_V581__) return;
-  window.__CURSAPP_PLATFORM_V581__ = true;
+  if(window.__CURSAPP_PLATFORM_V5811__) return;
+  window.__CURSAPP_PLATFORM_V5811__ = true;
 
   const POLICY_VERSION = '1.0.0';
   const MARKET_POLICY_VERSION = '1.0.0';
@@ -276,16 +276,23 @@
   function ensureBell(){
     if(!canUsePlatformUI()) return;
     if(document.querySelector('[data-cursapp-bell]')) return;
-    let host=$('#avisosBellHost') || $('.marketHeaderActions') || $('.topbar') || document.body;
+    let host=$('#avisosBellHost') || $('.marketHeaderActions') || $('.topbar-actions') || $('.topbar') || document.body;
     const btn=document.createElement('button');
     btn.type='button'; btn.className='cursapp-bell-btn'; btn.setAttribute('data-cursapp-bell','1'); btn.setAttribute('aria-label','Notificaciones'); btn.innerHTML='🔔<em>0</em>';
     btn.onclick=openNotifications;
     if(host===document.body) btn.classList.add('floating');
     if(host.classList && host.classList.contains('marketHeaderActions')){
       const marketBtn=$('#btnMarketAlerts');
-      if(marketBtn){ marketBtn.onclick=openNotifications; marketBtn.setAttribute('data-cursapp-bell','1'); return; }
+      if(marketBtn){ marketBtn.onclick=openNotifications; marketBtn.setAttribute('data-cursapp-bell','1'); refreshBell(); return; }
     }
-    host.appendChild(btn);
+    try{
+      const menuBtn=$('#menuBtn');
+      if(host===document.body && menuBtn && menuBtn.parentElement) host=menuBtn.parentElement;
+      host.appendChild(btn);
+      refreshBell();
+    }catch(e){
+      document.body.appendChild(btn); btn.classList.add('floating'); refreshBell();
+    }
   }
 
   window.addEventListener('beforeinstallprompt', e=>{ try{ e.preventDefault(); deferredInstallPrompt=e; }catch(_){ } });
@@ -420,22 +427,19 @@
     try{
       const sb=await waitSb();
       if(sb && ctx.cursoId){
-        await sb.from('avisos').insert({
-          curso_id:ctx.cursoId,
-          titulo:title,
-          mensaje:detail,
-          tipo:'notificacion',
-          destino:'curso'
-        });
+        const payload={curso_id:ctx.cursoId,titulo:title,mensaje:detail,tipo:String(n?.tipo||'notificacion'),prioridad:n?.prioridad||'normal',visible:true};
+        const r=await sb.from('avisos_curso').insert(payload);
+        if(r && r.error){
+          await sb.from('avisos').insert({curso_id:ctx.cursoId,titulo:title,mensaje:detail,tipo:'notificacion',destino:'curso'});
+        }
       }
-    }catch(e){
-      // fallback local legacy, útil para QA y módulos que aún leen localStorage
-      try{
-        const arr=readJson('cursapp_avisos_curso_v1',[])||[];
-        arr.unshift({id:'aviso_local_'+Date.now(), curso_id:ctx.cursoId, courseKey:ctx.cursoKey, titulo:title, mensaje:detail, tipo:'notificacion', created_at:nowISO()});
-        writeJson('cursapp_avisos_curso_v1', arr.slice(0,80));
-      }catch(_){}
-    }
+    }catch(e){ console.warn('No se pudo guardar aviso curso en Supabase', e); }
+    // Fallback local siempre, útil si RLS bloquea o si aún no existe curso_id en sesión.
+    try{
+      const arr=readJson('cursapp_avisos_curso_v1',[])||[];
+      arr.unshift({id:'aviso_local_'+Date.now(), curso_id:ctx.cursoId, courseKey:ctx.cursoKey, curso_key:ctx.cursoKey, titulo:title, mensaje:detail, tipo:String(n?.tipo||'notificacion'), created_at:nowISO()});
+      writeJson('cursapp_avisos_curso_v1', arr.slice(0,80));
+    }catch(_){}
   }
 
   async function createNotification(payload){
@@ -550,8 +554,12 @@
     await saveCourseNoticeFallback(base);
     try{
       const sb=await waitSb();
-      if(!sb || !ctx.cursoId) throw new Error('sin supabase/curso');
-      const {data:miembros,error}=await sb.from('miembros_curso').select('*').eq('curso_id',ctx.cursoId).limit(250);
+      if(!sb) throw new Error('sin supabase');
+      let query=sb.from('miembros_curso').select('*').limit(250);
+      if(ctx.cursoId) query=query.eq('curso_id',ctx.cursoId);
+      else if(ctx.cursoKey) query=query.eq('course_key',ctx.cursoKey);
+      else throw new Error('sin curso_id/curso_key');
+      const {data:miembros,error}=await query;
       if(error || !Array.isArray(miembros) || !miembros.length) throw error || new Error('sin miembros');
       const inserts=[];
       miembros.forEach(m=>{
@@ -570,7 +578,7 @@
       // Si no se pueden enumerar miembros por RLS, al menos queda aviso curso y notificación local para QA.
       console.warn('No se pudo crear notificaciones masivas a apoderados', e);
     }
-    addLocalNotification(base);
+    addLocalNotification(Object.assign({}, base, {rol_destino:'apoderado'}));
     refreshBell();
   }
 
@@ -586,25 +594,36 @@
   }
 
   function installCampaignCreatedWatcher(){
-    if(window.__CURSAPP_CAMPAIGN_WATCHER_V581__) return;
-    window.__CURSAPP_CAMPAIGN_WATCHER_V581__=true;
+    if(window.__CURSAPP_CAMPAIGN_WATCHER_V5811__) return;
+    window.__CURSAPP_CAMPAIGN_WATCHER_V5811__=true;
     const originalFetch=window.fetch;
     if(typeof originalFetch!=='function') return;
+    let lastEventAt=0;
+    async function handleEvent(data, kind){
+      const now=Date.now();
+      if(now-lastEventAt<1200) return; // evita duplicados cuando campaña crea varias cuotas/pagos
+      lastEventAt=now;
+      const payload=Object.assign(normalizeCampaignPayload(data), {url_destino:'/apoderado.html', tipo:kind==='pago'?'cuota':'campana', icono:kind==='pago'?'⏰':'📅', origen:kind==='pago'?'pagos':'campanas'});
+      await notifyCourseApoderados(payload);
+      // Si quien está probando cambia de rol en el mismo dispositivo, queda visible inmediatamente.
+      try{ await saveCourseNoticeFallback(Object.assign({}, payload, {rol_destino:'apoderado', fallback_aviso_curso:true})); }catch(e){}
+    }
     window.fetch=async function(input, init){
       const url=String((input&&input.url)||input||'');
-      const method=String((init&&init.method)||'GET').toUpperCase();
+      const method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
       const isCampaignInsert=/\/rest\/v1\/campanas(\?|$)/.test(url) && method==='POST';
+      const isPagoInsert=/\/rest\/v1\/pagos(\?|$)/.test(url) && method==='POST';
       let bodyPayload=null;
-      if(isCampaignInsert){
-        try{ bodyPayload=JSON.parse(init && init.body || '{}'); }catch(e){}
+      if(isCampaignInsert || isPagoInsert){
+        try{ bodyPayload=JSON.parse((init && init.body) || (input && input.body) || '{}'); }catch(e){}
       }
       const res=await originalFetch.apply(this, arguments);
-      if(isCampaignInsert && res && res.ok){
+      if((isCampaignInsert || isPagoInsert) && res && res.ok){
         setTimeout(async()=>{
           let data=bodyPayload;
           try{ data=await res.clone().json(); }catch(e){}
-          await notifyCourseApoderados(Object.assign(normalizeCampaignPayload(data), {url_destino:'/apoderado.html', tipo:'campana', icono:'📅'}));
-        },250);
+          await handleEvent(data, isPagoInsert?'pago':'campana');
+        },350);
       }
       return res;
     };
@@ -627,7 +646,7 @@
 
   document.addEventListener('DOMContentLoaded', async()=>{
     try{ registerSW(); }catch(e){}
-    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(refreshBell,1200); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); } }catch(e){}
+    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(()=>{ensureBell(); refreshBell();},800); setTimeout(()=>{ensureBell(); refreshBell();},1800); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); } }catch(e){ console.warn('init platform', e); }
     try{ syncStoredConsents(); }catch(e){}
     // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
     try{ maybeShowMarketplaceConsent(); }catch(e){}
@@ -638,3 +657,5 @@
   window.CURSAPP_INSTALL = { open: installCursapp };
   if(window.CURSAPP_CONSENT) window.CURSAPP_CONSENT.openSummary = openConsentSummary;
 })();
+
+window.addEventListener('load', function(){ try{ if(canUsePlatformUI && canUsePlatformUI()){ ensureBell(); refreshBell(); } }catch(e){} });
