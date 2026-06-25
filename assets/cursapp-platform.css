@@ -4,7 +4,7 @@
 .cursapp-bell-btn.floating{position:fixed;right:70px;top:14px}
 .cursapp-bell-btn em{position:absolute;right:-4px;top:-5px;min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;font-size:10px;font-style:normal;font-weight:950;display:none;align-items:center;justify-content:center;padding:0 5px}
 .cursapp-bell-btn.has-unread em{display:flex}
-.cursapp-consent-backdrop,.cursapp-notif-backdrop,.cursapp-install-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:999999;display:flex;align-items:flex-end;justify-content:center;padding:14px}
+.cursapp-consent-backdrop,.cursapp-notif-backdrop,.cursapp-install-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:13000;display:flex;align-items:flex-end;justify-content:center;padding:14px}
 .cursapp-consent-card,.cursapp-notif-card,.cursapp-install-card{width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:26px;box-shadow:0 30px 90px rgba(15,23,42,.28);padding:18px}
 .cursapp-consent-title{font-size:23px;font-weight:950;color:#111827;margin:0}
 .cursapp-consent-sub{margin-top:7px;color:#64748b;font-weight:700;line-height:1.45}
@@ -58,3 +58,12 @@
 .cursapp-pref-row input{width:20px;height:20px;accent-color:#6d28d9}
 .cursapp-btn[disabled]{opacity:.55;cursor:not-allowed}
 .cursapp-notif-item.unread{background:#f8f5ff;border-left:4px solid #7c3aed}
+
+/* V58.1.2 capas estables */
+.cursapp-notif-backdrop{z-index:14000!important}
+.cursapp-consent-backdrop{z-index:13000!important}
+.cursapp-install-backdrop{z-index:12000!important}
+.cursapp-toast-notif{position:fixed;left:14px;right:14px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:15000;background:#111827;color:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(15,23,42,.35);display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:12px 14px;opacity:0;transform:translateY(-16px);transition:.22s ease;pointer-events:none}
+.cursapp-toast-notif.show{opacity:1;transform:translateY(0)}
+.cursapp-toast-notif .ico{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:22px}
+.cursapp-toast-notif b{display:block;font-weight:950;font-size:15px;line-height:1.15}.cursapp-toast-notif span{display:block;margin-top:3px;font-size:12px;font-weight:750;color:#dbe4f0;line-height:1.25}

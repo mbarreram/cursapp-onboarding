@@ -1,5 +1,5 @@
 
-/* Cursapp V58.1.1 · Fix watcher campañas/pagos + campana robusta */
+/* Cursapp V58.1.2 · Fix avisos curso + capas + cola push */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
@@ -465,6 +465,7 @@
 
     // Siempre guarda en campana interna/local aunque Push no esté activo.
     addLocalNotification(n);
+    showInAppToast(n);
 
     try{
       const sb=await waitSb();
@@ -492,8 +493,8 @@
       }
     }catch(e){ console.warn('No se pudo guardar notificación Supabase', e); }
 
-    // Si no hay Push y corresponde a un aviso de curso para apoderados, duplicar como Aviso del curso.
-    if(!pushIsEnabled()) await saveCourseNoticeFallback(n);
+    // Avisos del curso es respaldo oficial para apoderados: se guarda siempre, con o sin Push.
+    if(n.fallback_aviso_curso || ['aviso','campana','cuota','pago','curso'].includes(String(n.tipo||''))) await saveCourseNoticeFallback(n);
     refreshBell();
     return n;
   }
@@ -517,6 +518,27 @@
           const r2=await sb.from('avisos').select('*').eq('curso_id',ctx.cursoId).order('created_at',{ascending:false}).limit(40);
           if(!r2.error && Array.isArray(r2.data)) rows=rows.concat(r2.data);
         }
+        // V58.1.2: Avisos del curso también lee notificaciones importantes del mismo curso.
+        // Esto evita que la campana tenga el evento y "Avisos del curso" quede vacío.
+        if(ctx.cursoId){
+          const r3=await sb.from('notificaciones')
+            .select('*')
+            .eq('curso_id',ctx.cursoId)
+            .in('tipo',['campana','cuota','aviso','pago','curso'])
+            .order('created_at',{ascending:false})
+            .limit(40);
+          if(!r3.error && Array.isArray(r3.data)){
+            rows=rows.concat(r3.data.map(n=>({
+              id:'notif_'+(n.id||n.created_at),
+              curso_id:n.curso_id,
+              titulo:n.titulo,
+              mensaje:n.detalle || n.mensaje || '',
+              tipo:n.tipo,
+              prioridad:n.prioridad || 'normal',
+              created_at:n.created_at
+            })));
+          }
+        }
       }
     }catch(e){}
     const local=(readJson('cursapp_avisos_curso_v1',[])||[]).filter(a=>{
@@ -525,7 +547,10 @@
       return true;
     });
     const byKey={};
-    rows.concat(local).forEach(a=>{ const k=String(a.id||a.created_at||a.titulo||Math.random()); if(!byKey[k]) byKey[k]=a; });
+    rows.concat(local).forEach(a=>{
+      const k=[a.tipo||'',a.titulo||'',a.mensaje||a.detalle||'',String(a.created_at||'').slice(0,16)].join('|');
+      if(!byKey[k]) byKey[k]=a;
+    });
     return Object.values(byKey).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
   }
 
@@ -578,7 +603,9 @@
       // Si no se pueden enumerar miembros por RLS, al menos queda aviso curso y notificación local para QA.
       console.warn('No se pudo crear notificaciones masivas a apoderados', e);
     }
-    addLocalNotification(Object.assign({}, base, {rol_destino:'apoderado'}));
+    const localNotice=Object.assign({}, base, {rol_destino:'apoderado'});
+    addLocalNotification(localNotice);
+    showInAppToast(localNotice);
     refreshBell();
   }
 
