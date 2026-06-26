@@ -1273,8 +1273,14 @@
     };
     if(amount != null) body.monto_pagado = amount;
     const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
+    const paidRow = rows[0] || Object.assign({id: paymentId}, body);
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
-    return rows[0] || null;
+    try{
+      if(window.CURSAPP_NOTIFICATIONS && typeof window.CURSAPP_NOTIFICATIONS.notifyPaymentToDirectiva === "function"){
+        await window.CURSAPP_NOTIFICATIONS.notifyPaymentToDirectiva(paidRow, { amount: amount, method: body.metodo_pago, paymentId: paymentId });
+      }
+    }catch(e){ console.warn("No se pudo notificar pago a directiva", e); }
+    return paidRow || null;
   }
 
   function getActiveProfileForOptOut(){
