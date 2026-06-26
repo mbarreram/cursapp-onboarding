@@ -1,5 +1,5 @@
 
-/* Cursapp V58.6 · Estabiliza campana + pago directiva por rol/contexto */
+/* Cursapp V58.8 · Estabiliza campana, lectura, acciones y consultas multi-browser */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
@@ -221,6 +221,14 @@
   const notifIcons={chat:'💬',calificacion:'⭐',favorito:'❤️',pago:'💰',campana:'📅',aviso:'📢',mercado:'🛍️',ticket:'🛠️',sistema:'🔔'};
   const moneyCLP = v => '$' + String(Math.round(Number(v||0))).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   const normEmail = v => String(v||'').toLowerCase().trim();
+  const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v||''));
+  function applyRecipientFilter(q,u){
+    const parts=[];
+    if(u && isUuid(u.id)){ parts.push(`user_id.eq.${u.id}`); parts.push(`usuario_id.eq.${u.id}`); }
+    if(u && u.email){ parts.push(`email.eq.${u.email}`); parts.push(`destinatario_email.eq.${u.email}`); }
+    if(parts.length) return q.or(parts.join(','));
+    return q;
+  }
   async function loadNotifications(){
     if(!canUsePlatformUI()) return [];
     const u=getUser();
@@ -229,10 +237,9 @@
       const sb=await waitSb();
       if(sb && (u.id||u.email)){
         let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(80);
-        // Compatibilidad: algunos ambientes guardan user_id como UUID y otros sólo email.
-        if(u.id && u.email) q=q.or(`user_id.eq.${u.id},email.eq.${u.email},destinatario_email.eq.${u.email}`);
-        else if(u.id) q=q.eq('user_id',u.id);
-        else if(u.email) q=q.or(`email.eq.${u.email},destinatario_email.eq.${u.email}`);
+        // Compatibilidad robusta multi-browser: algunos registros usan usuario_id/user_id (UUID) y otros email.
+        // No consultamos columnas UUID con email para evitar errores silenciosos en Chrome/Safari.
+        q=applyRecipientFilter(q,u);
         const {data,error}=await q;
         if(!error && Array.isArray(data)) rows=data;
       }
@@ -267,9 +274,7 @@
     const u=getUser();
     try{ const sb=await waitSb(); if(sb && (u.id||u.email)){
       let q=sb.from('notificaciones').update({leida:true, leida_at:nowISO()});
-      if(u.id && u.email) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id},email.eq.${u.email},destinatario_email.eq.${u.email}`);
-      else if(u.id) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id}`);
-      else q=q.or(`email.eq.${u.email},destinatario_email.eq.${u.email}`);
+      q=applyRecipientFilter(q,u);
       await q;
     } }catch(e){}
     const local=readJson('cursapp_notificaciones_local_v1',[]).map(n=>({...n,leida:true})); writeJson('cursapp_notificaciones_local_v1',local); refreshBell();
@@ -287,9 +292,7 @@
         let q=sb.from('notificaciones').update({leida:true, leida_at:now}).eq('titulo',n.titulo);
         if(n.curso_id) q=q.eq('curso_id',n.curso_id);
         if(n.rol_destino) q=q.eq('rol_destino',n.rol_destino);
-        if(u.id && u.email) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id},email.eq.${u.email},destinatario_email.eq.${u.email}`);
-        else if(u.id) q=q.or(`user_id.eq.${u.id},usuario_id.eq.${u.id}`);
-        else q=q.or(`email.eq.${u.email},destinatario_email.eq.${u.email}`);
+        q=applyRecipientFilter(q,u);
         await q;
       }
     }catch(e){ console.warn('No se pudo marcar notificación leída', e); }
@@ -304,6 +307,42 @@
     await refreshBell();
   }
 
+
+  function setApoderadoTab(tab){
+    try{
+      const btn=document.querySelector(`[data-tab="${tab}"]`);
+      if(btn){ btn.click(); return true; }
+      if(window.location.hash!==('#'+tab)) window.location.hash=tab;
+    }catch(_){ }
+    return false;
+  }
+  async function handleNotificationAction(n){
+    if(!n) return;
+    const role=String(getActiveContext().role||'').toLowerCase();
+    const tipo=String(n.tipo||'').toLowerCase();
+    const url=String(n.url_destino||'').trim();
+    closePlatformModal();
+    // Acciones internas sin recargar la página actual.
+    if(role==='apoderado'){
+      if(tipo==='pago' || tipo==='cuota' || tipo==='campana'){ setApoderadoTab('payments'); return; }
+      if(tipo==='aviso' || tipo==='curso'){ openCourseNotices(); return; }
+      if(tipo==='mercado' && !location.pathname.includes('/mercado-escolar/')){ location.href='/mercado-escolar/mercado-escolar.html'; return; }
+    }
+    if(role==='presidente'){
+      if(tipo==='pago'){ try{ document.querySelector('[data-tab="dashboard"],[data-tab="home"],[data-section="dashboard"]')?.click(); }catch(_){ } return; }
+    }
+    if(role==='tesorero'){
+      if(tipo==='pago'){ try{ document.querySelector('[data-tab="payments"],[data-tab="pagos"],[data-section="pagos"]')?.click(); }catch(_){ } return; }
+    }
+    if(url){
+      try{
+        const target=new URL(url, location.origin);
+        if(target.pathname===location.pathname){ if(target.hash) location.hash=target.hash; return; }
+        location.href=target.href;
+      }catch(_){ }
+    }
+  }
+
   async function openNotifications(){
     const rows=await loadNotifications();
     try{ window.__CURSAPP_LAST_NOTIF_ROWS__=rows; }catch(_){ }
@@ -311,7 +350,7 @@
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
-    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } /* V58.7: no navegar ni recargar al tocar; solo marcar leída. */ };});
+    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } await handleNotificationAction(n); };});
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
@@ -346,7 +385,7 @@
       host.appendChild(btn);
       if(host.id==='avisosBellHost'){
         host.style.position='absolute'; host.style.right='72px'; host.style.top='10px'; host.style.zIndex='10002';
-        btn.style.width='42px'; btn.style.height='42px'; btn.style.pointerEvents='auto';
+        btn.style.width='42px'; btn.style.height='42px'; btn.style.pointerEvents='auto'; btn.style.display='inline-flex';
       }
       refreshBell();
     }catch(e){
@@ -732,7 +771,7 @@
 
   document.addEventListener('DOMContentLoaded', async()=>{
     try{ registerSW(); }catch(e){}
-    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(()=>{ensureBell(); refreshBell();},800); setTimeout(()=>{ensureBell(); refreshBell();},1800); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); } }catch(e){ console.warn('init platform', e); }
+    try{ if(canUsePlatformUI()){ ensureBell(); refreshBell(); setTimeout(()=>{ensureBell(); refreshBell();},800); setTimeout(()=>{ensureBell(); refreshBell();},1800); setTimeout(()=>{ensureBell(); refreshBell();},3500); bindCourseNoticeButtons(); installCampaignCreatedWatcher(); } }catch(e){ console.warn('init platform', e); }
     try{ syncStoredConsents(); }catch(e){}
     // No mostrar consentimiento general en login/landing: se exige en el último paso del onboarding.
     try{ maybeShowMarketplaceConsent(); }catch(e){}

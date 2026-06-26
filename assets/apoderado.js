@@ -24,7 +24,7 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
   if(el){try{clearInterval(el._t);}catch(e){} el.remove();}
  }
 };
-document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('apoderado'); setTimeout(()=>window.CURSAPP_LOADING.hide(),1200);}catch(e){}});
+document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('apoderado'); setTimeout(()=>window.CURSAPP_LOADING.hide(),2200);}catch(e){}});
 // === END LOADING ===
 
 
