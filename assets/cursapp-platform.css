@@ -1,83 +1,45 @@
-
-/* Cursapp V55/V56/V57 · Consentimientos, notificaciones e instalación */
-.cursapp-bell-btn{position:relative;border:0;background:#fff;border-radius:999px;box-shadow:0 10px 28px rgba(15,23,42,.16);width:42px;height:42px;display:inline-grid;place-items:center;font-size:20px;z-index:10020}
-.cursapp-bell-btn.floating{position:fixed;right:70px;top:14px}
-.cursapp-bell-btn em{position:absolute;right:-4px;top:-5px;min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;font-size:10px;font-style:normal;font-weight:950;display:none;align-items:center;justify-content:center;padding:0 5px}
-.cursapp-bell-btn.has-unread em{display:flex}
-.cursapp-consent-backdrop,.cursapp-notif-backdrop,.cursapp-install-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:13000;display:flex;align-items:flex-end;justify-content:center;padding:14px}
-.cursapp-consent-card,.cursapp-notif-card,.cursapp-install-card{width:min(760px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:26px;box-shadow:0 30px 90px rgba(15,23,42,.28);padding:18px}
-.cursapp-consent-title{font-size:23px;font-weight:950;color:#111827;margin:0}
-.cursapp-consent-sub{margin-top:7px;color:#64748b;font-weight:700;line-height:1.45}
-.cursapp-consent-section{border-top:1px solid rgba(15,23,42,.08);padding-top:12px;margin-top:12px}
-.cursapp-consent-list{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}
-.cursapp-consent-list li{display:flex;gap:9px;align-items:flex-start;color:#334155;font-weight:750;line-height:1.35}
-.cursapp-consent-list li span{flex:0 0 auto}
-.cursapp-consent-box{margin-top:12px;padding:12px;border-radius:18px;background:#f8fafc;border:1px solid rgba(15,23,42,.08);color:#334155;font-size:13px;line-height:1.45;font-weight:700}
-.cursapp-consent-check{display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:900;color:#111827}
-.cursapp-consent-check input{width:20px;height:20px;margin-top:1px}
-.cursapp-consent-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:16px;flex-wrap:wrap}
-.cursapp-btn{border:1px solid rgba(15,23,42,.12);background:#fff;color:#111827;border-radius:999px;padding:10px 14px;font-weight:950;cursor:pointer}
-.cursapp-btn.primary{border-color:#6d28d9;background:#6d28d9;color:#fff;box-shadow:0 12px 26px rgba(109,40,217,.25)}
-.cursapp-btn:disabled{opacity:.45;cursor:not-allowed}
-.cursapp-link-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-.cursapp-link-row a{color:#5b21b6;font-weight:900;text-decoration:none;font-size:13px}
-.cursapp-notif-card{padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:84vh}
-.cursapp-notif-head{padding:16px 18px;border-bottom:1px solid rgba(15,23,42,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-.cursapp-notif-head h2{margin:0;font-size:20px;font-weight:950;color:#111827}.cursapp-notif-head p{margin:4px 0 0;color:#64748b;font-weight:700;font-size:13px}
-.cursapp-notif-list{overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 0;min-height:240px}.cursapp-notif-empty{padding:30px 18px;text-align:center;color:#64748b;font-weight:800}
-.cursapp-notif-item{display:grid;grid-template-columns:38px 1fr auto;gap:10px;padding:12px 18px;border-bottom:1px solid rgba(15,23,42,.06);align-items:start}.cursapp-notif-item.unread{background:#f8f5ff}.cursapp-notif-icon{width:38px;height:38px;border-radius:14px;background:#eef2ff;display:grid;place-items:center}.cursapp-notif-title{font-weight:950;color:#111827}.cursapp-notif-detail{font-size:13px;color:#64748b;font-weight:700;margin-top:3px}.cursapp-notif-time{font-size:11px;color:#94a3b8;font-weight:800;white-space:nowrap}.cursapp-notif-actions{padding:12px 18px;border-top:1px solid rgba(15,23,42,.08);display:flex;justify-content:space-between;gap:10px;align-items:center}
-.cursapp-install-banner{position:fixed;left:14px;right:14px;bottom:18px;z-index:99990;background:#111827;color:#fff;border-radius:22px;padding:14px;box-shadow:0 18px 50px rgba(15,23,42,.35);display:none;gap:12px;align-items:center}.cursapp-install-banner.show{display:flex}.cursapp-install-banner strong{display:block;font-size:14px}.cursapp-install-banner span{display:block;color:#cbd5e1;font-size:12px;font-weight:700;margin-top:2px}.cursapp-install-banner .spacer{flex:1}.cursapp-install-banner button{border:0;border-radius:999px;padding:9px 12px;font-weight:950}.cursapp-install-banner .install{background:#fff;color:#111827}.cursapp-install-banner .later{background:rgba(255,255,255,.12);color:#fff}
-.cursapp-install-card h2{margin:0;font-size:22px;font-weight:950}.cursapp-install-steps{margin-top:14px;display:grid;gap:10px}.cursapp-install-step{padding:12px;border-radius:18px;background:#f8fafc;border:1px solid rgba(15,23,42,.08);font-weight:800;color:#334155}
-@media(max-width:560px){.cursapp-bell-btn.floating{right:62px;top:10px}.cursapp-consent-card,.cursapp-notif-card,.cursapp-install-card{border-radius:24px 24px 18px 18px}.cursapp-notif-item{grid-template-columns:34px 1fr;}.cursapp-notif-time{grid-column:2}.cursapp-install-banner{bottom:76px}}
-
-/* V55.2: Mis consentimientos */
-.cursapp-consent-status{display:flex;flex-direction:column;gap:10px;margin-top:14px}
-.cursapp-consent-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(226,232,240,.95);border-radius:18px;padding:14px;background:#fff}
-.cursapp-consent-status-row p{margin:4px 0 0;color:#64748b;font-size:13px;font-weight:700}
-.cursapp-consent-status-row span{font-size:13px;font-weight:900;border-radius:999px;padding:7px 10px;white-space:nowrap}
-.cursapp-consent-status-row span.ok{background:#dcfce7;color:#166534}
-.cursapp-consent-status-row span.pending{background:#f1f5f9;color:#64748b}
-.cursapp-consent-note{margin-top:12px;color:#64748b;font-size:13px;font-weight:700;line-height:1.35}
-
-
-/* V56 Push + PWA safe area */
-.cursapp-push-panel{padding:16px 18px 18px;display:grid;gap:12px}
-.cursapp-push-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-@supports (padding: max(0px)){
-  @media (display-mode: standalone){
-    body{padding-top:env(safe-area-inset-top);}
-    .cursapp-bell-btn.floating{top:calc(env(safe-area-inset-top) + 10px);}
-    header{padding-top:0!important;}
-  }
+/* Cursapp V58.14 platform modal fixes */
+#cursappPlatformModal{position:fixed;inset:0;z-index:999998;pointer-events:auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#cursappPlatformModal .cursapp-notif-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:flex-end;justify-content:center;z-index:999998;pointer-events:auto}
+#cursappPlatformModal .cursapp-notif-card{width:min(92vw,520px);max-height:min(82vh,760px);background:#fff;border-radius:28px 28px 22px 22px;box-shadow:0 -18px 60px rgba(15,23,42,.25);overflow:hidden;display:flex;flex-direction:column;position:relative;z-index:999999;margin-bottom:calc(env(safe-area-inset-bottom,0px) + 12px)}
+#cursappPlatformModal .cursapp-notif-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:24px 24px 18px;border-bottom:1px solid rgba(15,23,42,.08);flex:0 0 auto}
+#cursappPlatformModal .cursapp-notif-head h2{margin:0;font-size:28px;line-height:1.02;font-weight:950;color:#0f172a}
+#cursappPlatformModal .cursapp-notif-head p{margin:8px 0 0;color:#64748b;font-weight:800;font-size:16px;line-height:1.25}
+#cursappPlatformModal .cursapp-btn{border:1px solid rgba(15,23,42,.12);background:#fff;border-radius:18px;padding:12px 18px;font-weight:900;color:#0f172a;font-size:15px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+#cursappPlatformModal .cursapp-btn.primary{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-color:transparent;box-shadow:0 12px 28px rgba(109,40,217,.22)}
+#cursappPlatformModal .cursapp-notif-list{overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:220px;overscroll-behavior:contain;padding-bottom:8px}
+#cursappPlatformModal .cursapp-notif-item{display:grid;grid-template-columns:54px 1fr auto;gap:12px;align-items:start;padding:18px 22px;border-bottom:1px solid rgba(15,23,42,.07);cursor:pointer;background:#fff}
+#cursappPlatformModal .cursapp-notif-item.unread{background:#f7f3ff;border-left:5px solid #7c3aed;padding-left:17px}
+#cursappPlatformModal .cursapp-notif-icon{width:46px;height:46px;border-radius:16px;background:#f1f5f9;display:grid;place-items:center;font-size:24px}
+#cursappPlatformModal .cursapp-notif-title{font-weight:950;color:#0f172a;font-size:18px;line-height:1.15}
+#cursappPlatformModal .cursapp-notif-detail{font-weight:800;color:#64748b;font-size:16px;line-height:1.25;margin-top:4px}
+#cursappPlatformModal .cursapp-notif-time{font-weight:800;color:#94a3b8;font-size:13px;white-space:nowrap;margin-top:2px}
+#cursappPlatformModal .cursapp-notif-empty{min-height:300px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;color:#64748b;font-weight:800}
+#cursappPlatformModal .cursapp-notif-empty b{font-size:22px;color:#64748b;margin-top:8px}
+#cursappPlatformModal .cursapp-notif-actions{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:16px 22px calc(16px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(15,23,42,.08);background:rgba(255,255,255,.96);backdrop-filter:blur(10px);flex:0 0 auto;position:relative;z-index:2}
+#cursappPlatformModal .cursapp-notif-actions .cursapp-btn{flex:1;min-height:50px}
+#cursappPlatformModal .cursapp-push-panel{overflow:auto;-webkit-overflow-scrolling:touch;padding:22px;flex:1 1 auto;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+#cursappPlatformModal .cursapp-consent-status-row{border:1px solid rgba(15,23,42,.12);border-radius:18px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+#cursappPlatformModal .cursapp-consent-status-row b{font-size:18px;color:#0f172a}
+#cursappPlatformModal .cursapp-consent-status-row p{margin:6px 0 0;color:#64748b;font-weight:800;line-height:1.25}
+#cursappPlatformModal .cursapp-consent-status-row span{border-radius:999px;padding:10px 14px;font-weight:950;background:#f1f5f9;color:#64748b;white-space:nowrap}
+#cursappPlatformModal .cursapp-consent-status-row span.ok{background:#dcfce7;color:#166534}
+#cursappPlatformModal .cursapp-consent-note{color:#64748b;font-weight:800;line-height:1.35;margin:16px 0}
+#cursappPlatformModal .cursapp-push-actions{display:flex;gap:12px;margin:14px 0 20px}
+#cursappPlatformModal .cursapp-push-actions .cursapp-btn{flex:1;min-height:48px}
+#cursappPlatformModal .cursapp-notif-prefs h3{font-size:20px;margin:20px 0 12px;color:#0f172a}
+#cursappPlatformModal .cursapp-pref-row{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:14px 16px;margin:10px 0;font-weight:900;color:#334155}
+#cursappPlatformModal .cursapp-pref-row input{width:26px;height:26px;accent-color:#7c3aed}
+.cursapp-bell-btn{position:relative;border:0;background:#fff;border-radius:20px;width:46px;height:46px;display:inline-flex;align-items:center;justify-content:center;font-size:23px;box-shadow:0 10px 24px rgba(15,23,42,.08);z-index:10002}
+.cursapp-bell-btn em{position:absolute;right:-4px;top:-6px;background:#ef4444;color:#fff;min-width:20px;height:20px;border-radius:999px;font-size:12px;font-style:normal;font-weight:950;display:none;align-items:center;justify-content:center;padding:0 5px}
+.cursapp-bell-btn.has-unread em{display:inline-flex}
+.cursapp-bell-btn.floating{position:fixed;right:78px;top:calc(12px + env(safe-area-inset-top,0px))}
+@media(max-width:520px){
+  #cursappPlatformModal .cursapp-notif-card{width:calc(100vw - 32px);max-height:78vh;border-radius:24px 24px 20px 20px;margin-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  #cursappPlatformModal .cursapp-notif-head{padding:20px 18px 14px}
+  #cursappPlatformModal .cursapp-notif-head h2{font-size:26px}
+  #cursappPlatformModal .cursapp-notif-item{grid-template-columns:46px 1fr;gap:10px;padding:16px 18px}
+  #cursappPlatformModal .cursapp-notif-time{grid-column:2;white-space:normal;margin-top:4px}
+  #cursappPlatformModal .cursapp-notif-actions{padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px))}
+  #cursappPlatformModal .cursapp-push-actions{flex-direction:column}
 }
-
-/* V58 · Preferencias y categorías de notificaciones */
-.cursapp-notif-prefs{margin-top:14px;border-top:1px solid rgba(15,23,42,.08);padding-top:12px;display:grid;gap:8px}
-.cursapp-notif-prefs h3{margin:0 0 4px;font-size:15px;color:#0f172a}
-.cursapp-pref-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 10px;border:1px solid rgba(15,23,42,.08);border-radius:14px;background:#fff;font-weight:800;color:#334155}
-.cursapp-pref-row input{width:20px;height:20px;accent-color:#6d28d9}
-.cursapp-btn[disabled]{opacity:.55;cursor:not-allowed}
-.cursapp-notif-item.unread{background:#f8f5ff;border-left:4px solid #7c3aed}
-
-/* V58.1.2 capas estables */
-.cursapp-notif-backdrop{z-index:14000!important}
-.cursapp-consent-backdrop{z-index:13000!important}
-.cursapp-install-backdrop{z-index:12000!important}
-.cursapp-toast-notif{position:fixed;left:14px;right:14px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:15000;background:#111827;color:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(15,23,42,.35);display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;padding:12px 14px;opacity:0;transform:translateY(-16px);transition:.22s ease;pointer-events:none}
-.cursapp-toast-notif.show{opacity:1;transform:translateY(0)}
-.cursapp-toast-notif .ico{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:22px}
-.cursapp-toast-notif b{display:block;font-weight:950;font-size:15px;line-height:1.15}.cursapp-toast-notif span{display:block;margin-top:3px;font-size:12px;font-weight:750;color:#dbe4f0;line-height:1.25}
-/* V58.7 campana dedicada apoderado */
-#avisosBellHost{position:absolute!important;right:72px!important;top:10px!important;z-index:10002!important;display:block!important;pointer-events:auto!important;}
-#avisosBellHost .cursapp-bell-btn{display:grid!important;opacity:1!important;visibility:visible!important;}
-.cursapp-notif-list{max-height:min(58vh,620px);overflow:auto;-webkit-overflow-scrolling:touch;}
-/* V58.9 action loading + persistent bell */
-#cursappActionLoading{position:fixed;inset:0;z-index:16000;background:rgba(15,23,42,.38);display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
-#cursappActionLoading.show{display:flex!important}
-.cursapp-action-loading-card{width:min(320px,86vw);background:#fff;border-radius:26px;padding:26px 22px;text-align:center;box-shadow:0 28px 80px rgba(15,23,42,.30);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a}
-.cursapp-action-loading-card strong{display:block;font-size:22px;font-weight:950;margin-top:8px}
-.cursapp-action-loading-card span{display:block;color:#64748b;font-weight:800;margin-top:4px}
-.cursapp-action-spinner{width:58px;height:58px;border-radius:20px;margin:0 auto;background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;display:grid;place-items:center;font-weight:950;font-size:28px;animation:cursappPulse 1s infinite alternate}
-@keyframes cursappPulse{from{transform:scale(.96);opacity:.78}to{transform:scale(1.02);opacity:1}}
-#avisosBellHost{display:block!important;position:absolute!important;right:72px!important;top:10px!important;z-index:10030!important;min-width:44px!important;min-height:44px!important;pointer-events:auto!important}
-#avisosBellHost .cursapp-bell-btn{display:inline-grid!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
