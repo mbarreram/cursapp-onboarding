@@ -22,11 +22,11 @@
   <link rel="stylesheet" href="/assets/css/apoderado-production-v5.css?v=5">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
-  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=58110110">
+  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=5812">
 </head>
 <body class="apoderado-ui-v24">
 <div id="cursapp-loading-overlay" style="position:fixed;inset:0;background:#fff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="font-size:54px;color:#6d28d9;font-weight:900">C</div><div style="margin-top:12px;font-weight:800;color:#0f172a">Cargando datos...</div><div style="width:220px;height:6px;background:#eee;border-radius:8px;overflow:hidden;margin-top:12px"><div style="height:100%;width:100%;background:#6d28d9;animation:caProg 1.4s infinite"></div></div><style>@keyframes caProg{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}</style></div>
-<script>(function(){var started=Date.now();function ready(){try{var app=document.getElementById('app');var line=document.getElementById('whoCourseLine');var txt=(app&&app.textContent||'').trim();var ctx=(line&&line.textContent||'').trim();return Date.now()-started>1100 && (txt.length>40 || (ctx && ctx!=='—'));}catch(e){return false}}function done(){try{var el=document.getElementById('cursapp-loading-overlay'); if(el) el.remove();}catch(e){}}var t=setInterval(function(){if(ready()){clearInterval(t);done();}},120);setTimeout(function(){clearInterval(t);done();},6500);})();</script>
+<script>window.__CURSAPP_BOOT_LOADING_STARTED__=Date.now(); setTimeout(function(){try{var el=document.getElementById('cursapp-loading-overlay'); if(el) el.remove();}catch(e){}},9000);</script>
 
 <header>
   <div class="topbar" style="position:relative;">
@@ -55,12 +55,12 @@
   <button class="navItem" data-tab="informes">📄<span>Informes</span></button>
 </nav>
 <script defer src="/assets/config.js?v=1"></script>
-<script defer src="/assets/menu.js?v=58110"></script>
+<script defer src="/assets/menu.js?v=58"></script>
 
-<script defer src="/assets/core.js?v=58110110"></script>
+<script defer src="/assets/core.js?v=5812"></script>
 <script defer src="/assets/configavisos.js?v=4"></script>
 <script defer src="/assets/global-alerts.js?v=1"></script>
-<script defer src="/assets/apoderado.js?v=58110110"></script>
+<script defer src="/assets/apoderado.js?v=5812"></script>
 <script defer src="/assets/switchRole.js?v=2000"></script>
 <script defer src="/assets/apoderadoWelcome.js?v=2400"></script>
 <script id="mercadoEscolarMenuScript">
@@ -110,6 +110,6 @@
 </script>
 
   <script defer src="/assets/monetization-banners.js?v=20"></script>
-  <script defer src="/assets/cursapp-platform.js?v=58110110"></script>
+  <script defer src="/assets/cursapp-platform.js?v=5812"></script>
 </body>
 </html>
