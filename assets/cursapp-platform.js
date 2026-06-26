@@ -59,7 +59,7 @@
   function pushIsEnabled(){
     try{ return ('Notification' in window && Notification.permission === 'granted') || readJson(KEY_PUSH_STATE,{})?.enabled === true; }catch(e){ return false; }
   }
-  async function waitSb(ms=2500){
+  async function waitSb(ms=900){
     const start=Date.now();
     while(Date.now()-start<ms){
       if(window.cursappSupabase) return sbCache=window.cursappSupabase;
@@ -251,53 +251,64 @@
     if(parts.length) return q.or(parts.join(','));
     return q;
   }
-  async function loadNotifications(){
+
+  function notifContextKey(){
+    const u=getUser(); const ctx=getActiveContext();
+    return ['v5813', u.email||u.id||'anon', ctx.cursoId||ctx.cursoKey||'curso', ctx.role||'role'].join('|');
+  }
+  function notifCacheKey(){ return 'cursapp_notificaciones_cache_' + notifContextKey(); }
+  function notifReadKey(){ return 'cursapp_notificaciones_read_' + notifContextKey(); }
+  function withTimeout(promise, ms, fallback){
+    return Promise.race([promise, new Promise(resolve=>setTimeout(()=>resolve(fallback), ms))]);
+  }
+  function applyLocalReadState(rows){
+    const read=readJson(notifReadKey(),{})||{};
+    return (rows||[]).map(n=>{
+      const k=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      return read[k] ? Object.assign({}, n, {leida:true, leida_at:read[k]}) : n;
+    });
+  }
+  function saveNotifCache(rows){ try{ writeJson(notifCacheKey(), {at:Date.now(), rows:(rows||[]).slice(0,80)}); }catch(_){ } }
+  function readNotifCache(){ try{ const c=readJson(notifCacheKey(),null); return c && Array.isArray(c.rows) ? applyLocalReadState(c.rows) : []; }catch(_){ return []; } }
+  async function loadNotifications(opts){
+    opts=opts||{};
     if(!canUsePlatformUI()) return [];
     const u=getUser();
     const ctx=getActiveContext();
     let rows=[];
-    async function tryFetch(build){
-      try{
-        const sb=await waitSb();
-        if(!sb) return [];
-        const q=build(sb.from('notificaciones').select('*'));
-        const {data,error}=await q.order('created_at',{ascending:false}).limit(80);
-        if(error || !Array.isArray(data)) return [];
-        return data;
-      }catch(_){ return []; }
-    }
-    async function addRows(arr){
-      if(Array.isArray(arr) && arr.length) rows=rows.concat(arr);
-    }
+    const merge=(arr)=>{ if(Array.isArray(arr)) rows.push(...arr); };
     try{
-      // V58.12: lectura robusta multi-browser. No usamos .or() con columnas que podrían
-      // no existir o tener tipos distintos, porque Chrome/Safari pueden fallar distinto.
-      if(u && isUuid(u.id)){
-        await addRows(await tryFetch(q=>q.eq('usuario_id',u.id)));
-        await addRows(await tryFetch(q=>q.eq('user_id',u.id)));
-      }
-      if(u && u.email){
-        await addRows(await tryFetch(q=>q.eq('email',u.email)));
-        await addRows(await tryFetch(q=>q.eq('destinatario_email',u.email)));
-      }
-      // Fallback oficial por contexto. Sirve para campañas/pagos compartidos por rol/curso
-      // y evita que un navegador quede vacío si su sesión local no tiene el mismo id.
-      if(ctx.cursoId && ctx.role){
-        await addRows(await tryFetch(q=>q.eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role)));
-      }
-      if(ctx.cursoKey && ctx.role){
-        await addRows(await tryFetch(q=>q.eq('curso_key',ctx.cursoKey).eq('rol_destino',ctx.role)));
+      const sb=await waitSb(opts.fast?450:900);
+      if(sb){
+        const tasks=[];
+        if(u.id||u.email){
+          let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(80);
+          q=applyRecipientFilter(q,u);
+          tasks.push(q.then(({data,error})=>!error&&Array.isArray(data)?data:[]).catch(()=>[]));
+        }
+        // Siempre consultar curso+rol para evitar diferencias entre Safari/Chrome por sesión local.
+        if(ctx.cursoId && ctx.role){
+          let q2=sb.from('notificaciones').select('*').eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
+          tasks.push(q2.then(({data,error})=>!error&&Array.isArray(data)?data:[]).catch(()=>[]));
+        }
+        if(ctx.cursoKey && ctx.role){
+          let q3=sb.from('notificaciones').select('*').eq('curso_key',ctx.cursoKey).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
+          tasks.push(q3.then(({data,error})=>!error&&Array.isArray(data)?data:[]).catch(()=>[]));
+        }
+        const result=await withTimeout(Promise.all(tasks), opts.fast?1200:2200, []);
+        if(Array.isArray(result)) result.forEach(merge);
       }
     }catch(e){}
-
     const local=readJson('cursapp_notificaciones_local_v1',[])||[];
-    rows=[...(Array.isArray(rows)?rows:[]), ...(Array.isArray(local)?local:[])];
+    merge(local);
     const seen=new Set();
     rows=rows.filter(n=>{
       if(!shouldShowNotificationForContext(n)) return false;
       const key=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
       if(seen.has(key)) return false; seen.add(key); return true;
     }).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0)).slice(0,80);
+    rows=applyLocalReadState(rows);
+    if(rows.length) saveNotifCache(rows);
     return rows;
   }
 
@@ -309,7 +320,7 @@
     const mo=Math.floor(d/30); return `Hace ${mo} mes(es)`;
   }
   async function refreshBell(){
-    const rows=await loadNotifications();
+    const rows=await loadNotifications({fast:true});
     const unread=rows.filter(n=>!n.leida).length;
     document.querySelectorAll('[data-cursapp-bell]').forEach(btn=>{ const em=btn.querySelector('em'); if(em) em.textContent=String(unread); btn.classList.toggle('has-unread', unread>0); });
     const existing=$('#marketAlertsBadge'); if(existing){ existing.style.display=unread?'inline-flex':'none'; existing.textContent=String(unread); }
@@ -328,6 +339,10 @@
     const u=getUser();
     const id=String(n.id||'').trim();
     const now=nowISO();
+    try{
+      const k=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      const read=readJson(notifReadKey(),{})||{}; read[k]=now; writeJson(notifReadKey(), read);
+    }catch(_){ }
     try{
       const sb=await waitSb();
       if(sb && id && !id.startsWith('local_') && !id.startsWith('aviso_local_') && !id.startsWith('notif_')){
@@ -371,20 +386,17 @@
       // Acciones internas sin recargar la página actual.
       if(role==='apoderado'){
         if(tipo==='pago' || tipo==='cuota' || tipo==='campana'){
-          if(location.pathname.includes('/mercado-escolar/')){ location.href='/apoderado.html#payments'; return; }
           setApoderadoTab('payments');
-          hideActionLoading(500);
+          hideActionLoading(750);
           return;
         }
         if(tipo==='aviso' || tipo==='curso'){
-          if(location.pathname.includes('/mercado-escolar/')){ location.href='/apoderado.html#avisos'; return; }
-          setTimeout(()=>{ try{ openCourseNotices(); }catch(_){ } }, 60);
-          hideActionLoading(500);
+          setTimeout(()=>{ try{ openCourseNotices(); }catch(_){ } }, 120);
+          hideActionLoading(750);
           return;
         }
-        if(tipo==='mercado'){
-          if(!location.pathname.includes('/mercado-escolar/')) location.href='/mercado-escolar/mercado-escolar.html';
-          else { try{ window.toast && window.toast('Notificaciones de Mercado Escolar próximamente.'); }catch(_){} hideActionLoading(500); }
+        if(tipo==='mercado' && !location.pathname.includes('/mercado-escolar/')){
+          location.href='/mercado-escolar/mercado-escolar.html';
           return;
         }
       }
@@ -420,13 +432,20 @@
   }
 
   async function openNotifications(){
-    const rows=await loadNotifications();
-    try{ window.__CURSAPP_LAST_NOTIF_ROWS__=rows; }catch(_){ }
-    const list=rows.length?rows.map((n,i)=>`<div class="cursapp-notif-item ${n.leida?'':'unread'}" data-idx="${i}" data-id="${esc(n.id||'')}" data-url="${esc(n.url_destino||'')}"><div class="cursapp-notif-icon">${notifIcons[n.tipo]||'🔔'}</div><div><div class="cursapp-notif-title">${esc(n.titulo||'Notificación')}</div><div class="cursapp-notif-detail">${esc(n.detalle||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(n.created_at))}</div></div>`).join(''):`<div class="cursapp-notif-empty"><div style="font-size:38px">🔔</div><b>Sin notificaciones</b><p>Aquí aparecerán mensajes, avisos, pagos, calificaciones y actividad de Mercado Escolar.</p></div>`;
-    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
-    $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
+    modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list" id="cursappNotifList"><div class="cursapp-notif-empty"><div class="cursapp-action-spinner">C</div><b>Cargando notificaciones...</b><p>Un momento.</p></div></div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
+    const bindRows=(rows)=>{
+      try{ window.__CURSAPP_LAST_NOTIF_ROWS__=rows; }catch(_){ }
+      const list=rows.length?rows.map((n,i)=>`<div class="cursapp-notif-item ${n.leida?'':'unread'}" data-idx="${i}" data-id="${esc(n.id||'')}" data-url="${esc(n.url_destino||'')}"><div class="cursapp-notif-icon">${notifIcons[n.tipo]||'🔔'}</div><div><div class="cursapp-notif-title">${esc(n.titulo||'Notificación')}</div><div class="cursapp-notif-detail">${esc(n.detalle||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(n.created_at))}</div></div>`).join(''):`<div class="cursapp-notif-empty"><div style="font-size:38px">🔔</div><b>Sin notificaciones</b><p>Aquí aparecerán mensajes, avisos, pagos, calificaciones y actividad de Mercado Escolar.</p></div>`;
+      const holder=document.getElementById('cursappNotifList'); if(holder) holder.innerHTML=list;
+      document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; el.classList.remove('unread'); markNotificationRead(n).then(refreshBell).catch(()=>{}); await handleNotificationAction(n);};});
+    };
+    $('#cursappMarkRead').onclick=async()=>{await markAllRead(); bindRows((window.__CURSAPP_LAST_NOTIF_ROWS__||[]).map(n=>Object.assign({},n,{leida:true})));};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
-    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } await handleNotificationAction(n); };});
+    const cached=readNotifCache();
+    if(cached.length) bindRows(cached);
+    const rows=await loadNotifications({fast:true});
+    bindRows(rows);
+    refreshBell();
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
