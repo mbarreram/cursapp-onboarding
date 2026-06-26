@@ -256,34 +256,40 @@
     const u=getUser();
     const ctx=getActiveContext();
     let rows=[];
+    async function tryFetch(build){
+      try{
+        const sb=await waitSb();
+        if(!sb) return [];
+        const q=build(sb.from('notificaciones').select('*'));
+        const {data,error}=await q.order('created_at',{ascending:false}).limit(80);
+        if(error || !Array.isArray(data)) return [];
+        return data;
+      }catch(_){ return []; }
+    }
+    async function addRows(arr){
+      if(Array.isArray(arr) && arr.length) rows=rows.concat(arr);
+    }
     try{
-      const sb=await waitSb();
-      if(sb){
-        // V58.11: una sola verdad multi-browser. Siempre se mezcla:
-        // 1) filas dirigidas al usuario (uuid/email) y 2) filas del contexto curso+rol.
-        // Así Chrome y Safari ven lo mismo aunque uno tenga menos cache local.
-        if(u.id||u.email){
-          let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(80);
-          q=applyRecipientFilter(q,u);
-          const {data,error}=await q;
-          if(!error && Array.isArray(data)) rows=rows.concat(data);
-        }
-        if(ctx.cursoId && ctx.role){
-          let q2=sb.from('notificaciones').select('*').eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
-          const {data:data2,error:error2}=await q2;
-          if(!error2 && Array.isArray(data2)) rows=rows.concat(data2);
-        }
-        // Fallback por curso_key para filas antiguas sin curso_id.
-        if(ctx.cursoKey && ctx.role){
-          try{
-            let q3=sb.from('notificaciones').select('*').eq('curso_key',ctx.cursoKey).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
-            const {data:data3,error:error3}=await q3;
-            if(!error3 && Array.isArray(data3)) rows=rows.concat(data3);
-          }catch(_){ }
-        }
+      // V58.12: lectura robusta multi-browser. No usamos .or() con columnas que podrían
+      // no existir o tener tipos distintos, porque Chrome/Safari pueden fallar distinto.
+      if(u && isUuid(u.id)){
+        await addRows(await tryFetch(q=>q.eq('usuario_id',u.id)));
+        await addRows(await tryFetch(q=>q.eq('user_id',u.id)));
+      }
+      if(u && u.email){
+        await addRows(await tryFetch(q=>q.eq('email',u.email)));
+        await addRows(await tryFetch(q=>q.eq('destinatario_email',u.email)));
+      }
+      // Fallback oficial por contexto. Sirve para campañas/pagos compartidos por rol/curso
+      // y evita que un navegador quede vacío si su sesión local no tiene el mismo id.
+      if(ctx.cursoId && ctx.role){
+        await addRows(await tryFetch(q=>q.eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role)));
+      }
+      if(ctx.cursoKey && ctx.role){
+        await addRows(await tryFetch(q=>q.eq('curso_key',ctx.cursoKey).eq('rol_destino',ctx.role)));
       }
     }catch(e){}
-    // Sólo como respaldo del dispositivo; Supabase siempre tiene prioridad.
+
     const local=readJson('cursapp_notificaciones_local_v1',[])||[];
     rows=[...(Array.isArray(rows)?rows:[]), ...(Array.isArray(local)?local:[])];
     const seen=new Set();
@@ -364,23 +370,21 @@
     try{
       // Acciones internas sin recargar la página actual.
       if(role==='apoderado'){
-        const inMarket = location.pathname.includes('/mercado-escolar/');
         if(tipo==='pago' || tipo==='cuota' || tipo==='campana'){
-          if(inMarket){ location.href='/apoderado.html#payments'; return; }
+          if(location.pathname.includes('/mercado-escolar/')){ location.href='/apoderado.html#payments'; return; }
           setApoderadoTab('payments');
           hideActionLoading(500);
           return;
         }
         if(tipo==='aviso' || tipo==='curso'){
-          if(inMarket){ location.href='/apoderado.html#avisos'; return; }
-          setTimeout(()=>{ try{ openCourseNotices(); }catch(_){ } }, 80);
+          if(location.pathname.includes('/mercado-escolar/')){ location.href='/apoderado.html#avisos'; return; }
+          setTimeout(()=>{ try{ openCourseNotices(); }catch(_){ } }, 60);
           hideActionLoading(500);
           return;
         }
         if(tipo==='mercado'){
-          if(!inMarket){ location.href='/mercado-escolar/mercado-escolar.html'; return; }
-          // En mercado, no usar history.back ni mostrar “próximamente”; sólo cerrar y mantener contexto.
-          hideActionLoading(300);
+          if(!location.pathname.includes('/mercado-escolar/')) location.href='/mercado-escolar/mercado-escolar.html';
+          else { try{ window.toast && window.toast('Notificaciones de Mercado Escolar próximamente.'); }catch(_){} hideActionLoading(500); }
           return;
         }
       }

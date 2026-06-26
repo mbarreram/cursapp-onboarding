@@ -24,7 +24,7 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
   if(el){try{clearInterval(el._t);}catch(e){} el.remove();}
  }
 };
-document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('apoderado'); setTimeout(()=>window.CURSAPP_LOADING.hide(),2200);}catch(e){}});
+document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('apoderado');}catch(e){}});
 // === END LOADING ===
 
 
@@ -3122,6 +3122,12 @@ async function __bootApoderadoSupabaseFirst(){
     go("payments");
   }else if(hash==="payments") go("payments");
   else go("home");
+  try{
+    const started = Number(window.__CURSAPP_BOOT_LOADING_STARTED__ || Date.now());
+    const minMs = 2600;
+    const wait = Math.max(150, minMs - (Date.now() - started));
+    setTimeout(()=>{ try{ window.CURSAPP_LOADING && window.CURSAPP_LOADING.hide(); }catch(e){} }, wait);
+  }catch(e){ setTimeout(()=>{ try{ window.CURSAPP_LOADING && window.CURSAPP_LOADING.hide(); }catch(_){} }, 800); }
 }
 __bootApoderadoSupabaseFirst();
 })();
