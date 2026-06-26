@@ -311,20 +311,31 @@
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
-    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; await markNotificationRead(n); el.classList.remove('unread'); const u=el.dataset.url||''; if(u && u!==location.pathname && !location.pathname.endsWith(u)){ location.href=u; } else { await refreshBell(); } };});
+    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } /* V58.7: no navegar ni recargar al tocar; solo marcar leída. */ };});
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
-    // V58.6: no salir si el botón ya existe; asegurar contador y onclick.
-    let existing=document.querySelector('[data-cursapp-bell]') || $('#btnMarketAlerts') || $('#marketAlertsBtn');
+    // V58.7: crear campana dedicada. No reutilizar el botón de avisos/mensajes del apoderado.
+    let existing=document.querySelector('[data-cursapp-bell="1"]');
     if(existing){
-      existing.setAttribute('data-cursapp-bell','1');
       if(!existing.querySelector('em')){ const em=document.createElement('em'); em.textContent='0'; existing.appendChild(em); }
       existing.onclick=openNotifications;
       refreshBell();
       return;
     }
-    let host=$('#avisosBellHost') || $('.marketHeaderActions') || $('.topbar-actions') || $('.topbar') || document.body;
+    let host=$('#avisosBellHost');
+    if(!host){
+      // En Mercado Escolar sí se puede reutilizar su campana nativa si existe.
+      existing=$('#marketAlertsBtn') || $('#btnMarketAlerts');
+      if(existing && /mercado/i.test(location.pathname+document.title)){
+        existing.setAttribute('data-cursapp-bell','1');
+        if(!existing.querySelector('em')){ const em=document.createElement('em'); em.textContent='0'; existing.appendChild(em); }
+        existing.onclick=openNotifications;
+        refreshBell();
+        return;
+      }
+      host=$('.marketHeaderActions') || $('.topbar-actions') || $('.topbar') || document.body;
+    }
     const btn=document.createElement('button');
     btn.type='button'; btn.className='cursapp-bell-btn'; btn.setAttribute('data-cursapp-bell','1'); btn.setAttribute('aria-label','Notificaciones'); btn.innerHTML='🔔<em>0</em>';
     btn.onclick=openNotifications;
@@ -333,6 +344,10 @@
       const menuBtn=$('#menuBtn');
       if(host===document.body && menuBtn && menuBtn.parentElement) host=menuBtn.parentElement;
       host.appendChild(btn);
+      if(host.id==='avisosBellHost'){
+        host.style.position='absolute'; host.style.right='72px'; host.style.top='10px'; host.style.zIndex='10002';
+        btn.style.width='42px'; btn.style.height='42px'; btn.style.pointerEvents='auto';
+      }
       refreshBell();
     }catch(e){
       document.body.appendChild(btn); btn.classList.add('floating'); refreshBell();

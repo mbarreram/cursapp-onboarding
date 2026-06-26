@@ -67,3 +67,7 @@
 .cursapp-toast-notif.show{opacity:1;transform:translateY(0)}
 .cursapp-toast-notif .ico{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:22px}
 .cursapp-toast-notif b{display:block;font-weight:950;font-size:15px;line-height:1.15}.cursapp-toast-notif span{display:block;margin-top:3px;font-size:12px;font-weight:750;color:#dbe4f0;line-height:1.25}
+/* V58.7 campana dedicada apoderado */
+#avisosBellHost{position:absolute!important;right:72px!important;top:10px!important;z-index:10002!important;display:block!important;pointer-events:auto!important;}
+#avisosBellHost .cursapp-bell-btn{display:grid!important;opacity:1!important;visibility:visible!important;}
+.cursapp-notif-list{max-height:min(58vh,620px);overflow:auto;-webkit-overflow-scrolling:touch;}
