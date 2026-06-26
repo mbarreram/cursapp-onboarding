@@ -1088,9 +1088,32 @@
     }
 
     saveJSON(scopedKey("tasks_v1"), tasks);
-    saveJSON(scopedKey("payments_v1"), payments);
+
+    // V58.4 SAFE PAYMENTS HYDRATE:
+    // No sobrescribir pagos locales si Supabase responde 0 pagos para un curso con campañas.
+    // En Safari/PWA, al volver desde Mercado Escolar puede ocurrir una hidratación temprana
+    // antes de que pagos esté disponible por RLS/sincronización; si pisamos con [] desaparecen
+    // los pendientes del apoderado hasta otra acción. Conservamos la última caché válida.
+    try{
+      const scopedPaymentsKey = scopedKey("payments_v1");
+      const prevScoped = loadJSON(scopedPaymentsKey, []);
+      const prevGlobal = loadJSON("cursapp_payments_v1", []);
+      const prev = Array.isArray(prevScoped) && prevScoped.length ? prevScoped : (Array.isArray(prevGlobal) ? prevGlobal : []);
+      const shouldPreservePayments = (!payments.length && tasks.length && prev.length);
+      if(shouldPreservePayments){
+        saveJSON(scopedPaymentsKey, prev);
+        saveJSON("cursapp_payments_v1", prev);
+        try{ console.warn("Cursapp SAFE HYDRATE: pagos vacíos desde Supabase; se conserva caché local", {courseKey:ck, prev:prev.length, tasks:tasks.length}); }catch(_e){}
+      }else{
+        saveJSON(scopedPaymentsKey, payments);
+        saveJSON("cursapp_payments_v1", payments);
+      }
+    }catch(_safePayErr){
+      saveJSON(scopedKey("payments_v1"), payments);
+      saveJSON("cursapp_payments_v1", payments);
+    }
+
     saveJSON("cursapp_tasks_v1", tasks);
-    saveJSON("cursapp_payments_v1", payments);
 
     const status = { ok:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, usuarios:usuariosRows.length, miembros:miembros.length, apoderados:enrollments.length, campanas:tasks.length, pagos:payments.length, at:new Date().toISOString() };
     saveJSON(STATUS_KEY, status);

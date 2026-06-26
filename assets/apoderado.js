@@ -121,8 +121,36 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
     }
   }
 
+function getActiveMemberIdV584(){
+  try{
+    const profileRaw = localStorage.getItem("cursapp_active_profile_v1") || "";
+    let profile = null;
+    try{ profile = profileRaw && profileRaw.trim().startsWith("{") ? JSON.parse(profileRaw) : null; }catch(_e){}
+    const ids = [
+      profile?.miembroId, profile?.miembro_id, profile?.profileId, profile?.id,
+      localStorage.getItem("cursapp_active_miembro_id_v1"),
+      localStorage.getItem("cursapp_active_profile_v1")
+    ].map(x=>String(x||"").trim()).filter(Boolean);
+    return ids[0] || "";
+  }catch(_e){ return ""; }
+}
+
+function paymentMemberIdV584(p){
+  return String(
+    p?.miembroId || p?.miembro_id || p?.alumnoId || p?.studentId ||
+    p?.supabase?.miembro_id || p?.raw?.miembro_id || ""
+  ).trim();
+}
+
 function isMinePayment(p){
   const mk = meKey();
+  const activeMid = getActiveMemberIdV584();
+  const payMid = paymentMemberIdV584(p);
+
+  // V58.4: si existe miembro activo y el pago trae miembro, manda el miembro.
+  // Esto evita cruces cuando el mismo correo participa en más de un curso/alumno.
+  if(activeMid && payMid) return String(payMid) === String(activeMid);
+
   if(!mk) return true;
 
   // Prefer explicit identity fields
@@ -131,10 +159,9 @@ function isMinePayment(p){
 
   const ak = String(p?.apoderadoKey||"").toLowerCase().trim();
   if(ak) return ak === mk;
-  if(ae) return ae === mk;
 
   const aid = String(p?.apoderadoId||"").toLowerCase().trim();
-  if(aid) return aid === mk;
+  if(aid) return aid === mk || aid === String(activeMid||"").toLowerCase();
 
   // ✅ Sin identidad fuerte no es 'mío' (evita cruces)
   return false;
@@ -157,6 +184,41 @@ function isMinePayment(p){
     localStorage.setItem(k, JSON.stringify(v));
     try{ window.dispatchEvent(new CustomEvent('cursapp:dataChanged', { detail: { key: String(k||'') } })); }catch(e){}
   };
+
+  // V58.4: respaldo de pagos por curso + perfil activo.
+  // Evita que una hidratación vacía al volver desde Mercado Escolar deje el home en 0.
+  function __paymentsSnapshotKeyV584(){
+    const ck = String(localStorage.getItem(KEY_ACTIVE_COURSE)||"").trim() || "global";
+    const mid = (typeof getActiveMemberIdV584 === "function" ? getActiveMemberIdV584() : "") || "perfil";
+    return "cursapp_payments_snapshot_v584_" + ck + "_" + mid;
+  }
+  function __backupPaymentsSnapshotV584(list){
+    try{
+      const arr = Array.isArray(list) ? list : [];
+      const mine = arr.filter(p=>{ try{ return isMinePayment(p); }catch(_e){ return false; } });
+      if(mine.length){
+        localStorage.setItem(__paymentsSnapshotKeyV584(), JSON.stringify({ at:new Date().toISOString(), payments: arr }));
+      }
+    }catch(_e){}
+  }
+  function __restorePaymentsSnapshotIfEmptyV584(list){
+    try{
+      const arr = Array.isArray(list) ? list : [];
+      const mine = arr.filter(p=>{ try{ return isMinePayment(p); }catch(_e){ return false; } });
+      if(mine.length) return arr;
+      const raw = localStorage.getItem(__paymentsSnapshotKeyV584());
+      if(!raw) return arr;
+      const snap = JSON.parse(raw);
+      const restored = Array.isArray(snap?.payments) ? snap.payments : [];
+      const restoredMine = restored.filter(p=>{ try{ return isMinePayment(p); }catch(_e){ return false; } });
+      if(restoredMine.length){
+        save(KEY_PAYMENTS, restored);
+        try{ console.warn("Cursapp V58.4: pagos restaurados desde snapshot", {restored:restoredMine.length}); }catch(_e){}
+        return restored;
+      }
+    }catch(_e){}
+    return Array.isArray(list) ? list : [];
+  }
 
   
   // ---- Opt-out campañas no obligatorias (por apoderado) ----
@@ -1902,7 +1964,9 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
     try{
       const tasks = normalizeTasks(load(KEY_TASKS, []));
       let list = load(KEY_PAYMENTS, []);
+      list = __restorePaymentsSnapshotIfEmptyV584(list);
       try{ list = cleanVisiblePaymentsV11(list, tasks).list; }catch(e){}
+      __backupPaymentsSnapshotV584(list);
       // Fase 2B: Home no debe usar cobros locales legacy tipo pay_xxx.
       // Solo los pagos con UUID real de Supabase pueden abrir pay.html.
       list = onlySupabasePayments(list);
@@ -1998,6 +2062,7 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
 function renderHome(){
     // datos para home
     let paysAll = load(KEY_PAYMENTS, []);
+    paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
     const dd0 = dedupePaymentsAll(paysAll);
     if(dd0.changed) save(KEY_PAYMENTS, dd0.list);
     paysAll = dd0.list;
@@ -2022,6 +2087,7 @@ function renderHome(){
     // scope a este apoderado
     paysAll = paysAll.filter(isMinePayment);
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasks0).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasks0); }
+    __backupPaymentsSnapshotV584(paysAll);
 
     const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const pendingTotal = pending.reduce((a,p)=> a + Number(p.amountRemaining ?? p.amount ?? 0), 0);
@@ -2268,6 +2334,7 @@ function renderHome(){
 
   function renderPayments(){
     let paysAll = load(KEY_PAYMENTS, []);
+    paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
     const ddP = dedupePaymentsAll(paysAll);
     if(ddP.changed) save(KEY_PAYMENTS, ddP.list);
     paysAll = ddP.list;
@@ -2309,6 +2376,7 @@ function renderHome(){
 
     paysAll = paysAll.filter(isMinePayment);
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasksAll).list; }catch(e){ paysAll = suppressPendingCoveredByPaid(paysAll, tasksAll); }
+    __backupPaymentsSnapshotV584(paysAll);
 
     try{
       if(window.__apoForcePaid){
