@@ -78,6 +78,28 @@
   function closePlatformModal(){ const el=$('#cursappPlatformModal'); if(el) el.remove(); }
   window.CURSAPP_CLOSE_PLATFORM_MODAL = closePlatformModal;
 
+  let __actionLoadingTimer = null;
+  function showActionLoading(msg){
+    try{
+      clearTimeout(__actionLoadingTimer);
+      let el=document.getElementById('cursappActionLoading');
+      if(!el){
+        el=document.createElement('div');
+        el.id='cursappActionLoading';
+        el.innerHTML='<div class="cursapp-action-loading-card"><div class="cursapp-action-spinner">C</div><strong></strong><span>Un momento...</span></div>';
+        document.body.appendChild(el);
+      }
+      const st=el.querySelector('strong'); if(st) st.textContent=msg||'Abriendo';
+      el.classList.add('show');
+    }catch(_){ }
+  }
+  function hideActionLoading(delay=550){
+    try{
+      clearTimeout(__actionLoadingTimer);
+      __actionLoadingTimer=setTimeout(()=>{ const el=document.getElementById('cursappActionLoading'); if(el) el.classList.remove('show'); }, delay);
+    }catch(_){ }
+  }
+
   function policyText(){
     return `
       <div class="cursapp-link-row">
@@ -242,6 +264,26 @@
         q=applyRecipientFilter(q,u);
         const {data,error}=await q;
         if(!error && Array.isArray(data)) rows=data;
+
+        // V58.9: fallback multi-browser. En Chrome/Safari puede variar el identificador local
+        // del usuario; si la consulta por destinatario no trae filas, leemos eventos de curso+rol
+        // que son compartidos por contexto (campañas/avisos para apoderados y pagos para directiva).
+        if((!rows || !rows.length)){
+          const ctx=getActiveContext();
+          if(ctx.cursoId && ctx.role){
+            let q2=sb.from('notificaciones').select('*').eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
+            const {data:data2,error:error2}=await q2;
+            if(!error2 && Array.isArray(data2)){
+              const allowed = data2.filter(n=>{
+                const t=String(n.tipo||'').toLowerCase();
+                if(ctx.role==='apoderado') return ['campana','aviso','curso','cuota','sistema'].includes(t);
+                if(ctx.role==='presidente' || ctx.role==='tesorero') return ['pago','campana','aviso','curso','retiro','sistema'].includes(t);
+                return false;
+              });
+              rows=allowed;
+            }
+          }
+        }
       }
     }catch(e){}
     // V58.6: siempre mezcla Supabase + local. Antes, si Supabase devolvía filas,
@@ -322,25 +364,54 @@
     const tipo=String(n.tipo||'').toLowerCase();
     const url=String(n.url_destino||'').trim();
     closePlatformModal();
-    // Acciones internas sin recargar la página actual.
-    if(role==='apoderado'){
-      if(tipo==='pago' || tipo==='cuota' || tipo==='campana'){ setApoderadoTab('payments'); return; }
-      if(tipo==='aviso' || tipo==='curso'){ openCourseNotices(); return; }
-      if(tipo==='mercado' && !location.pathname.includes('/mercado-escolar/')){ location.href='/mercado-escolar/mercado-escolar.html'; return; }
-    }
-    if(role==='presidente'){
-      if(tipo==='pago'){ try{ document.querySelector('[data-tab="dashboard"],[data-tab="home"],[data-section="dashboard"]')?.click(); }catch(_){ } return; }
-    }
-    if(role==='tesorero'){
-      if(tipo==='pago'){ try{ document.querySelector('[data-tab="payments"],[data-tab="pagos"],[data-section="pagos"]')?.click(); }catch(_){ } return; }
-    }
-    if(url){
-      try{
-        const target=new URL(url, location.origin);
-        if(target.pathname===location.pathname){ if(target.hash) location.hash=target.hash; return; }
-        location.href=target.href;
-      }catch(_){ }
-    }
+    showActionLoading('Abriendo');
+    try{
+      // Acciones internas sin recargar la página actual.
+      if(role==='apoderado'){
+        if(tipo==='pago' || tipo==='cuota' || tipo==='campana'){
+          setApoderadoTab('payments');
+          hideActionLoading(750);
+          return;
+        }
+        if(tipo==='aviso' || tipo==='curso'){
+          setTimeout(()=>{ try{ openCourseNotices(); }catch(_){ } }, 120);
+          hideActionLoading(750);
+          return;
+        }
+        if(tipo==='mercado' && !location.pathname.includes('/mercado-escolar/')){
+          location.href='/mercado-escolar/mercado-escolar.html';
+          return;
+        }
+      }
+      if(role==='presidente'){
+        if(tipo==='pago'){
+          // Mantener en pantalla actual y mostrar feedback. Más adelante abrirá detalle financiero.
+          try{ document.querySelector('[data-tab="dashboard"],[data-tab="home"],[data-section="dashboard"]')?.click(); }catch(_){ }
+          hideActionLoading(750);
+          return;
+        }
+      }
+      if(role==='tesorero'){
+        if(tipo==='pago'){
+          try{ document.querySelector('[data-tab="payments"],[data-tab="pagos"],[data-section="pagos"]')?.click(); }catch(_){ }
+          hideActionLoading(750);
+          return;
+        }
+      }
+      if(url){
+        try{
+          const target=new URL(url, location.origin);
+          if(target.pathname===location.pathname){
+            if(target.hash) location.hash=target.hash;
+            hideActionLoading(650);
+            return;
+          }
+          location.href=target.href;
+          return;
+        }catch(_){ }
+      }
+    }catch(_){ }
+    hideActionLoading(650);
   }
 
   async function openNotifications(){
@@ -350,7 +421,7 @@
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
-    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } await handleNotificationAction(n); };});
+    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } await handleNotificationAction(n); };});
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
@@ -392,6 +463,20 @@
       document.body.appendChild(btn); btn.classList.add('floating'); refreshBell();
     }
   }
+
+  // V58.9: mantener campana visible al cambiar de pestaña/sección o cuando algún render pisa el header.
+  function scheduleBellKeepAlive(){
+    try{
+      ensureBell();
+      [350,900,1800].forEach(ms=>setTimeout(()=>{ try{ ensureBell(); refreshBell(); }catch(_){ } },ms));
+    }catch(_){ }
+  }
+  window.addEventListener('pageshow', scheduleBellKeepAlive);
+  window.addEventListener('focus', scheduleBellKeepAlive);
+  document.addEventListener('click', function(e){
+    try{ if(e.target && e.target.closest && e.target.closest('.navItem,[data-tab],.bottomNav button')) setTimeout(scheduleBellKeepAlive,80); }catch(_){ }
+  }, true);
+  setInterval(()=>{ try{ ensureBell(); }catch(_){ } }, 2500);
 
   window.addEventListener('beforeinstallprompt', e=>{ try{ e.preventDefault(); deferredInstallPrompt=e; }catch(_){ } });
   function canShowInstall(){
