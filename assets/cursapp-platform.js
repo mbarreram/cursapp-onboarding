@@ -1,10 +1,10 @@
 
-/* Cursapp V58.8 · Estabiliza campana, lectura, acciones y consultas multi-browser */
+/* Cursapp V58.10 · Estabilización notificaciones: loader, campana persistente, acción rápida y Supabase único */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
-  if(window.__CURSAPP_PLATFORM_V5811__) return;
-  window.__CURSAPP_PLATFORM_V5811__ = true;
+  if(window.__CURSAPP_PLATFORM_V5810__) return;
+  window.__CURSAPP_PLATFORM_V5810__ = true;
 
   const POLICY_VERSION = '1.0.0';
   const MARKET_POLICY_VERSION = '1.0.0';
@@ -254,48 +254,70 @@
   async function loadNotifications(){
     if(!canUsePlatformUI()) return [];
     const u=getUser();
+    const ctx=getActiveContext();
     let rows=[];
-    try{
-      const sb=await waitSb();
-      if(sb && (u.id||u.email)){
-        let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(80);
-        // Compatibilidad robusta multi-browser: algunos registros usan usuario_id/user_id (UUID) y otros email.
-        // No consultamos columnas UUID con email para evitar errores silenciosos en Chrome/Safari.
-        q=applyRecipientFilter(q,u);
-        const {data,error}=await q;
-        if(!error && Array.isArray(data)) rows=data;
+    let usedSupabase=false;
 
-        // V58.9: fallback multi-browser. En Chrome/Safari puede variar el identificador local
-        // del usuario; si la consulta por destinatario no trae filas, leemos eventos de curso+rol
-        // que son compartidos por contexto (campañas/avisos para apoderados y pagos para directiva).
-        if((!rows || !rows.length)){
-          const ctx=getActiveContext();
-          if(ctx.cursoId && ctx.role){
-            let q2=sb.from('notificaciones').select('*').eq('curso_id',ctx.cursoId).eq('rol_destino',ctx.role).order('created_at',{ascending:false}).limit(80);
-            const {data:data2,error:error2}=await q2;
-            if(!error2 && Array.isArray(data2)){
-              const allowed = data2.filter(n=>{
-                const t=String(n.tipo||'').toLowerCase();
-                if(ctx.role==='apoderado') return ['campana','aviso','curso','cuota','sistema'].includes(t);
-                if(ctx.role==='presidente' || ctx.role==='tesorero') return ['pago','campana','aviso','curso','retiro','sistema'].includes(t);
-                return false;
-              });
-              rows=allowed;
-            }
+    try{
+      const sb=await waitSb(1800);
+      if(sb){
+        usedSupabase=true;
+
+        // V58.10: fuente única Supabase para que Chrome/Safari vean lo mismo.
+        // 1) Notificaciones directas del usuario (por UUID o email).
+        if(u.id || u.email){
+          let q=sb.from('notificaciones').select('*').order('created_at',{ascending:false}).limit(120);
+          q=applyRecipientFilter(q,u);
+          const {data,error}=await q;
+          if(!error && Array.isArray(data)) rows=rows.concat(data);
+        }
+
+        // 2) Eventos de curso/rol compartidos por contexto.
+        // Sirve cuando un usuario tiene varios roles/cursos y el navegador no tiene el mismo id local.
+        if(ctx.cursoId && ctx.role){
+          const {data:data2,error:error2}=await sb.from('notificaciones')
+            .select('*')
+            .eq('curso_id',ctx.cursoId)
+            .eq('rol_destino',ctx.role)
+            .order('created_at',{ascending:false})
+            .limit(120);
+
+          if(!error2 && Array.isArray(data2)){
+            const allowed=data2.filter(n=>{
+              const t=String(n.tipo||'').toLowerCase();
+              if(ctx.role==='apoderado') return ['campana','aviso','curso','cuota','sistema','pago'].includes(t);
+              if(ctx.role==='presidente' || ctx.role==='tesorero') return ['pago','campana','aviso','curso','retiro','sistema'].includes(t);
+              return false;
+            });
+            rows=rows.concat(allowed);
           }
         }
       }
-    }catch(e){}
-    // V58.6: siempre mezcla Supabase + local. Antes, si Supabase devolvía filas,
-    // ignoraba la cola local y se perdían notificaciones creadas en el mismo dispositivo.
-    const local=readJson('cursapp_notificaciones_local_v1',[])||[];
-    rows=[...(Array.isArray(rows)?rows:[]), ...(Array.isArray(local)?local:[])];
+    }catch(e){
+      usedSupabase=false;
+      console.warn('No se pudieron leer notificaciones desde Supabase', e);
+    }
+
+    // V58.10: si Supabase respondió, no mezclar cache local para evitar diferencias Chrome/Safari.
+    // Cache local sólo como respaldo offline o si Supabase no está disponible.
+    if(!usedSupabase || !rows.length){
+      const local=readJson('cursapp_notificaciones_local_v1',[])||[];
+      rows=rows.concat(Array.isArray(local)?local:[]);
+    }
+
     const seen=new Set();
-    rows=rows.filter(n=>{
+    const localRead=readJson('cursapp_notificaciones_leidas_local_v1',{})||{};
+    rows=rows.map(n=>{
+      const lk=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      return localRead[lk] ? Object.assign({}, n, {leida:true, leida_at:localRead[lk]}) : n;
+    }).filter(n=>{
       if(!shouldShowNotificationForContext(n)) return false;
       const key=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
-      if(seen.has(key)) return false; seen.add(key); return true;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
     }).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0)).slice(0,80);
+
     return rows;
   }
 
@@ -326,8 +348,17 @@
     const u=getUser();
     const id=String(n.id||'').trim();
     const now=nowISO();
+
+    // Marcado local inmediato para que el badge baje sin esperar red.
     try{
-      const sb=await waitSb();
+      const localRead=readJson('cursapp_notificaciones_leidas_local_v1',{})||{};
+      const lk=id || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      localRead[lk]=now;
+      writeJson('cursapp_notificaciones_leidas_local_v1',localRead);
+    }catch(_){}
+
+    try{
+      const sb=await waitSb(1200);
       if(sb && id && !id.startsWith('local_') && !id.startsWith('aviso_local_') && !id.startsWith('notif_')){
         await sb.from('notificaciones').update({leida:true, leida_at:now}).eq('id',id);
       }else if(sb && (u.id||u.email) && n.titulo){
@@ -337,7 +368,10 @@
         q=applyRecipientFilter(q,u);
         await q;
       }
-    }catch(e){ console.warn('No se pudo marcar notificación leída', e); }
+    }catch(e){
+      console.warn('No se pudo marcar notificación leída en Supabase', e);
+    }
+
     try{
       const local=(readJson('cursapp_notificaciones_local_v1',[])||[]).map(x=>{
         const sameId=id && String(x.id||'')===id;
@@ -345,8 +379,10 @@
         return (sameId||sameFallback)?Object.assign({},x,{leida:true,leida_at:now}):x;
       });
       writeJson('cursapp_notificaciones_local_v1',local);
-    }catch(_){ }
-    await refreshBell();
+    }catch(_){}
+
+    // No esperar a recalcular todo antes de navegar.
+    refreshBell();
   }
 
 
@@ -421,7 +457,26 @@
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card"><div class="cursapp-notif-head"><div><h2>Notificaciones</h2><p>Centro de actividad de Cursapp</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${list}</div><div class="cursapp-notif-actions"><button class="cursapp-btn" id="cursappMarkRead">Marcar todas leídas</button><button class="cursapp-btn primary" id="cursappNotifPrefs">Preferencias</button></div></div></div>`);
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); closePlatformModal(); openNotifications();};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
-    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; await markNotificationRead(n); el.classList.remove('unread'); await refreshBell(); try{ const em=document.querySelector('[data-cursapp-bell] em'); if(em){ const unread=(await loadNotifications()).filter(x=>!x.leida).length; em.textContent=String(unread); em.parentElement.classList.toggle('has-unread', unread>0); } }catch(_){ } await handleNotificationAction(n); };});
+    document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{
+      const idx=Number(el.dataset.idx||0);
+      const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx];
+      showActionLoading('Abriendo');
+      el.style.pointerEvents='none';
+      el.classList.remove('unread');
+
+      // Actualización visual inmediata; la navegación no espera recálculos pesados.
+      try{
+        const em=document.querySelector('[data-cursapp-bell] em');
+        if(em){
+          const current=Math.max(0, Number(em.textContent||0)-1);
+          em.textContent=String(current);
+          em.parentElement.classList.toggle('has-unread', current>0);
+        }
+      }catch(_){}
+
+      await markNotificationRead(n);
+      await handleNotificationAction(n);
+    };});
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
