@@ -1,5 +1,5 @@
 
-/* Cursapp V58.5 · Notificaciones pago directiva + lectura individual */
+/* Cursapp V58.6 · Estabiliza campana + pago directiva por rol/contexto */
 (function(){
   'use strict';
   window.addEventListener('error', function(e){ try{ console.warn('Cursapp platform JS warning', e && (e.message||e.error)); }catch(_){} }, true);
@@ -224,7 +224,6 @@
   async function loadNotifications(){
     if(!canUsePlatformUI()) return [];
     const u=getUser();
-    const ctx=getActiveContext();
     let rows=[];
     try{
       const sb=await waitSb();
@@ -238,8 +237,16 @@
         if(!error && Array.isArray(data)) rows=data;
       }
     }catch(e){}
-    if(!rows.length) rows=readJson('cursapp_notificaciones_local_v1',[]);
-    rows=(rows||[]).filter(shouldShowNotificationForContext);
+    // V58.6: siempre mezcla Supabase + local. Antes, si Supabase devolvía filas,
+    // ignoraba la cola local y se perdían notificaciones creadas en el mismo dispositivo.
+    const local=readJson('cursapp_notificaciones_local_v1',[])||[];
+    rows=[...(Array.isArray(rows)?rows:[]), ...(Array.isArray(local)?local:[])];
+    const seen=new Set();
+    rows=rows.filter(n=>{
+      if(!shouldShowNotificationForContext(n)) return false;
+      const key=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      if(seen.has(key)) return false; seen.add(key); return true;
+    }).sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0)).slice(0,80);
     return rows;
   }
 
@@ -308,16 +315,20 @@
   }
   function ensureBell(){
     if(!canUsePlatformUI()) return;
-    if(document.querySelector('[data-cursapp-bell]')) return;
+    // V58.6: no salir si el botón ya existe; asegurar contador y onclick.
+    let existing=document.querySelector('[data-cursapp-bell]') || $('#btnMarketAlerts') || $('#marketAlertsBtn');
+    if(existing){
+      existing.setAttribute('data-cursapp-bell','1');
+      if(!existing.querySelector('em')){ const em=document.createElement('em'); em.textContent='0'; existing.appendChild(em); }
+      existing.onclick=openNotifications;
+      refreshBell();
+      return;
+    }
     let host=$('#avisosBellHost') || $('.marketHeaderActions') || $('.topbar-actions') || $('.topbar') || document.body;
     const btn=document.createElement('button');
     btn.type='button'; btn.className='cursapp-bell-btn'; btn.setAttribute('data-cursapp-bell','1'); btn.setAttribute('aria-label','Notificaciones'); btn.innerHTML='🔔<em>0</em>';
     btn.onclick=openNotifications;
     if(host===document.body) btn.classList.add('floating');
-    if(host.classList && host.classList.contains('marketHeaderActions')){
-      const marketBtn=$('#btnMarketAlerts');
-      if(marketBtn){ marketBtn.onclick=openNotifications; marketBtn.setAttribute('data-cursapp-bell','1'); refreshBell(); return; }
-    }
     try{
       const menuBtn=$('#menuBtn');
       if(host===document.body && menuBtn && menuBtn.parentElement) host=menuBtn.parentElement;
@@ -764,12 +775,29 @@
       });
       if(inserts.length) await sb.from('notificaciones').insert(inserts);
     }catch(e){ console.warn('No se pudo notificar pago a directiva', e); }
-    // Si quien pagó también tiene rol directivo en el mismo dispositivo, dejamos una copia local por contexto, sin mezclar roles.
-    const activeRole=String(ctx.role||'').toLowerCase();
-    if(activeRole==='presidente' || activeRole==='tesorero'){
-      addLocalNotification(Object.assign({},base,{rol_destino:activeRole,titulo:activeRole==='tesorero'?'Pago recibido para conciliación':'Pago registrado',detalle:activeRole==='tesorero'?detailTes:detailPres,url_destino:activeRole==='tesorero'?'/tesorero.html':'/presidente.html',icono:'💰'}));
-      refreshBell();
-    }
+    // V58.6: si el mismo correo tiene rol directivo en este curso, guardar copia local
+    // para presidente/tesorero aunque el pago se haya realizado desde rol apoderado.
+    // Esto evita que, por RLS o por user_id distinto, la directiva no vea el evento en QA.
+    try{
+      const profiles=readJson('cursapp_profiles_v1',[])||[];
+      const roles=new Set();
+      const email=normEmail(u.email||'');
+      (Array.isArray(profiles)?profiles:[]).forEach(pr=>{
+        const sameCourse = (ctx.cursoKey && String(pr.courseKey||pr.course_key||'')===String(ctx.cursoKey)) || (ctx.cursoId && String(pr.cursoId||pr.curso_id||pr.supabase?.curso_id||'')===String(ctx.cursoId));
+        if(!sameCourse) return;
+        const pEmail=normEmail(pr.email || pr.apoderado?.email || pr.user?.email || '');
+        if(email && pEmail && email!==pEmail) return;
+        const roleText=String(pr.role || pr.user?.role || (Array.isArray(pr.roles)?pr.roles.join(','):'') || '').toLowerCase();
+        if(roleText.includes('presidente')) roles.add('presidente');
+        if(roleText.includes('tesorero')) roles.add('tesorero');
+      });
+      const activeRole=String(ctx.role||'').toLowerCase();
+      if(activeRole==='presidente' || activeRole==='tesorero') roles.add(activeRole);
+      roles.forEach(role=>{
+        addLocalNotification(Object.assign({},base,{rol_destino:role,titulo:role==='tesorero'?'Pago recibido para conciliación':'Pago registrado',detalle:role==='tesorero'?detailTes:detailPres,url_destino:role==='tesorero'?'/tesorero.html':'/presidente.html',icono:'💰'}));
+      });
+      if(roles.size) refreshBell();
+    }catch(e){ console.warn('No se pudo crear copia local directiva', e); }
   }
 
   window.CURSAPP_NOTIFICATIONS = { refresh: refreshBell, open: openNotifications, preferences: openNotificationPreferences, enablePush: enablePushNotifications, testPush: sendTestNotification, create:createNotification, notifyForRole:notifyForRole, markRead:markNotificationRead, context:getActiveContext, openCourseNotices:openCourseNotices, notifyCourseApoderados:notifyCourseApoderados, notifyPaymentToDirectiva:notifyPaymentToDirectiva };
