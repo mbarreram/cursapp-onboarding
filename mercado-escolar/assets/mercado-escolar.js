@@ -2189,7 +2189,7 @@ Vi esta publicación en Mercado Escolar Cursapp.
     $("#btnClearSearch")?.addEventListener("click",()=>{const s=$("#searchInput");if(s){s.value="";search("")}});
     $("#btnRules")?.addEventListener("click",rules);
     $("#btnConversations")?.addEventListener("click",async()=>{showView('conversaciones'); await loadConversations();});
-    $("#btnMarketAlerts")?.addEventListener("click",()=>toast('Notificaciones de Mercado Escolar próximamente.'));
+    $("#btnMarketAlerts")?.addEventListener("click",()=>{ if(window.CURSAPP_NOTIFICATIONS){ window.CURSAPP_NOTIFICATIONS.open(); } else { toast('Cargando notificaciones...'); } });
     $("#btnMarketMenu")?.addEventListener("click",()=>{document.getElementById('modal').innerHTML=`<div class="v19ConfirmOverlay"><section class="v19Confirm marketMenuSheet"><h2>Menú Mercado</h2><div class="mineOptionList"><button type="button" data-open-rules>📖 Reglas Mercado Escolar</button><button type="button" data-view="creditos" onclick="document.getElementById('modal').innerHTML=''">💎 Créditos</button><button type="button" data-view="reputacion" onclick="document.getElementById('modal').innerHTML=''">⭐ Mi perfil de vendedor</button><button type="button" onclick="alert('Ayuda Mercado Escolar disponible próximamente')">❓ Ayuda</button></div><div class="v19ConfirmActions"><button class="ghost" onclick="document.getElementById('modal').innerHTML=''">Cerrar</button></div></section></div>`;});
     document.addEventListener('click',ev=>{ if(ev.target.closest('[data-open-rules]')){ev.preventDefault(); rules();} });
     $("#pubPhotos")?.addEventListener("change",e=>{
