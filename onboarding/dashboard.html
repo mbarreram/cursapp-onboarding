@@ -9,6 +9,12 @@
 
   <style>
     .debugCard{border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);border-radius:16px;padding:12px;margin-top:12px}
+  
+    body.onboardingPremium{background:linear-gradient(180deg,#f5f8f6,#eef4f1)!important;}
+    .topbar{background:rgba(255,255,255,.88)!important;backdrop-filter:blur(16px);border-bottom:1px solid #e1ebe5;}
+    .logo{background:linear-gradient(135deg,#0f8f4d,#111827)!important;}
+    #menuDropdown{border-color:#e1ebe5!important;box-shadow:0 18px 45px rgba(15,23,42,.10)!important;}
+    #menuDropdown .btn{border:1px solid #e1ebe5!important;border-radius:14px!important;margin:4px 0!important;}
   </style>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
@@ -28,8 +34,8 @@
 
       <div id="menuDropdown"
         style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;min-width:200px;box-shadow:0 10px 30px rgba(0,0,0,.12);">
-        <button class="btn ghost" id="backLogin" style="width:100%;text-align:left;">Volver al inicio</button>
-        <button class="btn ghost" id="goLogin" style="width:100%;text-align:left;">Ya tengo cuenta</button>
+        <button class="btn ghost" id="backLogin" style="width:100%;text-align:left;">Volver al landing</button>
+        
       </div>
     </div>
   </header>
@@ -48,14 +54,13 @@
     (function(){
       const btn=document.getElementById('menuBtn');
       const dd=document.getElementById('menuDropdown');
-      const goLogin=document.getElementById('goLogin');
+      
 
       btn.onclick=(e)=>{
         e.stopPropagation();
         dd.style.display = (dd.style.display==='block') ? 'none' : 'block';
       };
       document.addEventListener('click',()=> dd.style.display='none');
-      if(goLogin) goLogin.onclick=()=>{ location.href='/index.html'; };
     })();
 
     (function(){
@@ -77,9 +82,8 @@
     })();
 
     window.onerror=function(msg,src,line){
-      console.error('Onboarding error', msg, src, line);
       document.getElementById('app').innerHTML=
-        `<div class="card"><b>No pudimos cargar el registro</b><div class="debugCard">Intenta recargar la página.</div></div>`;
+        `<div class="card"><b>Error JS:</b><div class="debugCard">${msg}<br>${src}:${line}</div></div>`;
     };
   </script>
 
