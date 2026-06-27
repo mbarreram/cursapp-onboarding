@@ -7,37 +7,36 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/landing-mobile.css?v=610">
+  <link rel="stylesheet" href="/assets/landing-human.css?v=611">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
-  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=610">
 </head>
 <body class="authPage">
   <main class="authPanel" aria-label="Iniciar sesión Cursapp">
-    <a class="ca-back" href="/landing.html">← Volver</a>
+    <a class="lp-back" href="/landing.html">← Volver</a>
     <div class="authIconBig">🔐</div>
     <h1>Iniciar sesión</h1>
     <p class="sub">Bienvenido nuevamente a Cursapp</p>
 
     <form id="loginForm" class="loginForm">
-      <input id="username" class="ca-input" type="email" placeholder="Correo electrónico" autocomplete="username" required />
+      <input id="username" class="lp-input" type="email" placeholder="Correo electrónico" autocomplete="username" required />
       <div style="position:relative">
-        <input id="password" class="ca-input" type="password" placeholder="Contraseña" autocomplete="current-password" required style="padding-right:54px" />
+        <input id="password" class="lp-input" type="password" placeholder="Contraseña" autocomplete="current-password" required style="padding-right:54px" />
         <button id="togglePassword" type="button" aria-label="Mostrar contraseña" style="position:absolute;right:8px;top:7px;border:0;background:#f8fafc;border-radius:12px;width:40px;height:40px">👁</button>
       </div>
       <div id="loginError" class="error" style="display:none;"></div>
       <a href="#" style="color:#0f8f4d;font-weight:900;text-align:center;margin:4px 0 6px">¿Olvidaste tu contraseña?</a>
-      <button class="ca-btn ca-btnDark" type="submit">Ingresar</button>
+      <button class="lp-btn dark" type="submit">Ingresar</button>
       <div style="display:flex;align-items:center;gap:12px;color:#94a3b8;font-size:13px;font-weight:850;margin:8px 0"><span style="height:1px;background:#e5ece8;flex:1"></span>o continúa con<span style="height:1px;background:#e5ece8;flex:1"></span></div>
-      <button id="googleLoginBtn" type="button" class="socialBtn"><span style="color:#4285f4;font-weight:950">G</span> Google</button>
-      <button type="button" class="socialBtn" disabled style="opacity:.72"> Apple</button>
+      <button id="googleLoginBtn" type="button" class="lp-social"><span style="color:#4285f4;font-weight:950">G</span> Google</button>
+      <button type="button" class="lp-social" disabled style="opacity:.72"> Apple</button>
     </form>
 
-    <div class="ca-bottomBox">
+    <div class="lp-bottomBox">
       <p style="margin:0 0 12px;color:#64748b;font-weight:850">¿Nuevo en Cursapp?</p>
       <div style="display:grid;gap:10px">
-        <a href="/onboarding/dashboard.html?mode=apoderado" class="ca-btn ca-btnGhost">Registrarme como apoderado</a>
-        <a href="/onboarding/dashboard.html?mode=directiva&role=presidente" class="ca-btn ca-btnGhost">Crear mi curso (presidente)</a>
+        <a href="/onboarding/dashboard.html?mode=apoderado" class="lp-btn ghost">Registrarme como apoderado</a>
+        <a href="/onboarding/dashboard.html?mode=directiva&role=presidente" class="lp-btn ghost">Crear mi curso (presidente)</a>
       </div>
     </div>
   </main>
@@ -55,6 +54,5 @@
       });
     });
   </script>
-  <script defer src="/assets/cursapp-platform.js?v=610"></script>
 </body>
 </html>
