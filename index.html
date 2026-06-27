@@ -3,151 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Cursapp · Ingreso</title>
-  <link rel="stylesheet" href="/assets/login-pro.css?v=620" />
-<style>
-.authIcon--admin{background:linear-gradient(135deg,#111827,#475467);color:#fff}
-.authIcon--agent{background:linear-gradient(135deg,#7c3aed,#9333ea);color:white}
-.adminPanelBtn,.agentPanelBtn{
-  width:100%;border:0;border-radius:18px;padding:16px 18px;
-  color:#fff;font-weight:950;font-size:15px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.adminPanelBtn{background:linear-gradient(135deg,#111827,#334155);box-shadow:0 16px 36px rgba(17,24,39,.20)}
-.agentPanelBtn{background:linear-gradient(135deg,#7c3aed,#9333ea);box-shadow:0 16px 36px rgba(124,58,237,.24)}
-.authCard--admin,.authCard--agent{border:1px solid rgba(124,58,237,.14)}
-
-.qaModeBtn{
-  margin-top:12px;
-  width:100%;
-  border:1px dashed rgba(124,58,237,.38);
-  border-radius:18px;
-  padding:13px 16px;
-  color:#6d28d9;
-  background:rgba(124,58,237,.06);
-  font-weight:950;
-  font-size:14px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  text-decoration:none;
-}
-.qaModeBtn small{font-weight:850;color:#64748b;}
-</style>
-
-<script>
-window.CURSAPP_GO_ADMIN = function(ev){
-  try{
-    if(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-
-    var s = {
-      userId:"admin_cursapp",
-      email:"admin@cursapp.cl",
-      role:"admin",
-      isAdmin:true,
-      createdAt:new Date().toISOString()
-    };
-
-    localStorage.setItem("cursapp_session_v1", JSON.stringify(s));
-    localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(s));
-
-    var check = localStorage.getItem("cursapp_session_v1");
-
-    alert(
-      "Admin click OK\n" +
-      "Sesión guardada: " + (check ? "SI" : "NO") + "\n" +
-      "Destino: /admin-console/admin.html"
-    );
-
-    window.location.href = "/admin-console/admin.html";
-    return false;
-
-  }catch(e){
-    alert("Error admin login: " + (e && e.message ? e.message : e));
-    return false;
-  }
-};
-</script>
-
+  <title>Cursapp · Ingresar</title>
+  <link rel="stylesheet" href="/assets/login-pro.css?v=600-clean" />
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
-  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=552">
+  <link rel="stylesheet" href="/assets/cursapp-platform.css?v=5814">
 </head>
-<body class="authPremium">
-
-  <main class="authShell" aria-label="Ingreso Cursapp">
-    <header class="authBrand">
+<body class="authPremium authPremium--loginOnly">
+  <main class="authShell authShell--clean" aria-label="Ingreso Cursapp">
+    <header class="authBrand authBrand--center">
       <div class="authLogo" aria-hidden="true">C</div>
       <div class="authBrandText">
         <h1>Cursapp</h1>
-        <p>Gestión de cursos y finanzas escolares</p>
+        <p>Ingresa a tu curso</p>
       </div>
     </header>
 
-    <section class="authCard authCard--register" aria-labelledby="registerTitle">
-      <div class="authCardHead">
-        <div>
-          <h2 id="registerTitle">Registrar</h2>
-          <p>Elige tu rol para comenzar</p>
-        </div>
-      </div>
-
-      <div class="roleGrid">
-        <article class="roleCard roleCard--featured">
-          <div class="roleIcon" aria-hidden="true">🎓</div>
-          <h3>Presidente</h3>
-          <p>Registra tu curso</p>
-          <button id="btnDirectiva" type="button" class="roleBtn roleBtn--primary">
-            <span>Registrar</span><span aria-hidden="true">›</span>
-          </button>
-        </article>
-
-        <article class="roleCard">
-          <div class="roleIcon" aria-hidden="true">👥</div>
-          <h3>Apoderado</h3>
-          <p>Regístrate</p>
-          <button id="btnApoderado" type="button" class="roleBtn roleBtn--ghost">
-            <span>Registrar</span><span aria-hidden="true">›</span>
-          </button>
-        </article>
-      </div>
-    </section>
-
-
-    <section class="authCard authCard--admin" aria-labelledby="adminTitle">
-      <div class="authCardHead authCardHead--admin">
-        <div class="authIcon authIcon--admin" aria-hidden="true">🛡️</div>
-        <div>
-          <h2 id="adminTitle">Panel administrador</h2>
-          <p>Acceso interno para administradores de Cursapp</p>
-        </div>
-      </div>
-      <a id="btnAdminPanel" class="adminPanelBtn" href="/admin-console/admin.html" onclick="return window.CURSAPP_GO_ADMIN(event)">Entrar como administrador <span>›</span></a>
-      <p class="adminHint">Usuario demo: admin@cursapp.cl</p>
-    </section>
-
-    <section class="authCard authCard--agent" aria-labelledby="agentTitle">
-      <div class="authCardHead authCardHead--agent">
-        <div class="authIcon authIcon--agent" aria-hidden="true">🏆</div>
-        <div>
-          <h2 id="agentTitle">Panel agente</h2>
-          <p>Acceso para agentes captadores Cursapp</p>
-        </div>
-      </div>
-      <button id="btnAgentPanel" type="button" class="agentPanelBtn">
-        Entrar como agente <span>›</span>
-      </button>
-      <p class="adminHint">Usuario demo: agente@cursapp.cl · clave 123456</p>
-    </section>
-
-    <section class="authCard authCard--login" aria-labelledby="loginTitle">
-      <div class="loginHead">
+    <section class="authCard authCard--loginClean" aria-labelledby="loginTitle">
+      <div class="loginHead loginHead--clean">
         <div class="loginIcon" aria-hidden="true">🔐</div>
         <div>
-          <h2 id="loginTitle">Ingresa a tu curso</h2>
+          <h2 id="loginTitle">Bienvenido</h2>
           <p>Presidentes, tesoreros y apoderados</p>
         </div>
       </div>
@@ -170,136 +46,77 @@ window.CURSAPP_GO_ADMIN = function(ev){
           <span>Ingresar</span><span aria-hidden="true">›</span>
         </button>
 
-        <div class="divider"><span>o</span></div>
-
-        <button type="button" class="googleBtn" id="googleLoginBtn">
-          <span class="googleMark" aria-hidden="true">G</span>
-          <span>Continuar con Google</span>
-        </button>
-
-        <button type="button" class="cancelBtn" onclick="resetForm()">Cancelar</button>
+        <div class="links links--clean">
+          <a href="#" id="forgotPasswordLink">🔒 Olvidé mi contraseña</a>
+        </div>
       </form>
+    </section>
 
-      <div class="links">
-        <a href="#">🔒 Olvidé mi contraseña</a>
-        <span aria-hidden="true"></span>
-        <a href="#">↻ Recuperar contraseña</a>
+    <section class="authCard authCard--entryLinks" aria-labelledby="newUserTitle">
+      <div class="entryLinksHead">
+        <h2 id="newUserTitle">¿Primera vez en Cursapp?</h2>
+        <p>El registro se inicia desde los accesos separados.</p>
       </div>
-      <a class="qaModeBtn" href="/qa360.html" aria-label="Ejecutar QA 360 Cursapp">
-        <span>🧪 Ejecutar QA 360</span><small>modular Supabase ›</small>
-      </a>
+      <div class="entryLinkGrid">
+        <a class="entryLinkCard entryLinkCard--primary" href="/onboarding/dashboard.html?mode=directiva&role=presidente">
+          <span class="entryLinkIcon">🎓</span>
+          <span><b>Registrar curso</b><small>Presidente / directiva</small></span>
+          <strong>›</strong>
+        </a>
+        <a class="entryLinkCard" href="/onboarding/dashboard.html?mode=apoderado&role=apoderado">
+          <span class="entryLinkIcon">👥</span>
+          <span><b>Unirme a un curso</b><small>Apoderado con código</small></span>
+          <strong>›</strong>
+        </a>
+      </div>
+    </section>
 
+    <section class="authLegal">
+      <a href="/landing.html">Conocer Cursapp</a>
+      <span>·</span>
+      <a href="#" onclick="window.CursappPlatform&&window.CursappPlatform.openPolicy&&window.CursappPlatform.openPolicy('privacy');return false;">Privacidad</a>
+      <span>·</span>
+      <a href="#" onclick="window.CursappPlatform&&window.CursappPlatform.openPolicy&&window.CursappPlatform.openPolicy('terms');return false;">Términos</a>
+      <details class="internalAccess">
+        <summary>Accesos internos</summary>
+        <a href="/admin-console/admin.html">Panel administrador</a>
+        <a href="/agente/agente.html">Panel agente</a>
+        <a href="/qa360.html">QA 360</a>
+      </details>
     </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/supabaseClient.js?v=20260608" defer></script>
   <script src="/assets/login.js?v=20260623-supabase-auth" defer></script>
+  <script defer src="/assets/cursapp-platform.js?v=5814"></script>
   <script>
     function resetForm(){
-      const form = document.getElementById("loginForm");
-      const err = document.getElementById("loginError");
+      const form = document.getElementById('loginForm');
+      const err = document.getElementById('loginError');
       if(form) form.reset();
-      if(err){ err.style.display = "none"; err.textContent = ""; }
+      if(err){ err.style.display='none'; err.textContent=''; }
     }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const btnDirectiva = document.getElementById("btnDirectiva");
-      const btnApoderado = document.getElementById("btnApoderado");
-      const togglePassword = document.getElementById("togglePassword");
-      const password = document.getElementById("password");
-      const googleLoginBtn = document.getElementById("googleLoginBtn");
-      const ONBOARDING_URL = "/onboarding/dashboard.html";
-
-      if(btnDirectiva){
-        btnDirectiva.addEventListener("click", () => {
-          window.location.href = `${ONBOARDING_URL}?mode=directiva&role=presidente`;
-        });
-      }
-
-      if(btnApoderado){
-        btnApoderado.addEventListener("click", () => {
-          window.location.href = `${ONBOARDING_URL}?mode=apoderado`;
-        });
-      }
-
+    document.addEventListener('DOMContentLoaded',()=>{
+      const togglePassword=document.getElementById('togglePassword');
+      const password=document.getElementById('password');
       if(togglePassword && password){
-        togglePassword.addEventListener("click", () => {
-          const show = password.type === "password";
-          password.type = show ? "text" : "password";
-          togglePassword.classList.toggle("isActive", show);
+        togglePassword.addEventListener('click',()=>{
+          const showing=password.type==='text';
+          password.type=showing?'password':'text';
+          togglePassword.classList.toggle('isActive',!showing);
         });
       }
-
-      if(googleLoginBtn){
-        googleLoginBtn.addEventListener("click", () => {
-          const err = document.getElementById("loginError");
-          if(err){
-            err.style.display = "block";
-            err.textContent = "Google Login queda visualmente preparado; falta conectar proveedor OAuth.";
-          }
+      const forgot=document.getElementById('forgotPasswordLink');
+      if(forgot){
+        forgot.addEventListener('click',(e)=>{
+          e.preventDefault();
+          const email=(document.getElementById('username')?.value||'').trim();
+          if(window.CURSAPP_AUTH_RESET_PASSWORD){ window.CURSAPP_AUTH_RESET_PASSWORD(email); }
+          else alert('La recuperación de contraseña quedará activa cuando habilitemos el flujo reset-password.');
         });
       }
     });
   </script>
-
-<script>
-(function(){
-  function setJSON(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-  function ensureAgent(){
-    var KEY="cursapp_ref_agents_v1";
-    var list=[];
-    try{ list=JSON.parse(localStorage.getItem(KEY)||"[]")||[]; }catch(e){ list=[]; }
-    var ag=list.find(function(a){ return String(a.email||"").toLowerCase()==="agente@cursapp.cl"; });
-    if(!ag){
-      ag={id:"ag_demo_cursapp",name:"Agente Demo Cursapp",email:"agente@cursapp.cl",code:"MAU2026",status:"active",createdAt:new Date().toISOString()};
-      list.unshift(ag);
-      setJSON(KEY,list);
-    }
-    return ag;
-  }
-  function bind(){
-    var admin=document.getElementById("btnAdminPanel");
-    if(admin && !admin.dataset.safeBound){
-      admin.dataset.safeBound="1";
-      admin.onclick=function(e){
-        e.preventDefault();
-        var s={userId:"admin_cursapp",email:"admin@cursapp.cl",role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
-        setJSON("cursapp_session_v1",s);
-        setJSON("cursapp_admin_session_v1",s);
-        location.href="/admin-console/admin.html";
-      };
-    }
-    var agent=document.getElementById("btnAgentPanel");
-    if(agent && !agent.dataset.safeBound){
-      agent.dataset.safeBound="1";
-      agent.onclick=function(e){
-        e.preventDefault();
-        var ag=ensureAgent();
-        setJSON("cursapp_agent_session_v1",{agentId:ag.id,email:ag.email,name:ag.name,code:ag.code,role:"agente",createdAt:new Date().toISOString()});
-        location.href="/agente/agente.html";
-      };
-    }
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bind);
-  else bind();
-})();
-</script>
-
-
-
-
-
-
-<script>
-window.addEventListener("DOMContentLoaded", function(){
-  var a = document.getElementById("btnAdminPanel");
-  if(a){
-    a.setAttribute("href","/admin-console/admin.html");
-    a.setAttribute("onclick","return window.CURSAPP_GO_ADMIN(event)");
-  }
-});
-</script>
-
 </body>
 </html>
