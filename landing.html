@@ -1,49 +1,102 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Cursapp · Finanzas y comunidad escolar</title>
-  <meta name="description" content="Cursapp organiza cuotas, campañas, pagos, avisos, rendiciones y Mercado Escolar para comunidades escolares." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/landing-v625.css?v=625">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Cursapp · Organiza tu curso</title>
+  <link rel="stylesheet" href="assets/landing-v628.css">
 </head>
 <body>
+<div class="landing-shell">
   <header class="landing-header">
-    <div class="landing-shell landing-nav">
-      <a class="brand" href="/landing.html" aria-label="Cursapp inicio"><span class="brand-mark">C</span><span>Cursapp<small>Finanzas · Comunidad escolar</small></span></a>
-      <nav class="nav-links" aria-label="Navegación pública"><a href="#funciones">Funciones</a><a href="#mercado">Mercado Escolar</a><a href="#seguridad">Seguridad</a><a href="#accesos">Accesos</a></nav>
-      <div class="nav-actions"><a class="btn btn-light" href="/login.html">Iniciar sesión</a><a class="btn btn-green" href="/registro-presidente.html">Crear curso</a></div>
-      <button class="mobile-menu-btn" id="landingMenu" type="button" aria-label="Abrir menú">☰</button>
-      <div class="mobile-drawer" id="landingDrawer"><a href="#funciones">Funciones</a><a href="#mercado">Mercado Escolar</a><a href="#seguridad">Seguridad</a><a href="/login.html">Iniciar sesión</a><a href="/registro-apoderado.html">Registro apoderado</a><a href="/registro-presidente.html">Crear curso</a></div>
+    <nav class="landing-nav">
+      <a class="brand" href="landing.html"><span class="brand-mark">C</span><span>Cursapp</span></a>
+      <div class="nav-links">
+        <a href="#funciones">Funciones</a><a href="#mercado">Mercado Escolar</a><a href="#seguridad">Seguridad</a><a href="#accesos">Accesos</a>
+      </div>
+      <a class="nav-cta" href="login.html">Iniciar sesión</a>
+      <button class="menu-btn" data-menu-btn>≡</button>
+    </nav>
+    <div class="mobile-menu" data-mobile-menu>
+      <a href="#funciones">Funciones</a><a href="#mercado">Mercado Escolar</a><a href="#seguridad">Seguridad</a><a href="#accesos">Accesos</a><a href="login.html">Iniciar sesión</a>
     </div>
   </header>
+
   <main>
     <section class="hero">
-      <div class="landing-shell hero-grid">
-        <div class="hero-copy">
-          <span class="kicker">Comunidad · Finanzas · Transparencia</span>
-          <h1>Organiza las finanzas de tu curso <span>en un solo lugar</span></h1>
-          <p class="lead">Cuotas, campañas, pagos, avisos, rendiciones y Mercado Escolar para una comunidad escolar más ordenada y transparente.</p>
-          <div class="hero-actions"><a class="btn btn-green" href="/registro-presidente.html">Crear mi curso</a><a class="btn btn-primary" href="/login.html">Iniciar sesión</a></div>
-          <p class="invite-line">¿Tienes código de invitación? <a href="/registro-apoderado.html">Regístrate como apoderado</a></p>
-          <div class="trust-row"><span class="trust-pill">✓ Acceso por curso</span><span class="trust-pill">✓ Roles separados</span><span class="trust-pill">✓ Mercado Escolar sin pagos internos</span></div>
+      <div class="hero-copy">
+        <div class="badge">⭐ Comunidad · Finanzas · Transparencia</div>
+        <h1>Organiza las finanzas de tu curso <span>en un solo lugar</span></h1>
+        <p>Cuotas, campañas, pagos, avisos, rendiciones y Mercado Escolar para toda la comunidad escolar.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="registro-presidente.html">Crear mi curso</a>
+          <a class="btn btn-outline" href="login.html">Iniciar sesión</a>
         </div>
-        <div class="hero-photo-card" aria-label="Familia usando Cursapp"><div class="hero-photo"></div><div class="phone-card"><h3>Próxima cuota</h3><div class="pay-card"><small>Paseo de curso</small><b>$15.000</b><small>Vence en 3 días</small><div class="progress"><span></span></div><small>68% recaudado</small></div><div class="quick-stats"><div><b>24</b><small>pagos</small></div><div><b>3</b><small>campañas</small></div><div><b>99%</b><small>claro</small></div></div></div></div>
+        <div class="social-proof"><span class="faces"><i class="face"></i><i class="face"></i><i class="face"></i></span><span>Miles de familias ya usan Cursapp en sus cursos y colegios.</span></div>
+      </div>
+      <div class="hero-photo"><img src="assets/landing/hero-family.webp" alt="Familia usando Cursapp"></div>
+    </section>
+
+    <section class="section" id="accesos">
+      <div class="section-title"><h2>¿Cómo quieres acceder?</h2><p>Elige la opción que mejor te describe para comenzar.</p></div>
+      <div class="access-grid">
+        <article class="access-card"><div class="access-icon parent">👥</div><h3>Soy Apoderado</h3><p>Únete a tu curso con un código de invitación entregado por tu directiva.</p><a class="btn btn-outline" href="registro-apoderado.html">Unirme a mi curso</a></article>
+        <article class="access-card"><div class="access-icon board">👥</div><h3>Soy Presidente / Directiva</h3><p>Crea y administra tu curso de forma fácil, segura y transparente.</p><a class="btn btn-outline" href="registro-presidente.html">Crear mi curso</a></article>
+        <article class="access-card"><div class="access-icon login">🔒</div><h3>Ya tengo cuenta</h3><p>Inicia sesión para acceder a tu curso, rol y alumno cuando corresponda.</p><a class="btn btn-outline" href="login.html">Iniciar sesión</a></article>
       </div>
     </section>
-    <section class="section" id="accesos"><div class="landing-shell"><h2 class="section-title">Elige cómo quieres entrar</h2><p class="section-lead">Cursapp separa los accesos para que cada usuario vea sólo lo que corresponde a su curso y rol.</p><div class="access-grid"><article class="card access-card"><div class="photo photo-login"></div><h3>Ya tengo cuenta</h3><p>Ingresa con tu correo y contraseña para elegir curso, rol y alumno cuando corresponda.</p><a class="btn btn-primary" href="/login.html">Iniciar sesión</a></article><article class="card access-card"><div class="photo photo-parent"></div><h3>Soy apoderado</h3><p>Regístrate con el código de invitación entregado por la directiva de tu curso.</p><a class="btn btn-green" href="/registro-apoderado.html">Registro apoderado</a></article><article class="card access-card"><div class="photo photo-directiva"></div><h3>Soy presidente o directiva</h3><p>Crea el curso, configura el colegio y comienza a organizar los cobros.</p><a class="btn btn-green" href="/registro-presidente.html">Crear curso</a></article></div></div></section>
-    <section class="section" id="funciones"><div class="landing-shell preview-grid"><div class="app-preview"><div class="mini-app"><div class="mini-top"><span class="mini-title">Home apoderado</span><span class="mini-badge">Cuota próxima</span></div><div class="fee-box"><small>Gira de estudios</small><strong>$20.000</strong><small>2 cuotas pendientes</small></div></div><div class="mini-app"><div class="mini-top"><span class="mini-title">Campaña activa</span><span class="mini-badge">68%</span></div><div class="progress"><span></span></div><p style="margin:0;color:#66756d;font-weight:750">Rifa de curso · vence el viernes</p></div><div class="mini-app"><div class="mini-top"><span class="mini-title">Notificaciones</span><span class="mini-badge">Nuevo</span></div><p style="margin:0;color:#66756d;font-weight:750">El presidente publicó un aviso para el curso.</p></div></div><div class="market-showcase" id="mercado"><div class="market-photo"></div><div class="market-product"><h3>Mercado Escolar</h3><p style="margin:0 0 6px;color:#64756c">Compra, vende o intercambia dentro de tu comunidad registrada.</p><div class="stars">★★★★★ <span style="color:#15251d;font-weight:950">5.0</span></div><p style="margin:8px 0 0;color:#64756c;font-weight:800">Mochila escolar · Vendedor recomendado</p></div></div></div></section>
-    <section class="section"><div class="landing-shell"><h2 class="section-title">Todo lo que tu curso necesita</h2><p class="section-lead">Menos planillas, menos mensajes perdidos y más transparencia para apoderados y directiva.</p><div class="feature-grid"><article class="feature-card"><div class="feature-icon">💳</div><h3>Pagos y cuotas</h3><p>Controla cobros pendientes, pagados y comprobantes.</p></article><article class="feature-card"><div class="feature-icon">📣</div><h3>Campañas</h3><p>Rifas, paseos, regalos y giras de estudio.</p></article><article class="feature-card"><div class="feature-icon">📊</div><h3>Informes</h3><p>Resumen claro para apoderados, presidente y tesorero.</p></article><article class="feature-card"><div class="feature-icon">🧾</div><h3>Rendiciones</h3><p>Transparencia en gastos, fondos y movimientos.</p></article><article class="feature-card"><div class="feature-icon">🔔</div><h3>Notificaciones</h3><p>Avisos importantes visibles en la campana interna.</p></article><article class="feature-card"><div class="feature-icon">🛍️</div><h3>Mercado Escolar</h3><p>Comunidad cerrada, reputación y contacto seguro.</p></article></div></div></section>
-    <section class="section"><div class="landing-shell"><h2 class="section-title">Así funciona</h2><div class="steps"><article class="step"><b>1</b><h3>La directiva crea el curso</h3><p>Configura colegio, curso, jornada y roles.</p></article><article class="step"><b>2</b><h3>Invita a los apoderados</h3><p>Cada familia se registra con su código.</p></article><article class="step"><b>3</b><h3>Crea cuotas y campañas</h3><p>Pagos, recordatorios y comprobantes.</p></article><article class="step"><b>4</b><h3>Revisa avances</h3><p>Informes, rendiciones y Mercado Escolar.</p></article></div></div></section>
-    <section class="section" id="seguridad"><div class="landing-shell safe-band"><div><h2>Una comunidad escolar privada y clara</h2><p>Cursapp está diseñado para separar cursos, roles y datos. En Mercado Escolar no se procesan pagos entre usuarios: la plataforma sólo facilita el contacto dentro de la comunidad registrada.</p></div><div class="safe-list"><div>✓ Acceso por curso y rol</div><div>✓ Consentimientos y políticas visibles</div><div>✓ Reputación en Mercado Escolar</div><div>✓ Sin pagos internos entre usuarios</div></div></div></section>
-    <section class="section"><div class="landing-shell cta"><div><h2>Comienza con tu curso en minutos</h2><p>Una plataforma sencilla para organizar pagos, campañas y comunicación escolar.</p></div><a class="btn btn-green" href="/registro-presidente.html">Crear mi curso</a></div></section>
+
+    <section class="section">
+      <div class="preview-block">
+        <div><h2>Conoce Cursapp</h2><p>Todo lo que tu curso necesita, en la palma de tu mano.</p></div>
+        <div class="phone-strip"><img src="assets/landing/app-preview.webp" alt="Vista previa de Cursapp"></div>
+      </div>
+    </section>
+
+    <section class="section" id="funciones">
+      <div class="section-title"><h2>Beneficios para toda la comunidad escolar</h2></div>
+      <div class="benefits">
+        <article class="benefit"><div class="bicon">💳</div><h3>Pagos y cuotas</h3><p>Controla cobros pendientes y pagos realizados.</p></article>
+        <article class="benefit"><div class="bicon">📣</div><h3>Campañas</h3><p>Organiza, recauda y cumple metas fácilmente.</p></article>
+        <article class="benefit"><div class="bicon">📄</div><h3>Informes</h3><p>Transparencia total para apoderados y directiva.</p></article>
+        <article class="benefit"><div class="bicon">🛍️</div><h3>Mercado Escolar</h3><p>Compra y vende dentro de la comunidad escolar.</p></article>
+        <article class="benefit"><div class="bicon">🛡️</div><h3>Seguridad</h3><p>Tu dato y los de tu curso siempre protegidos.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="mercado">
+      <div class="safe">
+        <div><h2>Mercado Escolar seguro</h2><p>Compra, vende o intercambia dentro de tu comunidad registrada. Cursapp no procesa pagos entre usuarios.</p></div>
+        <img src="assets/landing/community-school.webp" alt="Comunidad escolar">
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title"><h2>Así de fácil funciona</h2></div>
+      <div class="steps">
+        <article class="step"><div class="step-num">1</div><h3>Crea tu curso</h3><p>El presidente configura el colegio y curso.</p></article>
+        <article class="step"><div class="step-num">2</div><h3>Invita apoderados</h3><p>Los apoderados se unen con código.</p></article>
+        <article class="step"><div class="step-num">3</div><h3>Organiza y comunica</h3><p>Gestiona pagos, campañas, avisos y rendiciones.</p></article>
+        <article class="step"><div class="step-num">4</div><h3>Transparencia</h3><p>Toda la información del curso siempre a mano.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="seguridad">
+      <div class="safe">
+        <div><h2>Cursapp es una comunidad escolar privada y segura</h2><ul><li>Acceso solo para miembros del curso.</li><li>Sin pagos entre usuarios en Mercado Escolar.</li><li>Cumplimos con políticas de privacidad.</li></ul></div>
+        <img src="assets/landing/mobile-preview.webp" alt="Cursapp en móvil">
+      </div>
+    </section>
   </main>
-  <footer class="footer"><div class="landing-shell"><span>© 2026 Cursapp · Finanzas y comunidad escolar</span><span><a href="#seguridad">Privacidad</a><a href="#seguridad">Términos</a><a href="/login.html">Ingresar</a></span></div></footer>
-  <script src="/assets/landing-v625.js?v=625" defer></script>
+
+  <footer class="footer">
+    <div><div class="brand"><span class="brand-mark">C</span><span>Cursapp</span></div><p>La app que ayuda a cursos y colegios a organizar sus finanzas con transparencia y confianza.</p></div>
+    <div><h4>Funciones</h4><a>Pagos y cuotas</a><a>Campañas</a><a>Rendiciones</a><a>Informes</a></div>
+    <div><h4>Mercado Escolar</h4><a>Comprar</a><a>Vender</a><a>Categorías</a><a>Seguridad</a></div>
+    <div><h4>Cursapp</h4><a>Quiénes somos</a><a>Blog</a><a>Contacto</a><a>Centro de ayuda</a></div>
+    <div><h4>Legal</h4><a>Términos y condiciones</a><a>Política de privacidad</a></div>
+  </footer>
+</div>
+<script src="assets/landing-v628.js"></script>
 </body>
 </html>
