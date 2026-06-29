@@ -2,53 +2,66 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Iniciar sesión · Cursapp</title>
-  <link rel="stylesheet" href="assets/landing-v628.css">
-  <script defer src="assets/login.js"></script>
+  <link rel="stylesheet" href="assets/login-pro.css?v=69-login-fix">
 </head>
-<body>
-  <main class="auth-page">
-    <section class="auth-card">
-      <div class="auth-photo">
-        <img src="assets/landing/login-human.webp" alt="Ingresar a Cursapp">
+<body class="authPremium">
+  <main class="authShell">
+    <a href="landing.html" style="display:inline-flex;align-items:center;gap:8px;color:#6d28d9;text-decoration:none;font-weight:950;margin:0 0 14px 6px;">← Volver</a>
+
+    <section class="authBrand" aria-label="Cursapp">
+      <div class="authLogo">C</div>
+      <div>
+        <h1>Cursapp</h1>
+        <p>Ingresa a tu curso</p>
+      </div>
+    </section>
+
+    <section class="authCard">
+      <div class="loginHead">
+        <div class="loginIcon" aria-hidden="true">🔒</div>
+        <div>
+          <h2>Iniciar sesión</h2>
+          <p>Accede con tu correo y contraseña para elegir curso, rol y alumno cuando corresponda.</p>
+        </div>
       </div>
 
-      <form id="loginForm" class="auth-form" autocomplete="on" novalidate>
-        <a class="back-link" href="landing.html">← Volver</a>
-        <h1>Iniciar sesión</h1>
-        <p>Bienvenido de vuelta a Cursapp.</p>
+      <form id="loginForm" class="loginForm" autocomplete="on" novalidate>
+        <label class="inputWrap" for="username">
+          <span class="inputIcon" aria-hidden="true">✉️</span>
+          <input id="username" name="username" type="email" inputmode="email" autocomplete="username" placeholder="Correo electrónico" required>
+        </label>
 
-        <div id="loginError" class="login-error" style="display:none"></div>
+        <label class="inputWrap" for="password">
+          <span class="inputIcon" aria-hidden="true">🔑</span>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" required>
+        </label>
 
-        <div class="field">
-          <label for="username">Correo electrónico</label>
-          <input id="username" name="username" type="email" autocomplete="username" placeholder="tu correo@ejemplo.com" required>
+        <div id="loginError" class="error" style="display:none;"></div>
+
+        <button class="btnPrimary" type="submit">Ingresar <span aria-hidden="true">→</span></button>
+
+        <div class="divider">o continúa con</div>
+
+        <button class="googleBtn" type="button" onclick="alert('Login Google disponible en próxima integración.');">
+          <span class="googleMark">G</span>
+          Google
+        </button>
+        <button class="googleBtn" type="button" onclick="alert('Login Apple disponible en próxima integración.');" style="margin-top:12px;">
+          <span class="googleMark" style="color:#111827;"></span>
+          Apple
+        </button>
+
+        <div class="links">
+          <a href="onboarding/dashboard.html?mode=apoderado">Registrarme como apoderado</a>
+          <span aria-hidden="true"></span>
+          <a href="onboarding/dashboard.html?mode=directiva&role=presidente">Crear mi curso</a>
         </div>
-
-        <div class="field">
-          <label for="password">Contraseña</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
-        </div>
-
-        <div class="auth-actions">
-          <button class="btn btn-primary" type="submit">Ingresar</button>
-          <a class="btn btn-outline" href="#">¿Olvidaste tu contraseña?</a>
-        </div>
-
-        <div class="oauth" aria-label="Accesos sociales">
-          <button class="btn btn-outline" type="button">Google</button>
-          <button class="btn btn-outline" type="button">Apple</button>
-        </div>
-
-        <p class="small-note">
-          ¿Nuevo en Cursapp?
-          <a class="green" href="registro-apoderado.html">Registrarme como apoderado</a>
-          ·
-          <a class="green" href="registro-presidente.html">Crear mi curso</a>
-        </p>
       </form>
     </section>
   </main>
+
+  <script defer src="assets/login.js?v=69-login-fix"></script>
 </body>
 </html>
