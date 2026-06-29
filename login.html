@@ -1,1 +1,54 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Iniciar sesión · Cursapp</title><link rel="stylesheet" href="assets/landing-v628.css"></head><body><main class="auth-page"><section class="auth-card"><div class="auth-photo"><img src="assets/landing/login-human.webp" alt="Ingresar a Cursapp"></div><form class="auth-form" action="onboarding/dashboard.html"><a class="back-link" href="landing.html">← Volver</a><h1>Iniciar sesión</h1><p>Bienvenido de vuelta a Cursapp.</p><div class="field"><label>Correo electrónico</label><input type="email" placeholder="tu correo@ejemplo.com"></div><div class="field"><label>Contraseña</label><input type="password" placeholder="••••••••"></div><div class="auth-actions"><button class="btn btn-primary" type="submit">Ingresar</button><a class="btn btn-outline" href="#">¿Olvidaste tu contraseña?</a></div><div class="oauth"><a class="btn btn-outline">Google</a><a class="btn btn-outline">Apple</a></div><p class="small-note">¿Nuevo en Cursapp? <a class="green" href="registro-apoderado.html">Registrarme como apoderado</a> · <a class="green" href="registro-presidente.html">Crear mi curso</a></p></form></section></main></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Iniciar sesión · Cursapp</title>
+  <link rel="stylesheet" href="assets/landing-v628.css">
+  <script defer src="assets/login.js"></script>
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-card">
+      <div class="auth-photo">
+        <img src="assets/landing/login-human.webp" alt="Ingresar a Cursapp">
+      </div>
+
+      <form id="loginForm" class="auth-form" autocomplete="on" novalidate>
+        <a class="back-link" href="landing.html">← Volver</a>
+        <h1>Iniciar sesión</h1>
+        <p>Bienvenido de vuelta a Cursapp.</p>
+
+        <div id="loginError" class="login-error" style="display:none"></div>
+
+        <div class="field">
+          <label for="username">Correo electrónico</label>
+          <input id="username" name="username" type="email" autocomplete="username" placeholder="tu correo@ejemplo.com" required>
+        </div>
+
+        <div class="field">
+          <label for="password">Contraseña</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn btn-primary" type="submit">Ingresar</button>
+          <a class="btn btn-outline" href="#">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <div class="oauth" aria-label="Accesos sociales">
+          <button class="btn btn-outline" type="button">Google</button>
+          <button class="btn btn-outline" type="button">Apple</button>
+        </div>
+
+        <p class="small-note">
+          ¿Nuevo en Cursapp?
+          <a class="green" href="registro-apoderado.html">Registrarme como apoderado</a>
+          ·
+          <a class="green" href="registro-presidente.html">Crear mi curso</a>
+        </p>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
