@@ -774,6 +774,118 @@ function loadJSON(k, def) {
     return data;
   }
 
+  function getOAuthRedirectTo(){
+    const url = new URL(window.location.href);
+    url.searchParams.set("oauth", "google");
+    url.hash = "";
+    return url.toString();
+  }
+
+  function getSupabaseOAuthClient(){
+    if(!window.supabase || typeof window.supabase.createClient !== "function"){
+      throw new Error("No se pudo cargar Supabase Auth. Revisa tu conexión e intenta nuevamente.");
+    }
+    return window.supabase.createClient(SUPA_LOGIN_URL, SUPA_LOGIN_KEY, {
+      auth: {
+        flowType: "pkce",
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true,
+        storageKey: "cursapp_supabase_oauth_v1"
+      }
+    });
+  }
+
+  async function loginFromSupabaseOAuthSession(authUser, authSession){
+    const email = String(authUser?.email || "").trim().toLowerCase();
+    if(!email) throw new Error("Google no entregó un correo válido para iniciar sesión.");
+
+    try{
+      localStorage.setItem("cursapp_supabase_auth_session_v1", JSON.stringify({
+        access_token: authSession?.access_token || "",
+        refresh_token: authSession?.refresh_token || "",
+        expires_at: authSession?.expires_at || null,
+        user: authUser
+      }));
+      localStorage.setItem("cursapp_login_source_v1", "supabase-google");
+    }catch(e){}
+
+    const user = await findSupabaseUserByEmail(email);
+    if(!user) throw new Error("Tu cuenta Google inició sesión, pero no existe perfil Cursapp asociado a este correo.");
+
+    const members = await findSupabaseMembersByUser(user);
+    if(!members.length){
+      throw new Error("Tu cuenta Google existe, pero no tiene roles asociados en miembros_curso.");
+    }
+
+    const coursesById = await findSupabaseCoursesByIds(members.map(m=>m.curso_id));
+    const profiles = cacheSupabaseLoginLocally(user, members, coursesById);
+    return { email, profiles };
+  }
+
+  async function handleOAuthReturnIfNeeded(){
+    const qs = new URLSearchParams(window.location.search || "");
+    const isOAuthReturn = qs.get("oauth") === "google" || window.location.hash.includes("access_token") || qs.has("code");
+    if(!isOAuthReturn) return false;
+
+    clearErr();
+    try{
+      const client = getSupabaseOAuthClient();
+      let sessionResult = await client.auth.getSession();
+      let session = sessionResult?.data?.session;
+      if(!session && qs.has("code") && typeof client.auth.exchangeCodeForSession === "function"){
+        const exchanged = await client.auth.exchangeCodeForSession(qs.get("code"));
+        if(exchanged && exchanged.error) throw exchanged.error;
+        session = exchanged?.data?.session || null;
+      }
+      if(!session){
+        sessionResult = await client.auth.getSession();
+        session = sessionResult?.data?.session;
+      }
+      if(!session || !session.user){
+        throw new Error("No se pudo recuperar la sesión de Google. Intenta nuevamente.");
+      }
+
+      const remote = await loginFromSupabaseOAuthSession(session.user, session);
+      const normProfiles = (remote.profiles || []).map(pr => ({
+        ...pr,
+        role: String(pr.role || pr.user?.role || "apoderado").toLowerCase()
+      }));
+
+      if(!normProfiles.length){
+        throw new Error("No hay perfiles asociados en Supabase. Completa onboarding o solicita aprobación.");
+      }
+
+      resolveAndEnter(remote.email, normProfiles);
+      return true;
+    }catch(err){
+      console.error("Login Google falló", err);
+      showErr(err && err.message ? err.message : "No se pudo iniciar sesión con Google.");
+      return true;
+    }
+  }
+
+  async function startGoogleOAuth(){
+    clearErr();
+    try{
+      const client = getSupabaseOAuthClient();
+      const result = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: getOAuthRedirectTo(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account"
+          }
+        }
+      });
+      if(result && result.error) throw result.error;
+    }catch(err){
+      console.error("No se pudo iniciar Google OAuth", err);
+      showErr(err && err.message ? err.message : "No se pudo iniciar sesión con Google.");
+    }
+  }
+
   async function findSupabaseUserByEmail(email){
     const rows = await supaFetch("usuarios?email=eq." + supaQ(email) + "&select=*&limit=1");
     return Array.isArray(rows) ? (rows[0] || null) : null;
@@ -936,6 +1048,12 @@ function loadJSON(k, def) {
 
 
     ensureDemoAgent();
+
+  document.querySelectorAll("[data-oauth-provider='google']").forEach(btn => {
+    btn.addEventListener("click", startGoogleOAuth);
+  });
+
+  handleOAuthReturnIfNeeded();
 
   // ===== submit =====
   if (!form) {
