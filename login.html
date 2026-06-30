@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Iniciar sesi&oacute;n &middot; Cursapp</title>
-  <link rel="stylesheet" href="assets/login-pro.css?v=70-login-premium">
+  <link rel="stylesheet" href="assets/login-pro.css?v=72-google-oauth">
 </head>
 <body class="authPremium authPremium--loginOnly">
   <main class="loginPageShell">
@@ -69,7 +69,7 @@
             <div class="divider">o contin&uacute;a con</div>
 
             <div class="socialLoginGrid">
-              <button class="googleBtn" type="button" onclick="alert('Login Google disponible en pr&oacute;xima integraci&oacute;n.');">
+              <button class="googleBtn" type="button" data-oauth-provider="google">
                 <span class="googleMark">G</span>
                 <span>Google</span>
               </button>
@@ -103,7 +103,8 @@
     </section>
   </main>
 
-  <script defer src="assets/login.js?v=69-login-fix"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="assets/login.js?v=72-google-oauth"></script>
   <script>
     (function(){
       const btn = document.querySelector("[data-password-toggle]");
