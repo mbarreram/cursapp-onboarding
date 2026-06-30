@@ -3,62 +3,102 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Iniciar sesión · Cursapp</title>
-  <link rel="stylesheet" href="assets/login-pro.css?v=69-login-fix">
+  <title>Iniciar sesi&oacute;n &middot; Cursapp</title>
+  <link rel="stylesheet" href="assets/login-pro.css?v=70-login-premium">
 </head>
-<body class="authPremium">
-  <main class="authShell">
-    <a href="landing.html" style="display:inline-flex;align-items:center;gap:8px;color:#6d28d9;text-decoration:none;font-weight:950;margin:0 0 14px 6px;">← Volver</a>
+<body class="authPremium authPremium--loginOnly">
+  <main class="loginPageShell">
+    <a class="loginBack" href="landing.html" aria-label="Volver a la landing">
+      <span aria-hidden="true">&larr;</span>
+      <span>Volver</span>
+    </a>
 
-    <section class="authBrand" aria-label="Cursapp">
-      <div class="authLogo">C</div>
-      <div>
-        <h1>Cursapp</h1>
-        <p>Ingresa a tu curso</p>
-      </div>
-    </section>
-
-    <section class="authCard">
-      <div class="loginHead">
-        <div class="loginIcon" aria-hidden="true">🔒</div>
-        <div>
-          <h2>Iniciar sesión</h2>
-          <p>Accede con tu correo y contraseña para elegir curso, rol y alumno cuando corresponda.</p>
+    <section class="loginPanel" aria-label="Inicio de sesi&oacute;n Cursapp">
+      <div class="loginVisual" aria-hidden="true">
+        <img src="assets/landing/login-human.webp" alt="">
+        <div class="loginVisualCard">
+          <span class="loginVisualIcon"></span>
+          <div>
+            <strong>Curso protegido</strong>
+            <small>Acceso por rol, curso y alumno.</small>
+          </div>
         </div>
       </div>
 
-      <form id="loginForm" class="loginForm" autocomplete="on" novalidate>
-        <label class="inputWrap" for="username">
-          <span class="inputIcon" aria-hidden="true">✉️</span>
-          <input id="username" name="username" type="email" inputmode="email" autocomplete="username" placeholder="Correo electrónico" required>
-        </label>
+      <section class="loginContent">
+        <header class="loginBrandBlock">
+          <span class="loginBrandMark" aria-hidden="true">
+            <img src="assets/landing/mockup-logo.png" alt="">
+          </span>
+          <div>
+            <h1>Cursapp</h1>
+            <p>Ingresa a tu curso</p>
+          </div>
+        </header>
 
-        <label class="inputWrap" for="password">
-          <span class="inputIcon" aria-hidden="true">🔑</span>
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" required>
-        </label>
+        <section class="authCard authCard--loginPremium">
+          <div class="loginHead loginHead--premium">
+            <div class="loginIcon" aria-hidden="true"></div>
+            <div>
+              <h2>Iniciar sesi&oacute;n</h2>
+              <p>Accede con tu correo y contrase&ntilde;a para entrar a tu curso.</p>
+            </div>
+          </div>
 
-        <div id="loginError" class="error" style="display:none;"></div>
+          <form id="loginForm" class="loginForm" autocomplete="on" novalidate>
+            <label class="inputWrap" for="username">
+              <span class="inputIcon inputIcon--mail" aria-hidden="true"></span>
+              <span class="srOnly">Correo electr&oacute;nico</span>
+              <input id="username" name="username" type="email" inputmode="email" autocomplete="username" placeholder="Correo electr&oacute;nico" required>
+            </label>
 
-        <button class="btnPrimary" type="submit">Ingresar <span aria-hidden="true">→</span></button>
+            <label class="inputWrap" for="password">
+              <span class="inputIcon inputIcon--key" aria-hidden="true"></span>
+              <span class="srOnly">Contrase&ntilde;a</span>
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Contrase&ntilde;a" required>
+            </label>
 
-        <div class="divider">o continúa con</div>
+            <div id="loginError" class="error" style="display:none;"></div>
 
-        <button class="googleBtn" type="button" onclick="alert('Login Google disponible en próxima integración.');">
-          <span class="googleMark">G</span>
-          Google
-        </button>
-        <button class="googleBtn" type="button" onclick="alert('Login Apple disponible en próxima integración.');" style="margin-top:12px;">
-          <span class="googleMark" style="color:#111827;"></span>
-          Apple
-        </button>
+            <button class="btnPrimary btnPrimary--login" type="submit">
+              <span>Ingresar</span>
+              <span aria-hidden="true">&rarr;</span>
+            </button>
 
-        <div class="links">
-          <a href="onboarding/dashboard.html?mode=apoderado">Registrarme como apoderado</a>
-          <span aria-hidden="true"></span>
-          <a href="onboarding/dashboard.html?mode=directiva&role=presidente">Crear mi curso</a>
-        </div>
-      </form>
+            <div class="divider">o contin&uacute;a con</div>
+
+            <div class="socialLoginGrid">
+              <button class="googleBtn" type="button" onclick="alert('Login Google disponible en pr&oacute;xima integraci&oacute;n.');">
+                <span class="googleMark">G</span>
+                <span>Google</span>
+              </button>
+              <button class="googleBtn" type="button" onclick="alert('Login Apple disponible en pr&oacute;xima integraci&oacute;n.');">
+                <span class="appleMark" aria-hidden="true"></span>
+                <span>Apple</span>
+              </button>
+            </div>
+
+            <div class="loginEntryLinks" aria-label="Accesos de registro">
+              <a href="registro-apoderado.html">
+                <span class="entryMiniIcon entryMiniIcon--parent" aria-hidden="true"></span>
+                <span>
+                  <strong>Soy apoderado</strong>
+                  <small>Unirme con c&oacute;digo</small>
+                </span>
+              </a>
+              <a href="registro-presidente.html">
+                <span class="entryMiniIcon entryMiniIcon--board" aria-hidden="true"></span>
+                <span>
+                  <strong>Crear mi curso</strong>
+                  <small>Presidente / Directiva</small>
+                </span>
+              </a>
+            </div>
+          </form>
+        </section>
+
+        <p class="authLegal">Al ingresar aceptas los <a href="#">T&eacute;rminos y condiciones</a> y la <a href="#">Pol&iacute;tica de privacidad</a>.</p>
+      </section>
     </section>
   </main>
 
