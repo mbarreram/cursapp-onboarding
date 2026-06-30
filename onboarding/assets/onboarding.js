@@ -575,11 +575,79 @@ function uid(prefix = "id") {
 
   function getCourseV1(){ return loadJSON(KEY_COURSE_V1, null); }
 
+  function onbIcon(name){
+    const icons = {
+      lock: '<path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M12 16v2"/>',
+      crown: '<path d="m3 8 4 3 5-7 5 7 4-3-2 10H5L3 8Z"/><path d="M5 21h14"/>',
+      school: '<path d="M3 21h18"/><path d="M4 10 12 4l8 6"/><path d="M6 10v11"/><path d="M18 10v11"/><path d="M9 21v-6h6v6"/><path d="M9 10h6"/>',
+      map: '<path d="M12 21s7-4.8 7-11a7 7 0 1 0-14 0c0 6.2 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>',
+      city: '<path d="M3 21h18"/><path d="M6 21V8h6v13"/><path d="M12 21V4h6v17"/><path d="M8 11h2M8 15h2M14 8h2M14 12h2M14 16h2"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+      tag: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+      clipboard: '<rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/><path d="M8 12h8M8 16h5"/>',
+      mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      chart: '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-7"/><path d="M18 7h1v1"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      card: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+      shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-5"/>'
+    };
+    return `<span class="onbSvgIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.check}</svg></span>`;
+  }
+
+  function draftCourseObj(d){
+    const region = REGIONS.find(r=>r.id===d.regionId);
+    const comuna = COMUNAS.find(c=>c.id===d.comunaId);
+    const school = SCHOOLS.find(s=>s.id===d.schoolId);
+    return {
+      courseKey: d.courseKey || makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year),
+      inviteCode: d.inviteCode || "",
+      course: {
+        regionId: d.regionId || "",
+        regionName: region ? region.name : (d.regionName || ""),
+        comunaId: d.comunaId || "",
+        comunaName: comuna ? comuna.name : (d.comunaName || ""),
+        schoolId: d.schoolId || "",
+        schoolName: school ? school.name : (d.schoolName || "Colegio"),
+        jornada: d.jornada || "",
+        level: d.level || "",
+        letter: d.letter || "",
+        year: d.year || ""
+      }
+    };
+  }
+
+  function renderFinalMessage(payload){
+    const root = $("app");
+    if(!root) return;
+    const isDirectiva = payload.mode === "directiva";
+    root.innerHTML = `
+      <section class="onbDoneScreen">
+        <div class="onbDoneArt" aria-hidden="true">
+          <div class="onbDoneCheck">${onbIcon("check")}</div>
+          <div class="onbDoneSchool">${onbIcon("school")}</div>
+        </div>
+        <h1>${isDirectiva ? "Curso creado correctamente" : "Solicitud enviada"}</h1>
+        <p>${isDirectiva
+          ? "Tu curso ya quedo registrado. Ahora puedes iniciar sesion para continuar con la configuracion y las invitaciones."
+          : "Tu registro fue enviado correctamente. Cuando la directiva apruebe tu ingreso, podras iniciar sesion en Cursapp."}</p>
+        <div class="onbDoneList">
+          <div>${onbIcon("mail")} <span>${isDirectiva ? "Recibiras confirmaciones y avisos del curso." : "Te avisaremos cuando tu solicitud sea aprobada."}</span></div>
+          <div>${onbIcon("shield")} <span>La informacion quedo guardada de forma segura.</span></div>
+          <div>${onbIcon("users")} <span>${isDirectiva ? "Podras invitar apoderados desde tu dashboard." : "Tu curso se activara al ser aprobado por la directiva."}</span></div>
+        </div>
+        <div class="onbDoneActions">
+          <a class="btn primary" href="/login.html">Ir al inicio de sesion</a>
+          <a class="btn ghost" href="/index.html">Volver al inicio</a>
+        </div>
+      </section>
+    `;
+  }
+
   function courseSummaryHTML(courseObj){
     const c = courseObj?.course || {};
     return `
       <div class="card" style="padding:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
-        <div style="font-weight:950;">Curso encontrado ✅</div>
+        <div style="font-weight:950;">Curso encontrado</div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
           ${c.schoolName} · ${c.level}${c.letter} ${c.year} · ${c.jornada}
         </div>
@@ -690,7 +758,7 @@ function uid(prefix = "id") {
       return list.map(x=>`<option value="${x}" ${x===selected?"selected":""}>${x}</option>`).join("");
     }
 
-    const courseObj = getCourseV1();
+    const courseObj = (MODE==="apoderado" && d.courseLocked) ? draftCourseObj(d) : getCourseV1();
     const banner = (MODE==="apoderado" && d.courseLocked && courseObj) ? courseBanner(courseObj) : "";
     const roleName = MODE==="directiva" ? (DIRECTIVA_ROLE==="tesorero" ? "Tesorero" : "Presidente") : "Apoderado";
     const stepTitles = MODE==="directiva"
@@ -717,7 +785,7 @@ function uid(prefix = "id") {
         <div class="onbHeroHead">
           <div class="onbHeroLogo">C</div>
           <div class="onbHeroCopy">
-            <div class="onbEyebrow"><span aria-hidden="true">${MODE==="directiva" ? "&#9812;" : "&#128274;"}</span> ${roleName}</div>
+            <div class="onbEyebrow">${onbIcon(MODE==="directiva" ? "crown" : "lock")} ${roleName}</div>
             <h1>${screenTitle}</h1>
             <p>${screenSub}</p>
           </div>
@@ -754,7 +822,7 @@ function uid(prefix = "id") {
               </div>
             ` : `
               <div class="onbPremiumIntro onbInfoSoft">
-                <div class="onbIntroIcon">🎓</div>
+                <div class="onbIntroIcon">${onbIcon("school")}</div>
                 <div>
                   <div style="font-weight:950;">Crear curso como Presidente</div>
                   <div class="muted" style="margin-top:6px;">Selecciona región, comuna y colegio. Luego podrás invitar a la directiva y apoderados.</div>
@@ -764,22 +832,22 @@ function uid(prefix = "id") {
               <div class="onbFieldGrid">
                 <div class="onbInputGroup">
                   <label style="font-weight:900;">Región</label>
-                  <div class="onbSelectShell"><span>📍</span><select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select></div>
+                  <div class="onbSelectShell">${onbIcon("map")}<select id="onbRegion">${option(REGIONS,"id","name",regionId)}</select></div>
                 </div>
                 <div class="onbInputGroup">
                   <label style="font-weight:900;">Comuna</label>
-                  <div class="onbSelectShell"><span>🏙️</span><select id="onbComuna">${option(comunas,"id","name",comunaId)}</select></div>
+                  <div class="onbSelectShell">${onbIcon("city")}<select id="onbComuna">${option(comunas,"id","name",comunaId)}</select></div>
                 </div>
               </div>
 
               <div class="onbInputGroup" style="margin-top:12px;">
                 <label style="font-weight:900;">Colegio</label>
-                <div class="onbSelectShell"><span>🏫</span><select id="onbSchool">${option(schools,"id","name",schoolId)}</select></div>
+                <div class="onbSelectShell">${onbIcon("school")}<select id="onbSchool">${option(schools,"id","name",schoolId)}</select></div>
               </div>
 
               <div class="onbReferralBox onbRangeBox">
                 <div class="onbReferralHead">
-                  <div class="onbReferralIcon">👥</div>
+                  <div class="onbReferralIcon">${onbIcon("users")}</div>
                   <div>
                     <div style="font-weight:950;">Cantidad estimada de alumnos/apoderados</div>
                     <div class="muted" style="margin-top:4px;">Este dato nos ayuda a personalizar tu experiencia.</div>
@@ -787,17 +855,17 @@ function uid(prefix = "id") {
                 </div>
                 <div class="onbRangeGrid" role="radiogroup" aria-label="Cantidad estimada">
                   ${[
-                    [20,"10-20","👥"],
-                    [30,"21-30","👥"],
-                    [40,"31-40","👥"],
-                    [50,"41+","👥"]
-                  ].map(([val,label,icon])=>`<label class="onbRangeOption ${estimatedStudents===val?"active":""}"><input type="radio" name="onbEstimatedStudentsRadio" value="${val}" ${estimatedStudents===val?"checked":""}/><span>${icon}</span><b>${label}</b></label>`).join("")}
+                    [20,"10-20","users"],
+                    [30,"21-30","users"],
+                    [40,"31-40","users"],
+                    [50,"41+","users"]
+                  ].map(([val,label,icon])=>`<label class="onbRangeOption ${estimatedStudents===val?"active":""}"><input type="radio" name="onbEstimatedStudentsRadio" value="${val}" ${estimatedStudents===val?"checked":""}/>${onbIcon("users")}<b>${label}</b></label>`).join("")}
                 </div>
               </div>
 
               <div class="onbReferralBox">
                 <div class="onbReferralHead">
-                  <div class="onbReferralIcon">🏆</div>
+                  <div class="onbReferralIcon">${onbIcon("tag")}</div>
                   <div>
                     <div style="font-weight:950;">Código de recomendación</div>
                     <div class="muted" style="margin-top:4px;">Opcional · si alguien te compartió un código Cursapp.</div>
@@ -881,7 +949,7 @@ function uid(prefix = "id") {
   Demo OTP: <b>${escapeHtml(d.pOtpCode||"")}</b>
 </div>
 
-<div id="otpOk" class="otpStatusOk" style="display:${d.pOtpVerified ? "inline-flex":"none"};">✓ Código verificado</div>
+<div id="otpOk" class="otpStatusOk" style="display:${d.pOtpVerified ? "inline-flex":"none"};">${onbIcon("check")} Código verificado</div>
 
 
             <div style="margin-top:10px;">
@@ -947,7 +1015,7 @@ function uid(prefix = "id") {
               <div id="otpHintA" class="muted" style="margin-top:8px; display:${d.aOtpSent ? "block":"none"};">
                 Demo OTP: <b>${escapeHtml(d.aOtpCode||"")}</b>
               </div>
-              <div id="otpOkA" class="otpStatusOk" style="display:${d.aOtpVerified ? "inline-flex":"none"};">✓ Código verificado</div>
+              <div id="otpOkA" class="otpStatusOk" style="display:${d.aOtpVerified ? "inline-flex":"none"};">${onbIcon("check")} Código verificado</div>
 
             </div>
 
@@ -1010,14 +1078,14 @@ function uid(prefix = "id") {
             </div>
           ` : `
             <div class="onbSuccessHero">
-              <div class="onbSuccessIcon">🏫<span>✓</span></div>
+              <div class="onbSuccessIcon">${onbIcon("school")}<span>${onbIcon("check")}</span></div>
               <h2>Tu curso está listo para crear</h2>
               <p>Revisa la información antes de finalizar. Después podrás invitar directiva y apoderados.</p>
             </div>
 
             <div class="onbSummaryCard">
               <div class="onbSummaryHead">
-                <div><span class="onbTinyIcon">📋</span><b>Resumen del curso</b></div>
+                <div><span class="onbTinyIcon">${onbIcon("clipboard")}</span><b>Resumen del curso</b></div>
               </div>
               <div class="onbSummaryRows">
                 <div><span>Nombre del curso</span><b>${escapeHtml(String(d.level||"").trim())}° ${escapeHtml(String(d.letter||"").trim().toUpperCase())}</b></div>
@@ -1032,9 +1100,9 @@ function uid(prefix = "id") {
             </div>
 
             <div class="onbNextActions">
-              <div class="onbActionCard"><span>👥</span><b>Invitar directiva</b><small>Agrega tesorero y secretario del curso.</small></div>
-              <div class="onbActionCard"><span>📨</span><b>Invitar apoderados</b><small>Comparte el código de invitación.</small></div>
-              <div class="onbActionCard green"><span>📈</span><b>Ir al dashboard</b><small>Gestiona campañas, pagos e informes.</small></div>
+              <div class="onbActionCard"><span>${onbIcon("users")}</span><b>Invitar directiva</b><small>Agrega tesorero y secretario del curso.</small></div>
+              <div class="onbActionCard"><span>${onbIcon("mail")}</span><b>Invitar apoderados</b><small>Comparte el código de invitación.</small></div>
+              <div class="onbActionCard green"><span>${onbIcon("chart")}</span><b>Ir al dashboard</b><small>Gestiona campañas, pagos e informes.</small></div>
             </div>
           `}
         `:""}
@@ -1442,8 +1510,7 @@ if(d.alsoApoderado){
             courseKey
           });
           clearDraft();
-          alert("Curso creado exitosamente");
-          window.location.href = "/presidente.html";
+          renderFinalMessage({ mode:"directiva", role:"presidente" });
           return;
         }catch(e){
           __cursappOnboardingFinalizing = false;
@@ -1482,8 +1549,7 @@ if(d.alsoApoderado){
             activationStatus
           });
           clearDraft();
-          alert("Solicitud enviada ✅\n\nLa directiva debe aprobar tu registro para poder ingresar.");
-          window.location.href = "/index.html?pending=1";
+          renderFinalMessage({ mode:"apoderado", role:"apoderado" });
           return;
         }catch(e){
           __cursappOnboardingFinalizing = false;
