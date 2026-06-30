@@ -592,6 +592,23 @@ main{
   color:#e5e8ff;
 }
 .footer-bottom a{margin:0}
+.login-icon,
+.market-icon,
+.role-icon,
+.trust-icon,
+.feature-grid span,
+.whatsapp-icon,
+.social-links a{
+  font-size:0;
+}
+.login-icon:before{width:25px;height:25px}
+.market-icon:before{width:34px;height:34px}
+.role-parent .role-icon:before{width:48px;height:48px}
+.role-board .role-icon:before{width:46px;height:46px}
+.trust-icon:before,
+.feature-grid span:before{width:28px;height:28px}
+.whatsapp-icon:before{width:48px;height:48px}
+.social-links a:before{width:18px;height:18px}
 .auth-page{min-height:100vh;background:linear-gradient(180deg,#fff,#f4fbf7);display:grid;place-items:center;padding:24px}
 .auth-card{width:min(960px,100%);display:grid;grid-template-columns:1fr 1fr;background:white;border:1px solid var(--line);border-radius:30px;overflow:hidden;box-shadow:var(--shadow)}
 .auth-photo{min-height:560px;background:#eaf6ef}
