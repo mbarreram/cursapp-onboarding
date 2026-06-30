@@ -15,7 +15,7 @@
 
     <section class="loginPanel" aria-label="Inicio de sesi&oacute;n Cursapp">
       <div class="loginVisual" aria-hidden="true">
-        <img src="assets/landing/login-human.webp" alt="">
+        <img src="assets/landing/mockup-hero-family.png" alt="">
         <div class="loginVisualCard">
           <span class="loginVisualIcon"></span>
           <div>
@@ -56,6 +56,7 @@
               <span class="inputIcon inputIcon--key" aria-hidden="true"></span>
               <span class="srOnly">Contrase&ntilde;a</span>
               <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Contrase&ntilde;a" required>
+              <button class="eyeBtn eyeBtn--premium" type="button" data-password-toggle aria-label="Mostrar contrase&ntilde;a" aria-pressed="false"></button>
             </label>
 
             <div id="loginError" class="error" style="display:none;"></div>
@@ -103,5 +104,20 @@
   </main>
 
   <script defer src="assets/login.js?v=69-login-fix"></script>
+  <script>
+    (function(){
+      const btn = document.querySelector("[data-password-toggle]");
+      const input = document.getElementById("password");
+      if(!btn || !input) return;
+      btn.addEventListener("click", function(){
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.classList.toggle("isActive", show);
+        btn.setAttribute("aria-pressed", show ? "true" : "false");
+        btn.setAttribute("aria-label", show ? "Ocultar contrase\u00f1a" : "Mostrar contrase\u00f1a");
+        input.focus();
+      });
+    })();
+  </script>
 </body>
 </html>
