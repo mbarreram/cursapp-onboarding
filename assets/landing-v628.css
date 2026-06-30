@@ -725,3 +725,26 @@ main{
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
 }
+.login-icon,
+.market-icon,
+.role-icon,
+.trust-icon,
+.feature-grid span,
+.whatsapp-icon,
+.social-links a{
+  font-size:0!important;
+}
+.login-icon:before{width:25px;height:25px}
+.market-icon:before{width:34px;height:34px}
+.role-parent .role-icon:before{width:48px;height:48px}
+.role-board .role-icon:before{width:46px;height:46px}
+.trust-icon:before,
+.feature-grid span:before{width:28px;height:28px}
+.whatsapp-icon:before{width:48px;height:48px}
+.social-links a:before{width:18px;height:18px}
+@media (max-width:960px){
+  .market-icon:before{width:30px;height:30px}
+  .role-parent .role-icon:before,
+  .role-board .role-icon:before{width:38px;height:38px}
+  .whatsapp-icon:before{width:38px;height:38px}
+}
