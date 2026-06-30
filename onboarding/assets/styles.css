@@ -545,6 +545,534 @@ body.onboardingPremium .container{width:min(1040px,100%);}
   .onbRangeGrid{grid-template-columns:1fr 1fr;}
 }
 
+/* =====================================================
+   Cursapp Onboarding Mockup V1
+   Capa visual final alineada al mockup aprobado.
+   ===================================================== */
+body.onbMockupV1{
+  --onb-green:#007a3d;
+  --onb-green-2:#008c49;
+  --onb-green-soft:#eef8f2;
+  --onb-ink:#081436;
+  --onb-muted:#566277;
+  --onb-line:#e4e9ef;
+  --onb-card:#ffffff;
+  background:#ffffff !important;
+  color:var(--onb-ink);
+  font-size:14px !important;
+}
+
+body.onbMockupV1:before,
+body.onbMockupV1 .onbHeroCard:after{
+  display:none !important;
+}
+
+body.onbMockupV1 .onbAppHeader{
+  position:sticky;
+  top:0;
+  z-index:30;
+  background:rgba(255,255,255,.94) !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 .topbar{
+  position:relative;
+  width:min(430px,100%);
+  max-width:430px !important;
+  min-height:58px;
+  margin:0 auto;
+  padding:10px 18px !important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:transparent !important;
+  border:0 !important;
+}
+
+body.onbMockupV1 .brand,
+body.onbMockupV1 .onbBrand{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--onb-ink);
+  text-decoration:none;
+  font-size:15px;
+  font-weight:950;
+}
+
+body.onbMockupV1 .logo{
+  width:28px !important;
+  height:28px !important;
+  border-radius:8px !important;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,var(--onb-green),#015b32) !important;
+  color:#fff;
+  font-size:16px !important;
+  line-height:1;
+  box-shadow:0 8px 20px rgba(0,122,61,.22) !important;
+}
+
+body.onbMockupV1 .onbHeaderIcon{
+  width:36px;
+  height:36px;
+  border:0;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  background:#fff;
+  color:#101828;
+  font-size:24px;
+  font-weight:850;
+  line-height:1;
+  box-shadow:none;
+}
+
+body.onbMockupV1 #menuBtn{
+  font-size:22px;
+}
+
+body.onbMockupV1 .onbMenuDropdown{
+  display:none;
+  position:absolute;
+  right:16px;
+  top:52px;
+  min-width:190px;
+  padding:8px;
+  border:1px solid var(--onb-line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 18px 42px rgba(15,23,42,.12);
+}
+
+body.onbMockupV1 .onbMenuDropdown.isOpen{
+  display:block;
+}
+
+body.onbMockupV1 .container{
+  width:min(430px,100%) !important;
+  max-width:430px !important;
+  padding:0 18px 24px !important;
+}
+
+body.onbMockupV1 .card{
+  background:var(--onb-card) !important;
+  border:1px solid var(--onb-line) !important;
+  border-radius:18px !important;
+  box-shadow:0 12px 32px rgba(15,23,42,.055) !important;
+  overflow:hidden;
+}
+
+body.onbMockupV1 .onbHeroCompact{
+  margin-top:8px !important;
+  padding:0 0 14px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  background:transparent !important;
+  overflow:visible !important;
+}
+
+body.onbMockupV1 .onbHeroHead{
+  display:block !important;
+}
+
+body.onbMockupV1 .onbHeroLogo{
+  display:none !important;
+}
+
+body.onbMockupV1 .onbEyebrow{
+  margin:0 0 6px !important;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  color:var(--onb-green) !important;
+  font-size:12px !important;
+  font-weight:950;
+  line-height:1.15;
+}
+
+body.onbMockupV1 .onbHeroCopy h1{
+  margin:0 !important;
+  color:var(--onb-ink) !important;
+  font-size:23px !important;
+  line-height:1.05 !important;
+  letter-spacing:0 !important;
+  font-weight:950;
+}
+
+body.onbMockupV1 .onbHeroCopy p{
+  max-width:330px;
+  margin:8px 0 0 !important;
+  color:var(--onb-muted);
+  font-size:12px !important;
+  line-height:1.45 !important;
+  font-weight:700;
+}
+
+body.onbMockupV1 .wizardWrap{
+  margin-top:42px !important;
+  position:relative;
+}
+
+body.onbMockupV1 .wizardBar{
+  position:absolute;
+  top:13px;
+  left:18px;
+  right:18px;
+  height:2px !important;
+  border-radius:999px;
+  background:#cfd8e3 !important;
+  overflow:hidden;
+}
+
+body.onbMockupV1 .wizardFill{
+  height:100%;
+  border-radius:999px;
+  background:var(--onb-green) !important;
+}
+
+body.onbMockupV1 .wizardStepsLabels{
+  position:relative;
+  z-index:1;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:4px !important;
+  margin-top:0 !important;
+}
+
+body.onbMockupV1 .wizardStepsLabels .wStepItem{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+
+body.onbMockupV1 .wizardStepsLabels .wStepItem:before{
+  display:none !important;
+}
+
+body.onbMockupV1 .wizardStepsLabels .wStep{
+  width:28px !important;
+  height:28px !important;
+  border-radius:999px;
+  border:1px solid #cbd5e1 !important;
+  background:#f8fafc !important;
+  color:#667085 !important;
+  font-size:12px !important;
+  font-weight:950;
+  box-shadow:0 0 0 5px #fff;
+}
+
+body.onbMockupV1 .wizardStepsLabels .active .wStep,
+body.onbMockupV1 .wizardStepsLabels .done .wStep{
+  border-color:var(--onb-green) !important;
+  background:linear-gradient(135deg,var(--onb-green),var(--onb-green-2)) !important;
+  color:#fff !important;
+}
+
+body.onbMockupV1 .wizardStepsLabels small{
+  color:#40506a !important;
+  font-size:9px !important;
+  line-height:1.15 !important;
+  font-weight:850;
+  text-align:center;
+}
+
+body.onbMockupV1 .wizardStepsLabels .active small,
+body.onbMockupV1 .wizardStepsLabels .done small{
+  color:var(--onb-green) !important;
+}
+
+body.onbMockupV1 .onbFormCard{
+  margin-top:10px !important;
+  padding:18px !important;
+}
+
+body.onbMockupV1 label,
+body.onbMockupV1 .onbInputGroup label{
+  color:var(--onb-ink) !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+  margin-bottom:7px !important;
+}
+
+body.onbMockupV1 input,
+body.onbMockupV1 select,
+body.onbMockupV1 textarea{
+  min-height:42px !important;
+  border:1px solid #dbe3ec !important;
+  border-radius:10px !important;
+  padding:10px 12px !important;
+  background:#fff !important;
+  color:var(--onb-ink);
+  font-size:13px !important;
+  font-weight:750 !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 input:focus,
+body.onbMockupV1 select:focus,
+body.onbMockupV1 textarea:focus,
+body.onbMockupV1 .onbSelectShell:focus-within{
+  border-color:rgba(0,122,61,.45) !important;
+  box-shadow:0 0 0 3px rgba(0,122,61,.09) !important;
+}
+
+body.onbMockupV1 .onbSelectShell{
+  min-height:42px !important;
+  border:1px solid #dbe3ec !important;
+  border-radius:10px !important;
+  gap:9px !important;
+  padding:0 10px !important;
+  background:#fff !important;
+}
+
+body.onbMockupV1 .onbSelectShell span{
+  width:18px;
+  color:var(--onb-green);
+  font-size:15px !important;
+}
+
+body.onbMockupV1 .onbSelectShell select{
+  min-height:40px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+}
+
+body.onbMockupV1 .onbPremiumIntro,
+body.onbMockupV1 .onbReferralBox,
+body.onbMockupV1 .credBox,
+body.onbMockupV1 .onbApoderadoSummaryCard,
+body.onbMockupV1 .onbActivationCard{
+  border:1px solid #dfe8e5 !important;
+  border-radius:14px !important;
+  background:linear-gradient(135deg,#ffffff,#f7fbf8) !important;
+  box-shadow:none !important;
+  padding:14px !important;
+}
+
+body.onbMockupV1 .onbIntroIcon,
+body.onbMockupV1 .onbReferralIcon,
+body.onbMockupV1 .onbTinyIcon{
+  width:40px !important;
+  height:40px !important;
+  border-radius:13px !important;
+  background:var(--onb-green-soft) !important;
+  color:var(--onb-green) !important;
+  font-size:18px !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 .onbFieldGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+body.onbMockupV1 .onbRangeGrid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px !important;
+}
+
+body.onbMockupV1 .onbRangeOption{
+  min-height:58px !important;
+  border:1px solid #dbe3ec !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:var(--onb-ink);
+  font-size:12px !important;
+  gap:4px !important;
+}
+
+body.onbMockupV1 .onbRangeOption.active{
+  border-color:var(--onb-green) !important;
+  background:#f2fbf5 !important;
+  color:var(--onb-green);
+  box-shadow:0 0 0 2px rgba(0,122,61,.08) !important;
+}
+
+body.onbMockupV1 .muted{
+  color:var(--onb-muted) !important;
+  font-size:12px !important;
+  line-height:1.42 !important;
+}
+
+body.onbMockupV1 .btn,
+body.onbMockupV1 button{
+  min-height:44px !important;
+  border-radius:10px !important;
+  padding:11px 14px !important;
+  font-size:13px !important;
+  font-weight:950 !important;
+}
+
+body.onbMockupV1 .btn.primary,
+body.onbMockupV1 button.primary{
+  background:linear-gradient(135deg,var(--onb-green),var(--onb-green-2)) !important;
+  color:#fff !important;
+  border:0 !important;
+  box-shadow:0 12px 26px rgba(0,122,61,.22) !important;
+}
+
+body.onbMockupV1 .btn.ghost{
+  color:var(--onb-green) !important;
+  background:#fff !important;
+  border:1px solid rgba(0,122,61,.35) !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 #btnPrev{
+  flex:0 0 120px !important;
+}
+
+body.onbMockupV1 #btnNext{
+  flex:1 1 auto !important;
+  max-width:none !important;
+}
+
+body.onbMockupV1 .otpRow,
+body.onbMockupV1 .otpField + .btn{
+  align-items:flex-end;
+}
+
+body.onbMockupV1 .otpStatusOk{
+  background:#e7f8ee !important;
+  color:var(--onb-green) !important;
+  border-radius:10px !important;
+}
+
+body.onbMockupV1 .tag,
+body.onbMockupV1 .onbPayOption{
+  width:100%;
+  justify-content:flex-start;
+  border:1px solid #dbe3ec !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:var(--onb-ink) !important;
+  font-size:12px !important;
+}
+
+body.onbMockupV1 .onbPayChoices{
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+}
+
+body.onbMockupV1 .onbSummaryCard{
+  border:1px solid var(--onb-line) !important;
+  border-radius:16px !important;
+  padding:16px !important;
+  background:#fff !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 .onbSummaryHead{
+  font-size:15px !important;
+  margin-bottom:8px !important;
+}
+
+body.onbMockupV1 .onbSummaryRows div{
+  grid-template-columns:minmax(100px,.9fr) minmax(0,1.2fr) !important;
+  gap:12px !important;
+  padding:9px 0 !important;
+  border-top:1px solid #edf1f4 !important;
+}
+
+body.onbMockupV1 .onbSummaryRows span,
+body.onbMockupV1 .onbSummaryRows b{
+  font-size:12px !important;
+}
+
+body.onbMockupV1 .onbNextActions{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px !important;
+  margin-top:12px !important;
+}
+
+body.onbMockupV1 .onbActionCard{
+  min-height:0 !important;
+  display:grid;
+  grid-template-columns:34px 1fr;
+  align-items:center;
+  gap:8px 10px;
+  padding:12px !important;
+  text-align:left;
+  border:1px solid #dfe8e5 !important;
+  border-radius:12px !important;
+  background:#f7fbf8 !important;
+}
+
+body.onbMockupV1 .onbActionCard span{
+  grid-row:span 2;
+  color:var(--onb-green);
+  font-size:20px !important;
+}
+
+body.onbMockupV1 .onbActionCard b{
+  font-size:12px !important;
+}
+
+body.onbMockupV1 .onbActionCard small{
+  font-size:11px !important;
+}
+
+body.onbMockupV1 .onbCourseBanner{
+  margin-top:8px !important;
+  border:1px solid #dfe8e5 !important;
+  border-radius:14px !important;
+  background:#f7fbf8 !important;
+  box-shadow:none !important;
+}
+
+body.onbMockupV1 .debugCard{
+  border-radius:12px;
+}
+
+@media(max-width:460px){
+  body.onbMockupV1 .topbar{
+    padding-left:16px !important;
+    padding-right:16px !important;
+  }
+
+  body.onbMockupV1 .container{
+    padding-left:16px !important;
+    padding-right:16px !important;
+  }
+
+  body.onbMockupV1 .onbFieldGrid{
+    grid-template-columns:1fr;
+  }
+
+  body.onbMockupV1 .onbHeroCopy h1{
+    font-size:22px !important;
+  }
+
+  body.onbMockupV1 .wizardStepsLabels small{
+    font-size:8px !important;
+  }
+
+  body.onbMockupV1 .wizardStepsLabels .wStep{
+    width:26px !important;
+    height:26px !important;
+    font-size:11px !important;
+  }
+
+  body.onbMockupV1 .onbFormCard{
+    padding:16px !important;
+  }
+}
+
 
 /* =====================================================
    Producción: Onboarding Visual V2 - ajuste compacto
@@ -1114,4 +1642,192 @@ padding:10px 14px !important;
 padding:12px 16px !important;
 font-size:1rem !important;
 }
+}
+
+/* ===== Cursapp Onboarding Mockup V1 - prioridad final ===== */
+body.onbMockupV1{
+  background:#fff !important;
+  color:#081436 !important;
+}
+body.onbMockupV1:before,
+body.onbMockupV1 .onbHeroCard:after{
+  display:none !important;
+}
+body.onbMockupV1 .onbAppHeader{
+  background:rgba(255,255,255,.94) !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+body.onbMockupV1 .topbar,
+body.onbMockupV1 .container{
+  width:min(430px,100%) !important;
+  max-width:430px !important;
+}
+body.onbMockupV1 .topbar{
+  min-height:58px !important;
+  padding:10px 18px !important;
+  background:transparent !important;
+  border:0 !important;
+}
+body.onbMockupV1 .container{
+  padding:0 18px 24px !important;
+}
+body.onbMockupV1 .onbBrand{
+  position:absolute !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  gap:8px !important;
+  color:#081436 !important;
+  text-decoration:none !important;
+}
+body.onbMockupV1 .logo{
+  width:28px !important;
+  height:28px !important;
+  border-radius:8px !important;
+  background:linear-gradient(135deg,#007a3d,#015b32) !important;
+  color:#fff !important;
+  font-size:16px !important;
+  box-shadow:0 8px 20px rgba(0,122,61,.22) !important;
+}
+body.onbMockupV1 .onbHeaderIcon{
+  width:36px !important;
+  height:36px !important;
+  min-height:36px !important;
+  border:0 !important;
+  border-radius:12px !important;
+  background:#fff !important;
+  color:#101828 !important;
+  font-size:24px !important;
+  box-shadow:none !important;
+}
+body.onbMockupV1 .onbMenuDropdown{
+  display:none;
+}
+body.onbMockupV1 .onbMenuDropdown.isOpen{
+  display:block !important;
+}
+body.onbMockupV1 .card{
+  background:#fff !important;
+  border:1px solid #e4e9ef !important;
+  border-radius:18px !important;
+  box-shadow:0 12px 32px rgba(15,23,42,.055) !important;
+}
+body.onbMockupV1 .onbHeroCompact{
+  margin-top:8px !important;
+  padding:0 0 14px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  background:transparent !important;
+}
+body.onbMockupV1 .onbHeroHead{
+  display:block !important;
+}
+body.onbMockupV1 .onbHeroLogo{
+  display:none !important;
+}
+body.onbMockupV1 .onbEyebrow{
+  margin:0 0 6px !important;
+  color:#007a3d !important;
+  font-size:12px !important;
+  font-weight:950 !important;
+}
+body.onbMockupV1 .onbHeroCopy h1{
+  margin:0 !important;
+  color:#081436 !important;
+  font-size:23px !important;
+  line-height:1.05 !important;
+  letter-spacing:0 !important;
+}
+body.onbMockupV1 .onbHeroCopy p{
+  margin:8px 0 0 !important;
+  max-width:330px !important;
+  color:#566277 !important;
+  font-size:12px !important;
+  line-height:1.45 !important;
+}
+body.onbMockupV1 .wizardWrap{
+  margin-top:42px !important;
+}
+body.onbMockupV1 .wizardBar{
+  position:absolute !important;
+  top:13px !important;
+  left:18px !important;
+  right:18px !important;
+  height:2px !important;
+  background:#cfd8e3 !important;
+}
+body.onbMockupV1 .wizardFill{
+  background:#007a3d !important;
+}
+body.onbMockupV1 .wizardStepsLabels{
+  gap:4px !important;
+  margin-top:0 !important;
+}
+body.onbMockupV1 .wizardStepsLabels .wStepItem:before{
+  display:none !important;
+}
+body.onbMockupV1 .wizardStepsLabels .wStep{
+  width:28px !important;
+  height:28px !important;
+  border:1px solid #cbd5e1 !important;
+  background:#f8fafc !important;
+  color:#667085 !important;
+  box-shadow:0 0 0 5px #fff !important;
+}
+body.onbMockupV1 .wizardStepsLabels .active .wStep,
+body.onbMockupV1 .wizardStepsLabels .done .wStep{
+  border-color:#007a3d !important;
+  background:linear-gradient(135deg,#007a3d,#008c49) !important;
+  color:#fff !important;
+}
+body.onbMockupV1 .wizardStepsLabels small{
+  display:block !important;
+  color:#40506a !important;
+  font-size:9px !important;
+  line-height:1.15 !important;
+}
+body.onbMockupV1 .wizardStepsLabels .active small,
+body.onbMockupV1 .wizardStepsLabels .done small{
+  color:#007a3d !important;
+}
+body.onbMockupV1 .onbFormCard{
+  margin-top:10px !important;
+  padding:18px !important;
+}
+body.onbMockupV1 input,
+body.onbMockupV1 select,
+body.onbMockupV1 textarea{
+  min-height:42px !important;
+  border-radius:10px !important;
+  border:1px solid #dbe3ec !important;
+  padding:10px 12px !important;
+  font-size:13px !important;
+}
+body.onbMockupV1 .onbSelectShell{
+  min-height:42px !important;
+  border-radius:10px !important;
+  border:1px solid #dbe3ec !important;
+}
+body.onbMockupV1 .btn.primary,
+body.onbMockupV1 button.primary{
+  background:linear-gradient(135deg,#007a3d,#008c49) !important;
+  box-shadow:0 12px 26px rgba(0,122,61,.22) !important;
+}
+body.onbMockupV1 .btn.ghost{
+  color:#007a3d !important;
+  border:1px solid rgba(0,122,61,.35) !important;
+}
+@media(max-width:460px){
+  body.onbMockupV1 .topbar,
+  body.onbMockupV1 .container{
+    padding-left:16px !important;
+    padding-right:16px !important;
+  }
+  body.onbMockupV1 .onbHeroCopy h1{
+    font-size:22px !important;
+  }
+  body.onbMockupV1 .onbFormCard{
+    padding:16px !important;
+  }
 }

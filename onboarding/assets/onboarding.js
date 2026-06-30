@@ -614,6 +614,8 @@ function uid(prefix = "id") {
 
     const step = Number(d.step||1);
     const stepsTotal = 4;
+    const visualStepsTotal = 5;
+    const visualStep = Math.min(visualStepsTotal, step);
     const progressPct = Math.round((step/stepsTotal)*100);
 
     // defaults (solo presidente crea curso) — con fallbacks para evitar combos sin data
@@ -695,22 +697,36 @@ function uid(prefix = "id") {
       ? ["Datos del curso", "Curso", "Cuenta", "¡Listo!"]
       : ["Invitación", "Curso", "Cuenta", "Activación"];
     const currentStepTitle = stepTitles[step-1] || "Onboarding";
+    const mockStepTitles = MODE==="directiva"
+      ? ["Datos del curso", "Curso", "Cuenta", "Confirmacion", "Listo"]
+      : ["Invitacion", "Curso", "Cuenta", "Activacion", "Confirmacion"];
+    const screenTitle = MODE==="directiva"
+      ? "Crear curso"
+      : (step===4 ? "Resumen y activacion" : "Ingresa a tu curso");
+    const screenSub = MODE==="directiva"
+      ? (step===1 ? "En menos de 3 minutos tendras creado tu curso y podras invitar a tu directiva y apoderados." :
+        step===2 ? "Completa los detalles de tu curso." :
+        step===3 ? "Crea tu cuenta para acceder como Presidente del curso." :
+        "Revisa la informacion antes de finalizar.")
+      : (step===1 ? "Ingresa el codigo de invitacion que te entrego la directiva del curso para comenzar." :
+        step===3 ? "Completa tus datos para crear tu cuenta y unirte al curso." :
+        "Revisa tu informacion y elige como deseas realizar la activacion.");
 
     root.innerHTML = `
       <div class="card onbHeroCard onbHeroCompact" style="margin-top:12px;">
         <div class="onbHeroHead">
           <div class="onbHeroLogo">C</div>
           <div class="onbHeroCopy">
-            <div class="onbEyebrow">${MODE==="directiva" ? "👑" : "🔐"} ${roleName}</div>
-            <h1>${step===4 ? (MODE==="directiva" ? "Resumen final" : "Activa tu acceso") : (MODE==="directiva" ? "Crear curso" : "Ingresa a tu curso")}</h1>
-            <p>Paso ${step} de ${stepsTotal} · <b>${progressPct}% completado</b></p>
+            <div class="onbEyebrow"><span aria-hidden="true">${MODE==="directiva" ? "&#9812;" : "&#128274;"}</span> ${roleName}</div>
+            <h1>${screenTitle}</h1>
+            <p>${screenSub}</p>
           </div>
         </div>
 
         <div class="wizardWrap" style="margin-top:16px;">
-          <div class="wizardBar"><div class="wizardFill" style="width:${progressPct}%"></div></div>
+          <div class="wizardBar"><div class="wizardFill" style="width:${Math.round((visualStep/visualStepsTotal)*100)}%"></div></div>
           <div class="wizardSteps wizardStepsLabels" aria-hidden="true">
-            ${[1,2,3,4].map(n=>`<div class="wStepItem ${step===n?"active":(step>n?"done":"")}"><div class="wStep"><span>${step>n?"✓":n}</span></div><small>${stepTitles[n-1]}</small></div>`).join("")}
+            ${[1,2,3,4,5].map(n=>`<div class="wStepItem ${visualStep===n?"active":(visualStep>n?"done":"")}"><div class="wStep"><span>${visualStep>n?"&#10003;":n}</span></div><small>${mockStepTitles[n-1]}</small></div>`).join("")}
           </div>
         </div>
         ${debugLine}
