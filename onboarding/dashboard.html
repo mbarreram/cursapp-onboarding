@@ -3,95 +3,77 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Cursapp · Onboarding</title>
+  <title>Cursapp - Onboarding</title>
 
-  <link rel="stylesheet" href="/onboarding/assets/styles.css?v=1703">
-
-  <style>
-    .debugCard{border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.08);border-radius:16px;padding:12px;margin-top:12px}
-  
-    body.onboardingPremium{background:linear-gradient(180deg,#f5f8f6,#eef4f1)!important;}
-    .topbar{background:rgba(255,255,255,.88)!important;backdrop-filter:blur(16px);border-bottom:1px solid #e1ebe5;}
-    .logo{background:linear-gradient(135deg,#0f8f4d,#111827)!important;}
-    #menuDropdown{border-color:#e1ebe5!important;box-shadow:0 18px 45px rgba(15,23,42,.10)!important;}
-    #menuDropdown .btn{border:1px solid #e1ebe5!important;border-radius:14px!important;margin:4px 0!important;}
-  </style>
+  <link rel="stylesheet" href="/onboarding/assets/styles.css?v=1800-mockup">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=553">
 </head>
 
-<body class="onboardingPremium">
-  <header>
-    <div class="topbar" style="position:relative;">
-      <div class="brand">
-        <div class="logo">C</div>
-        <div id="whoLine"></div>
-      </div>
+<body class="onboardingPremium onbMockupV1">
+  <header class="onbAppHeader">
+    <div class="topbar">
+      <button class="onbHeaderIcon" id="backLogin" type="button" aria-label="Volver al inicio">&#8249;</button>
 
-      <button class="btn ghost" id="menuBtn"
-        style="position:absolute;right:16px;top:10px;">☰</button>
+      <a class="brand onbBrand" href="/index.html" aria-label="Cursapp">
+        <span class="logo" aria-hidden="true">C</span>
+        <strong>Cursapp</strong>
+      </a>
 
-      <div id="menuDropdown"
-        style="display:none;position:absolute;right:16px;top:56px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:8px;min-width:200px;box-shadow:0 10px 30px rgba(0,0,0,.12);">
-        <button class="btn ghost" id="backLogin" style="width:100%;text-align:left;">Volver al landing</button>
-        
+      <button class="onbHeaderIcon" id="menuBtn" type="button" aria-label="Abrir menu">&#9776;</button>
+
+      <div id="menuDropdown" class="onbMenuDropdown">
+        <button class="btn ghost" id="menuBackLanding" type="button">Volver al landing</button>
       </div>
     </div>
   </header>
 
-  <!-- Cabecera modo -->
-  <div class="container onbModeWrap" style="margin-top:12px;display:none;">
-    <div class="card" style="padding:12px;">
-      <div style="font-weight:950" id="onbModeTitle">Onboarding</div>
-      <div class="muted" style="margin-top:4px;" id="onbModeSub"></div>
+  <div class="container onbModeWrap" hidden>
+    <div class="card">
+      <div id="onbModeTitle">Onboarding</div>
+      <div class="muted" id="onbModeSub"></div>
     </div>
   </div>
 
-  <div class="container" id="app"></div>
+  <main class="container" id="app"></main>
 
   <script>
     (function(){
-      const btn=document.getElementById('menuBtn');
-      const dd=document.getElementById('menuDropdown');
-      
+      const menuBtn = document.getElementById("menuBtn");
+      const menu = document.getElementById("menuDropdown");
+      const menuBack = document.getElementById("menuBackLanding");
 
-      btn.onclick=(e)=>{
-        e.stopPropagation();
-        dd.style.display = (dd.style.display==='block') ? 'none' : 'block';
-      };
-      document.addEventListener('click',()=> dd.style.display='none');
+      menuBtn.addEventListener("click", function(event){
+        event.stopPropagation();
+        menu.classList.toggle("isOpen");
+      });
+
+      menu.addEventListener("click", function(event){
+        event.stopPropagation();
+      });
+
+      menuBack.addEventListener("click", function(){
+        window.location.href = "/index.html";
+      });
+
+      document.addEventListener("click", function(){
+        menu.classList.remove("isOpen");
+      });
     })();
 
-    (function(){
-      const qs = new URLSearchParams(location.search);
-      const mode = qs.get("mode") || "apoderado";
-      const role = (qs.get("role") || "presidente").toLowerCase();
-      const t = document.getElementById("onbModeTitle");
-      const s = document.getElementById("onbModeSub");
-
-      if(mode === "directiva"){
-        t.textContent = "Onboarding · Directiva";
-        s.textContent = (role === "tesorero")
-          ? "Crear curso como Tesorero."
-          : "Crear curso como Presidente.";
-      } else {
-        t.textContent = "Onboarding · Apoderado";
-        s.textContent = "Unirte al curso y registrar al alumno/a.";
-      }
-    })();
-
-    window.onerror=function(msg,src,line){
-      document.getElementById('app').innerHTML=
-        `<div class="card"><b>Error JS:</b><div class="debugCard">${msg}<br>${src}:${line}</div></div>`;
+    window.onerror = function(msg, src, line){
+      document.getElementById("app").innerHTML =
+        '<div class="card"><b>Error JS:</b><div class="debugCard">' +
+        String(msg) + '<br>' + String(src) + ':' + String(line) +
+        '</div></div>';
     };
   </script>
 
-  <!-- core conecta backLogin + reset -->
   <script defer src="/assets/config.js?v=2"></script>
   <script defer src="/assets/core.js?v=2601"></script>
-<script defer src="/assets/enrollments.js?v=1600"></script>
-<script defer src="/onboarding/assets/onboarding.js?v=2603-auth"></script>
+  <script defer src="/assets/enrollments.js?v=1600"></script>
+  <script defer src="/onboarding/assets/onboarding.js?v=2700-mockup"></script>
   <script defer src="/assets/cursapp-platform.js?v=553"></script>
 </body>
 </html>
