@@ -2346,3 +2346,199 @@ body.cursapp-app-shell{
     max-width:66% !important;
   }
 }
+
+/* v7: real desktop layout for role dashboards */
+@media(min-width:900px){
+  .cursapp-app-shell header{
+    width:100% !important;
+  }
+
+  .cursapp-app-shell .topbar,
+  .cursapp-app-shell .container,
+  .cursapp-presidente .topbar,
+  .cursapp-presidente .container,
+  .cursapp-apoderado .topbar,
+  .cursapp-apoderado .container,
+  .cursapp-tesorero .topbar,
+  .cursapp-tesorero .container{
+    width:min(1120px, calc(100vw - 64px)) !important;
+    max-width:1120px !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+    box-sizing:border-box !important;
+  }
+
+  .cursapp-app-shell .topbar,
+  .cursapp-presidente .topbar,
+  .cursapp-apoderado .topbar,
+  .cursapp-tesorero .topbar{
+    min-height:78px !important;
+    padding:14px 172px 14px 20px !important;
+    border-radius:0 0 24px 24px !important;
+  }
+
+  .cursapp-tesorero .topbar{
+    padding-right:116px !important;
+  }
+
+  .cursapp-app-shell .brand{
+    max-width:100% !important;
+  }
+
+  .cursapp-app-shell .brand .muted{
+    max-width:none !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .cursapp-app-shell #menuBtn{
+    right:20px !important;
+    top:50% !important;
+    transform:translateY(-50%) !important;
+  }
+
+  .cursapp-app-shell #avisosBtn,
+  .cursapp-app-shell #avisosBellHost > button{
+    top:50% !important;
+    transform:translateY(-50%) !important;
+  }
+
+  .cursapp-apoderado #avisosBellHost > button:nth-of-type(1){
+    right:128px !important;
+  }
+
+  .cursapp-apoderado #avisosBellHost > button:nth-of-type(2),
+  .cursapp-tesorero #avisosBtn,
+  .cursapp-tesorero #avisosBellHost > button,
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost > button{
+    right:74px !important;
+  }
+
+  .cursapp-app-shell #menuDropdown,
+  .cursapp-apoderado #menuDropdown,
+  .cursapp-tesorero #menuDropdown,
+  .cursapp-presidente #menuDropdown{
+    left:auto !important;
+    right:max(32px, calc((100vw - 1120px) / 2 + 20px)) !important;
+    top:86px !important;
+    transform:none !important;
+    width:360px !important;
+    max-width:calc(100vw - 64px) !important;
+  }
+
+  .cursapp-app-shell .container,
+  .cursapp-presidente .container,
+  .cursapp-apoderado .container,
+  .cursapp-tesorero .container{
+    padding:22px 20px 116px !important;
+  }
+
+  .cursapp-app-shell .bottomNav,
+  .cursapp-presidente .bottomNav,
+  .cursapp-apoderado .bottomNav,
+  .cursapp-tesorero .bottomNav{
+    left:50% !important;
+    right:auto !important;
+    bottom:18px !important;
+    transform:translateX(-50%) !important;
+    width:min(760px, calc(100vw - 64px)) !important;
+    max-width:760px !important;
+    padding:10px 12px !important;
+  }
+
+  .cursapp-app-shell .bottomNav .navItem,
+  .cursapp-app-shell .marketBottomTab{
+    height:60px !important;
+    max-width:none !important;
+  }
+
+  .cursapp-apoderado .apoMockPage{
+    display:grid !important;
+    grid-template-columns:minmax(0,1.05fr) minmax(320px,.95fr) !important;
+    align-items:start !important;
+    gap:18px !important;
+  }
+
+  .cursapp-apoderado .apoMockProfile,
+  .cursapp-apoderado .apoMockDue{
+    grid-column:1 !important;
+  }
+
+  .cursapp-apoderado .apoMockStatusList{
+    grid-column:2 !important;
+    grid-row:1 / span 2 !important;
+    align-self:start !important;
+    margin-top:0 !important;
+  }
+
+  .cursapp-apoderado .apoMockSection{
+    min-width:0 !important;
+  }
+
+  .cursapp-apoderado .apoMockSection:nth-of-type(n+4){
+    grid-column:1 / -1 !important;
+  }
+
+  .cursapp-apoderado .apoMockQuickGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-apoderado .apoMockMoney{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-tesorero .tesMockPage{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) minmax(360px,.82fr) !important;
+    align-items:start !important;
+    gap:18px !important;
+  }
+
+  .cursapp-tesorero .tesMockHero{
+    grid-column:1 / -1 !important;
+    min-height:280px !important;
+  }
+
+  .cursapp-tesorero .tesMockHeroGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-tesorero .tesMockQuickGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-tesorero .tesMockKpis{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-tesorero .tesMockSection{
+    min-width:0 !important;
+  }
+
+  .cursapp-presidente .presMockPage{
+    max-width:none !important;
+  }
+
+  .cursapp-presidente .presMockQuickGrid{
+    grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  }
+}
+
+@media(min-width:900px) and (max-width:1080px){
+  .cursapp-apoderado .apoMockPage,
+  .cursapp-tesorero .tesMockPage{
+    grid-template-columns:1fr !important;
+  }
+
+  .cursapp-apoderado .apoMockProfile,
+  .cursapp-apoderado .apoMockDue,
+  .cursapp-apoderado .apoMockStatusList,
+  .cursapp-apoderado .apoMockSection,
+  .cursapp-tesorero .tesMockHero,
+  .cursapp-tesorero .tesMockSection{
+    grid-column:1 !important;
+    grid-row:auto !important;
+  }
+}
