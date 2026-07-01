@@ -746,6 +746,8 @@ function uid(prefix = "id") {
     const referralAgent = findRefAgent(referralCode);
     const estimatedStudents = Number(d.estimatedStudents || 0);
     const payChoice = d.payChoice || "now";
+    const acceptTerms = !!d.acceptTerms;
+    const acceptPrivacy = !!d.acceptPrivacy;
 
     const debugLine = DEBUG
       ? `<div class="muted" style="margin-top:8px;font-size:12px;">DEBUG · mode=${MODE} role=${DIRECTIVA_ROLE} step=${step} locked=${d.courseLocked?"1":"0"} alsoAp=${alsoAp?"1":"0"}</div>`
@@ -1107,6 +1109,26 @@ function uid(prefix = "id") {
           `}
         `:""}
 
+        ${step===4 ? `
+          <div class="onbConsentCard">
+            <div class="onbConsentHead">
+              ${onbIcon("shield")}
+              <div>
+                <div class="onbSectionTitle">Terminos y privacidad</div>
+                <div class="muted onbSectionSub">Debes aceptar ambos documentos para finalizar el registro.</div>
+              </div>
+            </div>
+            <label class="onbConsentCheck">
+              <input id="onbAcceptTerms" type="checkbox" ${acceptTerms ? "checked":""}/>
+              <span>He leido y acepto los <a href="/index.html#terminos" target="_blank" rel="noopener">Terminos y Condiciones</a> de Cursapp.</span>
+            </label>
+            <label class="onbConsentCheck">
+              <input id="onbAcceptPrivacy" type="checkbox" ${acceptPrivacy ? "checked":""}/>
+              <span>He leido y acepto la <a href="/index.html#privacidad" target="_blank" rel="noopener">Politica de Privacidad</a> de Cursapp.</span>
+            </label>
+          </div>
+        `:""}
+
         <div style="margin-top:14px;display:flex;justify-content:space-between;gap:10px;">
           <button class="btn ghost" id="btnPrev" ${step===1?"disabled":""}>Atrás</button>
           <button class="btn primary" id="btnNext">${step===4?"Finalizar":"Continuar"}</button>
@@ -1333,10 +1355,15 @@ render();
       r.onchange = ()=>{ d.payChoice = r.value; saveDraft(d); };
     });
   }
+  if(step===4){
+    $("onbAcceptTerms") && ($("onbAcceptTerms").onchange = ()=>{ d.acceptTerms = !!$("onbAcceptTerms").checked; saveDraft(d); });
+    $("onbAcceptPrivacy") && ($("onbAcceptPrivacy").onchange = ()=>{ d.acceptPrivacy = !!$("onbAcceptPrivacy").checked; saveDraft(d); });
+  }
 
   // --- Prev ---
   btnPrev && (btnPrev.onclick = ()=>{
-    d.step = Math.max(1, Number(d.step||1)-1);
+    if(MODE==="apoderado" && Number(d.step||1) === 3) d.step = 1;
+    else d.step = Math.max(1, Number(d.step||1)-1);
     saveDraft(d);
     render();
   });
@@ -1415,9 +1442,16 @@ if(d.alsoApoderado){
     if(step===4){
       // V55.1: consentimiento general obligatorio antes de crear usuario/curso.
       // Si ya fue aceptado, continúa sin mostrar modal.
-      if(window.CURSAPP_CONSENT && typeof window.CURSAPP_CONSENT.ensureGeneral === "function"){
+      if(false && window.CURSAPP_CONSENT && typeof window.CURSAPP_CONSENT.ensureGeneral === "function"){
         const okConsent = await window.CURSAPP_CONSENT.ensureGeneral({ source:"onboarding_before_finalize", mode:MODE, role:DIRECTIVA_ROLE });
         if(!okConsent) return;
+      }
+      d.acceptTerms = !!$("onbAcceptTerms")?.checked;
+      d.acceptPrivacy = !!$("onbAcceptPrivacy")?.checked;
+      saveDraft(d);
+      if(!d.acceptTerms || !d.acceptPrivacy){
+        alert("Debes aceptar los Terminos y Condiciones y la Politica de Privacidad para finalizar.");
+        return;
       }
       const region = REGIONS.find(r=>r.id===d.regionId);
       const comuna = COMUNAS.find(c=>c.id===d.comunaId);
