@@ -1517,3 +1517,250 @@ body.cursapp-app-shell{
   }
   .apoMockWallet{display:none}
 }
+
+/* v4 polish: compact headers, stable menus, modern icon glyphs */
+.cursapp-app-shell .topbar{
+  padding:12px 16px 8px !important;
+  min-height:64px !important;
+}
+
+.cursapp-app-shell .brand{
+  min-width:0 !important;
+  max-width:calc(100% - 120px) !important;
+}
+
+.cursapp-app-shell .brand > div:last-child{
+  min-width:0 !important;
+}
+
+.cursapp-app-shell .brand > div:last-child > div:first-child{
+  font-size:18px !important;
+  line-height:1.12 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+.cursapp-app-shell .brand .muted{
+  max-width:210px !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  font-size:13px !important;
+  line-height:1.2 !important;
+}
+
+.cursapp-app-shell .logo{
+  width:44px !important;
+  height:44px !important;
+  font-size:18px !important;
+}
+
+.cursapp-app-shell #menuBtn,
+.cursapp-app-shell #avisosBtn,
+.cursapp-app-shell .topbar .btn.ghost{
+  top:10px !important;
+  width:44px !important;
+  height:44px !important;
+}
+
+.cursapp-app-shell #avisosBtn{
+  right:66px !important;
+}
+
+.presMockWelcome,
+.presMockUpdated,
+.tesMockWelcome,
+.apoMockProfile{
+  display:none !important;
+}
+
+.presMockPage,
+.tesMockPage,
+.apoMockPage{
+  gap:14px !important;
+}
+
+.presMockHero,
+.tesMockHero{
+  margin-top:2px !important;
+}
+
+.cursapp-app-shell .bottomNav{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:4px !important;
+  left:50% !important;
+  right:auto !important;
+  transform:translateX(-50%) !important;
+  width:min(430px, calc(100vw - 24px)) !important;
+  max-width:430px !important;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem,
+.cursapp-app-shell .marketBottomTab{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  height:58px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:4px !important;
+  font-size:0 !important;
+  padding:6px 2px !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem::before,
+.cursapp-app-shell .marketBottomTab::before{
+  width:26px;
+  height:26px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  color:#64748b;
+  font-size:18px;
+  line-height:1;
+  font-weight:850;
+  content:"";
+}
+
+.cursapp-app-shell .bottomNav .navItem.active::before{
+  color:#6f2df4;
+  background:#efe7ff;
+}
+
+.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"⌂";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"◆";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"◷";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"▥";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"▰";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"▤";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"✓";}
+.cursapp-app-shell .marketBottomTab::before{content:"▣"; color:#07894f; background:#eafaf2;}
+
+.cursapp-app-shell .bottomNav .navItem span,
+.cursapp-app-shell .marketBottomTab span:last-child{
+  display:block !important;
+  margin:0 !important;
+  font-size:10px !important;
+  line-height:1.05 !important;
+  font-weight:800 !important;
+}
+
+.cursapp-app-shell .marketBottomTab span:first-child{
+  display:none !important;
+}
+
+#marketQuickBtn{
+  display:none !important;
+}
+
+.cursapp-app-shell #menuDropdown{
+  position:fixed !important;
+  left:50% !important;
+  right:auto !important;
+  top:68px !important;
+  transform:translateX(-50%) !important;
+  width:min(390px, calc(100vw - 28px)) !important;
+  max-height:calc(100vh - 150px) !important;
+  overflow:auto !important;
+  z-index:10050 !important;
+}
+
+.presMockQuick span,
+.apoMockQuick span,
+.tesMockQuickGrid button span,
+.presMockKpi span,
+.apoMockStatusList span,
+.apoMockReport span,
+.tesMockKpis article span,
+.tesMockTaskList span,
+.tesMockCampaignList span,
+.tesMockReportList span,
+.tesMockPay span{
+  font-size:0 !important;
+}
+
+.presMockQuick span::before,
+.apoMockQuick span::before,
+.tesMockQuickGrid button span::before,
+.presMockKpi span::before,
+.apoMockStatusList span::before,
+.apoMockReport span::before,
+.tesMockKpis article span::before,
+.tesMockTaskList span::before,
+.tesMockCampaignList span::before,
+.tesMockReportList span::before,
+.tesMockPay span::before{
+  font-size:19px;
+  line-height:1;
+  font-weight:850;
+}
+
+.presMockQuick:nth-child(1) span::before{content:"+";}
+.presMockQuick:nth-child(2) span::before{content:"✉";}
+.presMockQuick:nth-child(3) span::before{content:"◉";}
+.presMockQuick:nth-child(4) span::before{content:"▥";}
+.presMockQuick:nth-child(5) span::before{content:"▰";}
+.presMockQuick:nth-child(6) span::before{content:"◷";}
+
+.apoMockQuick:nth-child(1) span::before{content:"▰";}
+.apoMockQuick:nth-child(2) span::before{content:"▤";}
+.apoMockQuick:nth-child(3) span::before{content:"▥";}
+.apoMockQuick:nth-child(4) span::before{content:"▣";}
+
+.tesMockQuickGrid button:nth-child(1) span::before{content:"+";}
+.tesMockQuickGrid button:nth-child(2) span::before{content:"⇄";}
+.tesMockQuickGrid button:nth-child(3) span::before{content:"▤";}
+.tesMockQuickGrid button:nth-child(4) span::before{content:"▥";}
+
+.presMockKpi:nth-child(1) span::before{content:"$";}
+.presMockKpi:nth-child(2) span::before{content:"!";}
+.presMockKpi:nth-child(3) span::before{content:"◉";}
+.presMockKpi:nth-child(4) span::before{content:"▦";}
+
+.apoMockStatusList button:nth-child(1) span::before{content:"✉";}
+.apoMockStatusList button:nth-child(2) span::before{content:"▰";}
+.apoMockStatusList button:nth-child(3) span::before{content:"▥";}
+.apoMockReport span::before,
+.tesMockReportList span::before{content:"▥";}
+.tesMockKpis article:nth-child(1) span::before{content:"$";}
+.tesMockKpis article:nth-child(2) span::before{content:"↗";}
+.tesMockKpis article:nth-child(3) span::before{content:"↘";}
+.tesMockKpis article:nth-child(4) span::before{content:"⇄";}
+.tesMockTaskList article:nth-child(1) span::before{content:"⇄";}
+.tesMockTaskList article:nth-child(2) span::before{content:"▤";}
+.tesMockCampaignList span::before{content:"▤";}
+.tesMockPay span::before{content:"▰";}
+
+.presMockQuick,
+.apoMockQuick,
+.tesMockQuickGrid button{
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+
+.presMockQuick:active,
+.apoMockQuick:active,
+.tesMockQuickGrid button:active{
+  transform:scale(.98);
+}
+
+@media(max-width:520px){
+  .cursapp-app-shell .topbar{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+  .cursapp-app-shell .brand{
+    max-width:calc(100% - 112px) !important;
+  }
+  .cursapp-app-shell .brand .muted{
+    max-width:185px !important;
+  }
+  .presMockHero,
+  .tesMockHero{
+    border-radius:22px !important;
+  }
+}
