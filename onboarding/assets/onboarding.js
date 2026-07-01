@@ -460,6 +460,11 @@ function uid(prefix = "id") {
     const rows = await sbOnb("cursos?invite_code=eq." + sbQ(String(code||"").trim().toUpperCase()) + "&select=*,colegios(*)&limit=1");
     return rows[0] || null;
   }
+  async function findCursoByCourseKeyDB(courseKey){
+    const key = String(courseKey || "").trim();
+    if(!key) return null;
+    return await sbSelectOne("cursos", "course_key=eq." + sbQ(key) + "&select=id,nombre,course_key,estado,invite_code");
+  }
   function buildCourseObjFromCursoDB(row){
     const colegio = row.colegios || {};
     const regionObj = REGIONS.find(r => String(r.name||"").toLowerCase() === String(colegio.region||"").toLowerCase());
@@ -1362,8 +1367,20 @@ render();
 
   // --- Prev ---
   btnPrev && (btnPrev.onclick = ()=>{
-    if(MODE==="apoderado" && Number(d.step||1) === 3) d.step = 1;
-    else d.step = Math.max(1, Number(d.step||1)-1);
+    if(MODE==="apoderado" && Number(d.step||1) === 3){
+      d.step = 1;
+      d.courseLocked = false;
+      d.courseKey = "";
+      d.regionId = "";
+      d.comunaId = "";
+      d.schoolId = "";
+      d.jornada = "";
+      d.level = "";
+      d.letter = "";
+      d.year = "";
+    }else{
+      d.step = Math.max(1, Number(d.step||1)-1);
+    }
     saveDraft(d);
     render();
   });
@@ -1460,6 +1477,11 @@ if(d.alsoApoderado){
       const courseKey = makeCourseKey(d.schoolId, d.level, d.letter, d.jornada, d.year);
 
       if(MODE==="directiva" && DIRECTIVA_ROLE==="presidente"){
+        const existingCursoDB = await findCursoByCourseKeyDB(courseKey);
+        if(existingCursoDB && existingCursoDB.id){
+          alert("Este curso ya fue creado en Cursapp. Por seguridad no se puede dar de alta nuevamente desde el onboarding. Si necesitas corregirlo, ingresa al curso existente, eliminalo desde el panel correspondiente y vuelve a crearlo.");
+          return;
+        }
         // Reutilizar curso/código si ya existe el mismo courseKey (evita cambiar inviteCode)
         const existingCourse = getCourseV1();
         const inviteCode = (existingCourse && String(existingCourse.courseKey||"")===String(courseKey) && existingCourse.inviteCode)
