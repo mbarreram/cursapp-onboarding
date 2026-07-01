@@ -1604,6 +1604,167 @@ function renderHome(){
     }catch(e){}
   }
 
+  // ----- Presidente Home mockup visual override -----
+  renderHome = function(){
+    const ym = currentYYYYMM();
+    const recMes = collectedMonth(ym);
+    const recTot = collectedCourse();
+    const gasTot = spentCourse();
+    const sal = saldoCourse();
+    const pendMes = pendingMonth(ym);
+    const pendProjMes = pendingMonthProjected(ym);
+    const debtorsMes = pendMes > 0 ? deudoresMonth(ym) : 0;
+    const apods = approvedCount();
+    const active = activeTasks();
+    const dirty = isDirty();
+
+    const goalFromCampaigns = active.reduce((total,t)=>{
+      const expected = (typeof expectedTaskTotal === "function") ? Number(expectedTaskTotal(t)||0) : 0;
+      return total + (expected || Number(collectedTask(t.id)||0) + Number(pendingTaskEstimated(t)||0));
+    },0);
+    const goalTotal = Math.max(goalFromCampaigns, recTot + pendMes + gasTot, recTot, 0);
+    const progressPct = goalTotal > 0 ? Math.max(0, Math.min(100, Math.round((recTot / goalTotal) * 100))) : 0;
+    const kpiCards = [
+      { icon:"$", tone:"green", label:"Cobrado", value:clp(recMes), sub:"Este mes" },
+      { icon:"!", tone:"orange", label:"Por cobrar", value:clp(pendMes), sub:"Pendiente" },
+      { icon:"F", tone:"blue", label:"Familias pendientes", value:String(debtorsMes), sub:`De ${apods} familias` },
+      { icon:"B", tone:"purple", label:"Saldo disponible", value:clp(sal), sub:"En arcas" }
+    ].map(k=>`
+      <article class="presMockKpi presMockTone-${k.tone}">
+        <span>${esc(k.icon)}</span>
+        <small>${esc(k.label)}</small>
+        <b>${esc(k.value)}</b>
+        <em>${esc(k.sub)}</em>
+        <i></i>
+      </article>
+    `).join("");
+
+    const quickActions = [
+      { label:"Crear campana", icon:"+", action:"openCreateCampaign()" },
+      { label:"Enviar aviso", icon:"A", action:"window.openAvisosConfigSafe()" },
+      { label:"Apoderados", icon:"G", action:"window.location.href='apoderados.html'" },
+      { label:"Informe ejecutivo", icon:"I", action:"window.go('informes')" },
+      { label:"Registrar pago", icon:"P", action:"window.location.href='tesorero.html#conciliacion'" },
+      { label:"Ver deudores", icon:"D", action:"window.go('deudores')" }
+    ].map(a=>`
+      <button class="presMockQuick" type="button" onclick="${a.action}">
+        <span>${esc(a.icon)}</span>
+        <b>${esc(a.label)}</b>
+      </button>
+    `).join("");
+
+    const campaignCards = active.slice(0,3).map((t,idx)=>{
+      const rec = collectedTask(t.id);
+      const pend = pendingTaskEstimated(t);
+      const expected = Math.max(1, rec + pend);
+      const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
+      const icons = ["B","M","R"];
+      return `
+        <article class="presMockCampaign">
+          <div class="presMockCampaignIcon">${icons[idx] || "C"}</div>
+          <div class="presMockCampaignTop">
+            <h3>${esc(t.title || "Campana")}</h3>
+            <button type="button" aria-label="Mas opciones">...</button>
+          </div>
+          <p>${pct}% del objetivo</p>
+          <strong>${clp(rec)}</strong>
+          <small>de ${clp(expected)}</small>
+          <div class="presMockBar"><span style="width:${pct}%"></span></div>
+          <footer><span>${apods} familias</span><span>Vence ${esc(t.dueDate || "sin fecha")}</span></footer>
+        </article>
+      `;
+    }).join("") || `
+      <article class="presMockEmpty">
+        <strong>Todavia no hay campanas activas</strong>
+        <p>Crea una campana para iniciar cobros del curso.</p>
+        <button type="button" onclick="openCreateCampaign()">Crear campana</button>
+      </article>
+    `;
+
+    const notices = [
+      { title:"Reunion de apoderados", tag:"Nuevo", body:"Revisa asistencia, acuerdos y proximos pasos del curso.", time:"Hoy 09:00" },
+      { title: dirty ? "Informe pendiente de actualizar" : "Cuadratura del mes", tag: dirty ? "Pendiente" : "OK", body: dirty ? "Hay cambios que requieren publicar un nuevo informe." : "Todo cuadrado. Buen trabajo equipo.", time: dirty ? "Ahora" : "Ayer 21:30" }
+    ].map(n=>`
+      <article class="presMockNotice">
+        <span>${n.tag === "OK" ? "I" : "A"}</span>
+        <div>
+          <h3>${esc(n.title)} <em>${esc(n.tag)}</em></h3>
+          <p>${esc(n.body)}</p>
+        </div>
+        <time>${esc(n.time)}</time>
+      </article>
+    `).join("");
+
+    app.innerHTML = `
+      <div class="presMockPage">
+        <section class="presMockWelcome">
+          <div class="presMockAvatar">C</div>
+          <div>
+            <h1>Buenos dias, Presidente</h1>
+            <p>Presidente del curso<br>Periodo ${esc(ym)} · ${apods} familias</p>
+          </div>
+        </section>
+
+        <div class="presMockUpdated">Ultima actualizacion: Hoy 09:35</div>
+
+        <section class="presMockHero">
+          <div class="presMockHeroHead">
+            <div><span>I</span><h2>Dashboard ejecutivo</h2><p>Resumen financiero del curso · ${esc(ym)}</p></div>
+            <button type="button" onclick="window.go('informes')">Ver informe completo</button>
+          </div>
+          <div class="presMockHeroBody">
+            <div class="presMockHeroMetric">
+              <small>Recaudado</small>
+              <strong>${clp(recTot)}</strong>
+              <em>${progressPct}% del objetivo</em>
+              <div class="presMockBar"><span style="width:${progressPct}%"></span></div>
+            </div>
+            <div class="presMockRing" style="--pct:${progressPct}">
+              <b>${progressPct}%</b>
+              <small>del objetivo</small>
+            </div>
+            <div class="presMockHeroMetric">
+              <small>Objetivo del curso</small>
+              <strong>${clp(goalTotal)}</strong>
+              <em>Monto total</em>
+              <u>${debtorsMes || active.length} pendientes</u>
+            </div>
+          </div>
+          <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
+        </section>
+
+        <section class="presMockKpis">${kpiCards}</section>
+
+        <section class="presMockSection">
+          <header><h2>Accesos rapidos</h2><button type="button">Personalizar</button></header>
+          <div class="presMockQuickGrid">${quickActions}</div>
+        </section>
+
+        <section class="presMockSection">
+          <header><h2>Campanas activas (${active.length})</h2><button type="button" onclick="window.go('campanas')">Ver todas</button></header>
+          <div class="presMockCampaignGrid">${campaignCards}</div>
+        </section>
+
+        <section class="presMockSection">
+          <header><h2>Avisos importantes</h2><button type="button" onclick="window.openAvisosConfigSafe()">Ver todas</button></header>
+          <div class="presMockNoticeList">${notices}</div>
+        </section>
+
+        <div data-monetization-slot="presidente"></div>
+      </div>`;
+
+    try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
+    try{
+      if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function'){
+        const slot = document.querySelector('[data-monetization-slot="presidente"]');
+        if(slot && !slot.getAttribute('data-cursapp-banner-rendered')){
+          slot.setAttribute('data-cursapp-banner-rendered','1');
+          setTimeout(()=>{ try{ if(!slot.childElementCount) window.CursappMonetization.render(); }catch(_e){} }, 250);
+        }
+      }
+    }catch(e){}
+  };
+
   // ----- Campaigns ----// ----- Campaigns -----
   function setFilter(f){
     campaignFilter = f;
