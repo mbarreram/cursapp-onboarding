@@ -1764,3 +1764,301 @@ body.cursapp-app-shell{
     border-radius:22px !important;
   }
 }
+
+/* v5: modern role shell, SVG icon layer and reliable desktop menu */
+.cursapp-app-shell{
+  font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  color:#0f172a !important;
+  letter-spacing:0 !important;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.cursapp-app-shell b,
+.cursapp-app-shell strong,
+.cursapp-app-shell h1,
+.cursapp-app-shell h2,
+.cursapp-app-shell h3,
+.presMockTitle,
+.apoMockTitle,
+.tesMockTitle{
+  font-weight:780 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .topbar{
+  border-bottom:1px solid rgba(226,232,240,.72) !important;
+  box-shadow:0 18px 42px rgba(15,23,42,.055) !important;
+  backdrop-filter:blur(18px);
+}
+
+.cursapp-app-shell .brand{
+  gap:12px !important;
+}
+
+.cursapp-app-shell .brand .logo,
+.presMockAvatar,
+.apoMockAvatar,
+.tesMockAvatar{
+  background:linear-gradient(145deg,#7c3aed,#4f46e5) !important;
+  box-shadow:0 14px 30px rgba(91,63,255,.28) !important;
+}
+
+.cursapp-app-shell .brand > div:last-child > div:first-child{
+  font-size:16px !important;
+  line-height:1.12 !important;
+  font-weight:800 !important;
+}
+
+.cursapp-app-shell .brand .muted{
+  color:#64748b !important;
+  font-size:12px !important;
+  font-weight:650 !important;
+  line-height:1.25 !important;
+}
+
+.caSvgIcon{
+  width:20px;
+  height:20px;
+  display:block;
+  flex:0 0 auto;
+  color:currentColor;
+}
+
+.presMockQuick [data-ca-icon-ready="1"]::before,
+.apoMockQuick [data-ca-icon-ready="1"]::before,
+.tesMockQuickGrid button [data-ca-icon-ready="1"]::before,
+.presMockKpi [data-ca-icon-ready="1"]::before,
+.apoMockStatusList [data-ca-icon-ready="1"]::before,
+.apoMockReport [data-ca-icon-ready="1"]::before,
+.tesMockKpis article [data-ca-icon-ready="1"]::before,
+.tesMockTaskList [data-ca-icon-ready="1"]::before,
+.tesMockCampaignList [data-ca-icon-ready="1"]::before,
+.tesMockReportList [data-ca-icon-ready="1"]::before,
+.tesMockPay [data-ca-icon-ready="1"]::before,
+.cursapp-app-shell .bottomNav .navItem[data-ca-icon-ready="1"]::before,
+.cursapp-app-shell .marketBottomTab[data-ca-icon-ready="1"]::before{
+  content:none !important;
+  display:none !important;
+}
+
+.presMockQuick span[data-ca-icon-ready="1"],
+.apoMockQuick span[data-ca-icon-ready="1"],
+.tesMockQuickGrid button span[data-ca-icon-ready="1"],
+.presMockKpi span[data-ca-icon-ready="1"],
+.apoMockStatusList span[data-ca-icon-ready="1"],
+.apoMockReport span[data-ca-icon-ready="1"],
+.tesMockKpis article span[data-ca-icon-ready="1"],
+.tesMockTaskList span[data-ca-icon-ready="1"],
+.tesMockCampaignList span[data-ca-icon-ready="1"],
+.tesMockReportList span[data-ca-icon-ready="1"],
+.tesMockPay span[data-ca-icon-ready="1"]{
+  display:grid !important;
+  place-items:center !important;
+  color:#6d28d9 !important;
+  font-size:0 !important;
+}
+
+.presMockQuick span[data-ca-icon-ready="1"],
+.apoMockQuick span[data-ca-icon-ready="1"],
+.tesMockQuickGrid button span[data-ca-icon-ready="1"]{
+  width:44px !important;
+  height:44px !important;
+  border-radius:16px !important;
+  background:linear-gradient(145deg,#f3e8ff,#ede9fe) !important;
+}
+
+.presMockQuick,
+.apoMockQuick,
+.tesMockQuickGrid button,
+.presMockCampaign,
+.apoMockStatusList button,
+.tesMockTaskList article,
+.tesMockCampaignList article{
+  border:1px solid rgba(226,232,240,.95) !important;
+  box-shadow:0 16px 36px rgba(15,23,42,.065) !important;
+}
+
+.cursapp-app-shell .bottomNav{
+  border:1px solid rgba(226,232,240,.95) !important;
+  box-shadow:0 18px 50px rgba(15,23,42,.14) !important;
+  background:rgba(255,255,255,.94) !important;
+  backdrop-filter:blur(22px);
+}
+
+.cursapp-app-shell .bottomNav .navItem .caSvgIcon,
+.cursapp-app-shell .marketBottomTab .caSvgIcon{
+  width:21px;
+  height:21px;
+  color:#64748b;
+}
+
+.cursapp-app-shell .bottomNav .navItem.active .caSvgIcon,
+.cursapp-app-shell .marketBottomTab.active .caSvgIcon{
+  color:#6d28d9;
+}
+
+.cursapp-app-shell .bottomNav .navItem[data-ca-icon-ready="1"],
+.cursapp-app-shell .marketBottomTab[data-ca-icon-ready="1"]{
+  font-size:10px !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem[data-ca-icon-ready="1"].active,
+.cursapp-app-shell .marketBottomTab[data-ca-icon-ready="1"].active{
+  background:linear-gradient(145deg,#f2e9ff,#ede9fe) !important;
+  border-radius:20px !important;
+}
+
+.cursapp-app-shell #menuBtn{
+  display:grid !important;
+  place-items:center !important;
+  border:1px solid rgba(226,232,240,.95) !important;
+  background:#fff !important;
+  color:#111827 !important;
+  border-radius:999px !important;
+  box-shadow:0 12px 30px rgba(15,23,42,.08) !important;
+}
+
+.cursapp-app-shell #menuBtn .caSvgIcon{
+  width:22px;
+  height:22px;
+}
+
+.cursapp-app-shell #menuDropdown.caMenuOpen{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+
+.caRoleMenuHeader{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 10px 12px;
+  margin-bottom:6px;
+  border-bottom:1px solid #eef2f7;
+}
+
+.caRoleAvatar{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:15px;
+  color:#fff;
+  font-weight:850;
+  background:linear-gradient(145deg,#7c3aed,#4f46e5);
+  box-shadow:0 12px 24px rgba(91,63,255,.24);
+}
+
+.caRoleMenuHeader b{
+  display:block;
+  font-size:14px;
+  line-height:1.15;
+}
+
+.caRoleMenuHeader small{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  margin-top:2px;
+}
+
+.caRoleMenuItem{
+  width:100%;
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:10px 12px;
+  border:0;
+  border-radius:14px;
+  background:transparent;
+  color:#0f172a;
+  font:700 14px/1.2 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  text-align:left;
+  cursor:pointer;
+}
+
+.caRoleMenuItem:hover,
+.caRoleMenuItem:focus-visible{
+  background:#f7f5ff;
+  color:#5b21b6;
+  outline:0;
+}
+
+.caRoleMenuItem .caSvgIcon{
+  width:19px;
+  height:19px;
+  color:#6d28d9;
+}
+
+.caRoleMenuLogout{
+  color:#dc2626;
+}
+
+.caRoleMenuLogout .caSvgIcon{
+  color:#dc2626;
+}
+
+@media(min-width:900px){
+  .cursapp-app-shell{
+    background:
+      radial-gradient(circle at 18% 18%, rgba(124,58,237,.07), transparent 34%),
+      linear-gradient(180deg,#ffffff 0%,#f8fafc 100%) !important;
+  }
+
+  .cursapp-app-shell .topbar,
+  .cursapp-app-shell .container{
+    width:min(100%, 520px) !important;
+    max-width:520px !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+  }
+
+  .cursapp-app-shell .container{
+    padding-left:20px !important;
+    padding-right:20px !important;
+  }
+
+  .presMockHero,
+  .tesMockHero,
+  .apoMockHero{
+    border-radius:28px !important;
+  }
+
+  .presMockQuickGrid,
+  .tesMockQuickGrid{
+    grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .apoMockQuickGrid{
+    grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .presMockQuick,
+  .apoMockQuick,
+  .tesMockQuickGrid button{
+    min-height:104px !important;
+    padding:14px 10px !important;
+    border-radius:20px !important;
+  }
+
+  .presMockQuick b,
+  .apoMockQuick b,
+  .tesMockQuickGrid button b{
+    font-size:13px !important;
+    line-height:1.12 !important;
+  }
+
+  .cursapp-app-shell .bottomNav{
+    width:min(500px, calc(100vw - 40px)) !important;
+    max-width:500px !important;
+  }
+
+  .cursapp-app-shell #menuDropdown{
+    top:76px !important;
+    width:min(390px, calc(100vw - 48px)) !important;
+  }
+}
