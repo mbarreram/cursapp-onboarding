@@ -1637,6 +1637,124 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     renderInformes();
   }
 
+  // ---------- Tesorero mockup visual overrides ----------
+  renderHome = function(){
+    const exp = expensesAll();
+    const collected = collectedCourse();
+    const spent = sum(exp, e=>e.amount);
+    const saldo = collected - spent;
+    const stats = (typeof conciliationStats === "function") ? conciliationStats() : null;
+    const pendingConc = stats ? Number(stats.pendiente||0) : 0;
+    const active = tasksActive();
+    const sinBoleta = missingBoletaCount(exp);
+    app.innerHTML = `
+      <div class="tesMockPage">
+        <section class="tesMockWelcome">
+          <div class="tesMockAvatar">T</div>
+          <div><h1>Hola, Tesorero</h1><p>Control financiero del curso<br>Periodo ${esc(currentYM())}</p></div>
+        </section>
+
+        <section class="tesMockHero">
+          <header><div><span>C</span><h2>Estado de caja</h2><p>Actualizado: Hoy 09:35</p></div><b>Cuadrado OK</b></header>
+          <div class="tesMockHeroGrid">
+            <div><small>Caja disponible</small><strong>${clp(saldo)}</strong></div>
+            <div><small>Recaudado hoy</small><strong>${clp(collected)}</strong></div>
+            <div><small>Pendiente conciliacion</small><strong>${clp(pendingConc)}</strong></div>
+            <div><small>Saldo contable</small><strong>${clp(stats ? stats.contable||0 : collected)}</strong></div>
+          </div>
+          <button type="button" onclick="go('conciliacion')">Conciliar pagos pendientes</button>
+        </section>
+
+        <section class="tesMockKpis">
+          <article><span>C</span><small>Caja disponible</small><b>${clp(saldo)}</b></article>
+          <article><span>R</span><small>Recaudado mes</small><b>${clp(collected)}</b></article>
+          <article><span>G</span><small>Gastado mes</small><b>${clp(spent)}</b></article>
+          <article><span>P</span><small>Pendiente conciliar</small><b>${clp(pendingConc)}</b></article>
+        </section>
+
+        <section class="tesMockSection">
+          <h2>Accesos rapidos</h2>
+          <div class="tesMockQuickGrid">
+            <button onclick="openManualPayment()"><span>+</span><b>Registrar pago</b></button>
+            <button onclick="go('conciliacion')"><span>↔</span><b>Conciliar pagos</b></button>
+            <button onclick="go('rendiciones')"><span>R</span><b>Rendiciones</b></button>
+            <button onclick="go('informes')"><span>I</span><b>Informes</b></button>
+          </div>
+        </section>
+
+        <section class="tesMockSection">
+          <header><h2>Pendientes de atencion</h2><button onclick="go('conciliacion')">Ver todos</button></header>
+          <div class="tesMockTaskList">
+            <article><span>P</span><div><b>${pendingConc ? "Pagos pendientes de conciliacion" : "Conciliacion al dia"}</b><small>${pendingConc ? "Requieren revision" : "No hay pagos pendientes"}</small></div></article>
+            <article><span>R</span><div><b>${sinBoleta} rendiciones sin boleta</b><small>Agregar comprobante</small></div></article>
+          </div>
+        </section>
+
+        <section class="tesMockSection">
+          <header><h2>Campanas activas</h2><button onclick="go('rendiciones')">Ver todas</button></header>
+          <div class="tesMockCampaignList">${active.slice(0,3).map(t=>{ const rec=collectedForTask(t.id); const gas=sum(expensesForTask(t.id), e=>e.amount); const goal=Math.max(1, rec+gas); const pct=Math.min(100,Math.round((rec/goal)*100)); return `<article><span>G</span><div><b>${esc(t.title||"Campana")}</b><small>${pct}% del objetivo</small><i><u style="width:${pct}%"></u></i></div><strong>${clp(rec-gas)}</strong></article>`; }).join("") || `<article><div><b>Sin campanas activas</b><small>Cuando existan apareceran aqui.</small></div></article>`}</div>
+        </section>
+      </div>`;
+  };
+
+  renderConciliacion = function(){
+    const stats = conciliationStats();
+    const payments = stats.payments.slice().sort((a,b)=>String(b.paidAt||b.createdAt||"").localeCompare(String(a.paidAt||a.createdAt||"")));
+    const cards = payments.map(p=>`
+      <article class="tesMockPay">
+        <div><span>${p.paymentMethod==="efectivo"?"E":"T"}</span><div><b>${esc(p.guardianName || p.apoderadoName || "Pago registrado")}</b><small>${esc(p.studentName || p.concept || "Curso")} · ${esc(paymentMethodLabel(p.paymentMethod))}</small></div></div>
+        <strong>${clp(p.amount)}</strong>
+        <footer>
+          <button type="button" onclick="updatePaymentConciliationStatus('${esc(p.id)}','conciliado')">Conciliar</button>
+        </footer>
+      </article>
+    `).join("") || `<article class="tesMockEmpty"><strong>Sin pagos registrados</strong><p>Los pagos por conciliar apareceran aqui.</p></article>`;
+    app.innerHTML = `
+      <div class="tesMockPage">
+        <section class="tesMockSection">
+          <h1>Conciliar pagos</h1><p class="tesMockLead">Revisa y concilia los pagos recibidos</p>
+          <div class="tesMockChips"><button class="active">Pendientes ${payments.length}</button><button>Conciliados</button><button>Rechazados</button></div>
+        </section>
+        <section class="tesMockPayList">${cards}</section>
+      </div>`;
+  };
+
+  renderRendiciones = function(selectedTaskId){
+    const active = tasksActive();
+    const expAll = expensesAll();
+    const show = selectedTaskId ? active.filter(x=>x.id===selectedTaskId) : active;
+    app.innerHTML = `
+      <div class="tesMockPage">
+        <section class="tesMockSection">
+          <header><div><h1>Rendiciones</h1><p class="tesMockLead">Controla los gastos de las campanas</p></div><button onclick="openCreateExpense('general','')">+ Agregar gasto</button></header>
+          <div class="tesMockChips"><button class="active">Por campana</button><button>Gastos generales</button></div>
+        </section>
+        <section class="tesMockCampaignList">${show.map(t=>{ const exp=expensesForTask(t.id); const rec=collectedForTask(t.id); const gas=sum(exp,e=>e.amount); const saldo=rec-gas; const pct=rec?Math.max(0,Math.min(100,Math.round((gas/rec)*100))):0; return `<article><span>R</span><div><b>${esc(t.title||"Campana")}</b><small>Recaudado ${clp(rec)} · Gastado ${clp(gas)} · Saldo ${clp(saldo)}</small><i><u style="width:${pct}%"></u></i><footer><button onclick="openCreateExpense('campaign','${esc(t.id)}')">Agregar gasto</button><button onclick="go('rendiciones','${esc(t.id)}')">Ver detalle</button></footer></div></article>`; }).join("") || `<article><div><b>Sin campanas activas</b><small>No hay rendiciones por revisar.</small></div></article>`}</section>
+      </div>`;
+  };
+
+  renderInformes = function(){
+    const reps = load(KEY_MONTHLY_REPORTS, []);
+    const draftRep = buildTreasuryReport(currentYM());
+    app.innerHTML = `
+      <div class="tesMockPage">
+        <section class="tesMockHero">
+          <header><div><span>I</span><h2>Informe Tesoreria</h2><p>Periodo: ${esc(currentYM())}</p></div><b>Cuadratura OK</b></header>
+          <div class="tesMockHeroGrid">
+            <div><small>Recaudado</small><strong>${clp(draftRep.collectedMes)}</strong></div>
+            <div><small>Gastado</small><strong>${clp(draftRep.spentMes)}</strong></div>
+            <div><small>Saldo</small><strong>${clp(draftRep.saldoMes)}</strong></div>
+            <div><small>Caja disponible</small><strong>${clp(draftRep.saldoTotal)}</strong></div>
+          </div>
+          <button onclick="generateMonthly()">Generar PDF</button>
+        </section>
+        <section class="tesMockSection">
+          <h2>Informes publicados</h2>
+          <div class="tesMockReportList">${reps.length ? reps.map(r=>`<article><span>I</span><div><b>${esc(r.period)}</b><small>Emitido ${esc(r.generatedAt)}</small></div><button onclick="openTreasuryReport('${esc(r.id)}')">Ver</button><button onclick="downloadTreasuryReport('${esc(r.id)}')">Descargar</button></article>`).join("") : `<article><div><b>Sin informes generados</b><small>Genera el primer informe mensual.</small></div></article>`}</div>
+        </section>
+      </div>`;
+  };
+
   // ---------- expose handlers ----------
   window.openCreateExpense = openCreateExpense;
   window.saveExpense = saveExpense;

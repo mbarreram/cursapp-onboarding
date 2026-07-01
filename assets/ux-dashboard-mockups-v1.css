@@ -989,3 +989,531 @@ body.cursapp-app-shell{
     grid-column:2;
   }
 }
+
+/* Apoderado and Tesorero mockup screens */
+.cursapp-apoderado .topbar,
+.cursapp-apoderado .container,
+.cursapp-tesorero .topbar,
+.cursapp-tesorero .container{
+  width:min(100%, 430px) !important;
+  max-width:430px !important;
+}
+
+.cursapp-apoderado .bottomNav,
+.cursapp-tesorero .bottomNav{
+  width:min(430px, calc(100vw - 24px)) !important;
+  max-width:430px !important;
+}
+
+.apoMockPage,
+.tesMockPage{
+  display:grid;
+  gap:16px;
+  padding-bottom:12px;
+}
+
+.apoMockProfile,
+.tesMockWelcome{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:14px;
+  border:1px solid var(--ca-line);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 12px 30px rgba(26,31,54,.055);
+}
+
+.apoMockAvatar,
+.tesMockAvatar{
+  width:58px;
+  height:58px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  color:#fff;
+  background:linear-gradient(145deg,#7c3aed,#4f17c8);
+  font-size:25px;
+  font-weight:850;
+  flex:0 0 auto;
+}
+
+.apoMockProfile h1,
+.tesMockWelcome h1,
+.apoMockSection h1,
+.tesMockSection h1{
+  margin:0;
+  color:var(--ca-ink);
+  font-size:24px;
+  line-height:1.1;
+  font-weight:850;
+  letter-spacing:0;
+}
+
+.apoMockProfile p,
+.tesMockWelcome p,
+.apoMockLead,
+.tesMockLead{
+  margin:5px 0 0;
+  color:#596982;
+  font-size:14px;
+  line-height:1.38;
+  font-weight:550;
+}
+
+.apoMockProfile > button{
+  margin-left:auto;
+  width:42px;
+  height:42px;
+  border-radius:999px;
+  border:1px solid var(--ca-line);
+  background:#fff;
+  color:var(--ca-ink);
+}
+
+.apoMockDue,
+.apoMockSection,
+.tesMockSection{
+  display:grid;
+  gap:12px;
+}
+
+.apoMockDate,
+.tesMockSection header,
+.apoMockSection header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.apoMockDate span{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
+  background:#fff0f0;
+  color:#e11d48;
+  font-weight:850;
+}
+
+.apoMockDate b,
+.apoMockSection h2,
+.tesMockSection h2{
+  color:var(--ca-ink);
+  font-size:20px;
+  font-weight:850;
+}
+
+.apoMockDate button,
+.apoMockSection header button,
+.tesMockSection header button{
+  border:0;
+  background:transparent;
+  color:var(--ca-purple);
+  font-weight:800;
+}
+
+.apoMockDue article,
+.apoMockNextPay,
+.tesMockHero{
+  position:relative;
+  overflow:hidden;
+  border-radius:22px;
+  padding:20px;
+  background:linear-gradient(145deg,#fff,#f4efff);
+  border:1px solid #eadfff;
+  box-shadow:0 18px 42px rgba(91,33,182,.12);
+}
+
+.apoMockDue h2,
+.apoMockNextPay h2{
+  margin:6px 0;
+  color:var(--ca-ink);
+  font-size:22px;
+  font-weight:850;
+}
+
+.apoMockDue small,
+.apoMockNextPay small{
+  color:var(--ca-purple);
+  font-weight:800;
+}
+
+.apoMockDue p{
+  color:#596982;
+  font-size:14px;
+  font-weight:550;
+}
+
+.apoMockDue strong,
+.apoMockNextPay strong{
+  display:block;
+  margin-top:10px;
+  color:var(--ca-ink);
+  font-size:32px;
+  font-weight:850;
+}
+
+.apoMockWallet{
+  position:absolute;
+  right:26px;
+  top:42px;
+  width:90px;
+  height:90px;
+  border-radius:24px;
+  display:grid;
+  place-items:center;
+  color:#fff;
+  background:linear-gradient(145deg,#8b5cf6,#4f17c8);
+  box-shadow:0 18px 36px rgba(91,33,182,.28);
+  font-size:34px;
+}
+
+.apoMockDue footer{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:18px;
+}
+
+.apoMockDue footer button,
+.apoMockNextPay button,
+.apoMockPayCard footer button,
+.tesMockHero button,
+.tesMockPay footer button,
+.tesMockSection header > button{
+  min-height:46px;
+  border-radius:14px;
+  border:0;
+  background:linear-gradient(145deg,#6f2df4,#4f17c8);
+  color:#fff;
+  font-weight:850;
+}
+
+.apoMockDue footer button + button{
+  background:#fff;
+  color:var(--ca-ink);
+  border:1px solid var(--ca-line);
+}
+
+.apoMockStatusList,
+.apoMockPayList,
+.apoMockReportList,
+.tesMockPayList,
+.tesMockTaskList,
+.tesMockCampaignList,
+.tesMockReportList{
+  display:grid;
+  gap:10px;
+}
+
+.apoMockStatusList button,
+.apoMockPayCard,
+.apoMockReport,
+.apoMockEmpty,
+.tesMockPay,
+.tesMockTaskList article,
+.tesMockCampaignList article,
+.tesMockReportList article,
+.tesMockEmpty{
+  border:1px solid var(--ca-line);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(26,31,54,.045);
+}
+
+.apoMockStatusList button{
+  min-height:68px;
+  display:grid;
+  grid-template-columns:48px 1fr auto auto;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  text-align:left;
+}
+
+.apoMockStatusList span,
+.apoMockQuick span,
+.apoMockReport span,
+.tesMockTaskList span,
+.tesMockCampaignList span,
+.tesMockReportList span,
+.tesMockPay span{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  color:var(--ca-purple);
+  background:#efe7ff;
+  font-weight:850;
+}
+
+.apoMockStatusList b,
+.apoMockPayCard h3,
+.apoMockReport h3,
+.tesMockPay b,
+.tesMockTaskList b,
+.tesMockCampaignList b,
+.tesMockReportList b{
+  margin:0;
+  color:var(--ca-ink);
+  font-size:15px;
+  font-weight:850;
+}
+
+.apoMockStatusList em,
+.apoMockStatusList i,
+.apoMockPayCard p,
+.apoMockPayCard small,
+.apoMockReport p,
+.tesMockPay small,
+.tesMockTaskList small,
+.tesMockCampaignList small,
+.tesMockReportList small{
+  color:#596982;
+  font-size:12px;
+  font-style:normal;
+  font-weight:600;
+}
+
+.apoMockStatusList strong{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  color:#fff;
+  background:#07894f;
+  font-size:12px;
+}
+
+.apoMockQuickGrid,
+.tesMockQuickGrid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.apoMockQuick,
+.tesMockQuickGrid button{
+  min-height:92px;
+  border:1px solid var(--ca-line);
+  border-radius:18px;
+  background:#fff;
+  color:var(--ca-ink);
+  box-shadow:0 12px 28px rgba(26,31,54,.045);
+}
+
+.apoMockQuick b,
+.tesMockQuickGrid b{
+  display:block;
+  font-size:11px;
+  line-height:1.18;
+}
+
+.apoMockMoney,
+.tesMockKpis,
+.tesMockHeroGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.apoMockMoney div,
+.tesMockKpis article,
+.tesMockHeroGrid div{
+  padding:14px;
+  border:1px solid var(--ca-line);
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(26,31,54,.045);
+}
+
+.apoMockMoney small,
+.tesMockKpis small,
+.tesMockHeroGrid small{
+  display:block;
+  color:#596982;
+  font-size:12px;
+  font-weight:650;
+}
+
+.apoMockMoney b,
+.tesMockKpis b,
+.tesMockHeroGrid strong{
+  display:block;
+  margin-top:5px;
+  color:var(--ca-ink);
+  font-size:18px;
+  font-weight:850;
+}
+
+.apoMockChips,
+.tesMockChips{
+  display:flex;
+  gap:10px;
+  overflow:auto;
+}
+
+.apoMockChips button,
+.tesMockChips button{
+  min-height:38px;
+  padding:0 16px;
+  border-radius:999px;
+  border:1px solid var(--ca-line);
+  background:#fff;
+  color:var(--ca-ink);
+  font-weight:800;
+}
+
+.apoMockChips button.active,
+.tesMockChips button.active{
+  color:#fff;
+  background:linear-gradient(145deg,#6f2df4,#4f17c8);
+  border-color:transparent;
+}
+
+.apoMockPayCard{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  padding:16px;
+}
+
+.apoMockPayCard strong{
+  color:var(--ca-ink);
+  font-size:20px;
+  font-weight:850;
+}
+
+.apoMockPayCard > span{
+  justify-self:start;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+}
+
+.apoMockPayCard .is-paid{background:#dcfce7;color:#07894f}
+.apoMockPayCard .is-pending{background:#fff4d7;color:#b55100}
+.apoMockPayCard footer{grid-column:1/-1}
+
+.apoMockReport,
+.tesMockReportList article,
+.tesMockPay,
+.tesMockTaskList article,
+.tesMockCampaignList article{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:14px;
+}
+
+.apoMockReport button,
+.tesMockReportList button,
+.tesMockCampaignList footer button{
+  min-height:38px;
+  padding:0 13px;
+  border-radius:12px;
+  border:1px solid rgba(111,45,244,.22);
+  background:#fff;
+  color:var(--ca-purple);
+  font-weight:800;
+}
+
+.tesMockHero{
+  color:#fff;
+  background:linear-gradient(145deg,#6f2df4,#4f17c8);
+  border:0;
+}
+
+.tesMockHero header{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+}
+
+.tesMockHero h2{
+  margin:0;
+  font-size:23px;
+  font-weight:850;
+}
+
+.tesMockHero p,
+.tesMockHero small{
+  color:rgba(255,255,255,.82);
+}
+
+.tesMockHero header span{
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  margin-bottom:10px;
+  border-radius:13px;
+  background:rgba(255,255,255,.14);
+}
+
+.tesMockHero header b{
+  align-self:flex-start;
+  padding:7px 11px;
+  border-radius:999px;
+  color:#07894f;
+  background:#dcfce7;
+  font-size:12px;
+}
+
+.tesMockHeroGrid div{
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.16);
+  box-shadow:none;
+}
+
+.tesMockHeroGrid strong{
+  color:#fff;
+}
+
+.tesMockKpis article span{
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  color:var(--ca-purple);
+  background:#efe7ff;
+  font-weight:850;
+}
+
+.tesMockCampaignList i{
+  display:block;
+  height:8px;
+  margin-top:8px;
+  border-radius:999px;
+  background:#e9edf5;
+  overflow:hidden;
+}
+
+.tesMockCampaignList i u{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#6f2df4,#12b981);
+}
+
+.tesMockCampaignList footer{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+
+@media(max-width:390px){
+  .apoMockQuickGrid,
+  .tesMockQuickGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .apoMockWallet{display:none}
+}

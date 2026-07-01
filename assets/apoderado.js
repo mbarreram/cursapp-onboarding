@@ -2898,6 +2898,147 @@ window.payNow = async function(id){
     `;
   }
 
+  // ----- Apoderado mockup visual overrides -----
+  renderHome = function(){
+    let paysAll = load(KEY_PAYMENTS, []);
+    paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
+    try{ paysAll = dedupePaymentsAll(paysAll).list; }catch(e){}
+    try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
+    paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
+
+    const tasks0 = normalizeTasks(load(KEY_TASKS, []));
+    const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
+    const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid");
+    const pendingTotal = pending.reduce((a,p)=>a+Number(p.amountRemaining ?? p.amount ?? 0),0);
+    const nextDue = pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+    const r = latestReport();
+    const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : {};
+    const guardianName = ident?.name || ident?.apoderadoName || "Mauricio Barrera";
+    const studentName = ident?.alumno || ident?.studentName || "Alumno/a";
+    const courseLabel = ident?.courseLabel || ident?.curso || "";
+
+    const quick = [
+      {label:"Pagos", icon:"P", action:"go('payments')"},
+      {label:"Comprobantes", icon:"C", action:"go('payments')"},
+      {label:"Informes", icon:"I", action:"go('informes')"},
+      {label:"Mercado Escolar", icon:"M", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
+    ].map(x=>`<button class="apoMockQuick" type="button" onclick="${x.action}"><span>${esc(x.icon)}</span><b>${esc(x.label)}</b></button>`).join("");
+
+    app.innerHTML = `
+      <div class="apoMockPage">
+        <section class="apoMockProfile">
+          <div class="apoMockAvatar">☺</div>
+          <div>
+            <h1>${esc(guardianName)}</h1>
+            <p>Apoderado de ${esc(studentName)}<br>${esc(courseLabel || "Curso actual")}</p>
+          </div>
+          <button type="button" aria-label="Cambiar perfil">⌄</button>
+        </section>
+
+        <section class="apoMockDue">
+          <div class="apoMockDate"><span>17</span><b>Proxima cuota</b><button type="button" onclick="go('payments')">Ver todas</button></div>
+          <article>
+            <div>
+              <small>${nextDue ? "Pendiente" : "Todo al dia"}</small>
+              <h2>${esc(nextDue?.title || nextDue?.concept || "Sin pagos pendientes")}</h2>
+              <p>${nextDue?.dueDate ? `Vence el ${esc(nextDue.dueDate)} · quedan ${Math.max(0,daysTo(nextDue.dueDate)||0)} dia(s)` : "Te avisaremos cuando existan nuevas cuotas."}</p>
+              <strong>${nextDue ? clp(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}</strong>
+            </div>
+            <div class="apoMockWallet">▰</div>
+            <footer>
+              <button type="button" onclick="${nextDue?.id ? `payNow('${esc(nextDue.id)}')` : `go('payments')`}">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
+              <button type="button" onclick="go('payments')">Ver detalle</button>
+            </footer>
+          </article>
+        </section>
+
+        <section class="apoMockStatusList">
+          <button type="button" onclick="go('payments')"><span>A</span><b>Avisos del curso</b><em>Sin avisos nuevos</em><i>›</i></button>
+          <button type="button" onclick="go('payments')"><span>P</span><b>Pagos pendientes</b><em>${pending.length} pago(s) por revisar</em><strong>${pending.length}</strong><i>›</i></button>
+          <button type="button" onclick="go('informes')"><span>E</span><b>Estado del curso</b><em>Recaudado, gastado y disponible</em><i>Ver</i></button>
+        </section>
+
+        <section class="apoMockSection">
+          <h2>Accesos rapidos</h2>
+          <div class="apoMockQuickGrid">${quick}</div>
+        </section>
+
+        <section class="apoMockSection">
+          <h2>Resumen financiero</h2>
+          <div class="apoMockMoney">
+            <div><small>Pendiente</small><b>${clp(pendingTotal)}</b></div>
+            <div><small>Pagados</small><b>${paid.length}</b></div>
+            <div><small>Informe</small><b>${r ? esc(r.period||"Actual") : "Sin publicar"}</b></div>
+          </div>
+        </section>
+        <div data-monetization-slot="apoderado"></div>
+      </div>`;
+    try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
+  };
+
+  renderPayments = function(){
+    let paysAll = load(KEY_PAYMENTS, []);
+    paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
+    try{ paysAll = dedupePaymentsAll(paysAll).list; }catch(e){}
+    try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
+    paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
+
+    const filterMap = {
+      all: paysAll,
+      pending: paysAll.filter(p=>["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p)),
+      paid: paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid")
+    };
+    const rows = filterMap[payFilter] || filterMap.pending;
+    const next = filterMap.pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
+    const cards = rows.map(p=>{
+      const status = String(p.status||"pending").toLowerCase();
+      const paidOk = status === "paid";
+      return `
+        <article class="apoMockPayCard">
+          <div>
+            <h3>${esc(p.title || p.concept || "Pago del curso")}</h3>
+            <p>${esc(p.taskTitle || p.campaignTitle || p.fromTaskTitle || "Campana")} · ${esc(p.installmentLabel || p.cuota || "")}</p>
+            <small>${p.dueDate ? `Vence ${esc(p.dueDate)}` : esc(String(p.paidAt||p.createdAt||"").slice(0,10))}</small>
+          </div>
+          <strong>${clp(p.amountRemaining ?? p.amount ?? 0)}</strong>
+          <span class="${paidOk?'is-paid':'is-pending'}">${paidOk ? "Pagado" : "Pendiente"}</span>
+          <footer>
+            ${paidOk ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Ver comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
+          </footer>
+        </article>`;
+    }).join("") || `<article class="apoMockEmpty"><strong>No hay pagos para este filtro</strong><p>Cuando existan cuotas apareceran aqui.</p></article>`;
+
+    app.innerHTML = `
+      <div class="apoMockPage">
+        <section class="apoMockSection">
+          <h1>Pagos</h1>
+          <p class="apoMockLead">Revisa tus pagos y obligaciones</p>
+          <div class="apoMockChips">
+            <button class="${payFilter==="all"?"active":""}" onclick="setPayFilter('all')">Todos</button>
+            <button class="${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
+            <button class="${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagados</button>
+          </div>
+        </section>
+        ${next ? `<section class="apoMockNextPay"><small>Proxima cuota</small><h2>${esc(next.title || next.concept || "Pago pendiente")}</h2><strong>${clp(next.amountRemaining ?? next.amount ?? 0)}</strong><button onclick="payNow('${esc(next.id)}')">Pagar</button></section>` : ``}
+        <section class="apoMockPayList">${cards}</section>
+      </div>`;
+    localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
+  };
+
+  renderInformes = function(){
+    const reps = reports();
+    app.innerHTML = `
+      <div class="apoMockPage">
+        <section class="apoMockSection">
+          <h1>Informes</h1>
+          <p class="apoMockLead">Montos del curso compartidos por la directiva.</p>
+        </section>
+        <section class="apoMockReportList">
+          ${reps.length ? reps.map(r=>`<article class="apoMockReport"><span>I</span><div><h3>Informe ${esc(r.period||"")}</h3><p>${esc(r.generatedAt||"Publicado recientemente")}</p></div><button onclick="openReport('${esc(r.period||"")}')">Ver</button></article>`).join("") : `<article class="apoMockEmpty"><strong>Aun no hay informes publicados</strong><p>Cuando la directiva publique uno aparecera aqui.</p></article>`}
+        </section>
+      </div>`;
+  };
+
   // ✅ Router GLOBAL (y expuesto para que onclick del Home no rompa)
   function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
