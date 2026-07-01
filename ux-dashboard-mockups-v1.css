@@ -1,0 +1,450 @@
+/* =========================================================
+   Cursapp dashboard mockups v1
+   Visual layer for Apoderado, Presidente, Tesorero and receipts.
+   Scope: layout, density, typography and component polish only.
+   ========================================================= */
+
+:root{
+  --ca-ink:#111936;
+  --ca-muted:#60708c;
+  --ca-line:#e6eaf2;
+  --ca-card:#ffffff;
+  --ca-soft:#f7f4ff;
+  --ca-purple:#6f2df4;
+  --ca-purple-2:#4f17c8;
+  --ca-green:#07894f;
+  --ca-orange:#ff970f;
+  --ca-red:#ec243b;
+  --ca-blue:#2078f5;
+  --ca-shadow:0 18px 45px rgba(26,31,54,.08);
+}
+
+body.cursapp-app-shell{
+  min-height:100vh;
+  margin:0;
+  background:
+    radial-gradient(circle at 12% -4%, rgba(111,45,244,.08), transparent 32%),
+    linear-gradient(180deg,#ffffff 0%,#fbfcff 62%,#ffffff 100%) !important;
+  color:var(--ca-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.cursapp-app-shell .topbar{
+  width:min(100%, 480px);
+  max-width:480px;
+  margin:0 auto !important;
+  padding:18px 18px 10px !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+.cursapp-app-shell .container{
+  width:min(100%, 480px);
+  max-width:480px;
+  margin:0 auto;
+  padding:8px 16px 104px !important;
+}
+
+.cursapp-app-shell .brand{
+  align-items:center !important;
+  gap:12px !important;
+}
+
+.cursapp-app-shell .logo,
+.cursapp-app-shell .cpV6Avatar{
+  width:54px !important;
+  height:54px !important;
+  border-radius:999px !important;
+  background:linear-gradient(145deg,var(--ca-purple),var(--ca-purple-2)) !important;
+  color:#fff !important;
+  box-shadow:0 16px 30px rgba(91,33,182,.24) !important;
+  font-size:22px !important;
+  font-weight:850 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .brand > div:last-child > div:first-child,
+.cursapp-app-shell .cpV6Hello{
+  color:var(--ca-ink) !important;
+  font-size:21px !important;
+  line-height:1.14 !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .brand .muted,
+.cursapp-app-shell .cpV6Sub{
+  color:#344466 !important;
+  font-size:13px !important;
+  line-height:1.35 !important;
+  font-weight:500 !important;
+}
+
+.cursapp-app-shell #menuBtn,
+.cursapp-app-shell #avisosBtn,
+.cursapp-app-shell .topbar .btn.ghost,
+.cursapp-app-shell .cpV6IconBtn{
+  width:48px !important;
+  height:48px !important;
+  border-radius:999px !important;
+  border:1px solid var(--ca-line) !important;
+  background:rgba(255,255,255,.9) !important;
+  color:var(--ca-ink) !important;
+  box-shadow:0 10px 24px rgba(26,31,54,.08) !important;
+  font-size:20px !important;
+  font-weight:750 !important;
+}
+
+.cursapp-app-shell .card,
+.cursapp-app-shell .cpV6Section,
+.cursapp-app-shell .cpV5Section,
+.cursapp-app-shell .expenseCard,
+.cursapp-app-shell .campCard,
+.cursapp-app-shell .resultRow{
+  border:1px solid var(--ca-line) !important;
+  border-radius:20px !important;
+  background:rgba(255,255,255,.96) !important;
+  box-shadow:0 12px 34px rgba(26,31,54,.055) !important;
+}
+
+.cursapp-app-shell .kTitle,
+.cursapp-app-shell .card h2,
+.cursapp-app-shell .card h3,
+.cursapp-app-shell .cpV6Section b,
+.cursapp-app-shell .cpV5SecTitle{
+  color:var(--ca-ink) !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .muted,
+.cursapp-app-shell .cpV6HeroMeta,
+.cursapp-app-shell .cpV6Section em,
+.cursapp-app-shell .cpV5SecSub{
+  color:var(--ca-muted) !important;
+  font-weight:500 !important;
+  line-height:1.42 !important;
+}
+
+.cursapp-app-shell .cpV6Welcome{
+  margin:4px 0 18px !important;
+}
+
+.cursapp-app-shell .cpV6Hero{
+  border:0 !important;
+  border-radius:18px !important;
+  background:linear-gradient(145deg,var(--ca-purple),var(--ca-purple-2)) !important;
+  color:#fff !important;
+  box-shadow:0 20px 45px rgba(91,33,182,.25) !important;
+}
+
+.cursapp-app-shell .cpV6HeroHead{
+  color:#fff !important;
+  font-size:14px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+  text-transform:none !important;
+}
+
+.cursapp-app-shell .cpV6HeroIcon,
+.cursapp-app-shell .cpV6Kpi span,
+.cursapp-app-shell .cpV6Section i,
+.cursapp-app-shell .cpV6QuickGrid span,
+.cursapp-app-shell .cpV5Icon,
+.cursapp-app-shell .cpV5SecIcon{
+  background:rgba(111,45,244,.1) !important;
+  color:var(--ca-purple) !important;
+  border-radius:16px !important;
+  box-shadow:none !important;
+}
+
+.cursapp-app-shell .cpV6Hero .cpV6HeroIcon{
+  background:rgba(255,255,255,.15) !important;
+  color:#fff !important;
+}
+
+.cursapp-app-shell .cpV6HeroCard{
+  min-width:86% !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  border-radius:18px !important;
+  background:rgba(255,255,255,.1) !important;
+  color:#fff !important;
+  box-shadow:none !important;
+}
+
+.cursapp-app-shell .cpV6HeroTitle,
+.cursapp-app-shell .cpV6HeroAmount,
+.cursapp-app-shell .cpV6HeroMeta{
+  color:#fff !important;
+}
+
+.cursapp-app-shell .cpV6HeroTitle{
+  font-size:24px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .cpV6HeroAmount{
+  font-size:31px !important;
+  font-weight:850 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .cpV6HeroIndex{
+  background:rgba(255,255,255,.18) !important;
+  color:#fff !important;
+  box-shadow:none !important;
+}
+
+.cursapp-app-shell .cpV6Progress,
+.cursapp-app-shell .cpV6Dots span{
+  background:rgba(255,255,255,.22) !important;
+}
+
+.cursapp-app-shell .cpV6Progress span,
+.cursapp-app-shell .cpV6Dots span.active{
+  background:#89e75f !important;
+}
+
+.cursapp-app-shell .cpV6KpiGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:12px !important;
+}
+
+.cursapp-app-shell .cpV6Kpi{
+  min-height:122px !important;
+  border:1px solid var(--ca-line) !important;
+  border-radius:18px !important;
+  background:#fff !important;
+  box-shadow:0 12px 28px rgba(26,31,54,.05) !important;
+}
+
+.cursapp-app-shell .cpV6Kpi small{
+  color:#344466 !important;
+  font-size:13px !important;
+  font-weight:600 !important;
+}
+
+.cursapp-app-shell .cpV6Kpi b{
+  color:var(--ca-ink) !important;
+  font-size:22px !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .cpV6QuickGrid,
+.cursapp-app-shell .cpV5QuickGrid{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+
+.cursapp-app-shell .cpV6QuickGrid button,
+.cursapp-app-shell .cpV5Quick{
+  min-height:86px !important;
+  border-radius:18px !important;
+  color:var(--ca-ink) !important;
+  font-size:11px !important;
+  font-weight:750 !important;
+}
+
+.cursapp-app-shell .btnx.primary,
+.cursapp-app-shell .btn.primary,
+.cursapp-app-shell .btnPrimaryMini,
+.cursapp-app-shell .cpV6PrimaryBtn,
+.cursapp-app-shell .cpV5Pay{
+  border:0 !important;
+  border-radius:14px !important;
+  background:linear-gradient(145deg,var(--ca-purple),var(--ca-purple-2)) !important;
+  color:#fff !important;
+  box-shadow:0 14px 28px rgba(91,33,182,.24) !important;
+  font-weight:800 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .btnx,
+.cursapp-app-shell .btn,
+.cursapp-app-shell .btnMini,
+.cursapp-app-shell .cpV6MiniBtn,
+.cursapp-app-shell .cpV6SoftBtn{
+  border-radius:14px !important;
+  border-color:rgba(111,45,244,.22) !important;
+  color:var(--ca-purple) !important;
+  font-weight:750 !important;
+}
+
+.cursapp-app-shell .bottomNav{
+  position:fixed !important;
+  left:50% !important;
+  right:auto !important;
+  bottom:12px !important;
+  transform:translateX(-50%) !important;
+  width:min(448px, calc(100vw - 24px)) !important;
+  max-width:448px !important;
+  margin:0 !important;
+  padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+  border:1px solid rgba(230,234,242,.9) !important;
+  border-radius:28px !important;
+  background:rgba(255,255,255,.94) !important;
+  box-shadow:0 20px 50px rgba(26,31,54,.14) !important;
+  backdrop-filter:blur(18px) !important;
+  display:grid !important;
+  grid-auto-flow:column !important;
+  grid-auto-columns:1fr !important;
+  gap:4px !important;
+  z-index:9000 !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem,
+.cursapp-app-shell .marketBottomTab{
+  min-width:0 !important;
+  border:0 !important;
+  border-radius:20px !important;
+  background:transparent !important;
+  color:#66718b !important;
+  font-size:18px !important;
+  font-weight:750 !important;
+  padding:8px 4px !important;
+  line-height:1.1 !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem span,
+.cursapp-app-shell .marketBottomTab span:last-child{
+  display:block !important;
+  margin-top:4px !important;
+  font-size:10px !important;
+  font-weight:750 !important;
+  color:inherit !important;
+}
+
+.cursapp-app-shell .bottomNav .navItem.active{
+  color:var(--ca-purple) !important;
+  background:linear-gradient(180deg,rgba(111,45,244,.14),rgba(111,45,244,.05)) !important;
+}
+
+.cursapp-app-shell .pill,
+.cursapp-app-shell .tag,
+.cursapp-app-shell .chip{
+  border-radius:999px !important;
+  font-weight:750 !important;
+  letter-spacing:0 !important;
+}
+
+.cursapp-app-shell .pill.ok,
+.cursapp-app-shell .tag.ok{
+  background:#eafaf2 !important;
+  color:var(--ca-green) !important;
+  border-color:#bcebd3 !important;
+}
+
+.cursapp-app-shell .pill.warn,
+.cursapp-app-shell .tag.warn{
+  background:#fff6e4 !important;
+  color:#b95f00 !important;
+  border-color:#ffe0a6 !important;
+}
+
+.cursapp-app-shell .pill.danger,
+.cursapp-app-shell .tag.danger{
+  background:#fff0f2 !important;
+  color:var(--ca-red) !important;
+  border-color:#ffc7cf !important;
+}
+
+.cursapp-app-shell input,
+.cursapp-app-shell select,
+.cursapp-app-shell textarea{
+  border-radius:14px !important;
+  border:1px solid var(--ca-line) !important;
+  background:#fff !important;
+  color:var(--ca-ink) !important;
+  font-weight:600 !important;
+  box-shadow:none !important;
+}
+
+.cursapp-app-shell input:focus,
+.cursapp-app-shell select:focus,
+.cursapp-app-shell textarea:focus{
+  border-color:rgba(111,45,244,.48) !important;
+  box-shadow:0 0 0 4px rgba(111,45,244,.1) !important;
+  outline:none !important;
+}
+
+.cursapp-app-shell #menuDropdown{
+  right:16px !important;
+  top:74px !important;
+  width:min(320px, calc(100vw - 32px)) !important;
+  border:1px solid var(--ca-line) !important;
+  border-radius:22px !important;
+  background:rgba(255,255,255,.98) !important;
+  box-shadow:0 22px 55px rgba(26,31,54,.18) !important;
+}
+
+.cursapp-app-shell.cursapp-presidente .cpV6Hero,
+.cursapp-app-shell.cursapp-tesorero .cpV6Hero{
+  min-height:210px;
+}
+
+.cursapp-app-shell.cursapp-apoderado .cpV5Next{
+  border:0 !important;
+  border-radius:18px !important;
+  background:linear-gradient(145deg,#fff,#f5efff) !important;
+  box-shadow:0 18px 45px rgba(91,33,182,.11) !important;
+}
+
+.cursapp-app-shell.cursapp-apoderado .cpV5DueCard{
+  border-radius:18px !important;
+}
+
+@media (min-width:900px){
+  .cursapp-app-shell .topbar,
+  .cursapp-app-shell .container{
+    width:min(100%, 760px);
+    max-width:760px;
+  }
+
+  .cursapp-app-shell .cpV6KpiGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  }
+
+  .cursapp-app-shell .cpV6HeroCard{
+    min-width:48% !important;
+  }
+
+  .cursapp-app-shell .bottomNav{
+    width:min(720px, calc(100vw - 36px)) !important;
+    max-width:720px !important;
+  }
+}
+
+@media (max-width:520px){
+  .cursapp-app-shell .topbar{
+    padding-top:14px !important;
+  }
+
+  .cursapp-app-shell .container{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+
+  .cursapp-app-shell .logo,
+  .cursapp-app-shell .cpV6Avatar{
+    width:50px !important;
+    height:50px !important;
+  }
+
+  .cursapp-app-shell .brand > div:last-child > div:first-child,
+  .cursapp-app-shell .cpV6Hello{
+    font-size:19px !important;
+  }
+
+  .cursapp-app-shell .cpV6HeroCard{
+    min-width:88% !important;
+  }
+
+  .cursapp-app-shell .cpV6KpiGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
