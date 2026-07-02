@@ -1618,6 +1618,35 @@ function renderHome(){
     const active = activeTasks();
     const dirty = isDirty();
     const hasCampaigns = active.length > 0;
+    const campaignHeroItems = active.slice()
+      .map(t=>{
+        const rec = collectedTask(t.id);
+        const pend = pendingTaskEstimated(t);
+        const expected = Math.max(1, Number(expectedTaskTotal(t)||0), rec + pend);
+        const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
+        const paidRows = campaignPaidPayments(t.id);
+        const paidKeys = new Set(paidRows.map(p=>String(p.apoderadoEmail || p.email || p.apoderadoId || p.userId || p.payerId || "").toLowerCase()).filter(Boolean));
+        const paidFamilies = paidKeys.size || Math.min(apods, Math.round((pct / 100) * apods));
+        const dueTime = t.dueDate ? new Date(t.dueDate + "T23:59:59").getTime() : Number.MAX_SAFE_INTEGER;
+        return { t, rec, pend, expected, pct, paidFamilies, dueTime: Number.isFinite(dueTime) ? dueTime : Number.MAX_SAFE_INTEGER };
+      })
+      .sort((a,b)=> (b.pend - a.pend) || (a.dueTime - b.dueTime));
+    const campaignHeroSlides = campaignHeroItems.map((item,idx)=>`
+      <article class="presHeroCampaign" style="--pct:${item.pct}">
+        <div class="presHeroCampaignCopy">
+          <span class="presHeroLabel">Campana destacada</span>
+          <h3>${esc(item.t.title || "Campana")}</h3>
+          <div class="presHeroMetrics">
+            <div><small>Meta</small><b>${clp(item.expected)}</b></div>
+            <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
+          </div>
+          <p>${item.paidFamilies} de ${apods} familias pagadas</p>
+          <button type="button" onclick="window.go('campanas')">Ver campana</button>
+        </div>
+        <div class="presHeroRing" aria-label="${item.pct}% del objetivo"><b>${item.pct}%</b></div>
+        <div class="presHeroIndex">${esc(item.t.title || "Campana")} - ${idx + 1}/${campaignHeroItems.length}</div>
+      </article>
+    `).join("");
 
     const goalFromCampaigns = active.reduce((total,t)=>{
       const expected = (typeof expectedTaskTotal === "function") ? Number(expectedTaskTotal(t)||0) : 0;
@@ -1708,30 +1737,19 @@ function renderHome(){
 
         <div class="presMockUpdated">Ultima actualizacion: Hoy 09:35</div>
 
-        <section class="presMockHero ${hasCampaigns ? "is-filled" : "is-empty"}">
-          <div class="presMockHeroHead">
-            <div><span>I</span><h2>Dashboard ejecutivo</h2><p>${hasCampaigns ? `Resumen financiero del curso · ${esc(ym)}` : "No existen campanas activas"}</p></div>
-            <button type="button" onclick="${hasCampaigns ? "window.go('informes')" : "openCreateCampaign()"}">${hasCampaigns ? "Ver informe" : "Crear primera campana"}</button>
-          </div>
-          <div class="presMockHeroBody">
-            <div class="presMockHeroMetric">
-              <small>Recaudado</small>
-              <strong>${clp(recTot)}</strong>
-              <em>${progressPct}% del objetivo</em>
-              <div class="presMockBar"><span style="width:${progressPct}%"></span></div>
+        <section class="presMockHero ${hasCampaigns ? "is-filled is-campaign" : "is-empty"}">
+          ${hasCampaigns ? `
+            <div class="presHeroCarousel" aria-label="Campanas destacadas">
+              ${campaignHeroSlides}
             </div>
-            <div class="presMockRing" style="--pct:${progressPct}">
-              <b>${progressPct}%</b>
-              <small>del objetivo</small>
+          ` : `
+            <div class="presMockHeroHead">
+              <div><span>I</span><h2>Dashboard ejecutivo</h2><p>No existen campanas activas</p></div>
+              <button type="button" onclick="openCreateCampaign()">Crear primera campana</button>
             </div>
-            <div class="presMockHeroMetric">
-              <small>Objetivo del curso</small>
-              <strong>${clp(goalTotal)}</strong>
-              <em>Monto total</em>
-              <u>${debtorsMes || active.length} pendientes</u>
-            </div>
-          </div>
-          <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
+            <div class="presMockHeroBody"></div>
+            <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
+          `}
         </section>
 
         <section class="presMockKpis">${kpiCards}</section>
