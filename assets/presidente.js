@@ -1538,6 +1538,35 @@ function setActive(tab){
   bindAvisosButtonFallback();
 
 
+  function bindPresidentHeroCarousel(){
+    const track = document.querySelector(".cursapp-presidente .presHeroCarousel");
+    if(!track || track.__cursappPresHeroBound) return;
+    track.__cursappPresHeroBound = true;
+    const hero = track.closest(".presMockHero");
+    const dots = hero ? Array.from(hero.querySelectorAll(".presHeroDot")) : [];
+    const slides = Array.from(track.querySelectorAll(".presHeroCampaign"));
+    if(!slides.length) return;
+    const update = ()=>{
+      const center = track.scrollLeft + (track.clientWidth / 2);
+      let active = 0;
+      let best = Infinity;
+      slides.forEach((slide, idx)=>{
+        const slideCenter = slide.offsetLeft + (slide.offsetWidth / 2);
+        const distance = Math.abs(slideCenter - center);
+        if(distance < best){ best = distance; active = idx; }
+      });
+      dots.forEach((dot, idx)=>dot.classList.toggle("active", idx === active));
+    };
+    let timer = null;
+    track.addEventListener("scroll", ()=>{
+      clearTimeout(timer);
+      timer = setTimeout(update, 60);
+    }, { passive:true });
+    track.addEventListener("touchend", ()=>setTimeout(update, 80), { passive:true });
+    update();
+  }
+
+
 function renderHome(){
     const ym = currentYYYYMM();
     const recMes = collectedMonth(ym);
@@ -1634,17 +1663,17 @@ function renderHome(){
     const campaignHeroSlides = campaignHeroItems.map((item,idx)=>`
       <article class="presHeroCampaign" style="--pct:${item.pct}">
         <div class="presHeroCampaignCopy">
-          <span class="presHeroLabel">Campana destacada</span>
+          <span class="presHeroLabel"><i aria-hidden="true"></i>Campaña destacada</span>
           <h3>${esc(item.t.title || "Campana")}</h3>
           <div class="presHeroMetrics">
             <div><small>Meta</small><b>${clp(item.expected)}</b></div>
             <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
           </div>
           <p>${item.paidFamilies} de ${apods} familias pagadas</p>
-          <button type="button" onclick="window.go('campanas')">Ver campana</button>
+          <button type="button" onclick="window.go('campanas')">Ver campaña →</button>
         </div>
         <div class="presHeroRing" aria-label="${item.pct}% del objetivo"><b>${item.pct}%</b></div>
-        <div class="presHeroIndex">${esc(item.t.title || "Campana")} - ${idx + 1}/${campaignHeroItems.length}</div>
+        <div class="presHeroIndex">${esc(item.t.title || "Campana")} · ${idx + 1} de ${campaignHeroItems.length}</div>
       </article>
     `).join("");
 
@@ -1742,6 +1771,9 @@ function renderHome(){
             <div class="presHeroCarousel" aria-label="Campanas destacadas">
               ${campaignHeroSlides}
             </div>
+            <div class="presHeroDots" aria-hidden="true">
+              ${campaignHeroItems.map((_,idx)=>`<span class="presHeroDot ${idx === 0 ? "active" : ""}"></span>`).join("")}
+            </div>
           ` : `
             <div class="presMockHeroHead">
               <div><span>I</span><h2>Dashboard ejecutivo</h2><p>No existen campanas activas</p></div>
@@ -1773,6 +1805,7 @@ function renderHome(){
       </div>`;
 
     try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
+    try{ bindPresidentHeroCarousel(); }catch(e){}
     try{
       if(window.CursappMonetization && typeof window.CursappMonetization.render === 'function'){
         const slot = document.querySelector('[data-monetization-slot="presidente"]');
