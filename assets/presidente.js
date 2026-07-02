@@ -1617,6 +1617,7 @@ function renderHome(){
     const apods = approvedCount();
     const active = activeTasks();
     const dirty = isDirty();
+    const hasCampaigns = active.length > 0;
 
     const goalFromCampaigns = active.reduce((total,t)=>{
       const expected = (typeof expectedTaskTotal === "function") ? Number(expectedTaskTotal(t)||0) : 0;
@@ -1707,10 +1708,10 @@ function renderHome(){
 
         <div class="presMockUpdated">Ultima actualizacion: Hoy 09:35</div>
 
-        <section class="presMockHero">
+        <section class="presMockHero ${hasCampaigns ? "is-filled" : "is-empty"}">
           <div class="presMockHeroHead">
-            <div><span>I</span><h2>Dashboard ejecutivo</h2><p>Resumen financiero del curso · ${esc(ym)}</p></div>
-            <button type="button" onclick="window.go('informes')">Ver informe completo</button>
+            <div><span>I</span><h2>Dashboard ejecutivo</h2><p>${hasCampaigns ? `Resumen financiero del curso · ${esc(ym)}` : "No existen campanas activas"}</p></div>
+            <button type="button" onclick="${hasCampaigns ? "window.go('informes')" : "openCreateCampaign()"}">${hasCampaigns ? "Ver informe" : "Crear primera campana"}</button>
           </div>
           <div class="presMockHeroBody">
             <div class="presMockHeroMetric">
@@ -2103,7 +2104,15 @@ function updatePresidentTopbar(){
   try{
     const line = document.querySelector("header .brand .muted");
     if(!line) return;
-    line.textContent = courseDisplayLine(activeCourse());
+    const c = activeCourse();
+    if(!c){
+      line.textContent = "Curso no seleccionado";
+      return;
+    }
+    const school = String(c.schoolName || c.school || c.colegio || "Colegio").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
+    const level = c.level || c.curso || c.course || "";
+    const letter = c.letter || "";
+    line.textContent = `${school} · ${level}${letter}`.replace(/\s+/g," ").trim();
   }catch(e){}
 }
 
