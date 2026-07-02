@@ -3911,3 +3911,230 @@ body.cursapp-app-shell{
     font-weight:600 !important;
   }
 }
+
+/* v11: Presidente Mobile final alignment pass */
+@media(max-width:640px){
+  .cursapp-presidente header{
+    min-height:96px !important;
+    max-height:104px !important;
+    background:rgba(248,250,252,.98) !important;
+    box-shadow:0 1px 0 rgba(17,24,39,.06) !important;
+  }
+
+  .cursapp-presidente .topbar{
+    min-height:96px !important;
+    max-height:104px !important;
+    padding:20px 124px 14px 16px !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    overflow:hidden !important;
+  }
+
+  .cursapp-presidente .brand{
+    width:100% !important;
+    max-width:100% !important;
+    flex:1 1 auto !important;
+    min-width:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    overflow:hidden !important;
+  }
+
+  .cursapp-presidente .brand .logo{
+    width:48px !important;
+    height:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    font-size:20px !important;
+  }
+
+  .cursapp-presidente .brand > div:last-child{
+    min-width:0 !important;
+    max-width:100% !important;
+    flex:1 1 auto !important;
+    overflow:hidden !important;
+  }
+
+  .cursapp-presidente .brand > div:last-child > div:first-child{
+    display:block !important;
+    max-width:100% !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    font-size:21px !important;
+    line-height:1.1 !important;
+    font-weight:650 !important;
+  }
+
+  .cursapp-presidente .brand .muted{
+    display:block !important;
+    max-width:100% !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    margin-top:3px !important;
+    font-size:13px !important;
+    line-height:1.15 !important;
+    font-weight:450 !important;
+  }
+
+  .cursapp-presidente #menuBtn,
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost > button{
+    top:calc(50% + 3px) !important;
+    width:48px !important;
+    height:48px !important;
+    transform:translateY(-50%) !important;
+  }
+
+  .cursapp-presidente #menuBtn{
+    right:70px !important;
+  }
+
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost > button{
+    right:16px !important;
+  }
+
+  .cursapp-presidente .container{
+    padding-top:14px !important;
+  }
+
+  .cursapp-presidente .presMockHero{
+    height:170px !important;
+    min-height:170px !important;
+    max-height:170px !important;
+    padding:16px !important;
+    overflow:hidden !important;
+  }
+
+  .cursapp-presidente .presMockHero.is-empty{
+    display:flex !important;
+    align-items:stretch !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead{
+    width:100% !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead div{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead span{
+    width:40px !important;
+    height:40px !important;
+    margin:0 0 10px !important;
+    border-radius:14px !important;
+    color:#5b3fff !important;
+    background:#f3f4f6 !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead span::before{
+    width:22px !important;
+    height:22px !important;
+    border-width:0 !important;
+    border-radius:0 !important;
+    background:linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px,currentColor 7px 11px,transparent 11px 14px,currentColor 14px 18px);
+    clip-path:polygon(0 35%,22% 35%,22% 100%,0 100%,0 35%,39% 18%,61% 18%,61% 100%,39% 100%,39% 18%,78% 0,100% 0,100% 100%,78% 100%,78% 0);
+  }
+
+  .cursapp-presidente .presMockHeroHead h2{
+    max-width:100% !important;
+    font-size:19px !important;
+    line-height:1.08 !important;
+    font-weight:650 !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead p{
+    max-width:100% !important;
+    margin-top:6px !important;
+    font-size:12.5px !important;
+    line-height:1.22 !important;
+  }
+
+  .cursapp-presidente .presMockHero.is-empty .presMockHeroHead p{
+    font-size:0 !important;
+  }
+
+  .cursapp-presidente .presMockHero.is-empty .presMockHeroHead p::before{
+    content:"Sin campanas activas";
+    display:block;
+    font-size:13px;
+    line-height:1.2;
+    color:#4b5563;
+  }
+
+  .cursapp-presidente .presMockHero.is-empty .presMockHeroHead p::after{
+    content:"Aqui aparecera el estado financiero de todas las campanas del curso.";
+    display:block;
+    max-width:92%;
+    margin-top:4px;
+    font-size:12px;
+    line-height:1.25;
+    color:#7c8798;
+  }
+
+  .cursapp-presidente .presMockHeroHead button{
+    min-height:32px !important;
+    margin-top:10px !important;
+    padding:0 13px !important;
+    border-radius:10px !important;
+    font-size:12px !important;
+  }
+
+  .cursapp-presidente .presMockKpis{
+    position:relative !important;
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:12px !important;
+    padding-top:34px !important;
+  }
+
+  .cursapp-presidente .presMockKpis::before,
+  .cursapp-presidente .presMockKpis::after{
+    position:absolute !important;
+    top:0 !important;
+    margin:0 !important;
+    grid-column:auto !important;
+    align-self:auto !important;
+  }
+
+  .cursapp-presidente .presMockKpis::before{
+    left:0 !important;
+    content:"Resumen del curso" !important;
+    font-size:18px !important;
+    line-height:1.15 !important;
+    font-weight:650 !important;
+  }
+
+  .cursapp-presidente .presMockKpis::after{
+    right:0 !important;
+    content:"Este mes" !important;
+    font-size:12px !important;
+    line-height:1.15 !important;
+    font-weight:500 !important;
+    color:#64748b !important;
+  }
+
+  .cursapp-presidente .presMockKpi{
+    height:104px !important;
+    min-height:104px !important;
+    padding:13px !important;
+  }
+
+  .cursapp-presidente .presMockQuick{
+    height:70px !important;
+    min-height:70px !important;
+    padding:10px !important;
+    gap:7px !important;
+  }
+
+  .cursapp-presidente .presMockNotice{
+    min-height:40px !important;
+    padding:7px 10px !important;
+  }
+}
