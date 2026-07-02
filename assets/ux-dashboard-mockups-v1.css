@@ -5579,3 +5579,76 @@ body.cursapp-app-shell{
     background:#6d28d9 !important;
   }
 }
+
+/* v20: Presidente mobile header menu layering fix */
+@media(max-width:640px){
+  .cursapp-presidente header,
+  .cursapp-presidente .topbar{
+    position:relative !important;
+    z-index:1200 !important;
+    overflow:visible !important;
+  }
+
+  .cursapp-presidente #menuBtn{
+    position:absolute !important;
+    top:50% !important;
+    right:16px !important;
+    left:auto !important;
+    transform:translateY(-50%) !important;
+    z-index:1220 !important;
+  }
+
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost,
+  .cursapp-presidente #avisosBellHost > button,
+  .cursapp-presidente .cursapp-bell-btn,
+  .cursapp-presidente [data-cursapp-bell="1"]{
+    position:absolute !important;
+    top:50% !important;
+    right:76px !important;
+    left:auto !important;
+    transform:translateY(-50%) !important;
+    z-index:1210 !important;
+  }
+
+  .cursapp-presidente #avisosBellHost{
+    width:48px !important;
+    height:48px !important;
+  }
+
+  .cursapp-presidente #avisosBellHost > button,
+  .cursapp-presidente .cursapp-bell-btn,
+  .cursapp-presidente [data-cursapp-bell="1"]{
+    width:48px !important;
+    height:48px !important;
+    margin:0 !important;
+  }
+
+  .cursapp-presidente #menuDropdown,
+  .cursapp-presidente #menuDropdown.caMenuOpen,
+  .cursapp-presidente #menuDropdown[style*="block"]{
+    position:fixed !important;
+    top:96px !important;
+    right:16px !important;
+    left:auto !important;
+    bottom:auto !important;
+    transform:none !important;
+    width:min(320px, calc(100vw - 32px)) !important;
+    max-height:calc(100vh - 120px) !important;
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    z-index:5000 !important;
+    background:#fff !important;
+    border:1px solid rgba(17,24,39,.1) !important;
+    border-radius:20px !important;
+    box-shadow:0 24px 70px rgba(15,23,42,.26) !important;
+    pointer-events:auto !important;
+  }
+
+  .cursapp-presidente #menuDropdown.caMenuOpen,
+  .cursapp-presidente #menuDropdown[style*="block"]{
+    display:block !important;
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+}

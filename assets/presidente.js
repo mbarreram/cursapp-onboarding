@@ -1281,7 +1281,15 @@ function cuotasPendientesTask(id){
   function initMenu(){
     if(menuBtn && menuDropdown){
       if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
-      document.addEventListener("click", ()=> menuDropdown.style.display="none");
+      if(!menuDropdown.__presidenteMenuCloseBound){
+        menuDropdown.__presidenteMenuCloseBound = true;
+        document.addEventListener("click", (ev)=>{
+          const target = ev.target;
+          if(target && (target === menuBtn || menuBtn.contains(target) || menuDropdown.contains(target))) return;
+          menuDropdown.style.display = "none";
+          menuDropdown.classList.remove("caMenuOpen");
+        });
+      }
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
