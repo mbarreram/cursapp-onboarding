@@ -2542,3 +2542,445 @@ body.cursapp-app-shell{
     grid-row:auto !important;
   }
 }
+
+/* v8: Presidente mobile pilot based on new GPT design document */
+@media(max-width:640px){
+  .cursapp-presidente{
+    --pres-purple:#6c4dff;
+    --pres-green:#22c55e;
+    --pres-orange:#ffb020;
+    --pres-blue:#4f86e5;
+    --pres-soft:#f8fafc;
+    --pres-ink:#111827;
+    background:#f8fafc !important;
+  }
+
+  .cursapp-presidente header{
+    position:sticky !important;
+    top:0 !important;
+    z-index:10020 !important;
+    background:rgba(248,250,252,.94) !important;
+    backdrop-filter:blur(18px);
+  }
+
+  .cursapp-presidente .topbar{
+    width:100% !important;
+    max-width:none !important;
+    min-height:112px !important;
+    padding:18px 22px 12px !important;
+    display:flex !important;
+    align-items:center !important;
+    border-radius:0 !important;
+    border-bottom:0 !important;
+    box-shadow:none !important;
+    background:transparent !important;
+  }
+
+  .cursapp-presidente .brand{
+    max-width:calc(100% - 116px) !important;
+    gap:12px !important;
+  }
+
+  .cursapp-presidente .brand .logo{
+    width:52px !important;
+    height:52px !important;
+    border-radius:999px !important;
+    background:linear-gradient(145deg,#6c4dff,#5428d9) !important;
+    box-shadow:0 14px 30px rgba(108,77,255,.22) !important;
+    font-size:22px !important;
+  }
+
+  .cursapp-presidente .brand > div:last-child > div:first-child{
+    display:flex !important;
+    align-items:center !important;
+    gap:6px !important;
+    font-size:18px !important;
+    font-weight:760 !important;
+    color:var(--pres-ink) !important;
+  }
+
+  .cursapp-presidente .brand > div:last-child > div:first-child::after{
+    content:"";
+    width:14px;
+    height:14px;
+    display:inline-block;
+    border-radius:999px;
+    background:var(--pres-purple);
+    box-shadow:inset 0 0 0 3px #fff;
+  }
+
+  .cursapp-presidente .brand .muted{
+    margin-top:2px !important;
+    color:#475569 !important;
+    font-size:14px !important;
+    font-weight:500 !important;
+  }
+
+  .cursapp-presidente .brand .muted::after{
+    content:"⌄";
+    margin-left:8px;
+    color:#64748b;
+    font-weight:800;
+  }
+
+  .cursapp-presidente #menuBtn,
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost > button{
+    top:34px !important;
+    transform:none !important;
+    width:52px !important;
+    height:52px !important;
+    border-radius:999px !important;
+    border:1px solid #e5e7eb !important;
+    background:#fff !important;
+    box-shadow:0 10px 24px rgba(15,23,42,.08) !important;
+  }
+
+  .cursapp-presidente #menuBtn{
+    right:84px !important;
+  }
+
+  .cursapp-presidente #avisosBtn,
+  .cursapp-presidente #avisosBellHost > button{
+    right:22px !important;
+  }
+
+  .cursapp-presidente .container{
+    width:100% !important;
+    max-width:none !important;
+    padding:0 18px 118px !important;
+  }
+
+  .cursapp-presidente .presMockPage{
+    display:grid !important;
+    gap:18px !important;
+    padding-bottom:0 !important;
+  }
+
+  .cursapp-presidente .presMockWelcome,
+  .cursapp-presidente .presMockUpdated{
+    display:none !important;
+  }
+
+  .cursapp-presidente .presMockHero{
+    min-height:230px !important;
+    padding:18px 20px 16px !important;
+    border:1.5px solid #111827 !important;
+    border-radius:18px !important;
+    color:var(--pres-ink) !important;
+    background:#fff !important;
+    box-shadow:0 8px 22px rgba(15,23,42,.04) !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead{
+    display:block !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead span{
+    width:42px !important;
+    height:42px !important;
+    margin-bottom:24px !important;
+    border:1px solid #dbe3ef !important;
+    border-radius:13px !important;
+    background:#f8fafc !important;
+    color:#111827 !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead h2{
+    max-width:58% !important;
+    font-size:23px !important;
+    line-height:1.1 !important;
+    font-weight:760 !important;
+    color:var(--pres-ink) !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead p{
+    max-width:58% !important;
+    margin-top:8px !important;
+    color:#475569 !important;
+    font-size:14px !important;
+    font-weight:500 !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead button{
+    min-height:44px !important;
+    margin-top:14px !important;
+    padding:0 16px !important;
+    border:1.5px solid #111827 !important;
+    border-radius:10px !important;
+    background:#fff !important;
+    color:#111827 !important;
+    font-size:14px !important;
+    font-weight:760 !important;
+  }
+
+  .cursapp-presidente .presMockHeroHead button::after{
+    content:"→";
+    margin-left:12px;
+    font-size:18px;
+    line-height:0;
+  }
+
+  .cursapp-presidente .presMockHeroBody{
+    display:block !important;
+    margin:0 !important;
+  }
+
+  .cursapp-presidente .presMockHeroMetric{
+    display:none !important;
+  }
+
+  .cursapp-presidente .presMockRing{
+    position:absolute !important;
+    right:22px !important;
+    top:42px !important;
+    width:128px !important;
+    height:128px !important;
+    color:#111827 !important;
+    background:
+      radial-gradient(circle at center,#fff 0 55%,transparent 56%),
+      conic-gradient(var(--pres-purple) calc(var(--pct,0) * 1%), #edf0f6 0) !important;
+  }
+
+  .cursapp-presidente .presMockRing b{
+    color:#111827 !important;
+    font-size:32px !important;
+    font-weight:760 !important;
+  }
+
+  .cursapp-presidente .presMockRing small{
+    color:#475569 !important;
+    font-size:13px !important;
+    font-weight:500 !important;
+  }
+
+  .cursapp-presidente .presMockDots{
+    position:absolute !important;
+    left:0 !important;
+    right:0 !important;
+    bottom:16px !important;
+    margin:0 !important;
+  }
+
+  .cursapp-presidente .presMockDots span{
+    width:10px !important;
+    height:10px !important;
+    background:#d9dee8 !important;
+  }
+
+  .cursapp-presidente .presMockDots span:first-child{
+    background:var(--pres-purple) !important;
+  }
+
+  .cursapp-presidente .presMockKpis{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:12px !important;
+  }
+
+  .cursapp-presidente .presMockKpis::before{
+    content:"Resumen del curso";
+    grid-column:1 / 2;
+    align-self:end;
+    color:var(--pres-ink);
+    font-size:17px;
+    font-weight:760;
+  }
+
+  .cursapp-presidente .presMockKpis::after{
+    content:"Este mes⌄";
+    grid-column:2 / 3;
+    justify-self:end;
+    align-self:end;
+    color:#475569;
+    font-size:13px;
+    font-weight:600;
+  }
+
+  .cursapp-presidente .presMockKpi{
+    min-height:136px !important;
+    padding:14px !important;
+    border-radius:16px !important;
+    border:1px solid #e5e7eb !important;
+    box-shadow:0 4px 16px rgba(0,0,0,.06) !important;
+  }
+
+  .cursapp-presidente .presMockKpi span{
+    width:42px !important;
+    height:42px !important;
+    border-radius:14px !important;
+    margin:0 0 14px !important;
+  }
+
+  .cursapp-presidente .presMockKpi small{
+    font-size:14px !important;
+    color:#56627a !important;
+    font-weight:600 !important;
+  }
+
+  .cursapp-presidente .presMockKpi b{
+    margin-top:10px !important;
+    font-size:22px !important;
+    font-weight:760 !important;
+  }
+
+  .cursapp-presidente .presMockKpi em{
+    margin-top:4px !important;
+    font-size:13px !important;
+    font-weight:500 !important;
+  }
+
+  .cursapp-presidente .presMockKpi i{
+    left:16px !important;
+    right:16px !important;
+    bottom:12px !important;
+    height:4px !important;
+    border:0 !important;
+    border-radius:999px !important;
+    background:currentColor !important;
+    opacity:.95 !important;
+  }
+
+  .cursapp-presidente .presMockSection{
+    gap:12px !important;
+  }
+
+  .cursapp-presidente .presMockSection h2{
+    font-size:18px !important;
+    font-weight:760 !important;
+  }
+
+  .cursapp-presidente .presMockSection header button{
+    font-size:13px !important;
+    font-weight:700 !important;
+  }
+
+  .cursapp-presidente .presMockQuickGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    gap:10px 12px !important;
+  }
+
+  .cursapp-presidente .presMockQuick{
+    min-height:64px !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:12px !important;
+    padding:12px !important;
+    border-radius:14px !important;
+    text-align:left !important;
+    box-shadow:0 4px 16px rgba(0,0,0,.045) !important;
+  }
+
+  .cursapp-presidente .presMockQuick span[data-ca-icon-ready="1"],
+  .cursapp-presidente .presMockQuick span{
+    width:40px !important;
+    height:40px !important;
+    margin:0 !important;
+    border-radius:13px !important;
+    flex:0 0 40px !important;
+  }
+
+  .cursapp-presidente .presMockQuick b{
+    max-width:none !important;
+    margin:0 !important;
+    font-size:13px !important;
+    line-height:1.2 !important;
+    font-weight:760 !important;
+  }
+
+  .cursapp-presidente .presMockCampaignGrid{
+    display:flex !important;
+    gap:12px !important;
+    overflow-x:auto !important;
+    padding-bottom:4px !important;
+    scroll-snap-type:x mandatory;
+  }
+
+  .cursapp-presidente .presMockCampaign,
+  .cursapp-presidente .presMockEmpty{
+    min-width:136px !important;
+    width:136px !important;
+    min-height:150px !important;
+    padding:14px !important;
+    border-radius:14px !important;
+    scroll-snap-align:start;
+  }
+
+  .cursapp-presidente .presMockCampaignIcon{
+    position:static !important;
+    width:42px !important;
+    height:42px !important;
+    margin-bottom:10px !important;
+    border-radius:999px !important;
+  }
+
+  .cursapp-presidente .presMockCampaignTop button,
+  .cursapp-presidente .presMockCampaign footer{
+    display:none !important;
+  }
+
+  .cursapp-presidente .presMockCampaign h3{
+    font-size:13px !important;
+    line-height:1.15 !important;
+  }
+
+  .cursapp-presidente .presMockCampaign p,
+  .cursapp-presidente .presMockCampaign small{
+    font-size:11px !important;
+  }
+
+  .cursapp-presidente .presMockCampaign strong{
+    font-size:17px !important;
+  }
+
+  .cursapp-presidente .presMockNoticeList{
+    gap:8px !important;
+  }
+
+  .cursapp-presidente .presMockNotice{
+    min-height:54px !important;
+    grid-template-columns:18px 1fr auto !important;
+    gap:10px !important;
+    padding:10px 12px !important;
+    border-radius:14px !important;
+  }
+
+  .cursapp-presidente .presMockNotice > span{
+    width:10px !important;
+    height:10px !important;
+    border-radius:999px !important;
+    font-size:0 !important;
+    background:var(--pres-purple) !important;
+  }
+
+  .cursapp-presidente .presMockNotice h3{
+    font-size:13px !important;
+  }
+
+  .cursapp-presidente .presMockNotice h3 em{
+    float:right;
+    margin-left:8px !important;
+    padding:5px 10px !important;
+  }
+
+  .cursapp-presidente .presMockNotice p{
+    margin-top:3px !important;
+    font-size:12px !important;
+  }
+
+  .cursapp-presidente .presMockNotice time{
+    display:none !important;
+  }
+
+  .cursapp-presidente [data-monetization-slot="presidente"]{
+    border-radius:18px !important;
+    overflow:hidden !important;
+  }
+
+  .cursapp-presidente .bottomNav{
+    width:calc(100vw - 36px) !important;
+    max-width:430px !important;
+    bottom:10px !important;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+  }
+}
