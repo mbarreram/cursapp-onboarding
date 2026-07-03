@@ -6399,3 +6399,93 @@ body.cursapp-app-shell{
   }
 }
 
+/* v23: Presidente Home - header data, section order support and safe text */
+.cursapp-presidente .brand .logo img,
+.cursapp-presidente .presMockAvatar img{
+  width:100% !important;
+  height:100% !important;
+  display:block !important;
+  object-fit:cover !important;
+  border-radius:inherit !important;
+}
+
+.cursapp-presidente .presBrandName,
+.cursapp-presidente .presBrandRole,
+.cursapp-presidente .presBrandCourse{
+  max-width:100% !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+.cursapp-presidente .presBrandName{
+  color:#111827 !important;
+  font-size:18px !important;
+  line-height:1.12 !important;
+  font-weight:800 !important;
+}
+
+.cursapp-presidente .presBrandRole{
+  margin-top:2px !important;
+  color:#111827 !important;
+  font-size:12px !important;
+  line-height:1.1 !important;
+  font-weight:650 !important;
+}
+
+.cursapp-presidente .presBrandCourse{
+  margin-top:1px !important;
+  color:#8a92a3 !important;
+  font-size:12px !important;
+  line-height:1.1 !important;
+  font-weight:600 !important;
+}
+
+.cursapp-presidente .presMockWelcome h1{
+  max-width:100% !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+}
+
+.cursapp-presidente .presMockWelcome p{
+  line-height:1.25 !important;
+}
+
+.cursapp-presidente .presHeroCampaign h3{
+  max-width:100% !important;
+  display:-webkit-box !important;
+  -webkit-line-clamp:2 !important;
+  -webkit-box-orient:vertical !important;
+  white-space:normal !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  font-size:min(28px, 7vw) !important;
+  line-height:1.1 !important;
+}
+
+.cursapp-presidente .presHeroCampaign{
+  max-width:100% !important;
+  overflow:hidden !important;
+}
+
+.cursapp-presidente .presHeroCarousel{
+  max-width:100% !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+}
+
+.cursapp-presidente .presInfoTable{
+  order:0 !important;
+}
+
+@media(max-width:420px){
+  .cursapp-presidente .presBrandName{
+    font-size:17px !important;
+  }
+
+  .cursapp-presidente .presHeroCampaign h3{
+    font-size:min(27px, 7vw) !important;
+  }
+}
+

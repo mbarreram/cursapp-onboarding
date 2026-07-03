@@ -1607,23 +1607,76 @@ function setActive(tab){
     return `<span class="${className || "presSvgIcon"}" aria-hidden="true">${icons[name] || ""}</span>`;
   }
 
+  function presCleanText(value){
+    return String(value ?? "")
+      .replace(/Ã¡/g,"á").replace(/Ã©/g,"é").replace(/Ã­/g,"í").replace(/Ã³/g,"ó").replace(/Ãº/g,"ú")
+      .replace(/Ã/g,"Á").replace(/Ã‰/g,"É").replace(/Ã/g,"Í").replace(/Ã“/g,"Ó").replace(/Ãš/g,"Ú")
+      .replace(/Ã±/g,"ñ").replace(/Ã‘/g,"Ñ")
+      .replace(/Â°/g,"°").replace(/Ã‚Â°/g,"°").replace(/Â·/g,"·").replace(/â†’/g,"→")
+      .replace(/â€”/g,"—").replace(/â€“/g,"–")
+      .trim();
+  }
+
+  function presFirstText(){
+    for(const value of arguments){
+      const text = presCleanText(value);
+      if(text) return text;
+    }
+    return "";
+  }
+
   function getPresidentVisualContext(apods){
     const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
     const session = readSession() || {};
-    const school = String(c.schoolName || c.school || c.colegio || "Colegio Central").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
-    const level = String(c.level || c.curso || c.course || "2Â°").trim();
-    const letter = String(c.letter || "B").trim();
-    const curso = `${level}${letter ? " " + letter : ""} BÃ¡sico`.replace(/\s+/g," ").trim();
-    const rawName = String(session.name || session.nombre || session.fullName || session.displayName || session.email || "").trim();
-    let name = rawName.includes("@") ? rawName.split("@")[0] : rawName;
+    const enrollments = (typeof approvedApoderados === "function" ? approvedApoderados() : []) || [];
+    const ownEnrollment = enrollments.find(e => String(e.email || "").toLowerCase() === String(session.email || "").toLowerCase()) || enrollments[0] || {};
+    const school = presFirstText(c.schoolName, c.school, c.colegio, "Colegio Central").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
+    const level = presFirstText(c.level, c.curso, c.course, "2°");
+    const letter = presFirstText(c.letter, "B");
+    const cursoShort = `${level}${letter ? letter : ""}`.replace(/\s+/g,"").replace(/([A-Za-z])([A-Za-z])$/,"$1").trim();
+    const curso = `${cursoShort} Básico`.replace(/\s+/g," ").trim();
+    const rawName = presFirstText(session.name, session.nombre, session.fullName, session.displayName, c.presidentName, c.presidenteNombre);
+    let name = rawName.includes("@") ? "" : rawName;
     if(!name || name.toLowerCase() === "presidente") name = "Usuario";
+    const student = presFirstText(
+      session.alumno,
+      session.studentName,
+      session.nombreAlumno,
+      session.nombre_alumno,
+      ownEnrollment.alumno,
+      ownEnrollment.nombre_alumno,
+      ownEnrollment.studentName
+    ) || "N/A";
     return {
       name,
       school,
-      curso: curso.replace(/([0-9])Ã‚Â°\s+([A-Z])/i, "$1Ã‚Â°$2"),
+      curso,
+      cursoShort,
+      student,
       avatar: session.avatar || session.avatarUrl || session.photoURL || session.foto || "",
       apoderado: apods === 1 ? "1 familia" : `${apods} familias`
     };
+  }
+
+  function updatePresidentHeader(ctx){
+    const brand = document.querySelector("header .brand");
+    if(!brand || !ctx) return;
+    const logo = brand.querySelector(".logo");
+    if(logo){
+      if(ctx.avatar){
+        logo.innerHTML = `<img src="${esc(ctx.avatar)}" alt="">`;
+      }else{
+        logo.textContent = (ctx.name || "U").slice(0,1).toUpperCase();
+      }
+    }
+    const textBox = brand.querySelector(":scope > div:last-child");
+    if(textBox){
+      textBox.innerHTML = `
+        <div class="presBrandName">${esc(ctx.name)}</div>
+        <div class="muted presBrandRole">Presidente</div>
+        <div class="muted presBrandCourse">${esc(ctx.school)} · ${esc(ctx.cursoShort)}</div>
+      `;
+    }
   }
 
   function enhancePresidentMenu(){
@@ -1659,19 +1712,19 @@ function setActive(tab){
         <div class="presMenuIdentity">
           <strong>${esc(ctx.name)}</strong>
           <span>Presidente</span>
-          <small>${esc(ctx.school)} Â· ${esc(ctx.curso)}</small>
+          <small>${esc(ctx.school)} · ${esc(ctx.curso)}</small>
         </div>
-        <button class="presMenuClose" type="button" onclick="window.__presMenuClose()" aria-label="Cerrar menÃº">${presSvgIcon("x","presMenuCloseIcon")}</button>
+        <button class="presMenuClose" type="button" onclick="window.__presMenuClose()" aria-label="Cerrar menú">${presSvgIcon("x","presMenuCloseIcon")}</button>
       </div>
       <div class="presMenuList">
         <button type="button" onclick="window.__presMenuGo('home')">${presSvgIcon("home","presMenuItemIcon")}<span>Inicio</span></button>
-        <button type="button" onclick="window.__presMenuGo('campanas')">${presSvgIcon("megaphone","presMenuItemIcon")}<span>CampaÃ±as</span></button>
+        <button type="button" onclick="window.__presMenuGo('campanas')">${presSvgIcon("megaphone","presMenuItemIcon")}<span>Campañas</span></button>
         <button type="button" onclick="window.__presMenuGo('deudores')">${presSvgIcon("clock","presMenuItemIcon")}<span>Deudores</span></button>
         <button type="button" onclick="window.__presMenuGo('informes')">${presSvgIcon("fileText","presMenuItemIcon")}<span>Informes</span></button>
         <button type="button" onclick="window.__presMenuGo('apoderados')">${presSvgIcon("users","presMenuItemIcon")}<span>Apoderados</span></button>
       </div>
       <div class="presMenuList presMenuDanger">
-        <button type="button" onclick="window.__presMenuLogout()">${presSvgIcon("logOut","presMenuItemIcon")}<span>Cerrar sesiÃ³n</span></button>
+        <button type="button" onclick="window.__presMenuLogout()">${presSvgIcon("logOut","presMenuItemIcon")}<span>Cerrar sesión</span></button>
       </div>
       <div class="presMenuList presMenuSupport">
         <button type="button" onclick="window.__presMenuSupport()">${presSvgIcon("messageCircle","presMenuItemIcon")}<span>Soporte / Mis tickets</span></button>
@@ -1776,17 +1829,17 @@ function renderHome(){
     const campaignHeroSlides = campaignHeroItems.map((item,idx)=>`
       <article class="presHeroCampaign" style="--pct:${item.pct}">
         <div class="presHeroCampaignCopy">
-          <span class="presHeroLabel">${presSvgIcon("flag","presHeroBadgeIcon")}CampaÃ±a destacada</span>
-          <h3>${esc(item.t.title || "Campana")}</h3>
+          <span class="presHeroLabel">${presSvgIcon("flag","presHeroBadgeIcon")}Campaña destacada</span>
+          <h3>${esc(presCleanText(item.t.title || "Campaña"))}</h3>
           <div class="presHeroMetrics">
             <div><small>Meta</small><b>${clp(item.expected)}</b></div>
             <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
           </div>
           <p class="presHeroFamilies">${presSvgIcon("users","presHeroFamiliesIcon")}${item.paidFamilies} de ${apods} familias pagadas</p>
-          <button type="button" onclick="window.go('campanas')">Ver campaÃ±a ${presSvgIcon("arrowRight","presBtnArrow")}</button>
+          <button type="button" onclick="window.go('campanas')">Ver campaña ${presSvgIcon("arrowRight","presBtnArrow")}</button>
         </div>
         <div class="presHeroRing" aria-label="${item.pct}% del objetivo">${presSvgIcon("flag","presHeroRingFlag")}<b>${item.pct}%</b><small>del objetivo</small></div>
-        <div class="presHeroIndex">${esc(item.t.title || "Campana")} Â· ${idx + 1} de ${campaignHeroItems.length}</div>
+        <div class="presHeroIndex">${esc(presCleanText(item.t.title || "Campaña"))} · ${idx + 1} de ${campaignHeroItems.length}</div>
       </article>
     `).join("");
 
@@ -1867,12 +1920,16 @@ function renderHome(){
       </article>
     `).join("");
     const visualContext = getPresidentVisualContext(apods);
+    updatePresidentHeader(visualContext);
+    const homeAvatar = visualContext.avatar
+      ? `<img src="${esc(visualContext.avatar)}" alt="">`
+      : esc((visualContext.name || "U").slice(0,1).toUpperCase());
     const summaryTable = `
       <section class="presInfoTable" aria-label="Datos principales del curso">
         <article>
           ${presSvgIcon("users","presInfoIcon presInfoPeople")}
-          <small>Apoderado de</small>
-          <strong>${esc(visualContext.apoderado)}</strong>
+          <small>Alumno/a</small>
+          <strong>${esc(visualContext.student)}</strong>
         </article>
         <article>
           ${presSvgIcon("school","presInfoIcon presInfoSchool")}
@@ -1882,7 +1939,7 @@ function renderHome(){
         <article>
           ${presSvgIcon("fileText","presInfoIcon presInfoCourse")}
           <small>Curso</small>
-          <strong>${esc(visualContext.curso)}</strong>
+          <strong>${esc(visualContext.cursoShort)}</strong>
         </article>
       </section>
     `;
@@ -1890,18 +1947,20 @@ function renderHome(){
     app.innerHTML = `
       <div class="presMockPage">
         <section class="presMockWelcome">
-          <div class="presMockAvatar">C</div>
+          <div class="presMockAvatar">${homeAvatar}</div>
           <div>
-            <h1>Buenos dias, Presidente</h1>
-            <p>Presidente del curso<br>Periodo ${esc(ym)} Â· ${apods} familias</p>
+            <h1>${esc(visualContext.name)}</h1>
+            <p>Presidente<br>${esc(visualContext.school)} · ${esc(visualContext.cursoShort)}</p>
           </div>
         </section>
 
-        <div class="presMockUpdated">Ultima actualizacion: Hoy 09:35</div>
+        <div class="presMockUpdated">Última actualización: Hoy 09:35</div>
+
+        ${summaryTable}
 
         <section class="presMockHero ${hasCampaigns ? "is-filled is-campaign" : "is-empty"}">
           ${hasCampaigns ? `
-            <div class="presHeroCarousel" aria-label="Campanas destacadas">
+            <div class="presHeroCarousel" aria-label="Campañas destacadas">
               ${campaignHeroSlides}
             </div>
             <div class="presHeroDots" aria-hidden="true">
@@ -1909,15 +1968,13 @@ function renderHome(){
             </div>
           ` : `
             <div class="presMockHeroHead">
-              <div><span>I</span><h2>Dashboard ejecutivo</h2><p>No existen campanas activas</p></div>
-              <button type="button" onclick="openCreateCampaign()">Crear primera campana</button>
+              <div><span>I</span><h2>Dashboard ejecutivo</h2><p>No existen campañas activas</p></div>
+              <button type="button" onclick="openCreateCampaign()">Crear primera campaña</button>
             </div>
             <div class="presMockHeroBody"></div>
             <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
           `}
         </section>
-
-        ${summaryTable}
 
         <section class="presMockKpis">${kpiCards}</section>
 
