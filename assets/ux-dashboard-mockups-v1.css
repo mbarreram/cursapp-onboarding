@@ -7521,3 +7521,30 @@ body.cursapp-app-shell{
   }
 }
 
+/* v32: Presidente Mobile - Safari/iOS bottom nav and support separation only */
+@supports (-webkit-touch-callout: none){
+  @media(max-width:640px){
+    .cursapp-presidente .container{
+      padding-bottom:calc(env(safe-area-inset-bottom) + 190px) !important;
+    }
+
+    .cursapp-presidente .bottomNav{
+      position:fixed !important;
+      left:16px !important;
+      right:16px !important;
+      bottom:calc(env(safe-area-inset-bottom) + 10px) !important;
+      z-index:1000 !important;
+      transform:translateZ(0) !important;
+      -webkit-transform:translateZ(0) !important;
+    }
+
+    .cursapp-presidente .supportFab{
+      right:24px !important;
+      bottom:calc(env(safe-area-inset-bottom) + 148px) !important;
+      z-index:940 !important;
+      transform:translateZ(0) !important;
+      -webkit-transform:translateZ(0) !important;
+    }
+  }
+}
+
