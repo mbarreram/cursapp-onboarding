@@ -6134,3 +6134,268 @@ body.cursapp-app-shell{
   }
 }
 
+/* v22: Presidente Home - real SVG icons and safe mobile text layout */
+.cursapp-presidente .presSvgIcon,
+.cursapp-presidente .presHeroBadgeIcon,
+.cursapp-presidente .presHeroFamiliesIcon,
+.cursapp-presidente .presBtnArrow,
+.cursapp-presidente .presHeroRingFlag,
+.cursapp-presidente .presInfoIcon,
+.cursapp-presidente .presMenuItemIcon,
+.cursapp-presidente .presMenuCloseIcon{
+  display:inline-grid !important;
+  place-items:center !important;
+  flex:0 0 auto !important;
+  color:currentColor !important;
+}
+
+.cursapp-presidente .presSvgIcon svg,
+.cursapp-presidente .presHeroBadgeIcon svg,
+.cursapp-presidente .presHeroFamiliesIcon svg,
+.cursapp-presidente .presBtnArrow svg,
+.cursapp-presidente .presHeroRingFlag svg,
+.cursapp-presidente .presInfoIcon svg,
+.cursapp-presidente .presMenuItemIcon svg,
+.cursapp-presidente .presMenuCloseIcon svg{
+  width:100% !important;
+  height:100% !important;
+  display:block !important;
+  stroke:currentColor !important;
+}
+
+.cursapp-presidente .presHeroCampaign{
+  grid-template-columns:minmax(0,58%) minmax(86px,42%) !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+}
+
+.cursapp-presidente .presHeroCampaignCopy{
+  max-width:100% !important;
+  min-width:0 !important;
+}
+
+.cursapp-presidente .presHeroLabel{
+  max-width:100% !important;
+  white-space:nowrap !important;
+}
+
+.cursapp-presidente .presHeroBadgeIcon{
+  width:18px !important;
+  height:18px !important;
+  color:#2563eb !important;
+}
+
+.cursapp-presidente .presHeroLabel i{
+  display:none !important;
+}
+
+.cursapp-presidente .presHeroMetrics{
+  max-width:100% !important;
+  width:100% !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:10px !important;
+}
+
+.cursapp-presidente .presHeroMetrics small{
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  font-size:13px !important;
+}
+
+.cursapp-presidente .presHeroMetrics b{
+  white-space:nowrap !important;
+  font-size:19px !important;
+}
+
+.cursapp-presidente .presHeroFamilies{
+  display:flex !important;
+  align-items:center !important;
+  gap:6px !important;
+  width:100% !important;
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  color:#2563eb !important;
+  font-size:14px !important;
+}
+
+.cursapp-presidente .presHeroFamilies span:not(.presHeroFamiliesIcon){
+  display:none !important;
+}
+
+.cursapp-presidente .presHeroFamiliesIcon{
+  width:19px !important;
+  height:19px !important;
+  color:#2563eb !important;
+}
+
+.cursapp-presidente .presHeroCampaign button{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:10px !important;
+  white-space:nowrap !important;
+}
+
+.cursapp-presidente .presHeroCampaign button::after{
+  content:none !important;
+  display:none !important;
+}
+
+.cursapp-presidente .presBtnArrow{
+  width:18px !important;
+  height:18px !important;
+}
+
+.cursapp-presidente .presHeroRing{
+  width:90px !important;
+  height:90px !important;
+  min-width:90px !important;
+  max-width:90px !important;
+  justify-self:end !important;
+  align-self:center !important;
+  margin:0 !important;
+}
+
+.cursapp-presidente .presHeroRing::before{
+  width:66px !important;
+  height:66px !important;
+}
+
+.cursapp-presidente .presHeroRingFlag{
+  position:relative !important;
+  z-index:1 !important;
+  width:21px !important;
+  height:21px !important;
+  border:0 !important;
+  margin:0 !important;
+  color:#2563eb !important;
+}
+
+.cursapp-presidente .presHeroRingFlag::before{
+  content:none !important;
+  display:none !important;
+}
+
+.cursapp-presidente .presHeroRing b{
+  font-size:24px !important;
+}
+
+.cursapp-presidente .presHeroRing small{
+  font-size:11px !important;
+}
+
+.cursapp-presidente .presInfoTable{
+  min-height:96px !important;
+  max-height:110px !important;
+  align-items:center !important;
+  padding:14px 10px !important;
+}
+
+.cursapp-presidente .presInfoIcon{
+  width:30px !important;
+  height:30px !important;
+  color:#6d28d9 !important;
+  position:static !important;
+}
+
+.cursapp-presidente .presInfoIcon::before,
+.cursapp-presidente .presInfoPeople::before,
+.cursapp-presidente .presInfoSchool::before,
+.cursapp-presidente .presInfoCourse::before{
+  content:none !important;
+  display:none !important;
+}
+
+.cursapp-presidente .presInfoTable small,
+.cursapp-presidente .presInfoTable strong{
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+.cursapp-presidente .presMenuAvatar img{
+  width:100% !important;
+  height:100% !important;
+  display:block !important;
+  object-fit:cover !important;
+  border-radius:inherit !important;
+}
+
+.cursapp-presidente #menuDropdown.presMenuPanel,
+.cursapp-presidente #menuDropdown.presMenuPanel.caMenuOpen,
+.cursapp-presidente #menuDropdown.presMenuPanel[style*="block"]{
+  z-index:10050 !important;
+  background:#fff !important;
+  box-shadow:0 24px 70px rgba(15,23,42,.22) !important;
+}
+
+.cursapp-presidente .presMenuClose{
+  padding:0 !important;
+  font-size:0 !important;
+}
+
+.cursapp-presidente .presMenuCloseIcon{
+  width:20px !important;
+  height:20px !important;
+}
+
+.cursapp-presidente .presMenuItemIcon{
+  width:28px !important;
+  height:28px !important;
+  color:#5b21b6 !important;
+}
+
+.cursapp-presidente .presMenuDanger .presMenuItemIcon{
+  color:#dc2626 !important;
+}
+
+.cursapp-presidente .presMenuSupport .presMenuItemIcon{
+  color:#64748b !important;
+}
+
+.cursapp-presidente .presMenuList i,
+.cursapp-presidente .presMenuList i::before{
+  display:none !important;
+  content:none !important;
+}
+
+@media(max-width:420px){
+  .cursapp-presidente .presHeroCampaign{
+    grid-template-columns:minmax(0,58%) minmax(82px,42%) !important;
+    gap:8px 10px !important;
+  }
+
+  .cursapp-presidente .presHeroRing{
+    width:86px !important;
+    height:86px !important;
+    min-width:86px !important;
+    max-width:86px !important;
+  }
+
+  .cursapp-presidente .presHeroRing::before{
+    width:62px !important;
+    height:62px !important;
+  }
+
+  .cursapp-presidente .presHeroMetrics small{
+    font-size:12.5px !important;
+  }
+
+  .cursapp-presidente .presHeroMetrics b{
+    font-size:18px !important;
+  }
+
+  .cursapp-presidente .presHeroFamilies{
+    font-size:13px !important;
+  }
+
+  .cursapp-presidente .presInfoIcon{
+    width:28px !important;
+    height:28px !important;
+  }
+}
+
