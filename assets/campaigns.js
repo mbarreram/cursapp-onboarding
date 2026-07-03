@@ -1009,88 +1009,134 @@
     if (!t) return;
 
     openModal(`
-      <div class="row">
-        <div>
-          <div style="font-weight:950;font-size:18px;">Editar campaÃ±a</div>
-          <div class="muted" style="margin-top:6px;">Mensual: fin se recalcula segÃºn cuotas.</div>
-        </div>
-        <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Nombre</label>
-        <input id="ec_title" value="${esc(t.title)}" />
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">DescripciÃ³n</label>
-        <input id="ec_desc" value="${esc(t.description || "")}" />
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Tipo</label>
-          <select id="ec_type">
-            <option value="single" ${t.type==="single"?"selected":""}>Pago Ãºnico</option>
-            <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">ParticipaciÃ³n</label>
-          <select id="ec_mandatory">
-            <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
-            <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Monto</label>
-          <input id="ec_amount" inputmode="numeric" value="${Number(t.amount||0)}" />
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Meta total</label>
-          <input id="ec_goal" inputmode="numeric" value="${Number(t.goalTotal||0)}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Inicio</label>
-          <input id="ec_start" type="date" value="${esc(t.startDate||todayISO())}" />
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Fin</label>
-          <input id="ec_due" type="date" value="${esc(t.dueDate||"")}" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">(Mensual: se calcula automÃ¡ticamente)</div>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label style="font-weight:900;">Cuotas / Meses (solo mensual)</label>
-        <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
-      </div>
-
-      ${(t.template === "gira" || t.template === "graduacion") ? `
-        <div style="margin-top:14px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
-          <div style="margin-bottom:10px;">
-            <label style="font-weight:900;">Saldo aÃ±os anteriores</label>
-            <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
-            <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
-          </div>
-          <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
-          <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos Ã­tems).</div>
-          <div id="ec_quotes" style="display:grid;gap:10px;"></div>
-          <div style="margin-top:10px;">
-            <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotizaciÃ³n</button>
+      <div class="cursappModalShell">
+        <div class="cursappModalHeader">
+          <div class="campaign-modal-head-row">
+            <button class="campaign-modal-close-btn" onclick="Campaigns.close()">Cerrar</button>
+            <div>
+              <div class="campaign-modal-title">Editar campaña</div>
+              <div class="campaign-modal-subtitle">Actualiza la información de la campaña sin cambiar su lógica.</div>
+            </div>
+            <button class="campaign-modal-x" onclick="Campaigns.close()" aria-label="Cerrar">×</button>
           </div>
         </div>
-      ` : ``}
 
-      <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-        <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveEdit('${esc(t.id)}')">Guardar</button>
+        <div class="cursappModalBody">
+          <div class="cursappModalSection">
+            <div class="cursappModalSectionTitle">Información básica</div>
+
+            <div class="campaign-form-field">
+              <label>Nombre de la campaña</label>
+              <input id="ec_title" value="${esc(t.title)}" />
+            </div>
+
+            <div class="campaign-form-field">
+              <label>Descripción</label>
+              <textarea id="ec_desc" placeholder="Descripción de la campaña">${esc(t.description || "")}</textarea>
+            </div>
+          </div>
+
+          <div class="cursappModalSection">
+            <div class="cursappModalSectionTitle">Configuración de cobro</div>
+
+            <div class="cursappModalGrid2 campaign-form-grid">
+              <div class="cursappModalCol">
+                <label>Tipo de pago</label>
+                <select id="ec_type">
+                  <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
+                  <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
+                </select>
+              </div>
+              <div class="cursappModalCol">
+                <label>Participación</label>
+                <select id="ec_mandatory">
+                  <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
+                  <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="cursappModalGrid2 campaign-form-grid" style="margin-top:12px;">
+              <div class="cursappModalCol">
+                <label>Monto total</label>
+                <input id="ec_amount" inputmode="numeric" value="${Number(t.amount||0)}" />
+                <div class="campaign-field-help">Monto por pago o cuota según el tipo seleccionado.</div>
+              </div>
+              <div class="cursappModalCol">
+                <label>Meta total</label>
+                <input id="ec_goal" inputmode="numeric" value="${Number(t.goalTotal||0)}" />
+                <div class="campaign-field-help">Meta referencial de la campaña.</div>
+              </div>
+            </div>
+
+            <div class="campaign-form-field">
+              <label>Cuotas / meses (solo mensual)</label>
+              <input id="ec_months" inputmode="numeric" value="${Number(t.months||1)}" />
+            </div>
+          </div>
+
+          <div class="cursappModalSection">
+            <div class="cursappModalSectionTitle">Fechas</div>
+
+            <div class="cursappModalGrid2 campaign-form-grid">
+              <div class="cursappModalCol">
+                <label>Fecha de inicio</label>
+                <input id="ec_start" type="date" value="${esc(t.startDate||todayISO())}" />
+              </div>
+              <div class="cursappModalCol">
+                <label>Fecha de fin</label>
+                <input id="ec_due" type="date" value="${esc(t.dueDate||"")}" />
+              </div>
+            </div>
+            <div class="campaign-field-help">Si la campaña es mensual, la fecha fin se recalcula automáticamente según cuotas.</div>
+          </div>
+
+          ${(t.template === "gira" || t.template === "graduacion") ? `
+            <div class="cursappModalSection">
+              <div class="cursappModalSectionTitle">Plantilla y cotizaciones</div>
+              <div class="campaign-form-field">
+                <label>Saldo años anteriores</label>
+                <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
+                <div class="campaign-field-help">Se considera como reunido por el curso.</div>
+              </div>
+              <div class="campaign-form-field">
+                <div class="campaign-summary-label">Cotizaciones</div>
+                <div class="campaign-field-help">Puedes agregar varias cotizaciones para distintos ítems.</div>
+                <div id="ec_quotes" style="display:grid;gap:10px;margin-top:12px;"></div>
+                <button class="btnx" id="ec_add_quote" type="button" style="margin-top:12px;">+ Agregar cotización</button>
+              </div>
+            </div>
+          ` : ``}
+
+          <div class="cursappModalSection">
+            <div class="cursappModalSectionTitle">Resumen actual</div>
+            <div class="campaign-summary-box">
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>
+                <div><div class="campaign-summary-label">Tipo de pago</div><div class="campaign-summary-value">${t.type==="monthly" ? "Mensual" : "Pago único"}</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <div><div class="campaign-summary-label">Participación</div><div class="campaign-summary-value">${t.mandatoryParticipation ? "Obligatoria" : "No obligatoria"}</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <div><div class="campaign-summary-label">Cuotas</div><div class="campaign-summary-value">${Number(t.months||1)}</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 6v12"/></svg>
+                <div><div class="campaign-summary-label">Monto</div><div class="campaign-summary-value">$${Number(t.amount||0).toLocaleString("es-CL")}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cursappModalFooter">
+          <div class="actions campaign-modal-footer-grid">
+            <button class="btnx campaign-modal-cancel" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary campaign-modal-submit" onclick="Campaigns.saveEdit('${esc(t.id)}')">Guardar cambios</button>
+          </div>
+        </div>
       </div>
     `);
 
@@ -1138,12 +1184,12 @@
         wrap.innerHTML = quotes.length ? quotes.map((q, idx) => `
           <div data-quote-row="1" data-idx="${idx}" style="border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-              <div style="font-weight:950;">CotizaciÃ³n ${idx+1}</div>
+              <div style="font-weight:950;">Cotización ${idx+1}</div>
               <button class="btnx danger" type="button" data-del="${idx}">Quitar</button>
             </div>
 
             <div style="margin-top:10px;">
-              <label style="font-weight:900;">Nombre cotizaciÃ³n</label>
+              <label style="font-weight:900;">Nombre cotización</label>
               <input id="ec_q_name_${idx}" value="${esc(q.name)}" placeholder="Ej: Transporte / Hotel / Entradas" />
             </div>
 
@@ -1158,11 +1204,11 @@
             </div>
 
             <div style="margin-top:10px;">
-              <label style="font-weight:900;">DescripciÃ³n</label>
+              <label style="font-weight:900;">Descripción</label>
               <input id="ec_q_desc_${idx}" value="${esc(q.desc)}" placeholder="Ej: Incluye bus + seguro + entradas" />
             </div>
           </div>
-        `).join("") : `<div class="muted" style="font-size:13px;">AÃºn no hay cotizaciones.</div>`;
+        `).join("") : `<div class="muted" style="font-size:13px;">Aún no hay cotizaciones.</div>`;
 
         // bind delete
         wrap.querySelectorAll("button[data-del]").forEach(b=>{
