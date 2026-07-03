@@ -534,67 +534,68 @@
     syncMonthly();
   }
   // ---------- Templates (Plantillas destacadas) ----------
-  // Gira / GraduaciÃ³n: cuotas abiertas, saldo aÃ±os anteriores y mÃºltiples cotizaciones.
+  // Gira / Graduacion: cuotas abiertas, saldo anos anteriores y multiples cotizaciones.
   function openCreateTemplate(template){
     const tpl = String(template||"").toLowerCase();
     const defaultStart = todayISO();
-    const titleDefault = tpl === "graduacion" ? "GraduaciÃ³n" : "Gira de estudio";
+    const titleDefault = tpl === "graduacion" ? "Graduación" : "Gira de estudio";
     const descDefault  = tpl === "graduacion" ? "Cotizaciones + plan de cuotas" : "Cotizaciones + plan de cuotas";
 
     openModal(`
       <div class="cursappModalShell">
         <div class="cursappModalHeader">
-          <div class="row" style="align-items:flex-start;">
+          <div class="campaign-modal-head-row">
+            <button class="campaign-modal-close-btn" onclick="Campaigns.close()">Cerrar</button>
             <div>
-              <div style="font-weight:950;font-size:20px;">${esc(titleDefault)}</div>
-              <div class="muted" style="margin-top:6px;font-weight:900;">Plantilla destacada</div>
+              <div class="campaign-modal-title">${esc(titleDefault)}</div>
+              <div class="campaign-modal-subtitle">Plantilla destacada para crear campañas con cuotas y cotizaciones.</div>
             </div>
-            <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+            <button class="campaign-modal-x" onclick="Campaigns.close()" aria-label="Cerrar">×</button>
           </div>
         </div>
 
         <div class="cursappModalBody">
           <div class="cursappModalSection">
-            <div class="cursappModalSectionTitle">InformaciÃ³n</div>
+            <div class="cursappModalSectionTitle">Información de plantilla</div>
 
-            <div style="margin-top:12px;">
-              <label>Nombre</label>
+            <div class="campaign-form-field">
+              <label>Nombre de la campaña</label>
               <input id="tc_title" value="${esc(titleDefault)}" />
             </div>
 
-            <div style="margin-top:12px;">
-              <label>DescripciÃ³n</label>
-              <input id="tc_desc" value="${esc(descDefault)}" />
+            <div class="campaign-form-field">
+              <label>Descripción</label>
+              <textarea id="tc_desc" rows="2" placeholder="Ej: Cotizaciones, traslados y plan de cuotas">${esc(descDefault)}</textarea>
             </div>
           </div>
 
           <div class="cursappModalSection">
-            <div class="cursappModalSectionTitle">Cobro</div>
+            <div class="cursappModalSectionTitle">Configuración de cobro</div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
-              <div class="cursappModalCol">
-                <label>ParticipaciÃ³n</label>
+            <div class="cursappModalGrid2 campaign-form-grid">
+              <div class="campaign-form-field">
+                <label>Participación</label>
                 <select id="tc_mandatory">
                   <option value="false" selected>No obligatoria</option>
                   <option value="true">Obligatoria</option>
                 </select>
               </div>
-              <div class="cursappModalCol">
-                <label>Monto cuota</label>
+              <div class="campaign-form-field">
+                <label>Monto por cuota</label>
                 <input id="tc_amount" inputmode="numeric" placeholder="Ej: 25000" />
               </div>
             </div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
-              <div class="cursappModalCol">
+            <div class="cursappModalGrid2 campaign-form-grid" style="margin-top:12px;">
+              <div class="campaign-form-field">
                 <label>Cuotas / meses</label>
                 <input id="tc_months" inputmode="numeric" min="1" value="10" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Cuotas abiertas. MÃ­nimo 1 (recomendado 10).</div>
+                <div class="campaign-field-help">Cuotas abiertas. Mínimo 1 (recomendado 10).</div>
               </div>
-              <div class="cursappModalCol">
-                <label>Saldo aÃ±os anteriores</label>
+              <div class="campaign-form-field">
+                <label>Saldo años anteriores</label>
                 <input id="tc_prev" inputmode="numeric" placeholder="Ej: 120000" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se considera como reunido (curso).</div>
+                <div class="campaign-field-help">Se considera como reunido por el curso.</div>
               </div>
             </div>
           </div>
@@ -602,37 +603,53 @@
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Fechas</div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
-              <div class="cursappModalCol">
-                <label>Inicio</label>
+            <div class="cursappModalGrid2 campaign-form-grid">
+              <div class="campaign-form-field">
+                <label>Fecha de inicio</label>
                 <input id="tc_start" type="date" value="${defaultStart}" />
               </div>
-              <div class="cursappModalCol">
-                <label>Fin</label>
+              <div class="campaign-form-field">
+                <label>Fecha de fin</label>
                 <input id="tc_due" type="date" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se calcula automÃ¡ticamente segÃºn cuotas.</div>
+              </div>
+            </div>
+            <div class="campaign-field-help">Se calcula automáticamente según las cuotas configuradas.</div>
+          </div>
+
+          <div class="cursappModalSection">
+            <div class="cursappModalSectionTitle">Resumen</div>
+            <div class="campaign-summary-box">
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>
+                <div><div class="campaign-summary-label">Tipo de pago</div><div class="campaign-summary-value">Mensual</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <div><div class="campaign-summary-label">Participación</div><div class="campaign-summary-value">Según selección</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <div><div class="campaign-summary-label">Cuotas</div><div class="campaign-summary-value">10</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                <svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 6v12"/></svg>
+                <div><div class="campaign-summary-label">Meta por alumno</div><div class="campaign-summary-value" id="tc_meta_alumno">$0</div></div>
               </div>
             </div>
           </div>
 
           <div class="cursappModalSection">
-            <div class="cursappModalSectionTitle">Monto meta alumno</div>
-            <div class="muted" style="margin-top:6px;font-weight:900;">Monto cuota Ã— cuotas. (Referencial)</div>
-            <div id="tc_meta_alumno" style="margin-top:10px;font-size:22px;font-weight:950;">$0</div>
-          </div>
-
-          <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Cotizaciones</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;font-weight:900;">Puedes agregar varias cotizaciones (distintos Ã­tems).</div>
+            <div class="campaign-field-help">Puedes agregar varias cotizaciones para distintos ítems.</div>
             <div id="tc_quotes" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;"></div>
-            <button class="btnx" id="tc_add_quote" type="button" style="margin-top:12px;">+ Agregar cotizaciÃ³n</button>
+            <button class="btnx" id="tc_add_quote" type="button" style="margin-top:12px;">+ Agregar cotización</button>
           </div>
         </div>
 
         <div class="cursappModalFooter">
-          <div class="actions" style="justify-content:flex-end;gap:10px;">
-            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-            <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear campaÃ±a</button>
+          <div class="actions campaign-modal-footer-grid">
+            <button class="btnx campaign-modal-cancel" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary campaign-modal-submit" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear campaña</button>
           </div>
         </div>
       </div>
@@ -671,26 +688,26 @@
     const addBtn = document.getElementById("tc_add_quote");
     function quoteRow(idx){
       return `
-        <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.10);">
+        <div class="card" style="padding:14px;border:1px solid rgba(226,232,240,.95);border-radius:18px;background:#fff;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="font-weight:950;">CotizaciÃ³n ${idx+1}</div>
+            <div style="font-weight:950;">Cotización ${idx+1}</div>
             <button class="btnx danger" type="button" data-qrm="${idx}">Quitar</button>
           </div>
-          <div style="margin-top:10px;">
-            <label style="font-weight:900;">Nombre cotizaciÃ³n</label>
+          <div class="campaign-form-field">
+            <label style="font-weight:900;">Nombre cotización</label>
             <input data-q="nombre" placeholder="Ej: Alojamiento" />
           </div>
-          <div style="margin-top:10px;">
+          <div class="campaign-form-field">
             <label style="font-weight:900;">URL</label>
             <input data-q="url" placeholder="https://..." />
           </div>
-          <div style="margin-top:10px;">
+          <div class="campaign-form-field">
             <label style="font-weight:900;">Monto total</label>
             <input data-q="monto_total" inputmode="numeric" placeholder="Ej: 2000000" />
           </div>
-          <div style="margin-top:10px;">
-            <label style="font-weight:900;">DescripciÃ³n</label>
-            <textarea data-q="descripcion" rows="2" placeholder="Detalle del Ã­tem"></textarea>
+          <div class="campaign-form-field">
+            <label style="font-weight:900;">Descripción</label>
+            <textarea data-q="descripcion" rows="2" placeholder="Detalle del ítem"></textarea>
           </div>
         </div>
       `;
@@ -704,7 +721,7 @@
           // renumber
           Array.from(qWrap.children).forEach((c,ix)=>{
             const h = c.querySelector("div[style*='font-weight:950']");
-            if(h) h.textContent = `CotizaciÃ³n ${ix+1}`;
+            if(h) h.textContent = `Cotización ${ix+1}`;
             const rm = c.querySelector("[data-qrm]");
             if(rm) rm.setAttribute("data-qrm", String(ix));
           });
@@ -735,7 +752,7 @@
     const dueDate = calcMonthlyEndDate(startDate, months);
 
     if(!title){ alert("Debes ingresar un nombre."); return; }
-    if(!amount || amount<=0){ alert("Debes ingresar un monto cuota vÃ¡lido."); return; }
+    if(!amount || amount<=0){ alert("Debes ingresar un monto cuota válido."); return; }
 
     // read quotes
     const qWrap = document.getElementById("tc_quotes");
@@ -772,7 +789,7 @@
       cotizaciones: cotizaciones2,
     };
     try{ await saveCampaignToSupabase(task); }
-    catch(e){ alert("No se pudo guardar la campaÃ±a en Supabase: " + (e && e.message ? e.message : e)); return; }
+    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
     ts.unshift(task);
     save(KEY_TASKS, ts);
 
