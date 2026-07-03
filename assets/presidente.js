@@ -1594,6 +1594,7 @@ function setActive(tab){
     const icons = {
       flag: `<svg ${base} aria-hidden="true"><path d="M5 21V5"/><path d="M5 5c3-2 5 2 8 0 2-.9 3-.5 5 .5v9c-2-1-3-1.4-5-.5-3 2-5-2-8 0"/></svg>`,
       users: `<svg ${base} aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.86"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+      familyHome: `<svg ${base} aria-hidden="true"><path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10"/><circle cx="9" cy="14" r="1.7"/><circle cx="15" cy="14" r="1.7"/><path d="M7 19c.6-1.4 1.7-2.1 3-2.1"/><path d="M17 19c-.6-1.4-1.7-2.1-3-2.1"/></svg>`,
       school: `<svg ${base} aria-hidden="true"><path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/><path d="M22 10v6"/></svg>`,
       fileText: `<svg ${base} aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>`,
       home: `<svg ${base} aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>`,
@@ -1932,7 +1933,7 @@ function renderHome(){
             <div><small>Meta</small><b>${clp(item.expected)}</b></div>
             <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
           </div>
-          <p class="presHeroFamilies">${presSvgIcon("users","presHeroFamiliesIcon")}${item.paidFamilies} de ${apods} familias pagadas</p>
+          <p class="presHeroFamilies">${presSvgIcon("familyHome","presHeroFamiliesIcon")}${item.paidFamilies} de ${apods} familias pagadas</p>
           <button type="button" onclick="window.go('campanas')">Ver campaña ${presSvgIcon("arrowRight","presBtnArrow")}</button>
         </div>
         <div class="presHeroRing" aria-label="${item.pct}% del objetivo">${presSvgIcon("flag","presHeroRingFlag")}<b>${item.pct}%</b><small>del objetivo</small></div>
