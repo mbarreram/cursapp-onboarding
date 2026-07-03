@@ -7482,3 +7482,42 @@ body.cursapp-app-shell{
   }
 }
 
+/* v31: Presidente Mobile - small height repair for dashboard button visibility */
+@media(max-width:640px){
+  .cursapp-presidente .presMockHero.is-campaign{
+    height:218px !important;
+    min-height:218px !important;
+    max-height:218px !important;
+  }
+
+  .cursapp-presidente .presHeroCarousel{
+    height:174px !important;
+    max-height:174px !important;
+  }
+
+  .cursapp-presidente .presHeroCampaign{
+    height:174px !important;
+    min-height:174px !important;
+    max-height:174px !important;
+  }
+
+  .cursapp-presidente .presHeroDots{
+    margin-top:7px !important;
+  }
+}
+
+@media(max-width:380px){
+  .cursapp-presidente .presMockHero.is-campaign{
+    height:210px !important;
+    min-height:210px !important;
+    max-height:210px !important;
+  }
+
+  .cursapp-presidente .presHeroCarousel,
+  .cursapp-presidente .presHeroCampaign{
+    height:166px !important;
+    min-height:166px !important;
+    max-height:166px !important;
+  }
+}
+
