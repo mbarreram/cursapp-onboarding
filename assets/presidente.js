@@ -1281,6 +1281,21 @@ function cuotasPendientesTask(id){
   function initMenu(){
     if(menuBtn && menuDropdown){
       if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
+      if(!menuBtn.__presidenteMenuEnhanceBound){
+        menuBtn.__presidenteMenuEnhanceBound = true;
+        menuBtn.addEventListener("click", ()=>{
+          setTimeout(enhancePresidentMenu, 0);
+          setTimeout(enhancePresidentMenu, 80);
+        });
+      }
+      if(!menuDropdown.__presidenteMenuObserverBound && typeof MutationObserver !== "undefined"){
+        menuDropdown.__presidenteMenuObserverBound = true;
+        const menuObserver = new MutationObserver(()=>{
+          const visible = menuDropdown.style.display === "block" || menuDropdown.classList.contains("caMenuOpen");
+          if(visible && !menuDropdown.querySelector(".presMenuHead")) setTimeout(enhancePresidentMenu, 0);
+        });
+        menuObserver.observe(menuDropdown, { childList:true, attributes:true, attributeFilter:["style","class"] });
+      }
       if(!menuDropdown.__presidenteMenuCloseBound){
         menuDropdown.__presidenteMenuCloseBound = true;
         document.addEventListener("click", (ev)=>{
@@ -1574,6 +1589,72 @@ function setActive(tab){
     update();
   }
 
+  function getPresidentVisualContext(apods){
+    const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
+    const session = readSession() || {};
+    const school = String(c.schoolName || c.school || c.colegio || "Colegio Central").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
+    const level = String(c.level || c.curso || c.course || "2°").trim();
+    const letter = String(c.letter || "B").trim();
+    const curso = `${level}${letter ? " " + letter : ""} Básico`.replace(/\s+/g," ").trim();
+    const name = String(session.name || session.nombre || session.fullName || session.email || "Presidente").trim();
+    return {
+      name: name.includes("@") ? "Presidente" : name,
+      school,
+      curso,
+      apoderado: apods === 1 ? "1 familia" : `${apods} familias`
+    };
+  }
+
+  function enhancePresidentMenu(){
+    if(!menuDropdown) return;
+    const ctx = getPresidentVisualContext(approvedCount());
+    window.__presMenuGo = function(tab){
+      menuDropdown.style.display = "none";
+      menuDropdown.classList.remove("caMenuOpen");
+      if(tab === "apoderados") location.href = "apoderados.html";
+      else if(typeof window.go === "function") window.go(tab);
+    };
+    window.__presMenuClose = function(){
+      menuDropdown.style.display = "none";
+      menuDropdown.classList.remove("caMenuOpen");
+    };
+    window.__presMenuLogout = function(){
+      const existing = logoutBtn || document.getElementById("logoutBtn") || document.querySelector("[data-logout]");
+      if(existing && existing !== document.activeElement){ try{ existing.click(); return; }catch(e){} }
+      location.href = "/index.html";
+    };
+    window.__presMenuSupport = function(){
+      const btn = document.querySelector(".supportFab,.cursapp-support-fab,[data-support-ticket]");
+      if(btn){ btn.click(); return; }
+      if(typeof window.openHelp === "function") window.openHelp("soporte");
+    };
+    menuDropdown.classList.add("presMenuPanel");
+    menuDropdown.innerHTML = `
+      <div class="presMenuHead">
+        <div class="presMenuAvatar" aria-hidden="true">C</div>
+        <div class="presMenuIdentity">
+          <strong>${esc(ctx.name)}</strong>
+          <span>Presidente</span>
+          <small>${esc(ctx.school)} · ${esc(ctx.curso)}</small>
+        </div>
+        <button class="presMenuClose" type="button" onclick="window.__presMenuClose()" aria-label="Cerrar menú">×</button>
+      </div>
+      <div class="presMenuList">
+        <button type="button" onclick="window.__presMenuGo('home')"><i data-icon="home"></i><span>Inicio</span></button>
+        <button type="button" onclick="window.__presMenuGo('campanas')"><i data-icon="campaign"></i><span>Campañas</span></button>
+        <button type="button" onclick="window.__presMenuGo('deudores')"><i data-icon="debtors"></i><span>Deudores</span></button>
+        <button type="button" onclick="window.__presMenuGo('informes')"><i data-icon="reports"></i><span>Informes</span></button>
+        <button type="button" onclick="window.__presMenuGo('apoderados')"><i data-icon="people"></i><span>Apoderados</span></button>
+      </div>
+      <div class="presMenuList presMenuDanger">
+        <button type="button" onclick="window.__presMenuLogout()"><i data-icon="logout"></i><span>Cerrar sesión</span></button>
+      </div>
+      <div class="presMenuList presMenuSupport">
+        <button type="button" onclick="window.__presMenuSupport()"><i data-icon="support"></i><span>Soporte / Mis tickets</span></button>
+      </div>
+    `;
+  }
+
 
 function renderHome(){
     const ym = currentYYYYMM();
@@ -1677,10 +1758,10 @@ function renderHome(){
             <div><small>Meta</small><b>${clp(item.expected)}</b></div>
             <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
           </div>
-          <p>${item.paidFamilies} de ${apods} familias pagadas</p>
+          <p class="presHeroFamilies"><span aria-hidden="true"></span>${item.paidFamilies} de ${apods} familias pagadas</p>
           <button type="button" onclick="window.go('campanas')">Ver campaña →</button>
         </div>
-        <div class="presHeroRing" aria-label="${item.pct}% del objetivo"><b>${item.pct}%</b></div>
+        <div class="presHeroRing" aria-label="${item.pct}% del objetivo"><span class="presHeroRingFlag" aria-hidden="true"></span><b>${item.pct}%</b><small>del objetivo</small></div>
         <div class="presHeroIndex">${esc(item.t.title || "Campana")} · ${idx + 1} de ${campaignHeroItems.length}</div>
       </article>
     `).join("");
@@ -1761,6 +1842,26 @@ function renderHome(){
         <time>${esc(n.time)}</time>
       </article>
     `).join("");
+    const visualContext = getPresidentVisualContext(apods);
+    const summaryTable = `
+      <section class="presInfoTable" aria-label="Datos principales del curso">
+        <article>
+          <span class="presInfoIcon presInfoPeople" aria-hidden="true"></span>
+          <small>Apoderado de</small>
+          <strong>${esc(visualContext.apoderado)}</strong>
+        </article>
+        <article>
+          <span class="presInfoIcon presInfoSchool" aria-hidden="true"></span>
+          <small>Colegio</small>
+          <strong>${esc(visualContext.school)}</strong>
+        </article>
+        <article>
+          <span class="presInfoIcon presInfoCourse" aria-hidden="true"></span>
+          <small>Curso</small>
+          <strong>${esc(visualContext.curso)}</strong>
+        </article>
+      </section>
+    `;
 
     app.innerHTML = `
       <div class="presMockPage">
@@ -1791,6 +1892,8 @@ function renderHome(){
             <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
           `}
         </section>
+
+        ${summaryTable}
 
         <section class="presMockKpis">${kpiCards}</section>
 
