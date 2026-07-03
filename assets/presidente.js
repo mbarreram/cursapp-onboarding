@@ -1625,6 +1625,105 @@ function setActive(tab){
     return "";
   }
 
+  let presResolvedPresidentName = "";
+  let presPresidentNameLookup = false;
+
+  function presUsablePersonName(){
+    for(const value of arguments){
+      const text = presFirstText(value);
+      if(!text || text.includes("@")) continue;
+      const low = text.toLowerCase();
+      if(low === "usuario" || low === "presidente") continue;
+      return text;
+    }
+    return "";
+  }
+
+  function presLocalPresidentName(session, course, enrollments){
+    const meta = session && (session.user_metadata || session.raw_user_meta_data || session.metadata || session.profile || session.user || {});
+    const local = presUsablePersonName(
+      meta && meta.full_name,
+      meta && meta.name,
+      session && session.full_name,
+      session && session.fullName,
+      session && session.name,
+      session && session.nombre,
+      session && session.displayName,
+      course && course.presidentFullName,
+      course && course.presidentName,
+      course && course.presidenteNombre,
+      course && course.nombrePresidente
+    );
+    if(local) return local;
+
+    const ck = String(activeCourseKey() || "").trim();
+    const email = String(session && session.email || "").toLowerCase().trim();
+    try{
+      const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1") || "[]");
+      const match = Array.isArray(profiles) ? profiles.find(p=>{
+        const pEmail = String(p?.apoderado?.email || p?.email || p?.user?.email || "").toLowerCase().trim();
+        const pRole = String(p?.role || p?.user?.role || "").toLowerCase().trim();
+        return (!ck || String(p?.courseKey || "") === ck) && (pRole === "presidente" || p?.presidente === true || (!pRole && (!email || pEmail === email)));
+      }) : null;
+      const profileName = presUsablePersonName(
+        match && match.full_name,
+        match && match.fullName,
+        match && match.name,
+        match && match.nombre,
+        match && match.user && match.user.full_name,
+        match && match.user && match.user.name,
+        match && match.apoderado && match.apoderado.nombre,
+        match && match.apoderado && match.apoderado.name
+      );
+      if(profileName) return profileName;
+    }catch(e){}
+
+    const own = (enrollments || []).find(e => String(e.email || e.apoderadoEmail || "").toLowerCase().trim() === email) || (enrollments || [])[0] || {};
+    return presUsablePersonName(own.full_name, own.fullName, own.nombre, own.name, own.nombre_apoderado, own.apoderadoNombre);
+  }
+
+  async function resolvePresidentNameFromSupabase(){
+    if(presResolvedPresidentName || presPresidentNameLookup || typeof sb !== "function") return;
+    presPresidentNameLookup = true;
+    try{
+      const session = readSession() || {};
+      const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
+      const email = String(session.email || session.user?.email || "").toLowerCase().trim();
+      const userId = presFirstText(session.user_id, session.userId, session.uid, session.id, session.user && session.user.id);
+      const cursoId = presFirstText(c.id, c.curso_id, c.courseId, c.course_id);
+      const courseKey = presFirstText(activeCourseKey(), c.courseKey, c.course_key);
+      const attempts = [];
+      if(userId){
+        attempts.push(`profiles?select=full_name,name&id=eq.${q(userId)}&limit=1`);
+        attempts.push(`profiles?select=full_name,name&user_id=eq.${q(userId)}&limit=1`);
+      }
+      if(email) attempts.push(`profiles?select=full_name,name,email&email=eq.${q(email)}&limit=1`);
+      if(cursoId) attempts.push(`miembros_curso?select=nombre_apoderado,nombre,full_name,name,rol,email&curso_id=eq.${q(cursoId)}&rol=eq.presidente&limit=1`);
+      if(courseKey) attempts.push(`miembros_curso?select=nombre_apoderado,nombre,full_name,name,rol,email,course_key&course_key=eq.${q(courseKey)}&rol=eq.presidente&limit=1`);
+
+      for(const path of attempts){
+        try{
+          const rows = await sb(path);
+          const row = Array.isArray(rows) ? rows[0] : rows;
+          const name = presUsablePersonName(row && row.full_name, row && row.name, row && row.nombre, row && row.nombre_apoderado);
+          if(name){
+            presResolvedPresidentName = name;
+            const ctx = getPresidentVisualContext(approvedCount());
+            updatePresidentHeader(ctx);
+            document.querySelectorAll(".presMockWelcome h1").forEach(el=>{ el.textContent = ctx.name; });
+            document.querySelectorAll(".presMockAvatar,.brand .logo").forEach(el=>{
+              if(ctx.avatar) el.innerHTML = `<img src="${esc(ctx.avatar)}" alt="">`;
+              else el.textContent = (ctx.name || "P").slice(0,1).toUpperCase();
+            });
+            if(menuDropdown && menuDropdown.classList.contains("caMenuOpen")) enhancePresidentMenu();
+            break;
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+    presPresidentNameLookup = false;
+  }
+
   function getPresidentVisualContext(apods){
     const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
     const session = readSession() || {};
@@ -1635,9 +1734,7 @@ function setActive(tab){
     const letter = presFirstText(c.letter, "B");
     const cursoShort = `${level}${letter ? letter : ""}`.replace(/\s+/g,"").replace(/([A-Za-z])([A-Za-z])$/,"$1").trim();
     const curso = `${cursoShort} Básico`.replace(/\s+/g," ").trim();
-    const rawName = presFirstText(session.name, session.nombre, session.fullName, session.displayName, c.presidentName, c.presidenteNombre);
-    let name = rawName.includes("@") ? "" : rawName;
-    if(!name || name.toLowerCase() === "presidente") name = "Usuario";
+    const name = presResolvedPresidentName || presLocalPresidentName(session, c, enrollments) || "Presidente del curso";
     const student = presFirstText(
       session.alumno,
       session.studentName,
@@ -1921,6 +2018,7 @@ function renderHome(){
     `).join("");
     const visualContext = getPresidentVisualContext(apods);
     updatePresidentHeader(visualContext);
+    resolvePresidentNameFromSupabase();
     const homeAvatar = visualContext.avatar
       ? `<img src="${esc(visualContext.avatar)}" alt="">`
       : esc((visualContext.name || "U").slice(0,1).toUpperCase());
