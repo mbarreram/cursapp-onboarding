@@ -1,13 +1,13 @@
-/* =========================================================
-   Cursapp · Campaigns (Shared) — v1.0
+﻿/* =========================================================
+   Cursapp Â· Campaigns (Shared) â€” v1.0
    Fuente de verdad para:
-   - Crear campaña (FULL): tipo, monto, cuotas/meses, participación, fechas
-   - Editar campaña (FULL)
-   - Cerrar campaña (tipo + motivo)
-   - Cálculo automático de fecha fin para mensual (cuotas)
-   - Marca "requiere nuevo informe" (dirty) automáticamente
+   - Crear campaÃ±a (FULL): tipo, monto, cuotas/meses, participaciÃ³n, fechas
+   - Editar campaÃ±a (FULL)
+   - Cerrar campaÃ±a (tipo + motivo)
+   - CÃ¡lculo automÃ¡tico de fecha fin para mensual (cuotas)
+   - Marca "requiere nuevo informe" (dirty) automÃ¡ticamente
 
-   Diseñado para ser usado por Presidente y Tesorero (y otros).
+   DiseÃ±ado para ser usado por Presidente y Tesorero (y otros).
    Requiere:
    - <div id="modalRoot"></div> en el HTML
 ========================================================= */
@@ -46,7 +46,7 @@
   }
 
 
-  // ✅ Use course-scoped tasks key if available; fallback to legacy keys for existing demos
+  // âœ… Use course-scoped tasks key if available; fallback to legacy keys for existing demos
   const SCOPED_TASKS = sk("tasks_v1");
   const KEY_TASKS =
     (localStorage.getItem(SCOPED_TASKS) != null
@@ -55,14 +55,14 @@
   const KEY_DIRTY =
     detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
-  // Payments key (shared) — used to instantiate pending payments for mandatory campaigns
+  // Payments key (shared) â€” used to instantiate pending payments for mandatory campaigns
   const SCOPED_PAYMENTS = sk("payments_v1");
   const KEY_PAYMENTS =
     (localStorage.getItem(SCOPED_PAYMENTS) != null
       ? SCOPED_PAYMENTS
       : (detectKey(["cursapp_payments_v1", "payments", "cobros", "cursapp_pagos_v1"]) || SCOPED_PAYMENTS));
 
-  // Enrollments (approved apoderados) — to pre-create pending payments per apoderado
+  // Enrollments (approved apoderados) â€” to pre-create pending payments per apoderado
   const KEY_ACTIVE_COURSE = "cursapp_active_course_v1";
   const KEY_ENROLL = "cursapp_enrollments_v1";
 
@@ -115,7 +115,7 @@
   // ---- Supabase write helpers (v11 MVP) ----
   const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
   const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg".replace("eyJpc3MiOiJIUzI1NiIs", "eyJpc3MiOiJIUzI1NiIs");
-  // Mantener key explícita real si el replace anterior no aplica en runtime.
+  // Mantener key explÃ­cita real si el replace anterior no aplica en runtime.
   const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
 
   function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
@@ -147,7 +147,7 @@
 
   async function getActiveCursoRow(){
     const ck = currentCourseKey();
-    if(!ck) throw new Error("No se encontró curso activo para guardar la campaña.");
+    if(!ck) throw new Error("No se encontrÃ³ curso activo para guardar la campaÃ±a.");
     const rows = await sb("cursos?course_key=eq." + sbQ(ck) + "&select=*&limit=1", { method:"GET" });
     const curso = Array.isArray(rows) ? rows[0] : null;
     if(!curso || !curso.id) throw new Error("El curso activo no existe en Supabase: " + ck);
@@ -194,7 +194,7 @@
     const curso = await getActiveCursoRow();
     const body = {
       curso_id: curso.id,
-      titulo: String(task?.title || task?.titulo || "Campaña").trim() || "Campaña",
+      titulo: String(task?.title || task?.titulo || "CampaÃ±a").trim() || "CampaÃ±a",
       tipo: String(task?.type || task?.tipo || "single"),
       monto: Number(task?.amount || task?.monto || 0) || 0,
       fecha_inicio: cleanDate(task?.startDate || task?.fecha_inicio),
@@ -235,54 +235,88 @@
       return;
     }
 
-    // ✅ Modal premium mobile-safe:
+    // âœ… Modal premium mobile-safe:
     // - Sheet style (bottom) en mobile para que el pulgar llegue al footer
     // - Header/Body/Footer soportados (si el html trae .cursappModalShell)
-    // - Inputs con tamaño iOS-safe (evita zoom y cortes en fecha)
+    // - Inputs con tamaÃ±o iOS-safe (evita zoom y cortes en fecha)
     root.innerHTML = `
-      <div style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:12px;">
-        <div class="card cursappModalCard" style="width:min(860px,100%);max-height:calc(100vh - 24px);overflow:hidden;">
+      <div class="campaign-modal-overlay" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+        <div class="card cursappModalCard campaign-modal" style="width:calc(100vw - 32px);max-width:720px;max-height:calc(100dvh - 48px);overflow:hidden;border-radius:28px;background:#fff;display:flex;flex-direction:column;">
           <style>
-            .cursappModalCard{ border-radius:18px; }
-            .cursappModalShell{ display:flex; flex-direction:column; max-height:calc(100vh - 70px); }
-            .cursappModalHeader{ padding:14px 14px 10px 14px; border-bottom:1px solid rgba(0,0,0,.06); }
-            .cursappModalBody{ padding:12px 14px 18px 14px; overflow:auto; -webkit-overflow-scrolling:touch; }
-            .cursappModalFooter{ padding:12px 14px; border-top:1px solid rgba(0,0,0,.06); background:#fff; position:sticky; bottom:0; }
+            .cursappModalCard{ border-radius:28px; box-shadow:0 24px 70px rgba(15,23,42,.22); }
+            .cursappModalShell{ display:flex; flex-direction:column; width:100%; max-height:calc(100dvh - 48px); overflow:hidden; }
+            .cursappModalHeader{ position:sticky; top:0; z-index:2; padding:18px 20px 14px; border-bottom:1px solid rgba(226,232,240,.7); background:rgba(255,255,255,.96); }
+            .cursappModalBody{ flex:1; padding:18px 20px 110px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+            .cursappModalFooter{ position:sticky; bottom:0; z-index:3; padding:14px 20px; border-top:1px solid rgba(226,232,240,.8); background:rgba(255,255,255,.96); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
             .cursappModalFooter .actions{ margin-top:0 !important; }
-            .cursappModalFooter .btnx{ padding:12px 14px; border-radius:14px; font-weight:950; }
-            .cursappModalFooter .btnx.primary{ min-width:150px; }
+            .cursappModalFooter .btnx{ height:48px; padding:0 14px; border-radius:16px; font-size:15px; font-weight:800; }
+            .cursappModalFooter .btnx.primary{ min-width:170px; }
 
             /* Premium fields (iOS-safe) */
-            .cursappModalShell label{ display:block; font-weight:950; margin-bottom:8px; }
+            .cursappModalShell label{ display:block; font-size:14px; font-weight:700; margin-bottom:8px; color:#111827; }
             .cursappModalShell input,
             .cursappModalShell select,
             .cursappModalShell textarea{
               width:100%;
-              padding:14px 14px;
+              height:48px;
+              padding:0 14px;
               border-radius:16px;
-              border:1px solid rgba(0,0,0,.12);
+              border:1px solid #e2e8f0;
               background:#fff;
-              font-weight:900;
+              font-weight:650;
               font-size:16px; /* iOS: evita zoom */
               line-height:1.2;
               box-sizing:border-box;
               outline:none;
             }
+            .cursappModalShell textarea{
+              height:auto;
+              min-height:72px;
+              padding:14px;
+            }
             .cursappModalShell input:focus,
             .cursappModalShell select:focus,
             .cursappModalShell textarea:focus{
-              border-color: rgba(91,92,226,.65);
-              box-shadow: 0 0 0 4px rgba(91,92,226,.12);
+              border-color:rgba(124,58,237,.5);
+              box-shadow:0 0 0 4px rgba(124,58,237,.10);
             }
             .cursappModalShell input[type="date"]{
-              min-height:50px;
+              min-height:48px;
               text-align:left;
               white-space:nowrap;
             }
-            .cursappModalGrid2{ display:flex; gap:10px; flex-wrap:wrap; }
+            .cursappModalGrid2{ display:flex; gap:16px; flex-wrap:wrap; }
             .cursappModalCol{ flex:1; min-width:160px; }
-            .cursappModalSection{ margin-top:14px; padding:14px; border-radius:18px; border:1px solid rgba(0,0,0,.08); background:rgba(255,255,255,.92); }
-            .cursappModalSectionTitle{ font-weight:950; font-size:18px; margin-bottom:12px; }
+            .cursappModalSection{ margin:0 0 18px; padding:18px; border-radius:22px; border:1px solid rgba(226,232,240,.95); background:#fff; }
+            .cursappModalSectionTitle{ font-weight:800; font-size:20px; line-height:1.1; margin:0 0 16px; color:#111827; }
+            .campaign-modal-title{ font-size:22px; line-height:1.1; font-weight:800; color:#111827; text-align:center; }
+            .campaign-modal-subtitle{ margin-top:6px; font-size:14px; line-height:1.35; color:#64748b; font-weight:500; text-align:center; }
+            .campaign-modal-head-row{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:start; }
+            .campaign-modal-close-btn,
+            .campaign-modal-x{ height:44px; min-width:44px; border-radius:16px; border:1px solid rgba(124,58,237,.22); background:#fff; color:#6d28d9; font-size:15px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
+            .campaign-modal-x{ color:#64748b; border-color:transparent; font-size:24px; line-height:1; }
+            .campaign-field-help{ margin-top:8px; color:#64748b; font-size:12px; line-height:1.25; font-weight:600; }
+            .campaign-form-field{ margin-top:12px; min-width:0; }
+            .campaign-summary-box{ background:linear-gradient(135deg, rgba(124,58,237,.08), rgba(37,99,235,.05)); border-radius:18px; padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+            .campaign-summary-item{ display:flex; gap:10px; align-items:flex-start; min-width:0; }
+            .campaign-summary-icon{ color:#7c3aed; width:18px; height:18px; flex:0 0 18px; margin-top:2px; }
+            .campaign-summary-label{ font-size:12px; color:#64748b; line-height:1.1; font-weight:650; }
+            .campaign-summary-value{ margin-top:3px; font-size:14px; font-weight:800; color:#0f172a; line-height:1.15; }
+            .campaign-modal-footer-grid{ display:grid; grid-template-columns:1fr 1.8fr; gap:12px; width:100%; }
+            @media(min-width:600px){ .campaign-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; } }
+            @media(max-width:430px){
+              .campaign-modal-overlay{ padding:16px 12px !important; align-items:center !important; }
+              .campaign-modal{ width:calc(100vw - 24px) !important; max-height:calc(100dvh - 32px) !important; border-radius:26px !important; }
+              .cursappModalShell{ max-height:calc(100dvh - 32px); }
+              .cursappModalHeader{ padding:16px 14px 12px; }
+              .cursappModalBody{ padding:16px 14px 100px; }
+              .cursappModalFooter{ padding:12px 14px; }
+              .cursappModalSection{ padding:16px; border-radius:20px; margin-bottom:16px; }
+              .campaign-summary-box{ grid-template-columns:1fr; }
+              .campaign-modal-title{ font-size:20px; }
+              .campaign-modal-subtitle{ font-size:13px; }
+              .campaign-modal-close-btn{ min-width:68px; }
+            }
           </style>
           ${html}
         </div>
@@ -308,18 +342,27 @@
   // ---------- Shared forms ----------
   function openCreate() {
     const defaultStart = todayISO();
+    const summaryIcon = (name)=> {
+      const icons = {
+        card:`<svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>`,
+        users:`<svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+        calendar:`<svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+        coin:`<svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-.9-1.6-1.5-3-1.5-1.7 0-3 1-3 2.3 0 3 6 1.7 6 5 0 1.3-1.3 2.2-3 2.2-1.5 0-2.7-.6-3.3-1.7"/><path d="M12 6v12"/></svg>`,
+        chart:`<svg class="campaign-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>`
+      };
+      return icons[name] || icons.card;
+    };
 
     openModal(`
       <div class="cursappModalShell">
         <div class="cursappModalHeader">
-          <div class="row" style="align-items:flex-start;">
+          <div class="campaign-modal-head-row">
+            <button class="campaign-modal-close-btn" onclick="Campaigns.close()">Cerrar</button>
             <div>
-              <div style="font-weight:950;font-size:20px;">Crear campaña</div>
-              <div class="muted" style="margin-top:6px;font-weight:900;line-height:1.45;">
-                Si es <b>mensual</b>, la fecha fin se calcula automáticamente según cuotas.
-              </div>
+              <div class="campaign-modal-title">Crear campaña</div>
+              <div class="campaign-modal-subtitle">Completa la información para crear una nueva campaña.</div>
             </div>
-            <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
+            <button class="campaign-modal-x" onclick="Campaigns.close()" aria-label="Cerrar">×</button>
           </div>
         </div>
 
@@ -327,23 +370,23 @@
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Información básica</div>
 
-            <div style="margin-top:12px;">
-              <label>Nombre campaña</label>
+            <div class="campaign-form-field">
+              <label>Nombre de la campaña</label>
               <input id="cc_title" placeholder="Ej: Cuota paseo" />
             </div>
 
-            <div style="margin-top:12px;">
+            <div class="campaign-form-field">
               <label>Descripción (opcional)</label>
-              <input id="cc_desc" placeholder="Ej: Transporte y entradas" />
+              <textarea id="cc_desc" placeholder="Ej: Transporte y entradas"></textarea>
             </div>
           </div>
 
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Configuración de cobro</div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
+            <div class="cursappModalGrid2 campaign-form-grid">
               <div class="cursappModalCol">
-                <label>Tipo</label>
+                <label>Tipo de pago</label>
                 <select id="cc_type">
                   <option value="single">Pago único</option>
                   <option value="monthly">Mensual</option>
@@ -358,18 +401,20 @@
               </div>
             </div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
+            <div class="cursappModalGrid2 campaign-form-grid" style="margin-top:12px;">
               <div class="cursappModalCol">
-                <label>Monto</label>
+                <label>Monto total</label>
                 <input id="cc_amount" inputmode="numeric" placeholder="Ej: 5000" />
+                <div class="campaign-field-help">Monto total de la campaña.</div>
               </div>
               <div class="cursappModalCol">
                 <label>Cuotas (si mensual)</label>
                 <input id="cc_months" inputmode="numeric" placeholder="Ej: 10" />
+                <div class="campaign-field-help">Cantidad de cuotas mensuales.</div>
               </div>
             </div>
 
-            <div style="margin-top:12px;">
+            <div class="campaign-form-field">
               <label>Meta total (opcional)</label>
               <input id="cc_goal" inputmode="numeric" placeholder="Ej: 150000" />
             </div>
@@ -378,26 +423,46 @@
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Fechas</div>
 
-            <div class="cursappModalGrid2" style="margin-top:12px;">
+            <div class="cursappModalGrid2 campaign-form-grid">
               <div class="cursappModalCol">
-                <label>Inicio</label>
+                <label>Fecha de inicio</label>
                 <input id="cc_start" type="date" value="${defaultStart}" />
               </div>
               <div class="cursappModalCol">
-                <label>Fin</label>
+                <label>Fecha de fin</label>
                 <input id="cc_due" type="date" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se calcula automáticamente si es mensual.</div>
               </div>
             </div>
+            <div class="campaign-field-help">Se calculará automáticamente si es mensual.</div>
           </div>
 
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Resumen</div>
-            <div class="muted" style="font-weight:900;line-height:1.5;">
-              <div>Tipo: <b id="cc_sum_type">Pago único</b></div>
-              <div>Cuotas: <b id="cc_sum_months">1</b></div>
-              <div>Monto por cuota: <b id="cc_sum_amount">$0</b></div>
-              <div>Total proyectado: <b id="cc_sum_total">$0</b></div>
+            <div class="campaign-summary-box">
+              <div class="campaign-summary-item">
+                ${summaryIcon("card")}
+                <div><div class="campaign-summary-label">Tipo de pago</div><div class="campaign-summary-value" id="cc_sum_type">Pago único</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                ${summaryIcon("users")}
+                <div><div class="campaign-summary-label">Participación</div><div class="campaign-summary-value" id="cc_sum_mandatory">Obligatoria</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                ${summaryIcon("calendar")}
+                <div><div class="campaign-summary-label">Cuotas</div><div class="campaign-summary-value" id="cc_sum_months">1</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                ${summaryIcon("coin")}
+                <div><div class="campaign-summary-label">Monto total</div><div class="campaign-summary-value" id="cc_sum_goal">$0</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                ${summaryIcon("card")}
+                <div><div class="campaign-summary-label">Monto por cuota</div><div class="campaign-summary-value" id="cc_sum_amount">$0</div></div>
+              </div>
+              <div class="campaign-summary-item">
+                ${summaryIcon("chart")}
+                <div><div class="campaign-summary-label">Total proyectado</div><div class="campaign-summary-value" id="cc_sum_total">$0</div></div>
+              </div>
             </div>
           </div>
 
@@ -405,9 +470,9 @@
         </div>
 
         <div class="cursappModalFooter">
-          <div class="actions" style="justify-content:flex-end;gap:10px;">
-            <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-            <button class="btnx primary" onclick="Campaigns.saveCreate()">Crear campaña</button>
+          <div class="actions campaign-modal-footer-grid">
+            <button class="btnx campaign-modal-cancel" onclick="Campaigns.close()">Cancelar</button>
+            <button class="btnx primary campaign-modal-submit" onclick="Campaigns.saveCreate()">Crear campaña</button>
           </div>
         </div>
       </div>
@@ -418,12 +483,16 @@
     const startEl = document.getElementById("cc_start");
     const dueEl = document.getElementById("cc_due");
     const monthsEl = document.getElementById("cc_months");
+    const amountEl = document.getElementById("cc_amount");
+    const mandatoryEl = document.getElementById("cc_mandatory");
+    const goalEl = document.getElementById("cc_goal");
 
     function syncMonthly() {
       const type = typeEl.value;
       const start = startEl.value || todayISO();
       const months = Math.max(0, Number(monthsEl.value || 0));
-      const amount = Math.max(0, Number((document.getElementById("cc_amount")?.value || "").replace(/[^0-9]/g,"") || 0));
+      const amount = Math.max(0, Number((amountEl?.value || "").replace(/[^0-9]/g,"") || 0));
+      const goal = Math.max(0, Number((goalEl?.value || "").replace(/[^0-9]/g,"") || 0));
 
       const isMonthly = type === "monthly";
 
@@ -438,16 +507,20 @@
         dueEl.value = end || "";
       }
 
-      // Resumen (liviano, sólo visual)
+      // Resumen (liviano, solo visual)
       try{
         const sumType = document.getElementById("cc_sum_type");
+        const sumMandatory = document.getElementById("cc_sum_mandatory");
         const sumMonths = document.getElementById("cc_sum_months");
         const sumAmount = document.getElementById("cc_sum_amount");
+        const sumGoal = document.getElementById("cc_sum_goal");
         const sumTotal = document.getElementById("cc_sum_total");
 
         if (sumType) sumType.textContent = isMonthly ? "Mensual" : "Pago único";
+        if (sumMandatory) sumMandatory.textContent = mandatoryEl.value === "true" ? "Obligatoria" : "No obligatoria";
         if (sumMonths) sumMonths.textContent = isMonthly ? String(months || 0) : "1";
         if (sumAmount) sumAmount.textContent = "$" + amount.toLocaleString("es-CL");
+        if (sumGoal) sumGoal.textContent = "$" + (goal || amount).toLocaleString("es-CL");
         const total = isMonthly ? amount * (months || 0) : amount;
         if (sumTotal) sumTotal.textContent = "$" + total.toLocaleString("es-CL");
       }catch(e){/* ignore */}
@@ -455,15 +528,17 @@
     typeEl.onchange = syncMonthly;
     startEl.onchange = syncMonthly;
     monthsEl.oninput = syncMonthly;
+    amountEl.oninput = syncMonthly;
+    mandatoryEl.onchange = syncMonthly;
+    goalEl.oninput = syncMonthly;
     syncMonthly();
   }
-
   // ---------- Templates (Plantillas destacadas) ----------
-  // Gira / Graduación: cuotas abiertas, saldo años anteriores y múltiples cotizaciones.
+  // Gira / GraduaciÃ³n: cuotas abiertas, saldo aÃ±os anteriores y mÃºltiples cotizaciones.
   function openCreateTemplate(template){
     const tpl = String(template||"").toLowerCase();
     const defaultStart = todayISO();
-    const titleDefault = tpl === "graduacion" ? "Graduación" : "Gira de estudio";
+    const titleDefault = tpl === "graduacion" ? "GraduaciÃ³n" : "Gira de estudio";
     const descDefault  = tpl === "graduacion" ? "Cotizaciones + plan de cuotas" : "Cotizaciones + plan de cuotas";
 
     openModal(`
@@ -480,7 +555,7 @@
 
         <div class="cursappModalBody">
           <div class="cursappModalSection">
-            <div class="cursappModalSectionTitle">Información</div>
+            <div class="cursappModalSectionTitle">InformaciÃ³n</div>
 
             <div style="margin-top:12px;">
               <label>Nombre</label>
@@ -488,7 +563,7 @@
             </div>
 
             <div style="margin-top:12px;">
-              <label>Descripción</label>
+              <label>DescripciÃ³n</label>
               <input id="tc_desc" value="${esc(descDefault)}" />
             </div>
           </div>
@@ -498,7 +573,7 @@
 
             <div class="cursappModalGrid2" style="margin-top:12px;">
               <div class="cursappModalCol">
-                <label>Participación</label>
+                <label>ParticipaciÃ³n</label>
                 <select id="tc_mandatory">
                   <option value="false" selected>No obligatoria</option>
                   <option value="true">Obligatoria</option>
@@ -514,10 +589,10 @@
               <div class="cursappModalCol">
                 <label>Cuotas / meses</label>
                 <input id="tc_months" inputmode="numeric" min="1" value="10" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Cuotas abiertas. Mínimo 1 (recomendado 10).</div>
+                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Cuotas abiertas. MÃ­nimo 1 (recomendado 10).</div>
               </div>
               <div class="cursappModalCol">
-                <label>Saldo años anteriores</label>
+                <label>Saldo aÃ±os anteriores</label>
                 <input id="tc_prev" inputmode="numeric" placeholder="Ej: 120000" />
                 <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se considera como reunido (curso).</div>
               </div>
@@ -535,29 +610,29 @@
               <div class="cursappModalCol">
                 <label>Fin</label>
                 <input id="tc_due" type="date" />
-                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se calcula automáticamente según cuotas.</div>
+                <div class="muted" style="margin-top:8px;font-size:12px;font-weight:900;">Se calcula automÃ¡ticamente segÃºn cuotas.</div>
               </div>
             </div>
           </div>
 
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Monto meta alumno</div>
-            <div class="muted" style="margin-top:6px;font-weight:900;">Monto cuota × cuotas. (Referencial)</div>
+            <div class="muted" style="margin-top:6px;font-weight:900;">Monto cuota Ã— cuotas. (Referencial)</div>
             <div id="tc_meta_alumno" style="margin-top:10px;font-size:22px;font-weight:950;">$0</div>
           </div>
 
           <div class="cursappModalSection">
             <div class="cursappModalSectionTitle">Cotizaciones</div>
-            <div class="muted" style="margin-top:6px;font-size:12px;font-weight:900;">Puedes agregar varias cotizaciones (distintos ítems).</div>
+            <div class="muted" style="margin-top:6px;font-size:12px;font-weight:900;">Puedes agregar varias cotizaciones (distintos Ã­tems).</div>
             <div id="tc_quotes" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;"></div>
-            <button class="btnx" id="tc_add_quote" type="button" style="margin-top:12px;">+ Agregar cotización</button>
+            <button class="btnx" id="tc_add_quote" type="button" style="margin-top:12px;">+ Agregar cotizaciÃ³n</button>
           </div>
         </div>
 
         <div class="cursappModalFooter">
           <div class="actions" style="justify-content:flex-end;gap:10px;">
             <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-            <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear campaña</button>
+            <button class="btnx primary" onclick="Campaigns.saveCreateTemplate('${esc(tpl)}')">Crear campaÃ±a</button>
           </div>
         </div>
       </div>
@@ -598,11 +673,11 @@
       return `
         <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.10);">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
-            <div style="font-weight:950;">Cotización ${idx+1}</div>
+            <div style="font-weight:950;">CotizaciÃ³n ${idx+1}</div>
             <button class="btnx danger" type="button" data-qrm="${idx}">Quitar</button>
           </div>
           <div style="margin-top:10px;">
-            <label style="font-weight:900;">Nombre cotización</label>
+            <label style="font-weight:900;">Nombre cotizaciÃ³n</label>
             <input data-q="nombre" placeholder="Ej: Alojamiento" />
           </div>
           <div style="margin-top:10px;">
@@ -614,8 +689,8 @@
             <input data-q="monto_total" inputmode="numeric" placeholder="Ej: 2000000" />
           </div>
           <div style="margin-top:10px;">
-            <label style="font-weight:900;">Descripción</label>
-            <textarea data-q="descripcion" rows="2" placeholder="Detalle del ítem"></textarea>
+            <label style="font-weight:900;">DescripciÃ³n</label>
+            <textarea data-q="descripcion" rows="2" placeholder="Detalle del Ã­tem"></textarea>
           </div>
         </div>
       `;
@@ -629,7 +704,7 @@
           // renumber
           Array.from(qWrap.children).forEach((c,ix)=>{
             const h = c.querySelector("div[style*='font-weight:950']");
-            if(h) h.textContent = `Cotización ${ix+1}`;
+            if(h) h.textContent = `CotizaciÃ³n ${ix+1}`;
             const rm = c.querySelector("[data-qrm]");
             if(rm) rm.setAttribute("data-qrm", String(ix));
           });
@@ -660,7 +735,7 @@
     const dueDate = calcMonthlyEndDate(startDate, months);
 
     if(!title){ alert("Debes ingresar un nombre."); return; }
-    if(!amount || amount<=0){ alert("Debes ingresar un monto cuota válido."); return; }
+    if(!amount || amount<=0){ alert("Debes ingresar un monto cuota vÃ¡lido."); return; }
 
     // read quotes
     const qWrap = document.getElementById("tc_quotes");
@@ -697,7 +772,7 @@
       cotizaciones: cotizaciones2,
     };
     try{ await saveCampaignToSupabase(task); }
-    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
+    catch(e){ alert("No se pudo guardar la campaÃ±a en Supabase: " + (e && e.message ? e.message : e)); return; }
     ts.unshift(task);
     save(KEY_TASKS, ts);
 
@@ -741,7 +816,7 @@
 
   function openQuotesDetail(task){
     if(!task) return;
-    const title = String(task.title||"Campaña");
+    const title = String(task.title||"CampaÃ±a");
     const items = dedupeCotizaciones([...(Array.isArray(task.cotizaciones)?task.cotizaciones:[]), ...((task.cotizacion && typeof task.cotizacion==='object')?[task.cotizacion]:[])]);
     const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
 
@@ -749,7 +824,7 @@
       <div class="row">
         <div>
           <div style="font-weight:950;font-size:18px;">Cotizaciones</div>
-          <div class="muted" style="margin-top:6px;">${esc(title)} · ${items.length} ítem(s)</div>
+          <div class="muted" style="margin-top:6px;">${esc(title)} Â· ${items.length} Ã­tem(s)</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
@@ -765,16 +840,16 @@
           ${items.map((c,i)=>`
             <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
+                <div style="font-weight:950;">${esc(c.nombre || `CotizaciÃ³n ${i+1}`)}</div>
                 ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
               </div>
-              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
+              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>DescripciÃ³n:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>DescripciÃ³n:</b> â€”</div>`}
               ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
-              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">🔗</a></div>`:""}
+              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">ðŸ”—</a></div>`:""}
             </div>
           `).join("")}
         </div>
-      ` : `<div class="muted" style="margin-top:12px;">Aún no hay cotizaciones registradas.</div>`}
+      ` : `<div class="muted" style="margin-top:12px;">AÃºn no hay cotizaciones registradas.</div>`}
     `);
   }
 
@@ -792,27 +867,27 @@
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Detalle campaña</div>
+          <div style="font-weight:950;font-size:18px;">Detalle campaÃ±a</div>
           <div class="muted" style="margin-top:6px;">${esc(t.title||"")}</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div class="chipInfoPill">📄 Tipo <b>${type==="monthly"?"Mensual":"Pago único"}</b></div>
-        <div class="chipInfoPill">🔒 Participación <b>${part}</b></div>
-        ${tpl?`<div class="chipInfoPill ok">✨ Plantilla <b>${esc(tpl)}</b></div>`:""}
+        <div class="chipInfoPill">ðŸ“„ Tipo <b>${type==="monthly"?"Mensual":"Pago Ãºnico"}</b></div>
+        <div class="chipInfoPill">ðŸ”’ ParticipaciÃ³n <b>${part}</b></div>
+        ${tpl?`<div class="chipInfoPill ok">âœ¨ Plantilla <b>${esc(tpl)}</b></div>`:""}
       </div>
 
       <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
         <div class="muted">Fechas</div>
-        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
+        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} â†’ ${esc(t.dueDate||"")}</div>
         ${t.description?`<div class="muted" style="margin-top:10px;line-height:1.35;">${esc(t.description)}</div>`:""}
       </div>
 
       ${(saldoPrev>0)?`
         <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
-          <div class="muted">Saldo años anteriores (curso)</div>
+          <div class="muted">Saldo aÃ±os anteriores (curso)</div>
           <div style="margin-top:6px;font-weight:950;font-size:20px;">$${Number(saldoPrev).toLocaleString("es-CL")}</div>
         </div>
       `:""}
@@ -830,7 +905,7 @@
       `:""}
 
       <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">✏️ Editar</button>` : ``}
+        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">âœï¸ Editar</button>` : ``}
       </div>
     `);
   }
@@ -849,7 +924,7 @@
     let months    = Number(document.getElementById("cc_months").value || 0);
 
     if (!title) { alert("Debes ingresar un nombre."); return; }
-    if (!amount || amount <= 0) { alert("Debes ingresar un monto válido."); return; }
+    if (!amount || amount <= 0) { alert("Debes ingresar un monto vÃ¡lido."); return; }
 
     if (type === "monthly") {
       if (!months || months <= 0) { alert("Si es mensual, indica cuotas/meses."); return; }
@@ -881,7 +956,7 @@
     };
 
     try{ await saveCampaignToSupabase(task); }
-    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
+    catch(e){ alert("No se pudo guardar la campaÃ±a en Supabase: " + (e && e.message ? e.message : e)); return; }
 
     ts.unshift(task);
     save(KEY_TASKS, ts);
@@ -891,7 +966,7 @@
       }
     }catch(e){}
 
-    // ✅ Mandatory campaigns: pre-create pending payments per approved apoderado.
+    // âœ… Mandatory campaigns: pre-create pending payments per approved apoderado.
     // This improves UX/consistency (deudores + cuotas) without waiting for each apoderado to enter.
     try{
       if (mandatoryParticipation) {
@@ -909,7 +984,7 @@
             pays.unshift({
               id: uid("p"),
               fromTaskId: newTaskId,
-              concept: type === "monthly" ? `${title} · Cuota 1/${Math.max(1, Number(months||1))}` : "Pago único",
+              concept: type === "monthly" ? `${title} Â· Cuota 1/${Math.max(1, Number(months||1))}` : "Pago Ãºnico",
               amount: Number(amount||0),
               status: "pending",
               dueDate,
@@ -925,7 +1000,7 @@
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("Campaña creada ✅");
+    alert("CampaÃ±a creada âœ…");
 }
 
   function openEdit(taskId) {
@@ -936,8 +1011,8 @@
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Editar campaña</div>
-          <div class="muted" style="margin-top:6px;">Mensual: fin se recalcula según cuotas.</div>
+          <div style="font-weight:950;font-size:18px;">Editar campaÃ±a</div>
+          <div class="muted" style="margin-top:6px;">Mensual: fin se recalcula segÃºn cuotas.</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
@@ -948,7 +1023,7 @@
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Descripción</label>
+        <label style="font-weight:900;">DescripciÃ³n</label>
         <input id="ec_desc" value="${esc(t.description || "")}" />
       </div>
 
@@ -956,12 +1031,12 @@
         <div style="flex:1;min-width:160px;">
           <label style="font-weight:900;">Tipo</label>
           <select id="ec_type">
-            <option value="single" ${t.type==="single"?"selected":""}>Pago único</option>
+            <option value="single" ${t.type==="single"?"selected":""}>Pago Ãºnico</option>
             <option value="monthly" ${t.type==="monthly"?"selected":""}>Mensual</option>
           </select>
         </div>
         <div style="flex:1;min-width:160px;">
-          <label style="font-weight:900;">Participación</label>
+          <label style="font-weight:900;">ParticipaciÃ³n</label>
           <select id="ec_mandatory">
             <option value="true" ${t.mandatoryParticipation?"selected":""}>Obligatoria</option>
             <option value="false" ${!t.mandatoryParticipation?"selected":""}>No obligatoria</option>
@@ -988,7 +1063,7 @@
         <div style="flex:1;min-width:160px;">
           <label style="font-weight:900;">Fin</label>
           <input id="ec_due" type="date" value="${esc(t.dueDate||"")}" />
-          <div class="muted" style="margin-top:6px;font-size:12px;">(Mensual: se calcula automáticamente)</div>
+          <div class="muted" style="margin-top:6px;font-size:12px;">(Mensual: se calcula automÃ¡ticamente)</div>
         </div>
       </div>
 
@@ -1000,15 +1075,15 @@
       ${(t.template === "gira" || t.template === "graduacion") ? `
         <div style="margin-top:14px;border-top:1px solid rgba(0,0,0,.06);padding-top:12px;">
           <div style="margin-bottom:10px;">
-            <label style="font-weight:900;">Saldo años anteriores</label>
+            <label style="font-weight:900;">Saldo aÃ±os anteriores</label>
             <input id="ec_prev" inputmode="numeric" value="${Number(t.saldo_prev||0)}" placeholder="Ej: 120000" />
             <div class="muted" style="margin-top:6px;font-size:12px;">Se considera como reunido (curso).</div>
           </div>
           <div style="font-weight:950;margin-bottom:8px;">Cotizaciones</div>
-          <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos ítems).</div>
+          <div class="muted" style="font-size:12px;line-height:1.35;margin-bottom:10px;">Puedes agregar varias cotizaciones (distintos Ã­tems).</div>
           <div id="ec_quotes" style="display:grid;gap:10px;"></div>
           <div style="margin-top:10px;">
-            <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotización</button>
+            <button class="btnx" id="ec_add_quote" type="button">+ Agregar cotizaciÃ³n</button>
           </div>
         </div>
       ` : ``}
@@ -1063,12 +1138,12 @@
         wrap.innerHTML = quotes.length ? quotes.map((q, idx) => `
           <div data-quote-row="1" data-idx="${idx}" style="border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:12px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-              <div style="font-weight:950;">Cotización ${idx+1}</div>
+              <div style="font-weight:950;">CotizaciÃ³n ${idx+1}</div>
               <button class="btnx danger" type="button" data-del="${idx}">Quitar</button>
             </div>
 
             <div style="margin-top:10px;">
-              <label style="font-weight:900;">Nombre cotización</label>
+              <label style="font-weight:900;">Nombre cotizaciÃ³n</label>
               <input id="ec_q_name_${idx}" value="${esc(q.name)}" placeholder="Ej: Transporte / Hotel / Entradas" />
             </div>
 
@@ -1083,11 +1158,11 @@
             </div>
 
             <div style="margin-top:10px;">
-              <label style="font-weight:900;">Descripción</label>
+              <label style="font-weight:900;">DescripciÃ³n</label>
               <input id="ec_q_desc_${idx}" value="${esc(q.desc)}" placeholder="Ej: Incluye bus + seguro + entradas" />
             </div>
           </div>
-        `).join("") : `<div class="muted" style="font-size:13px;">Aún no hay cotizaciones.</div>`;
+        `).join("") : `<div class="muted" style="font-size:13px;">AÃºn no hay cotizaciones.</div>`;
 
         // bind delete
         wrap.querySelectorAll("button[data-del]").forEach(b=>{
@@ -1120,7 +1195,7 @@
 
     const amount = Number(document.getElementById("ec_amount").value || 0);
     const goal = Number(document.getElementById("ec_goal").value || 0);
-    if (!amount || amount <= 0) { alert("Monto inválido."); return; }
+    if (!amount || amount <= 0) { alert("Monto invÃ¡lido."); return; }
 
     if (type === "monthly") {
       if (!months || months <= 0) { alert("Si es mensual, indica cuotas/meses."); return; }
@@ -1141,13 +1216,13 @@
     ts[i].dueDate = dueDate;
     ts[i].months = months;
 
-    // Saldo años anteriores (Plantillas)
+    // Saldo aÃ±os anteriores (Plantillas)
     if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const prev = Math.max(0, Number(document.getElementById("ec_prev")?.value || ts[i].saldo_prev || 0));
       ts[i].saldo_prev = prev;
     }
 
-    // Cotizaciones (Plantillas: Gira / Graduación)
+    // Cotizaciones (Plantillas: Gira / GraduaciÃ³n)
     if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const quotes = Array.isArray(window.__ec_quotes) ? window.__ec_quotes : [];
       const cleaned = [];
@@ -1160,7 +1235,7 @@
         const any = name || url || total || desc;
         if (!any) continue;
 
-        if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotización debe comenzar con http:// o https://"); return; }
+        if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotizaciÃ³n debe comenzar con http:// o https://"); return; }
         cleaned.push({ nombre: name, name, url, link: url, monto_total: total, total, descripcion: desc, desc, texto: desc });
       }
       ts[i].cotizaciones = cleaned;
@@ -1172,24 +1247,24 @@
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("Campaña actualizada ✅");
+    alert("CampaÃ±a actualizada âœ…");
 }
 
   function openClose(activeTasksProvider) {
     const ts = activeTasksProvider ? activeTasksProvider() : load(KEY_TASKS, []).filter(t=>!t.closed);
-    if (!ts.length) { alert("No hay campañas activas para cerrar."); return; }
+    if (!ts.length) { alert("No hay campaÃ±as activas para cerrar."); return; }
 
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Cerrar campaña</div>
+          <div style="font-weight:950;font-size:18px;">Cerrar campaÃ±a</div>
           <div class="muted" style="margin-top:6px;">Indica tipo y motivo (obligatorio).</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;">
-        <label style="font-weight:900;">Campaña</label>
+        <label style="font-weight:900;">CampaÃ±a</label>
         <select id="cl_task">
           ${ts.map(t=>`<option value="${t.id}">${esc(t.title)}</option>`).join("")}
         </select>
@@ -1212,7 +1287,7 @@
 
       <div class="actions" style="margin-top:14px;justify-content:flex-end;">
         <button class="btnx" onclick="Campaigns.close()">Cancelar</button>
-        <button class="btnx primary" onclick="Campaigns.saveClose()">Cerrar campaña</button>
+        <button class="btnx primary" onclick="Campaigns.saveClose()">Cerrar campaÃ±a</button>
       </div>
     `);
   }
@@ -1236,7 +1311,7 @@
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("Campaña cerrada ✅");
+    alert("CampaÃ±a cerrada âœ…");
 }
 
   // expose API
