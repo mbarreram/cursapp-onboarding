@@ -1448,7 +1448,7 @@ function setActive(tab){
   function statusPillForCampaign(t){
     if(t.closed){
       const pend = pendingTaskEstimated(t);
-      if(pend > 0) return `<span class="pill warn">Cerrada Â· con pagos pendientes</span>`;
+      if(pend > 0) return `<span class="pill warn">Cerrada · con pagos pendientes</span>`;
       return `<span class="pill">Cerrada</span>`;
     }
     if(isExpired(t)) return `<span class="pill danger">Caducada</span>`;
@@ -1500,9 +1500,9 @@ function setActive(tab){
     const type = String(t.type||"single");
     if(type==="monthly"){
       const m = Number(t.months||1);
-      return `Mensual Â· ${m} cuota(s)`;
+      return `Mensual · ${m} cuota(s)`;
     }
-    return "Pago Ãºnico";
+    return "Pago único";
   }
 
   // ----- Home -----
@@ -2179,13 +2179,23 @@ function renderHome(){
     const filtered = getFilteredCampaigns();
 
     const chips = `
-      <div class="chips">
+      <div class="chips presCampaignFilters" aria-label="Filtros de campanas">
         <button class="chip ${campaignFilter==="active"?"active":""}" onclick="setFilter('active')">Activas</button>
-        <button class="chip ${campaignFilter==="expired"?"active":""}" onclick="setFilter('expired')">Caducadas</button>
         <button class="chip ${campaignFilter==="closed"?"active":""}" onclick="setFilter('closed')">Cerradas</button>
         <button class="chip ${campaignFilter==="all"?"active":""}" onclick="setFilter('all')">Todas</button>
+        <button class="chip ${campaignFilter==="expired"?"active":""}" onclick="setFilter('expired')">Caducadas</button>
       </div>
     `;
+
+    const fmtCampDate = (value)=>{
+      const raw = String(value || "").slice(0,10);
+      if(!raw) return "";
+      const parts = raw.split("-");
+      if(parts.length !== 3) return raw;
+      const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      const m = Math.max(0, Math.min(11, Number(parts[1] || 1) - 1));
+      return `${parts[2]} ${months[m]} ${parts[0]}`;
+    };
 
     const list = filtered.map(t=>{
       const rec = collectedTask(t.id);
@@ -2195,105 +2205,98 @@ function renderHome(){
       const debtors = deudoresTask(t.id);
       const cuotasPendientes = cuotasPendientesTask(t.id);
       const monto = Number(t.amount||0);
-      const tipo = campaignTypeLabel(t);
+      const tipo = presCleanText(campaignTypeLabel(t));
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
+      const expected = Math.max(1, meta, rec + pend, monto);
+      const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
+      const dateLine = [fmtCampDate(t.startDate), fmtCampDate(t.dueDate)].filter(Boolean).join(" — ");
+      const chipsInfo = [
+        `<span class="presCampaignMiniChip"><b>${clp(monto)}</b></span>`,
+        `<span class="presCampaignMiniChip">${esc(tipo)}</span>`,
+        `<span class="presCampaignMiniChip">${esc(part)}</span>`
+      ].join("");
 
-      return `        <div class="campCard campLine ${lineClassForCampaign(t)} ${templateClassForCampaign(t)}">
-          <div class="campHead">
-            <div class="campTitleRow">
-              <div class="campTitle">${esc(t.title)}</div>
-              ${statusPillForCampaign(t)}
+      return `        <article class="campCard campLine presCampaignCard ${lineClassForCampaign(t)} ${templateClassForCampaign(t)}">
+          <div class="presCampaignCardTop">
+            <div class="presCampaignTitleBlock">
+              <div class="presCampaignTitleRow">
+                <h3>${esc(presCleanText(t.title || "Campaña"))}</h3>
+                ${statusPillForCampaign(t)}
+              </div>
+              <p>${esc(dateLine || "Sin fecha definida")}</p>
             </div>
-            <div class="campDates">${esc(t.startDate||"")} â†’ ${esc(t.dueDate||"")}</div>
-          </div>
-
-          <div class="chipInfoRow">
-            <span class="chipInfo">ðŸ’µ <strong>Monto</strong> ${clp(monto)}</span>
-            <span class="chipInfo">ðŸ§¾ <strong>Tipo</strong> ${esc(tipo)}</span>
-            <span class="chipInfo">ðŸ”’ <strong>ParticipaciÃ³n</strong> ${esc(part)}</span>
-            ${meta?`<span class="chipInfo">ðŸŽ¯ <strong>Meta</strong> ${clp(meta)}</span>`:""}
-          </div>
-
-          <div class="campMetrics">
-            <div class="metricBox">
-              <div class="metricLbl">Recaudado</div>
-              <div class="metricVal">${clp(rec)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Gastado</div>
-              <div class="metricVal">${clp(gas)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Saldo</div>
-              <div class="metricVal">${clp(saldo)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Deudores</div>
-              <div class="metricVal">${Number(debtors||0)}</div>
-            </div>
-            <div class="metricBox">
-              <div class="metricLbl">Cuotas pendientes</div>
-              <div class="metricVal">${Number(cuotasPendientes||0)}</div>
-            </div>
-            <div class="metricBox metricWide">
-              <div class="metricLbl">Pendiente</div>
-              <div class="metricVal">${clp(pend)}</div>
+            <div class="presCampaignProgressRing" style="--pct:${pct}" aria-label="${pct}% recaudado">
+              <b>${pct}%</b>
+              <small>recaudado</small>
             </div>
           </div>
 
-          <div class="campActions">
-            <button class="btnx" onclick="Campaigns.openCampaignDetail('${t.id}','presidente')">ðŸ”Ž Ver detalle</button>
-            <button class="btnx" onclick="openEditCampaign('${t.id}')">âœï¸ Editar</button>
-            ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger" onclick="deleteCampaign('${t.id}')">ðŸ—‘ï¸ Eliminar</button>` : ""}
+          <div class="presCampaignChips">${chipsInfo}</div>
+
+          <div class="presCampaignStats">
+            <div><small>Recaudado</small><b>${clp(rec)}</b></div>
+            <div><small>Gastado</small><b>${clp(gas)}</b></div>
+            <div><small>Saldo</small><b>${clp(saldo)}</b></div>
+            <div><small>Deudores</small><b>${Number(debtors||0)}</b></div>
           </div>
 
-          ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>paymentStatusNorm(p)==="opted_out")) ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;font-weight:900;">No participan apoderados en esta campaÃ±a por ahora.</div>` : ``}
-          ${t.closed && pend>0 ? `<div class="muted" style="margin:0 14px 14px 14px;font-size:12px;">
-            Esta campaÃ±a estÃ¡ cerrada, pero aÃºn hay aportes pendientes (arrastran al siguiente mes).
+          <div class="presCampaignProgress">
+            <span style="--pct:${pct}"></span>
+          </div>
+          <div class="presCampaignPending"><span>Pendiente:</span> <b>${clp(pend)}</b></div>
+
+          <div class="presCampaignActions">
+            <button class="btnx primary presCampaignPrimary" onclick="Campaigns.openCampaignDetail('${t.id}','presidente')">Ver detalles ${presSvgIcon("arrowRight","presCampaignBtnIcon")}</button>
+            <button class="btnx presCampaignSecondary" onclick="openEditCampaign('${t.id}')">Editar</button>
+            ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger presCampaignSecondary" onclick="deleteCampaign('${t.id}')">Eliminar</button>` : ""}
+          </div>
+
+          ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>paymentStatusNorm(p)==="opted_out")) ? `<div class="muted presCampaignNote">No participan apoderados en esta campaña por ahora.</div>` : ``}
+          ${t.closed && pend>0 ? `<div class="muted presCampaignNote">
+            Esta campaña está cerrada, pero aún hay aportes pendientes (arrastran al siguiente mes).
           </div>` : ``}
-        </div>
+        </article>
     `;
     }).join("");
 
     app.innerHTML = `
-      <div class="card">
-        <div class="row">
+      <section class="presCampaignPage">
+        <div class="presCampaignHeader">
           <div>
-            <div class="kTitle">CampaÃ±as</div>
-            <div class="muted" style="margin-top:6px;">Muestra deudores sin nombres y pendiente estimado.</div>
+            <h1>Campañas</h1>
+            <p>Gestiona las actividades económicas del curso.</p>
           </div>
-          <div class="actions">
-            <button class="btnx primary" onclick="openCreateCampaign()">âž• Crear campaÃ±a</button>
+          <button class="btnx primary presCampaignNewBtn" onclick="openCreateCampaign()">+ Nueva campaña</button>
+        </div>
+
+        <div class="presCampaignTemplates">
+          <h2>Plantillas destacadas</h2>
+          <div class="presCampaignTemplateTrack" aria-label="Plantillas destacadas">
+            <article class="presCampaignTemplate">
+              ${presSvgIcon("school","presCampaignTemplateIcon")}
+              <b>Gira de estudio</b>
+              <span>Cuotas + saldo anterior</span>
+              <button type="button" onclick="Campaigns.openCreateTemplate('gira')">Usar plantilla ${presSvgIcon("arrowRight","presCampaignBtnIcon")}</button>
+            </article>
+            <article class="presCampaignTemplate">
+              ${presSvgIcon("flag","presCampaignTemplateIcon")}
+              <b>Graduación</b>
+              <span>Cotizaciones + plan de cuotas</span>
+              <button type="button" onclick="Campaigns.openCreateTemplate('graduacion')">Usar plantilla ${presSvgIcon("arrowRight","presCampaignBtnIcon")}</button>
+            </article>
           </div>
         </div>
 
-        <div style="margin-top:12px;">
-          <div class="sectionLabel" style="margin:0 0 8px 0;">Plantillas destacadas</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
-            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
-              <div style="font-weight:950;">ðŸŽ’ Gira de estudio</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;">Cuotas abiertas + saldo aÃ±os anteriores + cotizaciones.</div>
-              <div style="margin-top:10px;">
-                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('gira')">Usar plantilla</button>
-              </div>
-            </div>
-            <div class="card" style="padding:12px;border:1px solid rgba(0,0,0,.08);">
-              <div style="font-weight:950;">ðŸŽ“ GraduaciÃ³n</div>
-              <div class="muted" style="margin-top:6px;font-size:12px;">Cotizaciones por Ã­tem + plan de cuotas.</div>
-              <div style="margin-top:10px;">
-                <button class="btnx primary" onclick="Campaigns.openCreateTemplate('graduacion')">Usar plantilla</button>
-              </div>
-            </div>
-          </div>
+        <div class="presCampaignSectionHead">
+          <h2>Mis campañas</h2>
         </div>
-
         ${chips}
 
         <div class="listLines">
-          ${list || `<div class="muted">Sin campaÃ±as en este filtro.</div>`}
+          ${list || `<div class="muted">Sin campañas en este filtro.</div>`}
         </div>
-      </div>
+      </section>
     `;
   }
 
