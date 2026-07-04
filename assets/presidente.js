@@ -2573,12 +2573,12 @@ function renderDeudores(){
       <div id="barsMount" style="margin-top:10px;"></div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card presDebtSearchCard" style="margin-top:12px;">
       <div style="font-weight:950;">Buscar apoderado / alumno</div>
       <div class="muted" style="margin-top:6px;">Escribe un nombre o correo.</div>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-        <input id="debtorQuery" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
+      <div class="presDebtSearchControls" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <input id="debtorQuery" type="search" autocomplete="off" inputmode="search" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
         <button class="btn primary" id="debtorSearchBtn" type="button" onclick="window.__presDebtorSearch && window.__presDebtorSearch()">Buscar</button>
       </div>
 
@@ -2598,6 +2598,10 @@ function renderDeudores(){
       .presDebtExportBtn.pdf .presDebtExportIcon{color:#dc2626;}
       .presDebtExportBtn.excel .presDebtExportIcon{color:#16a34a;}
       .presDebtExportBtn.whatsapp .presDebtExportIcon{color:#25d366;}
+      .presDebtSearchCard{position:relative;z-index:5;isolation:isolate;pointer-events:auto !important;}
+      .presDebtSearchControls{position:relative;z-index:6;pointer-events:auto !important;}
+      #debtorQuery{position:relative;z-index:7;width:100%;min-width:0 !important;height:52px;box-sizing:border-box;background:#fff;cursor:text;pointer-events:auto !important;user-select:text !important;-webkit-user-select:text !important;touch-action:manipulation;-webkit-appearance:none;appearance:none;}
+      #debtorSearchBtn{position:relative;z-index:7;pointer-events:auto !important;}
       @media (max-width:760px){
         .presDebtHero{grid-template-columns:1fr;gap:12px;}
         .presDebtExportCard{border-radius:22px;padding:14px;}
@@ -2605,6 +2609,8 @@ function renderDeudores(){
         .presDebtExportBtn{border:1px solid rgba(226,232,240,.95);border-radius:16px !important;min-height:60px;flex-direction:column;gap:5px;font-size:12px;}
         .presDebtExportBtn + .presDebtExportBtn{border-left:1px solid rgba(226,232,240,.95);}
         .presDebtExportIcon,.presDebtExportIcon svg{width:26px;height:26px;}
+        .presDebtSearchControls{display:grid !important;grid-template-columns:1fr;gap:10px !important;}
+        #debtorQuery{min-width:0 !important;font-size:16px;}
       }
       .kpiGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
       @media (max-width:760px){.kpiGrid{grid-template-columns:1fr;}}
@@ -2763,6 +2769,9 @@ function renderDeudores(){
   window.__presDebtorSearch = doSearch;
   btn && (btn.onclick = doSearch);
   qInp && (qInp.onkeydown = (e)=>{ if(e.key==="Enter") doSearch(); });
+  qInp && qInp.addEventListener("pointerdown", (e)=>{ e.stopPropagation(); }, { passive:true });
+  qInp && qInp.addEventListener("touchstart", (e)=>{ e.stopPropagation(); }, { passive:true });
+  qInp && qInp.addEventListener("click", (e)=>{ e.stopPropagation(); qInp.focus(); });
 
   out.innerHTML = debtors.length
     ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) → ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" · ")} ...</div>`
