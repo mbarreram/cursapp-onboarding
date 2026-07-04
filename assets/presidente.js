@@ -2302,7 +2302,7 @@ function renderHome(){
 
   // ----- Informes -----
   // =========================
-// MÃ³dulo Cobranza / Deudores
+// Modulo Cobranza / Deudores
 // =========================
 function todayISO(){
   const d = new Date();
@@ -2355,7 +2355,7 @@ function summarizeDebts(email){
     if(!byCampaign.has(id)){
       byCampaign.set(id, {
         taskId: id,
-        title: r.task?.title || r.pay.title || "CampaÃ±a",
+        title: r.task?.title || r.pay.title || "Campaña",
         mandatory: r.mandatory,
         pendingCount: 0,
         overdueAmount: 0,
@@ -2403,7 +2403,7 @@ function activeCourse(){
   try{
     const ck = activeCourseKey();
 
-    // 1) CatÃ¡logo nuevo temporal hasta Supabase
+    // 1) Catalogo nuevo temporal hasta Supabase
     const courses = JSON.parse(localStorage.getItem("cursapp_courses_v1")||"[]");
     const found = Array.isArray(courses) ? courses.find(c=>String(c.courseKey||"")===String(ck)) : null;
     if(found) return found;
@@ -2419,13 +2419,13 @@ function activeCourse(){
     const prof = Array.isArray(profiles) ? profiles.find(p=>String(p.courseKey||"")===String(ck) && p.course) : null;
     if(prof && prof.course) return Object.assign({ courseKey: prof.courseKey }, prof.course || {});
 
-    // 4) Si no hay active_course pero existe un Ãºnico curso actual, Ãºsalo y corrige active_course
+    // 4) Si no hay active_course pero existe un unico curso actual, usalo y corrige active_course
     if(current && current.courseKey){
       localStorage.setItem(KEY_ACTIVE_COURSE, String(current.courseKey));
       return Object.assign({ courseKey: current.courseKey, inviteCode: current.inviteCode }, current.course || {});
     }
 
-    // 5) Fallback temporal: si existe un Ãºnico curso en catÃ¡logo, usarlo.
+    // 5) Fallback temporal: si existe un unico curso en catalogo, usarlo.
     if(Array.isArray(courses) && courses.length === 1 && courses[0] && courses[0].courseKey){
       localStorage.setItem(KEY_ACTIVE_COURSE, String(courses[0].courseKey));
       return courses[0];
@@ -2442,7 +2442,7 @@ function courseDisplayLine(c){
   const letter = c.letter || "";
   const year = c.year || "";
   const jornada = c.jornada || "";
-  return `${school} Â· ${level}${letter} ${year} Â· ${jornada}`.replace(/\s+/g," ").trim();
+  return `${school} · ${level}${letter} ${year} · ${jornada}`.replace(/\s+/g," ").trim();
 }
 
 function updatePresidentTopbar(){
@@ -2457,7 +2457,7 @@ function updatePresidentTopbar(){
     const school = String(c.schoolName || c.school || c.colegio || "Colegio").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
     const level = c.level || c.curso || c.course || "";
     const letter = c.letter || "";
-    line.textContent = `${school} Â· ${level}${letter}`.replace(/\s+/g," ").trim();
+    line.textContent = `${school} · ${level}${letter}`.replace(/\s+/g," ").trim();
   }catch(e){}
 }
 
@@ -2465,7 +2465,7 @@ function buildWhatsappText(profile, summary){
   const name = (profile.apoderadoName||profile.name||"").trim() || "Apoderado/a";
   const alumno = (profile.alumno||"").trim();
   const c = activeCourse() || {};
-  const courseLine = `${c.schoolName||"Colegio"} Â· ${c.level||""}${c.letter||""} ${c.year||""} Â· ${c.jornada||""}`.replace(/\s+/g," ").trim();
+  const courseLine = `${c.schoolName||"Colegio"} · ${c.level||""}${c.letter||""} ${c.year||""} · ${c.jornada||""}`.replace(/\s+/g," ").trim();
   const today = todayISO();
 
   let lines = [];
@@ -2474,15 +2474,15 @@ function buildWhatsappText(profile, summary){
   lines.push("");
 
   if(summary.campaigns.length===0){
-    lines.push("âœ… No registras deudas pendientes.");
+    lines.push("No registras deudas pendientes.");
   }else{
     summary.campaigns.forEach(ca=>{
       const tag = ca.mandatory ? "Obligatoria" : "Voluntaria";
-      lines.push(`â€¢ ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}.`);
+      lines.push(`- ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}.`);
       const det = [];
       if(ca.overdueAmount>0) det.push(`vencido ${money(ca.overdueAmount)}`);
       if(ca.upcomingAmount>0) det.push(`por vencer ${money(ca.upcomingAmount)}`);
-      if(det.length) lines.push(`  (${det.join(" Â· ")})`);
+      if(det.length) lines.push(`  (${det.join(" · ")})`);
     });
     lines.push("");
     lines.push(`Total pendiente: ${money(summary.totalAll)}.`);
@@ -2554,7 +2554,7 @@ function renderDeudores(){
 
     <div class="kpiGrid" style="margin-top:12px;">
       <div class="kpi">
-        <div class="kpiLabel">Deudores (mes Â· obligatorias)</div>
+        <div class="kpiLabel">Deudores (mes · obligatorias)</div>
         <div class="kpiVal">${debtors.length}</div>
       </div>
       <div class="kpi">
@@ -2568,8 +2568,8 @@ function renderDeudores(){
     </div>
 
     <div class="card" style="margin-top:12px;">
-      <div style="font-weight:950;">Indicador por campaÃ±as (pendiente total)</div>
-      <div class="muted" style="margin-top:6px;">Top campaÃ±as con mayor deuda pendiente (todas, incluyendo voluntarias).</div>
+      <div style="font-weight:950;">Indicador por campañas (pendiente total)</div>
+      <div class="muted" style="margin-top:6px;">Top campañas con mayor deuda pendiente (todas, incluyendo voluntarias).</div>
       <div id="barsMount" style="margin-top:10px;"></div>
     </div>
 
@@ -2578,8 +2578,8 @@ function renderDeudores(){
       <div class="muted" style="margin-top:6px;">Escribe un nombre o correo.</div>
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-        <input id="debtorQuery" placeholder="Ej: MatÃ­as, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
-        <button class="btn primary" id="debtorSearchBtn" type="button">Buscar</button>
+        <input id="debtorQuery" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
+        <button class="btn primary" id="debtorSearchBtn" type="button" onclick="window.__presDebtorSearch && window.__presDebtorSearch()">Buscar</button>
       </div>
 
       <div id="debtorResults" style="margin-top:10px;"></div>
@@ -2651,7 +2651,7 @@ function renderDeudores(){
     byTask.set(id, (byTask.get(id)||0) + Number(p.amount||0));
   });
   const bars = Array.from(byTask.entries())
-    .map(([id,amt])=>({ id, amt, title: taskById(id)?.title || "CampaÃ±a" }))
+    .map(([id,amt])=>({ id, amt, title: taskById(id)?.title || "Campaña" }))
     .sort((a,b)=> b.amt - a.amt)
     .slice(0,5);
   const max = bars[0]?.amt || 0;
@@ -2672,10 +2672,10 @@ function renderDeudores(){
       tmp.select();
       document.execCommand("copy");
       tmp.remove();
-      toast("Copiado âœ…");
+      toast("Copiado.");
     }catch(e){
-      // En iOS a veces copia igual pero lanza excepciÃ³n. Evitamos alertas invasivas.
-      toast("Si no se copiÃ³, selecciona y copia manualmente.");
+      // En iOS a veces copia igual pero lanza excepcion. Evitamos alertas invasivas.
+      toast("Si no se copio, selecciona y copia manualmente.");
     }
   }
 
@@ -2705,8 +2705,8 @@ function renderDeudores(){
           <div class="resultTop">
             <div>
               <div class="resultName">${esc(profile.apoderadoName||profile.email||"Apoderado")}</div>
-              <div class="muted" style="margin-top:2px;">Alumno/a: <b>${esc(profile.alumno||"â€”")}</b></div>
-              <div class="muted" style="margin-top:2px;">Correo: <b>${esc(profile.email||"â€”")}</b></div>
+              <div class="muted" style="margin-top:2px;">Alumno/a: <b>${esc(profile.alumno||"-")}</b></div>
+              <div class="muted" style="margin-top:2px;">Correo: <b>${esc(profile.email||"-")}</b></div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <span class="pill ${monthMand>0?"bad":"good"}">Deuda obligatoria mes: ${money(monthMand)}</span>
@@ -2715,7 +2715,7 @@ function renderDeudores(){
           </div>
 
           <div style="margin-top:10px;">
-            <div style="font-weight:950;">Cuotas / pagos pendientes por campaÃ±a</div>
+            <div style="font-weight:950;">Cuotas / pagos pendientes por campaña</div>
             ${sum.campaigns.length ? `
               <div style="margin-top:8px;display:grid;gap:8px;">
                 ${sum.campaigns.map(ca=>`
@@ -2725,14 +2725,14 @@ function renderDeudores(){
                       <div class="muted" style="font-weight:900;">${ca.mandatory ? "Obligatoria" : "Voluntaria"}</div>
                     </div>
                     <div class="muted" style="margin-top:6px;">
-                      Pendientes: <b>${ca.pendingCount}</b> Â· Monto: <b>${money(ca.pendingAmount)}</b>
-                      ${ca.overdueAmount>0 ? `Â· Vencido: <b>${money(ca.overdueAmount)}</b>` : ``}
-                      ${ca.upcomingAmount>0 ? `Â· Por vencer: <b>${money(ca.upcomingAmount)}</b>` : ``}
+                      Pendientes: <b>${ca.pendingCount}</b> · Monto: <b>${money(ca.pendingAmount)}</b>
+                      ${ca.overdueAmount>0 ? `· Vencido: <b>${money(ca.overdueAmount)}</b>` : ``}
+                      ${ca.upcomingAmount>0 ? `· Por vencer: <b>${money(ca.upcomingAmount)}</b>` : ``}
                     </div>
                   </div>
                 `).join("")}
               </div>
-            ` : `<div class="muted" style="margin-top:8px;">âœ… No registra deudas pendientes.</div>`}
+            ` : `<div class="muted" style="margin-top:8px;">No registra deudas pendientes.</div>`}
           </div>
 
           <div style="margin-top:12px;">
@@ -2752,7 +2752,7 @@ function renderDeudores(){
         const ta = out.querySelectorAll("textarea")[idx];
         const txt = ta?.value || "";
         if(navigator.clipboard?.writeText){
-          copyTextToClipboard(txt).then(()=> toast("Copiado âœ…")).catch(()=> fallbackCopy(txt));
+          copyTextToClipboard(txt).then(()=> toast("Copiado.")).catch(()=> fallbackCopy(txt));
         }else{
           fallbackCopy(txt);
         }
@@ -2760,12 +2760,13 @@ function renderDeudores(){
     });
   }
 
+  window.__presDebtorSearch = doSearch;
   btn && (btn.onclick = doSearch);
   qInp && (qInp.onkeydown = (e)=>{ if(e.key==="Enter") doSearch(); });
 
   out.innerHTML = debtors.length
-    ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) â†’ ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" Â· ")} ...</div>`
-    : `<div class="muted">âœ… No hay deudores obligatorios este mes.</div>`;
+    ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) → ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" · ")} ...</div>`
+    : `<div class="muted">No hay deudores obligatorios este mes.</div>`;
 }
 
 function renderInformes(){
