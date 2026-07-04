@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Apoderados · Cursapp</title>
   <link rel="stylesheet" href="/assets/styles.css?v=2300">
   <style>
@@ -19,21 +19,32 @@
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=55">
 </head>
 
-<body>
+<body class="cursapp-app-shell cursapp-presidente cursapp-apoderados-page">
   <header>
-    <div class="topbar" style="position:relative;">
+    <div class="topbar apo-shell-topbar" style="position:relative;">
       <div class="brand">
         <div class="logo">C</div>
         <div id="whoLine"></div>
       </div>
 
-      <button class="btn ghost" type="button" onclick="window.__goBackHome()"
-        style="position:absolute;right:16px;top:10px;">Volver</button>
+      <div class="apo-shell-actions">
+        <button class="apo-shell-icon" type="button" data-cursapp-bell="1" aria-label="Notificaciones">🔔<em>0</em></button>
+        <button class="apo-shell-icon" id="menuBtn" type="button" aria-label="Menú">☰</button>
+      </div>
+      <div id="menuDropdown" style="display:none;"></div>
     </div>
   </header>
 
   <div class="container" id="app"></div>
   <div id="modalRoot"></div>
+
+  <nav class="bottomNav apo-bottom-nav">
+    <button class="navItem" data-tab="home" type="button">⌂<span>Inicio</span></button>
+    <button class="navItem" data-tab="campanas" type="button">⚑<span>Campañas</span></button>
+    <button class="navItem active" data-tab="apoderados" type="button">♙<span>Apoderados</span></button>
+    <button class="navItem" data-tab="deudores" type="button">◷<span>Deudores</span></button>
+    <button class="navItem" data-tab="informes" type="button">▤<span>Informes</span></button>
+  </nav>
 
   <script>
     // volver al home correcto según rol
@@ -51,7 +62,7 @@
   </script>
 
   <script defer src="/assets/core.js?v=2300"></script>
-  <script defer src="/assets/apoderados.js?v=stable12"></script>
+  <script defer src="/assets/apoderados.js?v=stable13"></script>
   <script defer src="/assets/cursapp-platform.js?v=55"></script>
 </body>
 </html>
