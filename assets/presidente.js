@@ -1427,7 +1427,10 @@ function setActive(tab){
       ensurePaymentsForAllApproved();
 
       if(tab==='campanas') renderCampanas();
-      else if(tab==='deudores') renderDeudores();
+      else if(tab==='deudores'){
+        if(window.__presDebtQueryActive || (document.activeElement && document.activeElement.id === "debtorQuery")) return;
+        renderDeudores();
+      }
       else if(tab==='informes') renderInformes();
     }catch(e){}
   };
@@ -2494,6 +2497,8 @@ function buildWhatsappText(profile, summary){
 }
 
 function renderDeudores(){
+  const existingDebtQuery = document.getElementById("debtorQuery");
+  const debtQueryDraft = String(window.__presDebtQueryDraft ?? existingDebtQuery?.value ?? "");
   const ym = ymFromISO(todayISO());
 
   const aprobados = approvedApoderados().map(e=>({
@@ -2578,7 +2583,7 @@ function renderDeudores(){
       <div class="muted" style="margin-top:6px;">Escribe un nombre o correo.</div>
 
       <div class="presDebtSearchControls" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-        <input id="debtorQuery" type="search" autocomplete="off" inputmode="search" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
+        <input id="debtorQuery" type="text" autocomplete="off" inputmode="search" enterkeyhint="search" value="${esc(debtQueryDraft)}" placeholder="Ej: Matías, Mauricio, apoderado@mail.com" style="flex:1;min-width:240px;" />
         <button class="btn primary" id="debtorSearchBtn" type="button" onclick="window.__presDebtorSearch && window.__presDebtorSearch()">Buscar</button>
       </div>
 
@@ -2769,9 +2774,16 @@ function renderDeudores(){
   window.__presDebtorSearch = doSearch;
   btn && (btn.onclick = doSearch);
   qInp && (qInp.onkeydown = (e)=>{ if(e.key==="Enter") doSearch(); });
-  qInp && qInp.addEventListener("pointerdown", (e)=>{ e.stopPropagation(); }, { passive:true });
-  qInp && qInp.addEventListener("touchstart", (e)=>{ e.stopPropagation(); }, { passive:true });
-  qInp && qInp.addEventListener("click", (e)=>{ e.stopPropagation(); qInp.focus(); });
+  if(qInp){
+    qInp.value = debtQueryDraft;
+    qInp.addEventListener("input", ()=>{ window.__presDebtQueryDraft = qInp.value || ""; });
+    qInp.addEventListener("focus", ()=>{ window.__presDebtQueryActive = true; });
+    qInp.addEventListener("blur", ()=>{ setTimeout(()=>{ window.__presDebtQueryActive = false; }, 120); });
+    qInp.addEventListener("pointerdown", (e)=>{ e.stopPropagation(); }, { passive:true });
+    qInp.addEventListener("mousedown", (e)=>{ e.stopPropagation(); });
+    qInp.addEventListener("touchstart", (e)=>{ e.stopPropagation(); }, { passive:true });
+    qInp.addEventListener("click", (e)=>{ e.stopPropagation(); qInp.focus({ preventScroll:true }); });
+  }
 
   out.innerHTML = debtors.length
     ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) → ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" · ")} ...</div>`
@@ -3189,8 +3201,6 @@ function viewExpenseAttachment(expenseId){
     activeCampaigns.forEach(c=>{
       c.pct = totalPendienteCampanas > 0 ? Math.round((c.pend / totalPendienteCampanas) * 100) : 0;
     });
-    const campaignTop = activeCampaigns.slice(0,3);
-
     const svgIcon = (name)=>({
       file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>',
       users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
@@ -3226,17 +3236,47 @@ function viewExpenseAttachment(expenseId){
       `;
     }
 
-    const monthNames = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    function historicalRows(){
-      const rows = reps.slice(0,6).map(r=>{
-        const period = String(r.period||"");
-        const m = Math.max(0, Math.min(11, Number(period.slice(5,7))-1));
-        const rec = Number(r.cobradoMes ?? r.recMes ?? r.recaudadoMes ?? r.collectedMonth ?? 0);
-        const proj = Number(r.totalProyectadoMes ?? r.projMaxMes ?? r.proyeccionMes ?? ((r.cobradoMes||0)+(r.porCobrarMes||0)) ?? 0);
-        return { mes: monthNames[m] || period || "Mes", recaudado: rec, proyeccion: proj };
-      }).reverse();
-      if(!rows.length) rows.push({ mes: monthNames[Number(ym.slice(5,7))-1] || "Mes", recaudado: recMes, proyeccion: totalProyectadoMes });
-      return rows.slice(-6);
+    const shortMonthNames = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    function dateFromValue(v){
+      const s = String(v || "");
+      if(!s) return null;
+      const d = new Date(s.length <= 10 ? `${s}T12:00:00` : s);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function weekStart(d){
+      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const day = x.getDay() || 7;
+      x.setDate(x.getDate() - day + 1);
+      x.setHours(0,0,0,0);
+      return x;
+    }
+    function sameWeek(a,b){ return a && b && weekStart(a).getTime() === weekStart(b).getTime(); }
+    function weekLabel(d){
+      return `${d.getDate()} ${shortMonthNames[d.getMonth()] || ""}`.trim();
+    }
+    function weeklyRows(){
+      const now = new Date();
+      const current = weekStart(now);
+      const weeks = Array.from({length:6}, (_,i)=>{
+        const d = new Date(current);
+        d.setDate(current.getDate() - (5-i)*7);
+        return d;
+      });
+      const rows = weeks.map(w=>({ mes: weekLabel(w), recaudado:0, proyeccion:0 }));
+      ps.forEach(p=>{
+        const paidDate = isPaid(p) ? dateFromValue(p.paidAt || p.paidDate || p.paid_on || p.createdAt || p.date) : null;
+        const dueDate = dateFromValue(p.dueDate || p.period || p.createdAt);
+        weeks.forEach((w,idx)=>{
+          if(paidDate && sameWeek(paidDate, w)) rows[idx].recaudado += Number(p.amount || 0);
+          if(dueDate && sameWeek(dueDate, w) && paymentStatusNorm(p) !== "opted_out") rows[idx].proyeccion += Number(p.amount || p.amountRemaining || 0);
+        });
+      });
+      const hasData = rows.some(r=>Number(r.recaudado||0) || Number(r.proyeccion||0));
+      if(!hasData && (recMes || totalProyectadoMes)){
+        rows[rows.length - 1].recaudado = recMes;
+        rows[rows.length - 1].proyeccion = totalProyectadoMes;
+      }
+      return rows;
     }
 
     function lineChart(rows){
@@ -3250,7 +3290,7 @@ function viewExpenseAttachment(expenseId){
       const path = key => rows.map((r,i)=>`${i?"L":"M"} ${x(i).toFixed(1)} ${y(r[key]).toFixed(1)}`).join(" ");
       return `
         <div class="presReportLineWrap">
-          <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolución mensual">
+          <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolución semanal">
             <path class="grid" d="M${pad} ${y(max*.75)}H${w-pad} M${pad} ${y(max*.5)}H${w-pad} M${pad} ${y(max*.25)}H${w-pad}"></path>
             <path class="projection" d="${path("proyeccion")}"></path>
             <path class="collected" d="${path("recaudado")}"></path>
@@ -3262,7 +3302,7 @@ function viewExpenseAttachment(expenseId){
       `;
     }
 
-    const campaignRows = campaignTop.map(c=>`
+    const campaignRows = activeCampaigns.map(c=>`
       <div class="presReportCampaignRow">
         <span class="dot"></span>
         <b>${esc(c.title)}</b>
@@ -3346,9 +3386,9 @@ function viewExpenseAttachment(expenseId){
       </section>
 
       <section class="presReportsCard">
-        <h3>Evolución mensual</h3>
-        <p>Recaudado vs Proyección últimos 6 meses</p>
-        ${lineChart(historicalRows())}
+        <h3>Evolución semanal</h3>
+        <p>Recaudado vs Proyección últimas 6 semanas</p>
+        ${lineChart(weeklyRows())}
       </section>
     `;
 
