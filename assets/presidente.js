@@ -3160,61 +3160,321 @@ function viewExpenseAttachment(expenseId){
   }
 }
 
+    const totalProyectadoMes = Math.max(0, Number(projMaxMes || (recMes + porCobrarMes) || 0));
+    const pendienteMes = Math.max(0, Number(porCobrarMes || 0), totalProyectadoMes - recMes);
+    const porcentajeCobrado = totalProyectadoMes > 0 ? Math.round((recMes / totalProyectadoMes) * 100) : 0;
+    const porcentajePorCobrar = totalProyectadoMes > 0 ? Math.round((pendienteMes / totalProyectadoMes) * 100) : 0;
+    const porcentajeGastado = recMes > 0 ? Math.round((gasMes / recMes) * 100) : 0;
+    const saldoInicial = sum(allTasks.filter(t=>Number(t.saldo_prev||0)>0), t=>Number(t.saldo_prev||0));
+    const saldoFinal = saldoInicial + recMes - gasMes;
+    const cuadraturaOk = saldoFinal >= 0;
+
+    const activeCampaigns = allTasks
+      .filter(t=>t && !t.closed && String(t.status||"open")!=="closed")
+      .map(t=>{
+        const rec = collectedTask(t.id);
+        const pend = Math.max(0, pendingTaskEstimated(t));
+        const meta = Math.max(0, Number(t.goalTotal||0), expectedTaskTotal(t));
+        return {
+          id: t.id,
+          title: t.title || t.name || "Campaña",
+          rec,
+          pend,
+          meta,
+          pct: 0
+        };
+      })
+      .sort((a,b)=>b.pend-a.pend);
+    const totalPendienteCampanas = sum(activeCampaigns, c=>c.pend);
+    activeCampaigns.forEach(c=>{
+      c.pct = totalPendienteCampanas > 0 ? Math.round((c.pend / totalPendienteCampanas) * 100) : 0;
+    });
+    const campaignTop = activeCampaigns.slice(0,3);
+
+    const svgIcon = (name)=>({
+      file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>',
+      users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      dollar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>',
+      arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+      send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>'
+    }[name] || "");
+
+    function informeDonut(percent, color, centerHtml, cls){
+      const p = pct(percent);
+      return `
+        <div class="${cls||"presReportDonut"}" style="--p:${p};--c:${color||"#6d28d9"};">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="48"></circle>
+            <circle class="fill" cx="60" cy="60" r="48" pathLength="100"></circle>
+          </svg>
+          <div class="presReportDonutCenter">${centerHtml}</div>
+        </div>
+      `;
+    }
+
+    function reportKpi(icon, label, value, sub, color, percent){
+      return `
+        <article class="presReportKpi" style="--accent:${color};">
+          <div class="presReportKpiIcon">${svgIcon(icon)}</div>
+          <div class="presReportKpiLabel">${esc(label)}</div>
+          <div class="presReportKpiValue">${esc(value)}</div>
+          <div class="presReportKpiSub">${esc(sub)}</div>
+          <div class="presReportKpiBar"><span style="width:${pct(percent)}%;"></span></div>
+        </article>
+      `;
+    }
+
+    const monthNames = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    function historicalRows(){
+      const rows = reps.slice(0,6).map(r=>{
+        const period = String(r.period||"");
+        const m = Math.max(0, Math.min(11, Number(period.slice(5,7))-1));
+        const rec = Number(r.cobradoMes ?? r.recMes ?? r.recaudadoMes ?? r.collectedMonth ?? 0);
+        const proj = Number(r.totalProyectadoMes ?? r.projMaxMes ?? r.proyeccionMes ?? ((r.cobradoMes||0)+(r.porCobrarMes||0)) ?? 0);
+        return { mes: monthNames[m] || period || "Mes", recaudado: rec, proyeccion: proj };
+      }).reverse();
+      if(!rows.length) rows.push({ mes: monthNames[Number(ym.slice(5,7))-1] || "Mes", recaudado: recMes, proyeccion: totalProyectadoMes });
+      return rows.slice(-6);
+    }
+
+    function lineChart(rows){
+      if(!rows || rows.length < 2){
+        return `<div class="presReportEmptyLine">Aún no hay histórico suficiente para graficar la evolución.</div>`;
+      }
+      const max = Math.max(1, ...rows.map(r=>Math.max(Number(r.recaudado||0), Number(r.proyeccion||0))));
+      const w = 320, h = 150, pad = 28;
+      const x = i => pad + (i * ((w - pad*2) / Math.max(1, rows.length-1)));
+      const y = v => h - pad - ((Number(v||0) / max) * (h - pad*2));
+      const path = key => rows.map((r,i)=>`${i?"L":"M"} ${x(i).toFixed(1)} ${y(r[key]).toFixed(1)}`).join(" ");
+      return `
+        <div class="presReportLineWrap">
+          <svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Evolución mensual">
+            <path class="grid" d="M${pad} ${y(max*.75)}H${w-pad} M${pad} ${y(max*.5)}H${w-pad} M${pad} ${y(max*.25)}H${w-pad}"></path>
+            <path class="projection" d="${path("proyeccion")}"></path>
+            <path class="collected" d="${path("recaudado")}"></path>
+            ${rows.map((r,i)=>`<circle class="dot projected" cx="${x(i)}" cy="${y(r.proyeccion)}" r="3"/><circle class="dot collectedDot" cx="${x(i)}" cy="${y(r.recaudado)}" r="3"/>`).join("")}
+            ${rows.map((r,i)=>`<text x="${x(i)}" y="${h-5}" text-anchor="middle">${esc(r.mes)}</text>`).join("")}
+          </svg>
+          <div class="presReportLegend compact"><span><i class="projectionKey"></i>Proyección</span><span><i></i>Recaudado</span></div>
+        </div>
+      `;
+    }
+
+    const campaignRows = campaignTop.map(c=>`
+      <div class="presReportCampaignRow">
+        <span class="dot"></span>
+        <b>${esc(c.title)}</b>
+        <strong>${clp(c.pend)}</strong>
+        <em>${pct(c.pct)}%</em>
+      </div>
+    `).join("");
+
+    const informesPublicados = reps.length
+      ? reps.slice(0,4).map(r=>`
+        <div class="presReportPublishedItem">
+          <div class="presReportPublishedIcon">${svgIcon("file")}</div>
+          <div>
+            <b>${esc(r.period || "Informe")}</b>
+            <span>Publicado ${esc(r.generatedAtHuman || r.generatedAt || "")}</span>
+          </div>
+          <button type="button" onclick="openReportApoderado('${esc(r.period||"")}')">Descargar PDF</button>
+        </div>
+      `).join("")
+      : `<div class="presReportPublishedEmpty">${svgIcon("file")}<span>Sin informes publicados.</span></div>`;
+
+    const informeVisualHTML = `
+      <section class="presReportsExecutive">
+        <div class="presReportsExecHeader">
+          <div>
+            <h2>Informe ejecutivo del curso</h2>
+            <p>Estado actual · Periodo: <b>${esc(ym)}</b></p>
+          </div>
+          <div class="presReportsActions">
+            <button type="button" onclick="printCurrentInforme()">${svgIcon("file")} Descargar PDF</button>
+            <button type="button" onclick="shareExecutiveWhatsApp()">${svgIcon("users")} Enviar informe al grupo</button>
+          </div>
+        </div>
+        <div class="presReportsKpiGrid">
+          ${reportKpi("dollar","Cobrado mes", clp(recMes), `${porcentajeCobrado}% del total`, "#6d28d9", porcentajeCobrado)}
+          ${reportKpi("arrowUp","Por cobrar", clp(pendienteMes), `${porcentajePorCobrar}% del total`, "#22c55e", porcentajePorCobrar)}
+          ${reportKpi("arrowDown","Gastado mes", clp(gasMes), `${porcentajeGastado}% del ingreso`, "#3b82f6", porcentajeGastado)}
+          ${reportKpi("users","Deudores mes", String(Number(deudMes||0)), "Obligatorias", "#f59e0b", deudMes ? 100 : 0)}
+        </div>
+      </section>
+
+      <section class="presReportsTwoCols">
+        <article class="presReportsCard">
+          <h3>Cumplimiento del mes</h3>
+          <p>Recaudado vs Proyección</p>
+          <div class="presReportFulfillment">
+            ${informeDonut(porcentajeCobrado, "#6d28d9", `<b>${pct(porcentajeCobrado)}%</b><span>Recaudado</span>`)}
+            <div class="presReportLegend">
+              <span><i></i>Recaudado <b>${clp(recMes)}</b></span>
+              <span><i class="pending"></i>Pendiente <b>${clp(pendienteMes)}</b></span>
+              <span>Meta del mes <b>${clp(totalProyectadoMes)}</b></span>
+            </div>
+          </div>
+        </article>
+
+        <article class="presReportsCard">
+          <h3>Cuadratura del periodo</h3>
+          <p>Mes actual</p>
+          <div class="presReportBalance">
+            <div><span>Saldo inicial</span><b>${clp(saldoInicial)}</b></div>
+            <div><span>+ Ingresos del mes</span><b class="ok">${clp(recMes)}</b></div>
+            <div><span>- Gastos del mes</span><b class="danger">${clp(gasMes)}</b></div>
+            <div class="total"><span>Saldo final</span><b>${clp(saldoFinal)}</b></div>
+          </div>
+          <div class="presReportOk">${svgIcon("check")} ${cuadraturaOk ? "Cuadratura OK" : "Revisar cuadratura"}</div>
+        </article>
+      </section>
+
+      <section class="presReportsCard presReportsCampaigns">
+        <div>
+          <h3>Recaudado por campañas activas</h3>
+          <p>Distribución del pendiente por campaña</p>
+        </div>
+        <div class="presReportCampaignLayout">
+          ${informeDonut(totalPendienteCampanas ? 100 : 0, "#6d28d9", `<span>Total por cobrar</span><b>${clp(totalPendienteCampanas)}</b>`, "presReportDonut campaign")}
+          <div class="presReportCampaignRanking">
+            ${campaignRows || `<div class="presReportEmptyLine">No hay campañas activas con pendiente.</div>`}
+            <button type="button" onclick="window.go('campanas')">Ver todas las campañas activas →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="presReportsCard">
+        <h3>Evolución mensual</h3>
+        <p>Recaudado vs Proyección últimos 6 meses</p>
+        ${lineChart(historicalRows())}
+      </section>
+    `;
+
     app.innerHTML = `
-      ${isDirty()?`
-        <div class="warnBox">
-          <div style="font-weight:950;">Informe desactualizado</div>
-          <div class="muted" style="margin-top:6px;">Hubo cambios posteriores al Ãºltimo informe. Publica uno nuevo para dejar un corte oficial.</div>
-          <div class="actions" style="margin-top:10px;">
-            <button class="btnx primary" onclick="confirmGenerateReport()">Actualizar y publicar</button>
-          </div>
-        </div>
-      `:""}
+      <section class="presReportsScreen">
+        <header class="presReportsTitle">
+          <h1>Informes</h1>
+          <p>Estado financiero y cuadratura del curso.</p>
+        </header>
 
-      <div class="card">
-        <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
-          <div style="min-width:220px;flex:1;">
-            <div class="kTitle">Informe ejecutivo del curso</div>
-            <div class="muted" style="margin-top:6px;">Estado actual (se actualiza en vivo). Periodo: <b>${esc(ym)}</b></div>
-          </div>
-          <div class="actions" style="flex-wrap:wrap;">
-            <button class="btnx" onclick="printCurrentInforme()">Descargar PDF</button>
-            <button class="btnx" onclick="shareExecutiveWhatsApp()">ðŸ“¤ Enviar informe al grupo</button>
-            
-          </div>
-        </div>
+        ${isDirty()?`
+          <section class="presReportsOutdated">
+            <div class="presReportsOutdatedIcon">${svgIcon("file")}</div>
+            <div>
+              <h2>Informe desactualizado</h2>
+              <p>Hubo cambios posteriores al último informe. Publica uno nuevo para dejar un corte oficial.</p>
+            </div>
+            <button type="button" onclick="confirmGenerateReport()">Actualizar y publicar</button>
+          </section>
+        `:""}
 
-        <div id="informeRoot">${informeDirectivaHTML()}</div>
-      </div>
+        <div id="informeRoot">${informeVisualHTML}</div>
 
-      <div class="card" style="margin-top:14px;">
-        <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:wrap;">
-          <div style="min-width:220px;flex:1;">
-            <div class="kTitle">Informes mensuales publicados</div>
-            <div class="muted" style="margin-top:6px;">Ãšltimos informes publicados (cortes oficiales).</div>
-          </div>
-          <div class="actions" style="flex-wrap:wrap;">
-            
-          </div>
-        </div>
+        <section class="presReportsCard presReportsPublished">
+          <h3>Informes mensuales publicados</h3>
+          <p>Últimos informes publicados (cortes oficiales).</p>
+          <div class="presReportsPublishedList">${informesPublicados}</div>
+        </section>
+      </section>
 
-        <div class="listLines" style="margin-top:10px;">
-          ${reps.length
-            ? reps.map(r=>`
-              <div class="lineItem">
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-                  <div>
-                    <b>${esc(r.period)}</b>
-                    <div class="muted" style="margin-top:6px;">Emitido ${esc(r.generatedAtHuman || r.generatedAt || '')}</div>
-                  </div>
-                  <button class="btnx" onclick="openReportApoderado('${esc(r.period||"")}')">Ver</button>
-                </div>
-</div>
-            `).join("")
-            : `<div class="muted">Sin informes publicados.</div>`
-          }
-        </div>
-      </div>
+      <style>
+        .presReportsScreen{display:grid;gap:16px;padding-bottom:150px;}
+        .presReportsTitle h1{margin:0;color:#0f172a;font-size:30px;line-height:1.05;font-weight:850;}
+        .presReportsTitle p{margin:6px 0 0;color:#64748b;font-size:15px;font-weight:650;}
+        .presReportsOutdated,.presReportsExecutive,.presReportsCard{background:#fff;border:1px solid rgba(226,232,240,.95);border-radius:24px;box-shadow:0 14px 36px rgba(15,23,42,.06);}
+        .presReportsOutdated{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:14px;align-items:center;padding:18px;}
+        .presReportsOutdatedIcon,.presReportKpiIcon,.presReportPublishedIcon{display:inline-flex;align-items:center;justify-content:center;background:#f1eafe;color:#6d28d9;border-radius:18px;}
+        .presReportsOutdatedIcon{width:54px;height:54px;}
+        .presReportsOutdatedIcon svg,.presReportKpiIcon svg,.presReportPublishedIcon svg{width:26px;height:26px;}
+        .presReportsOutdated h2,.presReportsExecHeader h2,.presReportsCard h3{margin:0;color:#0f172a;font-size:19px;font-weight:850;line-height:1.1;}
+        .presReportsOutdated p,.presReportsExecHeader p,.presReportsCard p{margin:6px 0 0;color:#64748b;font-size:14px;font-weight:650;line-height:1.35;}
+        .presReportsOutdated button{height:48px;border:0;border-radius:16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-weight:850;padding:0 18px;white-space:nowrap;}
+        .presReportsExecutive{padding:18px;display:grid;gap:18px;}
+        .presReportsExecHeader{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;}
+        .presReportsActions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+        .presReportsActions button{height:44px;border:1px solid rgba(124,58,237,.35);border-radius:15px;background:#fff;color:#6d28d9;font-weight:850;padding:0 14px;display:inline-flex;align-items:center;gap:8px;}
+        .presReportsActions svg{width:18px;height:18px;}
+        .presReportsKpiGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+        .presReportKpi{border:1px solid rgba(226,232,240,.95);border-radius:18px;padding:14px;min-width:0;}
+        .presReportKpiIcon{width:42px;height:42px;color:var(--accent);}
+        .presReportKpiLabel{margin-top:10px;color:#475569;font-size:12px;font-weight:850;}
+        .presReportKpiValue{margin-top:4px;color:#0f172a;font-size:23px;line-height:1.05;font-weight:900;white-space:nowrap;}
+        .presReportKpiSub{margin-top:6px;color:#64748b;font-size:12px;font-weight:650;}
+        .presReportKpiBar{margin-top:12px;height:9px;border-radius:999px;background:#eef2f7;overflow:hidden;}
+        .presReportKpiBar span{display:block;height:100%;border-radius:999px;background:var(--accent);}
+        .presReportsTwoCols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .presReportsCard{padding:18px;}
+        .presReportFulfillment,.presReportCampaignLayout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:center;margin-top:16px;}
+        .presReportDonut{position:relative;width:190px;height:190px;display:grid;place-items:center;}
+        .presReportDonut svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}
+        .presReportDonut circle{fill:none;stroke-width:15;}
+        .presReportDonut .track{stroke:#eef2f7;}
+        .presReportDonut .fill{stroke:var(--c);stroke-linecap:round;stroke-dasharray:var(--p) 100;}
+        .presReportDonutCenter{position:relative;z-index:1;text-align:center;color:#0f172a;display:grid;gap:2px;justify-items:center;}
+        .presReportDonutCenter b{font-size:30px;line-height:1;font-weight:900;}
+        .presReportDonutCenter span{color:#64748b;font-size:13px;font-weight:750;}
+        .presReportDonut.campaign .presReportDonutCenter b{font-size:20px;}
+        .presReportLegend{display:grid;gap:12px;color:#64748b;font-size:14px;font-weight:750;}
+        .presReportLegend span{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:9px;align-items:center;}
+        .presReportLegend i,.presReportCampaignRow .dot{width:12px;height:12px;border-radius:50%;background:#6d28d9;display:inline-block;}
+        .presReportLegend .pending{background:#e2e8f0;}
+        .presReportLegend b{color:#0f172a;font-weight:900;}
+        .presReportBalance{display:grid;gap:12px;margin-top:18px;}
+        .presReportBalance div{display:flex;justify-content:space-between;gap:12px;color:#0f172a;font-size:15px;}
+        .presReportBalance span{color:#334155;font-weight:650;}
+        .presReportBalance b{font-weight:900;}
+        .presReportBalance .ok{color:#16a34a;}
+        .presReportBalance .danger{color:#ef4444;}
+        .presReportBalance .total{border-top:1px dashed rgba(100,116,139,.35);padding-top:12px;}
+        .presReportOk{margin-top:16px;background:#ecfdf5;border:1px solid rgba(34,197,94,.20);border-radius:16px;color:#16a34a;font-weight:900;padding:14px 16px;display:flex;align-items:center;gap:10px;}
+        .presReportOk svg{width:22px;height:22px;}
+        .presReportsCampaigns{display:grid;gap:12px;}
+        .presReportCampaignRow{display:grid;grid-template-columns:14px minmax(0,1fr) auto 58px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(226,232,240,.9);}
+        .presReportCampaignRow:nth-child(2) .dot{background:#3b82f6;}
+        .presReportCampaignRow:nth-child(3) .dot{background:#94a3b8;}
+        .presReportCampaignRow b{font-size:14px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .presReportCampaignRow strong{font-size:14px;color:#0f172a;}
+        .presReportCampaignRow em{font-style:normal;justify-self:end;background:#f1eafe;color:#6d28d9;border-radius:999px;padding:7px 11px;font-size:13px;font-weight:900;}
+        .presReportCampaignRanking button{margin-top:10px;border:0;background:transparent;color:#6d28d9;font-weight:850;padding:8px 0;}
+        .presReportLineWrap{margin-top:14px;}
+        .presReportLineWrap svg{width:100%;height:auto;overflow:visible;}
+        .presReportLineWrap .grid{stroke:#e2e8f0;stroke-dasharray:4 4;fill:none;}
+        .presReportLineWrap .projection{fill:none;stroke:#a78bfa;stroke-width:3;stroke-dasharray:7 6;}
+        .presReportLineWrap .collected{fill:none;stroke:#5b21b6;stroke-width:3;}
+        .presReportLineWrap .dot{fill:#a78bfa;}
+        .presReportLineWrap .collectedDot{fill:#5b21b6;}
+        .presReportLineWrap text{font-size:11px;fill:#64748b;font-weight:750;}
+        .presReportLegend.compact{display:flex;justify-content:flex-end;gap:18px;margin-top:8px;}
+        .presReportLegend.compact span{display:flex;gap:8px;}
+        .presReportLegend .projectionKey{background:#a78bfa;}
+        .presReportEmptyLine{padding:14px;border-radius:16px;background:#f8fafc;color:#64748b;font-size:14px;font-weight:700;}
+        .presReportsPublishedList{display:grid;gap:10px;margin-top:14px;}
+        .presReportPublishedItem{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid rgba(226,232,240,.95);border-radius:16px;padding:12px;}
+        .presReportPublishedIcon{width:44px;height:44px;}
+        .presReportPublishedItem b{display:block;font-size:15px;color:#0f172a;}
+        .presReportPublishedItem span{display:block;margin-top:3px;font-size:12px;color:#64748b;font-weight:650;}
+        .presReportPublishedItem button{height:40px;border:1px solid rgba(124,58,237,.35);border-radius:14px;background:#fff;color:#6d28d9;font-weight:850;padding:0 12px;}
+        .presReportPublishedEmpty{display:flex;align-items:center;gap:12px;border-radius:16px;background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(37,99,235,.04));padding:14px;color:#64748b;font-weight:750;}
+        .presReportPublishedEmpty svg{width:22px;height:22px;color:#6d28d9;}
+        @media (max-width:760px){
+          .presReportsScreen{gap:14px;}
+          .presReportsOutdated{grid-template-columns:52px 1fr;padding:16px;}
+          .presReportsOutdated button{grid-column:1/-1;width:100%;}
+          .presReportsExecHeader{display:grid;gap:12px;}
+          .presReportsActions{justify-content:stretch;}
+          .presReportsActions button{flex:1;min-width:0;font-size:12px;padding:0 10px;}
+          .presReportsKpiGrid{grid-template-columns:1fr 1fr;}
+          .presReportsTwoCols{grid-template-columns:1fr;}
+          .presReportFulfillment,.presReportCampaignLayout{grid-template-columns:1fr;justify-items:center;}
+          .presReportDonut{width:170px;height:170px;}
+          .presReportCampaignRanking{width:100%;}
+          .presReportCampaignRow{grid-template-columns:14px minmax(0,1fr) auto 54px;}
+          .presReportPublishedItem{grid-template-columns:42px 1fr;}
+          .presReportPublishedItem button{grid-column:2;width:max-content;}
+        }
+      </style>
     `;
 
     }catch(e){
