@@ -1180,8 +1180,8 @@
     monthsEl.oninput = sync;
     sync();
 
-    // Cotizaciones (solo plantilla Gira)
-    if (t.template === "gira") {
+    // Cotizaciones para plantillas con cotizacion editable.
+    if (t.template === "gira" || t.template === "graduacion") {
       const normalize = (q) => ({
         name: (q?.name || q?.nombre || "").trim(),
         url: (q?.url || q?.link || "").trim(),
@@ -1279,13 +1279,13 @@
     ts[i].dueDate = dueDate;
     ts[i].months = months;
 
-    // Saldo aÃ±os anteriores (Plantillas)
+    // Saldo anos anteriores (plantillas)
     if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const prev = Math.max(0, Number(document.getElementById("ec_prev")?.value || ts[i].saldo_prev || 0));
       ts[i].saldo_prev = prev;
     }
 
-    // Cotizaciones (Plantillas: Gira / GraduaciÃ³n)
+    // Cotizaciones (plantillas: Gira / Graduacion)
     if (ts[i].template === "gira" || ts[i].template === "graduacion") {
       const quotes = Array.isArray(window.__ec_quotes) ? window.__ec_quotes : [];
       const cleaned = [];
@@ -1298,7 +1298,7 @@
         const any = name || url || total || desc;
         if (!any) continue;
 
-        if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotizaciÃ³n debe comenzar con http:// o https://"); return; }
+        if (url && !/^https?:\/\//i.test(url)) { alert("La URL de cotización debe comenzar con http:// o https://"); return; }
         cleaned.push({ nombre: name, name, url, link: url, monto_total: total, total, descripcion: desc, desc, texto: desc });
       }
       ts[i].cotizaciones = cleaned;
@@ -1310,7 +1310,7 @@
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("CampaÃ±a actualizada âœ…");
+    alert("Campaña actualizada.");
 }
 
   function openClose(activeTasksProvider) {
