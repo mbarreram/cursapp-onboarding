@@ -2521,8 +2521,36 @@ function renderDeudores(){
   const totalMandatoryMonth = monthMandatoryOutstanding(ym);
 
   app.innerHTML = `
-    <div class="kTitle">Cobranza</div>
-    <div class="muted" style="margin-top:6px;">Busca por apoderado o alumno y obtÃ©n el resumen de deudas (con texto listo para WhatsApp).</div>
+    <div class="presDebtHero">
+      <div>
+        <div class="kTitle">Cobranza</div>
+        <div class="muted" style="margin-top:6px;">Busca por apoderado o alumno y obtén el resumen de deudas (con texto listo para WhatsApp).</div>
+      </div>
+
+      <section class="presDebtExportCard" aria-label="Exportaciones generales del curso">
+        <div class="presDebtExportTitle">General del curso</div>
+        <div class="presDebtExportActions">
+          <button class="presDebtExportBtn pdf" type="button" data-debt-export="pdf" aria-label="Exportar PDF general del curso">
+            <span class="presDebtExportIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><path d="M9 16v-4h2a1.5 1.5 0 0 1 0 3H9"/><path d="M13.5 16v-4h1.2a2 2 0 0 1 0 4h-1.2"/><path d="M17.5 12h2.2"/><path d="M17.5 14h1.8"/></svg>
+            </span>
+            <span>PDF</span>
+          </button>
+          <button class="presDebtExportBtn excel" type="button" data-debt-export="excel" aria-label="Exportar Excel general del curso">
+            <span class="presDebtExportIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h10l6 6v10a2 2 0 0 1-2 2H4z"/><path d="M14 4v6h6"/><path d="M8 12l4 6"/><path d="M12 12l-4 6"/><path d="M15 13h2"/><path d="M15 16h2"/></svg>
+            </span>
+            <span>Excel</span>
+          </button>
+          <button class="presDebtExportBtn whatsapp" type="button" data-debt-export="whatsapp" aria-label="Exportar WhatsApp general del curso">
+            <span class="presDebtExportIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 11.5a8 8 0 0 1-11.9 7l-3.6 1 1-3.5A8 8 0 1 1 20 11.5z"/><path d="M9 8.5c.2 3 2.1 5.1 5 6"/><path d="M8.8 8.4l.8-.4 1.2 2-.6.7"/><path d="M14 14.5l.7-.6 2 .9-.4.9"/></svg>
+            </span>
+            <span>WhatsApp</span>
+          </button>
+        </div>
+      </section>
+    </div>
 
     <div class="kpiGrid" style="margin-top:12px;">
       <div class="kpi">
@@ -2558,6 +2586,26 @@ function renderDeudores(){
     </div>
 
     <style>
+      .presDebtHero{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:18px;align-items:start;margin-bottom:12px;}
+      .presDebtExportCard{background:#fff;border:1px solid rgba(34,197,94,.38);border-radius:24px;box-shadow:0 14px 36px rgba(15,23,42,.07);padding:16px;}
+      .presDebtExportTitle{font-size:15px;font-weight:900;color:#111827;margin-bottom:12px;}
+      .presDebtExportActions{display:grid;grid-template-columns:repeat(3,1fr);gap:0;align-items:stretch;}
+      .presDebtExportBtn{appearance:none;border:0;background:transparent;min-height:64px;padding:8px 12px;display:flex;align-items:center;justify-content:center;gap:10px;color:#111827;font-size:14px;font-weight:900;border-radius:16px;cursor:pointer;}
+      .presDebtExportBtn + .presDebtExportBtn{border-left:1px solid rgba(226,232,240,.95);border-radius:0;}
+      .presDebtExportBtn:hover{background:rgba(15,23,42,.035);}
+      .presDebtExportIcon{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;}
+      .presDebtExportIcon svg{width:30px;height:30px;display:block;}
+      .presDebtExportBtn.pdf .presDebtExportIcon{color:#dc2626;}
+      .presDebtExportBtn.excel .presDebtExportIcon{color:#16a34a;}
+      .presDebtExportBtn.whatsapp .presDebtExportIcon{color:#25d366;}
+      @media (max-width:760px){
+        .presDebtHero{grid-template-columns:1fr;gap:12px;}
+        .presDebtExportCard{border-radius:22px;padding:14px;}
+        .presDebtExportActions{gap:8px;}
+        .presDebtExportBtn{border:1px solid rgba(226,232,240,.95);border-radius:16px !important;min-height:60px;flex-direction:column;gap:5px;font-size:12px;}
+        .presDebtExportBtn + .presDebtExportBtn{border-left:1px solid rgba(226,232,240,.95);}
+        .presDebtExportIcon,.presDebtExportIcon svg{width:26px;height:26px;}
+      }
       .kpiGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
       @media (max-width:760px){.kpiGrid{grid-template-columns:1fr;}}
       .kpi{border:1px solid rgba(15,23,42,.10);border-radius:16px;background:#fff;padding:12px;}
@@ -2577,6 +2625,23 @@ function renderDeudores(){
       textarea{width:100%;min-height:120px;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.10);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
     </style>
   `;
+
+  document.querySelectorAll("[data-debt-export]").forEach(btn=>{
+    btn.onclick = ()=>{
+      const type = btn.getAttribute("data-debt-export");
+      const candidates = {
+        pdf: ["exportDebtorsPdf", "exportDeudoresPdf", "downloadDebtorsPdf", "downloadDeudoresPdf", "printDebtorsPdf", "printDeudoresPdf"],
+        excel: ["exportDebtorsExcel", "exportDeudoresExcel", "downloadDebtorsExcel", "downloadDeudoresExcel"],
+        whatsapp: ["shareDebtorsWhatsApp", "shareDeudoresWhatsApp", "exportDebtorsWhatsApp", "exportDeudoresWhatsApp"]
+      }[type] || [];
+      const fnName = candidates.find(name=> typeof window[name] === "function");
+      if(fnName){
+        window[fnName]();
+        return;
+      }
+      toast("Exportación general no disponible en esta versión.");
+    };
+  });
 
   // bars
   const pendingAll = payments().filter(isPendingFinancialStatus);
