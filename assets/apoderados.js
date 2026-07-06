@@ -150,14 +150,19 @@
   function headerUserLine(){
     const who = $("whoLine");
     if(!who) return;
-    const label = currentUserName();
     const p = courseParts(STATE.curso || {});
-    const course = [p.school, p.course].filter(Boolean).join(" · ");
+    const sessionEmail = String(STATE.session?.email || STATE.session?.userId || "").toLowerCase().trim();
+    const member = (STATE.miembros || []).find(e => sessionEmail && String(e.email || "").toLowerCase().trim() === sessionEmail && e.role === "apoderado")
+      || (STATE.miembros || []).find(e => e.role === "apoderado" && e.status === "approved")
+      || (STATE.miembros || []).find(e => e.role === "apoderado");
+    const apoderadoName = member?.apoderadoName || "Apoderado";
+    const alumnoName = member?.alumno || "Alumno/a";
+    const course = [p.school, p.course, p.year, p.jornada].filter(Boolean).join(" · ");
     who.innerHTML = `
       <div>
-        <div style="font-weight:950;">${esc(label)}</div>
-        <div class="muted presBrandRole">Presidente</div>
-        <div class="muted presBrandCourse">${esc(course || "Curso activo")}</div>
+        <div id="whoRoleTitle" style="font-weight:950;">Rol: Apoderado</div>
+        <div class="muted presBrandRole">${esc(apoderadoName)} · Apoderado</div>
+        <div class="muted presBrandCourse">${esc(alumnoName)} · ${esc(course || "Curso activo")}</div>
       </div>
     `;
   }
@@ -652,18 +657,22 @@
     location.assign(urls[tab] || homeUrl());
   }
 
-  function hydrateBottomNavIcons(){
-    const icons = {
-      home: "home",
-      campanas: "flag",
-      deudores: "clock",
-      informes: "file"
+  function bottomNavSvg(name){
+    const paths = {
+      home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+      campaign:'<path d="M4 14V9a2 2 0 0 1 2-2h2l9-3v15l-9-3H6a2 2 0 0 1-2-2Z"/><path d="M8 16v4"/><path d="M18 9h3"/><path d="M18 14h3"/>',
+      debt:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M7 17h10"/>',
+      report:'<path d="M6 3h9l3 3v15H6V3Z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/>'
     };
+    return `<svg class="caSvgIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.report}</svg>`;
+  }
+
+  function hydrateBottomNavIcons(){
+    const icons = { home:"home", campanas:"campaign", deudores:"debt", informes:"report" };
     document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
       const label = btn.querySelector("span")?.textContent || "";
-      const iconName = icons[btn.dataset.tab] || "home";
       btn.setAttribute("data-ca-icon-ready", "1");
-      btn.innerHTML = `<span class="caSvgIcon">${icon(iconName)}</span><span>${esc(label)}</span>`;
+      btn.innerHTML = `${bottomNavSvg(icons[btn.dataset.tab] || "report")}<span>${esc(label)}</span>`;
     });
   }
 
