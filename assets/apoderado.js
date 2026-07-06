@@ -1,4 +1,4 @@
-
+﻿
 // === CURSAPP GLOBAL LOADING ===
 window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
  show:(role='')=>{
@@ -6,9 +6,9 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
    let el=document.getElementById('cursapp-loading-overlay');
    if(el) return;
    const msgs={
-    presidente:['📊 Preparando dashboard ejecutivo...','👥 Revisando apoderados...','📈 Actualizando indicadores...'],
-    tesorero:['💰 Conciliando pagos...','🧾 Actualizando comprobantes...','📋 Revisando rendiciones...'],
-    apoderado:['🎒 Revisando información del curso...','📅 Consultando próximas cuotas...','📣 Actualizando avisos...']
+    presidente:['ðŸ“Š Preparando dashboard ejecutivo...','ðŸ‘¥ Revisando apoderados...','ðŸ“ˆ Actualizando indicadores...'],
+    tesorero:['ðŸ’° Conciliando pagos...','ðŸ§¾ Actualizando comprobantes...','ðŸ“‹ Revisando rendiciones...'],
+    apoderado:['ðŸŽ’ Revisando informaciÃ³n del curso...','ðŸ“… Consultando prÃ³ximas cuotas...','ðŸ“£ Actualizando avisos...']
    };
    const arr=msgs[(role||'').toLowerCase()]||['Cargando datos...'];
    el=document.createElement('div');
@@ -31,10 +31,10 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
 
 
-// V10.1 · Contexto de rol robusto para Apoderado.
-// No exige courseKey en sesión porque puede venir desde cursapp_active_course_v1
-// o desde el perfil activo. Evita el falso "contexto inválido" al cambiar
-// Presidente → Apoderado con usuarios multirol.
+// V10.1 Â· Contexto de rol robusto para Apoderado.
+// No exige courseKey en sesiÃ³n porque puede venir desde cursapp_active_course_v1
+// o desde el perfil activo. Evita el falso "contexto invÃ¡lido" al cambiar
+// Presidente â†’ Apoderado con usuarios multirol.
 function __cursappReadJsonV101(key, fallback){
   try{ const raw=localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch(_e){ return fallback; }
 }
@@ -73,7 +73,7 @@ const session = __cursappNormalizeRoleContextV101('apoderado');
 
 
 if (!session || !session.userId) {
-  console.warn('Cursapp Apoderado: sesión sin userId; se mostrará estado vacío controlado.', session);
+  console.warn('Cursapp Apoderado: sesiÃ³n sin userId; se mostrarÃ¡ estado vacÃ­o controlado.', session);
 }
 
 (function(){
@@ -148,7 +148,7 @@ function isMinePayment(p){
   const payMid = paymentMemberIdV584(p);
 
   // V58.4: si existe miembro activo y el pago trae miembro, manda el miembro.
-  // Esto evita cruces cuando el mismo correo participa en más de un curso/alumno.
+  // Esto evita cruces cuando el mismo correo participa en mÃ¡s de un curso/alumno.
   if(activeMid && payMid) return String(payMid) === String(activeMid);
 
   if(!mk) return true;
@@ -163,10 +163,10 @@ function isMinePayment(p){
   const aid = String(p?.apoderadoId||"").toLowerCase().trim();
   if(aid) return aid === mk || aid === String(activeMid||"").toLowerCase();
 
-  // ✅ Sin identidad fuerte no es 'mío' (evita cruces)
+  // âœ… Sin identidad fuerte no es 'mÃ­o' (evita cruces)
   return false;
 }
-  // ---- notifier: refrescar cuando se actualiza storage (misma sesión) ----
+  // ---- notifier: refrescar cuando se actualiza storage (misma sesiÃ³n) ----
   (function patchLocalStorageSetItem(){
     try{
       if(window.__cursapp_setItemPatched) return;
@@ -186,7 +186,7 @@ function isMinePayment(p){
   };
 
   // V58.4: respaldo de pagos por curso + perfil activo.
-  // Evita que una hidratación vacía al volver desde Mercado Escolar deje el home en 0.
+  // Evita que una hidrataciÃ³n vacÃ­a al volver desde Mercado Escolar deje el home en 0.
   function __paymentsSnapshotKeyV584(){
     const ck = String(localStorage.getItem(KEY_ACTIVE_COURSE)||"").trim() || "global";
     const mid = (typeof getActiveMemberIdV584 === "function" ? getActiveMemberIdV584() : "") || "perfil";
@@ -221,7 +221,7 @@ function isMinePayment(p){
   }
 
   
-  // ---- Opt-out campañas no obligatorias (por apoderado) ----
+  // ---- Opt-out campaÃ±as no obligatorias (por apoderado) ----
 // Estructura: { [courseKey]: { [apoderadoKey]: [taskId, ...] } }
 function getOptOutMap(){ return load(KEY_OPTOUT, {}); }
 
@@ -230,7 +230,7 @@ function getCourseKeyForOpt(){
   return (p && p.courseKey) ? String(p.courseKey) : String(localStorage.getItem(KEY_ACTIVE_COURSE)||"default");
 }
 function getApoderadoKeyForOpt(){
-  // Usa identidad de sesión (userId/email) para evitar cruces
+  // Usa identidad de sesiÃ³n (userId/email) para evitar cruces
   const mk = meKey();
   return mk || "unknown";
 }
@@ -256,7 +256,7 @@ function setOptedOut(taskId, value){
   const m = getOptOutMap();
   let byCourse = m[courseKey] || {};
 
-  // Migración suave desde formato antiguo (array)
+  // MigraciÃ³n suave desde formato antiguo (array)
   if(Array.isArray(byCourse)){
     byCourse = { "_legacy_all": byCourse };
   }
@@ -275,7 +275,7 @@ function applyOptOutToPayments(taskId, optedOut){
     const t = tasksAll.find(x=>String(x.id)===String(taskId));
     if(!t) return;
 
-    // Solo campañas NO obligatorias
+    // Solo campaÃ±as NO obligatorias
     if(t.mandatoryParticipation !== false) return;
 
     let paysAll = load(KEY_PAYMENTS, []);
@@ -294,7 +294,7 @@ function applyOptOutToPayments(taskId, optedOut){
       if(optedOut){
         return { ...p, status: "opted_out", estado: "no_participa", amountRemaining: 0 };
       }else{
-        // volver a pendiente o vencida según fecha
+        // volver a pendiente o vencida segÃºn fecha
         const due = p?.dueDate ? new Date(p.dueDate) : null;
         const nextStatus = (due && due < now) ? "overdue" : "pending";
         // si estaba opted_out lo reactivamos; si ya estaba pending/overdue lo dejamos
@@ -328,7 +328,7 @@ window.toggleOptOut = async function(taskId){
   renderPayments();
 };
 
-  // ---- Helper: pagos excluidos por opt-out (solo campañas NO obligatorias) ----
+  // ---- Helper: pagos excluidos por opt-out (solo campaÃ±as NO obligatorias) ----
   // Compat con fixes anteriores: algunos lugares usan isPaymentOptedOut().
   function isPaymentOptedOut(p){
     try{
@@ -359,10 +359,10 @@ window.toggleOptOut = async function(taskId){
   initSafeStorage();
 
 
-// -------- Normalizar campañas (compat presidente/apoderado) --------
+// -------- Normalizar campaÃ±as (compat presidente/apoderado) --------
 function normalizeTask(t){
   t = t || {};
-  const title = t.title || t.name || t.nombre || "Campaña";
+  const title = t.title || t.name || t.nombre || "CampaÃ±a";
   const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
   const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
   const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
@@ -426,13 +426,36 @@ function getActiveIdentity(){
     ""
   ).trim();
 
+  const course = p?.course || {};
+  const level = String(course.level || course.curso || "").trim();
+  const letter = String(course.letter || course.letra || "").trim();
+  const year = String(course.year || course.anio || "").trim();
+  const courseShort = [level + letter, year].filter(Boolean).join(" ").trim();
+  const schoolName = String(course.schoolName || course.colegio || course.school || "").replace(/\s*\((Demo|demo)\)\s*/g, "").trim();
+  const guardianName = String(
+    p?.apoderado?.name ||
+    p?.apoderado?.nombre ||
+    p?.user?.name ||
+    p?.name ||
+    s?.name ||
+    s?.nombre ||
+    s?.full_name ||
+    ""
+  ).trim();
+
   return {
     courseKey: (p && p.courseKey) ? p.courseKey : (localStorage.getItem(KEY_ACTIVE_COURSE)||""),
     apoderadoId: email || "unknown_apoderado",
     alumnoId: alumnoIdReal || alumnoLabel,
     alumnoLabel,
     realAlumnoId: alumnoIdReal,
-    email
+    email,
+    name: guardianName,
+    apoderadoName: guardianName,
+    studentName: alumnoLabel,
+    schoolName,
+    courseShort,
+    courseLabel: courseShort || [schoolName, level + letter].filter(Boolean).join(" Â· ")
   };
 }
 
@@ -575,7 +598,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       const aid = String(p.apoderadoKey||p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
       const tid = String(p.fromTaskId||"");
       const per = String(p.period||ymFromISO(p.dueDate)||"");
-      // ⚠️ si no existe installmentIndex, asumimos 1 (pago único o legacy)
+      // âš ï¸ si no existe installmentIndex, asumimos 1 (pago Ãºnico o legacy)
       const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
       const alu = String(p.alumnoId||"");
       return paymentKeyOf(ck, tid, aid, alu, per, idx);
@@ -618,7 +641,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
           const period = addMonthsYM(startYM, i);
           const dueDate = endOfMonthISO(period);
           const idx = i+1;
-          pushPay(t, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
+          pushPay(t, period, idx, dueDate, `${t.title} Â· Cuota ${idx}/${months}`);
         }
       }else{
         const period = ymFromISO(t.dueDate||t.startDate||todayISO());
@@ -655,7 +678,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       p.period = String(p.period||ymFromISO(p.dueDate)||"");
       if(p.installmentIndex==null || p.installmentIndex==="") p.installmentIndex = 1;
 
-      // Si es de este apoderado pero está incompleto, complétalo
+      // Si es de este apoderado pero estÃ¡ incompleto, complÃ©talo
       const apEmail = String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
       const apKey = String(p.apoderadoKey||p.apoderadoId||"").trim();
       const looksMine = (apKey && apKey===aidStrong) || (apEmail && apEmail===aidStrong);
@@ -673,7 +696,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
       const prev = map.get(pk);
       if(!prev){ map.set(pk, p); continue; }
-      // Preferimos el más "completo" y/o pagado
+      // Preferimos el mÃ¡s "completo" y/o pagado
       const score = (x)=>{
         let s=0;
         if(String(x.status||"")==="paid") s+=100;
@@ -695,16 +718,16 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
 
   const esc = (s)=> String(s??"").replace(/[&<>'"]/g,c=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
   const clp = (n)=> "$"+Number(n||0).toLocaleString("es-CL");
-  // Fase 2B: un pago válido debe venir desde Supabase (UUID de tabla pagos.id).
-  // Los IDs legacy tipo pay_xxx son caché local antigua y NO deben abrir pay.html.
+  // Fase 2B: un pago vÃ¡lido debe venir desde Supabase (UUID de tabla pagos.id).
+  // Los IDs legacy tipo pay_xxx son cachÃ© local antigua y NO deben abrir pay.html.
   const isSupabaseUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
   function onlySupabasePayments(list){
     return (Array.isArray(list) ? list : []).filter(p => isSupabaseUuid(p?.id || p?.remoteId));
   }
 
-  // ✅ alias usado en copy (WhatsApp/UI)
+  // âœ… alias usado en copy (WhatsApp/UI)
   function formatCLP(n){ return clp(n); }
-  // ---------------- Cotizaciones (Gira / Graduación) ----------------
+  // ---------------- Cotizaciones (Gira / GraduaciÃ³n) ----------------
   function normStr(x){ return String(x??"").trim(); }
   function normalizeUrl(u){
     const s = normStr(u);
@@ -756,7 +779,7 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
   function openCotizacionesModal(taskId){
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     const t = tasksAll.find(x=>String(x.id)===String(taskId));
-    if(!t){ toast("No se encontró la campaña", false); return; }
+    if(!t){ toast("No se encontrÃ³ la campaÃ±a", false); return; }
     const items = normalizeCotizaciones(t);
     if(!items.length){ toast("No hay cotizaciones", false); return; }
     const total = items.reduce((a,it)=>a+Number(it.monto||0),0);
@@ -770,18 +793,18 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
       ${items.map(it=>`
         <div class="card" style="padding:12px 14px;margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-            <div style="font-weight:950;">${esc(it.nombre||"Ítem")}</div>
+            <div style="font-weight:950;">${esc(it.nombre||"Ãtem")}</div>
             <div style="font-weight:950;">${formatCLP(it.monto||0)}</div>
           </div>
-          ${it.descripcion ? `<div class="muted" style="margin-top:6px;"><b>Descripción:</b> ${esc(it.descripcion)}</div>` : ``}
+          ${it.descripcion ? `<div class="muted" style="margin-top:6px;"><b>DescripciÃ³n:</b> ${esc(it.descripcion)}</div>` : ``}
           ${it.url ? `<div class="muted" style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
               <div style="word-break:break-all;"><b>URL:</b> ${esc(it.url)}</div>
-              <a class="btnx" style="padding:8px 10px;border:1px solid rgba(0,0,0,.12);" href="${esc(it.url)}" target="_blank" rel="noopener">🔗</a>
+              <a class="btnx" style="padding:8px 10px;border:1px solid rgba(0,0,0,.12);" href="${esc(it.url)}" target="_blank" rel="noopener">ðŸ”—</a>
             </div>` : ``}
         </div>
       `).join("")}
     `;
-    openModalSheet("Cotizaciones", `${t.title||"Campaña"} · ${items.length} ítem(s)`, body);
+    openModalSheet("Cotizaciones", `${t.title||"CampaÃ±a"} Â· ${items.length} Ã­tem(s)`, body);
   }
 
 
@@ -799,13 +822,13 @@ function ensurePaymentsForIdentity(ident, tasksAll, paysAll){
     const now = new Date();
     return Math.ceil((d.getTime()-now.getTime())/(1000*60*60*24));
   }
-  // 🔹 Badge de vencimiento (helper faltante)
+  // ðŸ”¹ Badge de vencimiento (helper faltante)
 function dueBadge(iso){
   const d = daysTo(iso);
   if(d === null) return "";
   if(d < 0) return `<span class="tag danger">Vencida</span>`;
   if(d === 0) return `<span class="tag warn">Vence hoy</span>`;
-  return `<span class="tag warn">Quedan ${d} días</span>`;
+  return `<span class="tag warn">Quedan ${d} dÃ­as</span>`;
 }
 
   function normalizePaymentStatus(p){
@@ -855,7 +878,7 @@ function dueBadge(iso){
     if(d==null) return "";
     if(d<0) return "Vencida";
     if(d===0) return "Vence hoy";
-    return `Quedan ${d} días`;
+    return `Quedan ${d} dÃ­as`;
   }
   function monthNameFromISO(iso){
     if(!iso) return "";
@@ -865,7 +888,7 @@ function dueBadge(iso){
     return months[d.getMonth()];
   }
 
-  // Nunca más pantalla en blanco: muestra error arriba
+  // Nunca mÃ¡s pantalla en blanco: muestra error arriba
   window.onerror = function(msg, src, line){
     if(app){
       app.innerHTML = `
@@ -881,7 +904,7 @@ function dueBadge(iso){
   // -------- Demo seed (si no hay data) --------
   function ensureDemo(){
     // Cursapp v11-clean: demo seed desactivado.
-    // Los estados vacíos se deben mostrar con datos reales del curso.
+    // Los estados vacÃ­os se deben mostrar con datos reales del curso.
     return;
   }
 
@@ -939,24 +962,24 @@ function dueBadge(iso){
   // ===== Ayuda (Apoderado) =====
   const HELP_TOPICS = {
     proxima: {
-      title: "Próxima cuota",
-      body: "Es el pago pendiente con la fecha más cercana. Puedes pagar cuotas vencidas junto con la del mes."
+      title: "PrÃ³xima cuota",
+      body: "Es el pago pendiente con la fecha mÃ¡s cercana. Puedes pagar cuotas vencidas junto con la del mes."
     },
     pendientes: {
       title: "Pagos pendientes",
-      body: "Es la suma de campañas obligatorias + campañas no obligatorias en las que participas. Si eliges “No participo” en una campaña no obligatoria, ese cobro se excluye de tu pendiente."
+      body: "Es la suma de campaÃ±as obligatorias + campaÃ±as no obligatorias en las que participas. Si eliges â€œNo participoâ€ en una campaÃ±a no obligatoria, ese cobro se excluye de tu pendiente."
     },
     vencida: {
       title: "Vencida vs Pendiente",
-      body: "Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasó su fecha."
+      body: "Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasÃ³ su fecha."
     },
     optout: {
       title: "No participo",
-      body: "Solo disponible en campañas NO obligatorias. Si eliges “No participo”, esa campaña se excluye de tu pendiente."
+      body: "Solo disponible en campaÃ±as NO obligatorias. Si eliges â€œNo participoâ€, esa campaÃ±a se excluye de tu pendiente."
     },
     saldo: {
       title: "Saldo a favor",
-      body: "Se descuenta automáticamente en tus próximos pagos."
+      body: "Se descuenta automÃ¡ticamente en tus prÃ³ximos pagos."
     },
     general: {
       title: "Ayuda Apoderado",
@@ -969,32 +992,32 @@ function dueBadge(iso){
 
     const qa = `
       <div class="helpQA" id="help_obligatoria">
-        <div class="helpQ">¿Qué es una campaña obligatoria?</div>
+        <div class="helpQ">Â¿QuÃ© es una campaÃ±a obligatoria?</div>
         <div class="helpA">Es un cobro del curso en el que todos participan. No puedes excluirte.</div>
       </div>
 
       <div class="helpQA" id="help_no_obligatoria">
-        <div class="helpQ">¿Qué es una campaña no obligatoria?</div>
+        <div class="helpQ">Â¿QuÃ© es una campaÃ±a no obligatoria?</div>
         <div class="helpA">Puedes elegir Participar o No participo. Si eliges No participo, ese cobro se excluye de tu pendiente.</div>
       </div>
 
       <div class="helpQA" id="help_cuotas">
-        <div class="helpQ">¿Puedo pagar cuotas atrasadas juntas?</div>
-        <div class="helpA">Sí. Puedes pagar cuotas vencidas y la del mes en una sola transacción.</div>
+        <div class="helpQ">Â¿Puedo pagar cuotas atrasadas juntas?</div>
+        <div class="helpA">SÃ­. Puedes pagar cuotas vencidas y la del mes en una sola transacciÃ³n.</div>
       </div>
 
       <div class="helpQA" id="help_vencida">
-        <div class="helpQ">¿Qué significa Vencida vs Pendiente?</div>
-        <div class="helpA">Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasó su fecha.</div>
+        <div class="helpQ">Â¿QuÃ© significa Vencida vs Pendiente?</div>
+        <div class="helpA">Pendiente incluye todo lo que falta por pagar. Vencida es una cuota que ya pasÃ³ su fecha.</div>
       </div>
 
       <div class="helpQA" id="help_saldo">
-        <div class="helpQ">¿Qué es “Saldo a favor”?</div>
-        <div class="helpA">Se descuenta automáticamente en tus próximos pagos.</div>
+        <div class="helpQ">Â¿QuÃ© es â€œSaldo a favorâ€?</div>
+        <div class="helpA">Se descuenta automÃ¡ticamente en tus prÃ³ximos pagos.</div>
       </div>
 
       <div class="helpQA" id="help_contacto">
-        <div class="helpQ">¿A quién contacto si tengo un problema?</div>
+        <div class="helpQ">Â¿A quiÃ©n contacto si tengo un problema?</div>
         <div class="helpA">Contacta al presidente o tesorero del curso.</div>
       </div>
     `;
@@ -1003,7 +1026,7 @@ function dueBadge(iso){
       <div class="card helpModalCard">
         <div class="helpHeader">
           <div>
-            <div class="kTitle">❓ ${esc(t.title||"Ayuda")}</div>
+            <div class="kTitle">â“ ${esc(t.title||"Ayuda")}</div>
             ${t.body ? `<div class="muted" style="margin-top:6px;font-weight:800;line-height:1.45;">${esc(t.body)}</div>` : ``}
           </div>
         </div>
@@ -1018,7 +1041,7 @@ function dueBadge(iso){
       </div>
     `);
 
-    // Scroll a sección según topic (si aplica)
+    // Scroll a secciÃ³n segÃºn topic (si aplica)
     try{
       const map = {
         proxima: null,
@@ -1111,7 +1134,7 @@ function dueBadge(iso){
       return okUser && okCourse;
     });
 
-    // Fallback: si no encontró por usuario, al menos respeta curso.
+    // Fallback: si no encontrÃ³ por usuario, al menos respeta curso.
     if(!mine.length && activeCourse){
       mine = profiles.filter(p => String(p?.courseKey || "") === String(activeCourse));
     }
@@ -1158,7 +1181,7 @@ function dueBadge(iso){
       }
     }
 
-    // 5) Último fallback: perfil activo por curso.
+    // 5) Ãšltimo fallback: perfil activo por curso.
     if(activeCourse){
       const byCourse = mine.find(p => String(p?.courseKey || "") === String(activeCourse));
       if(byCourse) return byCourse;
@@ -1173,6 +1196,8 @@ function dueBadge(iso){
     if(!whoCourseLine) return;
     const p = getActiveProfile();
     if(!p || !p.course){
+      const title = document.getElementById("whoRoleTitle");
+      if(title) title.textContent = "Apoderado";
       whoCourseLine.textContent = "Curso no seleccionado";
       return;
     }
@@ -1214,17 +1239,21 @@ function dueBadge(iso){
     } catch (e) {}
 
     const ap = p.apoderado || {};
+    const ident = getActiveIdentity();
+    const title = document.getElementById("whoRoleTitle");
+    const logo = document.querySelector("header .brand .logo");
+    const name = ident.name || ap.name || "Apoderado";
+    const courseText = ident.courseShort || `${c.level || ""}${c.letter || ""} ${c.year || ""}`.trim() || "Curso actual";
+    if(title) title.textContent = name;
+    if(logo) logo.textContent = String(name).trim().charAt(0).toUpperCase() || "A";
     whoCourseLine.innerHTML = `
-      <div style="font-weight:950;color:#111827;">${esc((ap.name||"Apoderado")+" · Apoderado")}</div>
-      <div class="muted" style="margin-top:2px;font-weight:900;">${esc(ap.alumno||"Alumno/a")}</div>
-      <div class="muted" style="margin-top:2px;font-weight:900;font-size:12px;">
-        ${esc((c.schoolName||"Colegio")+" · "+(c.level||"")+(c.letter||"")+" "+(c.year||"")+" · "+(c.jornada||""))}
-      </div>
+      <div class="apoHeaderRole">Apoderado de Alumno/a</div>
+      <div class="apoHeaderCourse">Curso actual: <b>${esc(courseText)}</b></div>
     `;
   }
 
   function ensureAlumnoActivo() {
-  // 1) Si ya hay alumno en sesión/UI, no tocar
+  // 1) Si ya hay alumno en sesiÃ³n/UI, no tocar
   try {
     const headerAlumno = document.querySelector("#studentName, .studentName, [data-student-name]");
     if (headerAlumno && headerAlumno.textContent && headerAlumno.textContent.trim()) return;
@@ -1242,7 +1271,7 @@ function dueBadge(iso){
     } catch(e){}
   }
 
-  // 4) Si lo encontró, guardarlo y pintarlo
+  // 4) Si lo encontrÃ³, guardarlo y pintarlo
   if (alumno) {
     try { localStorage.setItem("cursapp_alumno_activo_v1", JSON.stringify(alumno)); } catch(e){}
     // Ajusta selector a tu header real:
@@ -1266,13 +1295,13 @@ function dueBadge(iso){
   function showActivation(){
     app.innerHTML = `
       <div class="card">
-        <div class="kTitle">Activación pendiente</div>
+        <div class="kTitle">ActivaciÃ³n pendiente</div>
         <div class="muted" style="margin-top:6px;">
-          Debes completar la activación de <b>$990</b> para operar en este curso.
+          Debes completar la activaciÃ³n de <b>$990</b> para operar en este curso.
           <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
         </div>
         <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesión</button>
+          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesiÃ³n</button>
           <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
         </div>
       </div>
@@ -1280,13 +1309,13 @@ function dueBadge(iso){
 
     openModal(`
       <div class="card">
-        <div class="kTitle">Activación pendiente</div>
+        <div class="kTitle">ActivaciÃ³n pendiente</div>
         <div class="muted" style="margin-top:6px;">
-          Para operar en este curso debes completar la activación de <b>$990</b>.
+          Para operar en este curso debes completar la activaciÃ³n de <b>$990</b>.
           <br><span style="font-weight:900;">Este monto es del sistema, no del curso.</span>
         </div>
         <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesión</button>
+          <button class="btnx" onclick="location.href='/index.html'">Cerrar sesiÃ³n</button>
           <button class="btnx primary" onclick="payActivation()">Pagar $990</button>
         </div>
       </div>
@@ -1301,7 +1330,7 @@ function dueBadge(iso){
       const activeCourse = localStorage.getItem(KEY_ACTIVE_COURSE) || "";
       let activeProfileId = localStorage.getItem(KEY_ACTIVE_PROFILE) || "";
 
-      // Si el activeProfileId se corrompió (por ejemplo guardaron JSON), intenta reparar
+      // Si el activeProfileId se corrompiÃ³ (por ejemplo guardaron JSON), intenta reparar
       if(activeProfileId && String(activeProfileId).trim().startsWith("{")){
         try{
           const obj = JSON.parse(activeProfileId);
@@ -1339,7 +1368,7 @@ function dueBadge(iso){
         }
       }
 
-      // 2) Si no tocamos nada, buscamos por curso + email de sesión
+      // 2) Si no tocamos nada, buscamos por curso + email de sesiÃ³n
       if(!touched && activeCourse && sessionEmail){
         profiles.forEach(p=>{
           const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
@@ -1350,7 +1379,7 @@ function dueBadge(iso){
         });
       }
 
-      // 3) Fallback: curso + rol apoderado (último recurso)
+      // 3) Fallback: curso + rol apoderado (Ãºltimo recurso)
       if(!touched && activeCourse){
         const ix = profiles.findIndex(p => String(p.courseKey||"")===String(activeCourse) && (p.role==="apoderado" || p.user?.role==="apoderado"));
         if(ix>=0){
@@ -1361,9 +1390,9 @@ function dueBadge(iso){
 
       if(touched){
         save(KEY_PROFILES, profiles);
-        try{ toast("Activación completada ✅"); }catch(e){ alert("Activación completada ✅"); }
+        try{ toast("ActivaciÃ³n completada âœ…"); }catch(e){ alert("ActivaciÃ³n completada âœ…"); }
       }else{
-        try{ toast("No encontré el perfil para activar"); }catch(e){ alert("No encontré el perfil para activar"); }
+        try{ toast("No encontrÃ© el perfil para activar"); }catch(e){ alert("No encontrÃ© el perfil para activar"); }
       }
     }catch(e){
       console.error(e);
@@ -1411,7 +1440,7 @@ function dueBadge(iso){
     if(!base) return null;
 
     // Si por datos legacy el id apunta a un registro antiguo con monto 0,
-    // buscamos el pago pagado más reciente de la misma campaña/apoderado/alumno.
+    // buscamos el pago pagado mÃ¡s reciente de la misma campaÃ±a/apoderado/alumno.
     const candidates = pays
       .filter(p=>String(p?.status||"").toLowerCase()==="paid")
       .filter(p=>String(p?.fromTaskId||"")===String(base?.fromTaskId||""))
@@ -1432,39 +1461,39 @@ function dueBadge(iso){
     const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
 
     const paidAtDate = p.paidAt ? new Date(p.paidAt) : null;
-    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "—";
+    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "â€”";
     const paidDateShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleDateString("es-CL", { day:"2-digit", month:"short", year:"numeric" })
-      : "—";
+      : "â€”";
     const paidTimeShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })
       : "";
 
-    const rawMethod = String(p.paymentMethod || p.paidWith || "—").toLowerCase();
+    const rawMethod = String(p.paymentMethod || p.paidWith || "â€”").toLowerCase();
     const methodLabel = ({
-      transbank:"💳 Transbank",
-      transferencia:"🏦 Transferencia",
-      efectivo:"💵 Efectivo",
-      saldo_favor:"🔁 Saldo a favor",
-      credit:"🔁 Saldo a favor"
-    })[rawMethod] || (p.paymentMethod || p.paidWith || "—");
+      transbank:"ðŸ’³ Transbank",
+      transferencia:"ðŸ¦ Transferencia",
+      efectivo:"ðŸ’µ Efectivo",
+      saldo_favor:"ðŸ” Saldo a favor",
+      credit:"ðŸ” Saldo a favor"
+    })[rawMethod] || (p.paymentMethod || p.paidWith || "â€”");
 
-    const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "—";
-    const resp = p.webpay?.responseCode || p.webpay?.response_code || "—";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "—";
+    const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "â€”";
+    const resp = p.webpay?.responseCode || p.webpay?.response_code || "â€”";
+    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "â€”";
     const folioBase = String(p.receiptId || p.transactionId || p.id || "0").replace(/[^a-zA-Z0-9]/g,"").slice(-8).toUpperCase() || "00000000";
     const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
 
     const isManual = String(p.source||"").toLowerCase()==="manual";
     const isConciliated = String(p.conciliationStatus||"").toLowerCase()==="conciliado";
-    const statusLabel = isManual || isConciliated ? "✔ Registrado por tesorería" : "✔ Pago confirmado";
+    const statusLabel = isManual || isConciliated ? "âœ” Registrado por tesorerÃ­a" : "âœ” Pago confirmado";
 
     openModal(`
       <div style="background:#fff;border-radius:28px;overflow:hidden;">
         <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
           <div>
             <div style="font-weight:950;font-size:12px;letter-spacing:.08em;color:#64748b;">CURSAPP</div>
-            <div style="font-weight:950;font-size:26px;margin-top:4px;">🧾 Comprobante de pago</div>
+            <div style="font-weight:950;font-size:26px;margin-top:4px;">ðŸ§¾ Comprobante de pago</div>
             <div class="muted" style="margin-top:6px;">${esc(isManual ? "Pago manual registrado correctamente" : "Pago procesado correctamente")}</div>
           </div>
           <button class="btnx" onclick="closeModal()">Cerrar</button>
@@ -1472,7 +1501,7 @@ function dueBadge(iso){
 
         <div style="padding:18px;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">● PAGADO</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">â— PAGADO</span>
             <span class="muted" style="font-weight:900;">Folio ${esc(folio)}</span>
           </div>
 
@@ -1484,14 +1513,14 @@ function dueBadge(iso){
 
           <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;overflow:hidden;background:#fff;">
             ${[
-              ["Campaña", campaign],
-              ["Concepto", p.concept || "—"],
-              ["Alumno", p.studentName || p.alumno || "—"],
-              ["Apoderado", p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "—"],
-              ["Fecha", paidDateShort !== "—" ? `${paidDateShort}${paidTimeShort ? " · " + paidTimeShort : ""}` : "—"],
-              ["Método", methodLabel],
-              ["Operación", op],
-              ["Autorización", auth],
+              ["CampaÃ±a", campaign],
+              ["Concepto", p.concept || "â€”"],
+              ["Alumno", p.studentName || p.alumno || "â€”"],
+              ["Apoderado", p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "â€”"],
+              ["Fecha", paidDateShort !== "â€”" ? `${paidDateShort}${paidTimeShort ? " Â· " + paidTimeShort : ""}` : "â€”"],
+              ["MÃ©todo", methodLabel],
+              ["OperaciÃ³n", op],
+              ["AutorizaciÃ³n", auth],
               ["Resp. code", resp],
             ].map((row, idx)=>`
               <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 14px;${idx<8?'border-bottom:1px solid rgba(0,0,0,.06);':''}">
@@ -1522,13 +1551,13 @@ function dueBadge(iso){
       return `
         <div class="card">
           <div class="kTitle">Resumen del curso</div>
-          <div class="muted" style="margin-top:6px;">Aún no hay informes publicados.</div>
+          <div class="muted" style="margin-top:6px;">AÃºn no hay informes publicados.</div>
         </div>
       `;
     }
     return `
       <div class="card">
-        <div class="kTitle">Resumen del curso · ${esc(r.period||"")}</div>
+        <div class="kTitle">Resumen del curso Â· ${esc(r.period||"")}</div>
         <div class="muted" style="margin-top:6px;">Montos del curso (no personales)</div>
 
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -1568,7 +1597,7 @@ const ym = currentYM();
   const tasks = load(KEY_TASKS, []);
   const pays = load(KEY_PAYMENTS, []);
 
-  // Totales del mes (proyección y cobrado) + deudores únicos
+  // Totales del mes (proyecciÃ³n y cobrado) + deudores Ãºnicos
   let cobradoMes=0, proyeccionMes=0;
   const deudoresSet = new Set();
 
@@ -1593,12 +1622,12 @@ const ym = currentYM();
   });
 
   const cursoPct = pct(cobradoMes, proyeccionMes);
-  const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
+  const sem = (cursoPct>=80) ? "ðŸŸ¢" : (cursoPct>=45 ? "ðŸŸ¡" : "ðŸ”´");
   const semMsg = (cursoPct>=80)
     ? "Vamos muy bien este mes"
-    : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
+    : (cursoPct>=45 ? "Vamos avanzando, aÃºn falta un poco" : "AtenciÃ³n: queda bastante por pagar este mes");
 
-  // Agrupar pagos por campaña
+  // Agrupar pagos por campaÃ±a
   const byTask = {};
   (pays||[]).forEach(p=>{
     const tid = String((p && p.fromTaskId) || "");
@@ -1620,7 +1649,7 @@ const ym = currentYM();
     .filter(t=>t && !t.closed)
     .map(t=>{
       const tid = String(t.id);
-      const title = String(t.title || "Campaña");
+      const title = String(t.title || "CampaÃ±a");
       const type = String(t.type || "single");
       const months = Number(t.months || 1);
       const amount = Number(t.amount || 0);
@@ -1642,7 +1671,7 @@ const ym = currentYM();
         .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
 
       // Objetivo (total curso):
-      // - Si el usuario definió goalTotal/meta => lo respetamos como total de curso.
+      // - Si el usuario definiÃ³ goalTotal/meta => lo respetamos como total de curso.
       // - Si no, lo calculamos como (monto por apoderado) x (participantes) x (cuotas si mensual)
       //   Esto evita el bug de ver 100% con 1 pago cuando hay 2 apoderados.
       let objetivo;
@@ -1685,9 +1714,9 @@ const ym = currentYM();
           </div>
 
           <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
-            <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
-            <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
-            <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
+            <div>ðŸ’° Recaudado: <b>${clp(recaudado)}</b></div>
+            <div>â³ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+            <div>ðŸŽ¯ Objetivo: <b>${clp(objetivo)}</b></div>
           </div>
         </div>
       `;
@@ -1716,7 +1745,7 @@ const ym = currentYM();
             <div>
               <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
               <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
-                Resumen de cómo va el curso (montos globales, no personales)
+                Resumen de cÃ³mo va el curso (montos globales, no personales)
               </div>
             </div>
             <button onclick="closeModal()"
@@ -1740,7 +1769,7 @@ const ym = currentYM();
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
               <div>
                 <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
-                <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
+                <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} Â· <b>${esc(ym)}</b></div>
               </div>
               <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
             </div>
@@ -1750,21 +1779,21 @@ const ym = currentYM();
             </div>
 
             <div style="margin-top:8px;font-size:13px;opacity:.9;">
-              💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
+              ðŸ’µ Cobrado mes: <b>${clp(cobradoMes)}</b> Â· â³ ProyecciÃ³n mes: <b>${clp(proyeccionMes)}</b> Â· ðŸ‘¥ Deudores mes: <b>${deudoresSet.size}</b>
             </div>
           </div>
 
           <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
-            ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
-            ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
-            ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
+            ${kpi("ðŸ’°","Recaudado total", clp(r.recaudadoCurso||0))}
+            ${kpi("ðŸ§¾","Gastado total", clp(r.gastadoCurso||0))}
+            ${kpi("ðŸ¦","Saldo disponible", clp(r.disponibleCurso||0))}
+            ${kpi("â³","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
           </div>
 
           <div style="margin-top:16px;">
-            <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
+            <div style="font-weight:950;font-size:16px;margin-bottom:10px;">ðŸ“Œ Indicadores por campaÃ±a</div>
             <div style="display:grid;gap:10px;">
-              ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
+              ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campaÃ±as activas.</div>`}
             </div>
           </div>
 
@@ -1832,7 +1861,7 @@ const ym = currentYM();
   }
 
 
-// -------- Deduplicación de pagos (estabilidad) --------
+// -------- DeduplicaciÃ³n de pagos (estabilidad) --------
 function paymentStableKey(p){
   const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
   const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
@@ -1874,7 +1903,7 @@ function dedupePaymentsAll(list){
 }
 
 
-// --- FIX v11: dedupe canónico para cambio Presidente -> Apoderado sin cerrar sesión ---
+// --- FIX v11: dedupe canÃ³nico para cambio Presidente -> Apoderado sin cerrar sesiÃ³n ---
 function paymentCanonicalKeyV11(p, tasksAll){
   const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "").trim();
   const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
@@ -1947,14 +1976,14 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
     const due = new Date(s+"T00:00:00");
     if(isNaN(due.getTime())) return "";
     const days = Math.round((due.getTime()-today.getTime())/86400000);
-    if(days < 0) return `Vencida hace ${Math.abs(days)} día(s)`;
+    if(days < 0) return `Vencida hace ${Math.abs(days)} dÃ­a(s)`;
     if(days === 0) return "Vence hoy";
-    return `Quedan ${days} día(s)`;
+    return `Quedan ${days} dÃ­a(s)`;
   }
 
   function cpV5DateShort(iso){
     const s = String(iso||"").slice(0,10);
-    if(!s) return "—";
+    if(!s) return "â€”";
     const d = new Date(s+"T00:00:00");
     if(isNaN(d.getTime())) return s;
     return d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"});
@@ -2011,13 +2040,13 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
   function cpV5NextDues(){
     const items = cpV5DueItems();
     if(!items.length){
-      return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">📅</div><div class="cpV5Kicker">Próxima cuota</div></div><div style="padding:0 18px 18px;"><div class="cpV5DueCard" style="min-width:100%;"><div class="cpV5DueTitle">Todo al día</div><div class="cpV5DueMeta">No tienes pagos urgentes por ahora.</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="go('payments')">Ver pagos</button></div></div></div></section>`;
+      return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">ðŸ“…</div><div class="cpV5Kicker">PrÃ³xima cuota</div></div><div style="padding:0 18px 18px;"><div class="cpV5DueCard" style="min-width:100%;"><div class="cpV5DueTitle">Todo al dÃ­a</div><div class="cpV5DueMeta">No tienes pagos urgentes por ahora.</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="go('payments')">Ver pagos</button></div></div></div></section>`;
     }
-    return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">📅</div><div class="cpV5Kicker">Próxima cuota</div></div><div class="cpV5Carousel">${items.slice(0,6).map((x,i)=>`<article class="cpV5DueCard"><div class="cpV5DueIndex">${i+1} de ${items.length}</div><div class="cpV5DueTitle">${esc(x.title)}</div><div class="cpV5DueMeta">Vence el ${esc(cpV5DateShort(x.dueDate))} <span class="cpV5Badge">${esc(cpV5DaysText(x.dueDate))}</span></div><div class="cpV5Amount">${clp(x.amount)}</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="cpV5OpenPayment('${esc(x.id)}')">💳 Pagar ahora</button><button class="cpV5Detail" onclick="go('payments')">Ver detalle ›</button></div></article>`).join("")}</div>${items.length>1 ? `<div class="cpV5Dots">${items.slice(0,6).map((_,i)=>`<span class="cpV5Dot ${i===0?'active':''}"></span>`).join("")}</div>` : ""}</section>`;
+    return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">ðŸ“…</div><div class="cpV5Kicker">PrÃ³xima cuota</div></div><div class="cpV5Carousel">${items.slice(0,6).map((x,i)=>`<article class="cpV5DueCard"><div class="cpV5DueIndex">${i+1} de ${items.length}</div><div class="cpV5DueTitle">${esc(x.title)}</div><div class="cpV5DueMeta">Vence el ${esc(cpV5DateShort(x.dueDate))} <span class="cpV5Badge">${esc(cpV5DaysText(x.dueDate))}</span></div><div class="cpV5Amount">${clp(x.amount)}</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="cpV5OpenPayment('${esc(x.id)}')">ðŸ’³ Pagar ahora</button><button class="cpV5Detail" onclick="go('payments')">Ver detalle â€º</button></div></article>`).join("")}</div>${items.length>1 ? `<div class="cpV5Dots">${items.slice(0,6).map((_,i)=>`<span class="cpV5Dot ${i===0?'active':''}"></span>`).join("")}</div>` : ""}</section>`;
   }
 
   function cpV5QuickAccess(){
-    return `<div class="cpV5QuickTitle">Accesos rápidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>📄</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>🧾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>💳</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda próximamente')"><span>❔</span>Ayuda</button></div><div data-monetization-slot="apoderado"></div>`;
+    return `<div class="cpV5QuickTitle">Accesos rÃ¡pidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ“„</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ§¾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ’³</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda prÃ³ximamente')"><span>â”</span>Ayuda</button></div><div data-monetization-slot="apoderado"></div>`;
   }
 
 
@@ -2029,7 +2058,7 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
         det.className = "cpV5Section";
         const sum = document.createElement("summary");
         const countHtml = count ? `<span class="cpV5Count ${tone||''}">${count}</span>` : "";
-        sum.innerHTML = `<span class="cpV5SecLeft"><span class="cpV5SecIcon ${tone||''}">${icon}</span><span><span class="cpV5SecTitle">${title}</span><span class="cpV5SecSub">${subtitle}</span></span></span><span class="cpV5SecRight">${countHtml}<span class="cpV5Chevron">⌄</span></span>`;
+        sum.innerHTML = `<span class="cpV5SecLeft"><span class="cpV5SecIcon ${tone||''}">${icon}</span><span><span class="cpV5SecTitle">${title}</span><span class="cpV5SecSub">${subtitle}</span></span></span><span class="cpV5SecRight">${countHtml}<span class="cpV5Chevron">âŒ„</span></span>`;
         const body = document.createElement("div");
         body.className = "cpV5Body";
         card.parentNode.insertBefore(det, card);
@@ -2040,19 +2069,19 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
       const cards = Array.from(app.querySelectorAll(".card"));
       cards.forEach(card=>{
         const txt = (card.textContent||"").replace(/\s+/g," ").trim();
-        if(txt.includes("Próxima cuota") && !card.closest(".cpV5Next")){ card.style.display = "none"; return; }
+        if(txt.includes("PrÃ³xima cuota") && !card.closest(".cpV5Next")){ card.style.display = "none"; return; }
         if(txt.includes("Avisos del curso")){
           const m = txt.match(/(\d+)\s+aviso/);
-          wrapCard(card, "Avisos del curso", "Información importante", "📣", m ? m[1] : "", "info");
+          wrapCard(card, "Avisos del curso", "InformaciÃ³n importante", "ðŸ“£", m ? m[1] : "", "info");
           return;
         }
         if(txt.includes("Pagos pendientes")){
           const m = txt.match(/(\d+)\s+pagos?/);
-          wrapCard(card, "Pagos pendientes", "Tienes pagos por revisar", "💳", m ? m[1] : "", "pay");
+          wrapCard(card, "Pagos pendientes", "Tienes pagos por revisar", "ðŸ’³", m ? m[1] : "", "pay");
           return;
         }
         if(txt.includes("Estado del curso")){
-          wrapCard(card, "Estado del curso", "Recaudado, gastado y disponible", "📊", "Ver", "chart");
+          wrapCard(card, "Estado del curso", "Recaudado, gastado y disponible", "ðŸ“Š", "Ver", "chart");
           return;
         }
       });
@@ -2101,7 +2130,7 @@ function renderHome(){
     const nextDue = dueSorted[0];
 
     const dueThisMonth = dueSorted.filter(p=>String(p.dueDate||"").startsWith(thisYM));
-    // Agrupar por campaña (para mostrar varias campañas venciendo en el mes)
+    // Agrupar por campaÃ±a (para mostrar varias campaÃ±as venciendo en el mes)
     const taskTitleById = (tid)=>{
       const t = tasks0.find(x=>String(x.id)===String(tid));
       return (t?.title || t?.name || "").trim();
@@ -2109,12 +2138,12 @@ function renderHome(){
     const dueMonthByCampaignMap = {};
     for(const p of dueThisMonth){
       const tid = String(p.fromTaskId || p.taskId || "no_task");
-      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "CampaÃ±a");
       if(!dueMonthByCampaignMap[tid]){
         dueMonthByCampaignMap[tid] = { taskId: tid, title, amount:0, dueDate: p.dueDate, payId: p.id };
       }
       dueMonthByCampaignMap[tid].amount += Number(p.amountRemaining ?? p.amount ?? 0);
-      // mantener la fecha más próxima y el pago más próximo para el botón
+      // mantener la fecha mÃ¡s prÃ³xima y el pago mÃ¡s prÃ³ximo para el botÃ³n
       if(p.dueDate && daysTo(p.dueDate) < daysTo(dueMonthByCampaignMap[tid].dueDate || p.dueDate)){
         dueMonthByCampaignMap[tid].dueDate = p.dueDate;
         dueMonthByCampaignMap[tid].payId = p.id;
@@ -2127,18 +2156,18 @@ function renderHome(){
 
     const resumenFin = dashboardFinancieroApoderado(paysAll);
 
-    // Desglose por campaña (con ID para no mezclar títulos)
+    // Desglose por campaÃ±a (con ID para no mezclar tÃ­tulos)
     const perCampaignMap = {};
     for(const p of pending){
       const tid = String(p.fromTaskId || p.taskId || "no_task");
-      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+      const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "CampaÃ±a");
       if(!perCampaignMap[tid]) perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
       perCampaignMap[tid].total += Number(p.amountRemaining ?? p.amount ?? 0);
     }
     for(const p of dueThisMonth){
       const tid = String(p.fromTaskId || p.taskId || "no_task");
       if(!perCampaignMap[tid]){
-        const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "Campaña");
+        const title = taskTitleById(tid) || String(p.title || p.taskTitle || p.campaignTitle || "CampaÃ±a");
         perCampaignMap[tid] = { taskId:tid, title, thisMonth:0, total:0 };
       }
       perCampaignMap[tid].thisMonth += Number(p.amountRemaining ?? p.amount ?? 0);
@@ -2154,22 +2183,22 @@ function renderHome(){
     app.innerHTML = `
       <div class="cpHomeV5">${cpV5NextDues()}
 
-      <!-- 1) Próxima cuota -->
+      <!-- 1) PrÃ³xima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">⏰ Próxima cuota <button class="helpBtn" data-help="proxima" type="button" aria-label="Ayuda próxima cuota">?</button></div>
+          <div class="kTitle">â° PrÃ³xima cuota <button class="helpBtn" data-help="proxima" type="button" aria-label="Ayuda prÃ³xima cuota">?</button></div>
           <span class="tag warn" id="homeDuePill">Vence pronto</span>
         </div>
 
         ${multipleDueCampaigns ? `
-          <div class="muted" style="margin-top:8px;font-weight:900;">Varias campañas vencen este mes. Elige cuál pagar:</div>
+          <div class="muted" style="margin-top:8px;font-weight:900;">Varias campaÃ±as vencen este mes. Elige cuÃ¡l pagar:</div>
 
           <div style="margin-top:10px;display:grid;gap:10px;">
             ${dueMonthByCampaign.map((c, idx)=>`
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid rgba(0,0,0,.08);border-radius:12px;padding:10px;">
                 <div style="min-width:0;">
                   <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.title)}</div>
-                  <div class="muted" style="font-size:12px;">Vence en <b>${daysTo(c.dueDate)}</b> días · ${esc(c.dueDate || "")}</div>
+                  <div class="muted" style="font-size:12px;">Vence en <b>${daysTo(c.dueDate)}</b> dÃ­as Â· ${esc(c.dueDate || "")}</div>
                 </div>
                 <div style="text-align:right;white-space:nowrap;">
                   <div style="font-weight:950;font-size:18px;">${formatCLP(c.amount)}</div>
@@ -2180,8 +2209,8 @@ function renderHome(){
           </div>
         ` : `
           <div class="muted" style="margin-top:6px;font-weight:900;">
-            Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "—"}</b>
-            · Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "—") : "—"}</b> días
+            Vence <b id="homeNextDueDate">${nextDue?.dueDate ? esc(nextDue.dueDate) : "â€”"}</b>
+            Â· Quedan <b id="homeNextDueDays">${nextDue?.dueDate ? (daysTo(nextDue.dueDate) ?? "â€”") : "â€”"}</b> dÃ­as
           </div>
 
           <div style="margin-top:12px;font-size:28px;font-weight:950;" id="homeNextDueAmount">
@@ -2198,8 +2227,8 @@ function renderHome(){
       <!-- 2) Pendientes -->
       <div class="card" id="cardPending" style="margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <div class="kTitle">💳 Pagos pendientes <button class="helpBtn" data-help="pendientes" type="button" aria-label="Ayuda pagos pendientes">?</button></div>
-          ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
+          <div class="kTitle">ðŸ’³ Pagos pendientes <button class="helpBtn" data-help="pendientes" type="button" aria-label="Ayuda pagos pendientes">?</button></div>
+          ${hasNew ? `<span class="tag" style="font-weight:950;">ðŸ†• Nuevo</span>` : ``}
         </div>
 
         <div class="muted" style="margin-top:6px;font-weight:900;" id="homePendingText">
@@ -2212,7 +2241,7 @@ function renderHome(){
           <div class="muted" style="margin-top:4px;font-size:12px;">(${esc(thisYM)})</div>
         </div>
 
-        <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campañas): <b>${formatCLP(pendingTotal)}</b></div>
+        <div class="muted" style="margin-top:10px;font-size:12px;">Total pendiente anual (todas las campaÃ±as): <b>${formatCLP(pendingTotal)}</b></div>
 
         ${perCampaignRows.length ? `
           <div style="margin-top:10px;border-top:1px solid rgba(0,0,0,.06);padding-top:10px;">
@@ -2245,25 +2274,25 @@ function renderHome(){
         </div>
       </div>
 
-      <!-- 3) Estado del curso (más humano) -->
+      <!-- 3) Estado del curso (mÃ¡s humano) -->
       <div class="card" style="margin-top:12px;">
-           <div class="kTitle">📊 Estado del curso</div>
+           <div class="kTitle">ðŸ“Š Estado del curso</div>
         <div class="muted" style="margin-top:6px;line-height:1.45;">
-          Así va el fondo del curso. Estos montos son del curso completo, no personales.
+          AsÃ­ va el fondo del curso. Estos montos son del curso completo, no personales.
         </div>
 
         ${
           r ? `
           <div style="margin-top:12px;">
-            <div style="display:flex;justify-content:space-between;"><span>💰 Recaudado</span><b>${clp(r.recaudadoCurso||0)}</b></div>
-            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>🧾 Gastado</span><b>${clp(r.gastadoCurso||0)}</b></div>
-            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>📦 Disponible</span><b>${clp(r.disponibleCurso||0)}</b></div>
+            <div style="display:flex;justify-content:space-between;"><span>ðŸ’° Recaudado</span><b>${clp(r.recaudadoCurso||0)}</b></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>ðŸ§¾ Gastado</span><b>${clp(r.gastadoCurso||0)}</b></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;"><span>ðŸ“¦ Disponible</span><b>${clp(r.disponibleCurso||0)}</b></div>
           </div>
           <div class="actions" style="margin-top:12px;justify-content:flex-end;">
             <button class="btnx" onclick="openReport('${esc(r.period||"")}')">Ver informe</button>
           </div>
           ` : `
-          <div class="muted" style="margin-top:10px;font-weight:900;">Aún no hay informes publicados.</div>
+          <div class="muted" style="margin-top:10px;font-weight:900;">AÃºn no hay informes publicados.</div>
           <div class="actions" style="margin-top:12px;justify-content:flex-end;">
             <button class="btnx" onclick="go('informes')">Ver informes</button>
           </div>
@@ -2280,7 +2309,7 @@ function renderHome(){
     const goPending = document.getElementById("btnGoPending");
     if(goPending) goPending.onclick = ()=> go("payments");
 
-    // botón pagar ahora (caso 1 campaña)
+    // botÃ³n pagar ahora (caso 1 campaÃ±a)
     const payNext = document.getElementById("btnPayNext");
     if(payNext){
       payNext.onclick = ()=>{
@@ -2289,13 +2318,13 @@ function renderHome(){
       };
     }
 
-    // botones pagar por campaña (cuando hay varias venciendo este mes)
+    // botones pagar por campaÃ±a (cuando hay varias venciendo este mes)
     if(multipleDueCampaigns){
       for(const c of dueMonthByCampaign){
         const b = document.getElementById(`btnPayCamp_${c.taskId}`);
         if(!b) continue;
         b.onclick = ()=>{
-          // ir directo a pagos de esa campaña (y permitir pagar)
+          // ir directo a pagos de esa campaÃ±a (y permitir pagar)
           try{ window.__apoTaskFilter = c.taskId; }catch(e){}
           try{ if(typeof window.setPayFilter === "function") window.setPayFilter("pending"); }catch(e){}
           if(c.payId) payNow(c.payId);
@@ -2304,28 +2333,28 @@ function renderHome(){
       }
     }
 
-    // Si está al día: copy divertido
+    // Si estÃ¡ al dÃ­a: copy divertido
     const upcoming = paysAll.filter(p => String(p.status||"").toLowerCase()==="pending" && p.dueDate && daysTo(p.dueDate) >= 1 && daysTo(p.dueDate) <= 7 && !isPaymentOptedOut(p));
     if(pending.length===0 && upcoming.length===0){
       const title = document.querySelector("#cardNextDue .kTitle");
-      if(title) title.innerHTML = "🥳 ¡Todo al día!";
+      if(title) title.innerHTML = "ðŸ¥³ Â¡Todo al dÃ­a!";
       const pill = document.getElementById("homeDuePill");
       if(pill){ pill.className="tag ok"; pill.textContent="Todo en orden"; }
       const amt = document.getElementById("homeNextDueAmount");
-      if(amt){ amt.textContent="No tienes pagos por ahora 😄"; amt.style.fontSize="20px"; }
+      if(amt){ amt.textContent="No tienes pagos por ahora ðŸ˜„"; amt.style.fontSize="20px"; }
       const txt = document.getElementById("homePendingText");
 
-      // ocultar línea de vencimiento cuando está al día
+      // ocultar lÃ­nea de vencimiento cuando estÃ¡ al dÃ­a
       const metaLine = document.querySelector("#cardNextDue .muted");
       if(metaLine) metaLine.style.display = "none";
 
-      // botón menos "ansioso" cuando está al día
+      // botÃ³n menos "ansioso" cuando estÃ¡ al dÃ­a
       const btn = document.querySelector("#cardNextDue .btnx");
       if(btn){
         btn.classList.remove("primary");
         btn.textContent = "Revisar pagos";
       }
-      if(txt) txt.innerHTML = "¡Cero pendientes! 🙌 Disfruta la tranquilidad";
+      if(txt) txt.innerHTML = "Â¡Cero pendientes! ðŸ™Œ Disfruta la tranquilidad";
     }
   }
 
@@ -2339,7 +2368,7 @@ function renderHome(){
     if(ddP.changed) save(KEY_PAYMENTS, ddP.list);
     paysAll = ddP.list;
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
-    // pago recién efectuado (para banner por campaña)
+    // pago reciÃ©n efectuado (para banner por campaÃ±a)
     let justPaidId = "";
     try{ justPaidId = sessionStorage.getItem("justPaidPaymentId") || ""; }catch(e){}
 
@@ -2348,7 +2377,7 @@ function renderHome(){
     // Fase 2B: no crear pagos locales en Apoderado. Los pagos nacen en Supabase.
     // paysAll = ensurePaymentsForIdentity(ident, tasksAll, paysAll);
 
-    // FIX v11: dedupe real antes de pintar pagos/campañas.
+    // FIX v11: dedupe real antes de pintar pagos/campaÃ±as.
     try{
       const clean = cleanVisiblePaymentsV11(paysAll, tasksAll);
       if(clean.changed) save(KEY_PAYMENTS, clean.list);
@@ -2358,9 +2387,9 @@ function renderHome(){
     // Fase 2B: descartar pagos legacy locales pay_xxx; solo Supabase pagos.id UUID.
     paysAll = onlySupabasePayments(paysAll);
 
-    // ✅ Scope por apoderado (evita cruce entre usuarios):
+    // âœ… Scope por apoderado (evita cruce entre usuarios):
     // - Si el pago ya tiene apoderadoKey, se filtra por ese usuario
-    // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesión
+    // - Si viene "legacy" sin apoderadoKey, se asocia por alumno elegido en sesiÃ³n
     const mk = meKey();
     let patched = false;
     if(mk){
@@ -2397,19 +2426,19 @@ function renderHome(){
     const chips = `
       <div class="chips">
         <button class="chip ${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
-        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">Próximas</button>
+        <button class="chip ${payFilter==="upcoming"?"active":""}" onclick="setPayFilter('upcoming')">PrÃ³ximas</button>
         <button class="chip ${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagadas</button>
-        <button class="chip ${payFilter==="credit"?"active":""} ${creditTotal>0?"":"disabled"}" ${creditTotal>0?`onclick="setPayFilter(\'credit\')"`:""}>${creditTotal>0?"💰 Saldo a favor":"Saldo a favor"}</button>
+        <button class="chip ${payFilter==="credit"?"active":""} ${creditTotal>0?"":"disabled"}" ${creditTotal>0?`onclick="setPayFilter(\'credit\')"`:""}>${creditTotal>0?"ðŸ’° Saldo a favor":"Saldo a favor"}</button>
       </div>
     `;
 
     const taskOptions = (tasksAll.length>1 || (paysAll||[]).some(p=>!p.fromTaskId)) ? `
       <div style="margin-top:12px;">
-        <div class="muted" style="font-weight:900;margin-bottom:6px;">🔍 Campaña</div>
+        <div class="muted" style="font-weight:900;margin-bottom:6px;">ðŸ” CampaÃ±a</div>
         <select id="taskFilter" style="width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.12);font-weight:900;">
-          <option value="all">Todas las campañas</option>
-          ${tasksAll.map(t=>`<option value="${esc(t.id)}" ${selectedTask===t.id?"selected":""}>${esc(t.title||"Campaña")}</option>`).join("")}
-          <option value="no_task" ${selectedTask==="no_task"?"selected":""}>Otros (sin campaña)</option>
+          <option value="all">Todas las campaÃ±as</option>
+          ${tasksAll.map(t=>`<option value="${esc(t.id)}" ${selectedTask===t.id?"selected":""}>${esc(t.title||"CampaÃ±a")}</option>`).join("")}
+          <option value="no_task" ${selectedTask==="no_task"?"selected":""}>Otros (sin campaÃ±a)</option>
         </select>
       </div>
     ` : ``;
@@ -2433,15 +2462,15 @@ function renderHome(){
                   : isCred ? `<span class="tag">Saldo a favor</span>`
                   : `<span class="tag warn">Pendiente</span>`;
 
-      const paidJust = (justPaidId && justPaidId===String(r.id)) ? `<span class="tag ok">✅ Pago efectuado</span>` : ``;
+      const paidJust = (justPaidId && justPaidId===String(r.id)) ? `<span class="tag ok">âœ… Pago efectuado</span>` : ``;
 
       const badges = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">${paidJust}
         ${badge}${monthTag}${r.typeTag?`<span class="tag">${esc(r.typeTag)}</span>`:""}
       </div>`;
 
       const due = r.dueDate ? dueBadge(r.dueDate) : ``;
-      const paidInfo = isPaidRow ? (()=>{ const dt = r.paidAt ? new Date(r.paidAt).toLocaleDateString("es-CL") : "—"; const op = r.transactionId || r.webpay?.buyOrder || "—"; return `<div class="muted" style="margin-top:6px;">Pagada ${esc(dt)} · Op ${esc(op)}</div>`; })() : ``;
-      const dueTxt = r.dueDate ? `<div class="muted" style="margin-top:6px;">Vence ${esc(r.dueDate)} · ${due}</div>` : ``;
+      const paidInfo = isPaidRow ? (()=>{ const dt = r.paidAt ? new Date(r.paidAt).toLocaleDateString("es-CL") : "â€”"; const op = r.transactionId || r.webpay?.buyOrder || "â€”"; return `<div class="muted" style="margin-top:6px;">Pagada ${esc(dt)} Â· Op ${esc(op)}</div>`; })() : ``;
+      const dueTxt = r.dueDate ? `<div class="muted" style="margin-top:6px;">Vence ${esc(r.dueDate)} Â· ${due}</div>` : ``;
 
       const amount = isPaidRow ? Number(r.amountPaid ?? r.amount ?? 0) : Number(r.amountRemaining ?? r.amount ?? 0);
 
@@ -2458,8 +2487,8 @@ function renderHome(){
                 (isPend && !optedOut)
                   ? `<button class="btnx primary" onclick="payNow('${esc(r.id)}')">Pagar</button>`
                   : (isPaidRow
-                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">🧾 Comprobante</button>`
-                      : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">—</span>`))
+                      ? `<button class="btnx" onclick="openReceipt('${esc(r.id)}')">ðŸ§¾ Comprobante</button>`
+                      : (optedOut ? `<span class="tag">No participo</span>` : `<span class="muted">â€”</span>`))
               }
             </div>
           </div>
@@ -2475,7 +2504,7 @@ function renderHome(){
     else if(payFilter==="credit") paysFiltered = paysAll.filter(p=>String(p.status||"").toLowerCase()==="credit");
     else paysFiltered = paysAll.slice();
 
-    // próxima cuota destacada (solo si hay pendiente con fecha)
+    // prÃ³xima cuota destacada (solo si hay pendiente con fecha)
     const nextDueBase = (selectedTask && selectedTask!=="all")
       ? paysAll.filter(p => (p.fromTaskId || "no_task") === selectedTask)
       : paysAll;
@@ -2486,10 +2515,10 @@ function renderHome(){
 
     const nextCard = nextDue ? `
       <div class="card" style="margin-top:12px;border:1px solid rgba(91,92,226,.22);background:rgba(91,92,226,.06);">
-        <div style="font-weight:950;">Próxima cuota</div>
-        <div class="muted" style="margin-top:6px;font-weight:900;">Campaña: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"—")}</b></div>
+        <div style="font-weight:950;">PrÃ³xima cuota</div>
+        <div class="muted" style="margin-top:6px;font-weight:900;">CampaÃ±a: <b>${esc((tasksAll.find(t=>t.id===nextDue.fromTaskId)?.title)||"â€”")}</b></div>
         <div class="muted" style="margin-top:6px;font-weight:800;">
-          Vence ${esc(nextDue.dueDate)} · ${dueBadge(nextDue.dueDate)}
+          Vence ${esc(nextDue.dueDate)} Â· ${dueBadge(nextDue.dueDate)}
         </div>
         <div style="margin-top:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
           <div style="font-weight:950;font-size:18px;">${formatCLP(nextDue.amountRemaining ?? nextDue.amount ?? 0)}</div>
@@ -2497,7 +2526,7 @@ function renderHome(){
         </div>
       </div>
     ` : ``;
-    // Aplicar filtro por campaña (si no es "all")
+    // Aplicar filtro por campaÃ±a (si no es "all")
     if(selectedTask !== "all"){
       paysFiltered = paysFiltered.filter(p => (p.fromTaskId || "no_task") === selectedTask);
     }
@@ -2517,7 +2546,7 @@ function renderHome(){
       return out;
     }
 
-// agrupar pagos por campaña
+// agrupar pagos por campaÃ±a
     const paysByTask = {};
     paysFiltered.forEach(p=>{
       const tid = p.fromTaskId || "no_task";
@@ -2526,9 +2555,9 @@ function renderHome(){
     });
 
     function campaignMeta(t){
-      const type = (String(t.type||"") === "monthly") ? `Mensual · ${Number(t.months||1)} cuota(s)` : "Pago único";
+      const type = (String(t.type||"") === "monthly") ? `Mensual Â· ${Number(t.months||1)} cuota(s)` : "Pago Ãºnico";
       const part = (t.mandatoryParticipation===false) ? "No obligatoria" : "Obligatoria";
-      return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} → ${t.dueDate}`:"" };
+      return { type, part, amount:Number(t.amount||0), range:(t.startDate&&t.dueDate)?`${t.startDate} â†’ ${t.dueDate}`:"" };
     }
 
     function emptyCampaignCard(t){
@@ -2536,8 +2565,8 @@ function renderHome(){
       return `
         <div class="card" style="margin-top:12px;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
-                  <span class="tag">Campaña</span>
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"CampaÃ±a")}</div>
+                  <span class="tag">CampaÃ±a</span>
                 </div>
           ${m.range?`<div class="muted" style="margin-top:6px;">${esc(m.range)}</div>`:""}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -2546,7 +2575,7 @@ function renderHome(){
             <span class="tag">${esc(m.part)}</span>
           </div>
           <div class="muted" style="margin-top:10px;font-weight:800;line-height:1.45;">
-            ${t.mandatoryParticipation===false ? "Esta campaña es voluntaria. Se generarán cobros pendientes para quienes participen; también puedes marcar No participo." : "Aún no hay cobros generados para ti en esta campaña. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automáticamente."}
+            ${t.mandatoryParticipation===false ? "Esta campaÃ±a es voluntaria. Se generarÃ¡n cobros pendientes para quienes participen; tambiÃ©n puedes marcar No participo." : "AÃºn no hay cobros generados para ti en esta campaÃ±a. Si acabas de ingresar, vuelve a abrir Pagos para que se creen automÃ¡ticamente."}
           </div>
           ${t.mandatoryParticipation===false ? `
             <div class="actions" style="margin-top:12px;justify-content:flex-end;">
@@ -2570,13 +2599,13 @@ function renderHome(){
                 return `
                   <div class="card" style="margin-top:12px;">
                     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-                      <div style="font-weight:950;">${esc(t.title||"Campaña")}</div>
+                      <div style="font-weight:950;">${esc(t.title||"CampaÃ±a")}</div>
                       ${oo ? `
                         <button class="btnx" style="border:1px solid rgba(0,0,0,.14);" onclick="toggleOptOut('${esc(t.id)}')">Participar</button>
                       ` : ``}
                     </div>
                     <div class="muted" style="margin-top:6px;">
-                      ${oo ? `Marcaste <b>No participo</b>. Puedes volver a participar aquí.` : `No hay pagos para este filtro en esta campaña.`}
+                      ${oo ? `Marcaste <b>No participo</b>. Puedes volver a participar aquÃ­.` : `No hay pagos para este filtro en esta campaÃ±a.`}
                     </div>
                   </div>
                 `;
@@ -2602,10 +2631,10 @@ function renderHome(){
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
                 <div>
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
-                  <span class="tag">Campaña</span>
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"CampaÃ±a")}</div>
+                  <span class="tag">CampaÃ±a</span>
                 </div>
-                  <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+                  <div class="muted" style="margin-top:6px;">${esc(m.type)} Â· ${esc(m.part)}</div>
                 </div>
                 ${t.mandatoryParticipation===false ? `
                   <button class="btnx" style="border:1px solid rgba(0,0,0,.14);" onclick="toggleOptOut('${esc(t.id)}')">
@@ -2613,7 +2642,7 @@ function renderHome(){
                   </button>
                 ` : ``}
               </div>
-${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
+${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">âœ… Pago registrado. Gracias ðŸ™Œ</div>` : ``}
                             <div class="muted" style="margin-top:6px;">Pendiente ${formatCLP(totalPend)}</div>
               <div style="margin-top:10px;">
                 ${rows.map(r=>renderPaymentRow(r)).join("")}
@@ -2627,13 +2656,13 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                   <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.08);padding-top:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
                       <div>
-                        <div style="font-weight:950;">Información</div>
+                        <div style="font-weight:950;">InformaciÃ³n</div>
                         <div class="muted" style="margin-top:4px;">Cotizaciones referenciales (no es cobro).</div>
                       </div>
                       <button class="btnx" onclick="openCotizacionesModal('${esc(t.id)}')">Ver cotizaciones</button>
                     </div>
                     <div class="muted" style="margin-top:8px;font-weight:900;">
-                      Cotizaciones · ${items.length} ítem(s) · Total ${formatCLP(totalC)}
+                      Cotizaciones Â· ${items.length} Ã­tem(s) Â· Total ${formatCLP(totalC)}
                     </div>
                   </div>
                 `;
@@ -2657,10 +2686,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
               <div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"Campaña")}</div>
-                  <span class="tag">Campaña</span>
+                  <div style="font-weight:950;font-size:18px;">${esc(t.title||"CampaÃ±a")}</div>
+                  <span class="tag">CampaÃ±a</span>
                 </div>
-                <div class="muted" style="margin-top:6px;">${esc(m.type)} · ${esc(m.part)}</div>
+                <div class="muted" style="margin-top:6px;">${esc(m.type)} Â· ${esc(m.part)}</div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
               <div class="muted" style="font-weight:950;">${paidCount}/${total} pagadas</div>
@@ -2672,14 +2701,14 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
             </div>
             </div>
 
-            ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">✅ Pago registrado. Gracias 🙌</div>` : ``}
+            ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style="margin-top:10px;padding:10px 12px;border-radius:14px;background: rgba(34,197,94,.12);border: 1px solid rgba(34,197,94,.22);font-weight: 900;">âœ… Pago registrado. Gracias ðŸ™Œ</div>` : ``}
 
             <div style="margin-top:10px;">
               <div style="height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;">
                 <div style="height:100%;width:${progressPct}%;background:rgba(91,92,226,.85);"></div>
               </div>
               <div class="muted" style="margin-top:6px;font-weight:900;">
-                ${pendCount ? `Quedan ${pendCount} cuota(s) por pagar 😅` : `¡Listo! Campaña al día 🥳`}
+                ${pendCount ? `Quedan ${pendCount} cuota(s) por pagar ðŸ˜…` : `Â¡Listo! CampaÃ±a al dÃ­a ðŸ¥³`}
               </div>
             </div>
 
@@ -2699,13 +2728,13 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
                   <div style="margin-top:12px;border-top:1px solid rgba(0,0,0,.08);padding-top:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
                       <div>
-                        <div style="font-weight:950;">Información</div>
+                        <div style="font-weight:950;">InformaciÃ³n</div>
                         <div class="muted" style="margin-top:4px;">Cotizaciones referenciales (no es cobro).</div>
                       </div>
                       <button class="btnx" onclick="openCotizacionesModal('${esc(t.id)}')">Ver cotizaciones</button>
                     </div>
                     <div class="muted" style="margin-top:8px;font-weight:900;">
-                      Cotizaciones · ${items.length} ítem(s) · Total ${formatCLP(totalC)}
+                      Cotizaciones Â· ${items.length} Ã­tem(s) Â· Total ${formatCLP(totalC)}
                     </div>
                   </div>
                 `;
@@ -2717,8 +2746,8 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
     const others = (paysByTask["no_task"]||[]).length ? `
       <div class="card" style="margin-top:12px;">
-        <div style="font-weight:950;">Otros (sin campaña)</div>
-        <div class="muted" style="margin-top:6px;">Cobros no asociados a una campaña</div>
+        <div style="font-weight:950;">Otros (sin campaÃ±a)</div>
+        <div class="muted" style="margin-top:6px;">Cobros no asociados a una campaÃ±a</div>
         ${(paysByTask["no_task"]||[]).map(r=>renderPaymentRow(r)).join("")}
       </div>
     ` : ``;
@@ -2731,7 +2760,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
       if(sessionStorage.getItem("justPaid")==="1"){
         sessionStorage.removeItem("justPaid");
         toastHtml = `
-          <div class="toastOk">✅ Pago registrado. Gracias 🙌</div>
+          <div class="toastOk">âœ… Pago registrado. Gracias ðŸ™Œ</div>
         `;
       }
     }catch(e){}
@@ -2740,9 +2769,9 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
           <div class="kTitle">Pagos <button class="helpBtn" data-help="vencida" type="button" aria-label="Ayuda pagos">?</button></div>
-          ${hasNew ? `<span class="tag" style="font-weight:950;">🆕 Nuevo</span>` : ``}
+          ${hasNew ? `<span class="tag" style="font-weight:950;">ðŸ†• Nuevo</span>` : ``}
         </div>
-                <div class="muted" style="margin-top:6px;">💡 El saldo a favor se descuenta automáticamente.</div>
+                <div class="muted" style="margin-top:6px;">ðŸ’¡ El saldo a favor se descuenta automÃ¡ticamente.</div>
         ${chips}
       </div>
 
@@ -2753,11 +2782,11 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
       ${
         emptyAll
           ? (() => {
-            if(payFilter==="pending") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">🎉 No tienes pagos pendientes. Te avisaremos cuando la directiva publique un cobro 😊</div></div>`;
-            if(payFilter==="upcoming") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">📅 No hay pagos próximos por ahora.</div></div>`;
-            if(payFilter==="paid") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no tienes pagos registrados.</div></div>`;
+            if(payFilter==="pending") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">ðŸŽ‰ No tienes pagos pendientes. Te avisaremos cuando la directiva publique un cobro ðŸ˜Š</div></div>`;
+            if(payFilter==="upcoming") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">ðŸ“… No hay pagos prÃ³ximos por ahora.</div></div>`;
+            if(payFilter==="paid") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">AÃºn no tienes pagos registrados.</div></div>`;
             if(payFilter==="credit") return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">No tienes saldo a favor por ahora.</div></div>`;
-            return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">Aún no hay campañas ni cobros publicados. Te avisaremos cuando haya novedades 😊</div></div>`;
+            return `<div class="card" style="margin-top:12px;"><div class="muted" style="font-weight:900;line-height:1.45;">AÃºn no hay campaÃ±as ni cobros publicados. Te avisaremos cuando haya novedades ðŸ˜Š</div></div>`;
           })()
           : (campaignCards || `<div class="card" style="margin-top:12px;"><div class="muted">Sin pagos para este filtro.</div></div>`)
       }
@@ -2765,7 +2794,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
       ${others}
     `;
 
-    // hook filtro campaña
+    // hook filtro campaÃ±a
     const sel = document.getElementById("taskFilter");
     if(sel){
       sel.onchange = ()=>{
@@ -2774,7 +2803,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
       };
     }
 
-    // marcar como visto (para badge 🆕)
+    // marcar como visto (para badge ðŸ†•)
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
 
     try{
@@ -2806,7 +2835,7 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
 
 
   
-  // Pagar campaña single: paga todas las filas pendientes de ese taskId
+  // Pagar campaÃ±a single: paga todas las filas pendientes de ese taskId
   window.paySingleCampaign = function(taskId){
     const pays = load(KEY_PAYMENTS, []);
     const ids = pays
@@ -2839,10 +2868,10 @@ ${(justPaidId && rows.some(x=>String(x.id)===String(justPaidId))) ? `<div style=
     save(KEY_PAYMENTS, pays);
 
     if(usedCreditTotal>0){
-      if(remainingTotal<=0) alert(`✅ Pago cubierto con saldo a favor.\nAplicado: ${clp(usedCreditTotal)}`);
-      else alert(`✅ Se aplicó saldo a favor: ${clp(usedCreditTotal)}\nRestante por pagar: ${clp(remainingTotal)} (demo)`);
+      if(remainingTotal<=0) alert(`âœ… Pago cubierto con saldo a favor.\nAplicado: ${clp(usedCreditTotal)}`);
+      else alert(`âœ… Se aplicÃ³ saldo a favor: ${clp(usedCreditTotal)}\nRestante por pagar: ${clp(remainingTotal)} (demo)`);
     }else{
-      alert("Pago realizado ✅ (demo)");
+      alert("Pago realizado âœ… (demo)");
     }
 
     renderPayments();
@@ -2869,7 +2898,7 @@ window.payNow = async function(id){
           await window.CURSAPP.hydrateOperationalFromSupabase("payNow-legacy-id");
         }
       }catch(e){}
-      alert("Este pago viene de una referencia antigua del navegador. Actualicé desde Supabase; vuelve a presionar Pagar.");
+      alert("Este pago viene de una referencia antigua del navegador. ActualicÃ© desde Supabase; vuelve a presionar Pagar.");
       try{ renderPayments(); }catch(e){}
       return;
     }
@@ -2894,11 +2923,32 @@ window.payNow = async function(id){
             <button class="btnx primary" onclick="openReport('${esc(r.period||"")}')">Ver</button>
           </div>
         </div>
-      `).join("") : `<div class="card"><div class="muted">Aún no hay informes publicados.</div></div>`}
+      `).join("") : `<div class="card"><div class="muted">AÃºn no hay informes publicados.</div></div>`}
     `;
   }
 
-  // ----- Apoderado mockup visual overrides -----
+  // ----- Apoderado Premium v2 visual overrides -----
+  function apoSvg(name){
+    const paths = {
+      card:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+      receipt:'<path d="M7 3h10v18l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2V3Z"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h4"/>',
+      report:'<path d="M6 3h9l3 3v15H6V3Z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/>',
+      store:'<path d="M4 10h16l-1-5H5l-1 5Z"/><path d="M6 10v10h12V10"/><path d="M9 20v-6h6v6"/>',
+      check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+      calendar:'<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+      chart:'<path d="M4 19V5"/><path d="M4 19h17"/><rect x="7" y="11" width="3" height="5" rx="1"/><rect x="12" y="7" width="3" height="9" rx="1"/><rect x="17" y="4" width="3" height="12" rx="1"/>',
+      megaphone:'<path d="M4 14V9a2 2 0 0 1 2-2h2l9-3v15l-9-3H6a2 2 0 0 1-2-2Z"/><path d="M8 16v4"/>',
+      chevron:'<path d="m9 18 6-6-6-6"/>'
+    };
+    return `<svg class="apoV2IconSvg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.report}</svg>`;
+  }
+
+  function apoMonthShort(iso){
+    const months = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+    const d = iso ? new Date(String(iso) + "T00:00:00") : new Date();
+    return months[d.getMonth()] || "MES";
+  }
+
   renderHome = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
@@ -2906,76 +2956,71 @@ window.payNow = async function(id){
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
     paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
 
-    const tasks0 = normalizeTasks(load(KEY_TASKS, []));
     const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid");
     const pendingTotal = pending.reduce((a,p)=>a+Number(p.amountRemaining ?? p.amount ?? 0),0);
+    const paidTotal = paid.reduce((a,p)=>a+Number(p.amount ?? p.amountPaid ?? 0),0);
     const nextDue = pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
-    const r = latestReport();
-    const ident = (typeof getActiveIdentity==="function") ? getActiveIdentity() : {};
-    const guardianName = ident?.name || ident?.apoderadoName || "Mauricio Barrera";
-    const studentName = ident?.alumno || ident?.studentName || "Alumno/a";
-    const courseLabel = ident?.courseLabel || ident?.curso || "";
+    const nextTitle = nextDue?.title || nextDue?.concept || "Sin pagos pendientes";
+    const nextAmount = nextDue ? clp(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0";
+    const nextDays = nextDue?.dueDate ? Math.max(0, daysTo(nextDue.dueDate) || 0) : 0;
+    const nextDate = nextDue?.dueDate ? new Date(String(nextDue.dueDate)+"T00:00:00") : null;
+    const nextDay = nextDate ? String(nextDate.getDate()).padStart(2,"0") : "--";
+    const nextMonth = nextDue?.dueDate ? apoMonthShort(nextDue.dueDate) : "MES";
+    const nextThisMonth = pending.filter(p => String(p.dueDate || "").slice(0,7) === new Date().toISOString().slice(0,7)).length;
+    const payAction = nextDue?.id ? `payNow('${esc(nextDue.id)}')` : `go('payments')`;
 
     const quick = [
-      {label:"Pagos", icon:"P", action:"go('payments')"},
-      {label:"Comprobantes", icon:"C", action:"go('payments')"},
-      {label:"Informes", icon:"I", action:"go('informes')"},
-      {label:"Mercado Escolar", icon:"M", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
-    ].map(x=>`<button class="apoMockQuick" type="button" onclick="${x.action}"><span>${esc(x.icon)}</span><b>${esc(x.label)}</b></button>`).join("");
+      {label:"Pagos", sub:"Revisa y paga tus cuotas pendientes", icon:"card", cls:"", action:"go('payments')"},
+      {label:"Comprobantes", sub:"Descarga tus comprobantes de pago", icon:"receipt", cls:"", action:"go('payments')"},
+      {label:"Informes", sub:"Revisa los informes publicados del curso", icon:"report", cls:"", action:"go('informes')"},
+      {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
+    ].map(x=>`<button class="apoV2Quick ${x.cls}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon">${apoSvg(x.icon)}</span><span><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></span><i>${apoSvg("chevron")}</i></button>`).join("");
 
     app.innerHTML = `
-      <div class="apoMockPage">
-        <section class="apoMockProfile">
-          <div class="apoMockAvatar">☺</div>
-          <div>
-            <h1>${esc(guardianName)}</h1>
-            <p>Apoderado de ${esc(studentName)}<br>${esc(courseLabel || "Curso actual")}</p>
+      <div class="apoV2Page">
+        <section class="apoV2DueCard">
+          <div class="apoV2DateBox"><span>${esc(nextDay)}</span><b>${esc(nextMonth)}</b></div>
+          <div class="apoV2DueMain">
+            <p class="apoV2Kicker">Próxima cuota</p>
+            <h1>${esc(nextTitle)}</h1>
+            <p class="apoV2DueMeta">${nextDue?.dueDate ? `Vence el ${esc(nextDue.dueDate)} · quedan ${nextDays} día(s)` : "Te avisaremos cuando existan nuevas cuotas."}</p>
+            <strong>${nextAmount}</strong>
           </div>
-          <button type="button" aria-label="Cambiar perfil">⌄</button>
+          <div class="apoV2DueActions">
+            <button class="apoV2Pay" type="button" onclick="${payAction}">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
+            <button class="apoV2Detail" type="button" onclick="go('payments')">Ver detalle</button>
+          </div>
         </section>
 
-        <section class="apoMockDue">
-          <div class="apoMockDate"><span>17</span><b>Proxima cuota</b><button type="button" onclick="go('payments')">Ver todas</button></div>
-          <article>
+        <section class="apoV2Summary" aria-label="Resumen rápido">
+          <article class="is-pending"><span>${apoSvg("card")}</span><small>Pendiente</small><b>${clp(pendingTotal)}</b><em>${pending.length} ${pending.length === 1 ? "pago" : "pagos"}</em></article>
+          <article class="is-paid"><span>${apoSvg("check")}</span><small>Pagados</small><b>${paid.length}</b><em>Este año</em></article>
+          <article class="is-next"><span>${apoSvg("calendar")}</span><small>Próximas</small><b>${nextThisMonth}</b><em>Este mes</em></article>
+          <article class="is-total"><span>${apoSvg("chart")}</span><small>Total pagado</small><b>${clp(paidTotal)}</b><em>Este año</em></article>
+        </section>
+
+        <section class="apoV2Section">
+          <h2>Accesos rápidos</h2>
+          <div class="apoV2QuickGrid">${quick}</div>
+        </section>
+
+        <section class="apoV2Section apoV2NoticeSection">
+          <div class="apoV2SectionHead"><h2>Avisos del curso</h2><button type="button" onclick="go('payments')">Ver todos</button></div>
+          <article class="apoV2Notice">
+            <span>${apoSvg("megaphone")}</span>
             <div>
-              <small>${nextDue ? "Pendiente" : "Todo al dia"}</small>
-              <h2>${esc(nextDue?.title || nextDue?.concept || "Sin pagos pendientes")}</h2>
-              <p>${nextDue?.dueDate ? `Vence el ${esc(nextDue.dueDate)} · quedan ${Math.max(0,daysTo(nextDue.dueDate)||0)} dia(s)` : "Te avisaremos cuando existan nuevas cuotas."}</p>
-              <strong>${nextDue ? clp(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0"}</strong>
+              <h3>Reunión de apoderados</h3>
+              <p class="apoV2NoticeDate">Jueves 26 de junio · 19:00 hrs</p>
+              <p>Se realizará reunión presencial en la sala del curso. ¡Tu participación es importante!</p>
+              <small>Hace 2 días</small>
             </div>
-            <div class="apoMockWallet">▰</div>
-            <footer>
-              <button type="button" onclick="${nextDue?.id ? `payNow('${esc(nextDue.id)}')` : `go('payments')`}">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
-              <button type="button" onclick="go('payments')">Ver detalle</button>
-            </footer>
           </article>
-        </section>
-
-        <section class="apoMockStatusList">
-          <button type="button" onclick="go('payments')"><span>A</span><b>Avisos del curso</b><em>Sin avisos nuevos</em><i>›</i></button>
-          <button type="button" onclick="go('payments')"><span>P</span><b>Pagos pendientes</b><em>${pending.length} pago(s) por revisar</em><strong>${pending.length}</strong><i>›</i></button>
-          <button type="button" onclick="go('informes')"><span>E</span><b>Estado del curso</b><em>Recaudado, gastado y disponible</em><i>Ver</i></button>
-        </section>
-
-        <section class="apoMockSection">
-          <h2>Accesos rapidos</h2>
-          <div class="apoMockQuickGrid">${quick}</div>
-        </section>
-
-        <section class="apoMockSection">
-          <h2>Resumen financiero</h2>
-          <div class="apoMockMoney">
-            <div><small>Pendiente</small><b>${clp(pendingTotal)}</b></div>
-            <div><small>Pagados</small><b>${paid.length}</b></div>
-            <div><small>Informe</small><b>${r ? esc(r.period||"Actual") : "Sin publicar"}</b></div>
-          </div>
         </section>
         <div data-monetization-slot="apoderado"></div>
       </div>`;
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
-
   renderPayments = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
@@ -2997,7 +3042,7 @@ window.payNow = async function(id){
         <article class="apoMockPayCard">
           <div>
             <h3>${esc(p.title || p.concept || "Pago del curso")}</h3>
-            <p>${esc(p.taskTitle || p.campaignTitle || p.fromTaskTitle || "Campana")} · ${esc(p.installmentLabel || p.cuota || "")}</p>
+            <p>${esc(p.taskTitle || p.campaignTitle || p.fromTaskTitle || "Campaña")} · ${esc(p.installmentLabel || p.cuota || "")}</p>
             <small>${p.dueDate ? `Vence ${esc(p.dueDate)}` : esc(String(p.paidAt||p.createdAt||"").slice(0,10))}</small>
           </div>
           <strong>${clp(p.amountRemaining ?? p.amount ?? 0)}</strong>
@@ -3006,7 +3051,7 @@ window.payNow = async function(id){
             ${paidOk ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Ver comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
           </footer>
         </article>`;
-    }).join("") || `<article class="apoMockEmpty"><strong>No hay pagos para este filtro</strong><p>Cuando existan cuotas apareceran aqui.</p></article>`;
+    }).join("") || `<article class="apoMockEmpty"><strong>No hay pagos para este filtro</strong><p>Cuando existan cuotas aparecerán aquí.</p></article>`;
 
     app.innerHTML = `
       <div class="apoMockPage">
@@ -3019,7 +3064,7 @@ window.payNow = async function(id){
             <button class="${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagados</button>
           </div>
         </section>
-        ${next ? `<section class="apoMockNextPay"><small>Proxima cuota</small><h2>${esc(next.title || next.concept || "Pago pendiente")}</h2><strong>${clp(next.amountRemaining ?? next.amount ?? 0)}</strong><button onclick="payNow('${esc(next.id)}')">Pagar</button></section>` : ``}
+        ${next ? `<section class="apoMockNextPay"><small>Próxima cuota</small><h2>${esc(next.title || next.concept || "Pago pendiente")}</h2><strong>${clp(next.amountRemaining ?? next.amount ?? 0)}</strong><button onclick="payNow('${esc(next.id)}')">Pagar</button></section>` : ``}
         <section class="apoMockPayList">${cards}</section>
       </div>`;
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
@@ -3039,7 +3084,7 @@ window.payNow = async function(id){
       </div>`;
   };
 
-  // ✅ Router GLOBAL (y expuesto para que onclick del Home no rompa)
+  // âœ… Router GLOBAL (y expuesto para que onclick del Home no rompa)
   function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
     setHeader();
@@ -3073,18 +3118,18 @@ if(menu && !document.getElementById("resetCourseBtn")){
   b.type = "button";
   b.style.width = "100%";
   b.style.textAlign = "left";
-  b.textContent = "🧹 Reset curso (solo datos)";
+  b.textContent = "ðŸ§¹ Reset curso (solo datos)";
   b.onclick = ()=>{
-    if(!confirm("Esto borra campañas/pagos/gastos del curso. ¿Continuar?")) return;
+    if(!confirm("Esto borra campaÃ±as/pagos/gastos del curso. Â¿Continuar?")) return;
     localStorage.removeItem("cursapp_tasks_v1");
     localStorage.removeItem("cursapp_payments_v1");
     localStorage.removeItem("cursapp_expenses_v1");
     localStorage.removeItem("cursapp_monthly_reports_v1");
     localStorage.removeItem("cursapp_receipts_v1");
-    alert("Curso reseteado ✅");
+    alert("Curso reseteado âœ…");
     location.reload();
   };
-  // insertar antes de cerrar sesión si existe
+  // insertar antes de cerrar sesiÃ³n si existe
   const logout = document.getElementById("logoutBtn") || document.getElementById("logoutMenuItem");
   if(logout && logout.parentElement===menu) menu.insertBefore(b, logout);
   else menu.appendChild(b);
@@ -3118,7 +3163,7 @@ if(menu && !document.getElementById("resetCourseBtn")){
   // Bottom nav
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 // Boot
-// ✅ Solo sembrar demo si está activado explícitamente
+// âœ… Solo sembrar demo si estÃ¡ activado explÃ­citamente
 const DEMO_MODE = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
 
 if (DEMO_MODE) {
@@ -3126,7 +3171,7 @@ if (DEMO_MODE) {
 }
 
 
-  // --- Multi-rol (Apoderado/Tesorero): mostrar selector al entrar (1 vez por sesión) ---
+  // --- Multi-rol (Apoderado/Tesorero): mostrar selector al entrar (1 vez por sesiÃ³n) ---
   function __profilesHasRole(roleKey){
     roleKey = String(roleKey||"").toLowerCase();
     try{
@@ -3172,22 +3217,22 @@ if (DEMO_MODE) {
         <div class="helpHeader">
           <div>
             <div class="kTitle">Cambiar perfil</div>
-            <div class="muted" style="margin-top:6px;font-weight:800;">Selecciona cómo ingresar</div>
+            <div class="muted" style="margin-top:6px;font-weight:800;">Selecciona cÃ³mo ingresar</div>
           </div>
           <button class="btn small" onclick="closeModal()">Cerrar</button>
         </div>
         <div style="margin-top:14px">
           <button class="btn wide" style="display:flex;gap:10px;align-items:center;justify-content:flex-start;" onclick="window.__setRole('apoderado')">
-            <span style="font-size:20px">👥</span>
+            <span style="font-size:20px">ðŸ‘¥</span>
             <div style="text-align:left">
               <div style="font-weight:900">Apoderado</div>
-              <div class="muted">Aprobado automáticamente</div>
+              <div class="muted">Aprobado automÃ¡ticamente</div>
             </div>
           </button>
           ${canTesorero ? `
           <div style="height:10px"></div>
           <button class="btn wide" style="display:flex;gap:10px;align-items:center;justify-content:flex-start;" onclick="window.__setRole('tesorero')">
-            <span style="font-size:20px">💼</span>
+            <span style="font-size:20px">ðŸ’¼</span>
             <div style="text-align:left">
               <div style="font-weight:900">Tesorero</div>
               <div class="muted">Rendiciones e informes</div>
@@ -3223,10 +3268,10 @@ if (DEMO_MODE) {
   };
 
   function __maybePromptRole(){
-    // V11.14: no mostrar selector automático dentro de Apoderado.
+    // V11.14: no mostrar selector automÃ¡tico dentro de Apoderado.
     // El selector debe resolverse antes de entrar a esta pantalla (login / cambio de rol).
     // Esto evita el bug Presidente -> Apoderado donde se renderizaba Home/banner
-    // y luego aparecía nuevamente el selector de perfil, dejando el banner de fondo.
+    // y luego aparecÃ­a nuevamente el selector de perfil, dejando el banner de fondo.
     try{
       localStorage.setItem("cursapp_role_prompted_v1","1");
       localStorage.setItem("cursapp_active_role_v1","apoderado");
@@ -3242,7 +3287,7 @@ async function __bootApoderadoSupabaseFirst(){
       await window.CURSAPP.hydrateOperationalFromSupabase("apoderado-boot");
     }
     // Fase 2B: antes de pintar, pedir a Supabase que cree los pagos pendientes faltantes
-    // para campañas obligatorias y luego rehidratar. Evita mostrar pagos locales pay_xxx.
+    // para campaÃ±as obligatorias y luego rehidratar. Evita mostrar pagos locales pay_xxx.
     if(window.CURSAPP && typeof window.CURSAPP.refreshPagosSupabase === "function"){
       await window.CURSAPP.refreshPagosSupabase("apoderado-boot-before-render");
       if(typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
@@ -3268,7 +3313,7 @@ async function __bootApoderadoSupabaseFirst(){
 __bootApoderadoSupabaseFirst();
 })();
 
-/* Re-render banners después de cada render de Apoderado */
+/* Re-render banners despuÃ©s de cada render de Apoderado */
 (function(){
   if(window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__) return;
   window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__ = true;
@@ -3283,3 +3328,6 @@ __bootApoderadoSupabaseFirst();
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
 
 /* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */
+
+
+
