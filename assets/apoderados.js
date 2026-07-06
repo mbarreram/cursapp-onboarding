@@ -150,13 +150,14 @@
   function headerUserLine(){
     const who = $("whoLine");
     if(!who) return;
-    const s = STATE.session || {};
-    const label = s.name || s.nombre || s.full_name || s.email || "Directiva";
-    const role = roleOf() || "directiva";
+    const label = currentUserName();
+    const p = courseParts(STATE.curso || {});
+    const course = [p.school, p.course].filter(Boolean).join(" · ");
     who.innerHTML = `
-      <div class="apo-headline">
-        <div class="apo-head-name">${esc(label)}</div>
-        <div class="apo-head-meta">${esc(role.charAt(0).toUpperCase() + role.slice(1))} · Gestión de apoderados</div>
+      <div>
+        <div style="font-weight:950;">${esc(label)}</div>
+        <div class="muted presBrandRole">Presidente</div>
+        <div class="muted presBrandCourse">${esc(course || "Curso activo")}</div>
       </div>
     `;
   }
@@ -373,14 +374,6 @@
     style.id = "apoderadosV12Styles";
     style.textContent = `
       body{background:#f8fafc!important;}
-      body.cursapp-apoderados-page{padding-bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;}
-      .apo-shell-topbar{min-height:96px!important;padding:16px 28px!important;border-top:4px solid #f59e0b!important;background:rgba(255,255,255,.94)!important;z-index:1200!important;}
-      .apo-shell-topbar .brand{gap:14px!important;min-width:0!important;}
-      .apo-shell-topbar .logo{width:58px!important;height:58px!important;border-radius:50%!important;font-size:24px!important;flex:0 0 58px!important;}
-      .apo-shell-actions{display:flex;align-items:center;gap:12px;margin-left:auto;}
-      .apo-shell-icon{position:relative;width:54px;height:54px;border:1px solid rgba(226,232,240,.9);border-radius:50%;background:#fff;color:#111827;display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;box-shadow:0 14px 34px rgba(15,23,42,.08);cursor:pointer;}
-      .apo-shell-icon em{position:absolute;right:0;top:-4px;min-width:19px;height:19px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-style:normal;font-weight:950;display:none;align-items:center;justify-content:center;padding:0 5px;}
-      .apo-shell-icon.has-unread em{display:inline-flex;}
       #menuDropdown.apo-menu-panel{position:fixed!important;top:calc(84px + env(safe-area-inset-top,0px))!important;right:18px!important;width:min(360px,calc(100vw - 32px))!important;max-height:calc(100dvh - 112px)!important;overflow:auto!important;background:#fff!important;border:1px solid rgba(226,232,240,.95)!important;border-radius:26px!important;box-shadow:0 28px 80px rgba(15,23,42,.22)!important;z-index:4000!important;padding:18px!important;}
       .apo-menu-head{display:grid;grid-template-columns:58px 1fr 38px;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid rgba(226,232,240,.85);}
       .apo-menu-avatar{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4c1d95);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:900;}
@@ -388,14 +381,8 @@
       .apo-menu-role{font-size:13px;color:#6d28d9;font-weight:900;margin-top:3px}.apo-menu-course{font-size:13px;color:#64748b;font-weight:750;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
       .apo-menu-close{width:36px;height:36px;border:0;border-radius:50%;background:#f1f5f9;color:#111827;font-size:20px;font-weight:900;cursor:pointer;}
       .apo-menu-list{padding:12px 0;display:grid;gap:4px}.apo-menu-item{height:48px;border:0;background:#fff;border-radius:14px;display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;text-align:left;color:#111827;font-weight:900;font-size:15px;cursor:pointer;padding:0 10px}.apo-menu-item:hover{background:#f8fafc}.apo-menu-item svg{width:23px;height:23px;color:#6d28d9}.apo-menu-item.danger{color:#dc2626}.apo-menu-item.danger svg{color:#dc2626}.apo-menu-sep{height:1px;background:rgba(226,232,240,.95);margin:8px 0}
-      .apo-bottom-nav.bottomNav{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(env(safe-area-inset-bottom,0px) + 12px)!important;transform:translateX(-50%)!important;width:min(760px,calc(100vw - 28px))!important;height:78px!important;border:1px solid rgba(226,232,240,.95)!important;border-radius:28px!important;background:rgba(255,255,255,.96)!important;box-shadow:0 18px 60px rgba(15,23,42,.14)!important;z-index:1100!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important;padding:8px!important;gap:4px!important;backdrop-filter:blur(14px)!important;}
-      .apo-bottom-nav .navItem{border:0!important;background:transparent!important;border-radius:22px!important;color:#64748b!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;font-size:23px!important;font-weight:900!important;cursor:pointer!important;min-width:0!important;}
-      .apo-bottom-nav .navItem span{font-size:11px!important;line-height:1!important;font-weight:850!important;white-space:nowrap!important;letter-spacing:0!important;}
-      .apo-bottom-nav .navItem.active{background:#ede9fe!important;color:#6d28d9!important;}
       .container#app{max-width:980px;margin:0 auto;padding:24px 20px 140px!important;}
-      .apo-headline{display:flex;flex-direction:column;gap:3px;min-width:0;line-height:1.05}
-      .apo-head-name{font-weight:900;font-size:15px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58vw}
-      .apo-head-meta{font-size:12px;color:#64748b;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58vw}
+      .presBrandCourse{font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
       .apo-page{display:flex;flex-direction:column;gap:22px}
       .apo-title-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
       .apo-eyebrow{font-size:14px;font-weight:850;color:#6d28d9;margin-bottom:6px}
@@ -448,7 +435,7 @@
       .apo-modal-footer{height:44px;border-radius:14px;border:1px solid rgba(226,232,240,.95);background:#fff;width:100%;font-weight:900;margin-top:14px;cursor:pointer}
       .apo-empty{background:#fff;border:1px solid rgba(226,232,240,.95);border-radius:24px;padding:20px;box-shadow:0 12px 34px rgba(15,23,42,.06)}.apo-empty-title{font-size:20px;font-weight:900}.apo-empty-text{margin-top:8px;color:#64748b;font-weight:750;line-height:1.45}
       @media (max-width:760px){
-        .apo-shell-topbar{min-height:92px!important;padding:14px 20px!important}.apo-shell-topbar .logo{width:52px!important;height:52px!important;flex-basis:52px!important}.apo-shell-icon{width:48px;height:48px;font-size:21px}.apo-shell-actions{gap:10px}.container#app{padding:20px 14px 132px!important}.apo-title-row{grid-template-columns:1fr}.apo-primary{width:100%}.apo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.apo-kpi{padding:15px;min-height:132px}.apo-progress-card{grid-template-columns:1fr;padding:18px}.apo-donut-row{grid-template-columns:1fr;justify-items:center}.apo-total-card{width:100%}.apo-tools{grid-template-columns:1fr}.apo-table{display:block}.apo-table thead{display:none}.apo-table tbody{display:block}.apo-table tr{display:block;padding:12px;border-bottom:1px solid rgba(226,232,240,.75)}.apo-table td{display:block;border:0;padding:5px 2px}.apo-table td[data-label]::before{content:attr(data-label);display:block;color:#94a3b8;font-size:11px;font-weight:850;margin-bottom:3px}.apo-row-actions{justify-content:flex-start}.apo-pagination{flex-direction:column;align-items:flex-start}.apo-code-display{letter-spacing:8px;font-size:25px}
+        .container#app{padding:20px 14px 132px!important}.apo-title-row{grid-template-columns:1fr}.apo-primary{width:100%}.apo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.apo-kpi{padding:15px;min-height:132px}.apo-progress-card{grid-template-columns:1fr;padding:18px}.apo-donut-row{grid-template-columns:1fr;justify-items:center}.apo-total-card{width:100%}.apo-tools{grid-template-columns:1fr}.apo-table{display:block}.apo-table thead{display:none}.apo-table tbody{display:block}.apo-table tr{display:block;padding:12px;border-bottom:1px solid rgba(226,232,240,.75)}.apo-table td{display:block;border:0;padding:5px 2px}.apo-table td[data-label]::before{content:attr(data-label);display:block;color:#94a3b8;font-size:11px;font-weight:850;margin-bottom:3px}.apo-row-actions{justify-content:flex-start}.apo-pagination{flex-direction:column;align-items:flex-start}.apo-code-display{letter-spacing:8px;font-size:25px}.presBrandCourse{max-width:38vw;}
       }
     `;
     document.head.appendChild(style);
@@ -682,7 +669,7 @@
       });
     }
 
-    document.querySelectorAll(".apo-bottom-nav .navItem").forEach(btn => {
+    document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
       if(btn.__apoNavBound) return;
       btn.__apoNavBound = true;
       btn.addEventListener("click", () => navTo(btn.dataset.tab));
