@@ -382,6 +382,9 @@
       .apo-menu-close{width:36px;height:36px;border:0;border-radius:50%;background:#f1f5f9;color:#111827;font-size:20px;font-weight:900;cursor:pointer;}
       .apo-menu-list{padding:12px 0;display:grid;gap:4px}.apo-menu-item{height:48px;border:0;background:#fff;border-radius:14px;display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;text-align:left;color:#111827;font-weight:900;font-size:15px;cursor:pointer;padding:0 10px}.apo-menu-item:hover{background:#f8fafc}.apo-menu-item svg{width:23px;height:23px;color:#6d28d9}.apo-menu-item.danger{color:#dc2626}.apo-menu-item.danger svg{color:#dc2626}.apo-menu-sep{height:1px;background:rgba(226,232,240,.95);margin:8px 0}
       .container#app{max-width:980px;margin:0 auto;padding:24px 20px 140px!important;}
+      .bottomNav .navItem::before{content:none!important;display:none!important;}
+      .bottomNav .navItem .caSvgIcon{width:24px;height:24px;display:block;color:currentColor;flex:0 0 auto;}
+      .bottomNav .navItem.active .caSvgIcon{color:#6d28d9;}
       .presBrandCourse{font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
       .apo-page{display:flex;flex-direction:column;gap:22px}
       .apo-title-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
@@ -601,6 +604,12 @@
   }
 
   function bindAfterRender(){
+    const inviteBtn = $("apoInviteBtn");
+    if(inviteBtn && !inviteBtn.__apoInviteBound){
+      inviteBtn.__apoInviteBound = true;
+      inviteBtn.addEventListener("click", openInviteModal);
+    }
+
     const search = $("apoSearch");
     if(search){
       search.addEventListener("input", (ev) => {
@@ -643,7 +652,23 @@
     location.assign(urls[tab] || homeUrl());
   }
 
+  function hydrateBottomNavIcons(){
+    const icons = {
+      home: "home",
+      campanas: "flag",
+      deudores: "clock",
+      informes: "file"
+    };
+    document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
+      const label = btn.querySelector("span")?.textContent || "";
+      const iconName = icons[btn.dataset.tab] || "home";
+      btn.setAttribute("data-ca-icon-ready", "1");
+      btn.innerHTML = `<span class="caSvgIcon">${icon(iconName)}</span><span>${esc(label)}</span>`;
+    });
+  }
+
   function setupShell(){
+    hydrateBottomNavIcons();
     const menuBtn = $("menuBtn");
     const menu = $("menuDropdown");
     if(menuBtn && menu && !menuBtn.__apoMenuBound){
@@ -850,7 +875,7 @@
           <p class="apo-subtitle">Gestiona los apoderados del curso y su acceso a la información de Cursapp.</p>
           <p class="apo-subtitle" style="margin-top:6px;"><b>Tesorero:</b> ${esc(tes ? (tes.apoderadoName || tes.email) : "Sin asignar")}</p>
         </div>
-        <button class="apo-primary" type="button" onclick="window.__openInviteModal()">${icon("userPlus")} Invitar apoderado</button>
+        <button class="apo-primary" id="apoInviteBtn" type="button">${icon("userPlus")} Invitar apoderado</button>
       </section>
       ${kpis}
       ${progress}
