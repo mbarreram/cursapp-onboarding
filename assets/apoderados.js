@@ -151,18 +151,16 @@
     const who = $("whoLine");
     if(!who) return;
     const p = courseParts(STATE.curso || {});
-    const sessionEmail = String(STATE.session?.email || STATE.session?.userId || "").toLowerCase().trim();
-    const member = (STATE.miembros || []).find(e => sessionEmail && String(e.email || "").toLowerCase().trim() === sessionEmail && e.role === "apoderado")
-      || (STATE.miembros || []).find(e => e.role === "apoderado" && e.status === "approved")
-      || (STATE.miembros || []).find(e => e.role === "apoderado");
-    const apoderadoName = member?.apoderadoName || "Apoderado";
-    const alumnoName = member?.alumno || "Alumno/a";
-    const course = [p.school, p.course, p.year, p.jornada].filter(Boolean).join(" · ");
+    const name = currentUserName();
+    const school = String(p.school || "Colegio").replace(/\s*\((Demo|demo)\)\s*/g, "").trim();
+    const course = String(p.course || "Curso").replace(/\s+/g, "").trim();
+    const logo = document.querySelector("header .brand .logo");
+    if(logo) logo.textContent = String(name || "P").trim().charAt(0).toUpperCase() || "P";
     who.innerHTML = `
       <div>
-        <div id="whoRoleTitle" style="font-weight:950;">Rol: Apoderado</div>
-        <div class="muted presBrandRole">${esc(apoderadoName)} · Apoderado</div>
-        <div class="muted presBrandCourse">${esc(alumnoName)} · ${esc(course || "Curso activo")}</div>
+        <div class="presBrandName">${esc(name)}</div>
+        <div class="muted presBrandRole">Presidente</div>
+        <div class="muted presBrandCourse">${esc(school)} · ${esc(course)}</div>
       </div>
     `;
   }
@@ -388,8 +386,6 @@
       .apo-menu-list{padding:12px 0;display:grid;gap:4px}.apo-menu-item{height:48px;border:0;background:#fff;border-radius:14px;display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:center;text-align:left;color:#111827;font-weight:900;font-size:15px;cursor:pointer;padding:0 10px}.apo-menu-item:hover{background:#f8fafc}.apo-menu-item svg{width:23px;height:23px;color:#6d28d9}.apo-menu-item.danger{color:#dc2626}.apo-menu-item.danger svg{color:#dc2626}.apo-menu-sep{height:1px;background:rgba(226,232,240,.95);margin:8px 0}
       .container#app{max-width:980px;margin:0 auto;padding:24px 20px 140px!important;}
       .bottomNav .navItem::before{content:none!important;display:none!important;}
-      .bottomNav .navItem .caSvgIcon{width:24px;height:24px;display:block;color:currentColor;flex:0 0 auto;}
-      .bottomNav .navItem.active .caSvgIcon{color:#6d28d9;}
       .presBrandCourse{font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;}
       .apo-page{display:flex;flex-direction:column;gap:22px}
       .apo-title-row{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end}
@@ -635,9 +631,21 @@
 
   function currentUserName(){
     const s = STATE.session || {};
-    const raw = s.name || s.nombre || s.full_name || s.email || "Presidente";
-    if(String(raw).includes("@")) return "Presidente del curso";
-    return raw;
+    const meta = s.user_metadata || s.raw_user_meta_data || s.metadata || s.profile || s.user || {};
+    const candidates = [
+      meta.full_name, meta.name, meta.nombre,
+      s.full_name, s.fullName, s.name, s.nombre,
+      s.presidente_nombre, s.nombre_presidente,
+      s.email
+    ];
+    for(const value of candidates){
+      const text = String(value || "").trim();
+      if(!text || text.includes("@")) continue;
+      const low = text.toLowerCase();
+      if(low === "usuario" || low === "presidente") continue;
+      return text;
+    }
+    return "Presidente del curso";
   }
 
   function homeUrl(){
