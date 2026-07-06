@@ -2975,11 +2975,11 @@ window.payNow = async function(id){
       {label:"Comprobantes", sub:"Descarga tus comprobantes de pago", icon:"receipt", cls:"", action:"go('payments')"},
       {label:"Informes", sub:"Revisa los informes publicados del curso", icon:"report", cls:"", action:"go('informes')"},
       {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
-    ].map(x=>`<button class="apoV2Quick ${x.cls}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon">${apoSvg(x.icon)}</span><span><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></span><i>${apoSvg("chevron")}</i></button>`).join("");
+    ].map(x=>`<button class="apoV2Quick quick-access-card ${x.cls} ${x.cls === "market" ? "market-access-card" : ""}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon apoderado-icon-bubble ${x.cls === "market" ? "market-icon" : ""}">${apoSvg(x.icon)}</span><span><b class="${x.cls === "market" ? "market-access-card-title" : ""}">${esc(x.label)}</b><small class="${x.cls === "market" ? "market-access-card-subtitle" : ""}">${esc(x.sub)}</small></span><i>${apoSvg("chevron")}</i></button>`).join("");
 
     app.innerHTML = `
-      <div class="apoV2Page">
-        <section class="apoV2DueCard">
+      <div class="apoV2Page apoderado-home">
+        <section class="apoV2DueCard next-payment-card">
           <div class="apoV2DateBox"><span>${esc(nextDay)}</span><b>${esc(nextMonth)}</b></div>
           <div class="apoV2DueMain">
             <p class="apoV2Kicker">Próxima cuota</p>
@@ -2993,16 +2993,16 @@ window.payNow = async function(id){
           </div>
         </section>
 
-        <section class="apoV2Summary" aria-label="Resumen rápido">
-          <article class="is-pending"><span>${apoSvg("card")}</span><small>Pendiente</small><b>${clp(pendingTotal)}</b><em>${pending.length} ${pending.length === 1 ? "pago" : "pagos"}</em></article>
-          <article class="is-paid"><span>${apoSvg("check")}</span><small>Pagados</small><b>${paid.length}</b><em>Este año</em></article>
-          <article class="is-next"><span>${apoSvg("calendar")}</span><small>Próximas</small><b>${nextThisMonth}</b><em>Este mes</em></article>
-          <article class="is-total"><span>${apoSvg("chart")}</span><small>Total pagado</small><b>${clp(paidTotal)}</b><em>Este año</em></article>
+        <section class="apoV2Summary quick-summary-card" aria-label="Resumen rápido">
+          <article class="quick-summary-item is-pending"><span class="icon-circle">${apoSvg("card")}</span><small>Pendiente</small><b>${clp(pendingTotal)}</b><em>${pending.length} ${pending.length === 1 ? "pago" : "pagos"}</em></article>
+          <article class="quick-summary-item is-paid"><span class="icon-circle">${apoSvg("check")}</span><small>Pagados</small><b>${paid.length}</b><em>Este año</em></article>
+          <article class="quick-summary-item is-next"><span class="icon-circle">${apoSvg("calendar")}</span><small>Próximas</small><b>${nextThisMonth}</b><em>Este mes</em></article>
+          <article class="quick-summary-item is-total"><span class="icon-circle">${apoSvg("chart")}</span><small>Total pagado</small><b>${clp(paidTotal)}</b><em>Este año</em></article>
         </section>
 
         <section class="apoV2Section">
           <h2>Accesos rápidos</h2>
-          <div class="apoV2QuickGrid">${quick}</div>
+          <div class="apoV2QuickGrid quick-access-grid">${quick}</div>
         </section>
 
         <section class="apoV2Section apoV2NoticeSection">
