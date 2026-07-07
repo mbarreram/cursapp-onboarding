@@ -358,6 +358,536 @@ body.apoderado-ui-v24 .bottomNav{
   body.apoderado-ui-v24 .apoV2DueMain h1{font-size:25px!important;}
   body.apoderado-ui-v24 .apoV2DueMain strong{font-size:30px!important;}
 }
+
+/* CORRECCION HOME APODERADO MOBILE - FINAL REAL */
+@media(max-width:430px){
+  body.apoderado-ui-v24 header .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 48px 48px!important;
+    gap:8px!important;
+    align-items:center!important;
+    min-height:88px!important;
+    padding:14px 16px!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 header .brand{
+    display:grid!important;
+    grid-template-columns:56px minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:center!important;
+    min-width:0!important;
+    width:auto!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 header .brand .logo{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    max-width:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    border-radius:19px!important;
+    font-size:24px!important;
+  }
+  body.apoderado-ui-v24 #whoRoleTitle{
+    font-size:22px!important;
+    line-height:1.05!important;
+    max-width:100%!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body.apoderado-ui-v24 #whoCourseLine{
+    font-size:14px!important;
+    line-height:1.15!important;
+    color:#64748b!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    display:block!important;
+    max-height:none!important;
+    -webkit-line-clamp:unset!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost{
+    position:static!important;
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    max-width:48px!important;
+    margin:0!important;
+    overflow:visible!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost > *:not(:last-child){display:none!important;}
+  body.apoderado-ui-v24 #avisosBellHost button,
+  body.apoderado-ui-v24 #avisosBellHost .btn,
+  body.apoderado-ui-v24 #menuBtn{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    min-height:48px!important;
+    max-width:48px!important;
+    max-height:48px!important;
+    position:static!important;
+    inset:auto!important;
+    padding:0!important;
+    border-radius:18px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    box-sizing:border-box!important;
+    transform:none!important;
+  }
+  body.apoderado-ui-v24 .container{
+    padding:14px 0 150px!important;
+    max-width:430px!important;
+    overflow-x:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2Page.apoderado-home{
+    padding-bottom:150px!important;
+    gap:18px!important;
+    overflow-x:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueCarousel.next-payment-card{
+    display:block!important;
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:18px auto 20px!important;
+    padding:0!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:hidden!important;
+    border-radius:24px!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueTrack{
+    display:flex!important;
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueSlide{
+    flex:0 0 100%!important;
+    width:100%!important;
+    min-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    padding:20px!important;
+    display:grid!important;
+    grid-template-columns:74px minmax(0,1fr)!important;
+    grid-template-areas:"date main" ". actions"!important;
+    gap:14px 16px!important;
+    align-items:start!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .apoV2DateBox{
+    width:74px!important;
+    height:82px!important;
+    min-width:74px!important;
+    border-radius:20px!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueMain h1{
+    font-size:28px!important;
+    line-height:1.05!important;
+    margin:0 0 6px!important;
+    white-space:normal!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueMain strong{
+    font-size:38px!important;
+    line-height:1!important;
+    margin-top:8px!important;
+    display:block!important;
+    max-width:100%!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueActions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    width:100%!important;
+    margin-top:2px!important;
+  }
+  body.apoderado-ui-v24 .apoV2Pay,
+  body.apoderado-ui-v24 .apoV2Detail{
+    height:46px!important;
+    min-height:46px!important;
+    border-radius:16px!important;
+    font-size:15px!important;
+  }
+  body.apoderado-ui-v24 .quick-summary-card,
+  body.apoderado-ui-v24 .apoV2Summary{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+    padding:14px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    border-radius:24px!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .quick-summary-item,
+  body.apoderado-ui-v24 .apoV2Summary article{
+    min-width:0!important;
+    padding:14px!important;
+    border-radius:18px!important;
+  }
+  body.apoderado-ui-v24 .quick-summary-value,
+  body.apoderado-ui-v24 .apoV2Summary b{
+    font-size:24px!important;
+    line-height:1.05!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body.apoderado-ui-v24 .quick-access-grid,
+  body.apoderado-ui-v24 .apoV2QuickGrid{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+  body.apoderado-ui-v24 .quick-access-card,
+  body.apoderado-ui-v24 .market-access-card,
+  body.apoderado-ui-v24 .apoV2Quick{
+    min-height:86px!important;
+    max-height:none!important;
+    padding:14px 16px!important;
+    border-radius:22px!important;
+    display:grid!important;
+    grid-template-columns:54px minmax(0,1fr) 24px!important;
+    gap:12px!important;
+    align-items:center!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2Quick b,
+  body.apoderado-ui-v24 .market-access-card-title{
+    font-size:17px!important;
+    line-height:1.1!important;
+  }
+  body.apoderado-ui-v24 .apoV2Quick small,
+  body.apoderado-ui-v24 .market-access-card-subtitle{
+    font-size:13px!important;
+    line-height:1.25!important;
+  }
+  body.apoderado-ui-v24 .apoV2Notice,
+  body.apoderado-ui-v24 .apoV2RealAvisos{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary{
+    min-height:0!important;
+    padding:14px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary i{
+    width:46px!important;
+    height:46px!important;
+    min-width:46px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary b{
+    font-size:18px!important;
+    line-height:1.15!important;
+  }
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"]{
+    width:calc(100% - 32px)!important;
+    margin:0 auto 92px!important;
+  }
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"] .cursappRetailSlot,
+  body.apoderado-ui-v24 .cursappRetailSlot{
+    margin-top:0!important;
+    margin-bottom:0!important;
+  }
+  body.apoderado-ui-v24 .bottomNav{
+    position:fixed!important;
+    left:16px!important;
+    right:16px!important;
+    bottom:calc(env(safe-area-inset-bottom) + 12px)!important;
+    height:76px!important;
+    border-radius:28px!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,1fr)!important;
+    z-index:50000!important;
+  }
+}
+
+/* CORRECCION HOME APODERADO MOBILE - capa definitiva */
+@media(max-width:430px){
+  body.apoderado-ui-v24 header .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 48px 48px!important;
+    gap:8px!important;
+    align-items:center!important;
+    min-height:88px!important;
+    padding:14px 16px!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 header .brand{
+    display:grid!important;
+    grid-template-columns:56px minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:center!important;
+    min-width:0!important;
+    width:auto!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 header .brand .logo{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    max-width:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    border-radius:19px!important;
+    font-size:24px!important;
+  }
+  body.apoderado-ui-v24 #whoRoleTitle{
+    font-size:22px!important;
+    line-height:1.05!important;
+    max-width:100%!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body.apoderado-ui-v24 #whoCourseLine{
+    font-size:14px!important;
+    line-height:1.15!important;
+    color:#64748b!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    max-width:48px!important;
+    overflow:visible!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost > *:not(:last-child){
+    display:none!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost button,
+  body.apoderado-ui-v24 #menuBtn{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    min-height:48px!important;
+    max-width:48px!important;
+    max-height:48px!important;
+    position:static!important;
+    padding:0!important;
+    border-radius:18px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    box-sizing:border-box!important;
+  }
+
+  body.apoderado-ui-v24 .container{
+    padding:14px 0 150px!important;
+    max-width:430px!important;
+    overflow-x:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2Page.apoderado-home{
+    padding-bottom:150px!important;
+    gap:18px!important;
+    overflow-x:hidden!important;
+  }
+
+  body.apoderado-ui-v24 .apoV2DueCarousel.next-payment-card{
+    display:block!important;
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:18px auto 20px!important;
+    padding:0!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:hidden!important;
+    border-radius:24px!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueTrack{
+    display:flex!important;
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueSlide{
+    flex:0 0 100%!important;
+    width:100%!important;
+    min-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    padding:20px!important;
+    display:grid!important;
+    grid-template-columns:74px minmax(0,1fr)!important;
+    grid-template-areas:"date main" ". actions"!important;
+    gap:14px 16px!important;
+    align-items:start!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .apoV2DateBox{
+    width:74px!important;
+    height:82px!important;
+    min-width:74px!important;
+    border-radius:20px!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueMain h1{
+    font-size:28px!important;
+    line-height:1.05!important;
+    margin:0 0 6px!important;
+    white-space:normal!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueMain strong{
+    font-size:38px!important;
+    line-height:1!important;
+    margin-top:8px!important;
+    display:block!important;
+    max-width:100%!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueActions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    width:100%!important;
+    margin-top:2px!important;
+  }
+  body.apoderado-ui-v24 .apoV2Pay,
+  body.apoderado-ui-v24 .apoV2Detail{
+    height:46px!important;
+    min-height:46px!important;
+    border-radius:16px!important;
+    font-size:15px!important;
+  }
+
+  body.apoderado-ui-v24 .quick-summary-card,
+  body.apoderado-ui-v24 .apoV2Summary{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+    padding:14px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    border-radius:24px!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .quick-summary-item,
+  body.apoderado-ui-v24 .apoV2Summary article{
+    min-width:0!important;
+    padding:14px!important;
+    border-radius:18px!important;
+  }
+  body.apoderado-ui-v24 .quick-summary-value,
+  body.apoderado-ui-v24 .apoV2Summary b{
+    font-size:24px!important;
+    line-height:1.05!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body.apoderado-ui-v24 .quick-access-grid,
+  body.apoderado-ui-v24 .apoV2QuickGrid{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+  body.apoderado-ui-v24 .quick-access-card,
+  body.apoderado-ui-v24 .market-access-card,
+  body.apoderado-ui-v24 .apoV2Quick{
+    min-height:86px!important;
+    max-height:none!important;
+    padding:14px 16px!important;
+    border-radius:22px!important;
+    display:grid!important;
+    grid-template-columns:54px minmax(0,1fr) 24px!important;
+    gap:12px!important;
+    align-items:center!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 .apoV2Quick b,
+  body.apoderado-ui-v24 .market-access-card-title{
+    font-size:17px!important;
+    line-height:1.1!important;
+  }
+  body.apoderado-ui-v24 .apoV2Quick small,
+  body.apoderado-ui-v24 .market-access-card-subtitle{
+    font-size:13px!important;
+    line-height:1.25!important;
+  }
+
+  body.apoderado-ui-v24 .apoV2NoticeSection{
+    margin-bottom:0!important;
+  }
+  body.apoderado-ui-v24 .apoV2Notice,
+  body.apoderado-ui-v24 .apoV2RealAvisos{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary{
+    min-height:0!important;
+    padding:14px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary i{
+    width:46px!important;
+    height:46px!important;
+    min-width:46px!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary b{
+    font-size:18px!important;
+    line-height:1.15!important;
+  }
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6ListItem{
+    padding:11px!important;
+  }
+
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"]{
+    width:calc(100% - 32px)!important;
+    margin:0 auto 92px!important;
+  }
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"] .cursappRetailSlot,
+  body.apoderado-ui-v24 .cursappRetailSlot{
+    margin-top:0!important;
+    margin-bottom:0!important;
+  }
+
+  body.apoderado-ui-v24 .bottomNav{
+    position:fixed!important;
+    left:16px!important;
+    right:16px!important;
+    bottom:calc(env(safe-area-inset-bottom) + 12px)!important;
+    height:76px!important;
+    border-radius:28px!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,1fr)!important;
+    z-index:50000!important;
+  }
+}
 html,body{max-width:100%;overflow-x:hidden!important;}
 body.apoderado-ui-v24{background:var(--ca-bg)!important;font-size:14px!important;color:var(--ca-text)!important;}
 body.apoderado-ui-v24 *{letter-spacing:-.015em;}
@@ -1824,4 +2354,40 @@ body.apoderado-ui-v24 .bottomNav{
   }
   body.apoderado-ui-v24 .apoV2DueMain h1{font-size:25px!important;}
   body.apoderado-ui-v24 .apoV2DueMain strong{font-size:30px!important;}
+}
+
+/* CORRECCION HOME APODERADO MOBILE - EOF OVERRIDE */
+@media(max-width:430px){
+  body.apoderado-ui-v24 header .topbar{display:grid!important;grid-template-columns:minmax(0,1fr) 48px 48px!important;gap:8px!important;align-items:center!important;min-height:88px!important;padding:14px 16px!important;box-sizing:border-box!important;overflow:hidden!important;}
+  body.apoderado-ui-v24 header .brand{display:grid!important;grid-template-columns:56px minmax(0,1fr)!important;gap:10px!important;align-items:center!important;min-width:0!important;width:auto!important;overflow:hidden!important;}
+  body.apoderado-ui-v24 header .brand .logo{width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;min-height:56px!important;max-height:56px!important;border-radius:19px!important;font-size:24px!important;}
+  body.apoderado-ui-v24 #whoRoleTitle{font-size:22px!important;line-height:1.05!important;max-width:100%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+  body.apoderado-ui-v24 #whoCourseLine{font-size:14px!important;line-height:1.15!important;color:#64748b!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;display:block!important;max-height:none!important;-webkit-line-clamp:unset!important;}
+  body.apoderado-ui-v24 #avisosBellHost{position:static!important;width:48px!important;height:48px!important;min-width:48px!important;max-width:48px!important;margin:0!important;overflow:visible!important;display:flex!important;align-items:center!important;justify-content:center!important;}
+  body.apoderado-ui-v24 #avisosBellHost > *:not(:last-child){display:none!important;}
+  body.apoderado-ui-v24 #avisosBellHost button,body.apoderado-ui-v24 #avisosBellHost .btn,body.apoderado-ui-v24 #menuBtn{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;max-width:48px!important;max-height:48px!important;position:static!important;inset:auto!important;padding:0!important;border-radius:18px!important;display:flex!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;transform:none!important;}
+  body.apoderado-ui-v24 .container{padding:14px 0 150px!important;max-width:430px!important;overflow-x:hidden!important;}
+  body.apoderado-ui-v24 .apoV2Page.apoderado-home{padding-bottom:150px!important;gap:18px!important;overflow-x:hidden!important;}
+  body.apoderado-ui-v24 .apoV2DueCarousel.next-payment-card{display:block!important;width:calc(100% - 32px)!important;max-width:calc(100% - 32px)!important;margin:18px auto 20px!important;padding:0!important;min-height:0!important;height:auto!important;max-height:none!important;overflow:hidden!important;border-radius:24px!important;box-sizing:border-box!important;}
+  body.apoderado-ui-v24 .apoV2DueTrack{display:flex!important;width:100%!important;min-width:0!important;height:auto!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;}
+  body.apoderado-ui-v24 .apoV2DueSlide{flex:0 0 100%!important;width:100%!important;min-width:100%!important;height:auto!important;min-height:0!important;padding:20px!important;display:grid!important;grid-template-columns:74px minmax(0,1fr)!important;grid-template-areas:"date main" ". actions"!important;gap:14px 16px!important;align-items:start!important;box-sizing:border-box!important;}
+  body.apoderado-ui-v24 .apoV2DateBox{width:74px!important;height:82px!important;min-width:74px!important;border-radius:20px!important;}
+  body.apoderado-ui-v24 .apoV2DueMain h1{font-size:28px!important;line-height:1.05!important;margin:0 0 6px!important;white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;}
+  body.apoderado-ui-v24 .apoV2DueMain strong{font-size:38px!important;line-height:1!important;margin-top:8px!important;display:block!important;max-width:100%!important;}
+  body.apoderado-ui-v24 .apoV2DueActions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;width:100%!important;margin-top:2px!important;}
+  body.apoderado-ui-v24 .apoV2Pay,body.apoderado-ui-v24 .apoV2Detail{height:46px!important;min-height:46px!important;border-radius:16px!important;font-size:15px!important;}
+  body.apoderado-ui-v24 .quick-summary-card,body.apoderado-ui-v24 .apoV2Summary{width:calc(100% - 32px)!important;max-width:calc(100% - 32px)!important;margin:0 auto 24px!important;padding:14px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;border-radius:24px!important;overflow:hidden!important;}
+  body.apoderado-ui-v24 .quick-summary-item,body.apoderado-ui-v24 .apoV2Summary article{min-width:0!important;padding:14px!important;border-radius:18px!important;}
+  body.apoderado-ui-v24 .quick-summary-value,body.apoderado-ui-v24 .apoV2Summary b{font-size:24px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+  body.apoderado-ui-v24 .quick-access-grid,body.apoderado-ui-v24 .apoV2QuickGrid{width:calc(100% - 32px)!important;max-width:calc(100% - 32px)!important;margin:0 auto 24px!important;display:grid!important;grid-template-columns:1fr!important;gap:12px!important;}
+  body.apoderado-ui-v24 .quick-access-card,body.apoderado-ui-v24 .market-access-card,body.apoderado-ui-v24 .apoV2Quick{min-height:86px!important;max-height:none!important;padding:14px 16px!important;border-radius:22px!important;display:grid!important;grid-template-columns:54px minmax(0,1fr) 24px!important;gap:12px!important;align-items:center!important;overflow:hidden!important;}
+  body.apoderado-ui-v24 .apoV2Quick b,body.apoderado-ui-v24 .market-access-card-title{font-size:17px!important;line-height:1.1!important;}
+  body.apoderado-ui-v24 .apoV2Quick small,body.apoderado-ui-v24 .market-access-card-subtitle{font-size:13px!important;line-height:1.25!important;}
+  body.apoderado-ui-v24 .apoV2Notice,body.apoderado-ui-v24 .apoV2RealAvisos{width:calc(100% - 32px)!important;max-width:calc(100% - 32px)!important;margin:0 auto 24px!important;}
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary{min-height:0!important;padding:14px!important;}
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary i{width:46px!important;height:46px!important;min-width:46px!important;}
+  body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section summary b{font-size:18px!important;line-height:1.15!important;}
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"]{width:calc(100% - 32px)!important;margin:0 auto 92px!important;}
+  body.apoderado-ui-v24 [data-monetization-slot="apoderado"] .cursappRetailSlot,body.apoderado-ui-v24 .cursappRetailSlot{margin-top:0!important;margin-bottom:0!important;}
+  body.apoderado-ui-v24 .bottomNav{position:fixed!important;left:16px!important;right:16px!important;bottom:calc(env(safe-area-inset-bottom) + 12px)!important;height:76px!important;border-radius:28px!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;z-index:50000!important;}
 }
