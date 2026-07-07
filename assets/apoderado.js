@@ -2969,6 +2969,34 @@ window.payNow = async function(id){
     const nextMonth = nextDue?.dueDate ? apoMonthShort(nextDue.dueDate) : "MES";
     const nextThisMonth = pending.filter(p => String(p.dueDate || "").slice(0,7) === new Date().toISOString().slice(0,7)).length;
     const payAction = nextDue?.id ? `payNow('${esc(nextDue.id)}')` : `go('payments')`;
+    const dueItems = pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate)).slice(0,6);
+    const dueSlides = (dueItems.length ? dueItems : [null]).map((p, index)=>{
+      const title = p?.title || p?.concept || "Sin pagos pendientes";
+      const amount = p ? clp(p.amountRemaining ?? p.amount ?? 0) : "$0";
+      const days = p?.dueDate ? Math.max(0, daysTo(p.dueDate) || 0) : 0;
+      const date = p?.dueDate ? new Date(String(p.dueDate)+"T00:00:00") : null;
+      const day = date ? String(date.getDate()).padStart(2,"0") : "--";
+      const month = p?.dueDate ? apoMonthShort(p.dueDate) : "MES";
+      const action = p?.id ? `payNow('${esc(p.id)}')` : `go('payments')`;
+      const meta = p?.dueDate ? `Vence el ${esc(p.dueDate)} · quedan ${days} día(s)` : "Te avisaremos cuando existan nuevas cuotas.";
+      return `
+        <article class="apoV2DueSlide" aria-label="${esc(title)} ${dueItems.length ? `${index+1} de ${dueItems.length}` : ""}">
+          <div class="apoV2DateBox"><span>${esc(day)}</span><b>${esc(month)}</b></div>
+          <div class="apoV2DueMain">
+            <p class="apoV2Kicker">Próxima cuota</p>
+            <h1>${esc(title)}</h1>
+            <p class="apoV2DueMeta">${meta}</p>
+            <strong>${amount}</strong>
+          </div>
+          <div class="apoV2DueActions">
+            <button class="apoV2Pay" type="button" onclick="${action}">${p ? "Pagar ahora" : "Ver pagos"}</button>
+            <button class="apoV2Detail" type="button" onclick="go('payments')">Ver detalle</button>
+          </div>
+        </article>`;
+    }).join("");
+    const dueDots = dueItems.length > 1
+      ? `<div class="apoV2DueDots" aria-label="Cuotas pendientes">${dueItems.map((_,i)=>`<span class="${i===0 ? "active" : ""}"></span>`).join("")}</div>`
+      : "";
 
     const quick = [
       {label:"Pagos", sub:"Revisa y paga tus cuotas pendientes", icon:"card", cls:"", action:"go('payments')"},
@@ -2976,21 +3004,20 @@ window.payNow = async function(id){
       {label:"Informes", sub:"Revisa los informes publicados del curso", icon:"report", cls:"", action:"go('informes')"},
       {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
     ].map(x=>`<button class="apoV2Quick quick-access-card ${x.cls} ${x.cls === "market" ? "market-access-card" : ""}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon apoderado-icon-bubble ${x.cls === "market" ? "market-icon" : ""}">${apoSvg(x.icon)}</span><span><b class="${x.cls === "market" ? "market-access-card-title" : ""}">${esc(x.label)}</b><small class="${x.cls === "market" ? "market-access-card-subtitle" : ""}">${esc(x.sub)}</small></span><i>${apoSvg("chevron")}</i></button>`).join("");
+    const realAvisosRaw = (typeof window.renderAvisosCursoCard === "function") ? window.renderAvisosCursoCard(3) : "";
+    const realAvisos = String(realAvisosRaw || "")
+      .replace(/Informaci\S+n importante/g, "Informacion importante")
+      .replace(/Avisos le\S+dos/g, "Avisos leidos")
+      .replace(/A\S+n no hay avisos/g, "Aun no hay avisos")
+      .replace(/Â·/g, "-")
+      .replace(/âŒ„/g, "")
+      .replace(/ðŸ“£/g, "!");
 
     app.innerHTML = `
       <div class="apoV2Page apoderado-home">
-        <section class="apoV2DueCard next-payment-card">
-          <div class="apoV2DateBox"><span>${esc(nextDay)}</span><b>${esc(nextMonth)}</b></div>
-          <div class="apoV2DueMain">
-            <p class="apoV2Kicker">Próxima cuota</p>
-            <h1>${esc(nextTitle)}</h1>
-            <p class="apoV2DueMeta">${nextDue?.dueDate ? `Vence el ${esc(nextDue.dueDate)} · quedan ${nextDays} día(s)` : "Te avisaremos cuando existan nuevas cuotas."}</p>
-            <strong>${nextAmount}</strong>
-          </div>
-          <div class="apoV2DueActions">
-            <button class="apoV2Pay" type="button" onclick="${payAction}">${nextDue ? "Pagar ahora" : "Ver pagos"}</button>
-            <button class="apoV2Detail" type="button" onclick="go('payments')">Ver detalle</button>
-          </div>
+        <section class="apoV2DueCarousel next-payment-card" aria-label="Próximas cuotas">
+          <div class="apoV2DueTrack">${dueSlides}</div>
+          ${dueDots}
         </section>
 
         <section class="apoV2Summary quick-summary-card" aria-label="Resumen rápido">
@@ -3006,16 +3033,8 @@ window.payNow = async function(id){
         </section>
 
         <section class="apoV2Section apoV2NoticeSection">
-          <div class="apoV2SectionHead"><h2>Avisos del curso</h2><button type="button" onclick="go('payments')">Ver todos</button></div>
-          <article class="apoV2Notice">
-            <span>${apoSvg("megaphone")}</span>
-            <div>
-              <h3>Reunión de apoderados</h3>
-              <p class="apoV2NoticeDate">Jueves 26 de junio · 19:00 hrs</p>
-              <p>Se realizará reunión presencial en la sala del curso. ¡Tu participación es importante!</p>
-              <small>Hace 2 días</small>
-            </div>
-          </article>
+          <div class="apoV2SectionHead"><h2>Avisos del curso</h2><button type="button" onclick="openAvisosInbox()">Ver todos</button></div>
+          <div class="apoV2RealAvisos">${realAvisos || `<article class="apoV2Notice"><span>${apoSvg("megaphone")}</span><div><h3>Sin avisos nuevos</h3><p>Aún no hay mensajes publicados por la directiva.</p></div></article>`}</div>
         </section>
         <div data-monetization-slot="apoderado"></div>
       </div>`;
