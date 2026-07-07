@@ -1282,10 +1282,13 @@ function dueBadge(iso){
   }
 
   function keepApoV45BellAlive(){
-    try{ keepApoV45BellAlive(); }catch(e){}
-    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 250);
-    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 900);
-    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 1800);
+    // V46: NO llamar recursivamente a esta misma función.
+    // La versión anterior producía recursión infinita y podía provocar recarga/error del navegador.
+    const refreshBell = ()=>{ try{ ensureApoV42Bell(); }catch(e){} };
+    refreshBell();
+    setTimeout(refreshBell, 250);
+    setTimeout(refreshBell, 900);
+    setTimeout(refreshBell, 1800);
   }
 
   function setupApoV44DueCarousel(){
