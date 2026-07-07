@@ -1211,3 +1211,328 @@ body.apoderado-ui-v24 #avisosBellHost > *:nth-child(n+2){
 body.apoderado-ui-v24 #avisosBellHost button span{
   transform:none!important;
 }
+
+/* =========================================================
+   Cursapp Apoderado Home V42 - Pulido Premium final
+   Capa visual. No modifica lógica de negocio.
+   ========================================================= */
+body.apoderado-home-v40{
+  --apo-bg:#f6f8fc;
+  --apo-card:#ffffff;
+  --apo-text:#101828;
+  --apo-muted:#667085;
+  --apo-line:#e7edf6;
+  --apo-primary:#6d28d9;
+  --apo-green:#16a34a;
+  --apo-orange:#f97316;
+  --apo-blue:#2563eb;
+  background:var(--apo-bg)!important;
+}
+body.apoderado-home-v40 header .topbar{
+  min-height:88px!important;
+  padding:14px 18px!important;
+  grid-template-columns:minmax(0,1fr) 52px 52px!important;
+  gap:10px!important;
+  border-bottom:1px solid rgba(226,232,240,.78)!important;
+}
+body.apoderado-home-v40 header .brand{
+  grid-template-columns:54px minmax(0,1fr)!important;
+  gap:12px!important;
+}
+body.apoderado-home-v40 header .brand .logo{
+  width:54px!important;
+  height:54px!important;
+  min-width:54px!important;
+  min-height:54px!important;
+  border-radius:19px!important;
+  font-size:24px!important;
+  box-shadow:0 14px 28px rgba(109,40,217,.18)!important;
+}
+body.apoderado-home-v40 #whoRoleTitle{
+  font-size:22px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  letter-spacing:-.035em!important;
+}
+body.apoderado-home-v40 #whoCourseLine,
+body.apoderado-home-v40 #whoCourseLine .apoHeaderRole,
+body.apoderado-home-v40 #whoCourseLine .apoHeaderCourse{
+  font-size:13px!important;
+  line-height:1.18!important;
+  font-weight:750!important;
+}
+body.apoderado-home-v40 #whoCourseLine .apoHeaderRole{margin-top:2px!important;}
+body.apoderado-home-v40 #avisosBellHost,
+body.apoderado-home-v40 #menuBtn,
+body.apoderado-home-v40 .apoV42BellBtn{
+  width:52px!important;
+  height:52px!important;
+  min-width:52px!important;
+  min-height:52px!important;
+  max-width:52px!important;
+  max-height:52px!important;
+  border-radius:18px!important;
+  position:static!important;
+  inset:auto!important;
+}
+body.apoderado-home-v40 #menuBtn,
+body.apoderado-home-v40 .apoV42BellBtn{
+  border:1px solid rgba(226,232,240,.95)!important;
+  background:#fff!important;
+  color:var(--apo-primary)!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.07)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:20px!important;
+  padding:0!important;
+}
+body.apoderado-home-v40 .apoV42BellBtn{position:relative!important;}
+body.apoderado-home-v40 .apoV42BellDot{
+  position:absolute!important;
+  top:11px!important;
+  right:12px!important;
+  width:8px!important;
+  height:8px!important;
+  border-radius:50%!important;
+  background:#ef4444!important;
+  border:2px solid #fff!important;
+}
+body.apoderado-home-v40 .container{
+  padding-top:16px!important;
+  padding-bottom:132px!important;
+}
+body.apoderado-home-v40 .apoV2Page.apoderado-home{
+  gap:18px!important;
+  padding-bottom:132px!important;
+}
+
+/* Próxima cuota: más compacta y equilibrada */
+body.apoderado-home-v40 .apoV2DueCarousel.next-payment-card{
+  margin:14px auto 18px!important;
+  border-radius:26px!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.065)!important;
+  background:linear-gradient(135deg,#fff 0%,#fbf8ff 68%,#fff 100%)!important;
+}
+body.apoderado-home-v40 .apoV2DueSlide{
+  min-height:188px!important;
+  padding:18px!important;
+  grid-template-columns:68px minmax(0,1fr) 74px!important;
+  grid-template-areas:"date main art" ". actions actions"!important;
+  gap:12px 14px!important;
+  align-items:center!important;
+}
+body.apoderado-home-v40 .apoV2DateBox{
+  width:68px!important;
+  height:78px!important;
+  min-width:68px!important;
+  border-radius:18px!important;
+  box-shadow:0 10px 22px rgba(15,23,42,.07)!important;
+}
+body.apoderado-home-v40 .apoV2DateBox b{height:24px!important;font-size:12px!important;}
+body.apoderado-home-v40 .apoV2DateBox span{font-size:29px!important;}
+body.apoderado-home-v40 .apoV2DateBox small{font-size:10px!important;}
+body.apoderado-home-v40 .apoV2Kicker{font-size:15px!important;margin-bottom:5px!important;}
+body.apoderado-home-v40 .apoV2DueMain h1{
+  font-size:24px!important;
+  line-height:1.08!important;
+  margin-bottom:5px!important;
+}
+body.apoderado-home-v40 .apoV2DueMeta{font-size:12.5px!important;line-height:1.22!important;margin-bottom:6px!important;}
+body.apoderado-home-v40 .apoV2DueMain strong{
+  font-size:32px!important;
+  line-height:1!important;
+  margin-top:6px!important;
+  overflow:visible!important;
+  text-overflow:unset!important;
+}
+body.apoderado-home-v40 .apoV2PayIllustration{
+  width:74px!important;
+  height:74px!important;
+  opacity:.92!important;
+}
+body.apoderado-home-v40 .apoV2Paper{width:42px!important;height:58px!important;left:10px!important;top:2px!important;}
+body.apoderado-home-v40 .apoV2Paper i{width:23px!important;height:4px!important;margin:9px auto!important;}
+body.apoderado-home-v40 .apoV2CardMini{width:40px!important;height:26px!important;right:2px!important;top:33px!important;}
+body.apoderado-home-v40 .apoV2Coin{width:28px!important;height:28px!important;font-size:14px!important;}
+body.apoderado-home-v40 .apoV2CheckMini{width:28px!important;height:28px!important;}
+body.apoderado-home-v40 .apoV2DueActions{gap:10px!important;}
+body.apoderado-home-v40 .apoV2Pay,
+body.apoderado-home-v40 .apoV2Detail{
+  height:42px!important;
+  min-height:42px!important;
+  border-radius:15px!important;
+  font-size:13.5px!important;
+}
+body.apoderado-home-v40 .apoV2DueDots{padding:0 18px 14px!important;}
+
+/* Resumen rápido: dashboard, no tabla */
+body.apoderado-home-v40 .apoV2SummaryCard.quick-summary-card{
+  width:calc(100% - 32px)!important;
+  margin:0 auto 18px!important;
+  padding:18px 14px 16px!important;
+  border-radius:26px!important;
+  background:#fff!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  box-shadow:0 12px 30px rgba(15,23,42,.055)!important;
+}
+body.apoderado-home-v40 .apoV2SummaryHead{margin-bottom:12px!important;}
+body.apoderado-home-v40 .apoV2SummaryHead h2{font-size:18px!important;letter-spacing:-.02em!important;}
+body.apoderado-home-v40 .apoV2SummaryHead button{font-size:13px!important;}
+body.apoderado-home-v40 .apoV2Summary{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+body.apoderado-home-v40 .apoV2Summary article,
+body.apoderado-home-v40 .quick-summary-item{
+  min-height:104px!important;
+  padding:6px 8px!important;
+  border:0!important;
+  background:transparent!important;
+  border-radius:0!important;
+  text-align:center!important;
+}
+body.apoderado-home-v40 .apoV2Summary article:not(:last-child):after{
+  top:18px!important;
+  bottom:18px!important;
+  background:rgba(226,232,240,.72)!important;
+}
+body.apoderado-home-v40 .apoV2Summary span,
+body.apoderado-home-v40 .quick-summary-item .icon-circle{
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  margin:0 auto 9px!important;
+  border-radius:16px!important;
+}
+body.apoderado-home-v40 .apoV2Summary span svg{width:21px!important;height:21px!important;}
+body.apoderado-home-v40 .apoV2Summary small{font-size:11px!important;line-height:1.05!important;font-weight:850!important;}
+body.apoderado-home-v40 .apoV2Summary b{
+  font-size:18px!important;
+  line-height:1.04!important;
+  margin-top:7px!important;
+  letter-spacing:-.04em!important;
+  overflow:visible!important;
+  text-overflow:unset!important;
+}
+body.apoderado-home-v40 .apoV2Summary em{font-size:10.5px!important;margin-top:6px!important;}
+
+/* Accesos rápidos: mantener aprobado, solo uniformar */
+body.apoderado-home-v40 .apoV2Section h2,
+body.apoderado-home-v40 .apoV2SectionHead h2{
+  font-size:20px!important;
+  margin:0 16px 12px!important;
+}
+body.apoderado-home-v40 .apoV2QuickGrid.quick-access-grid{
+  margin-bottom:18px!important;
+  border-radius:24px!important;
+}
+body.apoderado-home-v40 .apoV2Quick.quick-access-card{
+  min-height:78px!important;
+  padding:13px 15px!important;
+}
+body.apoderado-home-v40 .apoV2Quick b{font-size:16px!important;}
+body.apoderado-home-v40 .apoV2Quick small{font-size:12.5px!important;}
+
+/* Avisos compactos */
+body.apoderado-home-v40 .apoV2NoticeSection{margin-top:2px!important;margin-bottom:18px!important;}
+body.apoderado-home-v40 .apoV2RealAvisos{width:calc(100% - 32px)!important;margin:0 auto!important;}
+body.apoderado-home-v40 .apoV40NoticeCard{
+  min-height:88px!important;
+  grid-template-columns:50px minmax(0,1fr) 46px!important;
+  padding:13px!important;
+  border-radius:24px!important;
+}
+body.apoderado-home-v40 .apoV40NoticeIcon{
+  width:50px!important;
+  height:50px!important;
+  border-radius:17px!important;
+  font-size:23px!important;
+}
+body.apoderado-home-v40 .apoV40NoticeCopy h3{font-size:16px!important;}
+body.apoderado-home-v40 .apoV40NoticeCopy p{font-size:12.5px!important;line-height:1.22!important;}
+body.apoderado-home-v40 .apoV40NoticeCopy small{font-size:10.5px!important;}
+body.apoderado-home-v40 .apoV40NoticeCard button{height:34px!important;min-width:44px!important;font-size:12.5px!important;padding:0 10px!important;}
+body.apoderado-home-v40 [data-monetization-slot="apoderado"]{margin-top:2px!important;margin-bottom:92px!important;}
+
+/* Menú Premium V42 */
+body.apoderado-home-v40 #menuDropdown.apoV42Menu{
+  position:fixed!important;
+  top:96px!important;
+  right:16px!important;
+  left:auto!important;
+  width:min(336px,calc(100vw - 32px))!important;
+  max-height:min(70vh,560px)!important;
+  overflow:auto!important;
+  padding:12px!important;
+  border-radius:26px!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:0 26px 80px rgba(15,23,42,.22)!important;
+  backdrop-filter:blur(16px)!important;
+  z-index:60000!important;
+}
+body.apoderado-home-v40 .apoV42MenuHeader{
+  display:grid!important;
+  grid-template-columns:48px minmax(0,1fr)!important;
+  gap:12px!important;
+  align-items:center!important;
+  padding:8px 8px 12px!important;
+  border-bottom:1px solid rgba(226,232,240,.9)!important;
+  margin-bottom:10px!important;
+}
+body.apoderado-home-v40 .apoV42MenuAvatar{
+  width:48px!important;height:48px!important;border-radius:17px!important;
+  display:grid!important;place-items:center!important;
+  background:linear-gradient(135deg,#6d28d9,#4f46e5)!important;color:#fff!important;font-weight:900!important;
+}
+body.apoderado-home-v40 .apoV42MenuHeader strong{display:block!important;font-size:15px!important;line-height:1.1!important;color:#101828!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.apoderado-home-v40 .apoV42MenuHeader span{display:block!important;margin-top:4px!important;font-size:11.5px!important;line-height:1.2!important;color:#667085!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.apoderado-home-v40 .apoV42MenuGroup{padding:6px 0!important;}
+body.apoderado-home-v40 .apoV42MenuGroup small{display:block!important;margin:0 8px 7px!important;font-size:10.5px!important;line-height:1!important;color:#98a2b3!important;font-weight:900!important;letter-spacing:.08em!important;text-transform:uppercase!important;}
+body.apoderado-home-v40 .apoV42MenuItem{
+  width:100%!important;
+  min-height:44px!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  gap:9px!important;
+  align-items:center!important;
+  border:0!important;
+  background:transparent!important;
+  border-radius:16px!important;
+  padding:7px 9px!important;
+  text-align:left!important;
+  color:#101828!important;
+  box-shadow:none!important;
+}
+body.apoderado-home-v40 .apoV42MenuItem:hover,
+body.apoderado-home-v40 .apoV42MenuItem:focus-visible{background:#f8fafc!important;}
+body.apoderado-home-v40 .apoV42MenuItem.market{background:linear-gradient(135deg,#fff7d6,#ecfdf5)!important;color:#166534!important;}
+body.apoderado-home-v40 .apoV42MenuItem.danger{color:#b42318!important;}
+body.apoderado-home-v40 .apoV42MenuItem span{width:34px!important;height:34px!important;border-radius:13px!important;display:grid!important;place-items:center!important;background:#f2f4f7!important;font-size:16px!important;}
+body.apoderado-home-v40 .apoV42MenuItem.market span{background:#dcfce7!important;}
+body.apoderado-home-v40 .apoV42MenuItem b{font-size:14px!important;font-weight:850!important;line-height:1.1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+
+@media(max-width:380px){
+  body.apoderado-home-v40 header .topbar{grid-template-columns:minmax(0,1fr) 46px 46px!important;padding:12px!important;}
+  body.apoderado-home-v40 header .brand{grid-template-columns:50px minmax(0,1fr)!important;}
+  body.apoderado-home-v40 header .brand .logo{width:50px!important;height:50px!important;min-width:50px!important;}
+  body.apoderado-home-v40 #whoRoleTitle{font-size:20px!important;}
+  body.apoderado-home-v40 #whoCourseLine,
+  body.apoderado-home-v40 #whoCourseLine .apoHeaderRole,
+  body.apoderado-home-v40 #whoCourseLine .apoHeaderCourse{font-size:12px!important;}
+  body.apoderado-home-v40 #avisosBellHost,
+  body.apoderado-home-v40 #menuBtn,
+  body.apoderado-home-v40 .apoV42BellBtn{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important;}
+  body.apoderado-home-v40 .apoV2DueSlide{grid-template-columns:62px minmax(0,1fr)!important;grid-template-areas:"date main" ". actions"!important;}
+  body.apoderado-home-v40 .apoV2PayIllustration{display:none!important;}
+  body.apoderado-home-v40 .apoV2DueMain h1{font-size:22px!important;}
+  body.apoderado-home-v40 .apoV2DueMain strong{font-size:29px!important;}
+  body.apoderado-home-v40 .apoV2Summary b{font-size:16px!important;}
+}

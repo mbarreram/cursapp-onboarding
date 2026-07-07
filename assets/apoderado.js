@@ -1252,6 +1252,25 @@ function dueBadge(iso){
       <div class="apoHeaderRole">Apoderado de ${esc(apoFirstName(studentName) || "Alumno/a")}</div>
       <div class="apoHeaderCourse">${esc(schoolText)} · <b>${esc(courseText)}</b></div>
     `;
+    try{ ensureApoV42Bell(); }catch(e){}
+  }
+
+  function ensureApoV42Bell(){
+    const host = document.getElementById("avisosBellHost");
+    if(!host) return;
+    const hasInteractive = host.querySelector("button,a");
+    if(hasInteractive){
+      hasInteractive.classList.add("apoV42BellBtn");
+      return;
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "apoV42BellBtn";
+    b.setAttribute("aria-label", "Notificaciones");
+    b.innerHTML = `<span class="apoV42BellIcon">🔔</span><span class="apoV42BellDot" aria-hidden="true"></span>`;
+    b.onclick = (ev)=>{ ev.stopPropagation(); try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){} };
+    host.innerHTML = "";
+    host.appendChild(b);
   }
 
   function ensureAlumnoActivo() {
@@ -3216,43 +3235,74 @@ window.payNow = async function(id){
 
   // Menu
   function initMenu(){
-    if(menuBtn && menuDropdown){
-      if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display=(menuDropdown.style.display==="block"?"none":"block");};
-      document.addEventListener("click",()=> menuDropdown.style.display="none");
-    }
-
     const menu = document.getElementById("menuDropdown");
-if(menu && !document.getElementById("resetCourseBtn")){
-  const b = document.createElement("button");
-  b.id = "resetCourseBtn";
-  b.className = "btn ghost";
-  b.type = "button";
-  b.style.width = "100%";
-  b.style.textAlign = "left";
-  b.textContent = "ðŸ§¹ Reset curso (solo datos)";
-  b.onclick = ()=>{
-    if(!confirm("Esto borra campaÃ±as/pagos/gastos del curso. Â¿Continuar?")) return;
-    localStorage.removeItem("cursapp_tasks_v1");
-    localStorage.removeItem("cursapp_payments_v1");
-    localStorage.removeItem("cursapp_expenses_v1");
-    localStorage.removeItem("cursapp_monthly_reports_v1");
-    localStorage.removeItem("cursapp_receipts_v1");
-    alert("Curso reseteado âœ…");
-    location.reload();
-  };
-  // insertar antes de cerrar sesiÃ³n si existe
-  const logout = document.getElementById("logoutBtn") || document.getElementById("logoutMenuItem");
-  if(logout && logout.parentElement===menu) menu.insertBefore(b, logout);
-  else menu.appendChild(b);
-}
+    const btn = document.getElementById("menuBtn");
+    if(!menu || !btn) return;
 
+    btn.classList.add("apoV42MenuBtn");
+    btn.innerHTML = "☰";
 
-    if(goOnboarding){
-      goOnboarding.onclick = ()=> location.href="onboarding/dashboard.html?onboarding=1";
-    }
-    if(logoutBtn){
-      logoutBtn.onclick = ()=> location.href="/index.html";
-    }
+    const hasTesorero = (()=>{
+      try{
+        const raw = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
+        const roles = Array.isArray(raw.roles) ? raw.roles.map(x=>String(x).toLowerCase()) : [];
+        if(roles.some(r=>r.includes("tesor"))) return true;
+        const profiles = JSON.parse(localStorage.getItem(KEY_PROFILES) || "[]");
+        return (Array.isArray(profiles) ? profiles : []).some(p=>String(p?.role || p?.user?.role || "").toLowerCase().includes("tesor"));
+      }catch(_e){ return false; }
+    })();
+
+    const item = (icon,label,action,extra="") => `<button class="apoV42MenuItem ${extra}" type="button" data-action="${esc(action)}"><span>${icon}</span><b>${esc(label)}</b></button>`;
+    const group = (title,items) => `<div class="apoV42MenuGroup"><small>${esc(title)}</small>${items}</div>`;
+
+    menu.className = "apoV42Menu";
+    menu.innerHTML = `
+      <div class="apoV42MenuHeader">
+        <div class="apoV42MenuAvatar">${esc((document.getElementById("whoRoleTitle")?.textContent || "A").trim().charAt(0).toUpperCase() || "A")}</div>
+        <div><strong>${esc(document.getElementById("whoRoleTitle")?.textContent || "Apoderado")}</strong><span>${esc((document.getElementById("whoCourseLine")?.innerText || "Curso actual").replace(/\n/g," · "))}</span></div>
+      </div>
+      ${group("Principal", [
+        item("🏠","Inicio","home"),
+        item("💳","Pagos","payments"),
+        item("📄","Informes","informes"),
+        item("🛍️","Mercado Escolar","market","market")
+      ].join(""))}
+      ${group("Cuenta", [
+        item("👤","Mi perfil","perfil"),
+        item("🔔","Notificaciones","avisos"),
+        item("📄","Consentimientos","consentimientos")
+      ].join(""))}
+      ${group("Otros", [
+        (hasTesorero ? item("💰","Ir a tesorero","tesorero") : ""),
+        item("❓","Ayuda","ayuda"),
+        item("📱","Instalar App","install"),
+        item("🚪","Cerrar sesión","logout","danger")
+      ].join(""))}
+    `;
+
+    btn.onclick = (ev)=>{
+      ev.stopPropagation();
+      const open = menu.style.display === "block";
+      menu.style.display = open ? "none" : "block";
+      menu.setAttribute("aria-hidden", open ? "true" : "false");
+    };
+    menu.onclick = (ev)=>{
+      const it = ev.target && ev.target.closest ? ev.target.closest(".apoV42MenuItem") : null;
+      if(!it) return;
+      ev.stopPropagation();
+      const action = it.dataset.action || "";
+      menu.style.display = "none";
+      if(action === "home" || action === "payments" || action === "informes") return go(action);
+      if(action === "market") return location.href = "/mercado-escolar/mercado-escolar.html";
+      if(action === "perfil") return location.href = "/perfil.html";
+      if(action === "tesorero") return location.href = "/tesorero.html";
+      if(action === "avisos") return (typeof openAvisosInbox === "function" ? openAvisosInbox() : null);
+      if(action === "consentimientos") return alert("Consentimientos estará disponible próximamente.");
+      if(action === "ayuda") return (typeof openHelp === "function" ? openHelp("general") : alert("Ayuda Cursapp"));
+      if(action === "install") return alert("Para instalar Cursapp, usa Compartir → Agregar a inicio.");
+      if(action === "logout") return location.href = "/index.html";
+    };
+    document.addEventListener("click",()=>{ menu.style.display="none"; });
   }
 
 
