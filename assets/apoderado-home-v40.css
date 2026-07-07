@@ -1793,3 +1793,28 @@ body.apoderado-home-v40 .apoV2DueSlide{
     border-radius:16px!important;
   }
 }
+
+/* ===== V45: campana estable + estado vencida ===== */
+body.apoderado-home-v40 #avisosBellHost:empty::before{
+  content:"🔔";
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:44px;
+  height:44px;
+  border-radius:16px;
+  border:1px solid rgba(226,232,240,.95);
+  background:#fff;
+  box-shadow:0 10px 24px rgba(15,23,42,.07);
+  font-size:18px;
+}
+body.apoderado-home-v40 .apoV2DueSlide.is-overdue .apoV2DueMeta b,
+body.apoderado-home-v40 .apoV2DueSlide.is-overdue .apoV2DueMeta{
+  color:#dc2626!important;
+}
+body.apoderado-home-v40 .apoV2DueSlide.is-overdue .apoV2DateBox b{
+  background:#dc2626!important;
+}
+body.apoderado-home-v40 .apoV2DueSlide.is-overdue .apoV2Kicker{
+  color:#dc2626!important;
+}

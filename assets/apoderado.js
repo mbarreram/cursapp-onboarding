@@ -1252,18 +1252,26 @@ function dueBadge(iso){
       <div class="apoHeaderRole">Apoderado de ${esc(apoFirstName(studentName) || "Alumno/a")}</div>
       <div class="apoHeaderCourse">${esc(schoolText)} · <b>${esc(courseText)}</b></div>
     `;
-    try{ ensureApoV42Bell(); }catch(e){}
+    try{ keepApoV45BellAlive(); }catch(e){}
   }
 
   function ensureApoV42Bell(){
     const host = document.getElementById("avisosBellHost");
     if(!host) return;
-    // V44: este host debe ser SIEMPRE la campana de avisos.
-    // Algunos scripts legacy lo reemplazaban por un sobre o por otro botón.
+    // V45: mantener SIEMPRE visible la campana de avisos.
+    // Scripts legacy pueden reemplazar el host por un sobre o dejarlo vacío; lo corregimos de forma idempotente.
+    const current = host.querySelector(".apoV42BellBtn, .apoV44BellBtn, .apoV45BellBtn");
+    if(current && /🔔/.test(current.textContent || current.innerHTML || "")){
+      current.onclick = (ev)=>{
+        ev.stopPropagation();
+        try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
+      };
+      return;
+    }
     host.innerHTML = "";
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "apoV42BellBtn apoV44BellBtn";
+    b.className = "apoV42BellBtn apoV44BellBtn apoV45BellBtn";
     b.setAttribute("aria-label", "Avisos y notificaciones");
     b.innerHTML = `<span class="apoV42BellIcon" aria-hidden="true">🔔</span><span class="apoV42BellDot" aria-hidden="true"></span>`;
     b.onclick = (ev)=>{
@@ -1271,6 +1279,13 @@ function dueBadge(iso){
       try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
     };
     host.appendChild(b);
+  }
+
+  function keepApoV45BellAlive(){
+    try{ keepApoV45BellAlive(); }catch(e){}
+    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 250);
+    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 900);
+    setTimeout(()=>{ try{ keepApoV45BellAlive(); }catch(e){} }, 1800);
   }
 
   function setupApoV44DueCarousel(){
@@ -3050,16 +3065,21 @@ window.payNow = async function(id){
     const dueSlides = (dueItems.length ? dueItems : [null]).map((p, index)=>{
       const title = p?.title || p?.concept || "Sin pagos pendientes";
       const amount = p ? clp(p.amountRemaining ?? p.amount ?? 0) : "$0";
-      const days = p?.dueDate ? Math.max(0, daysTo(p.dueDate) || 0) : 0;
+      const rawDays = p?.dueDate ? (daysTo(p.dueDate) ?? 0) : 0;
+      const days = p?.dueDate ? Math.max(0, rawDays) : 0;
+      const isOverdue = !!p?.dueDate && rawDays < 0;
       const date = p?.dueDate ? new Date(String(p.dueDate)+"T00:00:00") : null;
       const day = date ? String(date.getDate()).padStart(2,"0") : "--";
       const month = p?.dueDate ? apoMonthShort(p.dueDate) : "MES";
       const weekday = p?.dueDate ? apoWeekday(p.dueDate) : "";
       const action = p?.id ? `payNow('${esc(p.id)}')` : `go('payments')`;
-      const meta = p?.dueDate ? `Vence el ${esc(p.dueDate)} · quedan ${days} día(s)` : "Te avisaremos cuando existan nuevas cuotas.";
-      const shortDue = p?.dueDate ? (days === 0 ? "Vence hoy" : `Vence en ${days} día(s)`) : "";
+      const overdueDays = Math.abs(rawDays);
+      const meta = p?.dueDate
+        ? (isOverdue ? `Venció el ${esc(p.dueDate)} · hace ${overdueDays} día(s)` : `Vence el ${esc(p.dueDate)} · quedan ${days} día(s)`)
+        : "Te avisaremos cuando existan nuevas cuotas.";
+      const shortDue = p?.dueDate ? (isOverdue ? "Vencida" : (days === 0 ? "Vence hoy" : `Vence en ${days} día(s)`)) : "";
       return `
-        <article class="apoV2DueSlide" aria-label="${esc(title)} ${dueItems.length ? `${index+1} de ${dueItems.length}` : ""}">
+        <article class="apoV2DueSlide ${isOverdue ? "is-overdue" : ""}" aria-label="${esc(title)} ${dueItems.length ? `${index+1} de ${dueItems.length}` : ""}">
           <div class="apoV2DateBox"><b>${esc(month)}</b><span>${esc(day)}</span><small>${esc(weekday)}</small></div>
           <div class="apoV2DueMain">
             <p class="apoV2Kicker">Próxima cuota</p>
@@ -3185,7 +3205,7 @@ window.payNow = async function(id){
         <div data-monetization-slot="apoderado"></div>
       </div>`;
     try{ setupApoV44DueCarousel(); }catch(e){}
-    try{ ensureApoV42Bell(); }catch(e){}
+    try{ keepApoV45BellAlive(); }catch(e){}
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
   renderPayments = function(){
@@ -3267,7 +3287,7 @@ window.payNow = async function(id){
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
-    try{ ensureApoV42Bell(); }catch(e){}
+    try{ keepApoV45BellAlive(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 
