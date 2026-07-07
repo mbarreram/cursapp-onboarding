@@ -757,3 +757,412 @@ body.apoderado-ui-v24 .cpHomeV5 .cpV5Next,
 body.apoderado-ui-v24 .cpHomeV5 .cpV5DueCard{
   overflow:hidden!important;
 }
+
+/* FIX LAYOUT HOME APODERADO MOBILE - 4 opciones, sin cortes ni superposiciones */
+@media (max-width: 520px){
+  html, body{
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+
+  body.apoderado-ui-v24 header{
+    position:sticky!important;
+    top:0!important;
+    z-index:1200!important;
+    background:rgba(255,255,255,.96)!important;
+    backdrop-filter:blur(12px)!important;
+    border-bottom:1px solid rgba(226,232,240,.85)!important;
+  }
+  body.apoderado-ui-v24 header .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    gap:8px!important;
+    align-items:center!important;
+    min-height:92px!important;
+    padding:14px 16px!important;
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 header .brand{
+    display:grid!important;
+    grid-template-columns:56px minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:center!important;
+    min-width:0!important;
+    width:100%!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24 header .brand .logo{
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    max-width:56px!important;
+    max-height:56px!important;
+    font-size:24px!important;
+    border-radius:18px!important;
+  }
+  body.apoderado-ui-v24 #whoRoleTitle{
+    max-width:100%!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    font-size:22px!important;
+    line-height:1.05!important;
+    font-weight:850!important;
+  }
+  body.apoderado-ui-v24 #whoCourseLine,
+  body.apoderado-ui-v24 #whoCourseLine .apoHeaderRole,
+  body.apoderado-ui-v24 #whoCourseLine .apoHeaderCourse{
+    max-width:100%!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    font-size:14px!important;
+    line-height:1.15!important;
+    font-weight:750!important;
+  }
+  body.apoderado-ui-v24 #whoCourseLine{
+    display:block!important;
+    max-height:34px!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost{
+    position:static!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:8px!important;
+    min-width:0!important;
+    flex:0 0 auto!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost > *:not(:last-child){
+    display:none!important;
+  }
+  body.apoderado-ui-v24 #avisosBellHost button,
+  body.apoderado-ui-v24 #avisosBellHost a,
+  body.apoderado-ui-v24 #menuBtn{
+    position:static!important;
+    inset:auto!important;
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    min-height:48px!important;
+    max-width:48px!important;
+    max-height:48px!important;
+    border-radius:18px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:0!important;
+    margin:0!important;
+    font-size:20px!important;
+    line-height:1!important;
+    z-index:auto!important;
+  }
+
+  body.apoderado-ui-v24 .container{
+    width:100%!important;
+    max-width:none!important;
+    padding:18px 0 130px!important;
+    margin:0!important;
+    overflow-x:hidden!important;
+  }
+  .apoV2Page.apoderado-home,
+  .apoderado-home{
+    width:100%!important;
+    max-width:100%!important;
+    gap:18px!important;
+    padding-bottom:120px!important;
+    overflow-x:hidden!important;
+  }
+
+  .next-payment-card,
+  .apoV2DueCard{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:18px auto 20px!important;
+    padding:18px!important;
+    border-radius:24px!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:hidden!important;
+    display:grid!important;
+    grid-template-columns:74px minmax(0,1fr)!important;
+    grid-template-areas:"date main" ". actions"!important;
+    gap:14px 16px!important;
+    align-items:start!important;
+    box-sizing:border-box!important;
+  }
+  .apoV2DateBox{
+    width:74px!important;
+    height:74px!important;
+    border-radius:18px!important;
+  }
+  .apoV2DateBox span{font-size:24px!important;line-height:1!important;}
+  .apoV2DateBox b{font-size:13px!important;line-height:1!important;}
+  .apoV2DueMain{min-width:0!important;overflow:hidden!important;}
+  .apoV2Kicker{font-size:16px!important;margin:0 0 6px!important;line-height:1.1!important;}
+  .apoV2DueMain h1{
+    font-size:28px!important;
+    line-height:1.05!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+    letter-spacing:-.03em!important;
+  }
+  .apoV2DueMeta{
+    font-size:14px!important;
+    line-height:1.25!important;
+    margin-top:6px!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2!important;
+    -webkit-box-orient:vertical!important;
+    overflow:hidden!important;
+  }
+  .apoV2DueMain strong,
+  .next-payment-amount{
+    font-size:42px!important;
+    line-height:1!important;
+    margin-top:12px!important;
+    letter-spacing:-.045em!important;
+    white-space:nowrap!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .apoV2DueActions,
+  .next-payment-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    grid-area:actions!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .apoV2Pay,
+  .apoV2Detail,
+  .next-payment-actions button{
+    height:46px!important;
+    min-height:46px!important;
+    font-size:15px!important;
+    border-radius:16px!important;
+    padding:0 10px!important;
+    white-space:nowrap!important;
+  }
+
+  .quick-summary-card,
+  .apoV2Summary{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto 24px!important;
+    padding:14px!important;
+    border-radius:24px!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:12px!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  .quick-summary-item,
+  .apoV2Summary article{
+    min-width:0!important;
+    padding:12px!important;
+    border-radius:18px!important;
+    background:#fff!important;
+    border:1px solid rgba(226,232,240,.9)!important;
+    border-right:1px solid rgba(226,232,240,.9)!important;
+    text-align:center!important;
+    overflow:hidden!important;
+  }
+  .quick-summary-item .icon-circle,
+  .apoV2Summary span{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    margin:0 auto 8px!important;
+  }
+  .quick-summary-title,
+  .apoV2Summary small{
+    font-size:14px!important;
+    line-height:1.1!important;
+    white-space:normal!important;
+  }
+  .quick-summary-value,
+  .apoV2Summary b{
+    font-size:24px!important;
+    line-height:1.05!important;
+    max-width:100%!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    margin-top:6px!important;
+  }
+  .quick-summary-meta,
+  .apoV2Summary em{
+    font-size:12px!important;
+    line-height:1.1!important;
+    margin-top:6px!important;
+  }
+
+  .apoV2Section,
+  .apoV2NoticeSection{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  .apoV2Section h2,
+  .apoV2SectionHead h2{
+    font-size:24px!important;
+    margin:2px 16px 12px!important;
+  }
+  .apoV2SectionHead button{
+    margin-right:16px!important;
+    font-size:15px!important;
+  }
+  .quick-access-grid,
+  .apoV2QuickGrid{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+    overflow:hidden!important;
+  }
+  .quick-access-card,
+  .market-access-card,
+  .apoV2Quick{
+    min-height:86px!important;
+    max-height:none!important;
+    padding:14px 16px!important;
+    border-radius:22px!important;
+    display:grid!important;
+    grid-template-columns:54px minmax(0,1fr) 24px!important;
+    gap:12px!important;
+    align-items:center!important;
+    overflow:hidden!important;
+    text-align:left!important;
+  }
+  .apoV2QuickIcon,
+  .market-access-card .market-icon{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+    min-height:48px!important;
+    max-width:48px!important;
+    max-height:48px!important;
+    border-radius:16px!important;
+  }
+  .quick-access-title,
+  .market-access-card-title,
+  .apoV2Quick b{
+    font-size:17px!important;
+    line-height:1.1!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:normal!important;
+  }
+  .quick-access-subtitle,
+  .market-access-card-subtitle,
+  .apoV2Quick small{
+    font-size:13px!important;
+    line-height:1.25!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+  .market-access-card,
+  .apoV2Quick.market{
+    background:linear-gradient(135deg,#fff7d6 0%,#e8f8df 100%)!important;
+    border:1px solid rgba(34,197,94,.18)!important;
+  }
+  .market-access-card-title,
+  .market-access-card-subtitle,
+  .apoV2Quick.market b,
+  .apoV2Quick.market small{
+    color:#166534!important;
+  }
+
+  .apoV2Notice{
+    width:calc(100% - 32px)!important;
+    max-width:calc(100% - 32px)!important;
+    margin:0 auto!important;
+    grid-template-columns:82px minmax(0,1fr)!important;
+    overflow:hidden!important;
+  }
+  .apoV2Notice > span{min-width:82px!important;}
+  .apoV2Notice h3{font-size:18px!important;line-height:1.15!important;}
+  .apoV2Notice p{font-size:13px!important;line-height:1.25!important;}
+
+  body.apoderado-ui-v24 .bottomNav{
+    position:fixed!important;
+    left:16px!important;
+    right:16px!important;
+    bottom:calc(env(safe-area-inset-bottom) + 12px)!important;
+    width:auto!important;
+    max-width:none!important;
+    height:76px!important;
+    min-height:76px!important;
+    padding:7px!important;
+    border-radius:28px!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:4px!important;
+    z-index:5000!important;
+    transform:none!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .bottomNav .navItem,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab{
+    min-width:0!important;
+    width:100%!important;
+    height:62px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    padding:4px 2px!important;
+    border-radius:20px!important;
+    font-size:12px!important;
+    line-height:1.05!important;
+    overflow:hidden!important;
+    text-align:center!important;
+    box-sizing:border-box!important;
+  }
+  body.apoderado-ui-v24 .bottomNav .navItem span,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab span:last-child{
+    font-size:11px!important;
+    line-height:1.05!important;
+    font-weight:800!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:normal!important;
+  }
+  body.apoderado-ui-v24 .bottomNav svg,
+  body.apoderado-ui-v24 .bottomNav i,
+  body.apoderado-ui-v24 .bottomNav .caSvgIcon{
+    width:23px!important;
+    height:23px!important;
+    min-width:23px!important;
+    min-height:23px!important;
+    max-width:23px!important;
+    max-height:23px!important;
+  }
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab.active,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab:hover,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab:focus-visible{
+    background:#e8f8df!important;
+    color:#15803d!important;
+  }
+}
