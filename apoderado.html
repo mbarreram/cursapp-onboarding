@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
@@ -6,25 +6,9 @@
   <title>Cursapp · Apoderado</title>
 
   <link rel="stylesheet" href="assets/styles.css?v=400">
- <!-- <link rel="stylesheet" href="assets/apoderado.css?v=30">
-  <link rel="stylesheet" href="/assets/ux-pro.css?v=5">
-  <link rel="stylesheet" href="/assets/ux-premium-v6.css?v=6">
-  <link rel="stylesheet" href="/assets/ux-apoderado-compact-v62.css?v=62">
-  <link rel="stylesheet" href="/assets/apoderado-ux-v24.css?v=24">-->
-
-<style id="mercadoEscolarMenuStyle">
-.marketQuickBtn{position:fixed;right:18px;bottom:86px;z-index:999;width:58px;height:58px;border-radius:22px;border:0;display:grid;place-items:center;text-decoration:none;background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;font-size:27px;box-shadow:0 18px 42px rgba(109,40,217,.30)}
-.marketQuickBtn span{position:absolute;right:54px;white-space:nowrap;background:#101828;color:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;box-shadow:0 12px 24px rgba(15,23,42,.18)}
-.marketBottomTab{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;text-decoration:none!important}
-@media(max-width:520px){.marketQuickBtn{right:16px;bottom:82px;width:56px;height:56px;border-radius:20px}.marketQuickBtn span{display:none}}
-</style>
-
- <!-- <link rel="stylesheet" href="/assets/css/apoderado-production-v5.css?v=apohome-v2final">-->
+  <link rel="stylesheet" href="/assets/apoderado-home-v40.css?v=41">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
- <!-- <link rel="stylesheet" href="/assets/cursapp-platform.css?v=5814">-->
- <!-- <link rel="stylesheet" href="/assets/ux-dashboard-mockups-v1.css?v=7">-->
-  <link rel="stylesheet" href="/assets/apoderado-home-v40.css?v=40">
 </head>
 <body class="apoderado-ui-v24 apoderado-home-v40 cursapp-app-shell cursapp-apoderado">
 <div id="cursapp-loading-overlay" style="position:fixed;inset:0;background:#fff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="font-size:54px;color:#6d28d9;font-weight:900">C</div><div style="margin-top:12px;font-weight:800;color:#0f172a">Cargando datos...</div><div style="width:220px;height:6px;background:#eee;border-radius:8px;overflow:hidden;margin-top:12px"><div style="height:100%;width:100%;background:#6d28d9;animation:caProg 1.4s infinite"></div></div><style>@keyframes caProg{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}</style></div>
@@ -63,55 +47,9 @@
 <script defer src="/assets/core.js?v=5814"></script>
 <script defer src="/assets/configavisos.js?v=4"></script>
 <script defer src="/assets/global-alerts.js?v=1"></script>
-  <script defer src="/assets/apoderado.js?v=apohome-v2final"></script>
+  <script defer src="/assets/apoderado.js?v=apohome-v41"></script>
 <script defer src="/assets/switchRole.js?v=2000"></script>
 <script defer src="/assets/apoderadoWelcome.js?v=2400"></script>
-<script defer src="/assets/role-menu-fix.js?v=2"></script>
-<script id="mercadoEscolarMenuScript">
-(function(){
-  function addMercadoEscolarAccess(){
-    var href = "/mercado-escolar/mercado-escolar.html";
-    if(document.getElementById("marketQuickBtn") || document.getElementById("marketBottomTab")) return;
-
-    var selectors = [".bottomTabs",".bottomNav",".tabbar",".navBottom",".mobileBottomNav","nav[aria-label='Navegación inferior']","nav"];
-    var nav = null;
-
-    for(var i=0;i<selectors.length;i++){
-      var el = document.querySelector(selectors[i]);
-      if(el && (el.textContent || "").match(/inicio|pagos|perfil|cuotas|historial/i)){
-        nav = el;
-        break;
-      }
-    }
-
-    if(nav){
-      var a = document.createElement("a");
-      a.id = "marketBottomTab";
-      a.className = "marketBottomTab";
-      a.href = href;
-      a.innerHTML = "<span style='font-size:20px'>🛍️</span><span>Mercado</span>";
-      nav.appendChild(a);
-      return;
-    }
-
-    var floating = document.createElement("a");
-    floating.id = "marketQuickBtn";
-    floating.className = "marketQuickBtn";
-    floating.href = href;
-    floating.innerHTML = "🛍️<span>Mercado escolar</span>";
-    document.body.appendChild(floating);
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", addMercadoEscolarAccess);
-  }else{
-    addMercadoEscolarAccess();
-  }
-
-  setTimeout(addMercadoEscolarAccess, 700);
-  setTimeout(addMercadoEscolarAccess, 1600);
-})();
-</script>
 
   <script defer src="/assets/monetization-banners.js?v=20"></script>
   <script defer src="/assets/cursapp-platform.js?v=5814"></script>
