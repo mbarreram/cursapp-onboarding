@@ -3030,14 +3030,22 @@ window.payNow = async function(id){
       {label:"Informes", sub:"Revisa los informes publicados del curso", icon:"report", cls:"", action:"go('informes')"},
       {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", badge:"Nuevo", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
     ].map(x=>`<button class="apoV2Quick quick-access-card ${x.cls} ${x.cls === "market" ? "market-access-card" : ""}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon apoderado-icon-bubble ${x.cls === "market" ? "market-icon" : ""}">${apoSvg(x.icon)}</span><span><b class="${x.cls === "market" ? "market-access-card-title" : ""}">${esc(x.label)}</b><small class="${x.cls === "market" ? "market-access-card-subtitle" : ""}">${esc(x.sub)}</small></span>${x.badge ? `<em class="apoV2QuickBadge">${esc(x.badge)}</em>` : ""}<i>${apoSvg("chevron")}</i></button>`).join("");
+    const fixApoMojibake = (value) => String(value || "")
+      .replace(/ðŸ“Š\s*/g, "")
+      .replace(/ðŸ“£\s*/g, "")
+      .replace(/ðŸ””\s*/g, "")
+      .replace(/Ã¡/g, "á").replace(/Ã©/g, "é").replace(/Ã­/g, "í").replace(/Ã³/g, "ó").replace(/Ãº/g, "ú")
+      .replace(/Ã�/g, "Á").replace(/Ã‰/g, "É").replace(/Ã�/g, "Í").replace(/Ã“/g, "Ó").replace(/Ãš/g, "Ú")
+      .replace(/Ã±/g, "ñ").replace(/Ã‘/g, "Ñ")
+      .replace(/Â·/g, "·").replace(/â€¢/g, "·").replace(/â€”/g, "—").replace(/â€“/g, "–")
+      .replace(/Informaci\S+n importante/g, "Información importante")
+      .replace(/Avisos le\S+dos/g, "Avisos leídos")
+      .replace(/A\S+n no hay avisos/g, "Aún no hay avisos");
     const realAvisosRaw = (typeof window.renderAvisosCursoCard === "function") ? window.renderAvisosCursoCard(3) : "";
-    const realAvisos = String(realAvisosRaw || "")
-      .replace(/Informaci\S+n importante/g, "Informacion importante")
-      .replace(/Avisos le\S+dos/g, "Avisos leidos")
-      .replace(/A\S+n no hay avisos/g, "Aun no hay avisos")
-      .replace(/Â·/g, "-")
-      .replace(/âŒ„/g, "")
-      .replace(/ðŸ“£/g, "!");
+    let realAvisos = fixApoMojibake(realAvisosRaw);
+    if(/ð|Ã|Â|â/.test(realAvisos)){
+      realAvisos = `<article class="apoV2Notice"><span>${apoSvg("megaphone")}</span><div><h3>Nuevo informe disponible</h3><p>Ya puedes revisar el informe 2026-07</p></div><button type="button" onclick="openAvisosInbox()">Ver avisos</button></article>`;
+    }
 
     app.innerHTML = `
       <div class="apoV2Page apoderado-home">
