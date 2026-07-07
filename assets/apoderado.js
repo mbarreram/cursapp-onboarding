@@ -1258,19 +1258,54 @@ function dueBadge(iso){
   function ensureApoV42Bell(){
     const host = document.getElementById("avisosBellHost");
     if(!host) return;
-    const hasInteractive = host.querySelector("button,a");
-    if(hasInteractive){
-      hasInteractive.classList.add("apoV42BellBtn");
-      return;
-    }
+    // V44: este host debe ser SIEMPRE la campana de avisos.
+    // Algunos scripts legacy lo reemplazaban por un sobre o por otro botón.
+    host.innerHTML = "";
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "apoV42BellBtn";
-    b.setAttribute("aria-label", "Notificaciones");
-    b.innerHTML = `<span class="apoV42BellIcon">🔔</span><span class="apoV42BellDot" aria-hidden="true"></span>`;
-    b.onclick = (ev)=>{ ev.stopPropagation(); try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){} };
-    host.innerHTML = "";
+    b.className = "apoV42BellBtn apoV44BellBtn";
+    b.setAttribute("aria-label", "Avisos y notificaciones");
+    b.innerHTML = `<span class="apoV42BellIcon" aria-hidden="true">🔔</span><span class="apoV42BellDot" aria-hidden="true"></span>`;
+    b.onclick = (ev)=>{
+      ev.stopPropagation();
+      try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
+    };
     host.appendChild(b);
+  }
+
+  function setupApoV44DueCarousel(){
+    const root = document.querySelector(".apoV2DueCarousel.next-payment-card");
+    if(!root) return;
+    const track = root.querySelector(".apoV2DueTrack");
+    const slides = Array.from(root.querySelectorAll(".apoV2DueSlide"));
+    const dots = Array.from(root.querySelectorAll(".apoV2DueDots span"));
+    if(!track || slides.length <= 1 || !dots.length) return;
+
+    const setActive = (idx)=>{
+      dots.forEach((d,i)=>d.classList.toggle("active", i === idx));
+      root.dataset.activeSlide = String(idx);
+    };
+    const currentIndex = ()=>{
+      const w = track.clientWidth || 1;
+      return Math.max(0, Math.min(slides.length - 1, Math.round(track.scrollLeft / w)));
+    };
+    dots.forEach((dot,idx)=>{
+      dot.setAttribute("role", "button");
+      dot.setAttribute("tabindex", "0");
+      dot.addEventListener("click", ()=>{
+        track.scrollTo({ left: idx * track.clientWidth, behavior: "smooth" });
+        setActive(idx);
+      });
+      dot.addEventListener("keydown", (ev)=>{
+        if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); dot.click(); }
+      });
+    });
+    let t = null;
+    track.addEventListener("scroll", ()=>{
+      clearTimeout(t);
+      t = setTimeout(()=>setActive(currentIndex()), 60);
+    }, { passive:true });
+    setActive(currentIndex());
   }
 
   function ensureAlumnoActivo() {
@@ -3149,6 +3184,8 @@ window.payNow = async function(id){
         </section>
         <div data-monetization-slot="apoderado"></div>
       </div>`;
+    try{ setupApoV44DueCarousel(); }catch(e){}
+    try{ ensureApoV42Bell(); }catch(e){}
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
   renderPayments = function(){
@@ -3230,6 +3267,7 @@ window.payNow = async function(id){
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
+    try{ ensureApoV42Bell(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 
