@@ -1536,3 +1536,199 @@ body.apoderado-home-v40 .apoV42MenuItem b{font-size:14px!important;font-weight:8
   body.apoderado-home-v40 .apoV2DueMain strong{font-size:29px!important;}
   body.apoderado-home-v40 .apoV2Summary b{font-size:16px!important;}
 }
+
+/* =====================================================
+   Cursapp · Home Apoderado V43
+   Pulido fino solicitado: tipografías más pequeñas,
+   card compacta, KPIs seguros para montos largos y
+   menor espacio bajo banner.
+   ===================================================== */
+body.apoderado-home-v40 header .topbar{
+  min-height:78px!important;
+  padding:10px 16px!important;
+  grid-template-columns:minmax(0,1fr) 46px 46px!important;
+  gap:8px!important;
+}
+body.apoderado-home-v40 header .brand{
+  grid-template-columns:48px minmax(0,1fr)!important;
+  gap:10px!important;
+}
+body.apoderado-home-v40 header .brand .logo{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  border-radius:17px!important;
+  font-size:21px!important;
+}
+body.apoderado-home-v40 #whoRoleTitle{
+  font-size:18px!important;
+  line-height:1.04!important;
+  letter-spacing:-.03em!important;
+  max-width:100%!important;
+}
+body.apoderado-home-v40 #whoCourseLine,
+body.apoderado-home-v40 #whoCourseLine .apoHeaderRole,
+body.apoderado-home-v40 #whoCourseLine .apoHeaderCourse{
+  font-size:12px!important;
+  line-height:1.12!important;
+  font-weight:740!important;
+}
+body.apoderado-home-v40 #whoCourseLine .apoHeaderRole{margin-top:1px!important;}
+body.apoderado-home-v40 #avisosBellHost,
+body.apoderado-home-v40 #menuBtn,
+body.apoderado-home-v40 .apoV42BellBtn{
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  max-width:46px!important;
+  max-height:46px!important;
+  border-radius:16px!important;
+}
+body.apoderado-home-v40 #menuBtn,
+body.apoderado-home-v40 .apoV42BellBtn{font-size:18px!important;}
+
+/* Próxima cuota: bajar título/monto/botones aprox. 30% */
+body.apoderado-home-v40 .apoV2DueCarousel.next-payment-card{
+  margin:12px auto 14px!important;
+  border-radius:24px!important;
+}
+body.apoderado-home-v40 .apoV2DueSlide{
+  min-height:154px!important;
+  padding:14px!important;
+  grid-template-columns:58px minmax(0,1fr) 56px!important;
+  gap:8px 12px!important;
+}
+body.apoderado-home-v40 .apoV2DateBox{
+  width:58px!important;
+  height:67px!important;
+  min-width:58px!important;
+  border-radius:16px!important;
+}
+body.apoderado-home-v40 .apoV2DateBox b{height:20px!important;font-size:10.5px!important;}
+body.apoderado-home-v40 .apoV2DateBox span{font-size:24px!important;line-height:1!important;}
+body.apoderado-home-v40 .apoV2DateBox small{font-size:9px!important;line-height:1.05!important;}
+body.apoderado-home-v40 .apoV2Kicker{font-size:12.5px!important;line-height:1.05!important;margin-bottom:3px!important;}
+body.apoderado-home-v40 .apoV2DueMain h1{
+  font-size:17px!important;
+  line-height:1.08!important;
+  margin-bottom:3px!important;
+  -webkit-line-clamp:2!important;
+}
+body.apoderado-home-v40 .apoV2DueMeta{
+  font-size:10.8px!important;
+  line-height:1.15!important;
+  margin-bottom:4px!important;
+  -webkit-line-clamp:2!important;
+}
+body.apoderado-home-v40 .apoV2DueMain strong{
+  font-size:22px!important;
+  line-height:1!important;
+  margin-top:4px!important;
+  letter-spacing:-.04em!important;
+}
+body.apoderado-home-v40 .apoV2PayIllustration{
+  width:56px!important;
+  height:56px!important;
+  transform:scale(.88)!important;
+  opacity:.86!important;
+}
+body.apoderado-home-v40 .apoV2DueActions{gap:8px!important;margin-top:2px!important;}
+body.apoderado-home-v40 .apoV2Pay,
+body.apoderado-home-v40 .apoV2Detail{
+  height:32px!important;
+  min-height:32px!important;
+  border-radius:12px!important;
+  font-size:11px!important;
+  padding:0 10px!important;
+}
+body.apoderado-home-v40 .apoV2DueDots{padding:0 14px 10px!important;gap:7px!important;}
+body.apoderado-home-v40 .apoV2DueDots i{width:8px!important;height:8px!important;}
+
+/* Resumen rápido: valores más chicos para 6+ dígitos */
+body.apoderado-home-v40 .apoV2SummaryCard.quick-summary-card{
+  margin:0 auto 14px!important;
+  padding:14px 10px 12px!important;
+  border-radius:24px!important;
+}
+body.apoderado-home-v40 .apoV2SummaryHead{margin-bottom:10px!important;}
+body.apoderado-home-v40 .apoV2SummaryHead h2{font-size:16px!important;}
+body.apoderado-home-v40 .apoV2SummaryHead button{font-size:11.5px!important;}
+body.apoderado-home-v40 .apoV2Summary article,
+body.apoderado-home-v40 .quick-summary-item{
+  min-height:88px!important;
+  padding:4px 5px!important;
+}
+body.apoderado-home-v40 .apoV2Summary span,
+body.apoderado-home-v40 .quick-summary-item .icon-circle{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  min-height:34px!important;
+  border-radius:13px!important;
+  margin:0 auto 7px!important;
+}
+body.apoderado-home-v40 .apoV2Summary span svg{width:17px!important;height:17px!important;}
+body.apoderado-home-v40 .apoV2Summary small{
+  font-size:9.8px!important;
+  line-height:1.05!important;
+  min-height:20px!important;
+}
+body.apoderado-home-v40 .apoV2Summary b{
+  font-size:14.5px!important;
+  line-height:1.02!important;
+  margin-top:4px!important;
+  letter-spacing:-.035em!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:unset!important;
+  font-variant-numeric:tabular-nums!important;
+}
+body.apoderado-home-v40 .apoV2Summary em{
+  font-size:9.5px!important;
+  line-height:1!important;
+  margin-top:4px!important;
+  white-space:nowrap!important;
+}
+body.apoderado-home-v40 .apoV2Summary article:not(:last-child):after{
+  top:14px!important;
+  bottom:14px!important;
+}
+
+/* Compactar secciones posteriores y eliminar espacio muerto bajo banner */
+body.apoderado-home-v40 .apoV2Section h2,
+body.apoderado-home-v40 .apoV2SectionHead h2{
+  font-size:18px!important;
+  margin:0 16px 10px!important;
+}
+body.apoderado-home-v40 .apoV2QuickGrid.quick-access-grid{margin-bottom:14px!important;}
+body.apoderado-home-v40 .apoV2Quick.quick-access-card{min-height:68px!important;padding:11px 14px!important;}
+body.apoderado-home-v40 .apoV2Quick b{font-size:14.5px!important;}
+body.apoderado-home-v40 .apoV2Quick small{font-size:11.5px!important;line-height:1.18!important;}
+body.apoderado-home-v40 .apoV2NoticeSection{margin-bottom:12px!important;}
+body.apoderado-home-v40 .apoV40NoticeCard{min-height:78px!important;padding:11px!important;}
+body.apoderado-home-v40 [data-monetization-slot="apoderado"],
+body.apoderado-home-v40 .monetization-banner,
+body.apoderado-home-v40 .cursapp-monetization-banner{
+  margin-top:10px!important;
+  margin-bottom:22px!important;
+}
+body.apoderado-home-v40 .container,
+body.apoderado-home-v40 .apoV2Page.apoderado-home{
+  padding-bottom:96px!important;
+}
+body.apoderado-home-v40 .bottomNav.apoderado-bottom-nav{
+  bottom:calc(env(safe-area-inset-bottom) + 8px)!important;
+}
+
+@media(max-width:380px){
+  body.apoderado-home-v40 #whoRoleTitle{font-size:17px!important;}
+  body.apoderado-home-v40 #whoCourseLine,
+  body.apoderado-home-v40 #whoCourseLine .apoHeaderRole,
+  body.apoderado-home-v40 #whoCourseLine .apoHeaderCourse{font-size:11.5px!important;}
+  body.apoderado-home-v40 .apoV2DueSlide{grid-template-columns:54px minmax(0,1fr)!important;}
+  body.apoderado-home-v40 .apoV2DueMain h1{font-size:16px!important;}
+  body.apoderado-home-v40 .apoV2DueMain strong{font-size:21px!important;}
+  body.apoderado-home-v40 .apoV2Summary b{font-size:13.5px!important;}
+}
