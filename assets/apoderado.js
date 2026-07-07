@@ -2040,13 +2040,13 @@ function cleanVisiblePaymentsV11(pays, tasksAll){
   function cpV5NextDues(){
     const items = cpV5DueItems();
     if(!items.length){
-      return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">ðŸ“…</div><div class="cpV5Kicker">PrÃ³xima cuota</div></div><div style="padding:0 18px 18px;"><div class="cpV5DueCard" style="min-width:100%;"><div class="cpV5DueTitle">Todo al dÃ­a</div><div class="cpV5DueMeta">No tienes pagos urgentes por ahora.</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="go('payments')">Ver pagos</button></div></div></div></section>`;
+      return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">${apoSvg("calendar")}</div><div class="cpV5Kicker">Próxima cuota</div></div><div style="padding:0 18px 18px;"><div class="cpV5DueCard" style="min-width:100%;"><div class="cpV5DueTitle">Todo al día</div><div class="cpV5DueMeta">No tienes pagos urgentes por ahora.</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="go('payments')">Ver pagos</button></div></div></div></section>`;
     }
-    return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">ðŸ“…</div><div class="cpV5Kicker">PrÃ³xima cuota</div></div><div class="cpV5Carousel">${items.slice(0,6).map((x,i)=>`<article class="cpV5DueCard"><div class="cpV5DueIndex">${i+1} de ${items.length}</div><div class="cpV5DueTitle">${esc(x.title)}</div><div class="cpV5DueMeta">Vence el ${esc(cpV5DateShort(x.dueDate))} <span class="cpV5Badge">${esc(cpV5DaysText(x.dueDate))}</span></div><div class="cpV5Amount">${clp(x.amount)}</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="cpV5OpenPayment('${esc(x.id)}')">ðŸ’³ Pagar ahora</button><button class="cpV5Detail" onclick="go('payments')">Ver detalle â€º</button></div></article>`).join("")}</div>${items.length>1 ? `<div class="cpV5Dots">${items.slice(0,6).map((_,i)=>`<span class="cpV5Dot ${i===0?'active':''}"></span>`).join("")}</div>` : ""}</section>`;
+    return `<section class="cpV5Next"><div class="cpV5NextHead"><div class="cpV5Icon">${apoSvg("calendar")}</div><div class="cpV5Kicker">Próxima cuota</div></div><div class="cpV5Carousel">${items.slice(0,6).map((x,i)=>`<article class="cpV5DueCard"><div class="cpV5DueIndex">${i+1} de ${items.length}</div><div class="cpV5DueTitle">${esc(x.title)}</div><div class="cpV5DueMeta">Vence el ${esc(cpV5DateShort(x.dueDate))} <span class="cpV5Badge">${esc(cpV5DaysText(x.dueDate))}</span></div><div class="cpV5Amount">${clp(x.amount)}</div><div class="cpV5Actions"><button class="cpV5Pay" onclick="cpV5OpenPayment('${esc(x.id)}')">Pagar ahora</button><button class="cpV5Detail" onclick="go('payments')">Ver detalle</button></div></article>`).join("")}</div>${items.length>1 ? `<div class="cpV5Dots">${items.slice(0,6).map((_,i)=>`<span class="cpV5Dot ${i===0?'active':''}"></span>`).join("")}</div>` : ""}</section>`;
   }
 
   function cpV5QuickAccess(){
-    return `<div class="cpV5QuickTitle">Accesos rÃ¡pidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ“„</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ§¾</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>ðŸ’³</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda prÃ³ximamente')"><span>â”</span>Ayuda</button></div><div data-monetization-slot="apoderado"></div>`;
+    return `<div class="cpV5QuickTitle">Accesos rápidos</div><div class="cpV5QuickGrid"><button class="cpV5Quick" onclick="go('payments')"><span>${apoSvg("card")}</span>Mis pagos</button><button class="cpV5Quick" onclick="go('payments')"><span>${apoSvg("receipt")}</span>Comprobantes</button><button class="cpV5Quick" onclick="go('payments')"><span>${apoSvg("card")}</span>Medios</button><button class="cpV5Quick" onclick="alert('Centro de ayuda próximamente')"><span>${apoSvg("report")}</span>Ayuda</button></div><div data-monetization-slot="apoderado"></div>`;
   }
 
 
@@ -2181,7 +2181,7 @@ function renderHome(){
     const r = latestReport();
 
     app.innerHTML = `
-      <div class="cpHomeV5">${cpV5NextDues()}
+      <div class="cpHomeV5 apoderado-home">${cpV5NextDues()}
 
       <!-- 1) PrÃ³xima cuota -->
       <div class="card" id="cardNextDue" style="border:1px solid rgba(91,92,226,.25);background:rgba(91,92,226,.06);">
@@ -3328,6 +3328,7 @@ __bootApoderadoSupabaseFirst();
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
 
 /* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */
+
 
 
 
