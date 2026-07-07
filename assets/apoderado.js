@@ -3041,11 +3041,66 @@ window.payNow = async function(id){
       .replace(/Informaci\S+n importante/g, "Información importante")
       .replace(/Avisos le\S+dos/g, "Avisos leídos")
       .replace(/A\S+n no hay avisos/g, "Aún no hay avisos");
-    const realAvisosRaw = (typeof window.renderAvisosCursoCard === "function") ? window.renderAvisosCursoCard(3) : "";
-    let realAvisos = fixApoMojibake(realAvisosRaw);
-    if(/ð|Ã|Â|â/.test(realAvisos)){
-      realAvisos = `<article class="apoV2Notice"><span>${apoSvg("megaphone")}</span><div><h3>Nuevo informe disponible</h3><p>Ya puedes revisar el informe 2026-07</p></div><button type="button" onclick="openAvisosInbox()">Ver avisos</button></article>`;
+    function apoV40LoadNoticeItems(){
+      const keys = [];
+      try{
+        for(let i=0;i<localStorage.length;i++){
+          const k = localStorage.key(i);
+          if(k && /_avisos_v2$/.test(k)) keys.push(k);
+        }
+      }catch(e){}
+      const scopeCandidates = [];
+      try{ const active = localStorage.getItem("cursapp_active_course_v1"); if(active) scopeCandidates.push(String(active).replace(/[^a-zA-Z0-9_\-]/g,"_")); }catch(e){}
+      try{ const course = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null"); const ck = course && course.courseKey; if(ck) scopeCandidates.push(String(ck).replace(/[^a-zA-Z0-9_\-]/g,"_")); }catch(e){}
+      const ordered = keys.sort((a,b)=>{
+        const ai = scopeCandidates.some(sc=>a.includes(sc)) ? 0 : 1;
+        const bi = scopeCandidates.some(sc=>b.includes(sc)) ? 0 : 1;
+        return ai - bi;
+      });
+      let items = [];
+      ordered.forEach(k=>{
+        try{
+          const arr = JSON.parse(localStorage.getItem(k) || "[]");
+          if(Array.isArray(arr)) items = items.concat(arr);
+        }catch(e){}
+      });
+      const seen = new Set();
+      return items
+        .filter(a=>a && (a.title || a.message))
+        .map(a=>({
+          id:String(a.id || a.createdAt || Math.random()),
+          title:fixApoMojibake(a.title || "Aviso del curso"),
+          message:fixApoMojibake(a.message || ""),
+          category:String(a.category || a.type || "info"),
+          createdAt:String(a.createdAt || "")
+        }))
+        .filter(a=>{ const key=a.id+"|"+a.title; if(seen.has(key)) return false; seen.add(key); return true; })
+        .sort((a,b)=>String(b.createdAt||"").localeCompare(String(a.createdAt||"")))
+        .slice(0,1);
     }
+    function apoV40NoticeIcon(category){
+      const c = String(category || "").toLowerCase();
+      if(c.includes("report")) return "📊";
+      if(c.includes("payment") || c.includes("financial")) return "💳";
+      if(c.includes("urgent")) return "⚠️";
+      if(c.includes("campaign")) return "📌";
+      return "📣";
+    }
+    function apoV40NoticeDate(iso){
+      if(!iso) return "";
+      try{ return new Date(iso).toLocaleString("es-CL", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }catch(e){ return String(iso).slice(0,16); }
+    }
+    const noticeItems = apoV40LoadNoticeItems();
+    const realAvisos = noticeItems.length ? noticeItems.map(a=>`
+      <article class="apoV2Notice apoV40NoticeCard">
+        <span class="apoV40NoticeIcon">${apoV40NoticeIcon(a.category)}</span>
+        <div class="apoV40NoticeCopy">
+          <h3>${esc(a.title)}</h3>
+          <p>${esc(a.message || "Revisa el detalle del aviso publicado por la directiva.")}</p>
+          ${a.createdAt ? `<small>${esc(apoV40NoticeDate(a.createdAt))}</small>` : ""}
+        </div>
+        <button type="button" onclick="openAvisosInbox()">Ver</button>
+      </article>`).join("") : `<article class="apoV2Notice apoV40NoticeCard"><span class="apoV40NoticeIcon">📣</span><div class="apoV40NoticeCopy"><h3>Sin avisos nuevos</h3><p>Aún no hay mensajes publicados por la directiva.</p></div></article>`;
 
     app.innerHTML = `
       <div class="apoV2Page apoderado-home">

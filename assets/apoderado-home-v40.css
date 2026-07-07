@@ -1057,3 +1057,157 @@ body.apoderado-ui-v24 .bottomNav .marketBottomTab span:last-child{
   body.apoderado-ui-v24 .container,
   body.apoderado-ui-v24 .bottomNav{max-width:430px!important;}
 }
+
+/* =========================================================
+   Sprint 1.5 · Limpieza de herencias Home Apoderado
+   ========================================================= */
+body.apoderado-ui-v24 .bottomNav .navItem > .caSvgIcon,
+body.apoderado-ui-v24 .bottomNav .marketBottomTab > .caSvgIcon{
+  display:none!important;
+}
+body.apoderado-ui-v24 .bottomNav .nav-icon + .nav-icon,
+body.apoderado-ui-v24 .bottomNav svg + svg{
+  display:none!important;
+}
+body.apoderado-ui-v24 .bottomNav .nav-icon{
+  display:flex!important;
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  min-height:22px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:0!important;
+}
+body.apoderado-ui-v24 .bottomNav .nav-label,
+body.apoderado-ui-v24 .bottomNav .marketBottomTab .nav-label{
+  display:block!important;
+  width:100%!important;
+  font-size:10px!important;
+  line-height:1.05!important;
+  font-weight:800!important;
+  text-align:center!important;
+  color:inherit!important;
+  white-space:normal!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.apoderado-ui-v24 .bottomNav .navItem span:not(.nav-icon):not(.nav-label),
+body.apoderado-ui-v24 .bottomNav .marketBottomTab span:not(.nav-icon):not(.nav-label){
+  display:none!important;
+}
+
+/* Menú compacto de menu.js, sin drawer antiguo */
+body.apoderado-ui-v24 #menuDropdown{
+  padding:12px!important;
+}
+body.apoderado-ui-v24 #menuDropdown::before{
+  content:"Menú"!important;
+}
+body.apoderado-ui-v24 #menuDropdown .btn,
+body.apoderado-ui-v24 #menuDropdown button,
+body.apoderado-ui-v24 #menuDropdown a{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+  min-height:44px!important;
+  padding:11px 12px!important;
+  margin:0 0 6px!important;
+  border-radius:15px!important;
+  border:1px solid rgba(226,232,240,.92)!important;
+  background:#fff!important;
+  color:#101828!important;
+  font-size:14px!important;
+  line-height:1.1!important;
+  font-weight:850!important;
+  text-align:left!important;
+  box-shadow:none!important;
+}
+body.apoderado-ui-v24 #menuDropdown div[style*="height:1px"]{
+  margin:8px 0!important;
+}
+
+/* Avisos V40 compactos */
+body.apoderado-ui-v24 .apoV2RealAvisos .cpV6Section,
+body.apoderado-ui-v24 .apoV2RealAvisos details,
+body.apoderado-ui-v24 .apoV2RealAvisos summary,
+body.apoderado-ui-v24 .apoV2RealAvisos .cpV6SectionBody,
+body.apoderado-ui-v24 .apoV2RealAvisos .cpV6ListItem{
+  all:unset!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCard{
+  width:100%!important;
+  min-height:96px!important;
+  display:grid!important;
+  grid-template-columns:54px minmax(0,1fr) auto!important;
+  gap:12px!important;
+  align-items:center!important;
+  padding:14px!important;
+  border-radius:24px!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  background:#fff!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.06)!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeIcon{
+  width:54px!important;
+  height:54px!important;
+  border-radius:18px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:#f1eafe!important;
+  font-size:25px!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCopy{
+  min-width:0!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCopy h3{
+  margin:0!important;
+  color:#101828!important;
+  font-size:17px!important;
+  line-height:1.12!important;
+  font-weight:900!important;
+  letter-spacing:-.02em!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCopy p{
+  margin:5px 0 0!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  font-weight:700!important;
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCopy small{
+  display:block!important;
+  margin-top:5px!important;
+  color:#94a3b8!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:800!important;
+}
+body.apoderado-ui-v24 .apoV40NoticeCard button{
+  min-width:48px!important;
+  height:36px!important;
+  padding:0 12px!important;
+  border-radius:999px!important;
+  border:1px solid #d8c8fb!important;
+  background:#faf5ff!important;
+  color:#6d28d9!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+
+/* Header: ocultar botones extra si alguna capa intenta inyectar más de una acción */
+body.apoderado-ui-v24 #avisosBellHost > *:nth-child(n+2){
+  display:none!important;
+}
+body.apoderado-ui-v24 #avisosBellHost button span{
+  transform:none!important;
+}
