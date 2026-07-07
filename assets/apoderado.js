@@ -1243,12 +1243,14 @@ function dueBadge(iso){
     const title = document.getElementById("whoRoleTitle");
     const logo = document.querySelector("header .brand .logo");
     const name = ident.name || ap.name || "Apoderado";
+    const studentName = ident.studentName || ap.alumno || "Alumno/a";
     const courseText = ident.courseShort || `${c.level || ""}${c.letter || ""} ${c.year || ""}`.trim() || "Curso actual";
+    const schoolText = ident.schoolName || c.schoolName || c.colegio || c.school || "Colegio";
     if(title) title.textContent = name;
     if(logo) logo.textContent = String(name).trim().charAt(0).toUpperCase() || "A";
     whoCourseLine.innerHTML = `
-      <div class="apoHeaderRole">Apoderado de Alumno/a</div>
-      <div class="apoHeaderCourse">Curso actual: <b>${esc(courseText)}</b></div>
+      <div class="apoHeaderRole">Apoderado de ${esc(apoFirstName(studentName) || "Alumno/a")}</div>
+      <div class="apoHeaderCourse">${esc(schoolText)} · <b>${esc(courseText)}</b></div>
     `;
   }
 
@@ -2949,6 +2951,27 @@ window.payNow = async function(id){
     return months[d.getMonth()] || "MES";
   }
 
+  function apoFirstName(value){
+    return String(value || "").trim().split(/\s+/).filter(Boolean)[0] || "";
+  }
+
+  function apoWeekday(iso){
+    if(!iso) return "";
+    const days = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+    const d = new Date(String(iso) + "T00:00:00");
+    return days[d.getDay()] || "";
+  }
+
+  function apoPaymentIllustration(){
+    return `
+      <div class="apoV2PayIllustration" aria-hidden="true">
+        <span class="apoV2Paper"><i></i><i></i><i></i></span>
+        <span class="apoV2CardMini"></span>
+        <span class="apoV2Coin">$</span>
+        <span class="apoV2CheckMini">${apoSvg("check")}</span>
+      </div>`;
+  }
+
   renderHome = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
@@ -2977,17 +3000,20 @@ window.payNow = async function(id){
       const date = p?.dueDate ? new Date(String(p.dueDate)+"T00:00:00") : null;
       const day = date ? String(date.getDate()).padStart(2,"0") : "--";
       const month = p?.dueDate ? apoMonthShort(p.dueDate) : "MES";
+      const weekday = p?.dueDate ? apoWeekday(p.dueDate) : "";
       const action = p?.id ? `payNow('${esc(p.id)}')` : `go('payments')`;
       const meta = p?.dueDate ? `Vence el ${esc(p.dueDate)} · quedan ${days} día(s)` : "Te avisaremos cuando existan nuevas cuotas.";
+      const shortDue = p?.dueDate ? (days === 0 ? "Vence hoy" : `Vence en ${days} día(s)`) : "";
       return `
         <article class="apoV2DueSlide" aria-label="${esc(title)} ${dueItems.length ? `${index+1} de ${dueItems.length}` : ""}">
-          <div class="apoV2DateBox"><span>${esc(day)}</span><b>${esc(month)}</b></div>
+          <div class="apoV2DateBox"><b>${esc(month)}</b><span>${esc(day)}</span><small>${esc(weekday)}</small></div>
           <div class="apoV2DueMain">
             <p class="apoV2Kicker">Próxima cuota</p>
             <h1>${esc(title)}</h1>
-            <p class="apoV2DueMeta">${meta}</p>
+            <p class="apoV2DueMeta">${shortDue ? `<b>${esc(shortDue)}</b><br>` : ""}${meta}</p>
             <strong>${amount}</strong>
           </div>
+          ${apoPaymentIllustration()}
           <div class="apoV2DueActions">
             <button class="apoV2Pay" type="button" onclick="${action}">${p ? "Pagar ahora" : "Ver pagos"}</button>
             <button class="apoV2Detail" type="button" onclick="go('payments')">Ver detalle</button>
@@ -3002,8 +3028,8 @@ window.payNow = async function(id){
       {label:"Pagos", sub:"Revisa y paga tus cuotas pendientes", icon:"card", cls:"", action:"go('payments')"},
       {label:"Comprobantes", sub:"Descarga tus comprobantes de pago", icon:"receipt", cls:"", action:"go('payments')"},
       {label:"Informes", sub:"Revisa los informes publicados del curso", icon:"report", cls:"", action:"go('informes')"},
-      {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
-    ].map(x=>`<button class="apoV2Quick quick-access-card ${x.cls} ${x.cls === "market" ? "market-access-card" : ""}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon apoderado-icon-bubble ${x.cls === "market" ? "market-icon" : ""}">${apoSvg(x.icon)}</span><span><b class="${x.cls === "market" ? "market-access-card-title" : ""}">${esc(x.label)}</b><small class="${x.cls === "market" ? "market-access-card-subtitle" : ""}">${esc(x.sub)}</small></span><i>${apoSvg("chevron")}</i></button>`).join("");
+      {label:"Mercado Escolar", sub:"Encuentra productos y servicios del curso", icon:"store", cls:"market", badge:"Nuevo", action:"window.location.href='/mercado-escolar/mercado-escolar.html'"}
+    ].map(x=>`<button class="apoV2Quick quick-access-card ${x.cls} ${x.cls === "market" ? "market-access-card" : ""}" type="button" onclick="${x.action}"><span class="apoV2QuickIcon apoderado-icon-bubble ${x.cls === "market" ? "market-icon" : ""}">${apoSvg(x.icon)}</span><span><b class="${x.cls === "market" ? "market-access-card-title" : ""}">${esc(x.label)}</b><small class="${x.cls === "market" ? "market-access-card-subtitle" : ""}">${esc(x.sub)}</small></span>${x.badge ? `<em class="apoV2QuickBadge">${esc(x.badge)}</em>` : ""}<i>${apoSvg("chevron")}</i></button>`).join("");
     const realAvisosRaw = (typeof window.renderAvisosCursoCard === "function") ? window.renderAvisosCursoCard(3) : "";
     const realAvisos = String(realAvisosRaw || "")
       .replace(/Informaci\S+n importante/g, "Informacion importante")
@@ -3020,11 +3046,14 @@ window.payNow = async function(id){
           ${dueDots}
         </section>
 
-        <section class="apoV2Summary quick-summary-card" aria-label="Resumen rápido">
-          <article class="quick-summary-item is-pending"><span class="icon-circle">${apoSvg("card")}</span><small>Pendiente</small><b>${clp(pendingTotal)}</b><em>${pending.length} ${pending.length === 1 ? "pago" : "pagos"}</em></article>
-          <article class="quick-summary-item is-paid"><span class="icon-circle">${apoSvg("check")}</span><small>Pagados</small><b>${paid.length}</b><em>Este año</em></article>
-          <article class="quick-summary-item is-next"><span class="icon-circle">${apoSvg("calendar")}</span><small>Próximas</small><b>${nextThisMonth}</b><em>Este mes</em></article>
-          <article class="quick-summary-item is-total"><span class="icon-circle">${apoSvg("chart")}</span><small>Total pagado</small><b>${clp(paidTotal)}</b><em>Este año</em></article>
+        <section class="apoV2SummaryCard quick-summary-card" aria-label="Resumen rápido">
+          <div class="apoV2SummaryHead"><h2>Resumen rápido</h2><button type="button" onclick="go('payments')">Ver todo</button></div>
+          <div class="apoV2Summary">
+            <article class="quick-summary-item is-pending"><span class="icon-circle">${apoSvg("card")}</span><small>Pendiente</small><b>${clp(pendingTotal)}</b><em>${pending.length} ${pending.length === 1 ? "pago" : "pagos"}</em></article>
+            <article class="quick-summary-item is-paid"><span class="icon-circle">${apoSvg("check")}</span><small>Pagadas</small><b>${paid.length}</b><em>Este año</em></article>
+            <article class="quick-summary-item is-next"><span class="icon-circle">${apoSvg("calendar")}</span><small>Próximas</small><b>${nextThisMonth}</b><em>Este mes</em></article>
+            <article class="quick-summary-item is-total"><span class="icon-circle">${apoSvg("chart")}</span><small>Total pagado</small><b>${clp(paidTotal)}</b><em>Este año</em></article>
+          </div>
         </section>
 
         <section class="apoV2Section">
