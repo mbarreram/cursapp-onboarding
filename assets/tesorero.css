@@ -1177,3 +1177,60 @@ body.cursapp-tesorero .tesV57Page{
 body.cursapp-tesorero .tesV57Page:has([data-monetization-slot="tesorero"]:not(:empty)){
   padding-bottom:0!important;
 }
+
+
+/* =========================================================
+   Cursapp · Tesorero V63
+   - Elimina parpadeo del menú inferior: los SVG del menú final siempre visibles.
+   - Menú hamburguesa estable sobre cualquier listener legacy.
+   ========================================================= */
+body.cursapp-tesorero .bottomNav.tesBottomNav{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  isolation:isolate!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem{
+  display:flex!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  min-height:24px!important;
+  opacity:1!important;
+  visibility:visible!important;
+  overflow:visible!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon svg{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:23px!important;
+  height:23px!important;
+  min-width:23px!important;
+  min-height:23px!important;
+  max-width:23px!important;
+  max-height:23px!important;
+  overflow:visible!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:2.2!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavIcon,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavLabel{
+  color:#2563eb!important;
+}
+body.cursapp-tesorero .tesMenuDropdown,
+body.cursapp-tesorero #menuDropdown{
+  z-index:5000!important;
+  pointer-events:auto!important;
+}
+body.cursapp-tesorero #menuDropdown.is-open{
+  display:block!important;
+}

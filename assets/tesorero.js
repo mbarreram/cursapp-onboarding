@@ -677,8 +677,22 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   // ---------- menu ----------
   function initMenu(){
     if(menuBtn && menuDropdown){
-      if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{ e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block"); };
-      document.addEventListener("click", ()=> menuDropdown.style.display="none");
+      // V63: menú estable. Evitar cierre inmediato por listeners globales.
+      if (!window.CURSAPP_MENU_HANDLED) {
+        window.CURSAPP_MENU_HANDLED = true;
+        menuBtn.onclick = (e)=>{
+          e.preventDefault();
+          e.stopPropagation();
+          menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");
+        };
+        menuBtn.onpointerdown = (e)=>{ e.stopPropagation(); };
+        menuDropdown.addEventListener("click", (e)=> e.stopPropagation(), true);
+        menuDropdown.addEventListener("pointerdown", (e)=> e.stopPropagation(), true);
+        document.addEventListener("click", (e)=>{
+          if(menuDropdown.contains(e.target) || menuBtn.contains(e.target)) return;
+          menuDropdown.style.display="none";
+        });
+      }
       try{
         if(menuDropdown && !menuDropdown.querySelector('[data-menu-item="conciliacion"]')){
           const btn = document.createElement("button");
@@ -1898,30 +1912,12 @@ __bootTesoreroSupabaseFirst();
 })();
 
 
-/* Tesorero V59 · restaurar menú inferior y evitar duplicados de soporte */
+/* Tesorero V59 · restaurar menú inferior y evitar duplicados de soporte
+   V63: bloque legacy desactivado porque reescribía el menú inferior cada 700ms
+   y competía con el menú SVG final (V62/V63), causando parpadeo. */
 (function(){
   if(window.__CURSAPP_TESORERO_V59_POLISH__) return;
   window.__CURSAPP_TESORERO_V59_POLISH__ = true;
-
-  const NAV = {
-    home: ['⌂','Inicio'],
-    conciliacion: ['◉','Conciliar'],
-    rendiciones: ['▤','Rendiciones'],
-    informes: ['◔','Informes']
-  };
-
-  function restoreTreasurerNav(){
-    const nav = document.querySelector('body.cursapp-tesorero .bottomNav.tesBottomNav');
-    if(!nav) return;
-    nav.querySelectorAll('.navItem').forEach(btn=>{
-      const tab = btn.getAttribute('data-tab') || 'home';
-      const item = NAV[tab] || ['•', tab];
-      const active = btn.classList.contains('active');
-      btn.className = 'navItem' + (active ? ' active' : '');
-      btn.innerHTML = `<span class="tesNavIcon" aria-hidden="true">${item[0]}</span><span class="tesNavLabel">${item[1]}</span>`;
-    });
-  }
-
   function dedupeSupport(){
     try{
       const candidates = Array.from(document.querySelectorAll('button,a,div'))
@@ -1930,17 +1926,10 @@ __bootTesoreroSupabaseFirst();
       candidates.slice(0, -1).forEach(el => { el.style.display = 'none'; el.setAttribute('aria-hidden','true'); });
     }catch(_){ }
   }
-
-  function polish(){ restoreTreasurerNav(); dedupeSupport(); }
-  document.addEventListener('DOMContentLoaded', polish);
-  window.addEventListener('load', polish);
-  window.addEventListener('pageshow', polish);
-  setInterval(polish, 700);
-  setTimeout(polish, 50);
-  setTimeout(polish, 300);
-  setTimeout(polish, 1200);
+  document.addEventListener('DOMContentLoaded', dedupeSupport);
+  window.addEventListener('load', dedupeSupport);
+  window.addEventListener('pageshow', dedupeSupport);
 })();
-
 
 /* Tesorero V62 · menú inferior SVG + menú principal estable */
 (function(){
@@ -1968,6 +1957,7 @@ __bootTesoreroSupabaseFirst();
   }
 
   function stableMenu(){
+    window.CURSAPP_MENU_HANDLED = true;
     const btn = document.getElementById('menuBtn');
     const menu = document.getElementById('menuDropdown');
     if(!btn || !menu) return;
@@ -1984,9 +1974,10 @@ __bootTesoreroSupabaseFirst();
         e.stopPropagation();
         const item = e.target.closest('button');
         if(!item) return;
-        if(item.dataset.close){ menu.style.display='none'; return; }
+        if(item.dataset.close){ menu.style.display='none'; menu.classList.remove('is-open'); return; }
         const tab = item.dataset.go;
         menu.style.display='none';
+        menu.classList.remove('is-open');
         if(tab === 'perfil' && typeof renderProfile === 'function') { renderProfile(); return; }
         if(typeof go === 'function') go(tab || 'home');
       }, true);
@@ -1997,11 +1988,12 @@ __bootTesoreroSupabaseFirst();
       e.stopPropagation();
       const open = menu.style.display === 'block';
       menu.style.display = open ? 'none' : 'block';
+      menu.classList.toggle('is-open', !open);
     };
     btn.onclick = toggle;
     btn.onpointerdown = function(e){ e.stopPropagation(); };
     document.addEventListener('click', function(e){
-      if(!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) menu.style.display='none';
+      if(!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)){ menu.style.display='none'; menu.classList.remove('is-open'); }
     }, true);
   }
 
