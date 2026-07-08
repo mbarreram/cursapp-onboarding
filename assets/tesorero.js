@@ -1940,3 +1940,75 @@ __bootTesoreroSupabaseFirst();
   setTimeout(polish, 300);
   setTimeout(polish, 1200);
 })();
+
+
+/* Tesorero V62 · menú inferior SVG + menú principal estable */
+(function(){
+  if(window.__CURSAPP_TESORERO_V62_FINAL__) return;
+  window.__CURSAPP_TESORERO_V62_FINAL__ = true;
+
+  const ICONS = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10"/><path d="M8.8 10.2c.8-1.2 2.1-1.7 3.3-1.7 1.6 0 2.9.8 2.9 2.2 0 3-6 1.5-6 4.3 0 1.4 1.3 2.4 3.1 2.4 1.3 0 2.6-.5 3.4-1.7"/></svg>',
+    rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
+    informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
+  };
+  const LABELS = { home:'Inicio', conciliacion:'Conciliar', rendiciones:'Rendiciones', informes:'Informes' };
+
+  function restoreNav(){
+    const nav = document.querySelector('body.cursapp-tesorero .bottomNav.tesBottomNav');
+    if(!nav) return;
+    Array.from(nav.querySelectorAll('.navItem')).forEach(btn=>{
+      const tab = btn.getAttribute('data-tab') || 'home';
+      if(!LABELS[tab]) { btn.remove(); return; }
+      const active = btn.classList.contains('active');
+      btn.className = 'navItem' + (active ? ' active' : '');
+      btn.innerHTML = `<span class="tesNavIcon">${ICONS[tab]}</span><span class="tesNavLabel">${LABELS[tab]}</span>`;
+    });
+  }
+
+  function stableMenu(){
+    const btn = document.getElementById('menuBtn');
+    const menu = document.getElementById('menuDropdown');
+    if(!btn || !menu) return;
+    if(!menu.dataset.v62Ready){
+      menu.innerHTML = `
+        <button class="menuItem" type="button" data-go="home">🏠 Inicio</button>
+        <button class="menuItem" type="button" data-go="conciliacion">💳 Conciliar pagos</button>
+        <button class="menuItem" type="button" data-go="rendiciones">📄 Rendiciones</button>
+        <button class="menuItem" type="button" data-go="informes">📊 Informes</button>
+        <button class="menuItem" type="button" data-go="perfil">👤 Mi perfil</button>
+        <button class="menuItem" type="button" data-close="1">Cerrar menú</button>`;
+      menu.dataset.v62Ready = '1';
+      menu.addEventListener('click', function(e){
+        e.stopPropagation();
+        const item = e.target.closest('button');
+        if(!item) return;
+        if(item.dataset.close){ menu.style.display='none'; return; }
+        const tab = item.dataset.go;
+        menu.style.display='none';
+        if(tab === 'perfil' && typeof renderProfile === 'function') { renderProfile(); return; }
+        if(typeof go === 'function') go(tab || 'home');
+      }, true);
+      menu.addEventListener('pointerdown', e=>e.stopPropagation(), true);
+    }
+    const toggle = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const open = menu.style.display === 'block';
+      menu.style.display = open ? 'none' : 'block';
+    };
+    btn.onclick = toggle;
+    btn.onpointerdown = function(e){ e.stopPropagation(); };
+    document.addEventListener('click', function(e){
+      if(!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) menu.style.display='none';
+    }, true);
+  }
+
+  function run(){ restoreNav(); stableMenu(); }
+  document.addEventListener('DOMContentLoaded', run);
+  window.addEventListener('load', run);
+  window.addEventListener('pageshow', run);
+  setTimeout(run, 50); setTimeout(run, 250); setTimeout(run, 900);
+  setInterval(restoreNav, 1000);
+})();
