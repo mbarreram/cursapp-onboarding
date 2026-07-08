@@ -1711,7 +1711,16 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? 62 + (idx*8) : 0);
       return `<article class="tesCampaignRow"><div class="tesRowIcon">${idx===0?'🎓':'🎉'}</div><div class="tesRowMain"><b>${esc(t.title||'Campaña')}</b><small>${goal?`Meta: ${clp(goal)}`:'Meta por definir'}</small><div class="tesProgress"><i style="width:${pct}%"></i></div><small>Recaudado ${clp(rec)}</small></div><strong>${pct}%</strong></article>`;
     }).join('') || `<article class="tesEmptyRow"><b>Sin campañas activas</b><small>Cuando existan campañas, se verán aquí.</small></article>`;
-    const recent = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse().map(p=>`<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</small></div><strong class="ok">+${clp(p.amount)}</strong><span>${esc(String(p.paidAt||p.createdAt||'Hoy').slice(0,10) || 'Hoy')}</span></article>`).join('') || `<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>Último movimiento del curso</small></div><strong class="ok">+${clp(todayCollected() || collectedThisMonth)}</strong><span>Hoy</span></article>`;
+    const recent = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse().map(p=>`<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</small></div><strong class="ok">+${clp(p.amount)}</strong><span class="tesMoveDate">${esc(String(p.paidAt||p.createdAt||'Hoy').slice(0,10) || 'Hoy')}</span></article>`).join('') || `<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>Último movimiento del curso</small></div><strong class="ok">+${clp(todayCollected() || collectedThisMonth)}</strong><span class="tesMoveDate">Hoy</span></article>`;
+    const recentRenditions = expensesAll().slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,10).map(e=>{
+      const raw = String(e.date || e.createdAt || '');
+      const d = raw ? new Date(raw) : null;
+      const okDate = d && !Number.isNaN(d.getTime());
+      const day = okDate ? String(d.getDate()).padStart(2,'0') : '—';
+      const mon = okDate ? d.toLocaleDateString('es-CL',{month:'short'}).replace('.', '') : 'Fecha';
+      const status = e.status || e.state || 'Aprobada';
+      return `<article class="tesRenditionChip"><b>${esc(day)}</b><span>${esc(mon)}</span><strong>${clp(e.amount||0)}</strong><em>${esc(status)}</em></article>`;
+    }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
     app.innerHTML = `
       <div class="tesV57Page">
         <section class="tesCashCard">
@@ -1739,6 +1748,11 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           <header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header>
           ${recent}
           ${sinBoleta ? `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendición pendiente</b><small>${sinBoleta} comprobante(s) por adjuntar</small></div><strong>${clp(spentThisMonth)}</strong><span>Revisar</span></article>` : `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendiciones al día</b><small>No hay comprobantes pendientes</small></div><strong>$0</strong><span>OK</span></article>`}
+        </section>
+
+        <section class="tesPanel tesRecentRenditions">
+          <header><h2>Rendiciones recientes</h2><button onclick="go('rendiciones')">Ver todas ›</button></header>
+          <div class="tesRenditionScroller">${recentRenditions}</div>
         </section>
 
         <div data-monetization-slot="tesorero"></div>
@@ -1877,8 +1891,7 @@ __bootTesoreroSupabaseFirst();
     home: ['⌂','Inicio'],
     conciliacion: ['◉','Conciliar'],
     rendiciones: ['▤','Rendiciones'],
-    informes: ['◔','Informes'],
-    profile: ['♙','Perfil']
+    informes: ['◔','Informes']
   };
 
   function restoreTreasurerNav(){
