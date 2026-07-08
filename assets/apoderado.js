@@ -3329,6 +3329,16 @@ window.payNow = async function(id){
     const activeFilter = ["all","pending","paid"].includes(payFilter) ? payFilter : "pending";
     payFilter = activeFilter;
 
+    function renderPayTrustBadge(extraClass=""){
+      return `<div class="apoPayTrustBadge ${extraClass}">
+        <div class="apoPayTrustLock" aria-hidden="true">🔒</div>
+        <div class="apoPayTrustText">
+          <b><span>Transbank</span> Pago seguro</b>
+          <small>Pago protegido · Débito y crédito</small>
+        </div>
+      </div>`;
+    }
+
     function renderHero(){
       if(!next){
         return `<section class="apoPayUpToDateHero">
@@ -3342,7 +3352,7 @@ window.payNow = async function(id){
         <div class="apoPayHeroTop"><span>Próximo pago</span><small>Pago seguro</small></div>
         <div class="apoPayHeroMain">
           <div class="apoPayHeroCopy"><h2>${esc(groupTitle)}</h2><p class="${ds.cls}">${esc(ds.text)}</p><strong>${clp(amountOf(next))}</strong></div>
-          <div class="apoPayHeroBadge"><span>Transbank</span><b>Pago seguro</b><small>Tarjetas y Webpay</small></div>
+          ${renderPayTrustBadge('hero')}
         </div>
         <div class="apoPayHeroActions"><button type="button" onclick="payNow('${esc(next.id)}')">Pagar ahora</button><button type="button" onclick="setPayFilter('pending')">Ver pendientes</button></div>
       </section>`;
@@ -3393,6 +3403,37 @@ window.payNow = async function(id){
       </article>`;
     }
 
+    function yearOfPayment(p){
+      try{
+        const raw = p?.dueDate || p?.paidAt || p?.createdAt;
+        const d = raw ? new Date(String(raw).slice(0,10)+"T00:00:00") : null;
+        return d && !Number.isNaN(d.getTime()) ? d.getFullYear() : "Sin fecha";
+      }catch(e){ return "Sin fecha"; }
+    }
+
+    function renderYearAccordion(rows){
+      const byYear = new Map();
+      rows.forEach(p=>{
+        const y = yearOfPayment(p);
+        if(!byYear.has(y)) byYear.set(y, []);
+        byYear.get(y).push(p);
+      });
+      return Array.from(byYear.entries()).map(([year, yearRows], index)=>{
+        const pending = yearRows.filter(isPending);
+        const paid = yearRows.filter(isPaid);
+        const amount = pending.length ? pending.reduce((a,p)=>a+amountOf(p),0) : yearRows.reduce((a,p)=>a+amountOf(p),0);
+        const open = index === 0 ? " open" : "";
+        return `<details class="apoPayYear"${open}>
+          <summary>
+            <span>${esc(year)}</span>
+            <small>${yearRows.length} cuota(s) · ${pending.length} pendiente(s)${paid.length ? ` · ${paid.length} pagada(s)` : ``}</small>
+            <b>${clp(amount)}</b>
+          </summary>
+          <div class="apoPayLines">${yearRows.map(renderPaymentLine).join("")}</div>
+        </details>`;
+      }).join("");
+    }
+
     function renderGroup(rows){
       const title = groupTitleOf(rows);
       const pending = rows.filter(isPending);
@@ -3402,13 +3443,14 @@ window.payNow = async function(id){
       const pendingTotal = pending.reduce((a,p)=>a+amountOf(p),0);
       const firstDue = pending[0] || rows[0];
       const ds = dueState(firstDue);
-      return `<section class="apoPayGroup">
+      const collapseMonthly = monthly && rows.length > 3;
+      return `<section class="apoPayGroup ${collapseMonthly ? 'is-collapsible' : ''}">
         <div class="apoPayGroupHead">
           <div><span>${monthly ? 'Pago mensual' : 'Pago único'}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
           <div class="apoPayGroupAmount"><small>${pending.length ? 'Por pagar' : 'Total'}</small><strong>${clp(pending.length ? pendingTotal : total)}</strong></div>
         </div>
-        ${monthly ? `<div class="apoPayMonthHint">Estás revisando cuotas agrupadas de una misma campaña. Paga cada mes por separado.</div>` : ``}
-        <div class="apoPayLines">${rows.map(renderPaymentLine).join("")}</div>
+        ${monthly ? `<div class="apoPayMonthHint">${collapseMonthly ? 'Cuotas agrupadas por año para evitar listas extensas. Abre cada año y paga la cuota que corresponda.' : 'Estás revisando cuotas agrupadas de una misma campaña. Paga cada mes por separado.'}</div>` : ``}
+        ${collapseMonthly ? renderYearAccordion(rows) : `<div class="apoPayLines">${rows.map(renderPaymentLine).join("")}</div>`}
       </section>`;
     }
 
@@ -3426,7 +3468,7 @@ window.payNow = async function(id){
     app.innerHTML = `<div class="apoPayPage">
       <section class="apoPayHeader">
         <div><h1>Pagos</h1><p>Revisa tus cuotas, paga de forma segura y descarga comprobantes.</p></div>
-        <div class="apoPaySecure"><b>Transbank</b><span>Pagos seguros</span></div>
+        ${renderPayTrustBadge('header')}
       </section>
       ${renderHero()}
       ${renderSummary()}
