@@ -3769,6 +3769,137 @@ window.payNow = async function(id){
     try{ await navigator.clipboard.writeText(msg); toast('Informe copiado'); }catch(e){ alert(msg); }
   };
 
+
+  // ----- Perfil Apoderado V56 -----
+  function apoProfileReadPrefs(){
+    try{ return JSON.parse(localStorage.getItem('cursapp_profile_comm_prefs_v1') || '{}') || {}; }catch(_){ return {}; }
+  }
+  function apoProfileSavePrefs(prefs){
+    try{ localStorage.setItem('cursapp_profile_comm_prefs_v1', JSON.stringify(prefs || {})); }catch(_){ }
+  }
+  function apoProfileDefaultPrefs(){
+    return {
+      push:true, email:true, sms:false,
+      push_pagos:true, push_campanas:true, push_avisos:true, push_informes:true, push_mercado:true,
+      email_pagos:true, email_campanas:false, email_avisos:true, email_informes:true, email_mercado:false,
+      sms_activaciones:true, sms_avisos:false
+    };
+  }
+  function apoProfilePrefs(){ return Object.assign(apoProfileDefaultPrefs(), apoProfileReadPrefs()); }
+  function apoProfileToggle(key){
+    const prefs = apoProfilePrefs();
+    prefs[key] = !prefs[key];
+    apoProfileSavePrefs(prefs);
+    renderProfile();
+  }
+  window.apoProfileToggle = apoProfileToggle;
+
+  function apoProfileGetData(){
+    const p = (typeof getActiveProfile === 'function' ? getActiveProfile() : null) || {};
+    const s = (typeof getSession === 'function' ? getSession() : {}) || {};
+    const ident = (typeof getActiveIdentity === 'function' ? getActiveIdentity() : {}) || {};
+    const ap = p.apoderado || {};
+    const c = p.course || {};
+    let activeObj = {};
+    try{ activeObj = JSON.parse(localStorage.getItem(KEY_ACTIVE_PROFILE) || '{}') || {}; }catch(_){ activeObj = {}; }
+    let editable = {};
+    try{ editable = JSON.parse(localStorage.getItem('cursapp_profile_editable_v1') || '{}') || {}; }catch(_){ editable = {}; }
+    const name = editable.name || ident.name || ap.name || ap.nombre || s.name || s.nombre || 'Apoderado';
+    const phone = editable.phone || ap.phone || ap.telefono || s.phone || s.telefono || '';
+    const email = ident.email || ap.email || s.email || s.userId || activeObj.email || '';
+    const student = ident.studentName || ap.alumno || p.alumno || activeObj.alumno || 'Alumno/a';
+    const course = ident.courseShort || c.courseLabel || c.name || activeObj.courseLabel || activeObj.courseName || `${c.level || ''}${c.letter || ''} ${c.year || ''}`.trim() || 'Curso';
+    const school = ident.schoolName || c.schoolName || c.colegio || activeObj.schoolName || activeObj.colegio || 'Colegio';
+    return { name, phone, email, student, course, school };
+  }
+
+  function apoProfileEdit(field){
+    const data = apoProfileGetData();
+    const labels = { name:'nombre completo', phone:'teléfono' };
+    const current = field === 'phone' ? data.phone : data.name;
+    const next = prompt(`Editar ${labels[field] || field}`, current || '');
+    if(next === null) return;
+    let editable = {};
+    try{ editable = JSON.parse(localStorage.getItem('cursapp_profile_editable_v1') || '{}') || {}; }catch(_){ editable = {}; }
+    editable[field] = String(next || '').trim();
+    try{ localStorage.setItem('cursapp_profile_editable_v1', JSON.stringify(editable)); }catch(_){ }
+    renderProfile();
+  }
+  window.apoProfileEdit = apoProfileEdit;
+
+  function apoProfileOpenPrefs(){ renderProfile(true); }
+  window.apoProfileOpenPrefs = apoProfileOpenPrefs;
+
+  function apoProfileCount(type){
+    let n = 0;
+    try{
+      if(type === 'push'){
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i)||'';
+          if(/avisos|notification|notificacion/i.test(k)){
+            const v = JSON.parse(localStorage.getItem(k) || '[]');
+            if(Array.isArray(v)) n += Math.min(v.length, 99);
+          }
+        }
+      }
+      if(type === 'email') n = Number(localStorage.getItem('cursapp_profile_email_count_v1') || 0) || 0;
+      if(type === 'sms') n = Number(localStorage.getItem('cursapp_profile_sms_count_v1') || 0) || 0;
+    }catch(_){ }
+    return n;
+  }
+
+  function apoToggle(label,key,desc=''){
+    const prefs = apoProfilePrefs();
+    const on = !!prefs[key];
+    return `<button class="apoProfileToggleRow" type="button" onclick="apoProfileToggle('${esc(key)}')"><span><b>${esc(label)}</b>${desc?`<small>${esc(desc)}</small>`:''}</span><i class="apoProfileSwitch ${on?'on':''}"><em></em></i></button>`;
+  }
+
+  function renderProfile(detail=false){
+    const d = apoProfileGetData();
+    const prefs = apoProfilePrefs();
+    const initials = String(d.name || 'A').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'A';
+    const lock = `<span class="apoProfileLock" title="No editable">🔒</span>`;
+    const edit = (field)=>`<button class="apoProfileEdit" type="button" onclick="apoProfileEdit('${field}')" aria-label="Editar">✎</button>`;
+    const channel = (cls,icon,title,state)=>`<article class="apoProfileChannel ${cls}"><span>${icon}</span><b>${title}</b><small>${state ? 'Activado' : 'Desactivado'}</small></article>`;
+
+    if(detail){
+      app.innerHTML = `<div class="apoProfilePage apoProfileDetailPage">
+        <section class="apoProfileTopbar"><button type="button" onclick="renderProfile(false)">←</button><h1>Preferencias</h1><span></span></section>
+        <section class="apoProfileCard apoProfilePrefsIntro"><h2>Preferencias de comunicación</h2><p>Selecciona cómo quieres recibir información de Cursapp.</p></section>
+        <section class="apoProfileCard apoProfilePrefsBlock push"><div class="apoProfilePrefHead"><span>🔔</span><div><h2>Notificaciones Push</h2><p>Alertas dentro de la app de Cursapp.</p></div><button class="apoProfileSwitch ${prefs.push?'on':''}" onclick="apoProfileToggle('push')"><em></em></button></div>${apoToggle('Pagos y cuotas','push_pagos','Vencimientos, pagos y comprobantes')}${apoToggle('Campañas','push_campanas','Nuevas campañas y actualizaciones')}${apoToggle('Avisos del curso','push_avisos','Comunicados de la directiva')}${apoToggle('Rendiciones e informes','push_informes','Publicación de rendiciones e informes')}${apoToggle('Mercado escolar','push_mercado','Mensajes y actividad de tus avisos')}</section>
+        <section class="apoProfileCard apoProfilePrefsBlock email"><div class="apoProfilePrefHead"><span>✉️</span><div><h2>Correos electrónicos</h2><p>Comunicaciones importantes por correo.</p></div><button class="apoProfileSwitch ${prefs.email?'on':''}" onclick="apoProfileToggle('email')"><em></em></button></div>${apoToggle('Pagos y cuotas','email_pagos','Vencimientos, pagos y comprobantes')}${apoToggle('Campañas','email_campanas','Nuevas campañas y actualizaciones')}${apoToggle('Avisos del curso','email_avisos','Comunicados de la directiva')}${apoToggle('Rendiciones e informes','email_informes','Publicación de rendiciones e informes')}${apoToggle('Mercado escolar','email_mercado','Mensajes y actividad de tus avisos')}</section>
+        <section class="apoProfileCard apoProfilePrefsBlock sms"><div class="apoProfilePrefHead"><span>💬</span><div><h2>SMS / Mensajes de texto</h2><p>Activaciones y avisos importantes.</p></div><button class="apoProfileSwitch ${prefs.sms?'on':''}" onclick="apoProfileToggle('sms')"><em></em></button></div>${apoToggle('Activaciones y seguridad','sms_activaciones','Códigos de verificación y alertas')}${apoToggle('Avisos importantes','sms_avisos','Vencimientos y comunicaciones urgentes')}</section>
+        <section class="apoProfileInfoNote">ⓘ Puedes desactivar cualquier canal cuando quieras. Las notificaciones críticas siempre se enviarán.</section>
+      </div>`;
+      return;
+    }
+
+    app.innerHTML = `<div class="apoProfilePage">
+      <section class="apoProfileHero">
+        <div class="apoProfileAvatar"><span>${esc(initials)}</span><button type="button" onclick="alert('Cambio de foto disponible próximamente')">📷</button></div>
+        <div class="apoProfileHeroText"><h1>${esc(d.name)}</h1><p>Apoderado de ${esc(apoFirstName(d.student) || d.student)}</p><div><span>✉️ ${esc(d.email || 'correo no registrado')}</span>${lock}</div><div><span>📱 ${esc(d.phone || 'Agregar teléfono')}</span>${edit('phone')}</div></div>
+      </section>
+
+      <section class="apoProfileCard apoProfileLockedCard">
+        <article><span>🎓</span><div><b>Curso</b><small>${esc(d.course)}</small></div>${lock}</article>
+        <article><span>🏫</span><div><b>Colegio</b><small>${esc(d.school)}</small></div>${lock}</article>
+        <p>ⓘ Estos datos son administrados por la directiva del curso y no pueden ser modificados.</p>
+      </section>
+
+      <section class="apoProfileCard"><h2>Información personal</h2>
+        <article class="apoProfileRow"><span>👤</span><div><b>Nombre completo</b><small>${esc(d.name)}</small></div>${edit('name')}</article>
+        <article class="apoProfileRow"><span>📱</span><div><b>Teléfono</b><small>${esc(d.phone || 'Agregar teléfono')}</small></div>${edit('phone')}</article>
+        <article class="apoProfileRow"><span>📷</span><div><b>Foto de perfil</b><small>Avatar visible en Cursapp</small></div><button class="apoProfileEdit" onclick="alert('Cambio de foto disponible próximamente')">✎</button></article>
+        <article class="apoProfileRow"><span>🔐</span><div><b>Contraseña</b><small>Actualizar acceso</small></div><button class="apoProfileEdit" onclick="alert('Cambio de contraseña disponible próximamente')">✎</button></article>
+      </section>
+
+      <section class="apoProfileCard apoProfileCommCard"><div class="apoProfileCardHead"><h2>Mis preferencias de comunicación</h2><button type="button" onclick="apoProfileOpenPrefs()">Ver detalles</button></div><div class="apoProfileChannels">${channel('push','🔔','Push',prefs.push)}${channel('email','✉️','Correos',prefs.email)}${channel('sms','💬','SMS',prefs.sms)}</div></section>
+
+      <section class="apoProfileCard apoProfileSummary"><div class="apoProfileCardHead"><div><h2>Resumen de comunicaciones</h2><p>Últimos 30 días</p></div><button onclick="apoProfileOpenPrefs()">›</button></div><div class="apoProfileSummaryGrid"><article><span>🔔</span><b>${apoProfileCount('push')}</b><small>Push recibidas</small></article><article><span>✉️</span><b>${apoProfileCount('email')}</b><small>Correos recibidos</small></article><article><span>💬</span><b>${apoProfileCount('sms')}</b><small>SMS recibidos</small></article></div></section>
+    </div>`;
+  }
+  window.renderProfile = renderProfile;
+
   // âœ… Router GLOBAL (y expuesto para que onclick del Home no rompa)
   function go(tab){
     navItems.forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
@@ -3784,6 +3915,7 @@ window.payNow = async function(id){
     if(tab==="home") renderHome();
     if(tab==="payments") renderPayments();
     if(tab==="informes") renderInformes();
+    if(tab==="profile" || tab==="perfil") renderProfile(false);
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
     try{ keepApoV45BellAlive(); }catch(e){}
     try{ installApoV47FloatingMessages(); }catch(e){}
@@ -3851,7 +3983,7 @@ window.payNow = async function(id){
       menu.style.display = "none";
       if(action === "home" || action === "payments" || action === "informes") return go(action);
       if(action === "market") return location.href = "/mercado-escolar/mercado-escolar.html";
-      if(action === "perfil") return location.href = "/perfil.html";
+      if(action === "perfil") return go("profile");
       if(action === "tesorero") return location.href = "/tesorero.html";
       if(action === "avisos") return (typeof openAvisosInbox === "function" ? openAvisosInbox() : null);
       if(action === "consentimientos") return alert("Consentimientos estará disponible próximamente.");
