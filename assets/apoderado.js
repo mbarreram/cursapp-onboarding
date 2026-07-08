@@ -3280,48 +3280,165 @@ window.payNow = async function(id){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
     try{ paysAll = dedupePaymentsAll(paysAll).list; }catch(e){}
-    try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
+    const tasksAll = normalizeTasks(load(KEY_TASKS, []));
+    try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasksAll).list; }catch(e){}
     paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
 
-    const filterMap = {
-      all: paysAll,
-      pending: paysAll.filter(p=>["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p)),
-      paid: paysAll.filter(p=>String(p.status||"").toLowerCase()==="paid")
+    const yearNow = new Date().getFullYear();
+    const monthNow = new Date().getMonth();
+    const statusOf = (p)=>String(p?.status||"pending").toLowerCase();
+    const isPaid = (p)=>statusOf(p)==="paid";
+    const isPending = (p)=>["pending","partial","overdue"].includes(statusOf(p)) && !isPaymentOptedOut(p);
+    const amountOf = (p)=>Number((isPaid(p) ? (p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0);
+    const taskOf = (p)=> tasksAll.find(t=>String(t.id)===String(p.fromTaskId)) || null;
+    const titleOf = (p)=>{
+      const t = taskOf(p);
+      return p.title || p.concept || p.taskTitle || p.campaignTitle || p.fromTaskTitle || t?.title || "Pago del curso";
     };
-    const rows = filterMap[payFilter] || filterMap.pending;
-    const next = filterMap.pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
-    const cards = rows.map(p=>{
-      const status = String(p.status||"pending").toLowerCase();
-      const paidOk = status === "paid";
-      return `
-        <article class="apoMockPayCard">
-          <div>
-            <h3>${esc(p.title || p.concept || "Pago del curso")}</h3>
-            <p>${esc(p.taskTitle || p.campaignTitle || p.fromTaskTitle || "Campaña")} · ${esc(p.installmentLabel || p.cuota || "")}</p>
-            <small>${p.dueDate ? `Vence ${esc(p.dueDate)}` : esc(String(p.paidAt||p.createdAt||"").slice(0,10))}</small>
-          </div>
-          <strong>${clp(p.amountRemaining ?? p.amount ?? 0)}</strong>
-          <span class="${paidOk?'is-paid':'is-pending'}">${paidOk ? "Pagado" : "Pendiente"}</span>
-          <footer>
-            ${paidOk ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Ver comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
-          </footer>
-        </article>`;
-    }).join("") || `<article class="apoMockEmpty"><strong>No hay pagos para este filtro</strong><p>Cuando existan cuotas aparecerán aquí.</p></article>`;
+    const groupKeyOf = (p)=> String(p.fromTaskId || p.taskId || titleOf(p) || "otros");
+    const groupTitleOf = (rows)=>{
+      const first = rows[0] || {};
+      const t = taskOf(first);
+      return t?.title || first.taskTitle || first.campaignTitle || first.fromTaskTitle || first.title || first.concept || "Otros pagos";
+    };
+    const dueTime = (p)=> p?.dueDate ? new Date(p.dueDate+"T00:00:00").getTime() : 0;
+    const paidTime = (p)=> new Date(p?.paidAt || p?.createdAt || p?.dueDate || 0).getTime() || 0;
+    const fmtDate = (iso)=>{
+      if(!iso) return "Sin fecha";
+      try{ return new Date(iso+"T00:00:00").toLocaleDateString("es-CL", {day:"2-digit", month:"short", year:"numeric"}).replace(".",""); }catch(e){ return String(iso); }
+    };
+    const dueState = (p)=>{
+      if(!p?.dueDate) return {cls:"neutral", label:"Sin fecha", text:"Sin vencimiento"};
+      const d = daysTo(p.dueDate);
+      if(d < 0) return {cls:"danger", label:"Vencida", text:`Venció el ${fmtDate(p.dueDate)} · hace ${Math.abs(d)} día(s)`};
+      if(d === 0) return {cls:"warn", label:"Vence hoy", text:`Vence hoy · ${fmtDate(p.dueDate)}`};
+      if(d <= 7) return {cls:"warn", label:"Próxima", text:`Vence en ${d} día(s) · ${fmtDate(p.dueDate)}`};
+      return {cls:"neutral", label:"Pendiente", text:`Vence el ${fmtDate(p.dueDate)}`};
+    };
+    const paidThisYear = paysAll.filter(p=>isPaid(p) && new Date(p.paidAt || p.createdAt || 0).getFullYear()===yearNow);
+    const pendingRowsAll = paysAll.filter(isPending).sort((a,b)=>dueTime(a)-dueTime(b));
+    const next = pendingRowsAll[0];
+    const totalPending = pendingRowsAll.reduce((a,p)=>a+amountOf(p),0);
+    const totalPaidYear = paidThisYear.reduce((a,p)=>a+amountOf(p),0);
+    const nextMonthCount = pendingRowsAll.filter(p=>{
+      if(!p.dueDate) return false;
+      const dt = new Date(p.dueDate+"T00:00:00");
+      return dt.getMonth()===monthNow && dt.getFullYear()===yearNow;
+    }).length;
 
-    app.innerHTML = `
-      <div class="apoMockPage">
-        <section class="apoMockSection">
-          <h1>Pagos</h1>
-          <p class="apoMockLead">Revisa tus pagos y obligaciones</p>
-          <div class="apoMockChips">
-            <button class="${payFilter==="all"?"active":""}" onclick="setPayFilter('all')">Todos</button>
-            <button class="${payFilter==="pending"?"active":""}" onclick="setPayFilter('pending')">Pendientes</button>
-            <button class="${payFilter==="paid"?"active":""}" onclick="setPayFilter('paid')">Pagados</button>
-          </div>
-        </section>
-        ${next ? `<section class="apoMockNextPay"><small>Próxima cuota</small><h2>${esc(next.title || next.concept || "Pago pendiente")}</h2><strong>${clp(next.amountRemaining ?? next.amount ?? 0)}</strong><button onclick="payNow('${esc(next.id)}')">Pagar</button></section>` : ``}
-        <section class="apoMockPayList">${cards}</section>
-      </div>`;
+    const activeFilter = ["all","pending","paid"].includes(payFilter) ? payFilter : "pending";
+    payFilter = activeFilter;
+
+    function renderHero(){
+      if(!next){
+        return `<section class="apoPayUpToDateHero">
+          <div class="apoPayHeroIcon">🏆</div>
+          <div><span>Todo al día</span><h2>Sin pagos pendientes</h2><p>Gracias por mantener tus compromisos al día. Tus aportes ayudan al curso.</p></div>
+        </section>`;
+      }
+      const ds = dueState(next);
+      const groupTitle = groupTitleOf([next]);
+      return `<section class="apoPayHero ${ds.cls}">
+        <div class="apoPayHeroTop"><span>Próximo pago</span><small>Pago seguro</small></div>
+        <div class="apoPayHeroMain">
+          <div class="apoPayHeroCopy"><h2>${esc(groupTitle)}</h2><p class="${ds.cls}">${esc(ds.text)}</p><strong>${clp(amountOf(next))}</strong></div>
+          <div class="apoPayHeroBadge"><span>Transbank</span><b>Pago seguro</b><small>Tarjetas y Webpay</small></div>
+        </div>
+        <div class="apoPayHeroActions"><button type="button" onclick="payNow('${esc(next.id)}')">Pagar ahora</button><button type="button" onclick="setPayFilter('pending')">Ver pendientes</button></div>
+      </section>`;
+    }
+
+    function renderSummary(){
+      return `<section class="apoPaySummary">
+        <article><span class="purple">${apoSvg("card")}</span><p>Pendiente</p><strong>${clp(totalPending)}</strong><small>${pendingRowsAll.length} pago(s)</small></article>
+        <article><span class="green">✓</span><p>Pagados</p><strong>${paidThisYear.length}</strong><small>Este año</small></article>
+        <article><span class="orange">${apoSvg("calendar")}</span><p>Próximas</p><strong>${nextMonthCount}</strong><small>Este mes</small></article>
+        <article><span class="blue">▥</span><p>Total pagado</p><strong>${clp(totalPaidYear)}</strong><small>Este año</small></article>
+      </section>`;
+    }
+
+    function rowsForFilter(){
+      if(activeFilter === "paid") return paysAll.filter(isPaid).sort((a,b)=>paidTime(b)-paidTime(a));
+      if(activeFilter === "pending") return pendingRowsAll;
+      return paysAll.slice().sort((a,b)=>{
+        const aw = isPending(a) ? 0 : 1;
+        const bw = isPending(b) ? 0 : 1;
+        if(aw !== bw) return aw-bw;
+        return (dueTime(a)||paidTime(a)) - (dueTime(b)||paidTime(b));
+      });
+    }
+
+    function groupRows(rows){
+      const map = new Map();
+      rows.forEach(p=>{
+        const key = groupKeyOf(p);
+        if(!map.has(key)) map.set(key, []);
+        map.get(key).push(p);
+      });
+      return Array.from(map.values()).map(rows=>rows.sort((a,b)=>(dueTime(a)||paidTime(a))-(dueTime(b)||paidTime(b))));
+    }
+
+    function renderPaymentLine(p){
+      const paid = isPaid(p);
+      const ds = dueState(p);
+      const month = p.dueDate ? new Date(p.dueDate+"T00:00:00").toLocaleDateString("es-CL", {month:"long", year:"numeric"}) : "";
+      return `<article class="apoPayLine ${paid?'paid':ds.cls}">
+        <div class="apoPayLineIcon">${paid ? '✓' : (ds.cls==='danger' ? '!' : '•')}</div>
+        <div class="apoPayLineInfo">
+          <h4>${esc(p.installmentLabel || p.cuota || month || titleOf(p))}</h4>
+          <p>${paid ? `Pagado ${esc(fmtDate(String(p.paidAt||p.createdAt||'').slice(0,10)))}` : esc(ds.text)}</p>
+        </div>
+        <strong>${clp(amountOf(p))}</strong>
+        ${paid ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
+      </article>`;
+    }
+
+    function renderGroup(rows){
+      const title = groupTitleOf(rows);
+      const pending = rows.filter(isPending);
+      const paid = rows.filter(isPaid);
+      const monthly = rows.length > 1;
+      const total = rows.reduce((a,p)=>a+amountOf(p),0);
+      const pendingTotal = pending.reduce((a,p)=>a+amountOf(p),0);
+      const firstDue = pending[0] || rows[0];
+      const ds = dueState(firstDue);
+      return `<section class="apoPayGroup">
+        <div class="apoPayGroupHead">
+          <div><span>${monthly ? 'Pago mensual' : 'Pago único'}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
+          <div class="apoPayGroupAmount"><small>${pending.length ? 'Por pagar' : 'Total'}</small><strong>${clp(pending.length ? pendingTotal : total)}</strong></div>
+        </div>
+        ${monthly ? `<div class="apoPayMonthHint">Estás revisando cuotas agrupadas de una misma campaña. Paga cada mes por separado.</div>` : ``}
+        <div class="apoPayLines">${rows.map(renderPaymentLine).join("")}</div>
+      </section>`;
+    }
+
+    function renderPaidState(){
+      if(activeFilter !== "paid") return "";
+      if(pendingRowsAll.length > 0) return "";
+      return `<section class="apoPayCelebrate"><div>🎉</div><h2>¡Todo al día!</h2><p>No tienes pagos pendientes. Gracias por apoyar al curso.</p><span>${paidThisYear.length} pagos realizados · ${clp(totalPaidYear)} aportados este año</span></section>`;
+    }
+
+    const selectedRows = rowsForFilter();
+    const groups = groupRows(selectedRows);
+    const groupsHtml = groups.map(renderGroup).join("");
+    const empty = `<section class="apoPayEmpty"><div>${activeFilter==='paid'?'🏆':'💳'}</div><h3>${activeFilter==='paid'?'Aún no tienes pagos registrados':'No hay pagos para esta pestaña'}</h3><p>Cuando existan cuotas aparecerán aquí.</p></section>`;
+
+    app.innerHTML = `<div class="apoPayPage">
+      <section class="apoPayHeader">
+        <div><h1>Pagos</h1><p>Revisa tus cuotas, paga de forma segura y descarga comprobantes.</p></div>
+        <div class="apoPaySecure"><b>Transbank</b><span>Pagos seguros</span></div>
+      </section>
+      ${renderHero()}
+      ${renderSummary()}
+      <section class="apoPayTabs" role="tablist">
+        <button class="${activeFilter==='all'?'active':''}" onclick="setPayFilter('all')">Todos</button>
+        <button class="${activeFilter==='pending'?'active':''}" onclick="setPayFilter('pending')">Pendientes</button>
+        <button class="${activeFilter==='paid'?'active':''}" onclick="setPayFilter('paid')">Pagados</button>
+      </section>
+      ${renderPaidState()}
+      <section class="apoPayList">${groupsHtml || empty}</section>
+    </div>`;
+
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());
   };
 
