@@ -684,3 +684,86 @@ body.cursapp-tesorero .tesV57Page > .tesSupportBtn{
     font-size:22px!important;
   }
 }
+
+
+/* =========================================================
+   Cursapp · Tesorero V59 polish
+   - Blindaje final del menú inferior contra SVG/íconos legacy
+   - Un solo botón de soporte visible
+   - Espaciado inferior consistente junto a banners
+   ========================================================= */
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem > :not(.tesNavIcon):not(.tesNavLabel){
+  display:none!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .caSvgIcon,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem svg,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem i,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem img{
+  display:none!important;
+  visibility:hidden!important;
+  width:0!important;
+  height:0!important;
+  min-width:0!important;
+  min-height:0!important;
+  opacity:0!important;
+  overflow:hidden!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon{
+  display:block!important;
+  width:24px!important;
+  height:24px!important;
+  font-size:22px!important;
+  line-height:24px!important;
+  text-align:center!important;
+  flex:0 0 auto!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavLabel{
+  display:block!important;
+  font-size:10.5px!important;
+  line-height:1.08!important;
+  margin-top:2px!important;
+  text-align:center!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavIcon,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavLabel{
+  color:#2563eb!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active{
+  background:#eff6ff!important;
+}
+
+/* Ocultar cualquier botón de soporte propio; queda solo el widget oficial de support-ticket */
+body.cursapp-tesorero .tesSupportBtn,
+body.cursapp-tesorero button.tesSupportBtn,
+body.cursapp-tesorero a.tesSupportBtn{
+  display:none!important;
+}
+body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+  margin-top:12px!important;
+  margin-bottom:calc(96px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero .tesPanel:last-of-type{
+  margin-bottom:8px!important;
+}
+@media(max-width:430px){
+  body.cursapp-tesorero .bottomNav.tesBottomNav{
+    height:70px!important;
+    min-height:70px!important;
+    max-height:70px!important;
+    padding:7px!important;
+  }
+  body.cursapp-tesorero .bottomNav.tesBottomNav .navItem{
+    height:54px!important;
+    min-height:54px!important;
+    max-height:54px!important;
+  }
+  body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon{
+    width:22px!important;
+    height:22px!important;
+    font-size:20px!important;
+    line-height:22px!important;
+  }
+  body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavLabel{
+    font-size:10px!important;
+  }
+}

@@ -1866,3 +1866,48 @@ __bootTesoreroSupabaseFirst();
   const timer = setInterval(rerender, 1500);
   setTimeout(()=>clearInterval(timer), 12000);
 })();
+
+
+/* Tesorero V59 · restaurar menú inferior y evitar duplicados de soporte */
+(function(){
+  if(window.__CURSAPP_TESORERO_V59_POLISH__) return;
+  window.__CURSAPP_TESORERO_V59_POLISH__ = true;
+
+  const NAV = {
+    home: ['⌂','Inicio'],
+    conciliacion: ['◉','Conciliar'],
+    rendiciones: ['▤','Rendiciones'],
+    informes: ['◔','Informes'],
+    profile: ['♙','Perfil']
+  };
+
+  function restoreTreasurerNav(){
+    const nav = document.querySelector('body.cursapp-tesorero .bottomNav.tesBottomNav');
+    if(!nav) return;
+    nav.querySelectorAll('.navItem').forEach(btn=>{
+      const tab = btn.getAttribute('data-tab') || 'home';
+      const item = NAV[tab] || ['•', tab];
+      const active = btn.classList.contains('active');
+      btn.className = 'navItem' + (active ? ' active' : '');
+      btn.innerHTML = `<span class="tesNavIcon" aria-hidden="true">${item[0]}</span><span class="tesNavLabel">${item[1]}</span>`;
+    });
+  }
+
+  function dedupeSupport(){
+    try{
+      const candidates = Array.from(document.querySelectorAll('button,a,div'))
+        .filter(el => /soporte/i.test((el.textContent || '').trim()) && getComputedStyle(el).position === 'fixed');
+      if(candidates.length <= 1) return;
+      candidates.slice(0, -1).forEach(el => { el.style.display = 'none'; el.setAttribute('aria-hidden','true'); });
+    }catch(_){ }
+  }
+
+  function polish(){ restoreTreasurerNav(); dedupeSupport(); }
+  document.addEventListener('DOMContentLoaded', polish);
+  window.addEventListener('load', polish);
+  window.addEventListener('pageshow', polish);
+  setInterval(polish, 700);
+  setTimeout(polish, 50);
+  setTimeout(polish, 300);
+  setTimeout(polish, 1200);
+})();
