@@ -3117,3 +3117,85 @@ body.apoderado-home-v40 .receiptV52BottomActions .receiptV51Secondary{
   body.apoderado-home-v40 .receiptV52Card .receiptV51Details{display:grid!important;grid-template-columns:1fr 1fr!important;}
   body.apoderado-home-v40 .receiptV52Card .receiptV51Row{break-inside:avoid!important;}
 }
+
+
+/* =========================================================
+   Comprobante V53: impresión/compartir PDF limpio
+   - Al imprimir o compartir PDF se muestra SOLO el comprobante.
+   - Oculta el Home/Pagos/Banner/fondo detrás del modal.
+   ========================================================= */
+@media print{
+  @page{ margin:10mm; size:auto; }
+  html, body{
+    background:#fff!important;
+    width:auto!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+  body.receipt-printing{
+    background:#fff!important;
+  }
+  body.receipt-printing *{
+    visibility:hidden!important;
+  }
+  body.receipt-printing #modalRoot,
+  body.receipt-printing #modalRoot *,
+  body.receipt-printing #modalCard,
+  body.receipt-printing #modalCard *,
+  body.receipt-printing .receiptV51Shell,
+  body.receipt-printing .receiptV51Shell *,
+  body.receipt-printing .receiptV52Card,
+  body.receipt-printing .receiptV52Card *{
+    visibility:visible!important;
+  }
+  body.receipt-printing #modalRoot{
+    position:static!important;
+    display:block!important;
+    background:#fff!important;
+  }
+  body.receipt-printing #modalRoot > div{
+    position:static!important;
+    inset:auto!important;
+    display:block!important;
+    padding:0!important;
+    margin:0!important;
+    background:#fff!important;
+    box-shadow:none!important;
+    width:auto!important;
+    min-height:auto!important;
+  }
+  body.receipt-printing #modalCard{
+    position:static!important;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    overflow:visible!important;
+    margin:0 auto!important;
+    padding:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    background:#fff!important;
+  }
+  body.receipt-printing .receiptV51Shell{
+    display:block!important;
+    width:100%!important;
+    padding:0!important;
+    margin:0!important;
+    background:#fff!important;
+  }
+  body.receipt-printing .receiptV52Topbar,
+  body.receipt-printing .receiptV52BottomActions,
+  body.receipt-printing .receiptV51Primary,
+  body.receipt-printing .receiptV51Secondary{
+    display:none!important;
+  }
+  body.receipt-printing .receiptV52Card{
+    width:100%!important;
+    max-width:560px!important;
+    margin:0 auto!important;
+    box-shadow:none!important;
+    border:1px solid #e2e8f0!important;
+    page-break-inside:avoid!important;
+    break-inside:avoid!important;
+  }
+}

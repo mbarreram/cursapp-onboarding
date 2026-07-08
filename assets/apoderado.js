@@ -1590,14 +1590,33 @@ function dueBadge(iso){
     return better || base;
   }
 
+  function printReceiptOnly(){
+    // Fuerza una impresión limpia: solo comprobante, sin fondo de Cursapp ni pantalla de pagos.
+    const body = document.body;
+    const cleanup = () => {
+      try{ body.classList.remove('receipt-printing'); }catch(_e){}
+      try{ window.removeEventListener('afterprint', cleanup); }catch(_e){}
+    };
+    try{
+      body.classList.add('receipt-printing');
+      window.addEventListener('afterprint', cleanup, { once:true });
+      setTimeout(() => {
+        try{ window.print(); }catch(_e){ cleanup(); alert('Puedes usar compartir o imprimir desde el navegador.'); }
+      }, 80);
+      setTimeout(cleanup, 1800);
+    }catch(_){
+      cleanup();
+      alert('Puedes usar compartir o imprimir desde el navegador.');
+    }
+  }
+
   window.downloadReceiptPdf = function(){
-    try{ window.print(); }catch(_){ alert('Puedes usar compartir o imprimir desde el navegador.'); }
+    printReceiptOnly();
   };
 
   window.shareReceiptPdf = async function(){
-    // El comprobante se comparte como PDF desde la vista de impresión del navegador.
-    // En iPhone/Android el usuario puede usar Compartir > Guardar/Enviar PDF.
-    try{ window.print(); }catch(_){ alert('Usa la opción de imprimir/compartir del navegador para generar el PDF.'); }
+    // Comparte como PDF usando la hoja nativa de impresión, pero aislando el comprobante.
+    printReceiptOnly();
   };
 
   window.shareReceipt = async function(text){
