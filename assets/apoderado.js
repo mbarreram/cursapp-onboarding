@@ -3330,11 +3330,12 @@ window.payNow = async function(id){
     payFilter = activeFilter;
 
     function renderPayTrustBadge(extraClass=""){
-      return `<div class="apoPayTrustBadge ${extraClass}">
+      return `<div class="apoPayTrustBadge ${extraClass}" aria-label="Pago seguro con Transbank">
         <div class="apoPayTrustLock" aria-hidden="true">🔒</div>
+        <img class="apoPayTrustLogo" src="/assets/transbank-logo-cursapp.svg" alt="Transbank" loading="lazy" decoding="async" />
         <div class="apoPayTrustText">
-          <b><span>Transbank</span> Pago seguro</b>
-          <small>Pago protegido · Débito y crédito</small>
+          <b>Pago seguro</b>
+          <small>Débito · Crédito</small>
         </div>
       </div>`;
     }
@@ -3449,7 +3450,7 @@ window.payNow = async function(id){
           <div><span>${monthly ? 'Pago mensual' : 'Pago único'}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
           <div class="apoPayGroupAmount"><small>${pending.length ? 'Por pagar' : 'Total'}</small><strong>${clp(pending.length ? pendingTotal : total)}</strong></div>
         </div>
-        ${monthly ? `<div class="apoPayMonthHint">${collapseMonthly ? 'Cuotas agrupadas por año para evitar listas extensas. Abre cada año y paga la cuota que corresponda.' : 'Estás revisando cuotas agrupadas de una misma campaña. Paga cada mes por separado.'}</div>` : ``}
+        ${monthly ? `<div class="apoPayMonthHint">${collapseMonthly ? 'Las cuotas están organizadas por año. Abre cada período para revisar y pagar el mes correspondiente.' : 'Esta campaña se paga en cuotas mensuales. Revisa cada mes y paga la cuota correspondiente.'}</div>` : ``}
         ${collapseMonthly ? renderYearAccordion(rows) : `<div class="apoPayLines">${rows.map(renderPaymentLine).join("")}</div>`}
       </section>`;
     }
