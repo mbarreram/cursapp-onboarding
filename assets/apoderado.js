@@ -1590,6 +1590,24 @@ function dueBadge(iso){
     return better || base;
   }
 
+  window.downloadReceiptPdf = function(){
+    try{ window.print(); }catch(_){ alert('Puedes usar compartir o imprimir desde el navegador.'); }
+  };
+
+  window.shareReceipt = async function(text){
+    const msg = String(text || 'Comprobante de pago Cursapp');
+    try{
+      if(navigator.share){
+        await navigator.share({ title:'Comprobante de pago Cursapp', text: msg });
+        return;
+      }
+    }catch(_){ /* usuario canceló compartir */ return; }
+    try{
+      await navigator.clipboard.writeText(msg);
+      toast('Comprobante copiado');
+    }catch(_){ alert(msg); }
+  };
+
   window.openReceipt = function(id){
     const p = resolveReceiptPayment(id);
     if(!p) return;
@@ -1600,83 +1618,121 @@ function dueBadge(iso){
     const amountPending = Math.max(0, Number(p.amountRemaining ?? 0));
 
     const paidAtDate = p.paidAt ? new Date(p.paidAt) : null;
-    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "â€”";
+    const paidAtFull = (paidAtDate && !isNaN(paidAtDate.getTime())) ? paidAtDate.toLocaleString("es-CL") : "—";
     const paidDateShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleDateString("es-CL", { day:"2-digit", month:"short", year:"numeric" })
-      : "â€”";
+      : "—";
     const paidTimeShort = (paidAtDate && !isNaN(paidAtDate.getTime()))
       ? paidAtDate.toLocaleTimeString("es-CL", { hour:"2-digit", minute:"2-digit" })
       : "";
 
-    const rawMethod = String(p.paymentMethod || p.paidWith || "â€”").toLowerCase();
-    const methodLabel = ({
-      transbank:"ðŸ’³ Transbank",
-      transferencia:"ðŸ¦ Transferencia",
-      efectivo:"ðŸ’µ Efectivo",
-      saldo_favor:"ðŸ” Saldo a favor",
-      credit:"ðŸ” Saldo a favor"
-    })[rawMethod] || (p.paymentMethod || p.paidWith || "â€”");
+    const rawMethod = String(p.paymentMethod || p.paidWith || "").toLowerCase();
+    const methodPlain = ({
+      transbank:"Transbank",
+      transferencia:"Transferencia",
+      efectivo:"Efectivo",
+      saldo_favor:"Saldo a favor",
+      credit:"Saldo a favor"
+    })[rawMethod] || (p.paymentMethod || p.paidWith || "Transbank");
 
-    const auth = p.webpay?.authorizationCode || p.webpay?.authorization_code || "â€”";
-    const resp = p.webpay?.responseCode || p.webpay?.response_code || "â€”";
-    const op = p.transactionId || p.webpay?.buyOrder || p.receiptId || p.id || "â€”";
     const folioBase = String(p.receiptId || p.transactionId || p.id || "0").replace(/[^a-zA-Z0-9]/g,"").slice(-8).toUpperCase() || "00000000";
     const folio = `CP-${new Date().getFullYear()}-${folioBase}`;
 
     const isManual = String(p.source||"").toLowerCase()==="manual";
     const isConciliated = String(p.conciliationStatus||"").toLowerCase()==="conciliado";
-    const statusLabel = isManual || isConciliated ? "âœ” Registrado por tesorerÃ­a" : "âœ” Pago confirmado";
+    const statusLabel = isManual || isConciliated ? "Registrado por tesorería" : "Pago confirmado";
+    const statusSub = isManual || isConciliated ? "Este comprobante acredita un pago registrado por la directiva del curso." : "Este comprobante acredita el pago registrado por la directiva del curso.";
+    const student = p.studentName || p.alumno || "—";
+    const guardian = p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "—";
+    let activeProfileReceipt = {};
+    try{ activeProfileReceipt = JSON.parse(localStorage.getItem(KEY_ACTIVE_PROFILE) || "{}"); }catch(_e){ activeProfileReceipt = {}; }
+    const course = p.courseLabel || p.courseName || activeProfileReceipt.courseLabel || activeProfileReceipt.courseName || activeProfileReceipt.course || activeProfileReceipt.curso || "Curso";
+    const school = p.schoolName || p.colegio || activeProfileReceipt.schoolName || activeProfileReceipt.colegio || activeProfileReceipt.school || "Colegio";
+    const shareText = `Comprobante Cursapp ${folio}\nMonto: ${clp(amountPaid)}\nCampaña: ${campaign}\nAlumno/a: ${student}\nEstado: Pagado`;
 
     openModal(`
-      <div style="background:#fff;border-radius:28px;overflow:hidden;">
-        <div style="padding:18px 18px 12px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-          <div>
-            <div style="font-weight:950;font-size:12px;letter-spacing:.08em;color:#64748b;">CURSAPP</div>
-            <div style="font-weight:950;font-size:26px;margin-top:4px;">ðŸ§¾ Comprobante de pago</div>
-            <div class="muted" style="margin-top:6px;">${esc(isManual ? "Pago manual registrado correctamente" : "Pago procesado correctamente")}</div>
-          </div>
-          <button class="btnx" onclick="closeModal()">Cerrar</button>
+      <div class="receiptV51Shell">
+        <div class="receiptV51Topbar">
+          <button class="receiptV51IconBtn" onclick="closeModal()" aria-label="Volver">←</button>
+          <div class="receiptV51Title">Comprobante de pago</div>
+          <button class="receiptV51IconBtn" onclick="downloadReceiptPdf()" aria-label="Descargar PDF">⇩</button>
         </div>
 
-        <div style="padding:18px;">
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;font-weight:900;">â— PAGADO</span>
-            <span class="muted" style="font-weight:900;">Folio ${esc(folio)}</span>
+        <section class="receiptV51Card">
+          <div class="receiptV51Brand">
+            <span class="receiptV51BrandIcon">👥</span>
+            <span>CURSAPP</span>
           </div>
 
-          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:22px;padding:20px;background:linear-gradient(180deg,#f8fafc,#ffffff);text-align:center;">
-            <div class="muted" style="font-weight:900;font-size:12px;letter-spacing:.05em;">MONTO PAGADO</div>
-            <div style="font-size:38px;font-weight:950;margin-top:6px;line-height:1;">${clp(amountPaid)}</div>
-            <div class="muted" style="margin-top:8px;">${amountPending>0 ? `Saldo pendiente ${clp(amountPending)}` : `Sin saldo pendiente`}</div>
-          </div>
+          <h2>Comprobante de pago</h2>
+          <div class="receiptV51Status"><span>✓</span>${esc(statusLabel)}</div>
+          <div class="receiptV51Amount">${clp(amountPaid)}</div>
+          <div class="receiptV51Date">${esc(paidDateShort)}${paidTimeShort ? " · " + esc(paidTimeShort) : ""}</div>
 
-          <div style="margin-top:14px;border:1px solid rgba(0,0,0,.08);border-radius:18px;overflow:hidden;background:#fff;">
+          <div class="receiptV51Divider"></div>
+
+          <div class="receiptV51Details">
+            <div class="receiptV51Watermark" aria-hidden="true">
+              <div class="receiptV51StampRing">
+                <div class="receiptV51StampTop">DIRECTIVA</div>
+                <div class="receiptV51Shield">${esc(String(course).replace(/\s*2026\s*/i,'').trim() || 'Curso')}</div>
+                <div class="receiptV51StampYear">2026</div>
+                <div class="receiptV51StampBottom">PAGADO</div>
+              </div>
+            </div>
+
             ${[
-              ["CampaÃ±a", campaign],
-              ["Concepto", p.concept || "â€”"],
-              ["Alumno", p.studentName || p.alumno || "â€”"],
-              ["Apoderado", p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "â€”"],
-              ["Fecha", paidDateShort !== "â€”" ? `${paidDateShort}${paidTimeShort ? " Â· " + paidTimeShort : ""}` : "â€”"],
-              ["MÃ©todo", methodLabel],
-              ["OperaciÃ³n", op],
-              ["AutorizaciÃ³n", auth],
-              ["Resp. code", resp],
-            ].map((row, idx)=>`
-              <div style="display:flex;justify-content:space-between;gap:16px;padding:13px 14px;${idx<8?'border-bottom:1px solid rgba(0,0,0,.06);':''}">
-                <div class="muted" style="font-weight:800;">${esc(row[0])}</div>
-                <div style="font-weight:900;text-align:right;max-width:62%;">${esc(row[1])}</div>
+              ["bookmark", "Campaña", campaign],
+              ["user", "Alumno", student],
+              ["guardian", "Apoderado", guardian],
+              ["cap", "Curso", course],
+              ["school", "Colegio", school],
+              ["card", "Forma de pago", methodPlain],
+              ["check", "Estado", "Pagado"],
+            ].map(([icon,label,value])=>`
+              <div class="receiptV51Row ${label==='Estado'?'is-status':''}">
+                <span class="receiptV51RowIcon">${receiptIcon(icon)}</span>
+                <span class="receiptV51RowLabel">${esc(label)}</span>
+                <strong>${label==='Estado' ? '<span class="receiptV51PaidPill">Pagado</span>' : esc(value)}</strong>
               </div>
             `).join("")}
           </div>
 
-          <div style="margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;border:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
-            <div style="font-weight:900;color:#0f766e;">${esc(statusLabel)}</div>
-            <div class="muted" style="font-size:12px;">Emitido ${esc(paidAtFull)}</div>
+          <div class="receiptV51Divider"></div>
+
+          <div class="receiptV51Folio">
+            <span>Folio</span>
+            <strong>${esc(folio)}</strong>
           </div>
-        </div>
+
+          <div class="receiptV51Trust">
+            <span>🔒</span>
+            <div>
+              <p>Pago procesado mediante <b>transbank.</b></p>
+              <small>${esc(statusSub)}</small>
+            </div>
+          </div>
+        </section>
+
+        <button class="receiptV51Primary" onclick="downloadReceiptPdf()">⇩ Descargar PDF</button>
+        <button class="receiptV51Secondary" onclick="shareReceipt(${JSON.stringify(shareText).replace(/"/g,'&quot;')})">⤴ Compartir comprobante</button>
       </div>
     `);
   };
+
+  function receiptIcon(name){
+    const icons = {
+      bookmark:'<svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3-5 3V4Z"/><path d="M10 8h4"/></svg>',
+      user:'<svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+      guardian:'<svg viewBox="0 0 24 24"><path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M18 8v7"/><path d="M14.5 11.5h7"/></svg>',
+      cap:'<svg viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Z"/><path d="M7 12v4c2.5 2 7.5 2 10 0v-4"/></svg>',
+      school:'<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 20V9l6-4 6 4v11"/><path d="M10 20v-6h4v6"/><path d="M9 11h6"/></svg>',
+      card:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/><path d="M7 15h3"/></svg>',
+      check:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'
+    };
+    return icons[name] || icons.check;
+  };
+
 
 
 // -------- Reports --------
