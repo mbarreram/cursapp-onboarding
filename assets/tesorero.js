@@ -1711,7 +1711,20 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? 62 + (idx*8) : 0);
       return `<article class="tesCampaignRow"><div class="tesRowIcon">${idx===0?'🎓':'🎉'}</div><div class="tesRowMain"><b>${esc(t.title||'Campaña')}</b><small>${goal?`Meta: ${clp(goal)}`:'Meta por definir'}</small><div class="tesProgress"><i style="width:${pct}%"></i></div><small>Recaudado ${clp(rec)}</small></div><strong>${pct}%</strong></article>`;
     }).join('') || `<article class="tesEmptyRow"><b>Sin campañas activas</b><small>Cuando existan campañas, se verán aquí.</small></article>`;
-    const recent = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse().map(p=>`<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</small></div><strong class="ok">+${clp(p.amount)}</strong><span class="tesMoveDate">${esc(String(p.paidAt||p.createdAt||'Hoy').slice(0,10) || 'Hoy')}</span></article>`).join('') || `<article class="tesMovementRow"><div class="tesRowIcon income">↓</div><div><b>Pago recibido</b><small>Último movimiento del curso</small></div><strong class="ok">+${clp(todayCollected() || collectedThisMonth)}</strong><span class="tesMoveDate">Hoy</span></article>`;
+    const formatMoveDate = (value)=>{
+      const raw = String(value || '');
+      const d = raw ? new Date(raw) : null;
+      if(d && !Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit', month:'short', year:'numeric'}).replace('.', '');
+      return raw && raw !== 'Hoy' ? raw.slice(0,10) : 'Hoy';
+    };
+    const paidRows = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse();
+    const recent = (paidRows.length ? paidRows : [{guardianName:'Último movimiento del curso', amount:(todayCollected() || collectedThisMonth), paidAt:'Hoy'}]).map(p=>`
+      <article class="tesMovementProRow">
+        <div class="tesMoveConcept"><span class="tesRowIcon income">↓</span><b>Pago recibido</b></div>
+        <div class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</div>
+        <strong class="ok">+${clp(p.amount||0)}</strong>
+        <span class="tesMoveDate">${esc(formatMoveDate(p.paidAt||p.createdAt||'Hoy'))}</span>
+      </article>`).join('');
     const recentRenditions = expensesAll().slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,10).map(e=>{
       const raw = String(e.date || e.createdAt || '');
       const d = raw ? new Date(raw) : null;
@@ -1744,10 +1757,13 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           <div class="tesCampaignList">${campaignRows}</div>
         </section>
 
-        <section class="tesPanel tesMovements">
+        <section class="tesPanel tesMovementsPro">
           <header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header>
-          ${recent}
-          ${sinBoleta ? `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendición pendiente</b><small>${sinBoleta} comprobante(s) por adjuntar</small></div><strong>${clp(spentThisMonth)}</strong><span>Revisar</span></article>` : `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendiciones al día</b><small>No hay comprobantes pendientes</small></div><strong>$0</strong><span>OK</span></article>`}
+          <div class="tesMovementTableWrap">
+            <div class="tesMovementTableHead"><span>Movimiento</span><span>Persona</span><span>Monto</span><span>Fecha</span></div>
+            ${recent}
+            ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveConcept"><span class="tesRowIcon violet">▤</span><b>Rendición pendiente</b></div><div class="tesMovePerson">${sinBoleta} comprobante(s)</div><strong>${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveConcept"><span class="tesRowIcon violet">▤</span><b>Rendiciones al día</b></div><div class="tesMovePerson">Sin pendientes</div><strong>$0</strong><span class="tesMoveDate">OK</span></article>`}
+          </div>
         </section>
 
         <section class="tesPanel tesRecentRenditions">

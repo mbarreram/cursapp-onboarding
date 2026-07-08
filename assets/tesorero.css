@@ -879,3 +879,165 @@ body.cursapp-tesorero .tesRenditionChip.is-empty{
     font-size:12px!important;
   }
 }
+
+/* =========================================================
+   Cursapp · Tesorero V61
+   - Movimientos recientes en tabla premium compacta
+   - Menú inferior con 4 acciones, iconos SVG y más espacio
+   - Banner monetización pegado al contenido, sin espacio muerto final
+   ========================================================= */
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableWrap{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  border:1px solid rgba(226,232,240,.82);
+  border-radius:18px;
+  background:#fff;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableWrap::-webkit-scrollbar{display:none;}
+body.cursapp-tesorero .tesMovementTableHead,
+body.cursapp-tesorero .tesMovementProRow{
+  min-width:620px;
+  display:grid;
+  grid-template-columns: 210px 1fr 110px 118px;
+  align-items:center;
+  column-gap:12px;
+}
+body.cursapp-tesorero .tesMovementTableHead{
+  min-height:38px;
+  padding:0 14px;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:12px;
+  font-weight:950;
+  border-bottom:1px solid rgba(226,232,240,.9);
+}
+body.cursapp-tesorero .tesMovementProRow{
+  min-height:58px;
+  padding:8px 14px;
+  border-bottom:1px solid rgba(226,232,240,.7);
+}
+body.cursapp-tesorero .tesMovementProRow:last-child{border-bottom:0;}
+body.cursapp-tesorero .tesMoveConcept{
+  min-width:0;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+}
+body.cursapp-tesorero .tesMoveConcept .tesRowIcon{
+  width:36px!important;
+  height:36px!important;
+  border-radius:14px!important;
+  font-size:18px!important;
+}
+body.cursapp-tesorero .tesMoveConcept b,
+body.cursapp-tesorero .tesMovePerson,
+body.cursapp-tesorero .tesMovementProRow strong,
+body.cursapp-tesorero .tesMoveDate{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+body.cursapp-tesorero .tesMoveConcept b{
+  font-size:14px;
+  font-weight:950;
+  color:#0f172a;
+}
+body.cursapp-tesorero .tesMovePerson{
+  color:#64748b;
+  font-size:13px;
+  font-weight:850;
+}
+body.cursapp-tesorero .tesMovementProRow strong{
+  text-align:right;
+  font-size:14px;
+  font-weight:950;
+  color:#0f172a;
+}
+body.cursapp-tesorero .tesMovementProRow strong.ok{color:#16a34a;}
+body.cursapp-tesorero .tesMoveDate{
+  text-align:right;
+  color:#64748b;
+  font-size:12px;
+  font-weight:900;
+}
+body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+  display:block!important;
+  margin-top:4px!important;
+  margin-bottom:calc(84px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero [data-monetization-slot="tesorero"] > *{
+  margin-bottom:0!important;
+}
+body.cursapp-tesorero .tesV57Page{
+  padding-bottom:calc(92px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero .tesV57Page:has([data-monetization-slot="tesorero"]){
+  padding-bottom:0!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav{
+  grid-template-columns:repeat(4,1fr)!important;
+  height:72px!important;
+  min-height:72px!important;
+  max-height:72px!important;
+  padding:7px 9px!important;
+  gap:6px!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem{
+  height:56px!important;
+  min-height:56px!important;
+  max-height:56px!important;
+  border-radius:22px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  overflow:hidden!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon{
+  width:24px!important;
+  height:24px!important;
+  font-size:0!important;
+  line-height:1!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#64748b!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavIcon svg{
+  width:23px!important;
+  height:23px!important;
+  display:block!important;
+  stroke:currentColor!important;
+  fill:none!important;
+  stroke-width:2.2!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active{
+  background:#eff6ff!important;
+  color:#2563eb!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavIcon,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem.active .tesNavLabel{
+  color:#2563eb!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem .tesNavLabel{
+  font-size:11px!important;
+  font-weight:950!important;
+  max-width:none!important;
+  white-space:nowrap!important;
+}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesMovementTableHead,
+  body.cursapp-tesorero .tesMovementProRow{
+    min-width:560px;
+    grid-template-columns:190px 1fr 98px 112px;
+  }
+  body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+    margin-top:0!important;
+    margin-bottom:calc(76px + env(safe-area-inset-bottom))!important;
+  }
+}
