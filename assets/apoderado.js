@@ -1590,20 +1590,95 @@ function dueBadge(iso){
     return better || base;
   }
 
+  function buildReceiptPrintDocument(receiptNode){
+    const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(link => `<link rel="stylesheet" href="${link.href}">`)
+      .join('\n');
+    const cardHtml = receiptNode ? receiptNode.outerHTML : '';
+    return `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comprobante Cursapp</title>
+${cssLinks}
+<style>
+  @page{ size:A4; margin:10mm; }
+  html,body{ margin:0!important; padding:0!important; background:#fff!important; width:100%!important; min-height:auto!important; overflow:visible!important; }
+  body{ font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important; display:flex!important; justify-content:center!important; align-items:flex-start!important; }
+  body.apoderado-home-v40 .receiptV52Card,
+  .receiptV52Card{
+    width:100%!important;
+    max-width:560px!important;
+    margin:0 auto!important;
+    box-shadow:none!important;
+    border:1px solid #e2e8f0!important;
+    break-inside:avoid!important;
+    page-break-inside:avoid!important;
+  }
+  body.apoderado-home-v40 .receiptV52Topbar,
+  body.apoderado-home-v40 .receiptV52BottomActions,
+  .receiptV52Topbar,.receiptV52BottomActions,.receiptV51Primary,.receiptV51Secondary{ display:none!important; }
+</style>
+</head>
+<body class="apoderado-home-v40 receipt-pdf-only">
+${cardHtml}
+</body>
+</html>`;
+  }
+
   function printReceiptOnly(){
-    // Fuerza una impresión limpia: solo comprobante, sin fondo de Cursapp ni pantalla de pagos.
-    const body = document.body;
+    // V54: imprimir/compartir solo el nodo del comprobante en un iframe limpio.
+    // Evita que Safari/Chrome agreguen páginas en blanco por el modal, overlay o pantalla de pagos.
+    const receiptNode = document.querySelector('.receiptV52Card') || document.querySelector('.receiptV51Card');
+    if(!receiptNode){
+      try{ window.print(); }catch(_e){ alert('No se pudo generar el PDF del comprobante.'); }
+      return;
+    }
+
+    let iframe;
     const cleanup = () => {
-      try{ body.classList.remove('receipt-printing'); }catch(_e){}
+      try{ if(iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); }catch(_e){}
+      try{ document.body.classList.remove('receipt-printing'); }catch(_e){}
       try{ window.removeEventListener('afterprint', cleanup); }catch(_e){}
     };
+
     try{
-      body.classList.add('receipt-printing');
-      window.addEventListener('afterprint', cleanup, { once:true });
-      setTimeout(() => {
-        try{ window.print(); }catch(_e){ cleanup(); alert('Puedes usar compartir o imprimir desde el navegador.'); }
-      }, 80);
-      setTimeout(cleanup, 1800);
+      document.body.classList.add('receipt-printing');
+      iframe = document.createElement('iframe');
+      iframe.setAttribute('aria-hidden','true');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(buildReceiptPrintDocument(receiptNode));
+      doc.close();
+
+      let printedOnce = false;
+      const doPrint = () => {
+        if(printedOnce) return;
+        printedOnce = true;
+        try{
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          window.addEventListener('afterprint', cleanup, { once:true });
+          setTimeout(cleanup, 2500);
+        }catch(_e){
+          cleanup();
+          alert('Puedes usar compartir o imprimir desde el navegador.');
+        }
+      };
+
+      iframe.onload = () => setTimeout(doPrint, 120);
+      setTimeout(doPrint, 450);
     }catch(_){
       cleanup();
       alert('Puedes usar compartir o imprimir desde el navegador.');
