@@ -1253,6 +1253,7 @@ function dueBadge(iso){
       <div class="apoHeaderCourse">${esc(schoolText)} · <b>${esc(courseText)}</b></div>
     `;
     try{ keepApoV45BellAlive(); }catch(e){}
+    try{ installApoV47FloatingMessages(); }catch(e){}
   }
 
   function ensureApoV42Bell(){
@@ -1264,7 +1265,7 @@ function dueBadge(iso){
     if(current && /🔔/.test(current.textContent || current.innerHTML || "")){
       current.onclick = (ev)=>{
         ev.stopPropagation();
-        try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
+        try{ if(window.CURSAPP_NOTIFICATIONS && typeof window.CURSAPP_NOTIFICATIONS.open === "function") window.CURSAPP_NOTIFICATIONS.open(); else if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
       };
       return;
     }
@@ -1276,7 +1277,7 @@ function dueBadge(iso){
     b.innerHTML = `<span class="apoV42BellIcon" aria-hidden="true">🔔</span><span class="apoV42BellDot" aria-hidden="true"></span>`;
     b.onclick = (ev)=>{
       ev.stopPropagation();
-      try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
+      try{ if(window.CURSAPP_NOTIFICATIONS && typeof window.CURSAPP_NOTIFICATIONS.open === "function") window.CURSAPP_NOTIFICATIONS.open(); else if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
     };
     host.appendChild(b);
   }
@@ -1289,6 +1290,70 @@ function dueBadge(iso){
     setTimeout(refreshBell, 250);
     setTimeout(refreshBell, 900);
     setTimeout(refreshBell, 1800);
+  }
+
+
+  function ensureApoV47FloatingMessages(unreadText){
+    let btn = document.getElementById("apoFloatingMessagesBtn");
+    if(!btn){
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "apoFloatingMessagesBtn";
+      btn.className = "apoV47FloatingMessagesBtn";
+      btn.setAttribute("aria-label", "Mensajes del curso");
+      btn.innerHTML = `<span class="apoV47FloatingMessagesIcon" aria-hidden="true">✉️</span><span class="apoV47FloatingMessagesLabel">Mensajes</span><em class="apoV47FloatingMessagesBadge" aria-hidden="true"></em>`;
+      document.body.appendChild(btn);
+    }
+    const badge = btn.querySelector(".apoV47FloatingMessagesBadge");
+    const clean = String(unreadText || "").trim();
+    if(badge){
+      if(clean && clean !== "0"){
+        badge.textContent = clean;
+        badge.style.display = "flex";
+      }else{
+        badge.textContent = "";
+        badge.style.display = "none";
+      }
+    }
+    btn.onclick = (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      try{ if(typeof openAvisosInbox === "function") openAvisosInbox(); }catch(_e){}
+    };
+    return btn;
+  }
+
+  function installApoV47FloatingMessages(){
+    if(window.__APO_V47_FLOATING_MESSAGES_INSTALLED__) return;
+    window.__APO_V47_FLOATING_MESSAGES_INSTALLED__ = true;
+
+    const originalRender = (typeof window.renderAvisosBell === "function") ? window.renderAvisosBell : null;
+    if(originalRender && !window.__APO_V47_ORIGINAL_RENDER_AVISOS_BELL__){
+      window.__APO_V47_ORIGINAL_RENDER_AVISOS_BELL__ = originalRender;
+      window.renderAvisosBell = function(){
+        let unreadText = "";
+        try{
+          window.__APO_V47_ORIGINAL_RENDER_AVISOS_BELL__.apply(this, arguments);
+          const generated = document.getElementById("avisosBtn");
+          const generatedBadge = generated ? generated.querySelector("span") : null;
+          unreadText = generatedBadge ? String(generatedBadge.textContent || "").trim() : "";
+          if(generated) generated.remove();
+        }catch(_e){}
+        try{ ensureApoV42Bell(); }catch(_e){}
+        try{ ensureApoV47FloatingMessages(unreadText); }catch(_e){}
+      };
+    }
+
+    const refreshMessages = ()=>{
+      try{
+        if(typeof window.renderAvisosBell === "function") window.renderAvisosBell();
+        else ensureApoV47FloatingMessages("");
+      }catch(_e){ try{ ensureApoV47FloatingMessages(""); }catch(__e){} }
+    };
+    refreshMessages();
+    setTimeout(refreshMessages, 300);
+    setTimeout(refreshMessages, 1000);
+    setTimeout(refreshMessages, 2200);
   }
 
   function setupApoV44DueCarousel(){
@@ -3291,6 +3356,7 @@ window.payNow = async function(id){
     if(tab==="informes") renderInformes();
     try{ if(window.renderAvisosBell) window.renderAvisosBell(); }catch(e){}
     try{ keepApoV45BellAlive(); }catch(e){}
+    try{ installApoV47FloatingMessages(); }catch(e){}
   }
   window.go = go; // <-- esto elimina el error "Can't find variable: go"
 
@@ -3521,6 +3587,7 @@ async function __bootApoderadoSupabaseFirst(){
   }
 
   initMenu();
+  try{ installApoV47FloatingMessages(); }catch(e){}
   __hideLegacyTesoreroBanner();
   __maybePromptRole();
 
