@@ -2917,3 +2917,203 @@ body.apoderado-home-v40 .receiptV51Secondary{
   body.apoderado-home-v40 .receiptV51Secondary{display:none!important;}
   body.apoderado-home-v40 .receiptV51Card{box-shadow:none!important;border:1px solid #e2e8f0!important;max-width:560px!important;}
 }
+
+/* =========================================================
+   Comprobante de pago Apoderado V52 compact
+   - Marca de agua detrás de los datos
+   - Datos en dos columnas
+   - Acciones superiores pequeñas
+   - Compartir mediante PDF
+   ========================================================= */
+body.apoderado-home-v40 .receiptV51Shell{
+  padding:0 0 12px!important;
+}
+body.apoderado-home-v40 .receiptV52Topbar{
+  height:auto!important;
+  padding:12px 14px 10px!important;
+  display:grid!important;
+  grid-template-columns:1fr auto!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+body.apoderado-home-v40 .receiptV52Brand{
+  margin:0!important;
+  justify-content:flex-start!important;
+  font-size:17px!important;
+  letter-spacing:.02em!important;
+}
+body.apoderado-home-v40 .receiptV52Actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+}
+body.apoderado-home-v40 .receiptV52ActionBtn{
+  width:42px!important;
+  min-width:42px!important;
+  height:42px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#6d28d9!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:1px!important;
+  font-weight:900!important;
+}
+body.apoderado-home-v40 .receiptV52ActionBtn span{
+  font-size:22px!important;
+  line-height:1!important;
+}
+body.apoderado-home-v40 .receiptV52ActionBtn small{
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:850!important;
+}
+body.apoderado-home-v40 .receiptV52Card{
+  width:calc(100% - 26px)!important;
+  margin:6px auto 10px!important;
+  padding-top:0!important;
+  border-radius:20px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Status{
+  margin-top:22px!important;
+  font-size:15px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Status span{
+  width:32px!important;
+  height:32px!important;
+  background:#fff!important;
+  color:#16a34a!important;
+  border:2px solid #16a34a!important;
+  font-size:18px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Amount{
+  margin-top:14px!important;
+  font-size:44px!important;
+  letter-spacing:-.05em!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Date{
+  margin-top:5px!important;
+  font-size:13px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Divider{
+  margin:20px 22px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Details{
+  padding:0 22px!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  column-gap:14px!important;
+  row-gap:14px!important;
+  text-align:left!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Watermark{
+  inset:-8px 0!important;
+  opacity:.07!important;
+  z-index:0!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51StampRing{
+  width:260px!important;
+  height:260px!important;
+  border-width:4px!important;
+  transform:rotate(-10deg)!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51StampTop,
+body.apoderado-home-v40 .receiptV52Card .receiptV51StampBottom{
+  font-size:24px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Shield{
+  font-size:32px!important;
+  min-width:92px!important;
+  min-height:64px!important;
+  border-width:4px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51StampYear{
+  font-size:28px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Row{
+  position:relative!important;
+  z-index:2!important;
+  display:grid!important;
+  grid-template-columns:28px 1fr!important;
+  grid-template-areas:"icon label" "icon value"!important;
+  align-items:start!important;
+  gap:1px 9px!important;
+  min-height:50px!important;
+  background:rgba(255,255,255,.34)!important;
+  border-radius:14px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51RowIcon{
+  grid-area:icon!important;
+  margin-top:4px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51RowLabel{
+  grid-area:label!important;
+  font-size:12px!important;
+  line-height:1.1!important;
+  font-weight:850!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Row strong{
+  grid-area:value!important;
+  text-align:left!important;
+  font-size:13px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  word-break:break-word!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51PaidPill{
+  padding:3px 9px!important;
+  font-size:12px!important;
+}
+body.apoderado-home-v40 .receiptV52DividerBottom{
+  margin-top:18px!important;
+  margin-bottom:0!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Trust{
+  min-height:78px!important;
+  padding:12px 22px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Trust p{
+  font-size:12px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Trust b{
+  font-size:14px!important;
+}
+body.apoderado-home-v40 .receiptV52Card .receiptV51Trust small{
+  font-size:11px!important;
+  margin-top:5px!important;
+}
+body.apoderado-home-v40 .receiptV52BottomActions{
+  width:calc(100% - 26px)!important;
+  max-width:540px!important;
+  margin:0 auto!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:10px!important;
+}
+body.apoderado-home-v40 .receiptV52BottomActions .receiptV51Primary,
+body.apoderado-home-v40 .receiptV52BottomActions .receiptV51Secondary{
+  width:100%!important;
+  height:44px!important;
+  margin:0!important;
+  border-radius:13px!important;
+  font-size:13px!important;
+}
+@media(max-width:430px){
+  body.apoderado-home-v40 .receiptV52Topbar{padding:10px 12px 8px!important;}
+  body.apoderado-home-v40 .receiptV52ActionBtn{width:38px!important;min-width:38px!important;height:38px!important;}
+  body.apoderado-home-v40 .receiptV52ActionBtn span{font-size:20px!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51Amount{font-size:38px!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51Details{padding:0 18px!important;column-gap:10px!important;row-gap:12px!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51StampRing{width:230px!important;height:230px!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51RowIcon svg{width:20px!important;height:20px!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51Row strong{font-size:12.5px!important;}
+}
+@media print{
+  body.apoderado-home-v40 .receiptV52Topbar,
+  body.apoderado-home-v40 .receiptV52BottomActions{display:none!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51Details{display:grid!important;grid-template-columns:1fr 1fr!important;}
+  body.apoderado-home-v40 .receiptV52Card .receiptV51Row{break-inside:avoid!important;}
+}

@@ -1594,18 +1594,23 @@ function dueBadge(iso){
     try{ window.print(); }catch(_){ alert('Puedes usar compartir o imprimir desde el navegador.'); }
   };
 
+  window.shareReceiptPdf = async function(){
+    // El comprobante se comparte como PDF desde la vista de impresión del navegador.
+    // En iPhone/Android el usuario puede usar Compartir > Guardar/Enviar PDF.
+    try{ window.print(); }catch(_){ alert('Usa la opción de imprimir/compartir del navegador para generar el PDF.'); }
+  };
+
   window.shareReceipt = async function(text){
+    // Compatibilidad legacy: mantener la función, pero ahora el flujo principal es PDF.
     const msg = String(text || 'Comprobante de pago Cursapp');
     try{
       if(navigator.share){
         await navigator.share({ title:'Comprobante de pago Cursapp', text: msg });
         return;
       }
-    }catch(_){ /* usuario canceló compartir */ return; }
-    try{
-      await navigator.clipboard.writeText(msg);
-      toast('Comprobante copiado');
-    }catch(_){ alert(msg); }
+    }catch(_){ return; }
+    try{ await navigator.clipboard.writeText(msg); toast('Comprobante copiado'); }
+    catch(_){ alert(msg); }
   };
 
   window.openReceipt = function(id){
@@ -1652,19 +1657,19 @@ function dueBadge(iso){
 
     openModal(`
       <div class="receiptV51Shell">
-        <div class="receiptV51Topbar">
-          <button class="receiptV51IconBtn" onclick="closeModal()" aria-label="Volver">←</button>
-          <div class="receiptV51Title">Comprobante de pago</div>
-          <button class="receiptV51IconBtn" onclick="downloadReceiptPdf()" aria-label="Descargar PDF">⇩</button>
-        </div>
-
-        <section class="receiptV51Card">
-          <div class="receiptV51Brand">
+        <div class="receiptV51Topbar receiptV52Topbar">
+          <div class="receiptV51Brand receiptV52Brand">
             <span class="receiptV51BrandIcon">👥</span>
             <span>CURSAPP</span>
           </div>
+          <div class="receiptV52Actions">
+            <button class="receiptV52ActionBtn" onclick="downloadReceiptPdf()" aria-label="Descargar PDF"><span>⇩</span><small>PDF</small></button>
+            <button class="receiptV52ActionBtn" onclick="shareReceiptPdf()" aria-label="Compartir PDF"><span>⤴</span><small>Compartir</small></button>
+            <button class="receiptV52ActionBtn" onclick="closeModal()" aria-label="Cerrar"><span>×</span><small>Cerrar</small></button>
+          </div>
+        </div>
 
-          <h2>Comprobante de pago</h2>
+        <section class="receiptV51Card receiptV52Card">
           <div class="receiptV51Status"><span>✓</span>${esc(statusLabel)}</div>
           <div class="receiptV51Amount">${clp(amountPaid)}</div>
           <div class="receiptV51Date">${esc(paidDateShort)}${paidTimeShort ? " · " + esc(paidTimeShort) : ""}</div>
@@ -1689,6 +1694,7 @@ function dueBadge(iso){
               ["school", "Colegio", school],
               ["card", "Forma de pago", methodPlain],
               ["check", "Estado", "Pagado"],
+              ["folio", "Folio", folio],
             ].map(([icon,label,value])=>`
               <div class="receiptV51Row ${label==='Estado'?'is-status':''}">
                 <span class="receiptV51RowIcon">${receiptIcon(icon)}</span>
@@ -1698,12 +1704,7 @@ function dueBadge(iso){
             `).join("")}
           </div>
 
-          <div class="receiptV51Divider"></div>
-
-          <div class="receiptV51Folio">
-            <span>Folio</span>
-            <strong>${esc(folio)}</strong>
-          </div>
+          <div class="receiptV51Divider receiptV52DividerBottom"></div>
 
           <div class="receiptV51Trust">
             <span>🔒</span>
@@ -1714,8 +1715,10 @@ function dueBadge(iso){
           </div>
         </section>
 
-        <button class="receiptV51Primary" onclick="downloadReceiptPdf()">⇩ Descargar PDF</button>
-        <button class="receiptV51Secondary" onclick="shareReceipt(${JSON.stringify(shareText).replace(/"/g,'&quot;')})">⤴ Compartir comprobante</button>
+        <div class="receiptV52BottomActions">
+          <button class="receiptV51Primary" onclick="downloadReceiptPdf()">⇩ PDF</button>
+          <button class="receiptV51Secondary" onclick="shareReceiptPdf()">⤴ Compartir PDF</button>
+        </div>
       </div>
     `);
   };
