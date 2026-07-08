@@ -1741,7 +1741,6 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           ${sinBoleta ? `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendición pendiente</b><small>${sinBoleta} comprobante(s) por adjuntar</small></div><strong>${clp(spentThisMonth)}</strong><span>Revisar</span></article>` : `<article class="tesMovementRow"><div class="tesRowIcon violet">▤</div><div><b>Rendiciones al día</b><small>No hay comprobantes pendientes</small></div><strong>$0</strong><span>OK</span></article>`}
         </section>
 
-        <button class="tesSupportBtn" type="button" onclick="window.CURSAPP_SUPPORT_OPEN && window.CURSAPP_SUPPORT_OPEN()">💬 <span>Soporte</span></button>
         <div data-monetization-slot="tesorero"></div>
       </div>`;
   };
