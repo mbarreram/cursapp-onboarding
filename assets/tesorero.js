@@ -2485,6 +2485,150 @@ __bootTesoreroSupabaseFirst();
   renderHome = renderHomeV68;
   renderConciliacion = renderConciliacionV68;
 
+
+  /* =========================================================
+     Cursapp · Tesorero V70
+     Conciliación por campaña definitiva: selector visible,
+     buscador protagonista, botón individual y conciliación masiva.
+     ========================================================= */
+  (function(){
+    if(window.__CURSAPP_TESORERO_V70_CONCILIACION__) return;
+    window.__CURSAPP_TESORERO_V70_CONCILIACION__ = true;
+    window.__tesCampaignId = window.__tesCampaignId || '';
+    window.__tesConcFilter = window.__tesConcFilter || 'pendientes';
+    window.__tesBulkMode = false;
+    window.__tesBulkSelection = {};
+
+    const safeEsc = (v)=> (typeof esc === 'function' ? esc(v) : String(v ?? '').replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])));
+    const safeClp = (v)=> (typeof clp === 'function' ? clp(v||0) : '$'+Number(v||0).toLocaleString('es-CL'));
+    const safeSum = (arr,fn)=> (typeof sum === 'function' ? sum(arr,fn) : arr.reduce((a,x)=>a+Number(fn(x)||0),0));
+    function allCampaignsV70(){
+      const tasks = (typeof tasksActive === 'function' ? tasksActive() : []).filter(Boolean);
+      if(tasks.length) return tasks;
+      const map = new Map();
+      (typeof paymentsNormalized === 'function' ? paymentsNormalized() : []).forEach(p=>{
+        const id = String(p.fromTaskId || p.taskId || p.campaignId || p.concept || 'general');
+        if(!map.has(id)) map.set(id,{id,title:p.concept || 'Campaña general',goal:0});
+      });
+      return Array.from(map.values());
+    }
+    function campaignTitleV70(c){ return String(c?.title || c?.name || c?.concept || 'Campaña'); }
+    function campaignGoalV70(c){ return Number(c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
+    function paymentCampaignIdV70(p){ return String(p.fromTaskId || p.taskId || p.campaignId || ''); }
+    function paymentCampaignTitleV70(p){
+      const id = paymentCampaignIdV70(p);
+      const c = allCampaignsV70().find(x=>String(x.id)===id);
+      return campaignTitleV70(c || {title:p.concept || 'Campaña'});
+    }
+    function rowsAllV70(){ return (typeof tesConciliationRows === 'function' ? tesConciliationRows() : (typeof paymentsNormalized === 'function' ? paymentsNormalized() : [])).filter(p=>String(p.status||'paid').toLowerCase()==='paid'); }
+    function rowsForCampaignV70(c){
+      const rows = rowsAllV70();
+      if(!c) return rows;
+      const id = String(c.id || '');
+      const title = campaignTitleV70(c).toLowerCase();
+      return rows.filter(p=>{
+        const pid = paymentCampaignIdV70(p);
+        if(pid && pid === id) return true;
+        const pt = String(p.concept || p.campaignTitle || '').toLowerCase();
+        return !pid && pt && (pt === title || title.includes(pt) || pt.includes(title));
+      });
+    }
+    function selectedCampaignV70(){
+      const list = allCampaignsV70();
+      if(!list.length) return null;
+      let c = list.find(x=>String(x.id)===String(window.__tesCampaignId));
+      if(!c){ c = list[0]; window.__tesCampaignId = String(c.id); }
+      return c;
+    }
+    function iconForCampaignV70(c){
+      const t = campaignTitleV70(c).toLowerCase();
+      if(t.includes('gira')) return '🌎';
+      if(t.includes('paseo')) return '🚌';
+      if(t.includes('cuota')) return '📅';
+      if(t.includes('aseo')) return '🧽';
+      return '🎯';
+    }
+    function metricV70(rows){
+      const pending = rows.filter(p=>!(typeof tesIsConciliated === 'function' ? tesIsConciliated(p) : String(p.conciliationStatus||'')==='conciliado'));
+      const conciliated = rows.filter(p=>(typeof tesIsConciliated === 'function' ? tesIsConciliated(p) : String(p.conciliationStatus||'')==='conciliado'));
+      return {pending, conciliated, pendingAmount:safeSum(pending,p=>p.amount), rec:safeSum(conciliated,p=>p.amount)};
+    }
+    function healthV70(c, m){
+      if(!c) return {label:'Sin campaña',cls:'warn'};
+      if(m.pending.length) return {label:'Pend. conciliación',cls:'warn'};
+      return {label:'Cuadrada ✓',cls:'ok'};
+    }
+    function initialsV70(p){
+      const source = String(p.studentName || p.alumnoName || p.guardianName || p.apoderadoName || 'P');
+      return source.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'P';
+    }
+    function timeLabelV70(v){
+      const d = new Date(v || '');
+      if(Number.isNaN(d.getTime())) return 'Registrado';
+      const date = d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','');
+      const time = d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+      return `${date} · ${time}`;
+    }
+    function isSelectedV70(p){ return !!window.__tesBulkSelection?.[String(p.id)]; }
+    window.tesSelectCampaignV70 = function(id){ window.__tesCampaignId = String(id||''); window.__tesBulkSelection={}; renderConciliacion(); };
+    window.tesToggleBulkModeV70 = function(on){ window.__tesBulkMode=!!on; window.__tesBulkSelection={}; renderConciliacion(); };
+    window.tesToggleBulkPaymentV70 = function(id,on){ if(!window.__tesBulkSelection) window.__tesBulkSelection={}; if(on) window.__tesBulkSelection[String(id)]=true; else delete window.__tesBulkSelection[String(id)]; renderConciliacion(); };
+
+    function renderPaymentCardV70(p){
+      const pending = !(typeof tesIsConciliated === 'function' ? tesIsConciliated(p) : String(p.conciliationStatus||'')==='conciliado');
+      const method = String(p.paymentMethod || p.paidWith || '').toLowerCase();
+      const methodLabel = pending ? 'Por definir' : (method === 'transbank' ? 'Transbank' : method ? method.charAt(0).toUpperCase()+method.slice(1) : 'Conciliado');
+      return `<article class="tesConcPayCard v70 ${pending?'is-pending':'is-conciliated'} ${isSelectedV70(p)?'is-selected':''}">
+        ${window.__tesBulkMode && pending ? `<label class="tesBulkCheck"><input type="checkbox" ${isSelectedV70(p)?'checked':''} onchange="tesToggleBulkPaymentV70('${safeEsc(p.id)}',this.checked)"></label>` : `<span class="tesBulkSpacer"></span>`}
+        <div class="tesConcAvatar ${pending?'pending':'ok'}">${safeEsc(initialsV70(p))}</div>
+        <div class="tesConcWho"><b>${safeEsc(p.studentName || p.alumnoName || 'Alumno')}</b><small>${safeEsc(p.guardianName || p.apoderadoName || 'Apoderado')}</small><em>${safeEsc(paymentCampaignTitleV70(p))}</em><u>▣ ${safeEsc(methodLabel)} · ◷ ${safeEsc(timeLabelV70(p.paidAt || p.createdAt))}</u><u>Código: #${safeEsc(String(p.code || p.paymentCode || p.id || '').slice(-6).toUpperCase())}</u></div>
+        <div class="tesConcAmount"><strong>${safeClp(p.amount||0)}</strong></div>
+        <div class="tesConcStatus">${pending?`<span class="pending">Pendiente</span><button type="button" onclick="openTesConciliationSheet('${safeEsc(p.id)}')">Conciliar</button>`:`<span>Conciliado ✓</span><small>${safeEsc(methodLabel)}</small>`}</div>
+      </article>`;
+    }
+
+    window.openTesBulkConciliationSheetV70 = function(){
+      const c = selectedCampaignV70();
+      const selected = rowsForCampaignV70(c).filter(p=>window.__tesBulkSelection?.[String(p.id)]);
+      if(selected.length < 2) return alert('Selecciona al menos 2 pagos pendientes.');
+      const total = safeSum(selected,p=>p.amount);
+      const overlay = document.createElement('div');
+      overlay.className='tesConcSheetOverlay';
+      overlay.innerHTML = `<section class="tesConcSheet"><button class="tesConcSheetClose" type="button">×</button><div class="tesConcGrip"></div><h2>Conciliar ${selected.length} pagos</h2><div class="tesConcSheetSummary"><div class="tesConcAvatar pending">✓</div><div><b>${safeEsc(campaignTitleV70(c))}</b><small>Total seleccionado</small></div><strong>${safeClp(total)}</strong></div><div class="tesBulkList">${selected.map(p=>`<div><span>${safeEsc(p.studentName || 'Alumno')}</span><b>${safeClp(p.amount||0)}</b></div>`).join('')}</div><h3>Seleccione el medio recibido</h3><div class="tesConcMethodGrid"><label><input type="radio" name="tesMethod" value="transferencia" checked><span>🏦</span><b>Transferencia bancaria</b><small>Desde cuenta bancaria</small></label><label><input type="radio" name="tesMethod" value="efectivo"><span>💵</span><b>Efectivo</b><small>Dinero en efectivo</small></label><label><input type="radio" name="tesMethod" value="cheque"><span>🧾</span><b>Cheque</b><small>Pago con cheque</small></label><label><input type="radio" name="tesMethod" value="otro"><span>•••</span><b>Otro medio</b><small>Otro método de pago</small></label></div><h3>Información adicional <small>(opcional)</small></h3><select id="tesConcBank"><option value="">Banco (si aplica)</option><option>Banco de Chile</option><option>BancoEstado</option><option>Santander</option><option>BCI</option><option>Scotiabank</option><option>Itaú</option><option>Otro</option></select><input id="tesConcRef" placeholder="N° de referencia / comprobante"><textarea id="tesConcObs" rows="3" placeholder="Observación opcional"></textarea><div class="tesConcSheetActions"><button type="button" class="ghost">Cancelar</button><button type="button" class="primary">Confirmar conciliación</button></div></section>`;
+      overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+      overlay.querySelector('.tesConcSheetClose').onclick=()=>overlay.remove();
+      overlay.querySelector('.ghost').onclick=()=>overlay.remove();
+      overlay.querySelector('.primary').onclick=()=>{
+        const ids = new Set(selected.map(p=>String(p.id)));
+        const method = overlay.querySelector('input[name="tesMethod"]:checked')?.value || 'transferencia';
+        const payments = paymentsNormalized();
+        payments.forEach(p=>{ if(ids.has(String(p.id))){ p.paymentMethod=method; p.paidWith=method; p.conciliationStatus='conciliado'; p.reconciledAt=new Date().toISOString(); p.reconciledBy='Tesorero'; p.reconciliationBank=overlay.querySelector('#tesConcBank')?.value || ''; p.reconciliationReference=overlay.querySelector('#tesConcRef')?.value || ''; p.reconciliationNote=overlay.querySelector('#tesConcObs')?.value || ''; }});
+        save(KEY_PAYMENTS,payments); try{ markDirty(); }catch(_){ }
+        window.__tesBulkSelection={}; window.__tesBulkMode=false; overlay.remove(); renderConciliacion();
+      };
+      document.body.appendChild(overlay);
+    };
+
+    renderConciliacion = function(){
+      updateTreasurerHeader();
+      const campaigns = allCampaignsV70();
+      const c = selectedCampaignV70();
+      const rowsCampaign = rowsForCampaignV70(c);
+      const m = metricV70(rowsCampaign);
+      const goal = campaignGoalV70(c);
+      const pct = goal ? Math.min(100,Math.round((m.rec/goal)*100)) : (m.rec ? 72 : 0);
+      const health = healthV70(c,m);
+      const filter = String(window.__tesConcFilter || 'pendientes');
+      const q = String(window.__tesConcQuery || '').toLowerCase().trim();
+      let rows = filter === 'conciliados' ? m.conciliated : filter === 'todos' ? rowsCampaign : m.pending;
+      if(q) rows = rows.filter(p=>[p.guardianName,p.apoderadoName,p.studentName,p.concept,paymentCampaignTitleV70(p),p.id,p.code,p.paymentCode].join(' ').toLowerCase().includes(q));
+      const selectedPending = rowsCampaign.filter(p=>m.pending.includes(p) && window.__tesBulkSelection?.[String(p.id)]);
+      const options = campaigns.map(x=>`<option value="${safeEsc(x.id)}" ${String(x.id)===String(c?.id)?'selected':''}>${safeEsc(campaignTitleV70(x))}</option>`).join('');
+      const rowsHtml = rows.map(renderPaymentCardV70).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta campaña</b><span>Cambia el filtro o selecciona otra campaña.</span></article>`;
+      app.innerHTML = `<div class="tesConcPage tesConcV70"><section class="tesConcTop v70"><button type="button" onclick="go('home')">‹</button><h1>Conciliación por campaña</h1><button type="button" class="filterBtn">⚚ Filtros</button></section><section class="tesCampaignSelector v70"><div class="tesCampaignSelectBox"><small>Campaña</small><select onchange="tesSelectCampaignV70(this.value)">${options}</select></div><div class="tesCampaignSelectorIcon">${iconForCampaignV70(c)}</div><div class="tesCampaignState"><small>Estado</small><b class="${health.cls}">${safeEsc(health.label)}</b><em>${pct}% de la meta</em></div></section><section class="tesConcCampaignStats v70"><article><span class="amber">◷</span><small>Pendientes</small><b>${m.pending.length}</b><em>${safeClp(m.pendingAmount)}</em></article><article><span class="green">✓</span><small>Conciliados</small><b>${m.conciliated.length}</b><em>${safeClp(m.rec)}</em></article><article><span class="blue">↑</span><small>Recaudado</small><b>${safeClp(m.rec)}</b><em>de ${goal?safeClp(goal):'meta no definida'}</em></article><article><span class="violet">◎</span><small>Meta</small><b>${goal?safeClp(goal):'—'}</b><em>${pct}%</em></article></section><section class="tesConcTools v70"><label><span>⌕</span><input value="${safeEsc(window.__tesConcQuery || '')}" oninput="tesFilterConciliation(this.value)" placeholder="Buscar apoderado, alumno o código..."></label><button type="button">☷<small>Más filtros</small></button></section><section class="tesConcTabs v70"><button type="button" class="${filter==='pendientes'?'active':''}" onclick="tesSetConciliationFilter('pendientes')">Pendientes <span>${m.pending.length}</span></button><button type="button" class="${filter==='conciliados'?'active ok':''}" onclick="tesSetConciliationFilter('conciliados')">Conciliados <span>${m.conciliated.length}</span></button><button type="button" class="${filter==='todos'?'active':''}" onclick="tesSetConciliationFilter('todos')">Todos <span>${rowsCampaign.length}</span></button></section><section class="tesConcOrder v70"><span>Ordenar por <b>Más recientes⌄</b></span><label>Seleccionar varios <input type="checkbox" ${window.__tesBulkMode?'checked':''} onchange="tesToggleBulkModeV70(this.checked)"></label></section><section class="tesConcList campaignOnly v70"><header><h2>${filter==='conciliados'?'Conciliados':'Pendientes'} (${rows.length})</h2><small>${safeEsc(campaignTitleV70(c))}</small></header>${rowsHtml}<div class="tesConcNote">ⓘ La información se recalcula solo sobre la campaña seleccionada.</div></section>${window.__tesBulkMode && selectedPending.length >= 2 ? `<button class="tesBulkAction" type="button" onclick="openTesBulkConciliationSheetV70()">Conciliar ${selectedPending.length} seleccionados · ${safeClp(safeSum(selectedPending,p=>p.amount))}</button>` : ''}</div>`;
+    };
+  })();
+
 })();
 
 
