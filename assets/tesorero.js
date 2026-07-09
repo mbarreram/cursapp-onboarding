@@ -1662,14 +1662,30 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     }catch(_){ return "2°B · Colegio Central"; }
   }
 
+  function treasurerDisplayName(){
+    try{
+      const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
+      const direct = s.fullName || s.displayName || s.name || s.nombre || s.guardianName || s.apoderadoName || s.userName || s.email;
+      if(direct && String(direct).includes('@')){
+        const local = String(direct).split('@')[0].replace(/[._-]+/g,' ').trim();
+        return local.replace(/\b\w/g, c=>c.toUpperCase()) || 'Tesorero';
+      }
+      if(direct) return String(direct).trim();
+      const profile = (typeof currentProfile === 'function') ? currentProfile() : null;
+      const profName = profile?.fullName || profile?.name || profile?.nombre || profile?.guardianName;
+      if(profName) return String(profName).trim();
+    }catch(_e){}
+    return 'Tesorero';
+  }
+
   function updateTreasurerHeader(){
     try{
       const name = document.querySelector('.tesHeaderName');
       const role = document.querySelector('.tesHeaderRole');
       const course = document.querySelector('.tesHeaderCourse');
       const badge = document.getElementById('tesHeaderBadge');
-      if(name) name.textContent = 'Hola, Tesorero';
-      if(role) role.textContent = 'Gestión financiera del curso';
+      if(name) name.textContent = treasurerDisplayName();
+      if(role) role.textContent = 'Tesorero';
       if(course) course.textContent = courseLabelForHeader();
       if(badge){
         const pending = (typeof conciliationStats === 'function') ? Number(conciliationStats()?.pendiente || 0) : 0;
@@ -1734,8 +1750,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const paidRows = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse();
     const recent = (paidRows.length ? paidRows : [{guardianName:'Último movimiento del curso', amount:(todayCollected() || collectedThisMonth), paidAt:'Hoy'}]).map(p=>`
       <article class="tesMovementProRow">
-        <div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</small></span></div>
-        <strong class="ok">+${clp(p.amount||0)}</strong>
+        <div class="tesMoveType"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(tesPaymentCampaignTitle ? tesPaymentCampaignTitle(p) : 'Pago del curso')}</small></span></div>
+        <span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</span>
+        <strong class="tesMoveAmount ok">+${clp(p.amount||0)}</strong>
         <span class="tesMoveDate">${esc(formatMoveDate(p.paidAt||p.createdAt||'Hoy'))}</span>
       </article>`).join('');
     const recentRenditions = expensesAll().slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,10).map(e=>{
@@ -1775,7 +1792,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           <div class="tesMovementTableWrap">
             <div class="tesMovementTableHead"><span>Movimiento</span><span>Monto</span><span>Fecha</span></div>
             ${recent}
-            ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición pendiente</b><small>${sinBoleta} comprobante(s)</small></span></div><strong>${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendiciones al día</b><small>Sin pendientes</small></span></div><strong>$0</strong><span class="tesMoveDate">OK</span></article>`}
+            ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveType"><span class="tesRowIcon violet">▤</span><span><b>Rendición pendiente</b><small>Comprobante</small></span></div><span class="tesMovePerson">${sinBoleta} pendiente(s)</span><strong class="tesMoveAmount">${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveType"><span class="tesRowIcon violet">▤</span><span><b>Rendiciones al día</b><small>Comprobantes</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`}
           </div>
         </section>
 
@@ -2095,7 +2112,7 @@ __bootTesoreroSupabaseFirst();
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
-    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v10"/><path d="M8.8 10.2c.8-1.2 2.1-1.7 3.3-1.7 1.6 0 2.9.8 2.9 2.2 0 3-6 1.5-6 4.3 0 1.4 1.3 2.4 3.1 2.4 1.3 0 2.6-.5 3.4-1.7"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M8.8 9.2c.8-1 2-1.4 3.2-1.4 1.7 0 3 .8 3 2.1 0 2.8-6 1.3-6 4.1 0 1.4 1.3 2.3 3.1 2.3 1.4 0 2.7-.5 3.5-1.6"/></svg>',
     rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
     informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
   };
@@ -2212,7 +2229,7 @@ __bootTesoreroSupabaseFirst();
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
-    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M7 4 4 7l3 3"/><path d="M20 17H4"/><path d="m17 14 3 3-3 3"/><circle cx="12" cy="12" r="2.7"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M8.8 9.2c.8-1 2-1.4 3.2-1.4 1.7 0 3 .8 3 2.1 0 2.8-6 1.3-6 4.1 0 1.4 1.3 2.3 3.1 2.3 1.4 0 2.7-.5 3.5-1.6"/></svg>',
     rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
     informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
   };

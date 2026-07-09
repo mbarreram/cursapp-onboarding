@@ -1540,3 +1540,149 @@ body.cursapp-tesorero .tesConcSheetActions .primary{border:0!important;backgroun
   body.cursapp-tesorero .tesConcStats small{font-size:10.5px!important;}
   body.cursapp-tesorero .tesConcPayCard{padding:10px!important;}
 }
+
+/* === Cursapp Tesorero V66 · cierre home + conciliar === */
+body.cursapp-tesorero .tesHeaderName{
+  font-size:22px!important;
+  line-height:1.05!important;
+  font-weight:950!important;
+  max-width:210px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesHeaderRole{
+  color:#6d28d9!important;
+  font-size:14px!important;
+  font-weight:950!important;
+  line-height:1.15!important;
+}
+body.cursapp-tesorero .tesHeaderCourse{
+  font-size:14px!important;
+  line-height:1.15!important;
+  color:#2563eb!important;
+  font-weight:950!important;
+}
+body.cursapp-tesorero .tesWideAction span{font-family:inherit!important;}
+body.cursapp-tesorero .tesWideAction span::before{content:'$';font-weight:950;color:#2563eb;}
+body.cursapp-tesorero .tesWideAction span{font-size:0!important;}
+
+/* Movimientos recientes como grilla profesional: Movimiento | Persona | Monto | Fecha */
+body.cursapp-tesorero .tesMovementTableWrap{
+  overflow:hidden!important;
+  border-radius:18px!important;
+  border:1px solid rgba(226,232,240,.92)!important;
+  background:#fff!important;
+}
+body.cursapp-tesorero .tesMovementTableHead,
+body.cursapp-tesorero .tesMovementProRow{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) 88px 82px!important;
+  column-gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+}
+body.cursapp-tesorero .tesMovementTableHead{
+  padding:9px 10px!important;
+  background:#f8fafc!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:950!important;
+}
+body.cursapp-tesorero .tesMovementProRow{
+  min-height:64px!important;
+  padding:9px 10px!important;
+  border-bottom:1px solid rgba(226,232,240,.72)!important;
+}
+body.cursapp-tesorero .tesMovementProRow:last-child{border-bottom:0!important;}
+body.cursapp-tesorero .tesMoveType,
+body.cursapp-tesorero .tesMoveInfo{
+  display:grid!important;
+  grid-template-columns:36px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+body.cursapp-tesorero .tesMoveType b,
+body.cursapp-tesorero .tesMoveInfo b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:12.5px!important;
+  font-weight:950!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesMoveType small,
+body.cursapp-tesorero .tesMoveInfo small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:10.5px!important;
+  font-weight:850!important;
+  margin-top:2px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesMovePerson{
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  min-width:0!important;
+}
+body.cursapp-tesorero .tesMoveAmount{
+  color:#0f172a!important;
+  font-size:13px!important;
+  font-weight:950!important;
+  text-align:right!important;
+  white-space:nowrap!important;
+}
+body.cursapp-tesorero .tesMoveAmount.ok,
+body.cursapp-tesorero .tesMovementProRow strong.ok{color:#16a34a!important;}
+body.cursapp-tesorero .tesMoveDate{
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  text-align:right!important;
+  white-space:normal!important;
+  line-height:1.12!important;
+}
+body.cursapp-tesorero .tesRowIcon{
+  width:34px!important;
+  height:34px!important;
+  border-radius:14px!important;
+  font-size:17px!important;
+}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem[data-tab="conciliacion"] .tesNavIcon svg path,
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem[data-tab="conciliacion"] .tesNavIcon svg circle{
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.cursapp-tesorero .supportFab{
+  bottom:calc(132px + env(safe-area-inset-bottom))!important;
+  right:18px!important;
+}
+body.cursapp-tesorero .tesScanBtn{
+  bottom:calc(148px + env(safe-area-inset-bottom))!important;
+}
+@media(max-width:390px){
+  body.cursapp-tesorero .tesMovementTableHead,
+  body.cursapp-tesorero .tesMovementProRow{
+    grid-template-columns:minmax(0,1.28fr) minmax(0,.86fr) 76px 70px!important;
+    column-gap:6px!important;
+  }
+  body.cursapp-tesorero .tesMovementProRow{padding:8px!important;}
+  body.cursapp-tesorero .tesMoveType,
+  body.cursapp-tesorero .tesMoveInfo{grid-template-columns:30px minmax(0,1fr)!important;gap:6px!important;}
+  body.cursapp-tesorero .tesRowIcon{width:28px!important;height:28px!important;border-radius:11px!important;font-size:14px!important;}
+  body.cursapp-tesorero .tesMoveType b{font-size:11.5px!important;}
+  body.cursapp-tesorero .tesMovePerson{font-size:10.5px!important;}
+  body.cursapp-tesorero .tesMoveAmount{font-size:12px!important;}
+  body.cursapp-tesorero .tesMoveDate{font-size:10px!important;}
+  body.cursapp-tesorero .supportFab{bottom:calc(124px + env(safe-area-inset-bottom))!important;}
+}
