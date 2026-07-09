@@ -2162,3 +2162,250 @@ body.cursapp-tesorero .tesConcV70 ~ .supportFab{bottom:calc(158px + env(safe-are
   body.cursapp-tesorero .tesConcPayCard.v70 .tesConcStatus span{font-size:9.5px!important;padding:4px 6px!important;}
   body.cursapp-tesorero .tesConcPayCard.v70 .tesConcStatus button{height:30px!important;font-size:10.5px!important;padding:0 8px!important;}
 }
+
+/* =========================================================
+   Cursapp · Tesorero V71 CLEAN
+   Conciliación por campaña compacta y estable.
+   ========================================================= */
+body.cursapp-tesorero .tesV71Conc{
+  padding:14px 14px calc(110px + env(safe-area-inset-bottom))!important;
+  gap:12px!important;
+  max-width:860px!important;
+  margin:0 auto!important;
+  font-size:13px!important;
+}
+body.cursapp-tesorero .tesV71Top{
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr) 106px!important;
+  gap:12px!important;
+  align-items:center!important;
+  margin:2px 0 4px!important;
+}
+body.cursapp-tesorero .tesV71Top h1{
+  margin:0!important;
+  color:#0f172a!important;
+  font-size:22px!important;
+  line-height:1.08!important;
+  font-weight:950!important;
+  letter-spacing:-.04em!important;
+}
+body.cursapp-tesorero .tesV71Top button{
+  min-height:42px!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  background:#fff!important;
+  border-radius:16px!important;
+  color:#0f172a!important;
+  font-size:18px!important;
+  font-weight:950!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.04)!important;
+}
+body.cursapp-tesorero .tesV71Top .filterBtn{
+  color:#6d28d9!important;
+  font-size:13px!important;
+}
+body.cursapp-tesorero .tesV71Campaign,
+body.cursapp-tesorero .tesV71Stats,
+body.cursapp-tesorero .tesV71Search,
+body.cursapp-tesorero .tesV71List{
+  background:#fff!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  border-radius:22px!important;
+  box-shadow:0 12px 32px rgba(15,23,42,.055)!important;
+}
+body.cursapp-tesorero .tesV71Campaign{
+  padding:12px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 48px 128px!important;
+  gap:12px!important;
+  align-items:center!important;
+}
+body.cursapp-tesorero .tesV71Select,
+body.cursapp-tesorero .tesV71State{min-width:0!important;}
+body.cursapp-tesorero .tesV71Select small,
+body.cursapp-tesorero .tesV71State small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  margin:0 0 6px!important;
+}
+body.cursapp-tesorero .tesV71Select select{
+  width:100%!important;
+  min-width:0!important;
+  height:45px!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+  padding:0 36px 0 12px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesV71Icon{
+  width:48px!important;height:48px!important;border-radius:18px!important;
+  background:#eff6ff!important;display:grid!important;place-items:center!important;font-size:25px!important;
+}
+body.cursapp-tesorero .tesV71State b{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:30px!important;
+  padding:0 10px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+body.cursapp-tesorero .tesV71State b.ok{background:#dcfce7!important;color:#15803d!important;}
+body.cursapp-tesorero .tesV71State b.warn{background:#fff7ed!important;color:#ea580c!important;}
+body.cursapp-tesorero .tesV71State em{
+  display:block!important;
+  margin-top:6px!important;
+  color:#334155!important;
+  font-style:normal!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+body.cursapp-tesorero .tesV71Stats{
+  padding:13px 12px!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  border-color:rgba(167,139,250,.55)!important;
+}
+body.cursapp-tesorero .tesV71Stats article{
+  min-width:0!important;
+  padding:0 10px!important;
+  border-left:1px solid rgba(226,232,240,.9)!important;
+}
+body.cursapp-tesorero .tesV71Stats article:first-child{border-left:0!important;padding-left:2px!important;}
+body.cursapp-tesorero .tesV71Stats span{
+  width:34px!important;height:34px!important;border-radius:13px!important;display:grid!important;place-items:center!important;font-size:17px!important;font-weight:950!important;margin-bottom:6px!important;
+}
+body.cursapp-tesorero .tesV71Stats .amber{background:#fff3df!important;color:#f97316!important;}
+body.cursapp-tesorero .tesV71Stats .green{background:#dcfce7!important;color:#16a34a!important;}
+body.cursapp-tesorero .tesV71Stats .blue{background:#dbeafe!important;color:#2563eb!important;}
+body.cursapp-tesorero .tesV71Stats .violet{background:#ede9fe!important;color:#6d28d9!important;}
+body.cursapp-tesorero .tesV71Stats small{
+  display:block!important;color:#64748b!important;font-size:11px!important;line-height:1.08!important;font-weight:900!important;
+}
+body.cursapp-tesorero .tesV71Stats b{
+  display:block!important;color:#0f172a!important;font-size:17px!important;line-height:1.1!important;font-weight:950!important;margin-top:6px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesV71Stats em{
+  display:block!important;color:#475569!important;font-style:normal!important;font-size:10.5px!important;font-weight:850!important;margin-top:4px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesV71Search{
+  padding:8px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 98px!important;
+  gap:8px!important;
+  box-shadow:none!important;
+}
+body.cursapp-tesorero .tesV71Search label{
+  height:54px!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  border-radius:17px!important;
+  display:flex!important;align-items:center!important;gap:10px!important;
+  padding:0 14px!important;
+  background:#fff!important;
+}
+body.cursapp-tesorero .tesV71Search label span{font-size:24px!important;color:#6d28d9!important;}
+body.cursapp-tesorero .tesV71Search input{
+  min-width:0!important;width:100%!important;border:0!important;outline:0!important;background:transparent!important;
+  color:#0f172a!important;font-size:13px!important;font-weight:850!important;
+}
+body.cursapp-tesorero .tesV71Search input::placeholder{color:#94a3b8!important;}
+body.cursapp-tesorero .tesV71Search button{
+  border:1px solid rgba(226,232,240,.96)!important;border-radius:17px!important;background:#fff!important;color:#0f172a!important;
+  display:grid!important;place-items:center!important;font-size:18px!important;font-weight:950!important;
+}
+body.cursapp-tesorero .tesV71Search button small{display:block!important;font-size:10px!important;font-weight:900!important;margin-top:-8px!important;color:#334155!important;}
+body.cursapp-tesorero .tesV71Tabs{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;
+}
+body.cursapp-tesorero .tesV71Tabs button{
+  height:42px!important;border-radius:15px!important;border:1px solid rgba(226,232,240,.96)!important;background:#fff!important;color:#334155!important;font-size:12px!important;font-weight:950!important;
+}
+body.cursapp-tesorero .tesV71Tabs button.active{border-color:rgba(109,40,217,.45)!important;background:#faf5ff!important;color:#6d28d9!important;}
+body.cursapp-tesorero .tesV71Tabs button.ok.active{border-color:rgba(22,163,74,.35)!important;background:#f0fdf4!important;color:#16a34a!important;}
+body.cursapp-tesorero .tesV71Tabs span{margin-left:4px;padding:2px 7px;border-radius:999px;background:rgba(148,163,184,.14)!important;}
+body.cursapp-tesorero .tesV71Order{
+  display:flex!important;justify-content:space-between!important;align-items:center!important;gap:10px!important;
+  color:#64748b!important;font-size:12px!important;font-weight:850!important;
+}
+body.cursapp-tesorero .tesV71Order b{
+  display:inline-flex!important;min-height:35px!important;align-items:center!important;padding:0 12px!important;border-radius:13px!important;border:1px solid rgba(226,232,240,.96)!important;background:#fff!important;color:#334155!important;margin-left:6px!important;
+}
+body.cursapp-tesorero .tesV71Order label{display:flex!important;align-items:center!important;gap:8px!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesV71Order input{width:18px!important;height:18px!important;accent-color:#2563eb!important;}
+body.cursapp-tesorero .tesV71List{padding:12px!important;}
+body.cursapp-tesorero .tesV71List header{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:10px!important;margin-bottom:8px!important;}
+body.cursapp-tesorero .tesV71List h2{margin:0!important;color:#0f172a!important;font-size:17px!important;font-weight:950!important;letter-spacing:-.03em!important;}
+body.cursapp-tesorero .tesV71List header small{color:#64748b!important;font-size:11px!important;font-weight:900!important;max-width:46%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.cursapp-tesorero .tesV71Pay{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr) 92px 78px!important;
+  gap:10px!important;
+  align-items:center!important;
+  border:1px solid rgba(226,232,240,.96)!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  padding:10px!important;
+  margin-top:8px!important;
+  min-height:96px!important;
+}
+body.cursapp-tesorero .tesV71Pay:has(.tesV71Check){grid-template-columns:22px 42px minmax(0,1fr) 86px 72px!important;}
+body.cursapp-tesorero .tesV71Pay.selected{border-color:rgba(109,40,217,.45)!important;background:#fbf7ff!important;}
+body.cursapp-tesorero .tesV71Check{display:grid!important;place-items:center!important;}
+body.cursapp-tesorero .tesV71Check input{display:none!important;}
+body.cursapp-tesorero .tesV71Check span{width:18px!important;height:18px!important;border:2px solid #cbd5e1!important;border-radius:5px!important;background:#fff!important;}
+body.cursapp-tesorero .tesV71Check input:checked + span{background:#6d28d9!important;border-color:#6d28d9!important;box-shadow:inset 0 0 0 4px #fff!important;}
+body.cursapp-tesorero .tesV71Avatar{width:40px!important;height:40px!important;border-radius:15px!important;display:grid!important;place-items:center!important;background:#ede9fe!important;color:#6d28d9!important;font-size:15px!important;font-weight:950!important;}
+body.cursapp-tesorero .tesV71Avatar.ok{background:#dcfce7!important;color:#16a34a!important;}
+body.cursapp-tesorero .tesV71Who{min-width:0!important;}
+body.cursapp-tesorero .tesV71Who b,
+body.cursapp-tesorero .tesV71Who small,
+body.cursapp-tesorero .tesV71Who em,
+body.cursapp-tesorero .tesV71Who u{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.cursapp-tesorero .tesV71Who b{color:#0f172a!important;font-size:14px!important;line-height:1.05!important;font-weight:950!important;}
+body.cursapp-tesorero .tesV71Who small{color:#475569!important;font-size:12px!important;font-weight:800!important;margin-top:3px!important;}
+body.cursapp-tesorero .tesV71Who em{color:#6d28d9!important;font-style:normal!important;font-size:12px!important;font-weight:950!important;margin-top:3px!important;}
+body.cursapp-tesorero .tesV71Who u{color:#64748b!important;text-decoration:none!important;font-size:10.5px!important;font-weight:800!important;margin-top:5px!important;}
+body.cursapp-tesorero .tesV71Amount{min-width:0!important;text-align:right!important;}
+body.cursapp-tesorero .tesV71Amount b{display:block!important;color:#0f172a!important;font-size:14px!important;font-weight:950!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesV71Amount span{display:inline-flex!important;margin-top:6px!important;border-radius:999px!important;padding:3px 7px!important;font-size:10.5px!important;font-weight:950!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesV71Amount span.pending{background:#fff7ed!important;color:#ea580c!important;}
+body.cursapp-tesorero .tesV71Amount span.done{background:#dcfce7!important;color:#15803d!important;}
+body.cursapp-tesorero .tesV71Amount small{display:block!important;margin-top:4px!important;color:#64748b!important;font-size:10.5px!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.cursapp-tesorero .tesV71Action{text-align:right!important;}
+body.cursapp-tesorero .tesV71Action button{height:34px!important;border-radius:13px!important;border:1px solid rgba(109,40,217,.45)!important;background:#fff!important;color:#6d28d9!important;padding:0 12px!important;font-size:12px!important;font-weight:950!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesV71Action small{color:#64748b!important;font-size:10.5px!important;font-weight:850!important;}
+body.cursapp-tesorero .tesBulkAction.v71{position:fixed!important;left:18px!important;right:18px!important;bottom:calc(92px + env(safe-area-inset-bottom))!important;z-index:1300!important;height:52px!important;border:0!important;border-radius:18px!important;background:linear-gradient(135deg,#2563eb,#7c3aed)!important;color:#fff!important;font-size:15px!important;font-weight:950!important;box-shadow:0 18px 38px rgba(37,99,235,.28)!important;}
+body.cursapp-tesorero .tesConcSheetOverlay{z-index:8000!important;}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesV71Conc{padding:13px 12px calc(108px + env(safe-area-inset-bottom))!important;gap:11px!important;}
+  body.cursapp-tesorero .tesV71Top{grid-template-columns:40px minmax(0,1fr) 96px!important;gap:10px!important;}
+  body.cursapp-tesorero .tesV71Top h1{font-size:20px!important;}
+  body.cursapp-tesorero .tesV71Campaign{grid-template-columns:minmax(0,1fr) 44px 120px!important;padding:11px!important;gap:10px!important;}
+  body.cursapp-tesorero .tesV71Select select{font-size:13px!important;height:44px!important;}
+  body.cursapp-tesorero .tesV71Icon{width:44px!important;height:44px!important;font-size:23px!important;}
+  body.cursapp-tesorero .tesV71State b{font-size:11.5px!important;padding:0 8px!important;}
+  body.cursapp-tesorero .tesV71Stats{padding:11px 9px!important;}
+  body.cursapp-tesorero .tesV71Stats article{padding:0 7px!important;}
+  body.cursapp-tesorero .tesV71Stats span{width:30px!important;height:30px!important;font-size:15px!important;}
+  body.cursapp-tesorero .tesV71Stats b{font-size:15px!important;}
+  body.cursapp-tesorero .tesV71Stats small{font-size:10.3px!important;}
+  body.cursapp-tesorero .tesV71Stats em{font-size:9.5px!important;}
+  body.cursapp-tesorero .tesV71Search{grid-template-columns:minmax(0,1fr) 86px!important;}
+  body.cursapp-tesorero .tesV71Pay{grid-template-columns:38px minmax(0,1fr) 78px 66px!important;gap:8px!important;padding:9px!important;}
+  body.cursapp-tesorero .tesV71Pay:has(.tesV71Check){grid-template-columns:20px 36px minmax(0,1fr) 74px 64px!important;}
+  body.cursapp-tesorero .tesV71Avatar{width:36px!important;height:36px!important;border-radius:14px!important;font-size:13px!important;}
+  body.cursapp-tesorero .tesV71Who b{font-size:13px!important;}
+  body.cursapp-tesorero .tesV71Who small,.tesV71Who em{font-size:11px!important;}
+  body.cursapp-tesorero .tesV71Amount b{font-size:13px!important;}
+  body.cursapp-tesorero .tesV71Action button{height:32px!important;padding:0 9px!important;font-size:11px!important;}
+}
