@@ -2725,3 +2725,191 @@ body.cursapp-tesorero .tesV73BulkBtn{
     display:none!important;
   }
 }
+
+/* =========================================================
+   Cursapp · Tesorero V75
+   - Conciliación por campaña enfocada en la lista.
+   - Sin buscador ni filtro visible.
+   - Campaña resumida: combo completo + KPIs claros.
+   ========================================================= */
+body.cursapp-tesorero .tesV75Conc{
+  padding:14px 14px calc(110px + env(safe-area-inset-bottom))!important;
+  gap:10px!important;
+}
+body.cursapp-tesorero .tesV75Title h1{
+  font-size:20px!important;
+  line-height:1.05!important;
+  margin:0!important;
+}
+body.cursapp-tesorero .tesV75CampaignCard{
+  padding:12px!important;
+  border-radius:24px!important;
+  margin:0!important;
+}
+body.cursapp-tesorero .tesV75CampaignSelect{
+  height:50px!important;
+  border-radius:18px!important;
+  display:grid!important;
+  grid-template-columns:40px minmax(0,1fr) 20px!important;
+  gap:10px!important;
+  padding:0 12px!important;
+  align-items:center!important;
+}
+body.cursapp-tesorero .tesV75CampaignSelect span{
+  width:34px!important;
+  height:34px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:23px!important;
+}
+body.cursapp-tesorero .tesV75CampaignSelect select{
+  font-size:15px!important;
+  font-weight:950!important;
+  color:#0f172a!important;
+  min-width:0!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesV75CampaignSelect i{
+  font-size:18px!important;
+  color:#0f172a!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  margin-top:12px!important;
+  padding:12px 2px 10px!important;
+  border-top:1px solid rgba(226,232,240,.85)!important;
+  border-bottom:1px solid rgba(226,232,240,.85)!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics article{
+  min-width:0!important;
+  text-align:center!important;
+  padding:0 8px!important;
+  border-left:1px solid rgba(226,232,240,.85)!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics article:first-child{border-left:0!important;}
+body.cursapp-tesorero .tesV75CampaignMetrics small,
+body.cursapp-tesorero .tesV75CampaignMetrics b,
+body.cursapp-tesorero .tesV75CampaignMetrics em{
+  display:block!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics small{
+  font-size:11px!important;
+  line-height:1.1!important;
+  color:#334155!important;
+  font-weight:900!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics b{
+  margin-top:7px!important;
+  font-size:15px!important;
+  line-height:1.1!important;
+  color:#0f172a!important;
+  font-weight:950!important;
+}
+body.cursapp-tesorero .tesV75CampaignMetrics b.warn{color:#c2410c!important;}
+body.cursapp-tesorero .tesV75CampaignMetrics b.money{color:#15803d!important;}
+body.cursapp-tesorero .tesV75CampaignMetrics em{
+  margin-top:7px!important;
+  font-size:17px!important;
+  line-height:1!important;
+  font-style:normal!important;
+  color:#64748b!important;
+}
+body.cursapp-tesorero .tesV75InfoBtn{
+  min-height:38px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#6d28d9!important;
+  font-size:13px!important;
+  font-weight:950!important;
+}
+body.cursapp-tesorero .tesV75Info{
+  margin-top:10px!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  gap:8px!important;
+}
+body.cursapp-tesorero .tesV75Info article{
+  border-radius:14px!important;
+  padding:8px!important;
+}
+body.cursapp-tesorero .tesV75Info small{font-size:10px!important;}
+body.cursapp-tesorero .tesV75Info b{font-size:11px!important;}
+body.cursapp-tesorero .tesV75Tabs{
+  margin-top:0!important;
+  display:grid!important;
+  grid-template-columns:128px 136px!important;
+  justify-content:start!important;
+  gap:8px!important;
+}
+body.cursapp-tesorero .tesV75Tabs button{
+  height:38px!important;
+  border-radius:18px!important;
+  font-size:12.5px!important;
+  padding:0 12px!important;
+}
+body.cursapp-tesorero .tesV75List{
+  margin-top:0!important;
+  padding:0!important;
+  border-radius:20px!important;
+  background:#fff!important;
+  overflow:hidden!important;
+  border:1px solid rgba(226,232,240,.92)!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.045)!important;
+}
+body.cursapp-tesorero .tesV75List .tesV73PayRow{
+  border:0!important;
+  border-bottom:1px solid rgba(226,232,240,.8)!important;
+  border-radius:0!important;
+  margin:0!important;
+  box-shadow:none!important;
+  min-height:62px!important;
+}
+body.cursapp-tesorero .tesV75List .tesV73PayRow:last-of-type{border-bottom:0!important;}
+body.cursapp-tesorero .tesV75BulkBtn{
+  width:calc(100% - 20px)!important;
+  margin:10px!important;
+  height:42px!important;
+  border-radius:13px!important;
+  font-size:13px!important;
+  font-weight:950!important;
+  border:0!important;
+  background:linear-gradient(135deg,#6d28d9,#7c3aed)!important;
+  color:#fff!important;
+}
+body.cursapp-tesorero .tesV75BulkBtn.is-disabled{
+  opacity:.52!important;
+  filter:saturate(.7)!important;
+}
+body.cursapp-tesorero .tesV75Summary{
+  margin-top:4px!important;
+  padding:12px!important;
+}
+body.cursapp-tesorero .tesV75Summary h2{font-size:14px!important;}
+body.cursapp-tesorero .tesV75Summary header button{font-size:11px!important;}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesV75Conc{
+    padding:12px 10px calc(110px + env(safe-area-inset-bottom))!important;
+    gap:9px!important;
+  }
+  body.cursapp-tesorero .tesV75Title h1{font-size:19px!important;}
+  body.cursapp-tesorero .tesV75CampaignCard{padding:11px!important;}
+  body.cursapp-tesorero .tesV75CampaignSelect{height:48px!important;grid-template-columns:36px minmax(0,1fr) 18px!important;gap:8px!important;padding:0 10px!important;}
+  body.cursapp-tesorero .tesV75CampaignSelect select{font-size:14px!important;}
+  body.cursapp-tesorero .tesV75CampaignMetrics{padding:10px 0 8px!important;}
+  body.cursapp-tesorero .tesV75CampaignMetrics article{padding:0 5px!important;}
+  body.cursapp-tesorero .tesV75CampaignMetrics small{font-size:9.8px!important;}
+  body.cursapp-tesorero .tesV75CampaignMetrics b{font-size:13.5px!important;}
+  body.cursapp-tesorero .tesV75CampaignMetrics em{font-size:15px!important;}
+  body.cursapp-tesorero .tesV75Info{grid-template-columns:1fr 1fr!important;}
+  body.cursapp-tesorero .tesV75Tabs{grid-template-columns:1fr 1fr!important;}
+  body.cursapp-tesorero .tesV75Tabs button{height:36px!important;font-size:12px!important;}
+  body.cursapp-tesorero .tesV75List .tesV73PayRow{min-height:60px!important;}
+}

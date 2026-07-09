@@ -3893,45 +3893,58 @@ __bootTesoreroSupabaseFirst();
   function render(){
     syncHeader(); setActive();
     const root=app(); if(!root) return;
-    const list=campaigns(); const camp=selectedCampaign(); const all=rowsByCampaign(camp?.id);
-    const pending=all.filter(p=>!isConc(p)); const conc=all.filter(isConc);
-    const rec=sum(conc,p=>p.amount); const pendAmt=sum(pending,p=>p.amount); const goal=goalOf(camp); const pct=goal?Math.min(100,Math.round(rec/goal*100)):(rec?72:0);
-    const part=participation(all); const rows=filteredRows(all,pending,conc); const sel=selectedRows(all); const st=campaignState(camp);
+    const list=campaigns();
+    const camp=selectedCampaign();
+    const all=rowsByCampaign(camp?.id);
+    const pending=all.filter(p=>!isConc(p));
+    const conc=all.filter(isConc);
+    const rec=sum(conc,p=>p.amount);
+    const pendAmt=sum(pending,p=>p.amount);
+    const goal=goalOf(camp);
+    const pct=goal?Math.min(100,Math.round(rec/goal*100)):(rec?72:0);
+    const part=participation(all);
     const filter=String(window.__tesConcFilter||'pendientes');
-    root.innerHTML = `<div class="tesConcPage tesV72Conc tesV73Conc">
-      <section class="tesV73Title"><h1>Conciliación por campaña</h1></section>
-      <section class="tesV73CampaignCompact">
-        <label class="tesV73CampaignSelect"><span>${campaignIcon(camp)}</span><select onchange="tesV73SelectCampaign(this.value)">${list.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(camp?.id)?'selected':''}>${esc(titleOf(c))}</option>`).join('')}</select><i>⌄</i></label>
-        <div class="tesV73CampaignStrip">
-          <article><b class="badge ${st.cls}">${esc(st.label)}</b></article>
-          <article class="ring"><b style="--p:${pct}"><span>${pct}%</span></b></article>
-          <article><strong>${part.count} / ${part.total}</strong><small>apoderados</small></article>
-          <article><small>Pendientes</small><strong class="warn">${pending.length}</strong></article>
-          <article><small>Recaudado</small><strong>${clp(rec)}</strong></article>
-          <button type="button" onclick="tesV73ToggleInfo()">⌄</button>
+    const rows=filter==='conciliados'?conc:pending;
+    const sel=selectedRows(all);
+    const campaignName=titleOf(camp);
+    const options=list.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(camp?.id)?'selected':''}>${esc(titleOf(c))}</option>`).join('');
+    root.innerHTML = `<div class="tesConcPage tesV72Conc tesV73Conc tesV75Conc">
+      <section class="tesV73Title tesV75Title"><h1>Conciliación por campaña</h1></section>
+
+      <section class="tesV73CampaignCompact tesV75CampaignCard">
+        <label class="tesV73CampaignSelect tesV75CampaignSelect">
+          <span>${campaignIcon(camp)}</span>
+          <select onchange="tesV73SelectCampaign(this.value)">${options}</select>
+          <i>⌄</i>
+        </label>
+
+        <div class="tesV75CampaignMetrics">
+          <article><small>Apoderados</small><b>${part.count} / ${part.total}</b><em>👥</em></article>
+          <article><small>Pendientes</small><b class="warn">${pending.length}</b><em>◷</em></article>
+          <article><small>Recaudado</small><b class="money">${clp(rec)}</b><em>▣</em></article>
+          <article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>◎</em></article>
         </div>
-        <div class="tesV73CampaignInfo ${window.__tesShowCampaignInfo?'open':''}">
+
+        <div class="tesV73CampaignInfo tesV75Info ${window.__tesShowCampaignInfo?'open':''}">
           <article><small>Creación</small><b>${esc(createdAtOf(camp))}</b></article>
-          <article><small>Estado campaña</small><b>${esc(st.label)}</b></article>
-          <article><small>Participación</small><b>${part.count} / ${part.total} · ${part.pct}%</b></article>
-          <article><small>Meta total</small><b>${goal?clp(goal):'Por definir'}</b></article>
+          <article><small>Estado campaña</small><b>${esc(campaignState(camp).label)}</b></article>
+          <article><small>Participación</small><b>${part.pct}%</b></article>
+          <article><small>Avance meta</small><b>${pct}%</b></article>
         </div>
-        <button class="tesV73InfoBtn" type="button" onclick="tesV73ToggleInfo()">Ver información de la campaña <span>⌄</span></button>
+        <button class="tesV73InfoBtn tesV75InfoBtn" type="button" onclick="tesV73ToggleInfo()">Ver información de la campaña <span>⌄</span></button>
       </section>
-      <section class="tesV73SearchRow">
-        <label><span>⌕</span><input value="${esc(window.__tesConcQuery||'')}" oninput="tesV73Query(this.value)" placeholder="Buscar alumno o apoderado"></label>
-        <button type="button">⚚ Filtros</button>
-      </section>
-      <p class="tesV73SearchHelp">Busca alumno o apoderado dentro de la campaña seleccionada</p>
-      <section class="tesV73Tabs">
+
+      <section class="tesV73Tabs tesV75Tabs">
         <button class="${filter==='pendientes'?'active':''}" onclick="tesV73Filter('pendientes')">Pendientes (${pending.length})</button>
         <button class="${filter==='conciliados'?'active ok':''}" onclick="tesV73Filter('conciliados')">Conciliados (${conc.length})</button>
       </section>
-      <section class="tesV73List">
-        ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>Busca otro apoderado o cambia de filtro.</span></article>`}
-        ${sel.length ? `<button class="tesV73BulkBtn" onclick="tesV73OpenBulk()">☑ Conciliar seleccionados (${sel.length})</button>` : ''}
+
+      <section class="tesV73List tesV75List">
+        ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>${filter==='pendientes'?'Esta campaña no tiene pagos pendientes.':'Esta campaña aún no tiene pagos conciliados.'}</span></article>`}
+        <button class="tesV73BulkBtn tesV75BulkBtn ${sel.length?'is-active':'is-disabled'}" ${sel.length?'':'disabled'} onclick="${sel.length?'tesV73OpenBulk()':'void(0)'}">☑ Conciliar seleccionados (${sel.length})</button>
       </section>
-      <section class="tesV73Summary">
+
+      <section class="tesV73Summary tesV75Summary">
         <header><h2>Resumen de la campaña</h2><button type="button">Ver detalle completo ›</button></header>
         <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Pendientes</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(rec)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
       </section>
