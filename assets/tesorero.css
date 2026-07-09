@@ -1832,3 +1832,71 @@ body.cursapp-tesorero .bottomNav.tesBottomNav .navItem[data-tab="conciliacion"] 
   body.cursapp-tesorero .tesConcCampaignStats article:nth-child(2){border-right:0!important;}
   body.cursapp-tesorero .tesConcCampaignStats article:nth-child(1),body.cursapp-tesorero .tesConcCampaignStats article:nth-child(2){border-bottom:1px solid rgba(226,232,240,.86)!important;}
 }
+
+/* === Cursapp Tesorero V69 · Conciliación por campaña compacta + masiva === */
+body.cursapp-tesorero .tesConcV69{padding-bottom:145px!important;}
+body.cursapp-tesorero .tesConcV69 .tesConcTop{display:grid!important;grid-template-columns:44px 1fr auto!important;gap:12px!important;align-items:center!important;margin:8px 0 12px!important;}
+body.cursapp-tesorero .tesConcV69 .tesConcTop h1{font-size:24px!important;line-height:1.05!important;margin:0!important;letter-spacing:-.9px!important;}
+body.cursapp-tesorero .tesConcV69 .tesConcTop button{height:44px!important;border-radius:16px!important;font-size:16px!important;}
+body.cursapp-tesorero .tesConcV69 .filterBtn{padding:0 14px!important;font-size:14px!important;font-weight:900!important;color:#6d28d9!important;background:#fff!important;border:1px solid #e5e7eb!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69{display:grid!important;grid-template-columns:minmax(0,1.55fr) 58px minmax(112px,.9fr)!important;gap:12px!important;align-items:center!important;padding:14px!important;border-radius:22px!important;margin-bottom:12px!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69 small{font-size:12px!important;font-weight:900!important;color:#64748b!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69 select{width:100%!important;height:48px!important;border-radius:14px!important;font-size:17px!important;font-weight:950!important;color:#0f172a!important;padding:0 34px 0 14px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;background:#fff!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69 .tesCampaignSelectorIcon{width:54px!important;height:54px!important;border-radius:18px!important;font-size:28px!important;display:grid!important;place-items:center!important;background:#f1f5f9!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69 .tesCampaignState b{display:inline-flex!important;padding:7px 11px!important;border-radius:999px!important;font-size:14px!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesCampaignSelector.v69 .tesCampaignState em{display:block!important;margin-top:5px!important;font-size:12px!important;font-style:normal!important;font-weight:900!important;color:#0f172a!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;padding:12px!important;gap:0!important;border-radius:22px!important;margin-bottom:12px!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 article{min-height:96px!important;padding:6px 10px!important;border-right:1px solid #e5e7eb!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 article:last-child{border-right:0!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 span{width:38px!important;height:38px!important;font-size:18px!important;border-radius:14px!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 small{font-size:12px!important;line-height:1.1!important;margin-top:8px!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 b{font-size:18px!important;line-height:1.05!important;margin-top:4px!important;}
+body.cursapp-tesorero .tesConcCampaignStats.v69 em{font-size:11px!important;line-height:1.15!important;}
+body.cursapp-tesorero .tesConcTools.v69{display:grid!important;grid-template-columns:1fr 112px!important;gap:10px!important;margin:10px 0 12px!important;}
+body.cursapp-tesorero .tesConcTools.v69 label{height:58px!important;border:1.5px solid #dbeafe!important;border-radius:18px!important;background:#fff!important;box-shadow:0 14px 34px rgba(15,23,42,.06)!important;}
+body.cursapp-tesorero .tesConcTools.v69 label span{font-size:26px!important;color:#6d28d9!important;}
+body.cursapp-tesorero .tesConcTools.v69 input{font-size:15px!important;font-weight:800!important;}
+body.cursapp-tesorero .tesConcTools.v69 button{height:58px!important;border-radius:18px!important;font-size:18px!important;background:#fff!important;}
+body.cursapp-tesorero .tesConcTools.v69 button small{font-size:12px!important;font-weight:900!important;}
+body.cursapp-tesorero .tesConcTabs.v69{grid-template-columns:repeat(3,1fr)!important;gap:10px!important;margin:10px 0 12px!important;}
+body.cursapp-tesorero .tesConcTabs.v69 button{height:46px!important;border-radius:15px!important;font-size:14px!important;font-weight:900!important;}
+body.cursapp-tesorero .tesConcTabs.v69 span{font-size:12px!important;min-width:22px!important;height:22px!important;}
+body.cursapp-tesorero .tesConcOrder.v69{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;margin:2px 0 10px!important;font-size:13px!important;color:#64748b!important;font-weight:800!important;}
+body.cursapp-tesorero .tesConcOrder.v69 label{display:flex!important;align-items:center!important;gap:8px!important;color:#334155!important;font-weight:900!important;}
+body.cursapp-tesorero .tesConcOrder.v69 input{width:20px!important;height:20px!important;accent-color:#6d28d9!important;}
+body.cursapp-tesorero .tesConcList.v69{padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;}
+body.cursapp-tesorero .tesConcList.v69>header{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;margin-bottom:8px!important;}
+body.cursapp-tesorero .tesConcList.v69>header h2{font-size:16px!important;margin:0!important;}
+body.cursapp-tesorero .tesConcList.v69>header small{font-size:12px!important;color:#64748b!important;max-width:52%!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.cursapp-tesorero .tesConcPayCard.v69{position:relative!important;display:grid!important;grid-template-columns:auto 48px minmax(0,1fr) minmax(92px,.55fr) 96px!important;gap:10px!important;align-items:center!important;padding:14px!important;margin:0 0 10px!important;border-radius:20px!important;background:#fff!important;border:1px solid #e5e7eb!important;box-shadow:0 16px 38px rgba(15,23,42,.055)!important;}
+body.cursapp-tesorero .tesConcPayCard.v69:not(.is-selected) .tesBulkCheck{display:block!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesBulkCheck{width:24px!important;display:grid!important;place-items:center!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesBulkCheck input{width:20px!important;height:20px!important;accent-color:#6d28d9!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAvatar{width:48px!important;height:48px!important;border-radius:16px!important;font-size:16px!important;font-weight:950!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho b{font-size:16px!important;line-height:1.08!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho small,
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho em,
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho u{display:block!important;font-size:12px!important;line-height:1.25!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;text-decoration:none!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho em{color:#6d28d9!important;font-weight:950!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAmount{border-left:1px solid #e5e7eb!important;padding-left:10px!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAmount strong{font-size:17px!important;line-height:1.1!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAmount small{display:block!important;font-size:11px!important;line-height:1.25!important;color:#64748b!important;font-weight:800!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcStatus{display:flex!important;flex-direction:column!important;align-items:flex-end!important;gap:7px!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcStatus span{font-size:11px!important;padding:5px 8px!important;border-radius:999px!important;white-space:nowrap!important;}
+body.cursapp-tesorero .tesConcPayCard.v69 .tesConcStatus button{height:34px!important;padding:0 12px!important;border-radius:11px!important;font-size:12px!important;font-weight:950!important;}
+body.cursapp-tesorero .tesConcPayCard.v69.is-selected{border-color:#c4b5fd!important;background:linear-gradient(135deg,#fff,#faf5ff)!important;}
+body.cursapp-tesorero .tesBulkAction{position:fixed!important;left:22px!important;right:22px!important;bottom:calc(98px + env(safe-area-inset-bottom))!important;height:54px!important;border:0!important;border-radius:18px!important;background:linear-gradient(135deg,#2563eb,#7c3aed)!important;color:#fff!important;font-size:16px!important;font-weight:950!important;box-shadow:0 20px 38px rgba(109,40,217,.28)!important;z-index:1200!important;}
+body.cursapp-tesorero .tesBulkList{max-height:130px!important;overflow:auto!important;border:1px solid #e5e7eb!important;border-radius:14px!important;margin:10px 0 12px!important;}
+body.cursapp-tesorero .tesBulkList div{display:flex!important;justify-content:space-between!important;padding:9px 12px!important;border-bottom:1px solid #f1f5f9!important;font-size:13px!important;font-weight:850!important;}
+body.cursapp-tesorero .tesBulkList div:last-child{border-bottom:0!important;}
+@media (max-width:430px){
+  body.cursapp-tesorero .tesCampaignSelector.v69{grid-template-columns:minmax(0,1fr) 48px 108px!important;padding:12px!important;gap:9px!important;}
+  body.cursapp-tesorero .tesCampaignSelector.v69 select{font-size:15px!important;height:44px!important;}
+  body.cursapp-tesorero .tesCampaignSelector.v69 .tesCampaignSelectorIcon{width:46px!important;height:46px!important;font-size:24px!important;}
+  body.cursapp-tesorero .tesConcCampaignStats.v69 article{padding:5px 7px!important;min-height:92px!important;}
+  body.cursapp-tesorero .tesConcCampaignStats.v69 b{font-size:15px!important;}
+  body.cursapp-tesorero .tesConcPayCard.v69{grid-template-columns:auto 42px minmax(0,1fr) 80px 84px!important;gap:8px!important;padding:12px!important;}
+  body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAvatar{width:42px!important;height:42px!important;}
+  body.cursapp-tesorero .tesConcPayCard.v69 .tesConcWho b{font-size:14px!important;}
+  body.cursapp-tesorero .tesConcPayCard.v69 .tesConcAmount strong{font-size:15px!important;}
+}
