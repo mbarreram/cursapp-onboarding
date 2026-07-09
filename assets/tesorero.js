@@ -3751,3 +3751,229 @@ __bootTesoreroSupabaseFirst();
   document.addEventListener('DOMContentLoaded',()=>{ const app=appEl(); if(app){ new MutationObserver(renderSoon).observe(app,{childList:true,subtree:false}); } setTimeout(renderSoon, 500); });
   setTimeout(renderSoon, 700);
 })();
+
+/* =========================================================
+   Cursapp · Tesorero V73
+   Conciliar: campaña compacta + búsqueda/lista como foco principal.
+   - Mantiene selector por campaña.
+   - Lista de alumnos/apoderados arriba y resumen abajo.
+   - Conciliación individual y masiva con modal de éxito.
+   ========================================================= */
+(function(){
+  if(window.__TESORERO_V73_LOADED__) return;
+  window.__TESORERO_V73_LOADED__ = true;
+
+  const esc = (s)=>String(s ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const clp = (n)=>'$' + Number(n||0).toLocaleString('es-CL');
+  const load = (k,f=[])=>{ try{ const v=localStorage.getItem(k); return v==null ? f : JSON.parse(v); }catch(_){ return f; } };
+  const save = (k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){} };
+  const sum = (a,fn)=> (a||[]).reduce((t,x)=>t+Number(fn?fn(x):x||0),0);
+  const scoped = (base)=> (window.CURSAPP && typeof window.CURSAPP.scopedKey === 'function') ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
+  const KEY_TASKS = scoped('tasks_v1');
+  const KEY_PAYMENTS = scoped('payments_v1');
+  const KEY_PROFILES = 'cursapp_profiles_v1';
+  const nowIso = ()=>new Date().toISOString();
+
+  window.__tesConcFilter = window.__tesConcFilter || 'pendientes';
+  window.__tesConcQuery = window.__tesConcQuery || '';
+  window.__tesBulkSelection = window.__tesBulkSelection || {};
+
+  function app(){ return document.getElementById('app'); }
+  function tasks(){ const arr=load(KEY_TASKS,[]); return Array.isArray(arr)?arr:[]; }
+  function payments(){ const arr=load(KEY_PAYMENTS,[]); return Array.isArray(arr)?arr:[]; }
+  function profiles(){ const arr=load(KEY_PROFILES,[]); return Array.isArray(arr)?arr:[]; }
+  function titleOf(c){ return String(c?.title || c?.name || c?.concept || 'Campaña').trim(); }
+  function goalOf(c){ return Number(c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
+  function payCampId(p){ return String(p?.fromTaskId || p?.taskId || p?.campaignId || ''); }
+  function isConc(p){ return String(p?.paymentMethod || p?.paidWith || '').toLowerCase()==='transbank' || String(p?.conciliationStatus || '').toLowerCase()==='conciliado'; }
+  function isPaidLike(p){ const st=String(p?.status||'').toLowerCase(); return !st || st==='paid' || st==='pagado'; }
+  function validRows(){ return payments().filter(p=>String(p?.conciliationStatus||'').toLowerCase()!=='anulado').filter(isPaidLike); }
+  function campaigns(){
+    const t=tasks().filter(x=>!x?.hidden);
+    if(t.length) return t;
+    const map = new Map();
+    validRows().forEach(p=>{ const id=payCampId(p)||String(p?.concept||'general'); if(!map.has(id)) map.set(id,{id,title:p?.concept||'Campaña general'}); });
+    return Array.from(map.values());
+  }
+  function selectedCampaign(){
+    const list=campaigns();
+    if(!list.length) return {id:'general',title:'Campaña general'};
+    let c=list.find(x=>String(x.id)===String(window.__tesCampaignId));
+    if(!c){ c=list[0]; window.__tesCampaignId=String(c.id); }
+    return c;
+  }
+  function rowsByCampaign(id){
+    const cid=String(id||'');
+    if(!cid) return validRows();
+    return validRows().filter(p=>payCampId(p)===cid || (!payCampId(p) && String(p?.concept||'')===cid));
+  }
+  function campaignIcon(c){
+    const t=titleOf(c).toLowerCase();
+    if(t.includes('gira')) return '🎯';
+    if(t.includes('paseo')) return '🚌';
+    if(t.includes('aseo')) return '🧽';
+    if(t.includes('cuota')) return '🗓️';
+    return '🎯';
+  }
+  function createdAtOf(c){
+    const raw=c?.createdAt||c?.created_at||c?.startDate||c?.date||nowIso();
+    const d=new Date(raw);
+    if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','') + ' · ' + d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+    return String(raw||'—');
+  }
+  function campaignState(c){
+    const closed = !!(c?.closed || c?.isClosed || String(c?.status||'').toLowerCase().includes('cerr'));
+    if(closed) return {label:'Finalizada', cls:'done'};
+    return {label:'Activa', cls:'active'};
+  }
+  function totalGuardians(){
+    const session=(()=>{ try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');}catch(_){return {}} })();
+    const explicit=Number(session.studentCount || session.alumnos || session.guardianCount || 0);
+    const list=profiles();
+    const active=String(localStorage.getItem('cursapp_active_course_v1')||session.courseKey||'');
+    const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || explicit || 30;
+    return Math.max(1,count);
+  }
+  function participation(rows){
+    const total=totalGuardians();
+    const set=new Set();
+    (rows||[]).forEach(p=>{ const k=[p?.apoderadoEmail,p?.email,p?.apoderadoKey,p?.guardianName,p?.apoderadoName,p?.studentName].filter(Boolean).join('|'); if(k) set.add(k.toLowerCase()); });
+    const count=Math.min(total,set.size || Math.min(total,(rows||[]).length));
+    return {count,total,pct:Math.round((count/total)*100)};
+  }
+  function syncHeader(){
+    try{
+      const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
+      const raw=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
+      const name=String(raw).includes('@')?'Tesorero':raw;
+      const course=s.courseLabel||s.course||s.curso||'2°B';
+      const school=s.schoolName||s.colegio||s.school||'Colegio Central';
+      const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=name;
+      const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
+      const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
+    }catch(_){}
+  }
+  function setActive(){
+    document.querySelectorAll('.navItem').forEach(b=>b.classList.toggle('active', String(b.dataset.tab)==='conciliacion'));
+  }
+  function methodLabel(v){
+    return ({transferencia:'Transferencia bancaria',efectivo:'Efectivo',cheque:'Cheque',otro:'Otro medio',transbank:'Transbank',saldo_favor:'Saldo a favor'})[String(v||'').toLowerCase()] || 'Medio registrado';
+  }
+  function statusLabel(p){
+    if(isConc(p)) return {label:methodLabel(p.paymentMethod||p.paidWith), cls:'done'};
+    const m=String(p?.paymentMethod||p?.paidWith||'').toLowerCase();
+    if(m==='transferencia') return {label:'Transf. informada', cls:'info'};
+    return {label:'Pendiente', cls:'pending'};
+  }
+  function initials(p){ return String(p?.guardianName||p?.apoderadoName||p?.studentName||'A').trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase() || 'A'; }
+  function shortDT(v){ const d=v?new Date(v):new Date(); return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','') + ' · ' + d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); }
+  function filteredRows(all,pending,conc){
+    const f=String(window.__tesConcFilter||'pendientes');
+    let rows=f==='conciliados'?conc:f==='todos'?all:pending;
+    const q=String(window.__tesConcQuery||'').toLowerCase().trim();
+    if(q) rows=rows.filter(p=>[p.guardianName,p.apoderadoName,p.studentName,p.alumno,p.concept,p.id,p.code,p.paymentCode].join(' ').toLowerCase().includes(q));
+    return rows;
+  }
+  function selectedRows(all){
+    const ids=new Set(Object.keys(window.__tesBulkSelection||{}).filter(k=>window.__tesBulkSelection[k]));
+    return all.filter(p=>ids.has(String(p.id)) && !isConc(p));
+  }
+  function payRow(p){
+    const st=statusLabel(p); const checked=!!window.__tesBulkSelection[String(p.id)];
+    const pending=!isConc(p);
+    return `<article class="tesV73PayRow ${checked?'selected':''} ${pending?'':'done'}">
+      <label class="tesV73Check"><input type="checkbox" ${pending?'':'disabled'} ${checked?'checked':''} onchange="tesV73TogglePayment('${esc(p.id)}',this.checked)"><span></span></label>
+      <div class="tesV73Avatar ${pending?'':'ok'}">${pending?esc(initials(p)):'✓'}</div>
+      <div class="tesV73Person"><b>${esc(p.guardianName || p.apoderadoName || 'Apoderado')}</b><small>Alumno: ${esc(p.studentName || p.alumno || 'Alumno')}</small></div>
+      <strong class="tesV73Amount">${clp(p.amount)}</strong>
+      <span class="tesV73Status ${st.cls}">${esc(st.label)}</span>
+      <div class="tesV73Action">${pending?`<button type="button" onclick="tesV73OpenSheet('${esc(p.id)}')">Conciliar</button>`:`<small>${esc(shortDT(p.reconciledAt||p.paidAt||p.createdAt))}</small>`}</div>
+    </article>`;
+  }
+  function render(){
+    syncHeader(); setActive();
+    const root=app(); if(!root) return;
+    const list=campaigns(); const camp=selectedCampaign(); const all=rowsByCampaign(camp?.id);
+    const pending=all.filter(p=>!isConc(p)); const conc=all.filter(isConc);
+    const rec=sum(conc,p=>p.amount); const pendAmt=sum(pending,p=>p.amount); const goal=goalOf(camp); const pct=goal?Math.min(100,Math.round(rec/goal*100)):(rec?72:0);
+    const part=participation(all); const rows=filteredRows(all,pending,conc); const sel=selectedRows(all); const st=campaignState(camp);
+    const filter=String(window.__tesConcFilter||'pendientes');
+    root.innerHTML = `<div class="tesConcPage tesV72Conc tesV73Conc">
+      <section class="tesV73Title"><h1>Conciliación por campaña</h1></section>
+      <section class="tesV73CampaignCompact">
+        <label class="tesV73CampaignSelect"><span>${campaignIcon(camp)}</span><select onchange="tesV73SelectCampaign(this.value)">${list.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(camp?.id)?'selected':''}>${esc(titleOf(c))}</option>`).join('')}</select><i>⌄</i></label>
+        <div class="tesV73CampaignStrip">
+          <article><b class="badge ${st.cls}">${esc(st.label)}</b></article>
+          <article class="ring"><b style="--p:${pct}"><span>${pct}%</span></b></article>
+          <article><strong>${part.count} / ${part.total}</strong><small>apoderados</small></article>
+          <article><small>Pendientes</small><strong class="warn">${pending.length}</strong></article>
+          <article><small>Recaudado</small><strong>${clp(rec)}</strong></article>
+          <button type="button" onclick="tesV73ToggleInfo()">⌄</button>
+        </div>
+        <div class="tesV73CampaignInfo ${window.__tesShowCampaignInfo?'open':''}">
+          <article><small>Creación</small><b>${esc(createdAtOf(camp))}</b></article>
+          <article><small>Estado campaña</small><b>${esc(st.label)}</b></article>
+          <article><small>Participación</small><b>${part.count} / ${part.total} · ${part.pct}%</b></article>
+          <article><small>Meta total</small><b>${goal?clp(goal):'Por definir'}</b></article>
+        </div>
+        <button class="tesV73InfoBtn" type="button" onclick="tesV73ToggleInfo()">Ver información de la campaña <span>⌄</span></button>
+      </section>
+      <section class="tesV73SearchRow">
+        <label><span>⌕</span><input value="${esc(window.__tesConcQuery||'')}" oninput="tesV73Query(this.value)" placeholder="Buscar alumno o apoderado"></label>
+        <button type="button">⚚ Filtros</button>
+      </section>
+      <p class="tesV73SearchHelp">Busca dentro de la campaña seleccionada</p>
+      <section class="tesV73Tabs">
+        <button class="${filter==='pendientes'?'active':''}" onclick="tesV73Filter('pendientes')">Pendientes (${pending.length})</button>
+        <button class="${filter==='conciliados'?'active ok':''}" onclick="tesV73Filter('conciliados')">Conciliados (${conc.length})</button>
+        <label><input type="checkbox" ${sel.length || Object.keys(window.__tesBulkSelection||{}).length?'checked':''} onchange="tesV73ClearSelection(!this.checked)"> Selección múltiple</label>
+      </section>
+      <section class="tesV73List">
+        ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>Busca otro apoderado o cambia de filtro.</span></article>`}
+        <button class="tesV73BulkBtn" ${sel.length?'':'disabled'} onclick="tesV73OpenBulk()">☑ Conciliar seleccionados (${sel.length})</button>
+      </section>
+      <section class="tesV73Summary">
+        <header><h2>Resumen de la campaña</h2><button type="button">Ver detalle completo ›</button></header>
+        <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Pendientes</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(rec)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
+      </section>
+    </div>`;
+  }
+  function sheetHtml(title, subtitle, total){
+    return `<section class="tesConcSheet tesV73Sheet" role="dialog" aria-modal="true"><button class="tesConcSheetClose" type="button">×</button><div class="tesConcGrip"></div><h2>${esc(title)}</h2><div class="tesConcSheetSummary"><div class="tesConcAvatar pending">✓</div><div><b>${esc(subtitle)}</b><small>Total a conciliar</small></div><strong>${clp(total)}</strong></div><h3>Medio de pago recibido</h3><div class="tesConcMethodGrid"><label><input type="radio" name="tesMethod" value="efectivo" checked><span>💵</span><b>Efectivo</b><small>Dinero recibido</small></label><label><input type="radio" name="tesMethod" value="transferencia"><span>🏦</span><b>Transferencia bancaria</b><small>Cuenta bancaria</small></label><label><input type="radio" name="tesMethod" value="otro"><span>•••</span><b>Otro medio</b><small>Otro método</small></label></div><h3>Observación <small>(opcional)</small></h3><input id="tesConcRef" placeholder="N° referencia / comprobante"><textarea id="tesConcObs" rows="3" placeholder="Ej: recibido en reunión de apoderados"></textarea><div class="tesConcSheetActions"><button type="button" class="ghost">Cancelar</button><button type="button" class="primary">Confirmar conciliación</button></div></section>`;
+  }
+  function openSheet(ids,title,subtitle,total){
+    const overlay=document.createElement('div'); overlay.className='tesConcSheetOverlay'; overlay.innerHTML=sheetHtml(title,subtitle,total);
+    overlay.onclick=e=>{ if(e.target===overlay) overlay.remove(); };
+    overlay.querySelector('.tesConcSheetClose').onclick=()=>overlay.remove(); overlay.querySelector('.ghost').onclick=()=>overlay.remove();
+    overlay.querySelector('.primary').onclick=()=>applyConciliation(ids,overlay);
+    document.body.appendChild(overlay);
+  }
+  function applyConciliation(ids,overlay){
+    const arr=payments(); const set=new Set(ids.map(String)); const method=overlay.querySelector('input[name="tesMethod"]:checked')?.value||'efectivo'; const affected=[];
+    arr.forEach(p=>{ if(!set.has(String(p.id))) return; affected.push(p); p.paymentMethod=method; p.paidWith=method; p.conciliationStatus='conciliado'; p.reconciledAt=nowIso(); p.reconciledBy='Tesorero'; p.reconciliationReference=overlay.querySelector('#tesConcRef')?.value||''; p.reconciliationNote=overlay.querySelector('#tesConcObs')?.value||''; });
+    save(KEY_PAYMENTS,arr); window.__tesBulkSelection={}; overlay.remove(); showSuccess({count:affected.length,total:sum(affected,p=>p.amount),method:methodLabel(method),guardian:affected[0]?.guardianName||affected[0]?.apoderadoName||'Apoderado',student:affected[0]?.studentName||affected[0]?.alumno||'Alumno',campaign:titleOf(selectedCampaign())});
+  }
+  function showSuccess(info){
+    const overlay=document.createElement('div'); overlay.className='tesV72SuccessOverlay tesV73SuccessOverlay';
+    overlay.innerHTML=`<section class="tesV72Success tesV73Success"><div class="tesV72SuccessIcon">✓</div><h2>${info.count>1?'¡Pagos conciliados!':'¡Pago conciliado!'}</h2><p>${info.count>1?`${info.count} pagos fueron conciliados correctamente.`:'El pago ha sido conciliado correctamente.'}</p><div class="tesV72SuccessData"><article><small>${info.count>1?'Campaña':'Alumno'}</small><b>${esc(info.count>1?info.campaign:info.student)}</b></article><article><small>Apoderado</small><b>${esc(info.count>1?'Varios apoderados':info.guardian)}</b></article><article><small>Medio de pago</small><b>${esc(info.method)}</b></article><article><small>Monto</small><b>${clp(info.total)}</b></article><article><small>Fecha y hora</small><b>${esc(shortDT(nowIso()))}</b></article></div><button type="button">Aceptar</button></section>`;
+    overlay.querySelector('button').onclick=()=>{ overlay.remove(); render(); };
+    document.body.appendChild(overlay);
+    setTimeout(()=>{ if(document.body.contains(overlay)){ overlay.remove(); render(); } }, 1600);
+  }
+
+  window.tesV73SelectCampaign=function(id){ window.__tesCampaignId=String(id||''); window.__tesBulkSelection={}; render(); };
+  window.tesV73Filter=function(f){ window.__tesConcFilter=String(f||'pendientes'); render(); };
+  window.tesV73Query=function(v){ window.__tesConcQuery=String(v||''); render(); };
+  window.tesV73TogglePayment=function(id,v){ window.__tesBulkSelection[String(id)]=!!v; render(); };
+  window.tesV73ClearSelection=function(clear){ if(clear) window.__tesBulkSelection={}; render(); };
+  window.tesV73ToggleInfo=function(){ window.__tesShowCampaignInfo=!window.__tesShowCampaignInfo; render(); };
+  window.tesV73OpenSheet=function(id){ const p=validRows().find(x=>String(x.id)===String(id)); if(!p) return alert('No se encontró el pago.'); openSheet([id],'Conciliar pago',`${p.studentName||p.alumno||'Alumno'} · ${p.guardianName||p.apoderadoName||'Apoderado'}`,Number(p.amount||0)); };
+  window.tesV73OpenBulk=function(){ const sel=selectedRows(rowsByCampaign(selectedCampaign()?.id)); if(!sel.length) return; openSheet(sel.map(p=>p.id),`Conciliar ${sel.length} pagos`,titleOf(selectedCampaign()),sum(sel,p=>p.amount)); };
+
+  const previousGo=window.go;
+  window.go=function(tab,taskId){ if(String(tab||'').toLowerCase()==='conciliacion'){ render(); return; } return typeof previousGo==='function'?previousGo(tab,taskId):undefined; };
+  function bindNav(){ document.querySelectorAll('.navItem[data-tab="conciliacion"]').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); render(); }; }); }
+  function renderIfConc(){ const root=app(); if(!root) return; if(document.querySelector('.navItem[data-tab="conciliacion"].active') || /Conciliaci[oó]n por campa/i.test(root.innerHTML)){ if(!root.querySelector('.tesV73Conc')) render(); } }
+  document.addEventListener('DOMContentLoaded',()=>{ bindNav(); setTimeout(renderIfConc,300); const root=app(); if(root) new MutationObserver(()=>setTimeout(renderIfConc,0)).observe(root,{childList:true,subtree:false}); });
+  setTimeout(()=>{ bindNav(); renderIfConc(); },800);
+})();
