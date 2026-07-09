@@ -1790,7 +1790,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
         <section class="tesPanel tesMovementsPro">
           <header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header>
           <div class="tesMovementTableWrap">
-            <div class="tesMovementTableHead"><span>Movimiento</span><span>Monto</span><span>Fecha</span></div>
+            <div class="tesMovementTableHead"><span>Movimiento</span><span>Persona</span><span>Monto</span><span>Fecha</span></div>
             ${recent}
             ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveType"><span class="tesRowIcon violet">▤</span><span><b>Rendición pendiente</b><small>Comprobante</small></span></div><span class="tesMovePerson">${sinBoleta} pendiente(s)</span><strong class="tesMoveAmount">${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveType"><span class="tesRowIcon violet">▤</span><span><b>Rendiciones al día</b><small>Comprobantes</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`}
           </div>
@@ -2112,7 +2112,7 @@ __bootTesoreroSupabaseFirst();
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
-    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M8.8 9.2c.8-1 2-1.4 3.2-1.4 1.7 0 3 .8 3 2.1 0 2.8-6 1.3-6 4.1 0 1.4 1.3 2.3 3.1 2.3 1.4 0 2.7-.5 3.5-1.6"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M9 14l2 2 4-5"/></svg>',
     rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
     informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
   };
@@ -2229,7 +2229,7 @@ __bootTesoreroSupabaseFirst();
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
-    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M8.8 9.2c.8-1 2-1.4 3.2-1.4 1.7 0 3 .8 3 2.1 0 2.8-6 1.3-6 4.1 0 1.4 1.3 2.3 3.1 2.3 1.4 0 2.7-.5 3.5-1.6"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M9 14l2 2 4-5"/></svg>',
     rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
     informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
   };

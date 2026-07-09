@@ -1686,3 +1686,78 @@ body.cursapp-tesorero .tesScanBtn{
   body.cursapp-tesorero .tesMoveDate{font-size:10px!important;}
   body.cursapp-tesorero .supportFab{bottom:calc(124px + env(safe-area-inset-bottom))!important;}
 }
+
+
+/* === Cursapp Tesorero V67 · cierre tabla e icono conciliar === */
+body.cursapp-tesorero .tesWideAction span{
+  font-size:18px!important;
+  color:#2563eb!important;
+  font-weight:950!important;
+  line-height:1!important;
+}
+body.cursapp-tesorero .tesWideAction span::before{content:''!important;}
+body.cursapp-tesorero .bottomNav.tesBottomNav .navItem[data-tab="conciliacion"] .tesNavIcon svg{
+  width:24px!important;
+  height:24px!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableWrap{
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  scrollbar-width:none!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableWrap::-webkit-scrollbar{display:none!important;}
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableHead,
+body.cursapp-tesorero .tesMovementsPro .tesMovementProRow{
+  min-width:660px!important;
+  width:max-content!important;
+  grid-template-columns:230px 180px 120px 110px!important;
+  column-gap:14px!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMovementTableHead{
+  padding:10px 14px!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMovementProRow{
+  padding:10px 14px!important;
+  min-height:68px!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveType{
+  grid-template-columns:38px 170px!important;
+  gap:10px!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveType b,
+body.cursapp-tesorero .tesMovementsPro .tesMoveType small,
+body.cursapp-tesorero .tesMovementsPro .tesMovePerson,
+body.cursapp-tesorero .tesMovementsPro .tesMoveAmount,
+body.cursapp-tesorero .tesMovementsPro .tesMoveDate{
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveType b{
+  font-size:13px!important;
+  line-height:1.12!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveType small,
+body.cursapp-tesorero .tesMovementsPro .tesMovePerson{
+  font-size:11.5px!important;
+  line-height:1.18!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveAmount{
+  font-size:14px!important;
+  text-align:right!important;
+  white-space:nowrap!important;
+}
+body.cursapp-tesorero .tesMovementsPro .tesMoveDate{
+  font-size:11.5px!important;
+  line-height:1.18!important;
+  text-align:right!important;
+}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesMovementsPro .tesMovementTableHead,
+  body.cursapp-tesorero .tesMovementsPro .tesMovementProRow{
+    min-width:650px!important;
+    grid-template-columns:225px 178px 118px 108px!important;
+    column-gap:12px!important;
+  }
+}
