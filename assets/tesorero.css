@@ -2913,3 +2913,65 @@ body.cursapp-tesorero .tesV75Summary header button{font-size:11px!important;}
   body.cursapp-tesorero .tesV75Tabs button{height:36px!important;font-size:12px!important;}
   body.cursapp-tesorero .tesV75List .tesV73PayRow{min-height:60px!important;}
 }
+
+
+/* =========================================================
+   Cursapp · Tesorero V76
+   - Reduce espacio muerto antes/después del banner de monetización.
+   - La grilla de pagos permite ver nombres completos en móvil.
+   ========================================================= */
+body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+  margin-top:6px!important;
+  margin-bottom:calc(82px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero [data-monetization-slot="tesorero"]:empty{
+  display:none!important;
+  margin:0!important;
+}
+body.cursapp-tesorero .tesV73Summary,
+body.cursapp-tesorero .tesV75Summary{
+  margin-bottom:6px!important;
+}
+body.cursapp-tesorero .tesConcPage,
+body.cursapp-tesorero .tesV73Conc,
+body.cursapp-tesorero .tesV75Conc{
+  padding-bottom:calc(96px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero .tesV75List .tesV73Person b,
+body.cursapp-tesorero .tesV75List .tesV73Person small{
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.14!important;
+}
+body.cursapp-tesorero .tesV75List .tesV73Person b{
+  font-size:12.5px!important;
+}
+body.cursapp-tesorero .tesV75List .tesV73Person small{
+  font-size:10.5px!important;
+  margin-top:2px!important;
+}
+@media(max-width:430px){
+  body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+    margin-top:4px!important;
+    margin-bottom:calc(78px + env(safe-area-inset-bottom))!important;
+  }
+  body.cursapp-tesorero .tesV75List .tesV73PayRow{
+    grid-template-columns:20px 34px minmax(0,1fr) 72px!important;
+    grid-template-areas:
+      "check avatar person amount"
+      "check avatar person status"
+      ". . person action"!important;
+    min-height:82px!important;
+    gap:4px 7px!important;
+    align-items:center!important;
+    padding:9px 10px!important;
+  }
+  body.cursapp-tesorero .tesV75List .tesV73Check{grid-area:check!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Avatar{grid-area:avatar!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Person{grid-area:person!important;align-self:center!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Amount{grid-area:amount!important;justify-self:end!important;text-align:right!important;font-size:12.5px!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Status{grid-area:status!important;justify-self:end!important;max-width:72px!important;font-size:9.8px!important;padding:4px 6px!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Action{grid-area:action!important;justify-self:end!important;}
+  body.cursapp-tesorero .tesV75List .tesV73Action button{height:29px!important;font-size:10.5px!important;padding:0 9px!important;}
+}
