@@ -1734,8 +1734,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const paidRows = paymentsAll().filter(p=>p.status==='paid').slice(-2).reverse();
     const recent = (paidRows.length ? paidRows : [{guardianName:'Último movimiento del curso', amount:(todayCollected() || collectedThisMonth), paidAt:'Hoy'}]).map(p=>`
       <article class="tesMovementProRow">
-        <div class="tesMoveConcept"><span class="tesRowIcon income">↓</span><b>Pago recibido</b></div>
-        <div class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</div>
+        <div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(p.guardianName || p.apoderadoName || p.studentName || 'Apoderado')}</small></span></div>
         <strong class="ok">+${clp(p.amount||0)}</strong>
         <span class="tesMoveDate">${esc(formatMoveDate(p.paidAt||p.createdAt||'Hoy'))}</span>
       </article>`).join('');
@@ -1774,9 +1773,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
         <section class="tesPanel tesMovementsPro">
           <header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header>
           <div class="tesMovementTableWrap">
-            <div class="tesMovementTableHead"><span>Movimiento</span><span>Persona</span><span>Monto</span><span>Fecha</span></div>
+            <div class="tesMovementTableHead"><span>Movimiento</span><span>Monto</span><span>Fecha</span></div>
             ${recent}
-            ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveConcept"><span class="tesRowIcon violet">▤</span><b>Rendición pendiente</b></div><div class="tesMovePerson">${sinBoleta} comprobante(s)</div><strong>${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveConcept"><span class="tesRowIcon violet">▤</span><b>Rendiciones al día</b></div><div class="tesMovePerson">Sin pendientes</div><strong>$0</strong><span class="tesMoveDate">OK</span></article>`}
+            ${sinBoleta ? `<article class="tesMovementProRow"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición pendiente</b><small>${sinBoleta} comprobante(s)</small></span></div><strong>${clp(spentThisMonth)}</strong><span class="tesMoveDate">Revisar</span></article>` : `<article class="tesMovementProRow"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendiciones al día</b><small>Sin pendientes</small></span></div><strong>$0</strong><span class="tesMoveDate">OK</span></article>`}
           </div>
         </section>
 
@@ -2003,4 +2002,78 @@ __bootTesoreroSupabaseFirst();
   window.addEventListener('pageshow', run);
   setTimeout(run, 50); setTimeout(run, 250); setTimeout(run, 900);
   setInterval(restoreNav, 1000);
+})();
+
+
+/* Tesorero V64 · campana funcional y menú final estable */
+(function(){
+  if(window.__CURSAPP_TESORERO_V64_FIXES__) return;
+  window.__CURSAPP_TESORERO_V64_FIXES__ = true;
+
+  function escLocal(v){
+    return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function readJSON(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
+  }
+  function getTreasurerNotices(){
+    const keys = ['cursapp_avisos_v1','cursapp_notices_v1','cursapp_notifications_v1','cursapp_global_alerts_v1'];
+    let out = [];
+    keys.forEach(k=>{
+      const arr = readJSON(k, []);
+      if(Array.isArray(arr)) out = out.concat(arr);
+    });
+    return out.slice().sort((a,b)=>String(b.createdAt||b.date||'').localeCompare(String(a.createdAt||a.date||''))).slice(0,8);
+  }
+  window.openTreasurerNotifications = function(){
+    const root = document.getElementById('modalRoot') || document.body;
+    const notices = getTreasurerNotices();
+    const rows = notices.length ? notices.map(n=>{
+      const title = n.title || n.subject || 'Aviso del curso';
+      const msg = n.message || n.body || n.description || '';
+      const date = n.createdAt || n.date || '';
+      return `<article class="tesNoticeRow"><b>${escLocal(title)}</b><span>${escLocal(msg)}</span><small>${escLocal(String(date).slice(0,16).replace('T',' '))}</small></article>`;
+    }).join('') : `<article class="tesNoticeEmpty"><b>Sin avisos nuevos</b><span>Cuando existan alertas de pagos, informes o rendiciones aparecerán aquí.</span></article>`;
+    const el = document.createElement('div');
+    el.className = 'tesNoticeOverlay';
+    el.innerHTML = `<div class="tesNoticePanel" role="dialog" aria-modal="true" aria-label="Avisos del curso"><header><div><small>CURSAPP</small><h2>Avisos del curso</h2></div><button type="button" aria-label="Cerrar">×</button></header><div class="tesNoticeList">${rows}</div></div>`;
+    el.addEventListener('click', e=>{ if(e.target === el) el.remove(); });
+    el.querySelector('button').onclick = ()=>el.remove();
+    root.appendChild(el);
+  };
+
+  function wireBell(){
+    const bell = document.getElementById('notificationBtn');
+    if(!bell) return;
+    bell.onclick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      window.openTreasurerNotifications();
+    };
+  }
+
+  const ICONS = {
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
+    conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M7 4 4 7l3 3"/><path d="M20 17H4"/><path d="m17 14 3 3-3 3"/><circle cx="12" cy="12" r="2.7"/></svg>',
+    rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
+    informes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>'
+  };
+  const LABELS = { home:'Inicio', conciliacion:'Conciliar', rendiciones:'Rendiciones', informes:'Informes' };
+  function restoreNavV64(){
+    const nav = document.querySelector('body.cursapp-tesorero .bottomNav.tesBottomNav');
+    if(!nav) return;
+    Array.from(nav.querySelectorAll('.navItem')).forEach(btn=>{
+      const tab = btn.getAttribute('data-tab') || 'home';
+      if(!LABELS[tab]) { btn.remove(); return; }
+      const active = btn.classList.contains('active');
+      const html = `<span class="tesNavIcon">${ICONS[tab]}</span><span class="tesNavLabel">${LABELS[tab]}</span>`;
+      if(btn.innerHTML !== html) btn.innerHTML = html;
+      btn.className = 'navItem' + (active ? ' active' : '');
+    });
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{ wireBell(); restoreNavV64(); });
+  window.addEventListener('load', ()=>{ wireBell(); restoreNavV64(); });
+  window.addEventListener('pageshow', ()=>{ wireBell(); restoreNavV64(); });
+  setTimeout(()=>{ wireBell(); restoreNavV64(); }, 100);
+  setTimeout(()=>{ wireBell(); restoreNavV64(); }, 700);
 })();
