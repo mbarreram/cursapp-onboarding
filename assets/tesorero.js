@@ -1793,26 +1793,184 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     app.innerHTML = `<div class="tesV57Page"><section class="tesPanel"><h2>Perfil tesorero</h2><p class="tesLead">Datos del rol y preferencias del usuario.</p><div class="tesProfileList"><div><b>Rol</b><span>Tesorero</span></div><div><b>Curso</b><span>${esc(courseLabelForHeader())}</span></div><div><b>Notificaciones</b><span>Activas</span></div></div></section></div>`;
   }
 
-  renderConciliacion = function(){
-    const stats = conciliationStats();
-    const payments = stats.payments.slice().sort((a,b)=>String(b.paidAt||b.createdAt||"").localeCompare(String(a.paidAt||a.createdAt||"")));
-    const cards = payments.map(p=>`
-      <article class="tesMockPay">
-        <div><span>${p.paymentMethod==="efectivo"?"E":"T"}</span><div><b>${esc(p.guardianName || p.apoderadoName || "Pago registrado")}</b><small>${esc(p.studentName || p.concept || "Curso")} · ${esc(paymentMethodLabel(p.paymentMethod))}</small></div></div>
+  window.__tesConcFilter = window.__tesConcFilter || "pendientes";
+  window.__tesConcQuery = window.__tesConcQuery || "";
+
+  function tesIsTransbankAuto(p){
+    return String(p.paymentMethod || p.paidWith || "").toLowerCase() === "transbank";
+  }
+  function tesIsConciliated(p){
+    return tesIsTransbankAuto(p) || String(p.conciliationStatus || "").toLowerCase() === "conciliado";
+  }
+  function tesPaymentCampaignTitle(p){
+    return tasksAll().find(t=>String(t.id)===String(p.fromTaskId||""))?.title || p.concept || "Pago del curso";
+  }
+  function tesPaymentDateShort(value){
+    const raw = String(value || "");
+    const d = raw ? new Date(raw) : null;
+    if(d && !Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit', month:'short', year:'numeric'}).replace('.', '');
+    return raw ? raw.slice(0,10) : "Hoy";
+  }
+  function tesPaymentTimeAgo(value){
+    const raw = String(value || "");
+    const d = raw ? new Date(raw) : null;
+    if(!d || Number.isNaN(d.getTime())) return "Registrado";
+    const mins = Math.max(1, Math.round((Date.now() - d.getTime()) / 60000));
+    if(mins < 60) return `Hace ${mins} min`;
+    const hrs = Math.round(mins/60);
+    if(hrs < 24) return `Hace ${hrs} h`;
+    return tesPaymentDateShort(raw);
+  }
+  function tesConciliationRows(){
+    return paymentsNormalized()
+      .filter(p=>String(p.status||"").toLowerCase()==="paid")
+      .filter(p=>String(p.conciliationStatus||"").toLowerCase()!=="anulado")
+      .sort((a,b)=>String(b.paidAt||b.createdAt||"").localeCompare(String(a.paidAt||a.createdAt||"")));
+  }
+  function tesConciliationMetrics(rows){
+    const pending = rows.filter(p=>!tesIsConciliated(p));
+    const conciliated = rows.filter(tesIsConciliated);
+    const today = new Date().toISOString().slice(0,10);
+    const conciliatedToday = conciliated.filter(p=>String(p.reconciledAt || p.conciliatedAt || p.paidAt || p.createdAt || "").slice(0,10)===today);
+    const total = rows.length || 1;
+    return {
+      pending,
+      conciliated,
+      conciliatedToday,
+      pendingAmount: sum(pending, p=>p.amount),
+      todayAmount: sum(conciliatedToday, p=>p.amount),
+      totalAmount: sum(rows, p=>p.amount),
+      level: Math.round((conciliated.length / total) * 100)
+    };
+  }
+  function renderTesConciliationCard(p){
+    const isConc = tesIsConciliated(p);
+    const methodMap = {transferencia:'Transferencia', efectivo:'Efectivo', cheque:'Cheque', otro:'Otro medio', saldo_favor:'Saldo a favor'};
+    const method = tesIsTransbankAuto(p) ? "Transbank" : (methodMap[String(p.paymentMethod || p.paidWith || '').toLowerCase()] || "Medio registrado");
+    const campaign = tesPaymentCampaignTitle(p);
+    const code = String(p.code || p.paymentCode || p.id || "").slice(-6).toUpperCase();
+    if(isConc){
+      return `<article class="tesConcPayCard is-conciliated">
+        <div class="tesConcAvatar ok">✓</div>
+        <div class="tesConcWho"><b>${esc(p.guardianName || p.apoderadoName || "Apoderado")}</b><small>${esc(p.studentName || "Alumno")}</small><em>${esc(campaign)}</em></div>
+        <div class="tesConcAmount"><strong>${clp(p.amount)}</strong><small>${esc(method)}</small><small>${esc(tesPaymentDateShort(p.reconciledAt || p.paidAt || p.createdAt))}</small></div>
+        <div class="tesConcStatus"><span>Conciliado</span><small>${tesIsTransbankAuto(p) ? 'Automático' : 'Por: Tesorero'}</small></div>
+      </article>`;
+    }
+    return `<article class="tesConcPayCard is-pending">
+      <div class="tesConcAvatar pending">⌛</div>
+      <div class="tesConcWho"><b>${esc(p.guardianName || p.apoderadoName || "Apoderado")}</b><small>${esc(p.studentName || "Alumno")}</small><em>${esc(campaign)}</em></div>
+      <div class="tesConcAmount"><strong>${clp(p.amount)}</strong><small>${esc(tesPaymentTimeAgo(p.paidAt || p.createdAt))}</small><small>Código: #${esc(code || 'PAGO')}</small></div>
+      <div class="tesConcStatus"><span class="pending">Pendiente</span><button type="button" onclick="openTesConciliationSheet('${esc(p.id)}')">Conciliar</button></div>
+    </article>`;
+  }
+
+  window.tesSetConciliationFilter = function(filter){
+    window.__tesConcFilter = String(filter || 'pendientes');
+    renderConciliacion();
+  };
+  window.tesFilterConciliation = function(value){
+    window.__tesConcQuery = String(value || '').toLowerCase().trim();
+    renderConciliacion();
+  };
+  window.openTesConciliationSheet = function(paymentId){
+    const p = tesConciliationRows().find(x=>String(x.id)===String(paymentId));
+    if(!p) return alert('No se encontró el pago.');
+    const campaign = tesPaymentCampaignTitle(p);
+    const code = String(p.code || p.paymentCode || p.id || '').slice(-8).toUpperCase();
+    const overlay = document.createElement('div');
+    overlay.className = 'tesConcSheetOverlay';
+    overlay.innerHTML = `<section class="tesConcSheet" role="dialog" aria-modal="true">
+      <button class="tesConcSheetClose" type="button" aria-label="Cerrar">×</button>
+      <div class="tesConcGrip"></div>
+      <h2>Conciliar pago</h2>
+      <div class="tesConcSheetSummary">
+        <div class="tesConcAvatar pending">⌛</div>
+        <div><b>${esc(p.guardianName || p.apoderadoName || 'Apoderado')}</b><small>${esc(p.studentName || 'Alumno')}</small></div>
         <strong>${clp(p.amount)}</strong>
-        <footer>
-          <button type="button" onclick="updatePaymentConciliationStatus('${esc(p.id)}','conciliado')">Conciliar</button>
-        </footer>
-      </article>
-    `).join("") || `<article class="tesMockEmpty"><strong>Sin pagos registrados</strong><p>Los pagos por conciliar apareceran aqui.</p></article>`;
-    app.innerHTML = `
-      <div class="tesMockPage">
-        <section class="tesMockSection">
-          <h1>Conciliar pagos</h1><p class="tesMockLead">Revisa y concilia los pagos recibidos</p>
-          <div class="tesMockChips"><button class="active">Pendientes ${payments.length}</button><button>Conciliados</button><button>Rechazados</button></div>
-        </section>
-        <section class="tesMockPayList">${cards}</section>
-      </div>`;
+      </div>
+      <div class="tesConcSheetData">
+        <span>Campaña</span><b>${esc(campaign)}</b>
+        <span>Código de pago</span><b>#${esc(code || 'PAGO')}</b>
+        <span>Registrado</span><b>${esc(tesPaymentTimeAgo(p.paidAt || p.createdAt))}</b>
+      </div>
+      <h3>Seleccione el medio recibido</h3>
+      <div class="tesConcMethodGrid">
+        <label><input type="radio" name="tesMethod" value="transferencia" checked><span>🏦</span><b>Transferencia bancaria</b><small>Desde cuenta bancaria</small></label>
+        <label><input type="radio" name="tesMethod" value="efectivo"><span>💵</span><b>Efectivo</b><small>Dinero en efectivo</small></label>
+        <label><input type="radio" name="tesMethod" value="cheque"><span>🧾</span><b>Cheque</b><small>Pago con cheque</small></label>
+        <label><input type="radio" name="tesMethod" value="otro"><span>•••</span><b>Otro medio</b><small>Otro método de pago</small></label>
+      </div>
+      <h3>Información adicional <small>(opcional)</small></h3>
+      <select id="tesConcBank"><option value="">Banco (si aplica)</option><option>Banco de Chile</option><option>BancoEstado</option><option>Santander</option><option>BCI</option><option>Scotiabank</option><option>Itaú</option><option>Otro</option></select>
+      <input id="tesConcRef" placeholder="N° de referencia / comprobante">
+      <textarea id="tesConcObs" rows="3" placeholder="Observación opcional"></textarea>
+      <div class="tesConcSheetActions"><button type="button" class="ghost">Cancelar</button><button type="button" class="primary">Confirmar conciliación</button></div>
+    </section>`;
+    overlay.addEventListener('click', e=>{ if(e.target === overlay) overlay.remove(); });
+    overlay.querySelector('.tesConcSheetClose').onclick = ()=>overlay.remove();
+    overlay.querySelector('.ghost').onclick = ()=>overlay.remove();
+    overlay.querySelector('.primary').onclick = ()=>window.confirmTesManualConciliation(paymentId, overlay);
+    document.body.appendChild(overlay);
+  };
+  window.confirmTesManualConciliation = function(paymentId, overlay){
+    const payments = paymentsNormalized();
+    const i = payments.findIndex(p=>String(p.id)===String(paymentId));
+    if(i<0) return alert('No se encontró el pago.');
+    const method = overlay?.querySelector('input[name="tesMethod"]:checked')?.value || 'transferencia';
+    payments[i].paymentMethod = method;
+    payments[i].paidWith = method;
+    payments[i].conciliationStatus = 'conciliado';
+    payments[i].reconciledAt = new Date().toISOString();
+    payments[i].reconciledBy = 'Tesorero';
+    payments[i].reconciliationBank = overlay?.querySelector('#tesConcBank')?.value || '';
+    payments[i].reconciliationReference = overlay?.querySelector('#tesConcRef')?.value || '';
+    payments[i].reconciliationNote = overlay?.querySelector('#tesConcObs')?.value || '';
+    save(KEY_PAYMENTS, payments);
+    try{ markDirty(); }catch(_){ }
+    overlay?.remove();
+    renderConciliacion();
+  };
+
+  renderConciliacion = function(){
+    updateTreasurerHeader();
+    const allRows = tesConciliationRows();
+    const metrics = tesConciliationMetrics(allRows);
+    const filter = String(window.__tesConcFilter || 'pendientes');
+    const q = String(window.__tesConcQuery || '').toLowerCase().trim();
+    let rows = filter === 'conciliados' ? metrics.conciliated : filter === 'todos' ? allRows : metrics.pending;
+    if(q){
+      rows = rows.filter(p=>[p.guardianName,p.apoderadoName,p.studentName,p.concept,tesPaymentCampaignTitle(p),p.id,p.code,p.paymentCode].join(' ').toLowerCase().includes(q));
+    }
+    const recentConc = metrics.conciliated.slice(0,3).map(p=>renderTesConciliationCard(p)).join('') || `<article class="tesConcEmpty">Sin pagos conciliados todavía.</article>`;
+    const rowsHtml = rows.map(renderTesConciliationCard).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>Cuando existan pagos, aparecerán aquí.</span></article>`;
+    app.innerHTML = `<div class="tesConcPage">
+      <section class="tesConcHero">
+        <header><div><h1>Conciliación de pagos <span>ⓘ</span></h1><p>Administra y concilia los pagos recibidos por el curso.</p></div><button type="button" onclick="tesSetConciliationFilter('conciliados')">Ver historial conciliados ›</button></header>
+        <div class="tesConcStats">
+          <button type="button" onclick="tesSetConciliationFilter('pendientes')"><span class="amber">◷</span><small>Pendientes por conciliar</small><b>${metrics.pending.length} pagos</b><em>${clp(metrics.pendingAmount)}</em></button>
+          <button type="button" onclick="tesSetConciliationFilter('conciliados')"><span class="green">✓</span><small>Conciliados hoy</small><b>${metrics.conciliatedToday.length} pagos</b><em>${clp(metrics.todayAmount)}</em></button>
+          <button type="button"><span class="blue">▥</span><small>Nivel de conciliación</small><b>${metrics.level}%</b><em>${metrics.level>=90?'Excelente':'En curso'}</em></button>
+          <button type="button" onclick="tesSetConciliationFilter('todos')"><span class="violet">▣</span><small>Total recaudado</small><b>${clp(metrics.totalAmount)}</b><em>Este mes</em></button>
+        </div>
+      </section>
+      <section class="tesConcTools">
+        <label><span>⌕</span><input value="${esc(window.__tesConcQuery || '')}" oninput="tesFilterConciliation(this.value)" placeholder="Buscar apoderado, alumno o código de pago..."></label>
+        <button type="button">☰<small>Filtros</small></button>
+      </section>
+      <section class="tesConcTabs">
+        <button type="button" class="${filter==='pendientes'?'active':''}" onclick="tesSetConciliationFilter('pendientes')">Pendientes <span>${metrics.pending.length}</span></button>
+        <button type="button" class="${filter==='todos'?'active':''}" onclick="tesSetConciliationFilter('todos')">Todos <span>${allRows.length}</span></button>
+        <button type="button" class="${filter==='conciliados'?'active ok':''}" onclick="tesSetConciliationFilter('conciliados')">● Conciliados <span>${metrics.conciliated.length}</span></button>
+      </section>
+      <section class="tesConcList">
+        <header><h2>${filter==='conciliados'?'Conciliados':'Pendientes por conciliar'} (${rows.length})</h2><div>Ordenar por <b>Más recientes⌄</b></div></header>
+        ${rowsHtml}
+        <div class="tesConcNote">ⓘ Los pagos por Transbank se concilian automáticamente. <button type="button" onclick="tesSetConciliationFilter('conciliados')">Ver conciliados automáticos ›</button></div>
+      </section>
+      <section class="tesConcRecent"><header><h2>Conciliados recientemente</h2><button onclick="tesSetConciliationFilter('conciliados')">Ver todos ›</button></header>${recentConc}</section>
+      <button class="tesScanBtn" type="button">📷 Escanear comprobante</button>
+    </div>`;
   };
 
   renderRendiciones = function(selectedTaskId){
