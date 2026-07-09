@@ -3922,15 +3922,14 @@ __bootTesoreroSupabaseFirst();
         <label><span>⌕</span><input value="${esc(window.__tesConcQuery||'')}" oninput="tesV73Query(this.value)" placeholder="Buscar alumno o apoderado"></label>
         <button type="button">⚚ Filtros</button>
       </section>
-      <p class="tesV73SearchHelp">Busca dentro de la campaña seleccionada</p>
+      <p class="tesV73SearchHelp">Busca alumno o apoderado dentro de la campaña seleccionada</p>
       <section class="tesV73Tabs">
         <button class="${filter==='pendientes'?'active':''}" onclick="tesV73Filter('pendientes')">Pendientes (${pending.length})</button>
         <button class="${filter==='conciliados'?'active ok':''}" onclick="tesV73Filter('conciliados')">Conciliados (${conc.length})</button>
-        <label><input type="checkbox" ${sel.length || Object.keys(window.__tesBulkSelection||{}).length?'checked':''} onchange="tesV73ClearSelection(!this.checked)"> Selección múltiple</label>
       </section>
       <section class="tesV73List">
         ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>Busca otro apoderado o cambia de filtro.</span></article>`}
-        <button class="tesV73BulkBtn" ${sel.length?'':'disabled'} onclick="tesV73OpenBulk()">☑ Conciliar seleccionados (${sel.length})</button>
+        ${sel.length ? `<button class="tesV73BulkBtn" onclick="tesV73OpenBulk()">☑ Conciliar seleccionados (${sel.length})</button>` : ''}
       </section>
       <section class="tesV73Summary">
         <header><h2>Resumen de la campaña</h2><button type="button">Ver detalle completo ›</button></header>
