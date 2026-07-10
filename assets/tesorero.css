@@ -3045,3 +3045,32 @@ body.cursapp-tesorero .tesV78History{border-top:1px solid #e5e7eb;padding-top:10
 body.cursapp-tesorero .tesV78ApprovalNote{padding:10px;border-radius:12px}.tesV78ApprovalNote.rejected{background:#fef2f2;color:#b91c1c}.tesV78ApprovalNote.observed{background:#eff6ff;color:#1d4ed8}
 body.cursapp-tesorero .tesV78ApprovalObs{font-size:10px}.tesV78PresidentActions{display:grid;gap:8px}.tesV78PresidentActions button{height:42px;border:0;border-radius:12px;color:#fff;font-weight:900}.tesV78PresidentActions .approve{background:#16a34a}.tesV78PresidentActions .observe{background:#2563eb}.tesV78PresidentActions .reject{background:#dc2626}
 @media(max-width:430px){body.cursapp-tesorero .tesV78DetailHead{grid-template-columns:44px minmax(0,1fr) auto}.tesV78InfoGrid b{font-size:9.5px!important}}
+
+/* =========================================================
+   Cursapp · Tesorero V79 · montos amplios + trazabilidad
+   ========================================================= */
+body.cursapp-tesorero .tesV77CampaignMetrics article,
+body.cursapp-tesorero .tesV77Quick article,
+body.cursapp-tesorero .tesV77ExpAmount,
+body.cursapp-tesorero .tesV78DetailHead>*{min-width:0}
+body.cursapp-tesorero .tesV77CampaignMetrics b{font-size:clamp(9px,2.7vw,12px);white-space:nowrap;letter-spacing:-.03em}
+body.cursapp-tesorero .tesV77Quick b{font-size:clamp(9px,2.8vw,12px);white-space:nowrap;letter-spacing:-.03em}
+body.cursapp-tesorero .tesV77ExpAmount strong{font-size:clamp(11px,3vw,13px);white-space:nowrap;letter-spacing:-.03em}
+body.cursapp-tesorero .tesV78DetailHead strong{font-size:clamp(13px,4vw,17px);white-space:nowrap;letter-spacing:-.035em;max-width:100%;text-align:right}
+body.cursapp-tesorero .tesV78HistoryItem i.pending{background:#7c3aed}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesV77CampaignMetrics{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:12px}
+  body.cursapp-tesorero .tesV77CampaignMetrics article{padding:0 10px!important}
+  body.cursapp-tesorero .tesV77CampaignMetrics article:nth-child(2){border-right:0}
+  body.cursapp-tesorero .tesV77CampaignMetrics article:nth-child(-n+2){padding-bottom:10px!important;border-bottom:1px solid #e5e7eb}
+  body.cursapp-tesorero .tesV77CampaignMetrics b{font-size:13px!important}
+  body.cursapp-tesorero .tesV77Quick{grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 6px}
+  body.cursapp-tesorero .tesV77Quick article{grid-template-columns:28px minmax(0,1fr);gap:2px 5px;padding:0 5px!important}
+  body.cursapp-tesorero .tesV77Quick span{width:28px;height:28px;border-radius:10px;font-size:14px}
+  body.cursapp-tesorero .tesV77Quick b{font-size:10px!important}
+  body.cursapp-tesorero .tesV77Expense{grid-template-columns:40px minmax(0,1fr) 112px!important}
+  body.cursapp-tesorero .tesV77ExpAmount strong{font-size:12px!important}
+  body.cursapp-tesorero .tesV77ExpAmount span{font-size:8px;padding:4px 6px}
+  body.cursapp-tesorero .tesV78DetailHead{grid-template-columns:44px minmax(0,1fr)!important}
+  body.cursapp-tesorero .tesV78DetailHead strong{grid-column:2;justify-self:start;text-align:left;font-size:18px!important;margin-top:4px}
+}
