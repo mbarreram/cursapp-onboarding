@@ -3989,3 +3989,82 @@ __bootTesoreroSupabaseFirst();
   document.addEventListener('DOMContentLoaded',()=>{ bindNav(); setTimeout(renderIfConc,300); const root=app(); if(root) new MutationObserver(()=>setTimeout(renderIfConc,0)).observe(root,{childList:true,subtree:false}); });
   setTimeout(()=>{ bindNav(); renderIfConc(); },800);
 })();
+
+/* =========================================================
+   Cursapp · Tesorero V77
+   Rendiciones por campaña — UI aprobada
+   ========================================================= */
+(function(){
+  const esc = (s)=>String(s??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c]));
+  const clp = (n)=>'$'+Number(n||0).toLocaleString('es-CL');
+  const load = (k,f)=>{try{const v=localStorage.getItem(k);return v==null?f:JSON.parse(v)}catch(_){return f}};
+  const save = (k,v)=>localStorage.setItem(k,JSON.stringify(v));
+  const scoped = (base)=>(window.CURSAPP&&window.CURSAPP.scopedKey)?window.CURSAPP.scopedKey(base):`cursapp_${base}`;
+  const KEY_TASKS=scoped('tasks_v1');
+  const KEY_PAYMENTS=scoped('payments_v1');
+  const KEY_EXPENSES=scoped('expenses_v1');
+  const root=()=>document.getElementById('app');
+  const tasks=()=>{const a=load(KEY_TASKS,[]);return Array.isArray(a)?a:[]};
+  const payments=()=>{const a=load(KEY_PAYMENTS,[]);return Array.isArray(a)?a:[]};
+  const expenses=()=>{const a=load(KEY_EXPENSES,[]);return Array.isArray(a)?a:[]};
+  const sum=(a,fn)=>(a||[]).reduce((x,y)=>x+Number(fn?fn(y):y||0),0);
+  const titleOf=(c)=>String(c?.title||c?.name||c?.concept||'Campaña').trim();
+  const goalOf=(c)=>Number(c?.goal||c?.target||c?.meta||c?.amountGoal||0);
+  const campIcon=(c)=>{const t=titleOf(c).toLowerCase();if(t.includes('gira'))return'🎓';if(t.includes('paseo'))return'🚌';if(t.includes('aseo'))return'🧽';if(t.includes('cuota'))return'🗓️';return'🎯'};
+  const expenseCampId=(e)=>String(e?.campaignId||e?.taskId||e?.fromTaskId||'');
+  const paymentCampId=(p)=>String(p?.fromTaskId||p?.taskId||p?.campaignId||'');
+  const isConc=(p)=>String(p?.paymentMethod||p?.paidWith||'').toLowerCase()==='transbank'||String(p?.conciliationStatus||'').toLowerCase()==='conciliado';
+  const campaigns=()=>{const t=tasks().filter(x=>!x?.hidden);if(t.length)return t;const m=new Map();expenses().forEach(e=>{const id=expenseCampId(e)||'general';if(!m.has(id))m.set(id,{id,title:e?.campaignTitle||'Campaña general'})});return [...m.values()]};
+  const selectedCampaign=()=>{const list=campaigns();if(!list.length)return{id:'general',title:'Campaña general'};let c=list.find(x=>String(x.id)===String(window.__tesRendCampaignId));if(!c){c=list[0];window.__tesRendCampaignId=String(c.id)}return c};
+  const rowsFor=(id)=>expenses().filter(e=>expenseCampId(e)===String(id));
+  const paidFor=(id)=>payments().filter(p=>paymentCampId(p)===String(id)&&isConc(p));
+  const statusInfo=(e)=>{const raw=String(e?.status||e?.state||'').toLowerCase();if(raw.includes('observ'))return{label:'Observada',cls:'observed'};if(raw.includes('pend'))return{label:'Pendiente revisión',cls:'pending'};return{label:'Aprobada',cls:'approved'}};
+  const categoryOf=(e)=>String(e?.category||e?.categoria||'Otros').trim()||'Otros';
+  const categoryIcon=(cat)=>{const t=String(cat).toLowerCase();if(t.includes('alimenta'))return'🍴';if(t.includes('transport'))return'🚌';if(t.includes('material'))return'📦';if(t.includes('prem'))return'🏆';if(t.includes('uniform'))return'👕';return'🧾'};
+  const dateLabel=(v)=>{const d=v?new Date(v):null;return d&&!Number.isNaN(d.getTime())?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):String(v||'Sin fecha')};
+  const hasReceipt=(e)=>!!((Array.isArray(e?.attachments)&&e.attachments.length)||e?.receipt||e?.boleta);
+  function syncActive(){document.querySelectorAll('.navItem').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)==='rendiciones'))}
+  function render(){
+    syncActive();
+    const el=root();if(!el)return;
+    const list=campaigns();const camp=selectedCampaign();const rows=rowsFor(camp.id).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')));
+    const rec=sum(paidFor(camp.id),p=>p.amount);const spent=sum(rows,e=>e.amount);const saldo=rec-spent;const pending=rows.filter(e=>statusInfo(e).cls==='pending').length;
+    const options=list.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(camp.id)?'selected':''}>${esc(titleOf(c))}</option>`).join('');
+    const groups={};rows.forEach(e=>{const cat=categoryOf(e);if(!groups[cat])groups[cat]=[];groups[cat].push(e)});
+    const groupHtml=Object.entries(groups).map(([cat,items])=>`<button class="tesV77Category" type="button" onclick="tesV77ToggleCategory('${esc(cat)}')"><span>${categoryIcon(cat)}</span><b>${esc(cat)} (${items.length})</b><strong>${clp(sum(items,x=>x.amount))}</strong><i>${window.__tesRendOpenCats?.[cat]?'⌃':'⌄'}</i></button>${window.__tesRendOpenCats?.[cat]?`<div class="tesV77CategoryRows">${items.map(expenseRow).join('')}</div>`:''}`).join('');
+    const visibleRows=rows.slice(0,20).map(expenseRow).join('')||`<article class="tesV77Empty"><b>Sin rendiciones registradas</b><span>Agrega el primer gasto de esta campaña.</span></article>`;
+    el.innerHTML=`<div class="tesV77Page">
+      <h1>Rendiciones por campaña</h1>
+      <section class="tesV77CampaignCard">
+        <label class="tesV77CampaignSelect"><span>${campIcon(camp)}</span><select onchange="tesV77SelectCampaign(this.value)">${options}</select><i>⌄</i></label>
+        <div class="tesV77State"><small>Estado</small><b>Activa</b></div>
+        <div class="tesV77CampaignMetrics"><article><small>Recaudado</small><b class="green">${clp(rec)}</b><em>▣</em></article><article><small>Gastado</small><b class="orange">${clp(spent)}</b><em>▤</em></article><article><small>Saldo</small><b class="violet">${clp(saldo)}</b><em>▱</em></article><article><small>Rendiciones</small><b>${rows.length}</b><em>▧</em></article></div>
+        <button class="tesV77InfoBtn" type="button" onclick="tesV77ToggleInfo()">Ver información de la campaña <span>⌄</span></button>
+        <div class="tesV77CampaignInfo ${window.__tesRendInfoOpen?'open':''}"><article><small>Meta total</small><b>${goalOf(camp)?clp(goalOf(camp)):'Por definir'}</b></article><article><small>Fecha creación</small><b>${dateLabel(camp.createdAt||camp.startDate)}</b></article></div>
+      </section>
+      <section class="tesV77Quick"><article><span>▤</span><small>Gastado</small><b>${clp(spent)}</b></article><article><span>▱</span><small>Saldo disponible</small><b>${clp(saldo)}</b></article><article><span>◷</span><small>Pendientes revisión</small><b>${pending}</b></article></section>
+      ${groupHtml?`<section class="tesV77Categories">${groupHtml}</section>`:''}
+      <section class="tesV77List">${visibleRows}</section>
+      <button class="tesV77Add" type="button" onclick="tesV77OpenCreate()">＋ Agregar rendición</button>
+      <div data-monetization-slot="tesorero"></div>
+    </div>`;
+  }
+  function expenseRow(e){const st=statusInfo(e);return `<article class="tesV77Expense"><div class="tesV77ExpIcon">${categoryIcon(categoryOf(e))}</div><div class="tesV77ExpMain"><b>${esc(e.title||e.concept||'Rendición')}</b><small>▣ ${esc(dateLabel(e.date||e.createdAt))}</small><small>◇ ${esc(categoryOf(e))}</small></div><div class="tesV77ExpAmount"><strong>${clp(e.amount)}</strong><span class="${st.cls}">● ${esc(st.label)}</span></div><div class="tesV77ExpActions"><button type="button" onclick="tesV77View('${esc(e.id)}')">◉ Ver</button><button type="button" onclick="tesV77Edit('${esc(e.id)}')">✎ Editar</button></div></article>`}
+  function openModal(html){const m=document.getElementById('modalRoot');if(!m)return;m.innerHTML=`<div class="tesV77ModalOverlay"><section class="tesV77Modal">${html}</section></div>`;m.querySelector('.tesV77ModalOverlay').onclick=e=>{if(e.target===e.currentTarget)closeModal()}}
+  function closeModal(){const m=document.getElementById('modalRoot');if(m)m.innerHTML=''}
+  function formHtml(e={}){return `<button class="tesV77Close" onclick="tesV77Close()">×</button><h2>${e.id?'Editar rendición':'Agregar rendición'}</h2><label>Categoría<select id="rv_cat"><option ${categoryOf(e)==='Alimentación'?'selected':''}>Alimentación</option><option ${categoryOf(e)==='Transporte'?'selected':''}>Transporte</option><option ${categoryOf(e)==='Materiales'?'selected':''}>Materiales</option><option ${categoryOf(e)==='Premios'?'selected':''}>Premios</option><option ${categoryOf(e)==='Otros'?'selected':''}>Otros</option></select></label><label>Concepto<input id="rv_title" value="${esc(e.title||e.concept||'')}" placeholder="Ej: Transporte campeonato"></label><div class="tesV77FormGrid"><label>Monto<input id="rv_amount" inputmode="numeric" value="${Number(e.amount||0)||''}" placeholder="50000"></label><label>Fecha<input id="rv_date" type="date" value="${esc(String(e.date||new Date().toISOString()).slice(0,10))}"></label></div><label>Comprobante<input id="rv_file" type="file" accept="image/*,application/pdf"><small>${hasReceipt(e)?'Comprobante adjunto':'Adjunta foto o PDF'}</small></label><label>Observación<textarea id="rv_note" rows="3" placeholder="Opcional">${esc(e.note||'')}</textarea></label><div class="tesV77ModalActions"><button class="ghost" onclick="tesV77Close()">Cancelar</button><button class="primary" onclick="tesV77Save('${esc(e.id||'')}')">Guardar rendición</button></div>`}
+  function success(e){openModal(`<div class="tesV77Success"><div>✓</div><h2>Rendición registrada correctamente</h2><p>El gasto fue asociado a la campaña seleccionada.</p><article><small>Monto</small><b>${clp(e.amount)}</b><small>Campaña</small><b>${esc(titleOf(selectedCampaign()))}</b></article><button onclick="tesV77Close();tesV77Render()">Aceptar</button></div>`)}
+  window.tesV77Render=render;
+  window.tesV77SelectCampaign=(id)=>{window.__tesRendCampaignId=String(id||'');render()};
+  window.tesV77ToggleInfo=()=>{window.__tesRendInfoOpen=!window.__tesRendInfoOpen;render()};
+  window.tesV77ToggleCategory=(cat)=>{window.__tesRendOpenCats=window.__tesRendOpenCats||{};window.__tesRendOpenCats[cat]=!window.__tesRendOpenCats[cat];render()};
+  window.tesV77OpenCreate=()=>openModal(formHtml());
+  window.tesV77Edit=(id)=>{const e=expenses().find(x=>String(x.id)===String(id));if(e)openModal(formHtml(e))};
+  window.tesV77View=(id)=>{const e=expenses().find(x=>String(x.id)===String(id));if(!e)return;const st=statusInfo(e);openModal(`<button class="tesV77Close" onclick="tesV77Close()">×</button><h2>${esc(e.title||'Rendición')}</h2><div class="tesV77View"><p><span>Categoría</span><b>${esc(categoryOf(e))}</b></p><p><span>Fecha</span><b>${esc(dateLabel(e.date||e.createdAt))}</b></p><p><span>Monto</span><b>${clp(e.amount)}</b></p><p><span>Estado</span><b class="${st.cls}">${esc(st.label)}</b></p><p><span>Comprobante</span><b>${hasReceipt(e)?'Adjunto':'Sin adjunto'}</b></p></div><button class="tesV77FullBtn" onclick="tesV77Close()">Cerrar</button>`)};
+  window.tesV77Close=closeModal;
+  window.tesV77Save=(id)=>{const title=document.getElementById('rv_title')?.value.trim();const amount=Number(String(document.getElementById('rv_amount')?.value||'').replace(/[^0-9.-]/g,''));if(!title||!amount)return alert('Completa concepto y monto.');const arr=expenses();let e=id?arr.find(x=>String(x.id)===String(id)):null;if(!e){e={id:'e_'+Date.now().toString(36),scope:'campaign',campaignId:String(selectedCampaign().id),createdAt:new Date().toISOString(),status:'pendiente'};arr.unshift(e)}e.title=title;e.category=document.getElementById('rv_cat')?.value||'Otros';e.amount=amount;e.date=document.getElementById('rv_date')?.value||new Date().toISOString().slice(0,10);e.note=document.getElementById('rv_note')?.value||'';const file=document.getElementById('rv_file')?.files?.[0];const finish=()=>{save(KEY_EXPENSES,arr);success(e)};if(file){if(file.size>3*1024*1024)return alert('Archivo muy pesado (máx 3MB).');const r=new FileReader();r.onload=()=>{e.attachments=[{name:file.name,type:file.type,size:file.size,dataUrl:r.result}];finish()};r.readAsDataURL(file)}else finish()};
+  const prevGo=window.go;
+  window.go=function(tab,taskId){if(String(tab||'').toLowerCase()==='rendiciones'){if(taskId)window.__tesRendCampaignId=String(taskId);render();return}return typeof prevGo==='function'?prevGo(tab,taskId):undefined};
+  function bind(){document.querySelectorAll('.navItem[data-tab="rendiciones"]').forEach(b=>b.onclick=e=>{e.preventDefault();render()})}
+  document.addEventListener('DOMContentLoaded',()=>{bind();setTimeout(bind,300)});setTimeout(bind,900);
+})();
