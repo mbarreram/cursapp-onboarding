@@ -4094,13 +4094,14 @@ __bootTesoreroSupabaseFirst();
   const conc=p=>['conciliado','conciliated','paid','pagado','approved'].includes(String(p?.conciliationStatus||p?.reconciliationStatus||p?.status||'').toLowerCase()) || !!p?.reconciledAt || !!p?.paidAt;
   const approved=e=>['aprobada','approved','aprobado'].includes(String(e?.approvalStatus||e?.status||'').toLowerCase());
   const campaigns=()=>{const list=tasks().filter(Boolean); if(list.length)return list; const m=new Map();payments().forEach(p=>{const id=pTask(p)||String(p?.concept||'general');if(!m.has(id))m.set(id,{id,title:p?.concept||'Campaña general'})});return [...m.values()]};
-  const icon=t=>{const s=taskTitle(t).toLowerCase();if(s.includes('aseo'))return'🧽';if(s.includes('gira'))return'🎓';if(s.includes('paseo'))return'🚌';if(s.includes('licen'))return'🎓';return'🎯'};
-  const selected=()=>{const list=campaigns();if(!list.length)return {id:'general',title:'Campaña general'}; const id=String(window.__tesReportCampaignId||'');const found=list.find(t=>taskId(t)===id)||list[0];window.__tesReportCampaignId=taskId(found);return found};
+  const GENERAL_ID='__all__';
+  const icon=t=>{if(taskId(t)===GENERAL_ID)return'📊';const s=taskTitle(t).toLowerCase();if(s.includes('aseo'))return'🧽';if(s.includes('gira'))return'🎓';if(s.includes('paseo'))return'🚌';if(s.includes('licen'))return'🎓';return'🎯'};
+  const selected=()=>{const list=campaigns();const id=String(window.__tesReportCampaignId||GENERAL_ID);if(id===GENERAL_ID){window.__tesReportCampaignId=GENERAL_ID;return {id:GENERAL_ID,title:'Todas las campañas'}}const found=list.find(t=>taskId(t)===id)||{id:GENERAL_ID,title:'Todas las campañas'};window.__tesReportCampaignId=taskId(found);return found};
   const session=()=>{try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}')}catch(_){return {}}};
   const actor=()=>{const s=session();return s.fullName||s.displayName||s.name||s.nombre||'Tesorero'};
   const participantTotal=()=>{const s=session();return Number(s.studentCount||s.alumnos||s.guardianCount||44)||44};
   function snapshot(c){
-    const id=taskId(c); const ps=payments().filter(p=>!id||pTask(p)===id); const ex=expenses().filter(e=>!id||eTask(e)===id);
+    const id=taskId(c), isGlobal=id===GENERAL_ID; const ps=payments().filter(p=>isGlobal||!id||pTask(p)===id); const ex=expenses().filter(e=>isGlobal||!id||eTask(e)===id);
     const okP=ps.filter(conc); const okE=ex.filter(approved); const pendingP=ps.filter(p=>!conc(p)); const pendingE=ex.filter(e=>!approved(e));
     const collected=sum(okP,p=>p.amount), spent=sum(okE,e=>e.amount), balance=collected-spent;
     const people=new Set(ps.map(p=>String(p.guardianName||p.apoderadoName||p.apoderadoEmail||p.email||p.studentName||'')).filter(Boolean));
@@ -4115,10 +4116,11 @@ __bootTesoreroSupabaseFirst();
   function render(){
     const root=app();if(!root)return; const c=selected(), s=snapshot(c), rep=latestReport(taskId(c));
     document.querySelectorAll('.navItem').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)==='informes'));
-    const options=campaigns().map(x=>`<option value="${esc(taskId(x))}" ${taskId(x)===taskId(c)?'selected':''}>${esc(taskTitle(x))}</option>`).join('');
+    const options=`<option value="${GENERAL_ID}" ${taskId(c)===GENERAL_ID?'selected':''}>Todas las campañas</option>`+campaigns().map(x=>`<option value="${esc(taskId(x))}" ${taskId(x)===taskId(c)?'selected':''}>${esc(taskTitle(x))}</option>`).join('');
+    const isGlobal=taskId(c)===GENERAL_ID; const scopeTitle=isGlobal?'Resumen de todas las campañas':`Resumen de ${taskTitle(c)}`; const stateTitle=isGlobal?'Estado general del curso':'Estado de la campaña';
     const published=!!rep?.published; const allOk=!s.pendingP.length&&!s.pendingE.length;
     root.innerHTML=`<div class="tesV80Page">
-      <h1>Informes por campaña</h1>
+      <h1>Informes financieros</h1>
       <section class="tesV80Campaign">
         <label><small>Campaña</small><div><span>${icon(c)}</span><select onchange="tesV80SelectCampaign(this.value)">${options}</select><i>⌄</i></div></label>
         <footer><span>▣ Último informe: <b>${rep?dateTime(rep.updatedAt||rep.createdAt):'Sin publicar'}</b></span><em class="${published?'published':'draft'}">● ${published?'Publicado':'Borrador'}</em></footer>
@@ -4131,26 +4133,26 @@ __bootTesoreroSupabaseFirst();
       </section>
       <section class="tesV80States">
         <article><h2>Estado del informe</h2><div class="tesV80Status ${published?'ok':'pending'}">✓ ${published?'Publicado':'Borrador'}</div><small>Última actualización</small><b>${rep?dateTime(rep.updatedAt||rep.createdAt):'Pendiente de publicación'}</b><small>Presidente revisó</small><strong>${rep?.presidentApproved?'✓ Aprobado':'Pendiente'}</strong></article>
-        <article class="campaign"><h2>Estado de la campaña</h2><p class="${!s.pendingP.length?'ok':''}">✓ Conciliaciones ${!s.pendingP.length?'al día':'pendientes'}</p><p class="${!s.pendingE.length?'ok':''}">✓ Rendiciones ${!s.pendingE.length?'aprobadas':'pendientes'}</p><p class="${!s.pendingP.length?'ok':''}">✓ ${s.pendingP.length?'Pagos pendientes':'Sin pagos pendientes'}</p><p class="${published&&allOk?'ok':''}">✓ Informe ${published&&allOk?'actualizado':'por actualizar'}</p></article>
+        <article class="campaign"><h2>${stateTitle}</h2><p class="${!s.pendingP.length?'ok':''}">✓ Conciliaciones ${!s.pendingP.length?'al día':'pendientes'}</p><p class="${!s.pendingE.length?'ok':''}">✓ Rendiciones ${!s.pendingE.length?'aprobadas':'pendientes'}</p><p class="${!s.pendingP.length?'ok':''}">✓ ${s.pendingP.length?'Pagos pendientes':'Sin pagos pendientes'}</p><p class="${published&&allOk?'ok':''}">✓ Informe ${published&&allOk?'actualizado':'por actualizar'}</p></article>
       </section>
       <section class="tesV80Finance">
-        <article><h2>Detalle financiero</h2><h3>Ingresos</h3><div><span>Pagos conciliados</span><b>${money(s.collected)}</b></div><div class="total"><span>Total ingresos</span><b>${money(s.collected)}</b></div><h3 class="expense">Gastos</h3>${categoriesRows(s)}<div class="total spent"><span>Total gastos</span><b>${money(s.spent)}</b></div><div class="final"><span>Saldo final disponible</span><b>${money(s.balance)}</b></div></article>
+        <article><h2>${scopeTitle}</h2><h3>Ingresos</h3><div><span>Pagos conciliados</span><b>${money(s.collected)}</b></div><div class="total"><span>Total ingresos</span><b>${money(s.collected)}</b></div><h3 class="expense">Gastos</h3>${categoriesRows(s)}<div class="total spent"><span>Total gastos</span><b>${money(s.spent)}</b></div><div class="final"><span>Saldo final disponible</span><b>${money(s.balance)}</b></div></article>
         <article><h2>Distribución de gastos</h2>${donut(s)}</article>
       </section>
-      <section class="tesV80History"><h2>Historial de publicaciones</h2>${reports().filter(r=>String(r.campaignId)===taskId(c)).slice(0,5).map((r,i)=>`<article><i class="${i===0?'active':''}"></i><span>${dateTime(r.updatedAt||r.createdAt)}</span><div><b>Informe ${r.published?'publicado':'generado'}</b><small>${esc(r.createdBy||'Tesorero')}</small></div><em>${r.presidentApproved?'Revisado y aprobado por Presidente del curso':'Pendiente de revisión'}</em></article>`).join('')||'<p class="tesV80Empty">Aún no hay publicaciones para esta campaña.</p>'}</section>
-      <section class="tesV80Actions"><button onclick="tesV80Preview()">◉ Vista previa</button><button onclick="tesV80Download()">▤ Descargar PDF</button><button onclick="tesV80Share()">↥ Compartir informe</button><button class="primary" onclick="tesV80Publish()">↻ ${published?'Actualizar informe':'Publicar informe'}</button>${published?'<button class="danger" onclick="tesV80Unpublish()">⌫ Despublicar informe</button>':''}</section>
+      <section class="tesV80History"><h2>Historial de publicaciones</h2>${reports().filter(r=>isGlobal||String(r.campaignId)===taskId(c)).slice(0,5).map((r,i)=>`<article><i class="${i===0?'active':''}"></i><span>${dateTime(r.updatedAt||r.createdAt)}</span><div><b>Informe ${r.published?'publicado':'generado'}</b><small>${esc(r.createdBy||'Tesorero')}</small></div><em>${r.presidentApproved?'Revisado y aprobado por Presidente del curso':'Pendiente de revisión'}</em></article>`).join('')||'<p class="tesV80Empty">Aún no hay publicaciones para esta campaña.</p>'}</section>
+      <section class="tesV80Actions"><button onclick="tesV80Preview()">◉ Vista previa</button><button onclick="tesV80Download()">▤ Descargar PDF</button><button onclick="tesV80Share()">↥ Compartir informe</button><button class="primary" onclick="tesV80Publish()">↻ ${published?'Actualizar informe':(isGlobal?'Generar informe general':'Generar informe de campaña')}</button>${published?'<button class="danger" onclick="tesV80Unpublish()">⌫ Despublicar informe</button>':''}</section>
     </div>`;
   }
-  function currentPayload(published=true){const c=selected(),s=snapshot(c);return {id:'rep_'+Date.now().toString(36),campaignId:taskId(c),campaignTitle:taskTitle(c),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),createdBy:actor(),published,presidentApproved:false,...s}}
+  function currentPayload(published=true){const c=selected(),s=snapshot(c);return {id:'rep_'+Date.now().toString(36),campaignId:taskId(c),campaignTitle:taskId(c)===GENERAL_ID?'Todas las campañas':taskTitle(c),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),createdBy:actor(),published,presidentApproved:false,...s}}
   function upsert(pub=true){const arr=reports(),c=selected(),old=latestReport(taskId(c)),payload=currentPayload(pub);if(old){Object.assign(old,payload,{id:old.id,createdAt:old.createdAt||payload.createdAt})}else arr.unshift(payload);save(KEY_REPORTS,arr);render();return old||payload}
   function modal(html){const root=document.getElementById('modalRoot');if(!root)return;root.innerHTML=`<div class="tesV80Overlay" onclick="if(event.target===this)tesV80Close()"><section class="tesV80Modal"><button onclick="tesV80Close()">×</button>${html}</section></div>`}
   window.tesV80SelectCampaign=id=>{window.__tesReportCampaignId=String(id);render()};
   window.tesV80Close=()=>{const r=document.getElementById('modalRoot');if(r)r.innerHTML=''};
-  window.tesV80Preview=()=>{const c=selected(),s=snapshot(c);modal(`<h2>Vista previa del informe</h2><h3>${esc(taskTitle(c))}</h3><div class="tesV80Preview"><p><span>Recaudado</span><b>${money(s.collected)}</b></p><p><span>Gastado</span><b>${money(s.spent)}</b></p><p><span>Saldo</span><b>${money(s.balance)}</b></p><p><span>Participación</span><b>${s.participation} / ${s.total}</b></p></div><button class="primary" onclick="tesV80Close()">Cerrar vista previa</button>`)};
+  window.tesV80Preview=()=>{const c=selected(),s=snapshot(c);modal(`<h2>Vista previa del informe</h2><h3>${esc(taskId(c)===GENERAL_ID?'Resumen de todas las campañas':taskTitle(c))}</h3><div class="tesV80Preview"><p><span>Recaudado</span><b>${money(s.collected)}</b></p><p><span>Gastado</span><b>${money(s.spent)}</b></p><p><span>Saldo</span><b>${money(s.balance)}</b></p><p><span>Participación</span><b>${s.participation} / ${s.total}</b></p></div><button class="primary" onclick="tesV80Close()">Cerrar vista previa</button>`)};
   window.tesV80Publish=()=>{upsert(true);modal('<div class="tesV80Success">✓</div><h2>Informe publicado correctamente</h2><p>El informe quedó disponible para el curso.</p><button class="primary" onclick="tesV80Close()">Aceptar</button>')};
   window.tesV80Unpublish=()=>{const arr=reports(),r=latestReport(taskId(selected()));if(r){r.published=false;r.updatedAt=new Date().toISOString();save(KEY_REPORTS,arr)}render()};
   window.tesV80Download=()=>{window.tesV80Preview();setTimeout(()=>window.print(),250)};
-  window.tesV80Share=async()=>{const c=selected(),s=snapshot(c),text=`Informe ${taskTitle(c)}\nRecaudado: ${money(s.collected)}\nGastado: ${money(s.spent)}\nSaldo: ${money(s.balance)}`;try{if(navigator.share)await navigator.share({title:`Informe ${taskTitle(c)}`,text});else{await navigator.clipboard.writeText(text);alert('Resumen copiado.')}}catch(_){}};
+  window.tesV80Share=async()=>{const c=selected(),s=snapshot(c),text=`Informe ${taskId(c)===GENERAL_ID?'general del curso':taskTitle(c)}\nRecaudado: ${money(s.collected)}\nGastado: ${money(s.spent)}\nSaldo: ${money(s.balance)}`;try{if(navigator.share)await navigator.share({title:`Informe ${taskId(c)===GENERAL_ID?'general del curso':taskTitle(c)}`,text});else{await navigator.clipboard.writeText(text);alert('Resumen copiado.')}}catch(_){}};
   const prevGo=window.go;window.go=function(tab,arg){if(String(tab||'').toLowerCase()==='informes'){render();return}return typeof prevGo==='function'?prevGo(tab,arg):undefined};
   function bind(){document.querySelectorAll('.navItem[data-tab="informes"]').forEach(b=>b.onclick=e=>{e.preventDefault();render()})}document.addEventListener('DOMContentLoaded',()=>{bind();setTimeout(bind,300)});setTimeout(bind,900);
 })();
