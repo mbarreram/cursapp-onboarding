@@ -44,6 +44,30 @@ test.describe('Cursapp V9 clicks reales', () => {
     }
   });
 
+  test('menú presidente mantiene diseño y opciones estables', async ({ page }) => {
+    await page.goto('/presidente.html');
+
+    const destinos = ['home', 'campanas', 'deudores', 'informes'];
+
+    for (const tab of destinos) {
+      await page.locator('#menuBtn').click();
+      await expect(page.locator('#menuDropdown')).toHaveAttribute('data-president-menu-version', '35');
+      await expect(page.locator('#menuDropdown')).toHaveCSS('border-radius', '24px');
+      await expect(page.locator('#menuDropdown .menuItem').first()).toHaveCSS('border-radius', '16px');
+      await page.locator(`#menuDropdown [data-go="${tab}"]`).click();
+      await expect(page.locator(`.navItem[data-tab="${tab}"]`)).toHaveClass(/active/);
+      await expect(page.locator('#app')).toBeVisible();
+    }
+
+    await page.locator('#menuBtn').click();
+    await expect(page.locator('#menuDropdown .menuItem')).toHaveCount(7);
+    await expect(page.locator('#menuDropdown .menuItem').last()).toContainText('Cerrar sesión');
+    await expect(page.locator('#menuDropdown [data-go="apoderados"]')).toContainText('Apoderados');
+    await page.locator('#supportMenuItem').click();
+    await expect(page.locator('#supportTicketOverlay')).toBeVisible();
+    await expect(page.locator('#supportTicketOverlay')).toContainText('Mis tickets');
+  });
+
   test('menú tesorero abre todos sus destinos', async ({ page }) => {
     await page.goto('/tesorero.html');
 
