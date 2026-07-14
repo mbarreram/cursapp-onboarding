@@ -54,6 +54,10 @@ test.describe('Cursapp V9 clicks reales', () => {
     );
     expect(iconContents).not.toContain('â');
     expect(iconContents).not.toContain('\\');
+    expect(iconContents).not.toContain('${code}');
+    for (const icon of ['⌂', '◆', '▷', '▥']) {
+      expect(iconContents).toContain(icon);
+    }
 
     const visualIconContents = await page.locator('.presMockQuick span, .presMockKpi span').evaluateAll((items) =>
       items.map((item) => getComputedStyle(item, '::before').content).join(' ')
