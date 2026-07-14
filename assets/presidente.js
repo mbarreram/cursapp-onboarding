@@ -6,9 +6,9 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
    let el=document.getElementById('cursapp-loading-overlay');
    if(el) return;
    const msgs={
-    presidente:['ðŸ“Š Preparando dashboard ejecutivo...','ðŸ‘¥ Revisando apoderados...','ðŸ“ˆ Actualizando indicadores...'],
-    tesorero:['ðŸ’° Conciliando pagos...','ðŸ§¾ Actualizando comprobantes...','ðŸ“‹ Revisando rendiciones...'],
-    apoderado:['ðŸŽ’ Revisando informaciÃ³n del curso...','ðŸ“… Consultando prÃ³ximas cuotas...','ðŸ“£ Actualizando avisos...']
+    presidente:['📊 Preparando dashboard ejecutivo...','👥 Revisando apoderados...','📈 Actualizando indicadores...'],
+    tesorero:['💰 Conciliando pagos...','🧾 Actualizando comprobantes...','📋 Revisando rendiciones...'],
+    apoderado:['🎒 Revisando información del curso...','📅 Consultando próximas cuotas...','📣 Actualizando avisos...']
    };
    const arr=msgs[(role||'').toLowerCase()]||['Cargando datos...'];
    el=document.createElement('div');
@@ -27,7 +27,7 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
 document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('presidente'); setTimeout(()=>window.CURSAPP_LOADING.hide(),1200);}catch(e){}});
 // === END LOADING ===
 
-// V10.1 Â· Mantiene contexto de rol coherente al abrir presidente.
+// V10.1 · Mantiene contexto de rol coherente al abrir presidente.
 (function(){
   try{
     const expected='presidente';
@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 })();
 /* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
 
-/* Cursapp HOTFIX v7 Â· Presidente estable
-   - Sin loop de banner: render Ãºnico post Home.
+/* Cursapp HOTFIX v7 · Presidente estable
+   - Sin loop de banner: render único post Home.
    - Dashboard ejecutivo sin carrusel horizontal que rebote.
    - Asignar tesorero abre selector estable y crea rol tesorero en Supabase sin quitar apoderado.
 */
@@ -59,14 +59,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
   const esc = (s)=> String(s ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
-  // Bloquea SOLO el placeholder antiguo, no los demÃ¡s alerts reales.
+  // Bloquea SOLO el placeholder antiguo, no los demás alerts reales.
   try{
     if(!window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__){
       window.__CURSAPP_ALERT_ORIGINAL_STABLE_V7__ = window.alert.bind(window);
       window.alert = function(msg){
         const s = String(msg || "");
-        if(s.includes("AsignaciÃ³n de tesorero") || s.includes("perder el rol apoderado") || s.includes("siguiente fase")){
-          console.warn("Cursapp v7 bloqueÃ³ placeholder tesorero:", s);
+        if(s.includes("Asignación de tesorero") || s.includes("perder el rol apoderado") || s.includes("siguiente fase")){
+          console.warn("Cursapp v7 bloqueó placeholder tesorero:", s);
           try{ window.CursappPresidentStable.openTreasurerPicker(); }catch(e){}
           return;
         }
@@ -120,9 +120,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     catch(e){ return String(localStorage.getItem('cursapp_active_course_v1')||'').trim(); }
   }
   async function getCurso(){
-    const ck=sessionCourseKey(); if(!ck) throw new Error('No hay curso activo en la sesiÃ³n.');
+    const ck=sessionCourseKey(); if(!ck) throw new Error('No hay curso activo en la sesión.');
     const rows=await sb('cursos?course_key=eq.'+q(ck)+'&select=id,course_key,nombre&limit=1');
-    const c=Array.isArray(rows)?rows[0]:null; if(!c||!c.id) throw new Error('No encontrÃ© el curso en Supabase.');
+    const c=Array.isArray(rows)?rows[0]:null; if(!c||!c.id) throw new Error('No encontré el curso en Supabase.');
     return c;
   }
   async function getMembers(){
@@ -131,17 +131,17 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return {curso, rows:Array.isArray(rows)?rows:[]};
   }
   function memberLabel(m){ return String(m.nombre_apoderado || m.email || 'Miembro del curso').trim(); }
-  function memberSub(m){ return [m.email, m.nombre_alumno ? ('Alumno/a: '+m.nombre_alumno) : '', m.rol ? ('Rol actual: '+m.rol) : ''].filter(Boolean).join(' Â· '); }
+  function memberSub(m){ return [m.email, m.nombre_alumno ? ('Alumno/a: '+m.nombre_alumno) : '', m.rol ? ('Rol actual: '+m.rol) : ''].filter(Boolean).join(' · '); }
 
   async function assignTreasurerByEmail(email){
-    email=String(email||'').toLowerCase().trim(); if(!email) throw new Error('Correo invÃ¡lido.');
+    email=String(email||'').toLowerCase().trim(); if(!email) throw new Error('Correo inválido.');
     const {curso, rows}=await getMembers();
     const mine=rows.filter(m=>String(m.email||'').toLowerCase().trim()===email);
-    if(!mine.length) throw new Error('No encontrÃ© ese miembro en el curso.');
+    if(!mine.length) throw new Error('No encontré ese miembro en el curso.');
 
     // V11.4: regla de negocio solicitada.
     // Para asignar, primero se consulta Supabase por el curso activo.
-    // Si ya existe tesorero en este curso, no se reasigna automÃ¡ticamente.
+    // Si ya existe tesorero en este curso, no se reasigna automáticamente.
     // El presidente debe eliminar primero el rol tesorero vigente y luego asignar otro.
     const currentTreasurers = rows.filter(m => String(m.rol || '').toLowerCase() === 'tesorero');
     const sameEmail = currentTreasurers.find(m => String(m.email || '').toLowerCase().trim() === email);
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   }
 
   async function removeTreasurerByEmail(email){
-    email=String(email||'').toLowerCase().trim(); if(!email) throw new Error('Correo invÃ¡lido.');
+    email=String(email||'').toLowerCase().trim(); if(!email) throw new Error('Correo inválido.');
     const {rows}=await getMembers();
     const targets=rows.filter(m=>String(m.rol||'').toLowerCase()==='tesorero' && String(m.email||'').toLowerCase().trim()===email);
     if(!targets.length) throw new Error('Ese apoderado no tiene rol tesorero vigente.');
@@ -190,10 +190,10 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     }
 
     if(errors.length){
-      throw new Error('No se pudo eliminar el rol tesorero. Detalle: ' + errors.join(' | ') + '. Revisa polÃ­tica RLS/DELETE en Supabase para miembros_curso.');
+      throw new Error('No se pudo eliminar el rol tesorero. Detalle: ' + errors.join(' | ') + '. Revisa política RLS/DELETE en Supabase para miembros_curso.');
     }
 
-    // Limpieza de cachÃ© local legacy, sin tocar el rol apoderado.
+    // Limpieza de caché local legacy, sin tocar el rol apoderado.
     try{
       const ck=sessionCourseKey();
       const profiles=JSON.parse(localStorage.getItem('cursapp_profiles_v1')||'[]');
@@ -243,7 +243,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     injectStableCss();
     let overlay=document.getElementById('cursappTreasurerOverlay'); if(overlay) overlay.remove();
     overlay=document.createElement('div'); overlay.id='cursappTreasurerOverlay'; overlay.className='cursappTreasurerOverlay';
-    overlay.innerHTML=`<div class="cursappTreasurerCard"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><div style="font-weight:950;font-size:20px;">Asignar tesorero</div><div style="color:#64748b;font-weight:800;margin-top:4px;">Selecciona cualquier miembro del curso. MantendrÃ¡ su rol actual y ademÃ¡s tendrÃ¡ acceso como tesorero.</div></div><button type="button" style="border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:999px;padding:9px 12px;font-weight:900;" data-close-treasurer> Cerrar </button></div><div id="cursappTreasurerRows" style="margin-top:12px;color:#64748b;font-weight:850;">Cargando miembros...</div></div>`;
+    overlay.innerHTML=`<div class="cursappTreasurerCard"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><div><div style="font-weight:950;font-size:20px;">Asignar tesorero</div><div style="color:#64748b;font-weight:800;margin-top:4px;">Selecciona cualquier miembro del curso. Mantendrá su rol actual y además tendrá acceso como tesorero.</div></div><button type="button" style="border:1px solid rgba(0,0,0,.12);background:#fff;border-radius:999px;padding:9px 12px;font-weight:900;" data-close-treasurer> Cerrar </button></div><div id="cursappTreasurerRows" style="margin-top:12px;color:#64748b;font-weight:850;">Cargando miembros...</div></div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click',e=>{ if(e.target===overlay || e.target.closest('[data-close-treasurer]')) closePicker(); });
     const mount=overlay.querySelector('#cursappTreasurerRows');
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           ev.preventDefault(); ev.stopPropagation();
           const email=btn.getAttribute('data-assign-treasurer-email'); const old=btn.textContent;
           btn.disabled=true; btn.textContent='Asignando...';
-          try{ await assignTreasurerByEmail(email); btn.textContent='Asignado âœ…'; alertStable('Tesorero asignado correctamente âœ…'); closePicker(); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
+          try{ await assignTreasurerByEmail(email); btn.textContent='Asignado ✅'; alertStable('Tesorero asignado correctamente ✅'); closePicker(); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
           catch(err){ btn.disabled=false; btn.textContent=old; alertStable('No se pudo asignar tesorero: '+(err&&err.message?err.message:err)); }
         }, true);
       });
@@ -267,9 +267,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
         btn.addEventListener('click', async (ev)=>{
           ev.preventDefault(); ev.stopPropagation();
           const email=btn.getAttribute('data-remove-treasurer-email');
-          if(!confirm('Â¿Eliminar rol tesorero de este apoderado? MantendrÃ¡ su rol apoderado.')) return;
+          if(!confirm('¿Eliminar rol tesorero de este apoderado? Mantendrá su rol apoderado.')) return;
           const old=btn.textContent; btn.disabled=true; btn.textContent='Eliminando...';
-          try{ await removeTreasurerByEmail(email); alertStable('Rol tesorero eliminado âœ…'); closePicker(); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-remove'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
+          try{ await removeTreasurerByEmail(email); alertStable('Rol tesorero eliminado ✅'); closePicker(); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-remove'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
           catch(err){ btn.disabled=false; btn.textContent=old; alertStable('No se pudo eliminar tesorero: '+(err&&err.message?err.message:err)); }
         }, true);
       });
@@ -288,15 +288,15 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     if(!email){ openTreasurerPicker(); return false; }
 
     if(isRemoveTreasurerButton(btn)){
-      if(!confirm('Â¿Eliminar rol tesorero de este apoderado? MantendrÃ¡ su rol apoderado.')) return false;
+      if(!confirm('¿Eliminar rol tesorero de este apoderado? Mantendrá su rol apoderado.')) return false;
       const old=btn.textContent; btn.disabled=true; btn.textContent='Eliminando...';
-      try{ await removeTreasurerByEmail(email); btn.textContent='Asignar como tesorero'; alertStable('Rol tesorero eliminado âœ…'); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-remove-inline'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
+      try{ await removeTreasurerByEmail(email); btn.textContent='Asignar como tesorero'; alertStable('Rol tesorero eliminado ✅'); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-remove-inline'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
       catch(err){ btn.disabled=false; btn.textContent=old||'Eliminar tesorero'; alertStable('No se pudo eliminar tesorero: '+(err&&err.message?err.message:err)); }
       return false;
     }
 
     const old=btn.textContent; btn.disabled=true; btn.textContent='Asignando...';
-    try{ await assignTreasurerByEmail(email); btn.textContent='Eliminar tesorero'; alertStable('Tesorero asignado correctamente âœ…'); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-assign-inline'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
+    try{ await assignTreasurerByEmail(email); btn.textContent='Eliminar tesorero'; alertStable('Tesorero asignado correctamente ✅'); try{ window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-v11.4-assign-inline'}})); }catch(e){} setTimeout(refreshTreasurerButtons, 450); }
     catch(err){ btn.disabled=false; btn.textContent=old||'Asignar como tesorero'; alertStable('No se pudo asignar tesorero: '+(err&&err.message?err.message:err)); }
     return false;
   }, true);
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   const logoutBtn = document.getElementById("logoutBtn");
 
 
-  // ---- session bootstrap (evita courseKey vacÃ­o tras borrar data) ----
+  // ---- session bootstrap (evita courseKey vacío tras borrar data) ----
   function readSession(){
     try{ return JSON.parse(localStorage.getItem("cursapp_session_v1") || "null"); }catch(e){ return null; }
   }
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
 
   // ===== DEBUG TEMPORAL PRESIDENTE CURSO =====
-  // ActÃ­valo entrando a /presidente.html?debug=1
+  // Actívalo entrando a /presidente.html?debug=1
   // o dejando localStorage.cursapp_debug_presidente = "1".
   const PRESIDENTE_DEBUG_VERSION = "20260605-curso-activo";
   function isDebugPresidente(){
@@ -414,15 +414,15 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const saldoDisponible = saldoCourse();
 
     const msg = [
-      `ðŸ“Š Informe Ejecutivo del Curso`,
+      `📊 Informe Ejecutivo del Curso`,
       ``,
       `Periodo: ${ym}`,
       ``,
-      `ðŸ’° Cobrado mes: ${clp(cobradoMes)}`,
-      `ðŸ§¾ Gastado mes: ${clp(gastadoMes)}`,
-      `âš–ï¸ Saldo mes: ${clp(saldoMes)}`,
+      `💰 Cobrado mes: ${clp(cobradoMes)}`,
+      `🧾 Gastado mes: ${clp(gastadoMes)}`,
+      `⚖ï¸ Saldo mes: ${clp(saldoMes)}`,
       ``,
-      `ðŸ¦ Saldo disponible: ${clp(saldoDisponible)}`,
+      `🏦 Saldo disponible: ${clp(saldoDisponible)}`,
       ``,
       `Informe generado en Cursapp`
     ].join("\n");
@@ -469,7 +469,7 @@ async function copyTextToClipboard(text){
     return "";
   }
 
-  // storage keys (scoped por curso; listo para producciÃ³n)
+  // storage keys (scoped por curso; listo para producción)
   const sk = (base)=> (window.CURSAPP && window.CURSAPP.scopedKey) ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
   const KEY_TASKS = sk("tasks_v1");
   const KEY_PAYMENTS = sk("payments_v1");
@@ -478,7 +478,7 @@ async function copyTextToClipboard(text){
   const KEY_ENROLLMENTS = sk("enrollments_v1");
   const KEY_DIRTY = detectKey(["cursapp_reports_dirty_v1", "reportsDirty", "cursapp_dirty_reports"]) || "cursapp_reports_dirty_v1";
 
-  // ---- notifier: refrescar indicadores cuando se actualiza storage (misma sesiÃ³n) ----
+  // ---- notifier: refrescar indicadores cuando se actualiza storage (misma sesión) ----
   // Esto evita que al aprobar un apoderado en Presidente los indicadores queden desfasados hasta re-login.
   (function patchLocalStorageSetItem(){
     try{
@@ -519,7 +519,7 @@ function hash32(str){
   }
     function normalizeTask(t){
     t = t || {};
-    const title = t.title || t.name || t.nombre || "CampaÃ±a";
+    const title = t.title || t.name || t.nombre || "Campaña";
     const startDate = t.startDate || t.inicio || t.start || t.from || todayISO();
     const dueDate = t.dueDate || t.endDate || t.fin || t.end || t.to || "";
     const partRaw = (t.participation ?? t.participacion ?? (t.mandatoryParticipation===false ? "no" : "si"));
@@ -573,7 +573,7 @@ function hash32(str){
         const aid = String(p.apoderadoKey||p.apoderadoId||"").trim() || String(p.apoderadoEmail||p.email||"").toLowerCase().trim();
         const tid = String(p.fromTaskId||"");
         const per = String(p.period||ymFromISO(p.dueDate)||"");
-        // âš ï¸ si no existe installmentIndex, asumimos 1 (pago Ãºnico o legacy)
+        // ⚠ï¸ si no existe installmentIndex, asumimos 1 (pago único o legacy)
         const idx = String((p.installmentIndex==null || p.installmentIndex==="") ? 1 : p.installmentIndex);
         const alu = String(p.alumnoId||"");
         return paymentKeyOf(ck, tid, aid, alu, per, idx);
@@ -615,7 +615,7 @@ function hash32(str){
             const period = addMonthsYM(startYM, i);
             const dueDate = endOfMonthISO(period);
             const idx = i+1;
-            pushPay(t, period, idx, dueDate, `${t.title} Â· Cuota ${idx}/${months}`);
+            pushPay(t, period, idx, dueDate, `${t.title} · Cuota ${idx}/${months}`);
           }
         }else{
           const period = ymFromISO(t.dueDate||t.startDate||todayISO());
@@ -696,11 +696,11 @@ function hash32(str){
   const isCredit = (p) => paymentStatusNorm(p) === "credit";
   const isPendingLike = (p) => ["pending","pendiente","unpaid","due","partial","overdue","vencido"].includes(paymentStatusNorm(p));
 
-// -------- DeduplicaciÃ³n de pagos (estabilidad) --------
+// -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
   const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
   const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
-  // Si no existe cuota/Ã­ndice (legacy), asumimos 1 (pago Ãºnico) para evitar duplicados.
+  // Si no existe cuota/índice (legacy), asumimos 1 (pago único) para evitar duplicados.
   const cuotaRaw = (p.installmentIndex!=null && p.installmentIndex!=="") ? p.installmentIndex : (p.cuotaNumero || p.installment || p.cuota);
   const cuota = String((cuotaRaw==null || cuotaRaw==="") ? 1 : cuotaRaw);
   const due = String(p.dueDate || "");
@@ -744,7 +744,7 @@ function dedupePaymentsAll(list){
   };
   const expenses = () => load(KEY_EXPENSES, []);
   
-  // -------- Informe Apoderado (idÃ©ntico al rol apoderado) --------
+  // -------- Informe Apoderado (idéntico al rol apoderado) --------
   window.openReportApoderado = function(period){
     const reps = reports();
     const r = reps.find(x=>String(x.period||"")===String(period||"")) || reps[0];
@@ -769,7 +769,7 @@ function dedupePaymentsAll(list){
     const tasksArr = tasks();
     const pays = payments();
   
-    // Totales del mes (proyecciÃ³n y cobrado) + deudores Ãºnicos
+    // Totales del mes (proyección y cobrado) + deudores únicos
     let cobradoMes=0, proyeccionMes=0;
     const deudoresSet = new Set();
   
@@ -794,12 +794,12 @@ function dedupePaymentsAll(list){
     });
   
     const cursoPct = pct(cobradoMes, proyeccionMes);
-    const sem = (cursoPct>=80) ? "ðŸŸ¢" : (cursoPct>=45 ? "ðŸŸ¡" : "ðŸ”´");
+    const sem = (cursoPct>=80) ? "🟢" : (cursoPct>=45 ? "🟡" : "🔴");
     const semMsg = (cursoPct>=80)
       ? "Vamos muy bien este mes"
-      : (cursoPct>=45 ? "Vamos avanzando, aÃºn falta un poco" : "AtenciÃ³n: queda bastante por pagar este mes");
+      : (cursoPct>=45 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
   
-    // Agrupar pagos por campaÃ±a
+    // Agrupar pagos por campaña
     const byTask = {};
     (pays||[]).forEach(p=>{
       const tid = String((p && p.fromTaskId) || "");
@@ -821,7 +821,7 @@ function dedupePaymentsAll(list){
       .filter(t=>t && !t.closed)
       .map(t=>{
         const tid = String(t.id);
-        const title = String(t.title || "CampaÃ±a");
+        const title = String(t.title || "Campaña");
         const type = String(t.type || "single");
         const months = Number(t.months || 1);
         const amount = Number(t.amount || 0);
@@ -843,7 +843,7 @@ function dedupePaymentsAll(list){
           .reduce((a,x)=>a+Number(x.amountRemaining||x.amount||0),0);
   
         // Objetivo (total curso):
-        // - Si el usuario definiÃ³ goalTotal/meta => lo respetamos como total de curso.
+        // - Si el usuario definió goalTotal/meta => lo respetamos como total de curso.
         // - Si no, lo calculamos como (monto por apoderado) x (participantes) x (cuotas si mensual)
         //   Esto evita el bug de ver 100% con 1 pago cuando hay 2 apoderados.
         let objetivo;
@@ -886,9 +886,9 @@ function dedupePaymentsAll(list){
             </div>
   
             <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;opacity:.9;">
-              <div>ðŸ’° Recaudado: <b>${clp(recaudado)}</b></div>
-              <div>â³ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
-              <div>ðŸŽ¯ Objetivo: <b>${clp(objetivo)}</b></div>
+              <div>💰 Recaudado: <b>${clp(recaudado)}</b></div>
+              <div>⏳ Pendiente mes: <b>${clp(pendienteMes)}</b></div>
+              <div>🎯 Objetivo: <b>${clp(objetivo)}</b></div>
             </div>
           </div>
         `;
@@ -917,7 +917,7 @@ function dedupePaymentsAll(list){
               <div>
                 <div style="font-weight:950;font-size:18px;line-height:1.1;">Informe del curso</div>
                 <div style="opacity:.65;font-size:13px;margin-top:4px;line-height:1.2;">
-                  Resumen de cÃ³mo va el curso (montos globales, no personales)
+                  Resumen de cómo va el curso (montos globales, no personales)
                 </div>
               </div>
               <button onclick="closeModal()"
@@ -941,7 +941,7 @@ function dedupePaymentsAll(list){
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
                 <div>
                   <div style="font-weight:950;font-size:16px;">${sem} Cumplimiento del mes</div>
-                  <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} Â· <b>${esc(ym)}</b></div>
+                  <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
                 </div>
                 <div style="font-weight:950;font-size:18px;">${cursoPct}%</div>
               </div>
@@ -951,21 +951,21 @@ function dedupePaymentsAll(list){
               </div>
   
               <div style="margin-top:8px;font-size:13px;opacity:.9;">
-                ðŸ’µ Cobrado mes: <b>${clp(cobradoMes)}</b> Â· â³ ProyecciÃ³n mes: <b>${clp(proyeccionMes)}</b> Â· ðŸ‘¥ Deudores mes: <b>${deudoresSet.size}</b>
+                💵 Cobrado mes: <b>${clp(cobradoMes)}</b> · ⏳ Proyección mes: <b>${clp(proyeccionMes)}</b> · 👥 Deudores mes: <b>${deudoresSet.size}</b>
               </div>
             </div>
   
             <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-              ${kpi("ðŸ’°","Recaudado total", clp(r.recaudadoCurso||0))}
-              ${kpi("ðŸ§¾","Gastado total", clp(r.gastadoCurso||0))}
-              ${kpi("ðŸ¦","Saldo disponible", clp(r.disponibleCurso||0))}
-              ${kpi("â³","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
+              ${kpi("💰","Recaudado total", clp(r.recaudadoCurso||0))}
+              ${kpi("🧾","Gastado total", clp(r.gastadoCurso||0))}
+              ${kpi("🏦","Saldo disponible", clp(r.disponibleCurso||0))}
+              ${kpi("⏳","Por cobrar este mes", clp(proyeccionMes - cobradoMes))}
             </div>
   
             <div style="margin-top:16px;">
-              <div style="font-weight:950;font-size:16px;margin-bottom:10px;">ðŸ“Œ Indicadores por campaÃ±a</div>
+              <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
               <div style="display:grid;gap:10px;">
-                ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campaÃ±as activas.</div>`}
+                ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
               </div>
             </div>
   
@@ -1001,7 +1001,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   };
 
 
-  // ---- Single source of truth financiero (campaÃ±as / dashboard / deudores) ----
+  // ---- Single source of truth financiero (campañas / dashboard / deudores) ----
   function isExcludedFinancialStatus(p){
     const st = String(p?.status || "").toLowerCase();
     return st === "opted_out" || st === "void" || st === "cancelled" || st === "credit_used";
@@ -1113,7 +1113,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
 
-  // Deudores del mes (personas Ãºnicas con al menos 1 cuota/pago pendiente del mes)
+  // Deudores del mes (personas únicas con al menos 1 cuota/pago pendiente del mes)
   function deudoresMonth(ym){
     const set = new Set();
     payments().forEach(p=>{
@@ -1135,7 +1135,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
 
   // Pendiente operacional del mes (dashboard):
-  // - Usa proyecciÃ³n mÃ¡xima del mes (campaÃ±as) menos lo recaudado.
+  // - Usa proyección máxima del mes (campañas) menos lo recaudado.
   // - Evita depender de que los cobros existan ya en payments_v1.
   function pendingMonth(ym){
     const expected = pendingMonthProjected(ym);
@@ -1143,7 +1143,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
     return Math.max(0, expected - collected);
   }
 
-  // ProyecciÃ³n mÃ¡xima (ajustada por opt-out si existe)
+  // Proyección máxima (ajustada por opt-out si existe)
   function pendingMonthProjected(ym){
     const people = approvedCount();
     const tks = tasks();
@@ -1232,8 +1232,8 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
       return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
     }
 
-    // Si es campaÃ±a voluntaria y los cobros existentes estÃ¡n todos en opted_out/void/cancelled,
-    // no hay pendiente real aunque exista objetivo teÃ³rico.
+    // Si es campaña voluntaria y los cobros existentes están todos en opted_out/void/cancelled,
+    // no hay pendiente real aunque exista objetivo teórico.
     if(t?.mandatoryParticipation === false && all.length){
       const hasOnlyOptedOut = all.every(p => {
         const st = String(p?.status || "").toLowerCase();
@@ -1303,19 +1303,19 @@ function cuotasPendientesTask(id){
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
-        if(!confirm("Reset demo presidente. Â¿Continuar?")) return;
+        if(!confirm("Reset demo presidente. ¿Continuar?")) return;
         localStorage.removeItem(KEY_TASKS);
         localStorage.removeItem(KEY_PAYMENTS);
         localStorage.removeItem(KEY_EXPENSES);
         localStorage.removeItem(KEY_MONTHLY_REPORTS);
         localStorage.removeItem(KEY_DIRTY);
         alert("Datos reseteados.");
-        // âœ… CAMBIO 2: NO re-sembrar demo automÃ¡ticamente
+        // ✅ CAMBIO 2: NO re-sembrar demo automáticamente
         go("home");
       };
     }
     if(logoutBtn){
-      // âœ… CAMBIO 3: logout al login real
+      // ✅ CAMBIO 3: logout al login real
       logoutBtn.onclick = ()=> location.href="/index.html";
     }
   }
@@ -1334,7 +1334,7 @@ function cuotasPendientesTask(id){
       {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
       {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
       {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
-      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaÃ±a eliminada"}
+      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
     ]);
 
     save(KEY_EXPENSES, [
@@ -1353,9 +1353,9 @@ function cuotasPendientesTask(id){
   
   function normalizeTab(tab){
     const t = String(tab||"").toLowerCase().trim();
-    // Compat: algunos builds usan 'informe' (singular) en el dataset del menÃº
+    // Compat: algunos builds usan 'informe' (singular) en el dataset del menú
     if(t === "informe" || t === "reportes" || t === "reporte") return "informes";
-    if(t === "campaÃ±a" || t === "campana") return "campanas";
+    if(t === "campaña" || t === "campana") return "campanas";
     return t;
   }
 
@@ -1379,12 +1379,12 @@ function setActive(tab){
   navItems.forEach(b=> b.onclick=()=> go(b.dataset.tab));
 
   // ---- Refresh UI when data changes (campaigns/payments) ----
-  // campaigns.js emite este evento al crear/editar/cerrar campaÃ±as.
+  // campaigns.js emite este evento al crear/editar/cerrar campañas.
   const __refresh = (ev)=>{
     try{
       // V11.9: evitar re-render del Home por eventos no financieros.
-      // El parpadeo del banner y el retorno del carrusel venÃ­an de renderHome()
-      // disparado por localStorage/cursapp:dataChanged de mÃ³dulos visuales.
+      // El parpadeo del banner y el retorno del carrusel venían de renderHome()
+      // disparado por localStorage/cursapp:dataChanged de módulos visuales.
       const key = String(ev && ev.detail && ev.detail.key || '');
       const source = String(ev && ev.detail && ev.detail.source || '').toLowerCase();
       const tab = (state && state.tab) ? state.tab : 'home';
@@ -1415,7 +1415,7 @@ function setActive(tab){
       // V11.11: en Home no re-renderizar por eventos internos.
       // El Dashboard horizontal y el banner parpadeaban porque cambios de localStorage
       // disparaban renderHome() mientras el usuario estaba mirando/deslizando.
-      // Home se vuelve a pintar solo al entrar explÃ­citamente con go('home').
+      // Home se vuelve a pintar solo al entrar explícitamente con go('home').
       if(tab==='home') return;
 
       // materializa pagos faltantes solo si el evento afecta datos operacionales.
@@ -1433,7 +1433,7 @@ function setActive(tab){
   window.addEventListener('cursapp:dataUpdated', __refresh);
 
   
-  // ----- Watcher: refrescar CampaÃ±as cuando cambian las tasks -----
+  // ----- Watcher: refrescar Campañas cuando cambian las tasks -----
   let __TASKS_SIG = "";
   function __tasksSig(){
     try{
@@ -1510,13 +1510,13 @@ function setActive(tab){
       if(typeof window.openAvisosConfigReal === "function") return window.openAvisosConfigReal();
       if(typeof window.openAvisosConfig === "function" && window.openAvisosConfig !== openAvisosConfigSafe) return window.openAvisosConfig();
     }catch(e){}
-    alert("El mÃ³dulo de avisos no estÃ¡ disponible. Revisa assets/configavisos.js.");
+    alert("El módulo de avisos no está disponible. Revisa assets/configavisos.js.");
   }
   window.openAvisosConfig = openAvisosConfigSafe;
   window.openAvisosConfigSafe = openAvisosConfigSafe;
 
 
-  // Fix definitivo Avisos: delegaciÃ³n robusta para botones del home Presidente.
+  // Fix definitivo Avisos: delegación robusta para botones del home Presidente.
   function bindAvisosButtonFallback(){
     if(window.__cursappAvisosButtonFallbackBound) return;
     window.__cursappAvisosButtonFallbackBound = true;
@@ -1524,7 +1524,7 @@ function setActive(tab){
       const btn = e.target && e.target.closest ? e.target.closest("button") : null;
       if(!btn) return;
       // No interceptar acciones internas de la modal de avisos.
-      // Antes el listener capturaba "ðŸ“¢ Enviar aviso" y reabrÃ­a la modal en vez de guardar.
+      // Antes el listener capturaba "📢 Enviar aviso" y reabría la modal en vez de guardar.
       if(
         btn.id === "saveAvisoCursoBtn" ||
         btn.id === "cerrarAvisosConfig" ||
@@ -1536,9 +1536,9 @@ function setActive(tab){
       }
 
       const txt = (btn.textContent || "").replace(/\s+/g," ").trim().toLowerCase();
-      const isAvisosQuick = txt.includes("avisos") || txt.includes("ðŸ“¢") || txt.includes("âœ‰");
+      const isAvisosQuick = txt.includes("avisos") || txt.includes("📢") || txt.includes("✉");
       if(!isAvisosQuick) return;
-      // Solo interceptar si es botÃ³n de la pÃ¡gina Presidente y no es cerrar/eliminar.
+      // Solo interceptar si es botón de la página Presidente y no es cerrar/eliminar.
       if(txt.includes("cerrar") || txt.includes("eliminar")) return;
       try{
         if(typeof window.openAvisosCursoSendModal === "function"){
@@ -1608,11 +1608,11 @@ function setActive(tab){
 
   function presCleanText(value){
     return String(value ?? "")
-      .replace(/Ã¡/g,"á").replace(/Ã©/g,"é").replace(/Ã­/g,"í").replace(/Ã³/g,"ó").replace(/Ãº/g,"ú")
-      .replace(/Ã/g,"Á").replace(/Ã‰/g,"É").replace(/Ã/g,"Í").replace(/Ã“/g,"Ó").replace(/Ãš/g,"Ú")
-      .replace(/Ã±/g,"ñ").replace(/Ã‘/g,"Ñ")
-      .replace(/Â°/g,"°").replace(/Ã‚Â°/g,"°").replace(/Â·/g,"·").replace(/â†’/g,"→")
-      .replace(/â€”/g,"—").replace(/â€“/g,"–")
+      .replace(/á/g,"á").replace(/é/g,"é").replace(/í/g,"í").replace(/ó/g,"ó").replace(/ú/g,"ú")
+      .replace(/Á/g,"Á").replace(/É/g,"É").replace(/Í/g,"Í").replace(/Ó/g,"Ó").replace(/Ú/g,"Ú")
+      .replace(/ñ/g,"ñ").replace(/Ñ/g,"Ñ")
+      .replace(/°/g,"°").replace(/°/g,"°").replace(/·/g,"·").replace(/→/g,"→")
+      .replace(/—/g,"—").replace(/–/g,"–")
       .trim();
   }
 
@@ -1877,24 +1877,24 @@ function renderHome(){
       return `
         <article class="cpV6HeroCard">
           <div class="cpV6HeroIndex">${i+1} de ${Math.max(1, active.length)}</div>
-          <div class="cpV6HeroTitle">${esc(t.title||"CampaÃ±a")}</div>
-          <div class="cpV6HeroMeta">${esc(campaignTypeLabel(t))} Â· vence ${esc(t.dueDate||"â€”")}</div>
+          <div class="cpV6HeroTitle">${esc(t.title||"Campaña")}</div>
+          <div class="cpV6HeroMeta">${esc(campaignTypeLabel(t))} · vence ${esc(t.dueDate||"—")}</div>
           <div class="cpV6HeroAmount">${clp(pend)}</div>
           <div class="cpV6Progress"><span style="width:${pct}%"></span></div>
-          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="window.go('campanas')">Ver campaÃ±a</button><button class="cpV6LinkBtn" onclick="window.go('deudores')">Deudores â€º</button></div>
+          <div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="window.go('campanas')">Ver campaña</button><button class="cpV6LinkBtn" onclick="window.go('deudores')">Deudores ›</button></div>
         </article>`;
-    }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campaÃ±as activas</div><div class="cpV6HeroMeta">Crea una campaÃ±a para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaÃ±a</button></div></article>`;
+    }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Crea una campaña para iniciar cobros del curso.</div><div class="cpV6HeroAmount">${clp(0)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="openCreateCampaign()">Crear campaña</button></div></article>`;
 
     app.innerHTML = `
       <div class="cpV6Page cpV6President">
-        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente ðŸ‘‹</div><div class="cpV6Sub">GestiÃ³n ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} Â· ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="window.openAvisosConfigSafe()">âœ‰ï¸</button></section>
-        <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">ðŸ“Š</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
-        ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rÃ¡pido</b><span>${esc(heroAlerts.join(" Â· "))}</span></div>` : ``}
-        <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>ðŸ’°</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>â³</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>ðŸ‘¥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>ðŸ¦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
-        <details class="cpV6Section" open><summary><span><i>ðŸ“Œ</i><b>CampaÃ±as activas</b><em>${active.length} en gestiÃ³n</em></span><strong>${active.length}</strong><u>âŒ„</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"CampaÃ±a")}</b><small>${esc(campaignTypeLabel(t))} Â· ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campaÃ±as activas.</div>`}<button class="cpV6SoftBtn" onclick="window.go('campanas')">Ver todas las campaÃ±as</button></div></details>
-        <details class="cpV6Section"><summary><span><i>ðŸ§¾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>âŒ„</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>ProyecciÃ³n mÃ¡xima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="window.go('deudores')">Ver deudores</button></div></details>
-        <details class="cpV6Section"><summary><span><i>ðŸ“„</i><b>Informes</b><em>${last ? 'Ãšltimo publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>âŒ„</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="window.go('informes')">Ver</button></div>` : `<div class="muted">AÃºn no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
-        <div class="cpV6QuickTitle">Accesos rÃ¡pidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>âž•</span>Crear campaÃ±a</button><button onclick="window.go('campanas')"><span>ðŸ“Œ</span>CampaÃ±as</button><button onclick="window.go('deudores')"><span>ðŸ§¾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>ðŸ“¢</span>Avisos</button></div>
+        <section class="cpV6Welcome"><div class="cpV6Avatar">P</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Presidente 👋</div><div class="cpV6Sub">Gestión ejecutiva del curso</div><div class="cpV6Sub small">Periodo ${esc(ym)} · ${apods} apoderado(s)</div></div><button class="cpV6IconBtn" onclick="window.openAvisosConfigSafe()">✉ï¸</button></section>
+        <section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">📊</span><span>DASHBOARD EJECUTIVO</span></div><div class="cpV6HeroTrack">${campaignSlides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>
+        ${heroAlerts.length ? `<div class="cpV6Notice"><b>Resumen rápido</b><span>${esc(heroAlerts.join(" · "))}</span></div>` : ``}
+        <div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>💰</span><small>Cobrado mes</small><b>${clp(recMes)}</b></div><div class="cpV6Kpi"><span>⏳</span><small>Por cobrar</small><b>${clp(pendMes)}</b></div><div class="cpV6Kpi"><span>👥</span><small>Deudores</small><b>${debtorsMes}</b></div><div class="cpV6Kpi"><span>🏦</span><small>Saldo</small><b>${clp(sal)}</b></div></div>
+        <details class="cpV6Section" open><summary><span><i>📌</i><b>Campañas activas</b><em>${active.length} en gestión</em></span><strong>${active.length}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(t=>`<div class="cpV6ListItem"><div><b>${esc(t.title||"Campaña")}</b><small>${esc(campaignTypeLabel(t))} · ${esc(t.dueDate||"sin fecha")}</small></div><strong>${clp(pendingTaskEstimated(t))}</strong></div>`).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="window.go('campanas')">Ver todas las campañas</button></div></details>
+        <details class="cpV6Section"><summary><span><i>🧾</i><b>Deudores</b><em>Personas con cuotas pendientes</em></span><strong>${debtorsMes}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Pendiente del mes</b><small>Proyección máxima: ${clp(pendProjMes)}</small></div><strong>${clp(pendMes)}</strong></div><button class="cpV6SoftBtn" onclick="window.go('deudores')">Ver deudores</button></div></details>
+        <details class="cpV6Section"><summary><span><i>📄</i><b>Informes</b><em>${last ? 'Último publicado disponible' : 'Sin informes publicados'}</em></span><strong>${dirty ? 'Actualizar' : 'Ver'}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${last ? `<div class="cpV6ListItem"><div><b>Periodo ${esc(last.period)}</b><small>Emitido ${esc(last.generatedAtHuman||last.generatedAt||"")}</small></div><button class="cpV6MiniBtn" onclick="window.go('informes')">Ver</button></div>` : `<div class="muted">Aún no hay informes publicados.</div>`}<button class="cpV6SoftBtn" onclick="confirmGenerateReport()">${dirty ? 'Actualizar y publicar' : 'Publicar informe'}</button></div></details>
+        <div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="openCreateCampaign()"><span>➕</span>Crear campaña</button><button onclick="window.go('campanas')"><span>📌</span>Campañas</button><button onclick="window.go('deudores')"><span>🧾</span>Deudores</button><button onclick="window.openAvisosConfigSafe()"><span>📢</span>Avisos</button></div>
         <div data-monetization-slot="presidente"></div>
       </div>`;
     try{ if(window.CursappPresidentStable) window.CursappPresidentStable.injectStableCss(); }catch(e){}
@@ -2179,14 +2179,14 @@ function renderHome(){
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(17,24,39,.08);">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
           <div>
-            <div style="font-weight:950;">InformaciÃ³n</div>
-            <div class="muted" style="margin-top:4px;">Cotizaciones Â· ${cotz.length} Ã­tem(s)${total?` Â· Total ${clp(total)}`:""}</div>
+            <div style="font-weight:950;">Información</div>
+            <div class="muted" style="margin-top:4px;">Cotizaciones · ${cotz.length} ítem(s)${total?` · Total ${clp(total)}`:""}</div>
           </div>
           <button class="btnx" onclick="Campaigns.openQuotesDetailById('${esc(t.id)}')">Ver detalle</button>
         </div>
         <div class="muted" style="margin-top:10px;display:grid;gap:6px;">
-          ${first.map(c=>`<div>â€¢ ${esc(c.nombre || "CotizaciÃ³n")} ${c.monto_total?`Â· <b>${clp(c.monto_total)}</b>`:""}${c.descripcion?` Â· ${esc(c.descripcion)}`:""}</div>`).join("")}
-          ${cotz.length>2 ? `<div>â€¦ y ${cotz.length-2} mÃ¡s</div>` : ``}
+          ${first.map(c=>`<div>• ${esc(c.nombre || "Cotización")} ${c.monto_total?`· <b>${clp(c.monto_total)}</b>`:""}${c.descripcion?` · ${esc(c.descripcion)}`:""}</div>`).join("")}
+          ${cotz.length>2 ? `<div>… y ${cotz.length-2} más</div>` : ``}
         </div>
       </div>
     `;
@@ -2852,10 +2852,10 @@ function renderInformes(){
     }
 
     function statusChip(){
-      // SemÃ¡foro simple por cumplimiento mes y deudores
-      if(cumplimientoMes>=85 && deudMes<=2) return `<span class="chipInfoPill ok">ðŸŸ¢ En buen camino</span>`;
-      if(cumplimientoMes>=55) return `<span class="chipInfoPill warn">ðŸŸ¡ AtenciÃ³n</span>`;
-      return `<span class="chipInfoPill danger">ðŸ”´ Urgente</span>`;
+      // Semáforo simple por cumplimiento mes y deudores
+      if(cumplimientoMes>=85 && deudMes<=2) return `<span class="chipInfoPill ok">🟢 En buen camino</span>`;
+      if(cumplimientoMes>=55) return `<span class="chipInfoPill warn">🟡 Atención</span>`;
+      return `<span class="chipInfoPill danger">🔴 Urgente</span>`;
     }
 
     function gastosPorCategoria(){
@@ -2926,17 +2926,17 @@ const ym = currentYM();
 
     const pct = Math.max(0, Math.min(100, Number(cumplimientoMes||0)));
     const chip = statusChip(); // ya viene calculado arriba
-    const semMsg = pct>=90 ? "Â¡Vamos excelente!" : (pct>=50 ? "Vamos avanzando, aÃºn falta un poco" : "AtenciÃ³n: queda bastante por pagar este mes");
+    const semMsg = pct>=90 ? "¡Vamos excelente!" : (pct>=50 ? "Vamos avanzando, aún falta un poco" : "Atención: queda bastante por pagar este mes");
 
     const campRows = camps.map(t=>{
-      const title = esc(t.title || t.name || "CampaÃ±a");
+      const title = esc(t.title || t.name || "Campaña");
       const icon = esc(t.icon || "");
       const isMonthly = !!t.isMonthly;
       const isVol = t.isMandatory===false || t.mandatory===false || t.obligatoria===false;
-      const mode = isMonthly ? "Mensual" : "Ãšnico";
+      const mode = isMonthly ? "Mensual" : "Único";
       const mand = isVol ? "Voluntaria" : "Obligatoria";
 
-      // Solo pagos del mes (si existen dueYm). Si no existen, cae a estimaciÃ³n.
+      // Solo pagos del mes (si existen dueYm). Si no existen, cae a estimación.
       const rel = allPays.filter(p => p && (p.fromTaskId===t.id || p.taskId===t.id));
       const relYm = rel.filter(p => (p.dueYm||p.ym||"")===ym);
 
@@ -2961,7 +2961,7 @@ const ym = currentYM();
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
             <div>
               <div style="font-weight:950;font-size:18px;">${title} ${icon}</div>
-              <div class="muted" style="margin-top:2px;font-size:13px;">${mode} Â· ${mand}</div>
+              <div class="muted" style="margin-top:2px;font-size:13px;">${mode} · ${mand}</div>
             </div>
             <div style="font-weight:950;font-size:18px;">${campPctClamped}%</div>
           </div>
@@ -2969,9 +2969,9 @@ const ym = currentYM();
             <div style="height:100%;width:${campPctClamped}%;background:#4f46e5;border-radius:999px;"></div>
           </div>
           <div style="margin-top:10px;font-size:13px;opacity:.92;display:grid;gap:4px;">
-            <div>ðŸ’° Recaudado: <b>${clp(totalCollected)}</b></div>
-            <div>â³ Pendiente mes: <b>${clp(Math.max(0, monthProjected - monthPaid))}</b></div>
-            <div>ðŸŽ¯ Objetivo: <b>${clp(totalExpected)}</b></div>
+            <div>💰 Recaudado: <b>${clp(totalCollected)}</b></div>
+            <div>⏳ Pendiente mes: <b>${clp(Math.max(0, monthProjected - monthPaid))}</b></div>
+            <div>🎯 Objetivo: <b>${clp(totalExpected)}</b></div>
           </div>
         </div>
       `;
@@ -2990,8 +2990,8 @@ const ym = currentYM();
         <div style="margin-top:14px;${cardStyle}background:#f8fafc;">
           <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
             <div>
-              <div style="font-weight:950;font-size:16px;">ðŸŸ¡ Cumplimiento del mes</div>
-              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} Â· <b>${esc(ym)}</b></div>
+              <div style="font-weight:950;font-size:16px;">🟡 Cumplimiento del mes</div>
+              <div style="font-size:13px;opacity:.75;margin-top:2px;">${esc(semMsg)} · <b>${esc(ym)}</b></div>
             </div>
             <div style="font-weight:950;font-size:18px;">${pct}%</div>
           </div>
@@ -2999,21 +2999,21 @@ const ym = currentYM();
             <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:999px;"></div>
           </div>
           <div style="margin-top:8px;font-size:13px;opacity:.9;">
-            ðŸ’µ Cobrado mes: <b>${clp(recMes)}</b> Â· â³ ProyecciÃ³n mes: <b>${clp(projMaxMes)}</b> Â· ðŸ‘¥ Deudores mes: <b>${deudMes}</b>
+            💵 Cobrado mes: <b>${clp(recMes)}</b> · ⏳ Proyección mes: <b>${clp(projMaxMes)}</b> · 👥 Deudores mes: <b>${deudMes}</b>
           </div>
         </div>
 
         <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          ${kpi("ðŸ’°","Recaudado este mes", clp(recMes))}
-          ${kpi("ðŸ§¾","Gastado este mes", clp(gastoMes))}
-          ${kpi("ðŸ¦","Saldo disponible", clp(saldo))}
-          ${kpi("â³","Por cobrar este mes", clp(Math.max(0, porCobrarMes)))}
+          ${kpi("💰","Recaudado este mes", clp(recMes))}
+          ${kpi("🧾","Gastado este mes", clp(gastoMes))}
+          ${kpi("🏦","Saldo disponible", clp(saldo))}
+          ${kpi("⏳","Por cobrar este mes", clp(Math.max(0, porCobrarMes)))}
         </div>
 
         <div style="margin-top:16px;">
-          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">ðŸ“Œ Indicadores por campaÃ±a</div>
+          <div style="font-weight:950;font-size:16px;margin-bottom:10px;">📌 Indicadores por campaña</div>
           <div style="display:grid;gap:10px;">
-            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campaÃ±as activas.</div>`}
+            ${campRows || `<div style="opacity:.7;font-size:13px;">No hay campañas activas.</div>`}
           </div>
         </div>
 
@@ -3045,12 +3045,12 @@ const ym = currentYM();
         })
         .sort((a,b)=> (b.rec - a.rec));
 
-      const cumplimientoBar = bar(cumplimientoMes, "Cumplimiento del mes (recaudado vs proyecciÃ³n)");
+      const cumplimientoBar = bar(cumplimientoMes, "Cumplimiento del mes (recaudado vs proyección)");
       const cats = gastosPorCategoria().slice(0,6);
       const catsBars = cats.length ? `
         <div class="card" style="margin-top:14px;padding:14px;">
-          <div style="font-weight:950;">Gastos por categorÃ­a</div>
-          <div class="muted" style="margin-top:6px;">DistribuciÃ³n total (no solo mes)</div>
+          <div style="font-weight:950;">Gastos por categoría</div>
+          <div class="muted" style="margin-top:6px;">Distribución total (no solo mes)</div>
           <div style="margin-top:10px;display:grid;gap:10px;">
             ${cats.map(c=>{
               const total = sum(cats, x=>x.total);
@@ -3073,12 +3073,12 @@ const ym = currentYM();
 
       const table = campRows.length ? `
         <div class="card" style="margin-top:14px;padding:14px;">
-          <div style="font-weight:950;">CampaÃ±as activas (cuadratura)</div>
+          <div style="font-weight:950;">Campañas activas (cuadratura)</div>
           <div style="margin-top:10px;overflow:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <thead>
                 <tr class="muted">
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">CampaÃ±a</th>
+                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Campaña</th>
                   <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Recaudado</th>
                   <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Gastado</th>
                   <th style="text-align:right;padding:8px;border-bottom:1px solid rgba(0,0,0,.08);">Saldo</th>
@@ -3091,13 +3091,13 @@ const ym = currentYM();
                   <tr>
                     <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);">
                       <div style="font-weight:900;">${esc(r.t.title||"")}</div>
-                      <div class="muted" style="font-size:12px;">${esc(r.t.type==="monthly"?"Mensual":"Ãšnico")} Â· ${r.t.mandatoryParticipation===false?"Voluntaria":"Obligatoria"}</div>
+                      <div class="muted" style="font-size:12px;">${esc(r.t.type==="monthly"?"Mensual":"Único")} · ${r.t.mandatoryParticipation===false?"Voluntaria":"Obligatoria"}</div>
                     </td>
                     <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.rec)}</td>
                     <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.gas)}</td>
                     <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;font-weight:950;">${clp(r.sal)}</td>
                     <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:right;">${clp(r.pend)}</td>
-                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:center;">${r.av==null?"â€”":(pct(r.av)+"%")}</td>
+                    <td style="padding:8px;border-bottom:1px solid rgba(0,0,0,.05);text-align:center;">${r.av==null?"—":(pct(r.av)+"%")}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -3114,7 +3114,7 @@ const ym = currentYM();
               <div style="font-weight:950;font-size:18px;">Informe para Directiva</div>
               <div class="muted" style="margin-top:4px;">Cuadratura, control y seguimiento.</div>
             </div>
-            <span class="chipInfoPill ${cuadOK?"ok":"warn"}">ðŸ§® Cuadratura ${cuadOK?"OK":"Revisar"}</span>
+            <span class="chipInfoPill ${cuadOK?"ok":"warn"}">🧮 Cuadratura ${cuadOK?"OK":"Revisar"}</span>
           </div>
 
           <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -3143,8 +3143,8 @@ const ym = currentYM();
 
     const toggleHTML = `
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
-        <button class="btnx ${reportView==='apoderados'?'primary':''}" onclick="window.setReportView('apoderados')">ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦ Apoderados</button>
-        <button class="btnx ${reportView==='directiva'?'primary':''}" onclick="window.setReportView('directiva')">ðŸ›ï¸ Directiva</button>
+        <button class="btnx ${reportView==='apoderados'?'primary':''}" onclick="window.setReportView('apoderados')">👨‍👩‍👧‍👦 Apoderados</button>
+        <button class="btnx ${reportView==='directiva'?'primary':''}" onclick="window.setReportView('directiva')">🏛ï¸ Directiva</button>
       </div>
     `;
 ;
@@ -3540,7 +3540,7 @@ function viewExpenseAttachment(expenseId){
       app.innerHTML = `
         <div class="warnBox">
           <div style="font-weight:950;">Error en Informe</div>
-          <div class="muted" style="margin-top:6px;">En celular no existe F12. Copia el detalle de abajo y pÃ©gamelo aquÃ­.</div>
+          <div class="muted" style="margin-top:6px;">En celular no existe F12. Copia el detalle de abajo y pégamelo aquí.</div>
           <div class="card" style="margin-top:12px;border:1px dashed rgba(0,0,0,.18);">
             <div style="font-weight:900;margin-bottom:8px;">Detalle</div>
             <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;">${esc(msg)}${stack?`\n\n${esc(stack)}`:""}</div>
@@ -3580,7 +3580,7 @@ function viewExpenseAttachment(expenseId){
   window.printCurrentInforme = function(){
     try{
       const root = document.getElementById("informeRoot");
-      if(!root){ alert("No se encontrÃ³ el informe en pantalla."); return; }
+      if(!root){ alert("No se encontró el informe en pantalla."); return; }
       const html = buildPrintShell(root.innerHTML);
       openPrintWindow(html);
     }catch(e){
@@ -3630,7 +3630,7 @@ window.printExecutive = function(){
   function openPrintWindow(html){
     // Reutiliza la misma ventana para evitar PDFs duplicados
     const w = window.open("", "cursapp_print");
-    if(!w){ alert("No se pudo abrir la ventana de impresiÃ³n. Revisa el bloqueador de popups."); return; }
+    if(!w){ alert("No se pudo abrir la ventana de impresión. Revisa el bloqueador de popups."); return; }
     w.document.open();
     w.document.write(html);
     w.document.close();
@@ -3652,9 +3652,9 @@ window.printExecutive = function(){
     const cumplimientoPct = cumplimientoBase > 0 ? Math.round((recMes / cumplimientoBase) * 100) : 0;
 
     const health = (() => {
-      if (saldo > 0 && cumplimientoPct >= 70) return { label: "ðŸŸ¢ Salud financiera: Buena", cls: "good" };
-      if (saldo >= 0 && cumplimientoPct >= 40) return { label: "ðŸŸ¡ Salud financiera: AtenciÃ³n", cls: "warn" };
-      return { label: "ðŸ”´ Salud financiera: Riesgo", cls: "risk" };
+      if (saldo > 0 && cumplimientoPct >= 70) return { label: "🟢 Salud financiera: Buena", cls: "good" };
+      if (saldo >= 0 && cumplimientoPct >= 40) return { label: "🟡 Salud financiera: Atención", cls: "warn" };
+      return { label: "🔴 Salud financiera: Riesgo", cls: "risk" };
     })();
 
     const campRows = tasks()
@@ -3665,19 +3665,19 @@ window.printExecutive = function(){
         const sal = rec - gas;
         const pend = pendingTaskEstimated(t);
         const meta = Number(t.goalTotal || 0);
-        const tipo = String(t.type || "") === "monthly" ? "Mensual" : "Ãšnico";
+        const tipo = String(t.type || "") === "monthly" ? "Mensual" : "Único";
         const part = t.mandatoryParticipation === false ? "Voluntaria" : "Obligatoria";
         return `
           <tr>
             <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;">
               <div style="font-weight:900;">${esc(t.title || "")}</div>
-              <div class="small">${tipo} Â· ${part}</div>
+              <div class="small">${tipo} · ${part}</div>
             </td>
             <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(rec)}</td>
             <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(gas)}</td>
             <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:900;">${clp(sal)}</td>
             <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${clp(pend)}</td>
-            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${meta ? clp(meta) : "â€”"}</td>
+            <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:right;">${meta ? clp(meta) : "—"}</td>
           </tr>
         `;
       }).join("");
@@ -3688,7 +3688,7 @@ window.printExecutive = function(){
       .slice(0, 10)
       .map(g=>{
         const ambito = g.scope === "campaign"
-          ? (tasks().find(t => t.id === g.campaignId)?.title || "CampaÃ±a")
+          ? (tasks().find(t => t.id === g.campaignId)?.title || "Campaña")
           : "Curso";
         return `
           <tr>
@@ -3729,7 +3729,7 @@ window.printExecutive = function(){
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
               <div>
                 <h1>Informe Ejecutivo del Curso</h1>
-                <div class="sub">Periodo: <b>${esc(ym)}</b> Â· Emitido: ${esc(new Date().toLocaleString("es-CL"))}</div>
+                <div class="sub">Periodo: <b>${esc(ym)}</b> · Emitido: ${esc(new Date().toLocaleString("es-CL"))}</div>
               </div>
               <div class="badge ${health.cls}">${health.label}</div>
             </div>
@@ -3752,19 +3752,19 @@ window.printExecutive = function(){
             </div>
 
             <div class="section card">
-              <h2>CampaÃ±as</h2>
+              <h2>Campañas</h2>
               <table>
                 <thead>
-                  <tr><th>CampaÃ±a</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th><th style="text-align:right;">Pendiente</th><th style="text-align:right;">Meta</th></tr>
+                  <tr><th>Campaña</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th><th style="text-align:right;">Pendiente</th><th style="text-align:right;">Meta</th></tr>
                 </thead>
-                <tbody>${campRows || `<tr><td colspan="6" style="padding:12px 8px;" class="small">Sin campaÃ±as registradas.</td></tr>`}</tbody>
+                <tbody>${campRows || `<tr><td colspan="6" style="padding:12px 8px;" class="small">Sin campañas registradas.</td></tr>`}</tbody>
               </table>
             </div>
 
             <div class="section card">
               <h2>Gastos recientes</h2>
               <table>
-                <thead><tr><th>Fecha</th><th>Ãmbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
                 <tbody>${gastos || `<tr><td colspan="4" style="padding:12px 8px;" class="small">Sin gastos registrados.</td></tr>`}</tbody>
               </table>
             </div>
@@ -3793,7 +3793,7 @@ function buildSnapshotExecutivePrintHTML(rep){
     const camps = Array.isArray(rep.campaigns) ? rep.campaigns : [];
 
     const rowsEx = ex.length ? ex.map(e=>{
-      const scope = (e.scope==="campaign") ? (camps.find(c=>c.id===e.campaignId)?.title || "CampaÃ±a") : "Curso";
+      const scope = (e.scope==="campaign") ? (camps.find(c=>c.id===e.campaignId)?.title || "Campaña") : "Curso";
       return `<tr>
         <td>${esc(e.date||"")}</td>
         <td>${esc(scope)}</td>
@@ -3807,13 +3807,13 @@ function buildSnapshotExecutivePrintHTML(rep){
       return `<tr>
         <td>
           <div style="font-weight:800;">${esc(c.title||"")}</div>
-          <div style="opacity:.75;font-size:12px;">${(c.kind==="monthly"?"Mensual":"Ãšnico")} Â· ${(c.participation==="mandatory"?"Obligatoria":"Voluntaria")}</div>
+          <div style="opacity:.75;font-size:12px;">${(c.kind==="monthly"?"Mensual":"Único")} · ${(c.participation==="mandatory"?"Obligatoria":"Voluntaria")}</div>
         </td>
         <td style="text-align:right;">${clp(c.recaudado||0)}</td>
         <td style="text-align:right;">${clp(c.gastado||0)}</td>
         <td style="text-align:right;font-weight:900;">${clp(sal)}</td>
       </tr>`;
-    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin campaÃ±as activas</td></tr>`;
+    }).join("") : `<tr><td colspan="4" style="opacity:.7;">Sin campañas activas</td></tr>`;
 
     const css = `
       body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial; padding:18px; color:#0f172a;}
@@ -3832,7 +3832,7 @@ function buildSnapshotExecutivePrintHTML(rep){
       <html>
       <head><meta charset="utf-8"><style>${css}</style></head>
       <body>
-        <h1>Informe Ejecutivo del Curso â€¢ ${esc(ym)}</h1>
+        <h1>Informe Ejecutivo del Curso • ${esc(ym)}</h1>
         <div class="muted">Emitido: ${esc(rep.generatedAtHuman||rep.generatedAt||"")}</div>
 
         <div class="grid">
@@ -3846,15 +3846,15 @@ function buildSnapshotExecutivePrintHTML(rep){
           <div class="card"><div class="label">Generado por</div><div class="val" style="font-size:18px;">Cursapp</div></div>
         </div>
 
-        <h2 style="margin-top:22px;font-size:16px;">CampaÃ±as activas (cuadratura)</h2>
+        <h2 style="margin-top:22px;font-size:16px;">Campañas activas (cuadratura)</h2>
         <table>
-          <thead><tr><th>CampaÃ±a</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th></tr></thead>
+          <thead><tr><th>Campaña</th><th style="text-align:right;">Recaudado</th><th style="text-align:right;">Gastado</th><th style="text-align:right;">Saldo</th></tr></thead>
           <tbody>${rowsCamp}</tbody>
         </table>
 
         <h2 style="margin-top:22px;font-size:16px;">Gastos recientes</h2>
         <table>
-          <thead><tr><th>Fecha</th><th>Ãmbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Ámbito</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
           <tbody>${rowsEx}</tbody>
         </table>
       </body>
@@ -3863,7 +3863,7 @@ function buildSnapshotExecutivePrintHTML(rep){
   }
 
 function buildSnapshotPrintHTML(r){
-    // Snapshot PDF (publicado): mÃ¡s completo y consistente con Directiva.
+    // Snapshot PDF (publicado): más completo y consistente con Directiva.
     const esc = (s)=>String(s??"").replace(/[&<>'"]/g,(c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c]));
     const clp = (n)=>"$"+Number(n||0).toLocaleString("es-CL");
 
@@ -3877,16 +3877,16 @@ function buildSnapshotPrintHTML(r){
     const penTotal = Number(r.pendienteCurso||0);
     const deuTotal = Number(r.deudores||0);
 
-    // Si el snapshot trae mÃ©tricas del mes, las mostramos (si no, se ocultan)
+    // Si el snapshot trae métricas del mes, las mostramos (si no, se ocultan)
     const cobMes = Number(r.cobradoMes ?? r.recaudadoMes ?? 0);
     const proyMes = Number(r.proyeccionMes ?? r.porCobrarMesTarget ?? 0);
     const porCobMes = Number(r.porCobrarMes ?? (proyMes ? (proyMes - cobMes) : 0));
     const deuMes = Number(r.deudoresMes ?? r.deudoresMonth ?? 0);
 
-    // CampaÃ±as (si el snapshot las guarda)
+    // Campañas (si el snapshot las guarda)
     const camps = Array.isArray(r.campaigns) ? r.campaigns : (Array.isArray(r.byCampaign) ? r.byCampaign : []);
     const campRows = camps.length ? camps.map(c=>{
-      const title = esc(c.title||c.name||"CampaÃ±a");
+      const title = esc(c.title||c.name||"Campaña");
       const pct = Math.max(0, Math.min(100, Number(c.pct ?? c.progress ?? 0)));
       const rec = Number(c.recaudado ?? c.collected ?? 0);
       const pen = Number(c.pendienteMes ?? c.pendingMonth ?? c.pendiente ?? 0);
@@ -3898,10 +3898,10 @@ function buildSnapshotPrintHTML(r){
             <div class="pct">${pct}%</div>
           </div>
           <div class="bar"><div class="fill" style="width:${pct}%;"></div></div>
-          <div class="meta">Recaudado: <b>${clp(rec)}</b> Â· Pendiente mes: <b>${clp(pen)}</b> Â· Objetivo: <b>${clp(goal)}</b></div>
+          <div class="meta">Recaudado: <b>${clp(rec)}</b> · Pendiente mes: <b>${clp(pen)}</b> · Objetivo: <b>${clp(goal)}</b></div>
         </div>
       `;
-    }).join("") : `<div class="muted" style="margin-top:8px;">Sin detalle por campaÃ±a en este snapshot.</div>`;
+    }).join("") : `<div class="muted" style="margin-top:8px;">Sin detalle por campaña en este snapshot.</div>`;
 
     const showMonth = !!(r.cobradoMes || r.recaudadoMes || r.proyeccionMes || r.porCobrarMes || r.deudoresMes);
 
@@ -3933,7 +3933,7 @@ function buildSnapshotPrintHTML(r){
           </style>
         </head>
         <body>
-          <h1>Informe del Curso Â· ${esc(period)}</h1>
+          <h1>Informe del Curso · ${esc(period)}</h1>
           <div class="sub">Emitido: ${esc(genAt || new Date().toLocaleString("es-CL"))}</div>
 
           ${showMonth ? `
@@ -3941,7 +3941,7 @@ function buildSnapshotPrintHTML(r){
             <div class="st">Mes publicado</div>
             <div class="grid">
               <div class="k"><div class="t">Cobrado mes</div><div class="v">${clp(cobMes)}</div></div>
-              <div class="k"><div class="t">ProyecciÃ³n mes</div><div class="v">${clp(proyMes)}</div></div>
+              <div class="k"><div class="t">Proyección mes</div><div class="v">${clp(proyMes)}</div></div>
               <div class="k"><div class="t">Por cobrar mes</div><div class="v">${clp(porCobMes)}</div></div>
               <div class="k"><div class="t">Deudores mes</div><div class="v">${Number(deuMes||0)}</div></div>
             </div>
@@ -3960,7 +3960,7 @@ function buildSnapshotPrintHTML(r){
           </div>
 
           <div class="section">
-            <div class="st">Indicadores por campaÃ±a</div>
+            <div class="st">Indicadores por campaña</div>
             ${campRows}
           </div>
 
@@ -3976,31 +3976,31 @@ function buildSnapshotPrintHTML(r){
   window.openEditCampaign = function (taskId) { Campaigns.openEdit(taskId); };
   window.openCloseCampaign = function () { Campaigns.openClose(() => activeTasks()); };
 
-  // Mantener ELIMINAR campaÃ±a (activa) en Presidente
+  // Mantener ELIMINAR campaña (activa) en Presidente
   
-  // âœ… Publicar cobros (canÃ³nico): evita generar pagos "globales" que luego duplican montos.
+  // ✅ Publicar cobros (canónico): evita generar pagos "globales" que luego duplican montos.
   // Algunos handlers antiguos llamaban a window.publishCobros, por eso lo mantenemos como puente.
   window.publishCobros = function(taskId){
     if(typeof window.publishCobrosForTask === "function"){
       return window.publishCobrosForTask(taskId);
     }
-    alert("No se pudo publicar (funciÃ³n no disponible).");
+    alert("No se pudo publicar (función no disponible).");
   };
 window.deleteCampaign = function(taskId){
     const t = tasks().find(x=>x.id===taskId);
     if(!t) return;
 
-    if(t.closed){ alert("No se puede eliminar una campaÃ±a cerrada."); return; }
-    if(isExpired(t)){ alert("No se puede eliminar una campaÃ±a caducada."); return; }
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
 
-    const msg = `Â¿Eliminar campaÃ±a "${t.title}"?\n\n` +
+    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
       `Regla: pagos pagados pasan a saldo a favor.\n` +
       `Los pendientes se eliminan del ciclo de cobro.\n\n` +
-      `Esto marcarÃ¡ â€œrequiere nuevo informeâ€.`;
+      `Esto marcará “requiere nuevo informe”.`;
 
     if(!confirm(msg)) return;
 
-    // eliminar campaÃ±a
+    // eliminar campaña
     save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
 
     // eliminar rendiciones asociadas
@@ -4008,10 +4008,10 @@ window.deleteCampaign = function(taskId){
 
     // pagos: paid -> credit, pending-like -> remove
     const ps = payments()
-      .filter(p=>!(p.fromTaskId===taskId && isPendingFinancialStatus(p))) // elimina pendientes de esa campaÃ±a
+      .filter(p=>!(p.fromTaskId===taskId && isPendingFinancialStatus(p))) // elimina pendientes de esa campaña
       .map(p=>{
         if(p.fromTaskId===taskId && isPaid(p)){
-          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaÃ±a eliminada"};
+          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
 
   // ----- Publicar cobros (genera pagos por apoderado aprobado) -----
   function endOfMonthISO(ym){
@@ -4062,7 +4062,7 @@ window.deleteCampaign = function(taskId){
           out.unshift({
             id: uid('pay'),
             fromTaskId: t.id,
-            concept: `${t.title} Â· Cuota ${idx}/${months}`,
+            concept: `${t.title} · Cuota ${idx}/${months}`,
             amount: Number(t.amount||0),
             status: 'pending',
             dueDate,
@@ -4102,7 +4102,7 @@ window.deleteCampaign = function(taskId){
     }
     save(KEY_PAYMENTS, out);
     markDirty();
-    alert('Cobros publicados âœ…');
+    alert('Cobros publicados ✅');
     go('campanas');
   }
 
@@ -4115,24 +4115,24 @@ window.deleteCampaign = function(taskId){
     save(KEY_PAYMENTS, ps);
 
     markDirty();
-    alert("CampaÃ±a eliminada âœ… (saldo a favor generado si aplica)");
+    alert("Campaña eliminada ✅ (saldo a favor generado si aplica)");
     go("campanas");
   };
 
   // ----- Publish report (monthly) -----
   window.confirmGenerateReport = function(){
-    if(!confirm("Â¿Publicar informe mensual del curso?")) return;
+    if(!confirm("¿Publicar informe mensual del curso?")) return;
     publishMonthly();
   };
 
   function publishMonthly(period){
     period = period || currentYM();
     if(!/^\d{4}-\d{2}$/.test(period)){
-      alert("Formato invÃ¡lido. Usa YYYY-MM");
+      alert("Formato inválido. Usa YYYY-MM");
       return;
     }
 
-    // âœ… Snapshot: corte oficial (no cambia despuÃ©s)
+    // ✅ Snapshot: corte oficial (no cambia después)
     const s0 = readSession && readSession();
     const courseKey = activeCourseKey() || String(s0?.courseKey||"").trim() || "course";
     const id = `${courseKey}::${period}`;
@@ -4141,7 +4141,7 @@ window.deleteCampaign = function(taskId){
     const exAll = expenses();
     const paysAll = payments();
 
-    // MÃ©tricas del mes (periodo publicado)
+    // Métricas del mes (periodo publicado)
     const cobradoMes = collectedMonth(period);
     const gastadoMes = spentMonth(period);
     const porCobrarMes = pendingMonth(period);
@@ -4154,7 +4154,7 @@ window.deleteCampaign = function(taskId){
     const pendienteCurso = pendingTotal();
     const deudores = deudoresCount();
 
-    // Detalle por campaÃ±as (para PDF ejecutivo del snapshot)
+    // Detalle por campañas (para PDF ejecutivo del snapshot)
     const campaigns = list.map(t=>{
       const kind = String(t.type||"single").toLowerCase()==="monthly" ? "monthly" : "single";
       const participation = (t.mandatoryParticipation === false) ? "voluntary" : "mandatory";
@@ -4170,12 +4170,12 @@ window.deleteCampaign = function(taskId){
         const startYM = ymFromISO(t.startDate||t.dueDate||"");
         if(startYM){
           const months = Math.max(1, Number(t.months||1));
-          // calcula Ã­ndice relativo
+          // calcula índice relativo
           const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
           const cy = parseInt(period.slice(0,4),10), cm = parseInt(period.slice(5,7),10);
           const idx = (cy - sy)*12 + (cm - sm) + 1;
           if(idx>=1 && idx<=months){
-            // usa proyecciÃ³n del mes (ajustada por opted_out si existe)
+            // usa proyección del mes (ajustada por opted_out si existe)
             const people = approvedCount();
             let expected = Number(t.amount||0) * people;
             if(t.mandatoryParticipation === false){
@@ -4205,7 +4205,7 @@ window.deleteCampaign = function(taskId){
 
       return {
         id: t.id,
-        title: t.title || "CampaÃ±a",
+        title: t.title || "Campaña",
         kind,
         participation,
         amount: Number(t.amount||0),
@@ -4239,7 +4239,7 @@ window.deleteCampaign = function(taskId){
       pendienteCurso,
       deudores,
 
-      // MÃ©tricas del mes publicado
+      // Métricas del mes publicado
       cobradoMes,
       gastadoMes,
       porCobrarMes,
@@ -4254,10 +4254,10 @@ window.deleteCampaign = function(taskId){
     const arr = (arr0||[]).filter(x=>!(x && (String(x.id)===id || String(x.period)===period)));
     arr.unshift(rep);
     save(KEY_MONTHLY_REPORTS, arr.slice(0, 3));
-    try{ if(window.createAviso){ window.createAviso({ type:"auto", category:"report", title:"ðŸ“Š Nuevo informe disponible", message:`Ya puedes revisar el informe ${period}.`, createdAt:new Date().toISOString(), actionType:"open_report", dedupeKey:`report:${id||period}` }); } }catch(e){}
+    try{ if(window.createAviso){ window.createAviso({ type:"auto", category:"report", title:"📊 Nuevo informe disponible", message:`Ya puedes revisar el informe ${period}.`, createdAt:new Date().toISOString(), actionType:"open_report", dedupeKey:`report:${id||period}` }); } }catch(e){}
 
     clearDirty();
-    try{ toast(`Informe publicado (${period}) âœ…`); }catch(e){ alert(`Informe publicado (${period}) âœ…`); }
+    try{ toast(`Informe publicado (${period}) ✅`); }catch(e){ alert(`Informe publicado (${period}) ✅`); }
 
     // refrescar vista
     renderInformes();
@@ -4274,7 +4274,7 @@ window.deleteCampaign = function(taskId){
 
   // ----- boot -----
   // Cursapp Fase 1D.6: antes de renderizar, hidratar datos oficiales desde Supabase.
-  // localStorage queda solo como cachÃ© tÃ©cnica generada desde Supabase, no como fuente operacional.
+  // localStorage queda solo como caché técnica generada desde Supabase, no como fuente operacional.
   async function __bootPresidenteSupabaseFirst(){
     const DEMO_SEED = !!(window.CURSAPP && window.CURSAPP.DEMO_MODE);
     if (DEMO_SEED) ensureDemo();
@@ -4298,7 +4298,7 @@ window.deleteCampaign = function(taskId){
       ? window.CURSAPP.consumeNextNavTab()
       : null;
     go(__nextTab || "home");
-    try{ debugPresidenteAlert("despuÃ©s go home"); }catch(e){}
+    try{ debugPresidenteAlert("después go home"); }catch(e){}
   }
   __bootPresidenteSupabaseFirst();
 })();
@@ -4307,17 +4307,17 @@ window.openHelp = function(topic){
   const html =
     '<div class="card" style="max-height:70vh;overflow:auto;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
-        '<div style="font-weight:900;font-size:18px;">â“ Ayuda Presidente</div>' +
+        '<div style="font-weight:900;font-size:18px;">❓ Ayuda Presidente</div>' +
         '<button class="btn ghost" type="button" onclick="closeModal()">Cerrar</button>' +
       '</div>' +
 
       '<div style="margin-top:12px;line-height:1.45;">' +
 
-        '<b>CampaÃ±a obligatoria</b>' +
-        '<div class="muted">Todos los apoderados deben pagar. No existe â€œNo participoâ€.</div>' +
+        '<b>Campaña obligatoria</b>' +
+        '<div class="muted">Todos los apoderados deben pagar. No existe “No participo”.</div>' +
         '<div style="height:10px;"></div>' +
 
-        '<b>CampaÃ±a no obligatoria</b>' +
+        '<b>Campaña no obligatoria</b>' +
         '<div class="muted">Cada apoderado elige Participar o No participo. Solo los que participan cuentan en pendiente.</div>' +
         '<div style="height:10px;"></div>' +
 
@@ -4325,26 +4325,26 @@ window.openHelp = function(topic){
         '<div class="muted"><b>Deudores</b> = cantidad de apoderados con deuda vigente. <b>Cuotas pendientes</b> = detalle de cuotas sin pagar.</div>' +
         '<div style="height:10px;"></div>' +
 
-        '<b>Crear y publicar campaÃ±a</b>' +
-        '<div class="muted">Crea la campaÃ±a, revisa monto/fechas y luego publÃ­cala. Al publicar, queda visible para apoderados.</div>' +
+        '<b>Crear y publicar campaña</b>' +
+        '<div class="muted">Crea la campaña, revisa monto/fechas y luego publícala. Al publicar, queda visible para apoderados.</div>' +
         '<div style="height:10px;"></div>' +
 
-        '<b>AprobaciÃ³n de apoderados</b>' +
-        '<div class="muted">Los apoderados quedan â€œpendientesâ€ hasta que el presidente los apruebe para ingresar al curso.</div>' +
+        '<b>Aprobación de apoderados</b>' +
+        '<div class="muted">Los apoderados quedan “pendientes” hasta que el presidente los apruebe para ingresar al curso.</div>' +
         '<div style="height:10px;"></div>' +
 
         '<b>Cobranza (WhatsApp)</b>' +
-        '<div class="muted">Usa la secciÃ³n Deudores para copiar mensajes listos por apoderado y enviarlos.</div>' +
+        '<div class="muted">Usa la sección Deudores para copiar mensajes listos por apoderado y enviarlos.</div>' +
         '<div style="height:10px;"></div>' +
 
-        '<b>Cierre de campaÃ±a</b>' +
+        '<b>Cierre de campaña</b>' +
         '<div class="muted">Cierra manualmente indicando motivo (meta cumplida, fin de plazo, error, etc.).</div>' +
 
       '</div>' +
     '</div>';
 
   if (typeof openModal === "function") openModal(html);
-  else alert("Ayuda Presidente: revisa campaÃ±as, deudores y cobranza.");
+  else alert("Ayuda Presidente: revisa campañas, deudores y cobranza.");
 };
 // --- Ayuda Presidente (misma UX que Apoderado) ---
 (function () {
@@ -4355,7 +4355,7 @@ window.openHelp = function(topic){
   // Si no existe openModal/closeModal, fallback suave
   function _open(html){
     if (typeof window.openModal === "function") return window.openModal(html);
-    alert("Ayuda Presidente: revisa CampaÃ±as, Deudores e Informes.");
+    alert("Ayuda Presidente: revisa Campañas, Deudores e Informes.");
   }
   function _close(){
     if (typeof window.closeModal === "function") return window.closeModal();
@@ -4366,13 +4366,13 @@ window.openHelp = function(topic){
   // Contenido FAQ Presidente (puedes ajustar texto)
   function buildFaqHTML(){
     const items = [
-      ["Â¿QuÃ© es una campaÃ±a obligatoria?", "Es un cobro del curso donde todos participan. No puedes excluirte."],
-      ["Â¿QuÃ© es una campaÃ±a no obligatoria?", "El apoderado elige Participar o No participo. Si elige No participo, ese cobro se excluye de su pendiente."],
+      ["¿Qué es una campaña obligatoria?", "Es un cobro del curso donde todos participan. No puedes excluirte."],
+      ["¿Qué es una campaña no obligatoria?", "El apoderado elige Participar o No participo. Si elige No participo, ese cobro se excluye de su pendiente."],
       ["Deudores vs Cuotas pendientes", "Deudores = apoderados con deuda vigente. Cuotas pendientes = cantidad de cuotas impagas (detalle)."],
-      ["Crear y publicar campaÃ±a", "Crea la campaÃ±a, revisa monto/fechas y publÃ­cala para que quede visible a apoderados."],
+      ["Crear y publicar campaña", "Crea la campaña, revisa monto/fechas y publícala para que quede visible a apoderados."],
       ["Cobranza (WhatsApp)", "En Deudores puedes copiar un texto listo por apoderado y enviarlo."],
-      ["Cierre de campaÃ±a", "Cierra manualmente e indica el motivo (meta cumplida, fin de plazo, error, etc.)."],
-      ["AprobaciÃ³n de apoderados", "Los apoderados quedan pendientes hasta que el presidente los apruebe para ingresar al curso."]
+      ["Cierre de campaña", "Cierra manualmente e indica el motivo (meta cumplida, fin de plazo, error, etc.)."],
+      ["Aprobación de apoderados", "Los apoderados quedan pendientes hasta que el presidente los apruebe para ingresar al curso."]
     ];
 
     let body = "";
@@ -4387,7 +4387,7 @@ window.openHelp = function(topic){
     return `
       <div class="helpModal">
         <div class="helpHead">
-          <div class="helpTitle">â“ Ayuda Presidente</div>
+          <div class="helpTitle">❓ Ayuda Presidente</div>
         </div>
 
         <div class="helpBody">
@@ -4401,7 +4401,7 @@ window.openHelp = function(topic){
     `;
   }
 
-  // API pÃºblica igual a Apoderado
+  // API pública igual a Apoderado
   window.__closeHelpPresident = _close;
   window.openHelp = function(topic){
     _open(buildFaqHTML());
@@ -4427,10 +4427,10 @@ window.openHelp = function(topic){
   })();
 })();
 
-/* Supabase Bridge retirado de presidente.js. La sincronizaciÃ³n vive solo en /assets/core.js. */
+/* Supabase Bridge retirado de presidente.js. La sincronización vive solo en /assets/core.js. */
 
 
-/* Cursapp stable v10 Â· Presidente dashboard carousel + clickable inline actions */
+/* Cursapp stable v10 · Presidente dashboard carousel + clickable inline actions */
 (function(){
   if(window.__CURSAPP_PRESIDENTE_STABLE_V10__) return;
   window.__CURSAPP_PRESIDENTE_STABLE_V10__ = true;
@@ -4529,7 +4529,7 @@ window.openHelp = function(topic){
 /* __CURSAPP_PRESIDENTE_V11_11_HOME_NO_RERENDER_BANNER_NO_FLICKER__
    - Home Presidente no se vuelve a renderizar por dataChanged/dataUpdated.
    - Banner: no se recrea si ya existe en el slot.
-   - Dashboard: no se fuerza scrollLeft en cada mutaciÃ³n del DOM.
+   - Dashboard: no se fuerza scrollLeft en cada mutación del DOM.
 */
 (function(){
   if(window.__CURSAPP_PRESIDENTE_V11_11_HOME_STABLE__) return;
