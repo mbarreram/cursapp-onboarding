@@ -53,6 +53,12 @@ test.describe('Cursapp V9 clicks reales', () => {
       items.map((item) => getComputedStyle(item, '::before').content).join(' ')
     );
     expect(iconContents).not.toContain('â');
+    expect(iconContents).not.toContain('\\');
+
+    const visualIconContents = await page.locator('.presMockQuick span, .presMockKpi span').evaluateAll((items) =>
+      items.map((item) => getComputedStyle(item, '::before').content).join(' ')
+    );
+    expect(visualIconContents).not.toMatch(/\\\\[0-9A-Fa-f]{3,}|ðŸ|Ã|Â|â/);
 
     for (const tab of destinos) {
       await page.locator('#menuBtn').click();
