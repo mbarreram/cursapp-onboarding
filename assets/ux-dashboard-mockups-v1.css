@@ -8211,3 +8211,17 @@ body.cursapp-app-shell{
   }
 }
 
+
+
+/* =========================================================
+   Cursapp · Presidente V39 · iconos SVG profesionales
+   ========================================================= */
+.cursapp-presidente .presBottomNav .navItem::before{content:none!important;display:none!important;}
+.cursapp-presidente .presBottomNav .presNavIcon{width:24px!important;height:24px!important;min-width:24px!important;display:grid!important;place-items:center!important;color:currentColor!important;font-size:0!important;}
+.cursapp-presidente .presBottomNav .presNavIcon svg{width:23px!important;height:23px!important;display:block!important;}
+.cursapp-presidente .presMockQuick .presMockQuickIcon::before{content:none!important;display:none!important;}
+.cursapp-presidente .presMockQuick .presMockQuickIcon{width:44px!important;height:44px!important;min-width:44px!important;border-radius:15px!important;display:grid!important;place-items:center!important;color:#fff!important;font-size:0!important;}
+.cursapp-presidente .presMockQuick .presMockQuickIcon svg{width:24px!important;height:24px!important;display:block!important;}
+.cursapp-presidente #menuDropdown.presMenuPanel .menuItem{display:flex!important;align-items:center!important;gap:11px!important;}
+.cursapp-presidente #menuDropdown.presMenuPanel .presMenuGlyph{width:20px!important;height:20px!important;min-width:20px!important;display:grid!important;place-items:center!important;color:currentColor!important;}
+.cursapp-presidente #menuDropdown.presMenuPanel .presMenuGlyph svg{width:20px!important;height:20px!important;display:block!important;}
