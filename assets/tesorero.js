@@ -827,18 +827,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
           menuDropdown.style.display="none";
         });
       }
-      try{
-        if(menuDropdown && !menuDropdown.querySelector('[data-menu-item="conciliacion"]')){
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "menuItem";
-          btn.setAttribute("data-menu-item","conciliacion");
-          btn.textContent = "✅ Conciliación";
-          btn.onclick = ()=>{ menuDropdown.style.display="none"; go("conciliacion"); };
-          const beforeNode = menuDropdown.querySelector("#resetBtn") || null;
-          menuDropdown.insertBefore(btn, beforeNode);
-        }
-      }catch(e){}
+      // La navegación final del menú se monta en stableMenu().
+      // No agregar aquí el acceso legacy "Conciliación": duplicaba "Conciliar pagos".
     }
     if(resetBtn){
       resetBtn.onclick = ()=>{
@@ -1961,45 +1951,326 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const phone = String(editable.phone || directiva.phone || directiva.telefono || guardian.phone || guardian.telefono || session.phone || session.telefono || '').trim();
     const school = String(course.schoolName || course.colegio || session.schoolName || session.colegio || session.school || '').trim();
     const courseName = String(course.courseLabel || course.name || session.courseLabel || session.course || session.curso || '').trim();
+    let activeStudent = '';
+    try{
+      let active = session.alumnoActivo || JSON.parse(localStorage.getItem('cursapp_alumno_activo_v1') || '{}') || {};
+      if(typeof active === 'string'){
+        try{ active = JSON.parse(active); }catch(_e){ active = {alumno:active}; }
+      }
+      activeStudent = String(active.alumno || active.nombre || active.name || '').trim();
+    }catch(_e){}
+    let enrollment = null;
+    try{
+      const enrollments = JSON.parse(localStorage.getItem('cursapp_enrollments_v1') || '[]') || [];
+      const activeEnrollmentId = String(localStorage.getItem('cursapp_active_enrollment_v1') || '').trim();
+      enrollment = enrollments.find(e=>activeEnrollmentId && String(e?.enrollmentId || e?.id || '') === activeEnrollmentId)
+        || enrollments.find(e=>{
+          const sameEmail = email && String(e?.email || e?.userId || '').toLowerCase() === email.toLowerCase();
+          const sameCourse = !courseKey || !e?.courseKey || String(e.courseKey) === courseKey;
+          const sameStudent = !activeStudent || String(e?.alumno || e?.studentName || '').toLowerCase() === activeStudent.toLowerCase();
+          return sameEmail && sameCourse && sameStudent;
+        }) || null;
+    }catch(_e){}
+    const enrollmentId = String(enrollment?.enrollmentId || enrollment?.id || '').trim();
+    const studentScope = enrollmentId || [courseKey, activeStudent || enrollment?.alumno || enrollment?.studentName || 'active'].join('|');
+    const student = String(editable.studentByEnrollment?.[studentScope] || activeStudent || enrollment?.alumno || enrollment?.studentName || guardian.alumno || profile.alumno || session.alumno || '').trim();
     return {
       name: name || 'Tesorero',
       email,
       phone,
+      student,
+      enrollmentId,
+      studentScope,
+      courseKey,
       course: courseName || courseLabelForHeader().split('·')[0].trim(),
       school: school || courseLabelForHeader().split('·').slice(1).join('·').trim() || 'Colegio no informado'
     };
   }
 
-  function renderProfile(){
+  function tesProfileDefaultPrefs(){
+    return {
+      push:true, email:true, sms:false,
+      push_pagos:true, push_conciliacion:true, push_rendiciones:true, push_avisos:true,
+      email_pagos:true, email_rendiciones:true, email_informes:true, email_avisos:true,
+      sms_seguridad:true, sms_urgentes:false
+    };
+  }
+  function tesProfilePrefs(){
+    let saved = {};
+    try{ saved = JSON.parse(localStorage.getItem('cursapp_profile_comm_prefs_v1') || '{}') || {}; }catch(_e){}
+    return Object.assign(tesProfileDefaultPrefs(), saved);
+  }
+  function tesProfileSavePrefs(prefs){
+    try{ localStorage.setItem('cursapp_profile_comm_prefs_v1', JSON.stringify(prefs || {})); }catch(_e){}
+  }
+  function tesProfileToggle(key){
+    const prefs = tesProfilePrefs();
+    prefs[key] = !prefs[key];
+    tesProfileSavePrefs(prefs);
+    renderProfile(true);
+  }
+  window.tesProfileToggle = tesProfileToggle;
+  window.tesProfileOpenPrefs = function(open){ renderProfile(open !== false); };
+
+  function tesProfileToggleRow(label, key, description){
+    const on = !!tesProfilePrefs()[key];
+    return `<button class="tesProfileToggleRowV84" type="button" onclick="tesProfileToggle('${esc(key)}')"><span><b>${esc(label)}</b><small>${esc(description)}</small></span><i class="tesProfileSwitchV84 ${on?'on':''}"><em></em></i></button>`;
+  }
+
+  function tesProfileEdit(field){
+    const data = treasurerProfileData();
+    const config = {
+      name:{label:'nombre completo', current:data.name},
+      phone:{label:'teléfono', current:data.phone},
+      student:{label:'nombre del alumno/a', current:data.student}
+    }[field];
+    if(!config) return;
+    const next = prompt(`Editar ${config.label}`, config.current || '');
+    if(next === null) return;
+    const value = String(next || '').trim();
+    if(!value) return alert(`El ${config.label} no puede quedar vacío.`);
+
+    let editable = {};
+    let session = {};
+    let profiles = [];
+    let enrollments = [];
+    try{ editable = JSON.parse(localStorage.getItem('cursapp_profile_editable_v1') || '{}') || {}; }catch(_e){}
+    try{ session = JSON.parse(localStorage.getItem('cursapp_session_v1') || '{}') || {}; }catch(_e){}
+    try{ profiles = JSON.parse(localStorage.getItem('cursapp_profiles_v1') || '[]') || []; }catch(_e){}
+    try{ enrollments = JSON.parse(localStorage.getItem('cursapp_enrollments_v1') || '[]') || []; }catch(_e){}
+
+    if(field === 'student'){
+      editable.studentByEnrollment = editable.studentByEnrollment || {};
+      editable.studentByEnrollment[data.studentScope] = value;
+    }else{
+      editable[field] = value;
+    }
+    if(field === 'name'){
+      session.name = value;
+      session.fullName = value;
+    }
+    if(field === 'phone') session.phone = value;
+    if(field === 'student'){
+      session.alumno = value;
+      if(session.alumnoActivo && typeof session.alumnoActivo === 'object'){
+        session.alumnoActivo.alumno = value;
+        session.alumnoActivo.nombre = value;
+        session.alumnoActivo.name = value;
+      }
+      try{
+        let active = JSON.parse(localStorage.getItem('cursapp_alumno_activo_v1') || '{}') || {};
+        if(typeof active !== 'object') active = {};
+        active.alumno = value;
+        active.nombre = value;
+        active.name = value;
+        localStorage.setItem('cursapp_alumno_activo_v1', JSON.stringify(active));
+      }catch(_e){}
+    }
+
+    const email = String(data.email || '').toLowerCase();
+    profiles.forEach(p=>{
+      const profileEmail = String(p?.email || p?.userId || p?.directiva?.email || p?.apoderado?.email || '').toLowerCase();
+      if(email && profileEmail !== email) return;
+      if(data.courseKey && p?.courseKey && String(p.courseKey) !== data.courseKey) return;
+      p.directiva = p.directiva || {};
+      p.apoderado = p.apoderado || {};
+      if(field === 'name'){ p.directiva.name = value; p.apoderado.name = value; }
+      if(field === 'phone'){ p.directiva.phone = value; p.apoderado.phone = value; }
+      if(field === 'student'){
+        const oldStudent = String(p?.apoderado?.alumno || p?.alumno || '').toLowerCase();
+        if(!data.student || !oldStudent || oldStudent === data.student.toLowerCase()){
+          p.apoderado.alumno = value;
+          p.alumno = value;
+        }
+      }
+    });
+    const activeEnrollmentId = String(data.enrollmentId || localStorage.getItem('cursapp_active_enrollment_v1') || '').trim();
+    let enrollmentUpdated = false;
+    enrollments.forEach(e=>{
+      const sameEmail = email && String(e?.email || e?.userId || '').toLowerCase() === email;
+      const sameCourse = !data.courseKey || !e?.courseKey || String(e.courseKey) === data.courseKey;
+      if(!sameEmail || !sameCourse) return;
+      if(field === 'name') e.apoderadoName = value;
+      if(field === 'phone') e.phone = value;
+      if(field === 'student'){
+        const enrollmentId = String(e?.enrollmentId || e?.id || '');
+        const sameActive = activeEnrollmentId && enrollmentId === activeEnrollmentId;
+        const sameStudent = data.student && String(e?.alumno || e?.studentName || '').toLowerCase() === data.student.toLowerCase();
+        if(!enrollmentUpdated && (sameActive || (!activeEnrollmentId && sameStudent) || (!activeEnrollmentId && !data.student))){
+          e.alumno = value;
+          e.studentName = value;
+          enrollmentUpdated = true;
+        }
+      }
+    });
+
+    try{ localStorage.setItem('cursapp_profile_editable_v1', JSON.stringify(editable)); }catch(_e){}
+    try{ localStorage.setItem('cursapp_session_v1', JSON.stringify(session)); }catch(_e){}
+    try{ localStorage.setItem('cursapp_profiles_v1', JSON.stringify(profiles)); }catch(_e){}
+    try{ localStorage.setItem('cursapp_enrollments_v1', JSON.stringify(enrollments)); }catch(_e){}
+    renderProfile(false);
+  }
+  window.tesProfileEdit = tesProfileEdit;
+
+  function tesProfileHashDemo(value){
+    let hash = 5381;
+    const text = String(value || '');
+    for(let i=0;i<text.length;i++) hash = ((hash << 5) + hash) + text.charCodeAt(i);
+    return 'h_' + (hash >>> 0).toString(16);
+  }
+
+  async function tesProfileChangePassword(currentPassword, newPassword){
+    const data = treasurerProfileData();
+    const session = (()=>{ try{return JSON.parse(localStorage.getItem('cursapp_session_v1') || '{}') || {};}catch(_e){return {};}})();
+    if(String(session.userId || '').toLowerCase() === 'tesorero' && !String(data.email || '').includes('@')){
+      throw new Error('La contraseña del usuario demo no se puede modificar.');
+    }
+    const authUrl = 'https://ngxistgymgdkoaiulfbq.supabase.co';
+    const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg';
+    if(data.email && data.email.includes('@')){
+      const loginResponse = await fetch(authUrl + '/auth/v1/token?grant_type=password', {
+        method:'POST',
+        headers:{apikey:anonKey,'Content-Type':'application/json'},
+        body:JSON.stringify({email:data.email.toLowerCase(), password:currentPassword})
+      });
+      const auth = await loginResponse.json().catch(()=>({}));
+      if(!loginResponse.ok || !auth.access_token) throw new Error('La contraseña actual no es correcta.');
+      const updateResponse = await fetch(authUrl + '/auth/v1/user', {
+        method:'PUT',
+        headers:{apikey:anonKey,Authorization:`Bearer ${auth.access_token}`,'Content-Type':'application/json'},
+        body:JSON.stringify({password:newPassword})
+      });
+      const updated = await updateResponse.json().catch(()=>({}));
+      if(!updateResponse.ok) throw new Error(updated.message || updated.msg || 'No fue posible actualizar la contraseña.');
+      try{
+        localStorage.setItem('cursapp_supabase_auth_session_v1', JSON.stringify({
+          access_token:auth.access_token,
+          refresh_token:auth.refresh_token || '',
+          expires_at:auth.expires_at || null,
+          user:updated || auth.user
+        }));
+      }catch(_e){}
+      return;
+    }
+
+    let users = [];
+    try{ users = JSON.parse(localStorage.getItem('cursapp_users_v1') || '[]') || []; }catch(_e){}
+    const user = users.find(u=>String(u?.userId || '').toLowerCase() === String(session.userId || '').toLowerCase());
+    if(!user) throw new Error('No se encontró la cuenta asociada a este perfil.');
+    const currentHash = tesProfileHashDemo(currentPassword);
+    const validCurrent = user.passwordHashDemo
+      ? user.passwordHashDemo === currentHash
+      : (typeof user.password === 'string' && user.password === currentPassword);
+    if(!validCurrent) throw new Error('La contraseña actual no es correcta.');
+    user.passwordHashDemo = tesProfileHashDemo(newPassword);
+    if(Object.prototype.hasOwnProperty.call(user, 'password')) delete user.password;
+    try{ localStorage.setItem('cursapp_users_v1', JSON.stringify(users)); }catch(_e){}
+  }
+
+  function tesProfileOpenPassword(){
+    const root = document.getElementById('modalRoot');
+    if(!root) return;
+    root.innerHTML = `<div class="tesProfileModalOverlayV84"><section class="tesProfileModalV84" role="dialog" aria-modal="true" aria-labelledby="tesPasswordTitle">
+      <button class="tesProfileModalCloseV84" type="button" aria-label="Cerrar">×</button>
+      <span class="tesProfileModalIconV84">🔐</span><h2 id="tesPasswordTitle">Cambiar contraseña</h2><p>Confirma tu contraseña actual y define una nueva.</p>
+      <label>Contraseña actual<input id="tesPasswordCurrent" type="password" autocomplete="current-password"></label>
+      <label>Nueva contraseña<input id="tesPasswordNew" type="password" autocomplete="new-password" minlength="8"></label>
+      <label>Confirmar nueva contraseña<input id="tesPasswordConfirm" type="password" autocomplete="new-password" minlength="8"></label>
+      <div class="tesProfilePasswordErrorV84" role="alert"></div>
+      <div class="tesProfileModalActionsV84"><button type="button" data-cancel>Cancelar</button><button type="button" class="primary" data-save>Guardar contraseña</button></div>
+    </section></div>`;
+    const overlay = root.querySelector('.tesProfileModalOverlayV84');
+    const close = ()=>{ root.innerHTML = ''; };
+    root.querySelector('.tesProfileModalCloseV84').onclick = close;
+    root.querySelector('[data-cancel]').onclick = close;
+    overlay.onclick = e=>{ if(e.target === overlay) close(); };
+    root.querySelector('[data-save]').onclick = async function(){
+      const current = String(root.querySelector('#tesPasswordCurrent')?.value || '');
+      const next = String(root.querySelector('#tesPasswordNew')?.value || '');
+      const confirm = String(root.querySelector('#tesPasswordConfirm')?.value || '');
+      const error = root.querySelector('.tesProfilePasswordErrorV84');
+      if(!current || !next || !confirm){ error.textContent = 'Completa los tres campos.'; return; }
+      if(next.length < 8){ error.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.'; return; }
+      if(next !== confirm){ error.textContent = 'Las contraseñas nuevas no coinciden.'; return; }
+      const button = this;
+      button.disabled = true;
+      button.textContent = 'Guardando…';
+      error.textContent = '';
+      try{
+        await tesProfileChangePassword(current, next);
+        close();
+        alert('Contraseña actualizada correctamente.');
+      }catch(err){
+        error.textContent = err?.message || 'No fue posible actualizar la contraseña.';
+        button.disabled = false;
+        button.textContent = 'Guardar contraseña';
+      }
+    };
+  }
+  window.tesProfileOpenPassword = tesProfileOpenPassword;
+
+  function renderProfile(detail=false){
     updateTreasurerHeader();
     const data = treasurerProfileData();
-    let prefs = {};
-    try{ prefs = JSON.parse(localStorage.getItem('cursapp_profile_comm_prefs_v1') || '{}') || {}; }catch(_e){}
-    const channels = Object.assign({push:true, email:true, sms:false}, prefs);
+    const prefs = tesProfilePrefs();
     const initials = String(data.name || 'T').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase() || 'T';
     const channel = (icon, label, enabled)=>`<article class="tesProfileChannelV83 ${enabled?'active':''}"><span>${icon}</span><b>${label}</b><small>${enabled?'Activado':'Desactivado'}</small></article>`;
+    const edit = field=>`<button class="tesProfileEditV84" type="button" onclick="tesProfileEdit('${field}')" aria-label="Editar">✎</button>`;
+    const lock = `<span class="tesProfileLockV84" title="No editable">🔒</span>`;
+
+    if(detail){
+      app.innerHTML = `<div class="tesProfilePageV83 tesProfilePrefsPageV84" data-view="treasurer-profile-notifications">
+        <section class="tesProfileTopbarV83"><button type="button" onclick="tesProfileOpenPrefs(false)" aria-label="Volver al perfil">←</button><h1>Notificaciones</h1><span></span></section>
+        <section class="tesProfileCardV83 tesProfilePrefsIntroV84"><h2>Preferencias de notificaciones</h2><p>Selecciona cómo quieres recibir la información financiera del curso.</p></section>
+        <section class="tesProfileCardV83 tesProfilePrefsBlockV84">
+          <header><span>🔔</span><div><h2>Notificaciones Push</h2><p>Alertas dentro de Cursapp.</p></div><button class="tesProfileSwitchV84 ${prefs.push?'on':''}" type="button" onclick="tesProfileToggle('push')"><em></em></button></header>
+          ${tesProfileToggleRow('Pagos recibidos','push_pagos','Nuevos pagos y comprobantes')}
+          ${tesProfileToggleRow('Pagos por conciliar','push_conciliacion','Movimientos pendientes de conciliación')}
+          ${tesProfileToggleRow('Rendiciones','push_rendiciones','Aprobaciones y observaciones')}
+          ${tesProfileToggleRow('Avisos del curso','push_avisos','Comunicaciones de la directiva')}
+        </section>
+        <section class="tesProfileCardV83 tesProfilePrefsBlockV84 email">
+          <header><span>✉️</span><div><h2>Correos electrónicos</h2><p>Resúmenes y comunicaciones importantes.</p></div><button class="tesProfileSwitchV84 ${prefs.email?'on':''}" type="button" onclick="tesProfileToggle('email')"><em></em></button></header>
+          ${tesProfileToggleRow('Pagos y conciliación','email_pagos','Resumen de movimientos financieros')}
+          ${tesProfileToggleRow('Rendiciones','email_rendiciones','Estados de aprobación')}
+          ${tesProfileToggleRow('Informes','email_informes','Publicación de informes del curso')}
+          ${tesProfileToggleRow('Avisos','email_avisos','Comunicaciones de la directiva')}
+        </section>
+        <section class="tesProfileCardV83 tesProfilePrefsBlockV84 sms">
+          <header><span>💬</span><div><h2>SMS</h2><p>Mensajes importantes y de seguridad.</p></div><button class="tesProfileSwitchV84 ${prefs.sms?'on':''}" type="button" onclick="tesProfileToggle('sms')"><em></em></button></header>
+          ${tesProfileToggleRow('Seguridad de la cuenta','sms_seguridad','Alertas de acceso y verificación')}
+          ${tesProfileToggleRow('Avisos urgentes','sms_urgentes','Comunicaciones financieras críticas')}
+        </section>
+        <section class="tesProfileInfoV84">ⓘ Las notificaciones críticas de seguridad pueden enviarse aunque un canal esté desactivado.</section>
+      </div>`;
+      return;
+    }
 
     app.innerHTML = `<div class="tesProfilePageV83" data-view="treasurer-profile-current">
       <section class="tesProfileTopbarV83"><button type="button" onclick="go('home')" aria-label="Volver al inicio">←</button><h1>Mi perfil</h1><span></span></section>
       <section class="tesProfileHeroV83">
         <div class="tesProfileAvatarV83">${esc(initials)}</div>
-        <div><h2>${esc(data.name)}</h2><p>Tesorero del curso</p><span>✉️ ${esc(data.email || 'Correo no registrado')}</span></div>
+        <div><h2>${esc(data.name)}</h2><p>Tesorero del curso</p><span>✉️ ${esc(data.email || 'Correo no registrado')}</span><span>🎒 ${esc(data.student || 'Alumno/a no registrado')}</span></div>
       </section>
       <section class="tesProfileCardV83 tesProfileCourseV83">
-        <article><span>🎓</span><div><b>Curso</b><small>${esc(data.course)}</small></div><em title="Dato administrado por la directiva">🔒</em></article>
-        <article><span>🏫</span><div><b>Colegio</b><small>${esc(data.school)}</small></div><em title="Dato administrado por la directiva">🔒</em></article>
+        <article><span>🎓</span><div><b>Curso</b><small>${esc(data.course)}</small></div>${lock}</article>
+        <article><span>🏫</span><div><b>Colegio</b><small>${esc(data.school)}</small></div>${lock}</article>
         <p>ⓘ El curso y el colegio son administrados por la directiva.</p>
       </section>
       <section class="tesProfileCardV83">
         <h2>Información personal</h2>
-        <article class="tesProfileRowV83"><span>👤</span><div><b>Nombre completo</b><small>${esc(data.name)}</small></div></article>
-        <article class="tesProfileRowV83"><span>✉️</span><div><b>Correo electrónico</b><small>${esc(data.email || 'No registrado')}</small></div></article>
-        <article class="tesProfileRowV83"><span>📱</span><div><b>Teléfono</b><small>${esc(data.phone || 'No registrado')}</small></div></article>
-        <article class="tesProfileRowV83"><span>🛡️</span><div><b>Rol activo</b><small>Tesorero</small></div></article>
+        <article class="tesProfileRowV83"><span>👤</span><div><b>Nombre completo</b><small>${esc(data.name)}</small></div>${edit('name')}</article>
+        <article class="tesProfileRowV83"><span>🎒</span><div><b>Alumno/a</b><small>${esc(data.student || 'No registrado')}</small></div>${edit('student')}</article>
+        <article class="tesProfileRowV83"><span>📱</span><div><b>Teléfono</b><small>${esc(data.phone || 'No registrado')}</small></div>${edit('phone')}</article>
+        <article class="tesProfileRowV83"><span>✉️</span><div><b>Correo electrónico</b><small>${esc(data.email || 'No registrado')}</small></div>${lock}</article>
       </section>
       <section class="tesProfileCardV83 tesProfileCommsV83">
-        <header><div><h2>Preferencias de comunicación</h2><p>Canales configurados para este perfil.</p></div></header>
-        <div>${channel('🔔','Push',channels.push)}${channel('✉️','Correos',channels.email)}${channel('💬','SMS',channels.sms)}</div>
+        <header><div><h2>Preferencias de notificaciones</h2><p>Canales configurados para este perfil.</p></div><button type="button" onclick="tesProfileOpenPrefs(true)">Configurar</button></header>
+        <div>${channel('🔔','Push',prefs.push)}${channel('✉️','Correos',prefs.email)}${channel('💬','SMS',prefs.sms)}</div>
+      </section>
+      <section class="tesProfileCardV83 tesProfileSecurityV84">
+        <h2>Seguridad</h2>
+        <button type="button" onclick="tesProfileOpenPassword()"><span>🔐</span><div><b>Cambiar contraseña</b><small>Actualiza tu contraseña de acceso</small></div><em>›</em></button>
       </section>
     </div>`;
   }
@@ -2870,12 +3141,39 @@ __bootTesoreroSupabaseFirst();
     });
   }
 
+  async function logoutTreasurer(){
+    let auth = {};
+    try{ auth = JSON.parse(localStorage.getItem('cursapp_supabase_auth_session_v1') || '{}') || {}; }catch(_e){}
+    if(auth.access_token){
+      try{
+        await Promise.race([
+          fetch('https://ngxistgymgdkoaiulfbq.supabase.co/auth/v1/logout', {
+            method:'POST',
+            keepalive:true,
+            headers:{
+              apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg',
+              Authorization:`Bearer ${auth.access_token}`
+            }
+          }),
+          new Promise(resolve=>setTimeout(resolve, 900))
+        ]);
+      }catch(_e){}
+    }
+    [
+      'cursapp_session_v1','cursapp_demo_user','cursapp_active_profile_v1',
+      'cursapp_active_role_v1','cursapp_active_enrollment_v1','cursapp_active_miembro_id_v1',
+      'cursapp_supabase_auth_session_v1','cursapp_supabase_oauth_v1'
+    ].forEach(key=>{ try{ localStorage.removeItem(key); }catch(_e){} });
+    location.replace('/login.html');
+  }
+  window.tesLogout = logoutTreasurer;
+
   function stableMenu(){
     window.CURSAPP_MENU_HANDLED = true;
     const btn = document.getElementById('menuBtn');
     const menu = document.getElementById('menuDropdown');
     if(!btn || !menu) return;
-    if(!menu.dataset.v62Ready){
+    if(!menu.dataset.v84Ready){
       menu.innerHTML = `
         <button class="menuItem" type="button" data-go="home">🏠 Inicio</button>
         <button class="menuItem" type="button" data-go="conciliacion">💳 Conciliar pagos</button>
@@ -2883,8 +3181,8 @@ __bootTesoreroSupabaseFirst();
         <button class="menuItem" type="button" data-go="informes">📊 Informes</button>
         <button class="menuItem" type="button" data-go="profile">👤 Mi perfil</button>
         <button class="menuItem" id="supportMenuItem" type="button" data-action="support">💬 Soporte / Mis tickets</button>
-        <button class="menuItem" type="button" data-close="1">Cerrar menú</button>`;
-      menu.dataset.v62Ready = '1';
+        <button class="menuItem tesMenuLogoutV84" type="button" data-action="logout">🚪 Cerrar sesión</button>`;
+      menu.dataset.v84Ready = '1';
       const closeMenu = function(){
         menu.classList.remove('is-open');
         menu.style.display = 'none';
@@ -2902,6 +3200,10 @@ __bootTesoreroSupabaseFirst();
           if(window.CURSAPP_SUPPORT && typeof window.CURSAPP_SUPPORT.openMyTickets === 'function'){
             window.CURSAPP_SUPPORT.openMyTickets();
           }
+          return;
+        }
+        if(item.dataset.action === 'logout'){
+          logoutTreasurer();
           return;
         }
         const tab = item.dataset.go;
