@@ -688,27 +688,28 @@
     hydrateBottomNavIcons();
     const menuBtn = $("menuBtn");
     const menu = $("menuDropdown");
-    if(menuBtn && menu && !menuBtn.__apoMenuBound){
-      menuBtn.__apoMenuBound = true;
+    if(menuBtn && menu && !menuBtn.__presMenuBound){
+      menuBtn.__presMenuBound = true;
+      menuBtn.setAttribute("aria-expanded", "false");
       menuBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
         ev.stopPropagation();
         const visible = menu.style.display === "block";
         if(visible){
-          menu.style.display = "none";
-          menu.classList.remove("apo-menu-panel");
+          window.__closeApoMenu();
           return;
         }
         renderMenu();
         menu.style.display = "block";
-        menu.classList.add("apo-menu-panel");
+        menu.classList.add("presMenuPanel", "caMenuOpen");
+        menuBtn.setAttribute("aria-expanded", "true");
       });
       document.addEventListener("click", (ev) => {
         if(!menu || menu.style.display !== "block") return;
         const target = ev.target;
         if(target && (menu.contains(target) || menuBtn.contains(target))) return;
-        menu.style.display = "none";
-        menu.classList.remove("apo-menu-panel");
-      });
+        window.__closeApoMenu();
+      }, true);
     }
 
     document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
@@ -721,39 +722,26 @@
   function renderMenu(){
     const menu = $("menuDropdown");
     if(!menu) return;
-    const name = currentUserName();
-    const p = courseParts(STATE.curso || {});
-    const course = [p.school, p.course].filter(Boolean).join(" · ");
-    const initial = String(name || "P").trim().charAt(0).toUpperCase() || "P";
+    menu.className = "presMenuPanel";
+    menu.dataset.presidentMenuVersion = "36";
     menu.innerHTML = `
-      <div class="apo-menu-head">
-        <div class="apo-menu-avatar">${esc(initial)}</div>
-        <div>
-          <div class="apo-menu-name">${esc(name)}</div>
-          <div class="apo-menu-role">${esc((roleOf() || "presidente").charAt(0).toUpperCase() + (roleOf() || "presidente").slice(1))}</div>
-          <div class="apo-menu-course">${esc(course || "Curso activo")}</div>
-        </div>
-        <button class="apo-menu-close" type="button" onclick="window.__closeApoMenu()">×</button>
-      </div>
-      <div class="apo-menu-list">
-        <button class="apo-menu-item" type="button" onclick="window.__apoNav('home')">${icon("home")}<span>Inicio</span></button>
-        <button class="apo-menu-item" type="button" onclick="window.__apoNav('campanas')">${icon("flag")}<span>Campañas</span></button>
-        <button class="apo-menu-item" type="button" onclick="window.__apoNav('apoderados')">${icon("users")}<span>Apoderados</span></button>
-        <button class="apo-menu-item" type="button" onclick="window.__apoNav('deudores')">${icon("clock")}<span>Deudores</span></button>
-        <button class="apo-menu-item" type="button" onclick="window.__apoNav('informes')">${icon("file")}<span>Informes</span></button>
-        <div class="apo-menu-sep"></div>
-        <button class="apo-menu-item danger" type="button" onclick="window.__apoLogout()">${icon("logout")}<span>Cerrar sesión</span></button>
-        <div class="apo-menu-sep"></div>
-        <button class="apo-menu-item" type="button" onclick="window.__apoSupport()">${icon("message")}<span>Soporte / Mis tickets</span></button>
-      </div>`;
+      <button class="menuItem" type="button" onclick="window.__apoNav('home')">🏠 Inicio</button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('campanas')">📌 Campañas</button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('deudores')">🧾 Deudores</button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('informes')">📄 Informes</button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('apoderados')">👥 Apoderados</button>
+      <button class="menuItem" id="supportMenuItem" type="button" onclick="window.__apoSupport()">💬 Soporte / Mis tickets</button>
+      <button class="menuItem presMenuLogoutV36" type="button" onclick="window.__apoLogout()">🚪 Cerrar sesión</button>
+    `;
   }
 
   window.__closeApoMenu = function(){
     const menu = $("menuDropdown");
     if(menu){
       menu.style.display = "none";
-      menu.classList.remove("apo-menu-panel");
+      menu.classList.remove("presMenuPanel", "caMenuOpen");
     }
+    $("menuBtn")?.setAttribute("aria-expanded", "false");
   };
 
   window.__apoNav = function(tab){
@@ -761,19 +749,37 @@
     navTo(tab);
   };
 
-  window.__apoLogout = function(){
-    try{
-      localStorage.removeItem(KEY_SESSION);
-      localStorage.removeItem("cursapp_demo_user");
-    }catch(e){}
-    location.assign("/login.html");
+  window.__apoLogout = async function(){
+    let auth = {};
+    try{ auth = JSON.parse(localStorage.getItem("cursapp_supabase_auth_session_v1") || "{}") || {}; }catch(_e){}
+    if(auth.access_token){
+      try{
+        await Promise.race([
+          fetch("https://ngxistgymgdkoaiulfbq.supabase.co/auth/v1/logout", {
+            method:"POST",
+            keepalive:true,
+            headers:{apikey:SB_KEY, Authorization:`Bearer ${auth.access_token}`}
+          }),
+          new Promise(resolve=>setTimeout(resolve, 900))
+        ]);
+      }catch(_e){}
+    }
+    [
+      KEY_SESSION,"cursapp_demo_user","cursapp_active_profile_v1",
+      "cursapp_active_role_v1","cursapp_active_enrollment_v1","cursapp_active_miembro_id_v1",
+      "cursapp_supabase_auth_session_v1","cursapp_supabase_oauth_v1"
+    ].forEach(key=>{ try{ localStorage.removeItem(key); }catch(_e){} });
+    location.replace("/login.html");
   };
 
   window.__apoSupport = function(){
     window.__closeApoMenu();
+    if(window.CURSAPP_SUPPORT && typeof window.CURSAPP_SUPPORT.openMyTickets === "function"){
+      window.CURSAPP_SUPPORT.openMyTickets();
+      return;
+    }
     const btn = document.querySelector("[data-support-ticket],.supportFab,.cursapp-support-fab");
     if(btn) btn.click();
-    else alert("Soporte estará disponible desde el módulo principal.");
   };
 
   function render(){
