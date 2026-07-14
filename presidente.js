@@ -1280,30 +1280,25 @@ function cuotasPendientesTask(id){
   // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
-      if (!window.CURSAPP_MENU_HANDLED) menuBtn.onclick = (e)=>{e.stopPropagation(); menuDropdown.style.display = (menuDropdown.style.display==="block"?"none":"block");};
-      if(!menuBtn.__presidenteMenuEnhanceBound){
-        menuBtn.__presidenteMenuEnhanceBound = true;
-        menuBtn.addEventListener("click", ()=>{
-          setTimeout(enhancePresidentMenu, 0);
-          setTimeout(enhancePresidentMenu, 80);
-        });
-      }
-      if(!menuDropdown.__presidenteMenuObserverBound && typeof MutationObserver !== "undefined"){
-        menuDropdown.__presidenteMenuObserverBound = true;
-        const menuObserver = new MutationObserver(()=>{
-          const visible = menuDropdown.style.display === "block" || menuDropdown.classList.contains("caMenuOpen");
-          if(visible && !menuDropdown.querySelector(".presMenuHead")) setTimeout(enhancePresidentMenu, 0);
-        });
-        menuObserver.observe(menuDropdown, { childList:true, attributes:true, attributeFilter:["style","class"] });
-      }
+      window.CURSAPP_MENU_HANDLED = true;
+      enhancePresidentMenu();
+      menuBtn.setAttribute("aria-expanded", "false");
+      menuBtn.onclick = (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        const open = menuDropdown.style.display === "block";
+        menuDropdown.style.display = open ? "none" : "block";
+        menuDropdown.classList.toggle("caMenuOpen", !open);
+        menuBtn.setAttribute("aria-expanded", String(!open));
+      };
+      menuBtn.onpointerdown = e=>e.stopPropagation();
       if(!menuDropdown.__presidenteMenuCloseBound){
         menuDropdown.__presidenteMenuCloseBound = true;
         document.addEventListener("click", (ev)=>{
           const target = ev.target;
           if(target && (target === menuBtn || menuBtn.contains(target) || menuDropdown.contains(target))) return;
-          menuDropdown.style.display = "none";
-          menuDropdown.classList.remove("caMenuOpen");
-        });
+          window.__presMenuClose?.();
+        }, true);
       }
     }
     if(resetBtn){
@@ -1628,55 +1623,75 @@ function setActive(tab){
 
   function enhancePresidentMenu(){
     if(!menuDropdown) return;
-    const ctx = getPresidentVisualContext(approvedCount());
-    window.__presMenuGo = function(tab){
+    const closeMenu = function(){
       menuDropdown.style.display = "none";
       menuDropdown.classList.remove("caMenuOpen");
-      if(tab === "apoderados") location.href = "apoderados.html";
+      menuBtn?.setAttribute("aria-expanded", "false");
+    };
+    window.__presMenuGo = function(tab){
+      closeMenu();
+      if(tab === "apoderados") location.href = "/apoderados.html";
       else if(typeof window.go === "function") window.go(tab);
     };
-    window.__presMenuClose = function(){
-      menuDropdown.style.display = "none";
-      menuDropdown.classList.remove("caMenuOpen");
-    };
-    window.__presMenuLogout = function(){
-      const existing = logoutBtn || document.getElementById("logoutBtn") || document.querySelector("[data-logout]");
-      if(existing && existing !== document.activeElement){ try{ existing.click(); return; }catch(e){} }
-      location.href = "/index.html";
+    window.__presMenuClose = closeMenu;
+    window.__presMenuLogout = async function(){
+      let auth = {};
+      try{ auth = JSON.parse(localStorage.getItem("cursapp_supabase_auth_session_v1") || "{}") || {}; }catch(_e){}
+      if(auth.access_token){
+        try{
+          await Promise.race([
+            fetch("https://ngxistgymgdkoaiulfbq.supabase.co/auth/v1/logout", {
+              method:"POST",
+              keepalive:true,
+              headers:{
+                apikey:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg",
+                Authorization:`Bearer ${auth.access_token}`
+              }
+            }),
+            new Promise(resolve=>setTimeout(resolve, 900))
+          ]);
+        }catch(_e){}
+      }
+      [
+        "cursapp_session_v1","cursapp_demo_user","cursapp_active_profile_v1",
+        "cursapp_active_role_v1","cursapp_active_enrollment_v1","cursapp_active_miembro_id_v1",
+        "cursapp_supabase_auth_session_v1","cursapp_supabase_oauth_v1"
+      ].forEach(key=>{ try{ localStorage.removeItem(key); }catch(_e){} });
+      location.replace("/login.html");
     };
     window.__presMenuSupport = function(){
-      const btn = document.querySelector(".supportFab,.cursapp-support-fab,[data-support-ticket]");
-      if(btn){ btn.click(); return; }
+      closeMenu();
+      if(window.CURSAPP_SUPPORT && typeof window.CURSAPP_SUPPORT.openMyTickets === "function"){
+        window.CURSAPP_SUPPORT.openMyTickets();
+        return;
+      }
       if(typeof window.openHelp === "function") window.openHelp("soporte");
     };
     menuDropdown.classList.add("presMenuPanel");
-    const avatarHtml = ctx.avatar
-      ? `<img src="${esc(ctx.avatar)}" alt="">`
-      : esc((ctx.name || "U").slice(0,1).toUpperCase());
+    menuDropdown.dataset.presidentMenuVersion = "35";
     menuDropdown.innerHTML = `
-      <div class="presMenuHead">
-        <div class="presMenuAvatar" aria-hidden="true">${avatarHtml}</div>
-        <div class="presMenuIdentity">
-          <strong>${esc(ctx.name)}</strong>
-          <span>Presidente</span>
-          <small>${esc(ctx.school)} Â· ${esc(ctx.curso)}</small>
-        </div>
-        <button class="presMenuClose" type="button" onclick="window.__presMenuClose()" aria-label="Cerrar menÃº">${presSvgIcon("x","presMenuCloseIcon")}</button>
-      </div>
-      <div class="presMenuList">
-        <button type="button" onclick="window.__presMenuGo('home')">${presSvgIcon("home","presMenuItemIcon")}<span>Inicio</span></button>
-        <button type="button" onclick="window.__presMenuGo('campanas')">${presSvgIcon("megaphone","presMenuItemIcon")}<span>CampaÃ±as</span></button>
-        <button type="button" onclick="window.__presMenuGo('deudores')">${presSvgIcon("clock","presMenuItemIcon")}<span>Deudores</span></button>
-        <button type="button" onclick="window.__presMenuGo('informes')">${presSvgIcon("fileText","presMenuItemIcon")}<span>Informes</span></button>
-        <button type="button" onclick="window.__presMenuGo('apoderados')">${presSvgIcon("users","presMenuItemIcon")}<span>Apoderados</span></button>
-      </div>
-      <div class="presMenuList presMenuDanger">
-        <button type="button" onclick="window.__presMenuLogout()">${presSvgIcon("logOut","presMenuItemIcon")}<span>Cerrar sesiÃ³n</span></button>
-      </div>
-      <div class="presMenuList presMenuSupport">
-        <button type="button" onclick="window.__presMenuSupport()">${presSvgIcon("messageCircle","presMenuItemIcon")}<span>Soporte / Mis tickets</span></button>
-      </div>
+      <button class="menuItem" type="button" data-go="home">🏠 Inicio</button>
+      <button class="menuItem" type="button" data-go="campanas">📌 Campañas</button>
+      <button class="menuItem" type="button" data-go="deudores">🧾 Deudores</button>
+      <button class="menuItem" type="button" data-go="informes">📄 Informes</button>
+      <button class="menuItem" type="button" data-go="apoderados">👥 Apoderados</button>
+      <button class="menuItem" id="supportMenuItem" type="button" data-action="support">💬 Soporte / Mis tickets</button>
+      <button class="menuItem presMenuLogoutV35" type="button" data-action="logout">🚪 Cerrar sesión</button>
     `;
+    if(!menuDropdown.__presidenteStableActionsBound){
+      menuDropdown.__presidenteStableActionsBound = true;
+      menuDropdown.addEventListener("click", function(e){
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const item = e.target.closest("button");
+        if(!item) return;
+        if(item.dataset.action === "support") return window.__presMenuSupport();
+        if(item.dataset.action === "logout") return window.__presMenuLogout();
+        if(item.dataset.go) return window.__presMenuGo(item.dataset.go);
+      }, true);
+      menuDropdown.addEventListener("pointerdown", e=>e.stopPropagation(), true);
+    }
   }
 
 
