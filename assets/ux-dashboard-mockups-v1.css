@@ -1632,14 +1632,14 @@ body.cursapp-app-shell{
   background:#efe7ff;
 }
 
-.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"\${code}";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"\${code}";}
-.cursapp-app-shell .marketBottomTab::before{content:"\${code}"; color:#07894f; background:#eafaf2;}
+.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"⌂";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"◆";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"▷";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"▥";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"▰";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"▤";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"✓";}
+.cursapp-app-shell .marketBottomTab::before{content:"▣"; color:#07894f; background:#eafaf2;}
 
 .cursapp-app-shell .bottomNav .navItem span,
 .cursapp-app-shell .marketBottomTab span:last-child{
