@@ -43,4 +43,25 @@ test.describe('Cursapp V9 clicks reales', () => {
       await expect(page.locator('body')).toBeVisible();
     }
   });
+
+  test('menú tesorero abre todos sus destinos', async ({ page }) => {
+    await page.goto('/tesorero.html');
+
+    const destinos = [
+      ['Inicio', 'home'],
+      ['Conciliar pagos', 'conciliacion'],
+      ['Rendiciones', 'rendiciones'],
+      ['Informes', 'informes']
+    ];
+
+    for (const [label, tab] of destinos) {
+      await page.locator('#menuBtn').click();
+      await page.locator(`#menuDropdown [data-go="${tab}"]`).click();
+      await expect(page.locator(`.navItem[data-tab="${tab}"]`)).toHaveClass(/active/);
+    }
+
+    await page.locator('#menuBtn').click();
+    await page.locator('#menuDropdown [data-go="profile"]').click();
+    await expect(page.locator('#app')).toContainText('Perfil tesorero');
+  });
 });

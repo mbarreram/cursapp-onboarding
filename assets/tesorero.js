@@ -871,6 +871,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     if(t === "pago" || t === "pagos" || t === "payments" || t === "conciliaciones") return "conciliacion";
     if(t === "campaña" || t === "campana" || t === "campanas" || t === "campaigns") return "rendiciones";
     if(t === "rendicion" || t === "rendición") return "rendiciones";
+    if(t === "perfil" || t === "mi-perfil") return "profile";
     return t || "home";
   }
 
@@ -2821,7 +2822,7 @@ __bootTesoreroSupabaseFirst();
         <button class="menuItem" type="button" data-go="conciliacion">💳 Conciliar pagos</button>
         <button class="menuItem" type="button" data-go="rendiciones">📄 Rendiciones</button>
         <button class="menuItem" type="button" data-go="informes">📊 Informes</button>
-        <button class="menuItem" type="button" data-go="perfil">👤 Mi perfil</button>
+        <button class="menuItem" type="button" data-go="profile">👤 Mi perfil</button>
         <button class="menuItem" type="button" data-close="1">Cerrar menú</button>`;
       menu.dataset.v62Ready = '1';
       menu.addEventListener('click', function(e){
@@ -2829,11 +2830,14 @@ __bootTesoreroSupabaseFirst();
         const item = e.target.closest('button');
         if(!item) return;
         if(item.dataset.close){ menu.style.display='none'; menu.classList.remove('is-open'); return; }
-        const tab = item.dataset.go;
+        const tab = item.dataset.go || 'home';
         menu.style.display='none';
         menu.classList.remove('is-open');
-        if(tab === 'perfil' && typeof renderProfile === 'function') { renderProfile(); return; }
-        if(typeof go === 'function') go(tab || 'home');
+        if(typeof window.go === 'function') {
+          window.go(tab);
+          return;
+        }
+        window.location.hash = tab;
       }, true);
       menu.addEventListener('pointerdown', e=>e.stopPropagation(), true);
     }
