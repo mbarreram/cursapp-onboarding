@@ -49,9 +49,14 @@ test.describe('Cursapp V9 clicks reales', () => {
 
     const destinos = ['home', 'campanas', 'deudores', 'informes'];
 
+    const iconContents = await page.locator('.bottomNav .navItem').evaluateAll((items) =>
+      items.map((item) => getComputedStyle(item, '::before').content).join(' ')
+    );
+    expect(iconContents).not.toContain('â');
+
     for (const tab of destinos) {
       await page.locator('#menuBtn').click();
-      await expect(page.locator('#menuDropdown')).toHaveAttribute('data-president-menu-version', '35');
+      await expect(page.locator('#menuDropdown')).toHaveAttribute('data-president-menu-version', '36');
       await expect(page.locator('#menuDropdown')).toHaveCSS('border-radius', '24px');
       await expect(page.locator('#menuDropdown .menuItem').first()).toHaveCSS('border-radius', '16px');
       await page.locator(`#menuDropdown [data-go="${tab}"]`).click();
