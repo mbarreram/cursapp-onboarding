@@ -3128,3 +3128,53 @@ body.cursapp-tesorero .tesProfileChannelV83.active small{color:#6d28d9;font-weig
   body.cursapp-tesorero .tesProfileHeroV83 h2{font-size:18px}
   body.cursapp-tesorero .tesProfileCardV83{padding:14px;border-radius:18px}
 }
+
+/* =========================================================
+   Cursapp · Tesorero V84 · Perfil editable y sesión
+   ========================================================= */
+body.cursapp-tesorero .tesMenuLogoutV84{color:#dc2626!important;border-color:#fecaca!important;background:#fff7f7!important}
+body.cursapp-tesorero .tesProfileHeroV83 div>span+span{margin-top:5px}
+body.cursapp-tesorero .tesProfileRowV83{grid-template-columns:38px minmax(0,1fr) 34px}
+body.cursapp-tesorero .tesProfileEditV84{width:34px;height:34px;border:0;border-radius:11px;background:transparent;color:#6d28d9;font-size:20px;font-weight:950;justify-self:end}
+body.cursapp-tesorero .tesProfileEditV84:active{background:#f3e8ff}
+body.cursapp-tesorero .tesProfileLockV84{justify-self:end;color:#94a3b8;font-size:13px}
+body.cursapp-tesorero .tesProfileCommsV83>header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+body.cursapp-tesorero .tesProfileCommsV83>header button{border:0;background:transparent;color:#6d28d9;font-size:10px;font-weight:950;padding:2px}
+body.cursapp-tesorero .tesProfileSecurityV84>button{width:100%;border:0;background:transparent;display:grid;grid-template-columns:40px minmax(0,1fr) 20px;gap:10px;align-items:center;text-align:left;padding:8px 0;color:#0f172a}
+body.cursapp-tesorero .tesProfileSecurityV84>button>span{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:#f3e8ff;font-size:18px}
+body.cursapp-tesorero .tesProfileSecurityV84 b{display:block;font-size:11px;font-weight:950}
+body.cursapp-tesorero .tesProfileSecurityV84 small{display:block;margin-top:2px;color:#64748b;font-size:9.5px}
+body.cursapp-tesorero .tesProfileSecurityV84 em{justify-self:end;color:#6d28d9;font-style:normal;font-size:22px}
+body.cursapp-tesorero .tesProfilePrefsIntroV84{box-shadow:none;background:transparent;border:0;padding:4px 2px}
+body.cursapp-tesorero .tesProfilePrefsIntroV84 h2{font-size:17px;margin-bottom:5px}
+body.cursapp-tesorero .tesProfilePrefsIntroV84 p{margin:0;color:#64748b;font-size:10.5px;line-height:1.45}
+body.cursapp-tesorero .tesProfilePrefsBlockV84>header{display:grid;grid-template-columns:44px minmax(0,1fr) 50px;gap:10px;align-items:center;margin-bottom:5px}
+body.cursapp-tesorero .tesProfilePrefsBlockV84>header>span{width:42px;height:42px;border-radius:14px;background:#f3e8ff;display:grid;place-items:center;font-size:19px}
+body.cursapp-tesorero .tesProfilePrefsBlockV84.email>header>span{background:#dcfce7}
+body.cursapp-tesorero .tesProfilePrefsBlockV84.sms>header>span{background:#ffedd5}
+body.cursapp-tesorero .tesProfilePrefsBlockV84 h2{margin:0;font-size:13px}
+body.cursapp-tesorero .tesProfilePrefsBlockV84 header p{margin:3px 0 0;color:#64748b;font-size:9.5px;line-height:1.35}
+body.cursapp-tesorero .tesProfileSwitchV84{width:48px;height:29px;border:0;border-radius:999px;background:#e2e8f0;padding:3px;display:flex;align-items:center;justify-content:flex-start;transition:.18s ease}
+body.cursapp-tesorero .tesProfileSwitchV84 em{width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(15,23,42,.2)}
+body.cursapp-tesorero .tesProfileSwitchV84.on{justify-content:flex-end;background:#7c3aed}
+body.cursapp-tesorero .tesProfileToggleRowV84{width:100%;border:0;border-top:1px solid #eef2f7;background:transparent;display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:10px;align-items:center;text-align:left;padding:12px 0;color:#0f172a}
+body.cursapp-tesorero .tesProfileToggleRowV84 b{display:block;font-size:11px;font-weight:950}
+body.cursapp-tesorero .tesProfileToggleRowV84 small{display:block;margin-top:3px;color:#64748b;font-size:9px;line-height:1.35}
+body.cursapp-tesorero .tesProfileInfoV84{padding:12px 14px;border:1px solid #ddd6fe;border-radius:16px;background:#f5f3ff;color:#475569;font-size:9.5px;line-height:1.45}
+body.cursapp-tesorero .tesProfileModalOverlayV84{position:fixed;inset:0;z-index:12000;background:rgba(15,23,42,.52);display:grid;place-items:center;padding:16px}
+body.cursapp-tesorero .tesProfileModalV84{position:relative;width:min(430px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;display:grid;gap:12px;box-shadow:0 28px 70px rgba(15,23,42,.24)}
+body.cursapp-tesorero .tesProfileModalCloseV84{position:absolute;right:12px;top:8px;border:0;background:transparent;font-size:26px;color:#64748b}
+body.cursapp-tesorero .tesProfileModalIconV84{width:54px;height:54px;border-radius:18px;background:#f3e8ff;display:grid;place-items:center;font-size:25px;margin:auto}
+body.cursapp-tesorero .tesProfileModalV84 h2{margin:0;text-align:center;font-size:18px}
+body.cursapp-tesorero .tesProfileModalV84>p{margin:-5px 0 2px;text-align:center;color:#64748b;font-size:10.5px}
+body.cursapp-tesorero .tesProfileModalV84 label{display:grid;gap:6px;color:#334155;font-size:10px;font-weight:900}
+body.cursapp-tesorero .tesProfileModalV84 input{width:100%;box-sizing:border-box;border:1px solid #dbe3ea;border-radius:12px;padding:12px;font:inherit;color:#0f172a;background:#fff}
+body.cursapp-tesorero .tesProfilePasswordErrorV84{min-height:15px;color:#dc2626;font-size:9.5px;font-weight:800}
+body.cursapp-tesorero .tesProfileModalActionsV84{display:grid;grid-template-columns:1fr 1.35fr;gap:9px}
+body.cursapp-tesorero .tesProfileModalActionsV84 button{height:42px;border:1px solid #dbe3ea;border-radius:12px;background:#fff;color:#334155;font-weight:900;font-size:10px}
+body.cursapp-tesorero .tesProfileModalActionsV84 .primary{border-color:#6d28d9;background:#6d28d9;color:#fff}
+body.cursapp-tesorero .tesProfileModalActionsV84 .primary:disabled{opacity:.65}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesProfileModalV84{padding:19px 16px;border-radius:20px}
+  body.cursapp-tesorero .tesProfilePrefsBlockV84>header{grid-template-columns:40px minmax(0,1fr) 48px}
+}

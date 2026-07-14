@@ -64,16 +64,31 @@ test.describe('Cursapp V9 clicks reales', () => {
     await page.locator('#menuDropdown [data-go="profile"]').click();
     await expect(page.locator('[data-view="treasurer-profile-current"]')).toBeVisible();
     await expect(page.locator('#app')).toContainText('Información personal');
+    await expect(page.locator('.tesProfileEditV84')).toHaveCount(3);
+    await expect(page.getByText('Cambiar contraseña', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Configurar' }).click();
+    await expect(page.locator('[data-view="treasurer-profile-notifications"]')).toBeVisible();
+    await expect(page.locator('#app')).toContainText('Pagos por conciliar');
+    await page.locator('.tesProfileTopbarV83 button').click();
+
+    await page.getByText('Cambiar contraseña', { exact: true }).click();
+    await expect(page.locator('.tesProfileModalV84')).toBeVisible();
+    await expect(page.locator('#tesPasswordCurrent')).toBeVisible();
+    await page.locator('.tesProfileModalCloseV84').click();
 
     await page.locator('#menuBtn').click();
-    await page.locator('#menuDropdown [data-close]').click();
-    await expect(page.locator('#menuDropdown')).not.toHaveClass(/is-open/);
-    await expect(page.locator('#menuDropdown')).toBeHidden();
-
-    await page.locator('#menuBtn').click();
+    await expect(page.locator('#menuDropdown [data-menu-item="conciliacion"]')).toHaveCount(0);
+    await expect(page.locator('#menuDropdown')).not.toContainText('Cerrar menú');
+    await expect(page.locator('#menuDropdown > button').last()).toContainText('Cerrar sesión');
     await page.locator('#supportMenuItem').click();
     await expect(page.locator('#supportTicketOverlay')).toBeVisible();
     await expect(page.locator('#supportTicketOverlay')).toContainText('Mis tickets');
     await expect(page.locator('#supportTicketOverlay [data-tab="mine"]')).toHaveClass(/active/);
+    await page.locator('#supportTicketOverlay [data-close]').first().click();
+
+    await page.locator('#menuBtn').click();
+    await page.locator('#menuDropdown [data-action="logout"]').click();
+    await expect(page).toHaveURL(/\/login\.html$/);
   });
 });
