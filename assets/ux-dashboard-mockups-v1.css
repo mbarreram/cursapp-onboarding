@@ -1632,14 +1632,14 @@ body.cursapp-app-shell{
   background:#efe7ff;
 }
 
-.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"\\2302";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"\\25C6";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"\\25B7";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"\\25A5";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"\\25B0";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"\\25A4";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"\\2713";}
-.cursapp-app-shell .marketBottomTab::before{content:"\\25A3"; color:#07894f; background:#eafaf2;}
+.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"\${code}";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"\${code}";}
+.cursapp-app-shell .marketBottomTab::before{content:"\${code}"; color:#07894f; background:#eafaf2;}
 
 .cursapp-app-shell .bottomNav .navItem span,
 .cursapp-app-shell .marketBottomTab span:last-child{
@@ -1701,40 +1701,40 @@ body.cursapp-app-shell{
 }
 
 .presMockQuick:nth-child(1) span::before{content:"+";}
-.presMockQuick:nth-child(2) span::before{content:"âœ‰";}
-.presMockQuick:nth-child(3) span::before{content:"â—‰";}
-.presMockQuick:nth-child(4) span::before{content:"â–¥";}
-.presMockQuick:nth-child(5) span::before{content:"â–°";}
-.presMockQuick:nth-child(6) span::before{content:"â—·";}
+.presMockQuick:nth-child(2) span::before{content:"✉";}
+.presMockQuick:nth-child(3) span::before{content:"◉";}
+.presMockQuick:nth-child(4) span::before{content:"▥";}
+.presMockQuick:nth-child(5) span::before{content:"▰";}
+.presMockQuick:nth-child(6) span::before{content:"◷";}
 
-.apoMockQuick:nth-child(1) span::before{content:"â–°";}
-.apoMockQuick:nth-child(2) span::before{content:"â–¤";}
-.apoMockQuick:nth-child(3) span::before{content:"â–¥";}
-.apoMockQuick:nth-child(4) span::before{content:"â–£";}
+.apoMockQuick:nth-child(1) span::before{content:"▰";}
+.apoMockQuick:nth-child(2) span::before{content:"▤";}
+.apoMockQuick:nth-child(3) span::before{content:"▥";}
+.apoMockQuick:nth-child(4) span::before{content:"▣";}
 
 .tesMockQuickGrid button:nth-child(1) span::before{content:"+";}
-.tesMockQuickGrid button:nth-child(2) span::before{content:"â‡„";}
-.tesMockQuickGrid button:nth-child(3) span::before{content:"â–¤";}
-.tesMockQuickGrid button:nth-child(4) span::before{content:"â–¥";}
+.tesMockQuickGrid button:nth-child(2) span::before{content:"⇄";}
+.tesMockQuickGrid button:nth-child(3) span::before{content:"▤";}
+.tesMockQuickGrid button:nth-child(4) span::before{content:"▥";}
 
 .presMockKpi:nth-child(1) span::before{content:"$";}
 .presMockKpi:nth-child(2) span::before{content:"!";}
-.presMockKpi:nth-child(3) span::before{content:"â—‰";}
-.presMockKpi:nth-child(4) span::before{content:"â–¦";}
+.presMockKpi:nth-child(3) span::before{content:"◉";}
+.presMockKpi:nth-child(4) span::before{content:"▦";}
 
-.apoMockStatusList button:nth-child(1) span::before{content:"âœ‰";}
-.apoMockStatusList button:nth-child(2) span::before{content:"â–°";}
-.apoMockStatusList button:nth-child(3) span::before{content:"â–¥";}
+.apoMockStatusList button:nth-child(1) span::before{content:"✉";}
+.apoMockStatusList button:nth-child(2) span::before{content:"▰";}
+.apoMockStatusList button:nth-child(3) span::before{content:"▥";}
 .apoMockReport span::before,
-.tesMockReportList span::before{content:"â–¥";}
+.tesMockReportList span::before{content:"▥";}
 .tesMockKpis article:nth-child(1) span::before{content:"$";}
-.tesMockKpis article:nth-child(2) span::before{content:"â†—";}
-.tesMockKpis article:nth-child(3) span::before{content:"â†˜";}
-.tesMockKpis article:nth-child(4) span::before{content:"â‡„";}
-.tesMockTaskList article:nth-child(1) span::before{content:"â‡„";}
-.tesMockTaskList article:nth-child(2) span::before{content:"â–¤";}
-.tesMockCampaignList span::before{content:"â–¤";}
-.tesMockPay span::before{content:"â–°";}
+.tesMockKpis article:nth-child(2) span::before{content:"↗";}
+.tesMockKpis article:nth-child(3) span::before{content:"↘";}
+.tesMockKpis article:nth-child(4) span::before{content:"⇄";}
+.tesMockTaskList article:nth-child(1) span::before{content:"⇄";}
+.tesMockTaskList article:nth-child(2) span::before{content:"▤";}
+.tesMockCampaignList span::before{content:"▤";}
+.tesMockPay span::before{content:"▰";}
 
 .presMockQuick,
 .apoMockQuick,
@@ -2617,7 +2617,7 @@ body.cursapp-app-shell{
   }
 
   .cursapp-presidente .brand .muted::after{
-    content:"âŒ„";
+    content:"⌄";
     margin-left:8px;
     color:#64748b;
     font-weight:800;
@@ -2715,7 +2715,7 @@ body.cursapp-app-shell{
   }
 
   .cursapp-presidente .presMockHeroHead button::after{
-    content:"â†’";
+    content:"→";
     margin-left:12px;
     font-size:18px;
     line-height:0;
@@ -2788,7 +2788,7 @@ body.cursapp-app-shell{
   }
 
   .cursapp-presidente .presMockKpis::after{
-    content:"Este mesâŒ„";
+    content:"Este mes⌄";
     grid-column:2 / 3;
     justify-self:end;
     align-self:end;
@@ -3583,7 +3583,7 @@ body.cursapp-app-shell{
   }
 
   .cursapp-presidente .presMockHero.is-empty .presMockHeroHead p::after{
-    content:" Cuando el curso tenga campaÃ±as verÃ¡s aquÃ­ el resumen financiero.";
+    content:" Cuando el curso tenga campañas verás aquí el resumen financiero.";
     display:block;
     margin-top:3px;
     color:#7c8798;
@@ -5941,17 +5941,17 @@ body.cursapp-app-shell{
   }
 
   .cursapp-presidente .presInfoPeople::before{
-    content:"ðŸ‘¥";
+    content:"👥";
     font-size:26px;
   }
 
   .cursapp-presidente .presInfoSchool::before{
-    content:"ðŸŽ“";
+    content:"🎓";
     font-size:26px;
   }
 
   .cursapp-presidente .presInfoCourse::before{
-    content:"â–¯";
+    content:"▯";
     font-size:30px;
     line-height:24px;
     font-weight:800;
