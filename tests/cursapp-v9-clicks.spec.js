@@ -73,6 +73,21 @@ test.describe('Cursapp V9 clicks reales', () => {
     await expect(page.locator('#supportTicketOverlay')).toContainText('Mis tickets');
   });
 
+  test('apoderado conserva iconos legibles y Apoderados mantiene el menú Presidente', async ({ page }) => {
+    await page.goto('/apoderado.html');
+    await expect(page.locator('body')).toBeVisible();
+    const apoderadoText = await page.locator('body').innerText();
+    expect(apoderadoText).not.toMatch(/ðŸ|Ã|Â|â(?:€|œ|†|‡|—|–|„|‹|Œ|˜|š|ž)/);
+
+    await page.goto('/apoderados.html');
+    await page.locator('#menuBtn').click();
+    await expect(page.locator('#menuDropdown')).toHaveAttribute('data-president-menu-version', '36');
+    await expect(page.locator('#menuDropdown .menuItem')).toHaveCount(7);
+    await expect(page.locator('#menuDropdown .menuItem').last()).toContainText('Cerrar sesión');
+    await expect(page.locator('#menuDropdown .menuItem').nth(5)).toContainText('Soporte / Mis tickets');
+    await expect(page.locator('#menuDropdown')).not.toContainText('Cerrar menú');
+  });
+
   test('menú tesorero abre todos sus destinos', async ({ page }) => {
     await page.goto('/tesorero.html');
 
