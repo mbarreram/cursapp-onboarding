@@ -1632,14 +1632,14 @@ body.cursapp-app-shell{
   background:#efe7ff;
 }
 
-.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"âŒ‚";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"â—†";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"â—·";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"â–¥";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"â–°";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"â–¤";}
-.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"âœ“";}
-.cursapp-app-shell .marketBottomTab::before{content:"â–£"; color:#07894f; background:#eafaf2;}
+.cursapp-app-shell .bottomNav .navItem[data-tab="home"]::before{content:"\\2302";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="campanas"]::before{content:"\\25C6";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="deudores"]::before{content:"\\25B7";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="informes"]::before{content:"\\25A5";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="payments"]::before{content:"\\25B0";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="rendiciones"]::before{content:"\\25A4";}
+.cursapp-app-shell .bottomNav .navItem[data-tab="conciliacion"]::before{content:"\\2713";}
+.cursapp-app-shell .marketBottomTab::before{content:"\\25A3"; color:#07894f; background:#eafaf2;}
 
 .cursapp-app-shell .bottomNav .navItem span,
 .cursapp-app-shell .marketBottomTab span:last-child{
@@ -6135,7 +6135,7 @@ body.cursapp-app-shell{
 }
 
 /* =========================================================
-   Cursapp · Presidente V35 · menú estable estilo Tesorero
+   Cursapp · Presidente V36 · menú estable estilo Tesorero
    ========================================================= */
 .cursapp-presidente #menuDropdown.presMenuPanel,
 .cursapp-presidente #menuDropdown.presMenuPanel.caMenuOpen,
@@ -6178,7 +6178,7 @@ body.cursapp-app-shell{
   outline:none !important;
 }
 
-.cursapp-presidente #menuDropdown.presMenuPanel .presMenuLogoutV35{
+.cursapp-presidente #menuDropdown.presMenuPanel .presMenuLogoutV36{
   color:#dc2626 !important;
   border-color:#fecaca !important;
   background:#fff7f7 !important;
