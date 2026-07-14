@@ -48,21 +48,26 @@ test.describe('Cursapp V9 clicks reales', () => {
     await page.goto('/tesorero.html');
 
     const destinos = [
-      ['Inicio', 'home'],
-      ['Conciliar pagos', 'conciliacion'],
-      ['Rendiciones', 'rendiciones'],
-      ['Informes', 'informes']
+      ['Inicio', 'home', '.tesCardHead h1'],
+      ['Conciliar pagos', 'conciliacion', '.tesV75Title h1'],
+      ['Rendiciones', 'rendiciones', '.tesV77Page > h1'],
+      ['Informes', 'informes', '.tesV80Page > h1']
     ];
 
-    for (const [label, tab] of destinos) {
+    for (const [label, tab, titleSelector] of destinos) {
       await page.locator('#menuBtn').click();
       await page.locator(`#menuDropdown [data-go="${tab}"]`).click();
       await expect(page.locator(`.navItem[data-tab="${tab}"]`)).toHaveClass(/active/);
+      await expect(page.locator(titleSelector)).toHaveCSS('font-size', '20px');
+      const titleFont = await page.locator(titleSelector).evaluate(el => getComputedStyle(el).fontFamily);
+      const bodyFont = await page.locator('body').evaluate(el => getComputedStyle(el).fontFamily);
+      expect(titleFont).toBe(bodyFont);
     }
 
     await page.locator('#menuBtn').click();
     await page.locator('#menuDropdown [data-go="profile"]').click();
     await expect(page.locator('[data-view="treasurer-profile-current"]')).toBeVisible();
+    await expect(page.locator('.tesProfileTopbarV83 h1')).toHaveCSS('font-size', '20px');
     await expect(page.locator('#app')).toContainText('Información personal');
     await expect(page.locator('.tesProfileEditV84')).toHaveCount(3);
     await expect(page.getByText('Cambiar contraseña', { exact: true })).toBeVisible();
