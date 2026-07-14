@@ -246,6 +246,7 @@
   }
 
   function openModal(tab){
+    document.getElementById("supportTicketOverlay")?.remove();
     const meta = getCourseMeta();
     const root = document.createElement("div");
     root.className = "supportOverlay";
@@ -287,6 +288,12 @@
     document.body.appendChild(root);
     if(active === "new") bindSubmit(root);
   }
+
+  window.CURSAPP_SUPPORT = Object.assign(window.CURSAPP_SUPPORT || {}, {
+    open: (tab) => openModal(tab || "new"),
+    openNewTicket: () => openModal("new"),
+    openMyTickets: () => openModal("mine")
+  });
 
   function mount(){
     const s = getSession();

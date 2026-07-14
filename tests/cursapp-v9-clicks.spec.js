@@ -62,6 +62,18 @@ test.describe('Cursapp V9 clicks reales', () => {
 
     await page.locator('#menuBtn').click();
     await page.locator('#menuDropdown [data-go="profile"]').click();
-    await expect(page.locator('#app')).toContainText('Perfil tesorero');
+    await expect(page.locator('[data-view="treasurer-profile-current"]')).toBeVisible();
+    await expect(page.locator('#app')).toContainText('Información personal');
+
+    await page.locator('#menuBtn').click();
+    await page.locator('#menuDropdown [data-close]').click();
+    await expect(page.locator('#menuDropdown')).not.toHaveClass(/is-open/);
+    await expect(page.locator('#menuDropdown')).toBeHidden();
+
+    await page.locator('#menuBtn').click();
+    await page.locator('#supportMenuItem').click();
+    await expect(page.locator('#supportTicketOverlay')).toBeVisible();
+    await expect(page.locator('#supportTicketOverlay')).toContainText('Mis tickets');
+    await expect(page.locator('#supportTicketOverlay [data-tab="mine"]')).toHaveClass(/active/);
   });
 });

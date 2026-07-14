@@ -1940,9 +1940,68 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       </div>`;
   };
 
+  function treasurerProfileData(){
+    let session = {};
+    let editable = {};
+    try{ session = JSON.parse(localStorage.getItem('cursapp_session_v1') || '{}') || {}; }catch(_e){}
+    try{ editable = JSON.parse(localStorage.getItem('cursapp_profile_editable_v1') || '{}') || {}; }catch(_e){}
+
+    const email = String(session.email || session.userId || '').trim();
+    const courseKey = String(localStorage.getItem('cursapp_active_course_v1') || session.courseKey || '').trim();
+    const profile = allProfiles().find(p=>{
+      const profileEmail = String(p?.email || p?.userId || p?.directiva?.email || p?.apoderado?.email || '').trim().toLowerCase();
+      const sameEmail = email && profileEmail === email.toLowerCase();
+      const sameCourse = !courseKey || String(p?.courseKey || '') === courseKey;
+      return sameEmail && sameCourse;
+    }) || {};
+    const course = profile.course || {};
+    const directiva = profile.directiva || {};
+    const guardian = profile.apoderado || {};
+    const name = String(editable.name || directiva.name || directiva.nombre || guardian.name || guardian.nombre || session.fullName || session.displayName || session.name || session.nombre || treasurerDisplayName()).trim();
+    const phone = String(editable.phone || directiva.phone || directiva.telefono || guardian.phone || guardian.telefono || session.phone || session.telefono || '').trim();
+    const school = String(course.schoolName || course.colegio || session.schoolName || session.colegio || session.school || '').trim();
+    const courseName = String(course.courseLabel || course.name || session.courseLabel || session.course || session.curso || '').trim();
+    return {
+      name: name || 'Tesorero',
+      email,
+      phone,
+      course: courseName || courseLabelForHeader().split('·')[0].trim(),
+      school: school || courseLabelForHeader().split('·').slice(1).join('·').trim() || 'Colegio no informado'
+    };
+  }
+
   function renderProfile(){
     updateTreasurerHeader();
-    app.innerHTML = `<div class="tesV57Page"><section class="tesPanel"><h2>Perfil tesorero</h2><p class="tesLead">Datos del rol y preferencias del usuario.</p><div class="tesProfileList"><div><b>Rol</b><span>Tesorero</span></div><div><b>Curso</b><span>${esc(courseLabelForHeader())}</span></div><div><b>Notificaciones</b><span>Activas</span></div></div></section></div>`;
+    const data = treasurerProfileData();
+    let prefs = {};
+    try{ prefs = JSON.parse(localStorage.getItem('cursapp_profile_comm_prefs_v1') || '{}') || {}; }catch(_e){}
+    const channels = Object.assign({push:true, email:true, sms:false}, prefs);
+    const initials = String(data.name || 'T').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase() || 'T';
+    const channel = (icon, label, enabled)=>`<article class="tesProfileChannelV83 ${enabled?'active':''}"><span>${icon}</span><b>${label}</b><small>${enabled?'Activado':'Desactivado'}</small></article>`;
+
+    app.innerHTML = `<div class="tesProfilePageV83" data-view="treasurer-profile-current">
+      <section class="tesProfileTopbarV83"><button type="button" onclick="go('home')" aria-label="Volver al inicio">←</button><h1>Mi perfil</h1><span></span></section>
+      <section class="tesProfileHeroV83">
+        <div class="tesProfileAvatarV83">${esc(initials)}</div>
+        <div><h2>${esc(data.name)}</h2><p>Tesorero del curso</p><span>✉️ ${esc(data.email || 'Correo no registrado')}</span></div>
+      </section>
+      <section class="tesProfileCardV83 tesProfileCourseV83">
+        <article><span>🎓</span><div><b>Curso</b><small>${esc(data.course)}</small></div><em title="Dato administrado por la directiva">🔒</em></article>
+        <article><span>🏫</span><div><b>Colegio</b><small>${esc(data.school)}</small></div><em title="Dato administrado por la directiva">🔒</em></article>
+        <p>ⓘ El curso y el colegio son administrados por la directiva.</p>
+      </section>
+      <section class="tesProfileCardV83">
+        <h2>Información personal</h2>
+        <article class="tesProfileRowV83"><span>👤</span><div><b>Nombre completo</b><small>${esc(data.name)}</small></div></article>
+        <article class="tesProfileRowV83"><span>✉️</span><div><b>Correo electrónico</b><small>${esc(data.email || 'No registrado')}</small></div></article>
+        <article class="tesProfileRowV83"><span>📱</span><div><b>Teléfono</b><small>${esc(data.phone || 'No registrado')}</small></div></article>
+        <article class="tesProfileRowV83"><span>🛡️</span><div><b>Rol activo</b><small>Tesorero</small></div></article>
+      </section>
+      <section class="tesProfileCardV83 tesProfileCommsV83">
+        <header><div><h2>Preferencias de comunicación</h2><p>Canales configurados para este perfil.</p></div></header>
+        <div>${channel('🔔','Push',channels.push)}${channel('✉️','Correos',channels.email)}${channel('💬','SMS',channels.sms)}</div>
+      </section>
+    </div>`;
   }
 
   window.__tesConcFilter = window.__tesConcFilter || "pendientes";
@@ -2823,16 +2882,35 @@ __bootTesoreroSupabaseFirst();
         <button class="menuItem" type="button" data-go="rendiciones">📄 Rendiciones</button>
         <button class="menuItem" type="button" data-go="informes">📊 Informes</button>
         <button class="menuItem" type="button" data-go="profile">👤 Mi perfil</button>
+        <button class="menuItem" id="supportMenuItem" type="button" data-action="support">💬 Soporte / Mis tickets</button>
         <button class="menuItem" type="button" data-close="1">Cerrar menú</button>`;
       menu.dataset.v62Ready = '1';
+      const closeMenu = function(){
+        menu.classList.remove('is-open');
+        menu.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+      };
       menu.addEventListener('click', function(e){
+        e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const item = e.target.closest('button');
         if(!item) return;
-        if(item.dataset.close){ menu.style.display='none'; menu.classList.remove('is-open'); return; }
-        const tab = item.dataset.go || 'home';
-        menu.style.display='none';
-        menu.classList.remove('is-open');
+        closeMenu();
+        if(item.dataset.close) return;
+        if(item.dataset.action === 'support'){
+          if(window.CURSAPP_SUPPORT && typeof window.CURSAPP_SUPPORT.openMyTickets === 'function'){
+            window.CURSAPP_SUPPORT.openMyTickets();
+          }
+          return;
+        }
+        const tab = item.dataset.go;
+        if(!tab) return;
+        const navItem = document.querySelector(`.bottomNav .navItem[data-tab="${tab}"]`);
+        if(navItem){
+          navItem.click();
+          return;
+        }
         if(typeof window.go === 'function') {
           window.go(tab);
           return;
@@ -2844,9 +2922,10 @@ __bootTesoreroSupabaseFirst();
     const toggle = function(e){
       e.preventDefault();
       e.stopPropagation();
-      const open = menu.style.display === 'block';
+      const open = menu.classList.contains('is-open');
       menu.style.display = open ? 'none' : 'block';
       menu.classList.toggle('is-open', !open);
+      btn.setAttribute('aria-expanded', String(!open));
     };
     btn.onclick = toggle;
     btn.onpointerdown = function(e){ e.stopPropagation(); };
