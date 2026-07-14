@@ -3178,3 +3178,140 @@ body.cursapp-tesorero .tesProfileModalActionsV84 .primary:disabled{opacity:.65}
   body.cursapp-tesorero .tesProfileModalV84{padding:19px 16px;border-radius:20px}
   body.cursapp-tesorero .tesProfilePrefsBlockV84>header{grid-template-columns:40px minmax(0,1fr) 48px}
 }
+
+/* =========================================================
+   Cursapp · Tesorero V85 · escala tipográfica unificada
+   El Home vigente es la referencia para todos los módulos.
+   ========================================================= */
+body.cursapp-tesorero{
+  --tes-type-page:20px;
+  --tes-type-section:19px;
+  --tes-type-card:16px;
+  --tes-type-body:13px;
+  --tes-type-meta:11.5px;
+  --tes-type-caption:11px;
+  --tes-type-action:13px;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+body.cursapp-tesorero button,
+body.cursapp-tesorero input,
+body.cursapp-tesorero select,
+body.cursapp-tesorero textarea{
+  font-family:inherit!important;
+}
+
+/* Títulos de página: misma presencia que "Estado general del curso". */
+body.cursapp-tesorero .tesV75Title h1,
+body.cursapp-tesorero .tesV77Page>h1,
+body.cursapp-tesorero .tesV80Page>h1,
+body.cursapp-tesorero .tesProfileTopbarV83 h1{
+  font-size:var(--tes-type-page)!important;
+  line-height:1.1!important;
+  font-weight:950!important;
+  letter-spacing:-.035em!important;
+}
+
+/* Conciliar pagos. */
+body.cursapp-tesorero .tesV75CampaignSelect select{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesV75CampaignMetrics small,
+body.cursapp-tesorero .tesV75Info small{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesV75CampaignMetrics b{font-size:14px!important;}
+body.cursapp-tesorero .tesV75Info b,
+body.cursapp-tesorero .tesV75List .tesV73Person small{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesV75Tabs button,
+body.cursapp-tesorero .tesV75BulkBtn,
+body.cursapp-tesorero .tesV75InfoBtn{font-size:var(--tes-type-action)!important;}
+body.cursapp-tesorero .tesV75List .tesV73Person b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV75List .tesV73Amount{font-size:14px!important;}
+body.cursapp-tesorero .tesV75List .tesV73Status{font-size:var(--tes-type-caption)!important;}
+body.cursapp-tesorero .tesV75List .tesV73Action button{font-size:12px!important;}
+body.cursapp-tesorero .tesV75Summary h2{font-size:var(--tes-type-section)!important;}
+body.cursapp-tesorero .tesV75Summary header button{font-size:var(--tes-type-action)!important;}
+
+/* Rendiciones. */
+body.cursapp-tesorero .tesV77CampaignSelect select{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesV77State small,
+body.cursapp-tesorero .tesV77CampaignMetrics small,
+body.cursapp-tesorero .tesV77Quick small,
+body.cursapp-tesorero .tesV77CampaignInfo small,
+body.cursapp-tesorero .tesV77ExpMain small{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesV77CampaignMetrics b,
+body.cursapp-tesorero .tesV77Quick b,
+body.cursapp-tesorero .tesV77CampaignInfo b,
+body.cursapp-tesorero .tesV77Category b,
+body.cursapp-tesorero .tesV77Category strong,
+body.cursapp-tesorero .tesV77ExpMain b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV77ExpAmount strong{font-size:14px!important;}
+body.cursapp-tesorero .tesV77ExpAmount span{font-size:var(--tes-type-caption)!important;}
+body.cursapp-tesorero .tesV77InfoBtn,
+body.cursapp-tesorero .tesV77Add,
+body.cursapp-tesorero .tesV77ExpActions button{font-size:var(--tes-type-action)!important;}
+body.cursapp-tesorero .tesV78Notice b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV78Notice span,
+body.cursapp-tesorero .tesV78FormHelp{font-size:var(--tes-type-meta)!important;}
+
+/* Informes. */
+body.cursapp-tesorero .tesV80Campaign label>small,
+body.cursapp-tesorero .tesV80Campaign footer,
+body.cursapp-tesorero .tesV80Kpis small,
+body.cursapp-tesorero .tesV80Kpis em,
+body.cursapp-tesorero .tesV80States small,
+body.cursapp-tesorero .tesV80Empty{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesV80Campaign select{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesV80Kpis b{font-size:14px!important;}
+body.cursapp-tesorero .tesV80States h2,
+body.cursapp-tesorero .tesV80Finance h2{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesV80History h2{font-size:var(--tes-type-section)!important;}
+body.cursapp-tesorero .tesV80States b,
+body.cursapp-tesorero .tesV80States strong,
+body.cursapp-tesorero .tesV80States .campaign p,
+body.cursapp-tesorero .tesV80Finance article>div:not(.tesV80Donut):not(.tesV80Legend),
+body.cursapp-tesorero .tesV80History article{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesV80Status{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV80Finance h3{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV80Donut b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesV80Donut small,
+body.cursapp-tesorero .tesV80Legend div{font-size:var(--tes-type-caption)!important;}
+body.cursapp-tesorero .tesV80Actions button{font-size:var(--tes-type-action)!important;}
+
+/* Perfil, preferencias y seguridad. */
+body.cursapp-tesorero .tesProfileHeroV83 h2{font-size:var(--tes-type-page)!important;}
+body.cursapp-tesorero .tesProfileHeroV83 p{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesProfileHeroV83 div>span,
+body.cursapp-tesorero .tesProfileCourseV83 small,
+body.cursapp-tesorero .tesProfileRowV83 small,
+body.cursapp-tesorero .tesProfileCommsV83 header p,
+body.cursapp-tesorero .tesProfileSecurityV84 small{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesProfileCardV83>h2,
+body.cursapp-tesorero .tesProfileCommsV83 h2{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesProfileCourseV83 b,
+body.cursapp-tesorero .tesProfileRowV83 b,
+body.cursapp-tesorero .tesProfileChannelV83 b,
+body.cursapp-tesorero .tesProfileSecurityV84 b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesProfileCourseV83>p,
+body.cursapp-tesorero .tesProfileChannelV83 small{font-size:var(--tes-type-caption)!important;}
+body.cursapp-tesorero .tesProfileCommsV83>header button{font-size:var(--tes-type-action)!important;}
+body.cursapp-tesorero .tesProfilePrefsIntroV84 h2{font-size:var(--tes-type-section)!important;}
+body.cursapp-tesorero .tesProfilePrefsIntroV84 p{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesProfilePrefsBlockV84 h2{font-size:var(--tes-type-card)!important;}
+body.cursapp-tesorero .tesProfilePrefsBlockV84 header p,
+body.cursapp-tesorero .tesProfileToggleRowV84 small,
+body.cursapp-tesorero .tesProfileInfoV84{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesProfileToggleRowV84 b{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesProfileModalV84>p,
+body.cursapp-tesorero .tesProfileModalV84 label{font-size:var(--tes-type-meta)!important;}
+body.cursapp-tesorero .tesProfileModalV84 input{font-size:var(--tes-type-body)!important;}
+body.cursapp-tesorero .tesProfilePasswordErrorV84{font-size:var(--tes-type-caption)!important;}
+body.cursapp-tesorero .tesProfileModalActionsV84 button{font-size:var(--tes-type-action)!important;}
+
+@media(max-width:430px){
+  body.cursapp-tesorero{
+    --tes-type-page:20px;
+    --tes-type-section:19px;
+    --tes-type-card:15px;
+    --tes-type-body:13px;
+    --tes-type-meta:11px;
+    --tes-type-caption:10.5px;
+    --tes-type-action:12.5px;
+  }
+}
