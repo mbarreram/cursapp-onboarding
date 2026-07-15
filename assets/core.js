@@ -335,8 +335,9 @@
   if (window.__CURSAPP_SUPABASE_HYBRID_FASE1A_CORE_FIX__) return;
   window.__CURSAPP_SUPABASE_HYBRID_FASE1A_CORE_FIX__ = true;
 
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
   const MAP_KEY = "cursapp_supabase_ids_v1";
   const LOG_KEY = "cursapp_supabase_last_sync_v1";
   const ALERT_KEY = "cursapp_supabase_alert_once_v1";
@@ -431,6 +432,9 @@
   function mapSave(m){ saveJSON(MAP_KEY, m); }
 
   async function sb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      return window.CURSAPP_SUPABASE.request(path, opts);
+    }
     const headers = Object.assign({
       "apikey": SB_KEY,
       "Authorization": "Bearer " + SB_KEY,
@@ -820,8 +824,9 @@
   if(window.__CURSAPP_SUPABASE_OPERATIONAL_ONLY_1D4__) return;
   window.__CURSAPP_SUPABASE_OPERATIONAL_ONLY_1D4__ = true;
 
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
   const STATUS_KEY = "cursapp_supabase_operational_only_status_v1";
 
   function parseJSON(v, fallback){ try{ return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
@@ -840,6 +845,10 @@
   function ymFromISO(iso){ const s = String(iso||""); return s.length >= 7 ? s.slice(0,7) : ""; }
 
   async function sb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path, opts);
+      return Array.isArray(data) ? data : (data ? [data] : []);
+    }
     const res = await fetch(SB_URL + "/rest/v1/" + path, {
       method: (opts && opts.method) || "GET",
       headers: Object.assign({
@@ -1152,8 +1161,9 @@
   if(window.__CURSAPP_FASE2A_PAGOS_SUPABASE__) return;
   window.__CURSAPP_FASE2A_PAGOS_SUPABASE__ = true;
 
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
   const STATUS_KEY = "cursapp_fase2a_pagos_status_v1";
 
   const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
@@ -1166,6 +1176,10 @@
     try{ localStorage.setItem(STATUS_KEY, JSON.stringify({status, detail:detail||{}, at:new Date().toISOString()})); }catch(e){}
   }
   async function sb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path, opts);
+      return Array.isArray(data) ? data : (data ? [data] : []);
+    }
     const headers = Object.assign({
       apikey: SB_KEY,
       Authorization: "Bearer " + SB_KEY,
@@ -1437,11 +1451,11 @@
   const businessPage = /presidente|apoderado|tesorero/.test(path);
   if(!businessPage) return;
 
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
-  // Fallback correcto si el token anterior fue copiado con typo en algún merge.
-  const SB_KEY_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
-  const SB_KEY_OK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
+  const SB_KEY_REAL = SB_KEY;
+  const SB_KEY_OK = SB_KEY;
 
   function parseJSON(k){ try{ return JSON.parse(localStorage.getItem(k) || sessionStorage.getItem(k) || "null"); }catch(e){ return null; } }
   function q(v){ return encodeURIComponent(String(v == null ? "" : v)); }
@@ -1449,7 +1463,11 @@
   function norm(v){ return String(v||"").toLowerCase().trim(); }
 
   async function sb(path){
-    const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path);
+      return Array.isArray(data) ? data : (data ? [data] : []);
+    }
+    const key = SB_KEY;
     const res = await fetch(SB_URL + "/rest/v1/" + path, { headers:{ apikey:key, Authorization:"Bearer " + key, "Content-Type":"application/json" } });
     const txt = await res.text();
     let data = null; try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = txt; }

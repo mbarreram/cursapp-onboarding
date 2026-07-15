@@ -3,8 +3,9 @@
    Importante: esta es la clave ANON PUBLIC. No usar service_role en frontend.
 */
 (function () {
-  const SUPABASE_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const config = window.CURSAPP_SUPABASE || {};
+  const SUPABASE_URL = config.url;
+  const SUPABASE_PUBLIC_KEY = config.publishableKey;
 
   function initSupabase() {
     if (!window.supabase || typeof window.supabase.createClient !== "function") {
@@ -14,11 +15,12 @@
 
     if (window.cursappSupabase) return window.cursappSupabase;
 
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        storageKey: config.sdkStorageKey || "cursapp_supabase_oauth_v1"
       }
     });
 

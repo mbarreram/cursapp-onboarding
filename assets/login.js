@@ -6,7 +6,7 @@
    - Selector de curso si hay múltiples courseKey.
    - Selector de rol si en el mismo courseKey existen varios roles.
    - Apoderado requiere enrollment approved (por curso), EXCEPTO si el usuario también es presidente en ese curso (auto).
-   - Mantiene accesos demo: presidente/tesorero con pass demo.
+   - Todas las credenciales se validan con Supabase Auth.
    ========================================================= */
 
 const esc = (s) =>
@@ -42,8 +42,6 @@ const esc = (s) =>
   const KEY_SESSION = "cursapp_session_v1";
   const KEY_DEMO_USER = "cursapp_demo_user";
   const KEY_ACTIVE_ENROLL = "cursapp_active_enrollment_v1";
-  const KEY_REF_AGENTS = "cursapp_ref_agents_v1";
-  const KEY_AGENT_SESSION = "cursapp_agent_session_v1";
 
   const KEY_ROLES_AVAILABLE = "cursapp_roles_v1";
   const KEY_ACTIVE_ROLE = "cursapp_active_role_v1";
@@ -150,39 +148,6 @@ function loadJSON(k, def) {
       loginError.style.display = "none";
       loginError.textContent = "";
     }
-  }
-
-  // demo hash used in onboarding
-  function hashDemo(str) {
-    let h = 5381;
-    const s = String(str || "");
-    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
-    return "h_" + (h >>> 0).toString(16);
-  }
-
-
-  function ensureDemoAgent(){
-    const agents = loadJSON(KEY_REF_AGENTS, []);
-    const demo = {
-      id:"ag_demo_cursapp",
-      name:"Agente Demo Cursapp",
-      email:"agente@cursapp.cl",
-      passwordHashDemo:hashDemo("123456"),
-      code:"MAU2026",
-      status:"active",
-      createdAt:new Date().toISOString()
-    };
-    const exists = agents.find(a => String(a.email||"").toLowerCase() === "agente@cursapp.cl");
-    if(!exists){
-      agents.unshift(demo);
-      saveJSON(KEY_REF_AGENTS, agents);
-      return demo;
-    }
-    exists.passwordHashDemo = exists.passwordHashDemo || hashDemo("123456");
-    exists.code = exists.code || "MAU2026";
-    exists.status = exists.status || "active";
-    saveJSON(KEY_REF_AGENTS, agents);
-    return exists;
   }
 
   function setActiveCourseKey(k) {
@@ -322,20 +287,22 @@ function loadJSON(k, def) {
     if (role === "apoderado" && profile) {
       const ap = profile.apoderado || {};
       setBanner({
-        name: (ap.name || "Apoderado") + " (Demo)",
+        name: ap.name || "Apoderado",
         role: "apoderado",
         alumno: ap.alumno || "Alumno",
         email: userEmail
       });
     } else {
       setBanner({
-        name: (role === "presidente" ? "Presidente" : role === "tesorero" ? "Tesorero" : "Usuario") + " (Demo)",
+        name: role === "presidente" ? "Presidente" : role === "tesorero" ? "Tesorero" : "Usuario",
         role,
         email: userEmail
       });
     }
 
-    window.location.href = role + ".html";
+    if(role === "admin") window.location.href = "/admin-console/admin.html";
+    else if(role === "agente") window.location.href = "/agente/agente.html";
+    else window.location.href = "/" + role + ".html";
   }
 
   // ===== UI: chooser (curso/rol/alumno) =====
@@ -715,10 +682,14 @@ function loadJSON(k, def) {
      - Supabase es fuente para usuarios/roles/curso.
      - localStorage queda como caché de sesión para pantallas actuales.
      ========================================================= */
-  const SUPA_LOGIN_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SUPA_LOGIN_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SUPA_LOGIN_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SUPA_LOGIN_URL = SUPA_LOGIN_CONFIG.url;
+  const SUPA_LOGIN_KEY = SUPA_LOGIN_CONFIG.publishableKey;
 
   async function supaFetch(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      return window.CURSAPP_SUPABASE.request(path, opts);
+    }
     const res = await fetch(SUPA_LOGIN_URL + "/rest/v1/" + path, Object.assign({
       headers: {
         "apikey": SUPA_LOGIN_KEY,
@@ -1046,9 +1017,6 @@ function loadJSON(k, def) {
     return { user, profiles };
   }
 
-
-    ensureDemoAgent();
-
   document.querySelectorAll("[data-oauth-provider='google']").forEach(btn => {
     btn.addEventListener("click", startGoogleOAuth);
   });
@@ -1073,52 +1041,6 @@ function loadJSON(k, def) {
     try {
       const u = String(username?.value || "").trim().toLowerCase();
       const p = String(password?.value || "");
-
-
-      // Login administrador Cursapp
-      if (u === "admin@cursapp.cl" && p === "admin123") {
-        const s = {userId:"admin_cursapp",email:u,role:"admin",isAdmin:true,createdAt:new Date().toISOString()};
-        localStorage.setItem(KEY_SESSION, JSON.stringify(s));
-        localStorage.setItem("cursapp_admin_session_v1", JSON.stringify(s));
-        window.location.href = "/admin/admin.html";
-        return;
-      }
-
-      // Login agente Cursapp
-      if (u === "agente@cursapp.cl" && p === "123456") {
-        const ag = ensureDemoAgent();
-        localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({
-          agentId:ag.id,email:ag.email,name:ag.name,code:ag.code,role:"agente",createdAt:new Date().toISOString()
-        }));
-        window.location.href = "/agente/agente.html";
-        return;
-      }
-
-      const agents = loadJSON(KEY_REF_AGENTS, []);
-      const agent = agents.find(a => String(a.email||"").toLowerCase() === u && String(a.status||"active") !== "inactive");
-      if (agent) {
-        const passOk = agent.passwordHashDemo ? agent.passwordHashDemo === hashDemo(p) : p === "123456";
-        if (!passOk) { showErr("Contraseña incorrecta."); return; }
-        localStorage.setItem(KEY_AGENT_SESSION, JSON.stringify({
-          agentId:agent.id,email:agent.email,name:agent.name,code:agent.code,role:"agente",createdAt:new Date().toISOString()
-        }));
-        window.location.href = "/agente/agente.html";
-        return;
-      }
-
-      // Demo presidente/tesorero
-      if ((u === "tesorero" || u === "presidente") && p === "demo") {
-        setSession({ userId: u, role: u, courseKey: "", profileId: "" });
-        setBanner({ name: (u === "presidente" ? "Presidente" : "Tesorero") + " (Demo)", role: u });
-        window.location.href = u + ".html";
-        return;
-      }
-
-      // Demo apoderado blocked
-      if (u === "apoderado" && p === "demo") {
-        showErr("Para ingresar como apoderado debes estar aprobado por la directiva. Completa onboarding como apoderado.");
-        return;
-      }
 
       // Real login Fase 2B: Supabase es la única fuente de verdad.
       // No se permite fallback a localStorage. Si la DB está vacía, el usuario NO entra.
