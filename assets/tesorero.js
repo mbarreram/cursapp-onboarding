@@ -126,10 +126,10 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
-    }).join('');
+    }).join('') || `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Sin movimientos</b><small>Los pagos reales aparecerán aquí.</small></span></div><span class="tesMovePerson">—</span><strong class="tesMoveAmount ok">$0</strong><span class="tesMoveDate">—</span></article>`;
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
     const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
@@ -2112,59 +2112,35 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   }
   window.tesProfileEdit = tesProfileEdit;
 
-  function tesProfileHashDemo(value){
-    let hash = 5381;
-    const text = String(value || '');
-    for(let i=0;i<text.length;i++) hash = ((hash << 5) + hash) + text.charCodeAt(i);
-    return 'h_' + (hash >>> 0).toString(16);
-  }
-
   async function tesProfileChangePassword(currentPassword, newPassword){
     const data = treasurerProfileData();
-    const session = (()=>{ try{return JSON.parse(localStorage.getItem('cursapp_session_v1') || '{}') || {};}catch(_e){return {};}})();
-    if(String(session.userId || '').toLowerCase() === 'tesorero' && !String(data.email || '').includes('@')){
-      throw new Error('La contraseña del usuario demo no se puede modificar.');
-    }
-    const authUrl = 'https://ngxistgymgdkoaiulfbq.supabase.co';
-    const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg';
-    if(data.email && data.email.includes('@')){
-      const loginResponse = await fetch(authUrl + '/auth/v1/token?grant_type=password', {
-        method:'POST',
-        headers:{apikey:anonKey,'Content-Type':'application/json'},
-        body:JSON.stringify({email:data.email.toLowerCase(), password:currentPassword})
-      });
-      const auth = await loginResponse.json().catch(()=>({}));
-      if(!loginResponse.ok || !auth.access_token) throw new Error('La contraseña actual no es correcta.');
-      const updateResponse = await fetch(authUrl + '/auth/v1/user', {
-        method:'PUT',
-        headers:{apikey:anonKey,Authorization:`Bearer ${auth.access_token}`,'Content-Type':'application/json'},
-        body:JSON.stringify({password:newPassword})
-      });
-      const updated = await updateResponse.json().catch(()=>({}));
-      if(!updateResponse.ok) throw new Error(updated.message || updated.msg || 'No fue posible actualizar la contraseña.');
-      try{
-        localStorage.setItem('cursapp_supabase_auth_session_v1', JSON.stringify({
-          access_token:auth.access_token,
-          refresh_token:auth.refresh_token || '',
-          expires_at:auth.expires_at || null,
-          user:updated || auth.user
-        }));
-      }catch(_e){}
-      return;
-    }
-
-    let users = [];
-    try{ users = JSON.parse(localStorage.getItem('cursapp_users_v1') || '[]') || []; }catch(_e){}
-    const user = users.find(u=>String(u?.userId || '').toLowerCase() === String(session.userId || '').toLowerCase());
-    if(!user) throw new Error('No se encontró la cuenta asociada a este perfil.');
-    const currentHash = tesProfileHashDemo(currentPassword);
-    const validCurrent = user.passwordHashDemo
-      ? user.passwordHashDemo === currentHash
-      : (typeof user.password === 'string' && user.password === currentPassword);
-    if(!validCurrent) throw new Error('La contraseña actual no es correcta.');
-    user.passwordHashDemo = tesProfileHashDemo(newPassword);
-    if(Object.prototype.hasOwnProperty.call(user, 'password')) delete user.password;
-    try{ localStorage.setItem('cursapp_users_v1', JSON.stringify(users)); }catch(_e){}
+    if(!String(data.email || '').includes('@')) throw new Error('La cuenta no está autenticada con Supabase.');
+    const supabaseConfig = window.CURSAPP_SUPABASE || {};
+    const authUrl = supabaseConfig.url;
+    const publicKey = supabaseConfig.publishableKey;
+    if(!authUrl || !publicKey) throw new Error('La configuración de Supabase no está disponible.');
+    const loginResponse = await fetch(authUrl + '/auth/v1/token?grant_type=password', {
+      method:'POST',
+      headers:{apikey:publicKey,'Content-Type':'application/json'},
+      body:JSON.stringify({email:data.email.toLowerCase(), password:currentPassword})
+    });
+    const auth = await loginResponse.json().catch(()=>({}));
+    if(!loginResponse.ok || !auth.access_token) throw new Error('La contraseña actual no es correcta.');
+    const updateResponse = await fetch(authUrl + '/auth/v1/user', {
+      method:'PUT',
+      headers:{apikey:publicKey,Authorization:`Bearer ${auth.access_token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({password:newPassword})
+    });
+    const updated = await updateResponse.json().catch(()=>({}));
+    if(!updateResponse.ok) throw new Error(updated.message || updated.msg || 'No fue posible actualizar la contraseña.');
+    try{
+      localStorage.setItem('cursapp_supabase_auth_session_v1', JSON.stringify({
+        access_token:auth.access_token,
+        refresh_token:auth.refresh_token || '',
+        expires_at:auth.expires_at || null,
+        user:updated || auth.user
+      }));
+    }catch(_e){}
   }
 
   function tesProfileOpenPassword(){
@@ -2620,7 +2596,7 @@ __bootTesoreroSupabaseFirst();
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
@@ -2766,7 +2742,7 @@ __bootTesoreroSupabaseFirst();
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
@@ -3064,7 +3040,7 @@ __bootTesoreroSupabaseFirst();
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
@@ -3142,16 +3118,19 @@ __bootTesoreroSupabaseFirst();
   }
 
   async function logoutTreasurer(){
+    const supabaseConfig = window.CURSAPP_SUPABASE || {};
+    const authUrl = supabaseConfig.url;
+    const publicKey = supabaseConfig.publishableKey;
     let auth = {};
     try{ auth = JSON.parse(localStorage.getItem('cursapp_supabase_auth_session_v1') || '{}') || {}; }catch(_e){}
     if(auth.access_token){
       try{
         await Promise.race([
-          fetch('https://ngxistgymgdkoaiulfbq.supabase.co/auth/v1/logout', {
+          fetch(authUrl + '/auth/v1/logout', {
             method:'POST',
             keepalive:true,
             headers:{
-              apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg',
+              apikey:publicKey,
               Authorization:`Bearer ${auth.access_token}`
             }
           }),
@@ -3326,7 +3305,7 @@ __bootTesoreroSupabaseFirst();
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
@@ -3534,7 +3513,7 @@ __bootTesoreroSupabaseFirst();
 
     const fmtDateTime = (value)=>{ const d = new Date(value||''); if(!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+'<br>'+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); return 'Hoy'; };
     const paidRows = allRows.slice(0,2);
-    const recent = (paidRows.length ? paidRows : [{guardianName:'Mauricio Barrera',studentName:'Javiera Barrera',concept:'Paseo 2',amount:3000,paidAt:new Date().toISOString()}]).map(p=>{
+    const recent = paidRows.map(p=>{
       const camp = tesPaymentCampaignTitle(p);
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');

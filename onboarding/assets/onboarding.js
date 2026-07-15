@@ -244,9 +244,10 @@ function uid(prefix = "id") {
      Regla: usuarios/cursos/miembros NO se crean desde localStorage.
      localStorage queda solo como compatibilidad visual/sesión mínima.
      ========================================================= */
-  const SB_URL_ONB = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY_ONB = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdG5tZ2Rrb2FpdWxmYnEiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4MDY5ODU0NCwiZXhwIjoyMDk2Mjc0NTQ0fQ.INVALID";
-  const SB_KEY_ONB_REAL = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG_ONB = window.CURSAPP_SUPABASE || {};
+  const SB_URL_ONB = SB_CONFIG_ONB.url;
+  const SB_KEY_ONB = SB_CONFIG_ONB.publishableKey;
+  const SB_KEY_ONB_REAL = SB_KEY_ONB;
 
   function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
   function normText(v){
@@ -327,6 +328,10 @@ function uid(prefix = "id") {
   }
   function sbCleanDate(v){ const s = String(v || "").slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; }
   async function sbOnb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path, opts);
+      return Array.isArray(data) ? data : (data ? [data] : []);
+    }
     const key = SB_KEY_ONB_REAL;
     const res = await fetch(SB_URL_ONB + "/rest/v1/" + path, Object.assign({
       method: "GET",

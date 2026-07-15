@@ -54,8 +54,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   if(window.__CURSAPP_PRESIDENTE_STABLE_V7__) return;
   window.__CURSAPP_PRESIDENTE_STABLE_V7__ = true;
 
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg".replace('eyJpc3MiOiJIUzI1NiIsInJlZiI6','eyJpc3MiOiJIUzI1NiIsInJlZiI6');
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
   const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
   const esc = (s)=> String(s ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
 
@@ -107,6 +108,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   injectStableCss();
 
   async function sb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      return window.CURSAPP_SUPABASE.request(path, opts);
+    }
     const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({method:"GET"}, opts || {}, {
       headers:Object.assign({apikey:SB_KEY, Authorization:"Bearer "+SB_KEY, "Content-Type":"application/json", Prefer:"return=representation"}, (opts && opts.headers) || {})
     }));
@@ -1797,11 +1801,11 @@ function setActive(tab){
       if(auth.access_token){
         try{
           await Promise.race([
-            fetch("https://ngxistgymgdkoaiulfbq.supabase.co/auth/v1/logout", {
+            fetch(SB_URL + "/auth/v1/logout", {
               method:"POST",
               keepalive:true,
               headers:{
-                apikey:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJuZ3hpc3RneW1nZGtvYWl1bGZicSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgwNjk4NTQ0LCJleHAiOjIwOTYyNzQ1NDR9.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg",
+                apikey:SB_KEY,
                 Authorization:`Bearer ${auth.access_token}`
               }
             }),

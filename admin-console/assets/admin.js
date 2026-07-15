@@ -48,8 +48,9 @@
   // El Admin deja de usar localStorage para datos de negocio.
   // localStorage queda solo para sesión admin, logs/tickets internos.
   // ============================================================
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
 
   const ADMIN_DB = {
     ready:false,
@@ -61,6 +62,10 @@
   };
 
   async function sbGet(path){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path);
+      return Array.isArray(data) ? data : [];
+    }
     const res = await fetch(SB_URL + "/rest/v1/" + path, {
       headers:{
         "apikey": SB_KEY,
@@ -79,6 +84,14 @@
   }
 
   async function sbPatch(path, body){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      const data = await window.CURSAPP_SUPABASE.request(path, {
+        method:"PATCH",
+        headers:{Prefer:"return=representation"},
+        body:JSON.stringify(body || {})
+      });
+      return Array.isArray(data) ? data : (data ? [data] : []);
+    }
     const res = await fetch(SB_URL + "/rest/v1/" + path, {
       method:"PATCH",
       headers:{

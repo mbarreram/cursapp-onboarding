@@ -113,13 +113,16 @@
 
 
   // ---- Supabase write helpers (v11 MVP) ----
-  const SB_URL = "https://ngxistgymgdkoaiulfbq.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg".replace("eyJpc3MiOiJIUzI1NiIs", "eyJpc3MiOiJIUzI1NiIs");
-  // Mantener key explÃ­cita real si el replace anterior no aplica en runtime.
-  const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5neGlzdGd5bWdka29haXVsZmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg1NDQsImV4cCI6MjA5NjI3NDU0NH0.1r-aLijYEWvUifKcLjlClnA8-oYw11lgThY0swg_xbg";
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+  const SB_KEY = SB_CONFIG.publishableKey;
+  const SB_ANON = SB_KEY;
 
   function sbQ(v){ return encodeURIComponent(String(v == null ? "" : v)); }
   async function sb(path, opts){
+    if(window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === "function"){
+      return window.CURSAPP_SUPABASE.request(path, opts);
+    }
     const res = await fetch(SB_URL + "/rest/v1/" + path, Object.assign({
       headers:{
         apikey: SB_ANON,
