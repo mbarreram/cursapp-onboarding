@@ -53,6 +53,15 @@ test.describe('Cursapp V9 clicks reales', () => {
       items.map((item) => getComputedStyle(item, '::before').content).join(' ')
     );
     expect(iconContents).not.toContain('â');
+    expect(iconContents).not.toContain('\\');
+    expect(iconContents).not.toContain('${code}');
+    await expect(page.locator('.presBottomNav .presNavIcon svg')).toHaveCount(4);
+    await expect(page.locator('.presMockQuick .presMockQuickIcon svg')).toHaveCount(6);
+
+    const visualIconContents = await page.locator('.presMockQuick span, .presMockKpi span').evaluateAll((items) =>
+      items.map((item) => getComputedStyle(item, '::before').content).join(' ')
+    );
+    expect(visualIconContents).not.toMatch(/\\\\[0-9A-Fa-f]{3,}|ðŸ|Ã|Â|â/);
 
     for (const tab of destinos) {
       await page.locator('#menuBtn').click();
@@ -66,6 +75,7 @@ test.describe('Cursapp V9 clicks reales', () => {
 
     await page.locator('#menuBtn').click();
     await expect(page.locator('#menuDropdown .menuItem')).toHaveCount(7);
+    await expect(page.locator('#menuDropdown .presMenuGlyph svg')).toHaveCount(7);
     await expect(page.locator('#menuDropdown .menuItem').last()).toContainText('Cerrar sesión');
     await expect(page.locator('#menuDropdown [data-go="apoderados"]')).toContainText('Apoderados');
     await page.locator('#supportMenuItem').click();

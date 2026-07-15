@@ -15,7 +15,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=5814">
-  <link rel="stylesheet" href="/assets/ux-dashboard-mockups-v1.css?v=36">
+  <link rel="stylesheet" href="/assets/ux-dashboard-mockups-v1.css?v=39">
 </head>
 <body class="cursapp-app-shell cursapp-presidente">
 
@@ -40,11 +40,11 @@
 <main class="container" id="app"></main>
 <div id="modalRoot"></div>
 
-<nav class="bottomNav">
-  <button class="navItem active" data-tab="home">🏠<span>Inicio</span></button>
-  <button class="navItem" data-tab="campanas">📌<span>Campañas</span></button>
-  <button class="navItem" data-tab="deudores">🧾<span>Deudores</span></button>
-  <button class="navItem" data-tab="informes">📄<span>Informes</span></button>
+<nav class="bottomNav presBottomNav" aria-label="Navegación Presidente">
+  <button class="navItem active" data-tab="home" type="button"><span class="presNavIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></span><span>Inicio</span></button>
+  <button class="navItem" data-tab="campanas" type="button"><span class="presNavIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11 14v4a2 2 0 0 1-2 2H8l-2-6"/></svg></span><span>Campañas</span></button>
+  <button class="navItem" data-tab="deudores" type="button"><span class="presNavIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span>Deudores</span></button>
+  <button class="navItem" data-tab="informes" type="button"><span class="presNavIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span>Informes</span></button>
 </nav>
 
 <!-- ✅ Nuevo switch por enrollment -->
@@ -55,7 +55,7 @@
 <script defer src="/assets/campaigns.js?v=5"></script>
 <script defer src="/assets/configavisos.js?v=4"></script>
 <script defer src="/assets/global-alerts.js?v=1"></script>
-  <script defer src="/assets/presidente.js?v=mockup17"></script>
+  <script defer src="/assets/presidente.js?v=mockup19"></script>
   <!-- Presidente usa menú propio estable, igual que Tesorero. -->
   <script defer src="/assets/support-ticket.js?v=1"></script>
   <script defer src="/assets/monetization-banners.js?v=stable10"></script>

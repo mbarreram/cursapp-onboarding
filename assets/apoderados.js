@@ -725,13 +725,13 @@
     menu.className = "presMenuPanel";
     menu.dataset.presidentMenuVersion = "36";
     menu.innerHTML = `
-      <button class="menuItem" type="button" onclick="window.__apoNav('home')">🏠 Inicio</button>
-      <button class="menuItem" type="button" onclick="window.__apoNav('campanas')">📌 Campañas</button>
-      <button class="menuItem" type="button" onclick="window.__apoNav('deudores')">🧾 Deudores</button>
-      <button class="menuItem" type="button" onclick="window.__apoNav('informes')">📄 Informes</button>
-      <button class="menuItem" type="button" onclick="window.__apoNav('apoderados')">👥 Apoderados</button>
-      <button class="menuItem" id="supportMenuItem" type="button" onclick="window.__apoSupport()">💬 Soporte / Mis tickets</button>
-      <button class="menuItem presMenuLogoutV36" type="button" onclick="window.__apoLogout()">🚪 Cerrar sesión</button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('home')"><span class="presMenuGlyph">${icon("home")}</span><span>Inicio</span></button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('campanas')"><span class="presMenuGlyph">${icon("flag")}</span><span>Campañas</span></button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('deudores')"><span class="presMenuGlyph">${icon("clock")}</span><span>Deudores</span></button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('informes')"><span class="presMenuGlyph">${icon("file")}</span><span>Informes</span></button>
+      <button class="menuItem" type="button" onclick="window.__apoNav('apoderados')"><span class="presMenuGlyph">${icon("users")}</span><span>Apoderados</span></button>
+      <button class="menuItem" id="supportMenuItem" type="button" onclick="window.__apoSupport()"><span class="presMenuGlyph">${icon("message")}</span><span>Soporte / Mis tickets</span></button>
+      <button class="menuItem presMenuLogoutV36" type="button" onclick="window.__apoLogout()"><span class="presMenuGlyph">${icon("logout")}</span><span>Cerrar sesión</span></button>
     `;
   }
 
