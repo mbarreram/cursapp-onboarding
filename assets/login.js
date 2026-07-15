@@ -258,9 +258,24 @@ function loadJSON(k, def) {
     rolesAvail = Array.from(new Set(rolesAvail.map(r => String(r || "").toLowerCase().trim()).filter(Boolean)));
     if (!rolesAvail.includes(String(role || "").toLowerCase().trim())) rolesAvail.push(String(role || "").toLowerCase().trim());
 
+    const normalizedRole = String(role || "apoderado").toLowerCase().trim();
+    const profileMiembroId = String(profile?.supabase?.miembro_id || "").trim();
     let alumnoActivoForSession = null;
-    try { alumnoActivoForSession = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e) { alumnoActivoForSession = null; }
-    const activeMiembroForSession = localStorage.getItem("cursapp_active_miembro_id_v1") || (alumnoActivoForSession && alumnoActivoForSession.miembroId) || "";
+    if(normalizedRole === "apoderado"){
+      try { alumnoActivoForSession = JSON.parse(localStorage.getItem("cursapp_alumno_activo_v1") || "null"); } catch(e) { alumnoActivoForSession = null; }
+    }else{
+      // Evitar que el alumno/miembro de una sesión apoderado contamine un rol directivo.
+      try {
+        localStorage.removeItem("cursapp_alumno_activo_v1");
+        localStorage.removeItem("cursapp_active_member_profile_v1");
+      } catch(e) {}
+    }
+    const activeMiembroForSession = profileMiembroId ||
+      (normalizedRole === "apoderado" && alumnoActivoForSession ? String(alumnoActivoForSession.miembroId || "") : "");
+    try {
+      if(activeMiembroForSession) localStorage.setItem("cursapp_active_miembro_id_v1", activeMiembroForSession);
+      else localStorage.removeItem("cursapp_active_miembro_id_v1");
+    } catch(e) {}
 
     setSession({
       userId: userEmail,
@@ -375,22 +390,13 @@ function loadJSON(k, def) {
 
     // ⚠️ Caso tesorero: normalmente el perfil sigue siendo "apoderado" pero
     // el permiso se guarda en cursapp_directiva_apoderado_by_role_v1.
-    const directivaByRole = loadJSON(KEY_DIRECTIVA_BY_ROLE, {});
-    const hasTesorero = hasRoleInDirectiva(userEmail, courseKey, "tesorero");
-    const hasPresidente = hasRoleInDirectiva(userEmail, courseKey, "presidente");
+    // Supabase miembros_curso es la única fuente de autorización.
+    // Los mapas legacy de localStorage no pueden crear roles virtuales.
+    const roles = Object.keys(byRole)
+      .filter(Boolean)
+      .sort((a,b)=>(roleOrder[a]||99)-(roleOrder[b]||99));
 
-    const roles = Array.from(new Set([
-      ...Object.keys(byRole),
-      ...(hasTesorero ? ["tesorero"] : []),
-      ...(hasPresidente ? ["presidente"] : [])
-    ])).sort((a,b)=>(roleOrder[a]||99)-(roleOrder[b]||99));
-
-    dbgAlert("Roles detectados", { userEmail, courseKey, roles, byRole, directivaByRole });
-
-
-    // Si agregamos rol virtual sin profile explícito, reutilizamos el profile apoderado
-    if (hasTesorero && !byRole.tesorero) byRole.tesorero = byRole.apoderado || null;
-    if (hasPresidente && !byRole.presidente) byRole.presidente = byRole.apoderado || null;
+    dbgAlert("Roles detectados", { userEmail, courseKey, roles, byRole });
     try { saveJSON(KEY_ROLES_AVAILABLE, roles); } catch(e) {}
 
     function normAlumnoName(v){
@@ -630,10 +636,8 @@ function loadJSON(k, def) {
       if (r && !seen.has(r)) { roleList.push({ role: r, profile: p }); seen.add(r); }
     });
 
-    const hasTes = hasRoleInDirectiva(userEmail, ck, "tesorero");
-    const hasPres = hasRoleInDirectiva(userEmail, ck, "presidente");
-    if (hasPres && !seen.has("presidente")) { roleList.push({ role: "presidente", profile: profilesForCourse[0] || {} }); seen.add("presidente"); }
-    if (hasTes && !seen.has("tesorero")) { roleList.push({ role: "tesorero", profile: profilesForCourse[0] || {} }); seen.add("tesorero"); }
+    // No inventar roles de directiva desde localStorage. Solo se consideran
+    // las membresías aprobadas recibidas desde Supabase.
 
     // No inventar apoderado si el usuario solo tiene rol directiva.
     // Solo asegurar apoderado si hay algún perfil o enrollment apoderado.
@@ -864,8 +868,10 @@ function loadJSON(k, def) {
 
   async function findSupabaseMembersByUser(user){
     if(!user || !user.id) return [];
-    const rows = await supaFetch("miembros_curso?usuario_id=eq." + supaQ(user.id) + "&select=*");
-    return Array.isArray(rows) ? rows : [];
+    const rows = await supaFetch("miembros_curso?usuario_id=eq." + supaQ(user.id) + "&estado=eq.aprobado&select=*");
+    return Array.isArray(rows)
+      ? rows.filter(m => String(m?.estado || "").toLowerCase().trim() === "aprobado")
+      : [];
   }
 
   async function findSupabaseCoursesByIds(ids){
@@ -921,10 +927,20 @@ function loadJSON(k, def) {
     }catch(e){}
 
     const profiles = loadJSON(KEY_PROFILES, []);
-    let nextProfiles = Array.isArray(profiles) ? profiles.slice() : [];
+    // Eliminar perfiles Supabase antiguos del usuario antes de reconstruirlos.
+    // Así un rol removido en la BD no reaparece desde el caché del navegador.
+    let nextProfiles = (Array.isArray(profiles) ? profiles : []).filter(p => {
+      if(!p?.fromSupabase) return true;
+      const sameUser = String(p?.userId || "") === userId;
+      const sameEmail = String(p?.apoderado?.email || p?.email || "").toLowerCase().trim() === email;
+      return !(sameUser || sameEmail);
+    });
     const createdProfiles = [];
     const enrolls = loadJSON(KEY_ENROLL, []);
-    let nextEnrolls = Array.isArray(enrolls) ? enrolls.slice() : [];
+    let nextEnrolls = (Array.isArray(enrolls) ? enrolls : []).filter(e => {
+      if(!e?.fromSupabase) return true;
+      return String(e?.email || "").toLowerCase().trim() !== email;
+    });
 
     (members || []).forEach(m=>{
       if(!m) return;

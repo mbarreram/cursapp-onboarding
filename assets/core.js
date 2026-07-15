@@ -1511,8 +1511,10 @@
     const members = await sb(membersPath);
     const valid = members.filter(m=>{
       const st = norm(m.estado || "aprobado");
-      if(["rechazado","rejected","inactivo","inactive"].includes(st)) return false;
-      if(role && norm(m.rol) !== role && !(role === "presidente" && norm(m.rol)==="apoderado")) return false;
+      // Autorización estricta: solo una membresía aprobada y con el rol exacto
+      // puede validar el acceso a un dashboard.
+      if(st !== "aprobado" && st !== "approved") return false;
+      if(role && norm(m.rol) !== role) return false;
       if(courseKey){
         const ck = String((m.cursos && m.cursos.course_key) || "").trim();
         if(ck && ck !== courseKey) return false;
