@@ -8225,3 +8225,24 @@ body.cursapp-app-shell{
 .cursapp-presidente #menuDropdown.presMenuPanel .menuItem{display:flex!important;align-items:center!important;gap:11px!important;}
 .cursapp-presidente #menuDropdown.presMenuPanel .presMenuGlyph{width:20px!important;height:20px!important;min-width:20px!important;display:grid!important;place-items:center!important;color:currentColor!important;}
 .cursapp-presidente #menuDropdown.presMenuPanel .presMenuGlyph svg{width:20px!important;height:20px!important;display:block!important;}
+
+
+/* =========================================================
+   Cursapp · Presidente V40 · zona inferior Safari
+   ========================================================= */
+@media(max-width:640px){
+  body.cursapp-presidente .bottomNav{
+    bottom:4px !important;
+    pointer-events:none !important;
+  }
+
+  body.cursapp-presidente .bottomNav .navItem{
+    pointer-events:auto !important;
+  }
+}
+
+@media (display-mode:standalone) and (max-width:640px){
+  body.cursapp-presidente .bottomNav{
+    bottom:calc(env(safe-area-inset-bottom) + 8px) !important;
+  }
+}

@@ -98,6 +98,15 @@ test.describe('Cursapp V9 clicks reales', () => {
     await expect(page.locator('#menuDropdown')).not.toContainText('Cerrar menú');
   });
 
+  test('navegación Presidente deja libre la zona de controles del navegador', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/presidente.html');
+
+    await expect(page.locator('.bottomNav')).toHaveCSS('bottom', '4px');
+    await expect(page.locator('.bottomNav')).toHaveCSS('pointer-events', 'none');
+    await expect(page.locator('.bottomNav .navItem').first()).toHaveCSS('pointer-events', 'auto');
+  });
+
   test('menú tesorero abre todos sus destinos', async ({ page }) => {
     await page.goto('/tesorero.html');
 
