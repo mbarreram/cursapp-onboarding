@@ -749,7 +749,7 @@
     // Guardar mapa curso local -> Supabase.
     try{ const mm = mapLoad(); mm.cursos[ck] = curso.id; mapSave(mm); }catch(e){}
 
-    const rows = await sb("campanas?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc", { method:"GET" });
+    const rows = await sb("campanas?curso_id=eq." + q(curso.id) + "&estado=neq.eliminada&select=*&order=created_at.desc", { method:"GET" });
     const remoteTasks = (Array.isArray(rows) ? rows : []).map(taskFromSupabase);
     const tasksKey = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function")
       ? window.CURSAPP.scopedKey("tasks_v1")
@@ -1008,7 +1008,7 @@
     const [usuariosRows, miembrosRows, campanasRows, pagosRows] = await Promise.all([
       sb("usuarios?select=*&order=created_at.desc"),
       sb("miembros_curso?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc"),
-      sb("campanas?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc"),
+      sb("campanas?curso_id=eq." + q(curso.id) + "&estado=neq.eliminada&select=*&order=created_at.desc"),
       sb("pagos?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc")
     ]);
 
