@@ -928,7 +928,9 @@
       letter: row.letra || "",
       year: row.anio || "",
       jornada: row.jornada || "",
-      inviteCode: row.invite_code || ""
+      inviteCode: row.invite_code || "",
+      totalAlumnos: Number(row.total_alumnos || 0) || 0,
+      total_alumnos: Number(row.total_alumnos || 0) || 0
     };
   }
 
