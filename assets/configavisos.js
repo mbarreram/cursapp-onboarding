@@ -46,7 +46,18 @@
   }
   async function refresh(){
     const c=await activeCourse();
-    const notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
+    const legacy=json(cacheKey(),[])||[];
+    let notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
+    if(role()==="presidente" && Array.isArray(legacy) && legacy.length){
+      const remote=Array.isArray(notices)?notices:[];
+      const pending=legacy.filter(a=>String(a?.type||"")==="manual" && a?.title && a?.message).filter(a=>
+        !remote.some(r=>String(r.titulo||"").trim()===String(a.title||"").trim() && String(r.mensaje||"").trim()===String(a.message||"").trim())
+      );
+      for(const a of pending.slice(0,50)){
+        try{await request("avisos_curso",{method:"POST",body:JSON.stringify({curso_id:c.id,titulo:String(a.title),mensaje:String(a.message),prioridad:String(a.priority||"normal"),visible:true,tipo:String(a.category||"info"),created_at:a.createdAt||new Date().toISOString()})})}catch(e){console.warn("No se pudo migrar aviso local",e)}
+      }
+      if(pending.length) notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
+    }
     const ids=(Array.isArray(notices)?notices:[]).map(x=>x.id).filter(Boolean);
     let readings=[];
     if(ids.length){
