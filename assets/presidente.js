@@ -476,6 +476,8 @@ async function copyTextToClipboard(text){
   // storage keys (scoped por curso; listo para producción)
   const sk = (base)=> (window.CURSAPP && window.CURSAPP.scopedKey) ? window.CURSAPP.scopedKey(base) : `cursapp_${base}`;
   const KEY_TASKS = sk("tasks_v1");
+  const KEY_DELETED_TASKS = sk("deleted_tasks_v1");
+  const KEY_AVISOS = sk("avisos_v2");
   const KEY_PAYMENTS = sk("payments_v1");
   const KEY_EXPENSES = sk("expenses_v1");
   const KEY_MONTHLY_REPORTS = sk("monthly_reports_v1");
@@ -740,6 +742,8 @@ function dedupePaymentsAll(list){
 
   // data access
   const tasks = () => load(KEY_TASKS, []);
+  const deletedTasks = () => load(KEY_DELETED_TASKS, []);
+  const noticesFromSupabase = () => load(KEY_AVISOS, []);
   const payments = () => {
     const raw = load(KEY_PAYMENTS, []);
     const dd = dedupePaymentsAll(raw);
@@ -1352,7 +1356,7 @@ function cuotasPendientesTask(id){
 
   // ----- state -----
   let state = { tab:"home" };
-  let campaignFilter = "active"; // active | expired | closed | all
+  let campaignFilter = "active"; // active | expired | closed | all | deleted
 
   
   function normalizeTab(tab){
@@ -1448,6 +1452,7 @@ function setActive(tab){
   }
 // ----- UI pieces -----
   function statusPillForCampaign(t){
+    if(String(t && (t.status || t.estado) || "").toLowerCase() === "eliminada") return `<span class="pill danger">Eliminada</span>`;
     if(t.closed){
       const pend = pendingTaskEstimated(t);
       if(pend > 0) return `<span class="pill warn">Cerrada · con pagos pendientes</span>`;
@@ -1735,11 +1740,11 @@ function setActive(tab){
     const session = readSession() || {};
     const enrollments = (typeof approvedApoderados === "function" ? approvedApoderados() : []) || [];
     const ownEnrollment = enrollments.find(e => String(e.email || "").toLowerCase() === String(session.email || "").toLowerCase()) || enrollments[0] || {};
-    const school = presFirstText(c.schoolName, c.school, c.colegio, "Colegio Central").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
-    const level = presFirstText(c.level, c.curso, c.course, "2°");
-    const letter = presFirstText(c.letter, "B");
-    const cursoShort = `${level}${letter ? letter : ""}`.replace(/\s+/g,"").replace(/([A-Za-z])([A-Za-z])$/,"$1").trim();
-    const curso = `${cursoShort} Básico`.replace(/\s+/g," ").trim();
+    const school = presFirstText(c.schoolName, c.school, c.colegio) || "Colegio no informado";
+    const level = presFirstText(c.level, c.curso, c.course);
+    const letter = presFirstText(c.letter);
+    const cursoShort = (`${level}${letter ? letter : ""}`.replace(/\s+/g,"").trim()) || "Curso no informado";
+    const curso = cursoShort;
     const name = presResolvedPresidentName || presLocalPresidentName(session, c, enrollments) || "Presidente del curso";
     const student = presFirstText(
       session.alumno,
@@ -2029,19 +2034,26 @@ function renderHome(){
       </article>
     `;
 
-    const notices = [
-      { title:"Reunion de apoderados", tag:"Nuevo", body:"Revisa asistencia, acuerdos y proximos pasos del curso.", time:"Hoy 09:00" },
-      { title: dirty ? "Informe pendiente de actualizar" : "Cuadratura del mes", tag: dirty ? "Pendiente" : "OK", body: dirty ? "Hay cambios que requieren publicar un nuevo informe." : "Todo cuadrado. Buen trabajo equipo.", time: dirty ? "Ahora" : "Ayer 21:30" }
-    ].map(n=>`
-      <article class="presMockNotice">
-        <span>${n.tag === "OK" ? "I" : "A"}</span>
-        <div>
-          <h3>${esc(n.title)} <em>${esc(n.tag)}</em></h3>
-          <p>${esc(n.body)}</p>
-        </div>
-        <time>${esc(n.time)}</time>
+    const notices = noticesFromSupabase().slice(0, 4).map(n=>{
+      const priority = String(n.priority || "normal").toLowerCase();
+      const tag = priority === "alta" || priority === "urgente" ? "Importante" : "Aviso";
+      const when = n.createdAt ? new Date(n.createdAt).toLocaleDateString("es-CL", {day:"2-digit", month:"short"}) : "";
+      return `
+        <article class="presMockNotice">
+          <span>A</span>
+          <div>
+            <h3>${esc(n.title || "Aviso del curso")} <em>${esc(tag)}</em></h3>
+            <p>${esc(n.message || "Sin detalle adicional.")}</p>
+          </div>
+          <time>${esc(when)}</time>
+        </article>
+      `;
+    }).join("") || `
+      <article class="presMockEmpty presMockEmptyNotices">
+        <strong>No existen avisos importantes</strong>
+        <p>Cuando se publique un aviso para el curso aparecerá aquí.</p>
       </article>
-    `).join("");
+    `;
     const visualContext = getPresidentVisualContext(apods);
     updatePresidentHeader(visualContext);
     resolvePresidentNameFromSupabase();
@@ -2144,6 +2156,7 @@ function renderHome(){
     if(campaignFilter==="active") return activeTasks();
     if(campaignFilter==="expired") return expiredTasks();
     if(campaignFilter==="closed") return closedTasks();
+    if(campaignFilter==="deleted") return deletedTasks();
     return tasks();
   }
 
@@ -2209,6 +2222,7 @@ function renderHome(){
         <button class="chip ${campaignFilter==="closed"?"active":""}" onclick="setFilter('closed')">Cerradas</button>
         <button class="chip ${campaignFilter==="all"?"active":""}" onclick="setFilter('all')">Todas</button>
         <button class="chip ${campaignFilter==="expired"?"active":""}" onclick="setFilter('expired')">Caducadas</button>
+        <button class="chip ${campaignFilter==="deleted"?"active":""}" onclick="setFilter('deleted')">Eliminadas</button>
       </div>
     `;
 
@@ -2223,8 +2237,9 @@ function renderHome(){
     };
 
     const list = filtered.map(t=>{
-      const rec = collectedTask(t.id);
-      const gas = spentTask(t.id);
+      const isDeletedCampaign = String(t && (t.status || t.estado) || "").toLowerCase() === "eliminada";
+      const rec = isDeletedCampaign ? 0 : collectedTask(t.id);
+      const gas = isDeletedCampaign ? 0 : spentTask(t.id);
       const saldo = rec - gas;
       const pend = pendingTaskEstimated(t);
       const debtors = deudoresTask(t.id);
@@ -2271,11 +2286,13 @@ function renderHome(){
           </div>
           <div class="presCampaignPending"><span>Pendiente:</span> <b>${clp(pend)}</b></div>
 
+          ${isDeletedCampaign ? `<div class="muted presCampaignNote">Registro histórico · eliminada${t.deletedAt ? ` el ${fmtCampDate(t.deletedAt)}` : ""}. No participa en indicadores ni deudas.</div>` : `
           <div class="presCampaignActions">
             <button class="btnx primary presCampaignPrimary" onclick="Campaigns.openCampaignDetail('${t.id}','presidente')">Ver detalles ${presSvgIcon("arrowRight","presCampaignBtnIcon")}</button>
             <button class="btnx presCampaignSecondary" onclick="openEditCampaign('${t.id}')">Editar</button>
             ${(!t.closed && !isExpired(t)) ? `<button class="btnx danger presCampaignSecondary" onclick="deleteCampaign('${t.id}')">Eliminar</button>` : ""}
           </div>
+          `}
 
           ${(t.mandatoryParticipation===false && pend===0 && cuotasPendientes===0 && debtors===0 && campaignPayments(t.id).some(p=>paymentStatusNorm(p)==="opted_out")) ? `<div class="muted presCampaignNote">No participan apoderados en esta campaña por ahora.</div>` : ``}
           ${t.closed && pend>0 ? `<div class="muted presCampaignNote">
@@ -2319,7 +2336,7 @@ function renderHome(){
         ${chips}
 
         <div class="listLines">
-          ${list || `<div class="muted">Sin campañas en este filtro.</div>`}
+          ${list || `<article class="presMockEmpty"><strong>No existe información</strong><p>No hay campañas registradas para este filtro.</p></article>`}
         </div>
       </section>
     `;
@@ -2471,19 +2488,7 @@ function courseDisplayLine(c){
 }
 
 function updatePresidentTopbar(){
-  try{
-    const line = document.querySelector("header .brand .muted");
-    if(!line) return;
-    const c = activeCourse();
-    if(!c){
-      line.textContent = "Curso no seleccionado";
-      return;
-    }
-    const school = String(c.schoolName || c.school || c.colegio || "Colegio").replace(/\s*\((Demo|demo)\)\s*/g,"").trim();
-    const level = c.level || c.curso || c.course || "";
-    const letter = c.letter || "";
-    line.textContent = `${school} · ${level}${letter}`.replace(/\s+/g," ").trim();
-  }catch(e){}
+  try{ updatePresidentHeader(getPresidentVisualContext(approvedCount())); }catch(e){}
 }
 
 function buildWhatsappText(profile, summary){
