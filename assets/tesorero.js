@@ -1773,8 +1773,11 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function courseLabelForHeader(){
     try{
       const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
-      const course = s.courseLabel || s.course || s.curso || "Curso no informado";
-      const school = s.schoolName || s.colegio || s.school || "Colegio no informado";
+      const activeKey = localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "";
+      const courses = JSON.parse(localStorage.getItem("cursapp_courses_v1") || "[]");
+      const official = (Array.isArray(courses)?courses:[]).find(c=>String(c?.courseKey||c?.key||"")===String(activeKey)) || JSON.parse(localStorage.getItem("cursapp_course_v1") || "null") || {};
+      const course = s.courseLabel || s.course || s.curso || official.courseLabel || official.curso || [official.level||official.nivel||official.grade,official.letter||official.letra].filter(Boolean).join("") || "Curso no informado";
+      const school = s.schoolName || s.colegio || s.school || official.schoolName || official.colegio || official.school || "Colegio no informado";
       return `${course} · ${school}`;
     }catch(_){ return "Curso no informado · Colegio no informado"; }
   }
@@ -4317,10 +4320,16 @@ __bootTesoreroSupabaseFirst();
     overlay.querySelector('.primary').onclick=()=>applyConciliation(ids,overlay);
     document.body.appendChild(overlay);
   }
-  function applyConciliation(ids,overlay){
+  async function applyConciliation(ids,overlay){
     const arr=payments(); const set=new Set(ids.map(String)); const method=overlay.querySelector('input[name="tesMethod"]:checked')?.value||'efectivo'; const affected=[];
     arr.forEach(p=>{ if(!set.has(String(p.id))) return; affected.push(p); p.paymentMethod=method; p.paidWith=method; p.conciliationStatus='conciliado'; p.reconciledAt=nowIso(); p.reconciledBy='Tesorero'; p.reconciliationReference=overlay.querySelector('#tesConcRef')?.value||''; p.reconciliationNote=overlay.querySelector('#tesConcObs')?.value||''; });
-    save(KEY_PAYMENTS,arr); window.__tesBulkSelection={}; overlay.remove(); showSuccess({count:affected.length,total:sum(affected,p=>p.amount),method:methodLabel(method),guardian:affected[0]?.guardianName||affected[0]?.apoderadoName||'Apoderado',student:affected[0]?.studentName||affected[0]?.alumno||'Alumno',campaign:titleOf(selectedCampaign())});
+    save(KEY_PAYMENTS,arr); window.__tesBulkSelection={};
+    try{
+      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.reconcilePayments === 'function'){
+        await window.CURSAPP_PAYMENTS_V11.reconcilePayments(ids,{method,reference:overlay.querySelector('#tesConcRef')?.value||'',note:overlay.querySelector('#tesConcObs')?.value||''});
+      }
+    }catch(e){ alert('No se pudo guardar la conciliación en Supabase: '+(e?.message||e)); return; }
+    overlay.remove(); showSuccess({count:affected.length,total:sum(affected,p=>p.amount),method:methodLabel(method),guardian:affected[0]?.guardianName||affected[0]?.apoderadoName||'Apoderado',student:affected[0]?.studentName||affected[0]?.alumno||'Alumno',campaign:titleOf(selectedCampaign())});
   }
   function showSuccess(info){
     const overlay=document.createElement('div'); overlay.className='tesV72SuccessOverlay tesV73SuccessOverlay';
