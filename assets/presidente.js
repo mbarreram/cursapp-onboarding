@@ -3993,34 +3993,7 @@ function buildSnapshotPrintHTML(r){
     }
     alert("No se pudo publicar (función no disponible).");
   };
-window.deleteCampaign = function(taskId){
-    const t = tasks().find(x=>x.id===taskId);
-    if(!t) return;
-
-    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
-    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
-
-    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
-      `Regla: pagos pagados pasan a saldo a favor.\n` +
-      `Los pendientes se eliminan del ciclo de cobro.\n\n` +
-      `Esto marcará “requiere nuevo informe”.`;
-
-    if(!confirm(msg)) return;
-
-    // eliminar campaña
-    save(KEY_TASKS, tasks().filter(x=>x.id!==taskId));
-
-    // eliminar rendiciones asociadas
-    save(KEY_EXPENSES, expenses().filter(e=>!(e.scope==="campaign" && e.campaignId===taskId)));
-
-    // pagos: paid -> credit, pending-like -> remove
-    const ps = payments()
-      .filter(p=>!(p.fromTaskId===taskId && isPendingFinancialStatus(p))) // elimina pendientes de esa campaña
-      .map(p=>{
-        if(p.fromTaskId===taskId && isPaid(p)){
-          return {...p, status:"credit", creditFromTaskId:taskId, note:"Saldo a favor por campaña eliminada"};
-
-  // ----- Publicar cobros (genera pagos por apoderado aprobado) -----
+// ----- Publicar cobros (genera pagos por apoderado aprobado) -----
   function endOfMonthISO(ym){
     const d = endOfMonthDate(ym);
     if(!d) return "";
@@ -4067,17 +4040,11 @@ window.deleteCampaign = function(taskId){
           const key = `${email}||${period}||${idx}`;
           if(byKey.has(key)) return;
           out.unshift({
-            id: uid('pay'),
-            fromTaskId: t.id,
+            id: uid('pay'), fromTaskId: t.id,
             concept: `${t.title} · Cuota ${idx}/${months}`,
-            amount: Number(t.amount||0),
-            status: 'pending',
-            dueDate,
-            period,
-            installmentIndex: idx,
-            apoderadoEmail: email,
-            apoderadoName: e.apoderadoName||'',
-            alumno: e.alumno||'',
+            amount: Number(t.amount||0), status: 'pending', dueDate,
+            period, installmentIndex: idx, apoderadoEmail: email,
+            apoderadoName: e.apoderadoName||'', alumno: e.alumno||'',
             createdAt: new Date().toISOString()
           });
           byKey.add(key);
@@ -4091,17 +4058,10 @@ window.deleteCampaign = function(taskId){
         const key = `${email}||${period}||1`;
         if(byKey.has(key)) return;
         out.unshift({
-          id: uid('pay'),
-          fromTaskId: t.id,
-          concept: t.title,
-          amount: Number(t.amount||0),
-          status: 'pending',
-          dueDate,
-          period,
-          installmentIndex: 1,
-          apoderadoEmail: email,
-          apoderadoName: e.apoderadoName||'',
-          alumno: e.alumno||'',
+          id: uid('pay'), fromTaskId: t.id, concept: t.title,
+          amount: Number(t.amount||0), status: 'pending', dueDate,
+          period, installmentIndex: 1, apoderadoEmail: email,
+          apoderadoName: e.apoderadoName||'', alumno: e.alumno||'',
           createdAt: new Date().toISOString()
         });
         byKey.add(key);
@@ -4116,14 +4076,50 @@ window.deleteCampaign = function(taskId){
   window.publishCobrosForTask = publishCobrosForTask;
   window.publishCobros = publishCobrosForTask;
 
-        }
-        return p;
-      });
-    save(KEY_PAYMENTS, ps);
+  // Eliminación productiva: Supabase conserva trazabilidad, anula cobros
+  // pendientes y crea saldos a favor por los pagos ya abonados.
+  window.deleteCampaign = async function(taskId){
+    const t = tasks().find(x=>x.id===taskId);
+    if(!t) return;
+    if(t.closed){ alert("No se puede eliminar una campaña cerrada."); return; }
+    if(isExpired(t)){ alert("No se puede eliminar una campaña caducada."); return; }
 
-    markDirty();
-    alert("Campaña eliminada ✅ (saldo a favor generado si aplica)");
-    go("campanas");
+    const remoteId = String(t.supabaseId || t.campana_id || t.id || "").trim();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(remoteId)){
+      alert("No se puede eliminar: la campaña no está vinculada correctamente con Supabase.");
+      return;
+    }
+
+    const msg = `¿Eliminar campaña "${t.title}"?\n\n` +
+      `Los pagos realizados pasarán a saldo a favor.\n` +
+      `Los cobros pendientes quedarán anulados.\n\n` +
+      `La operación conservará la trazabilidad contable.`;
+    if(!confirm(msg)) return;
+
+    try{
+      if(!window.CURSAPP_SUPABASE || typeof window.CURSAPP_SUPABASE.request !== "function"){
+        throw new Error("Supabase no está disponible.");
+      }
+      const result = await window.CURSAPP_SUPABASE.request("rpc/eliminar_campana", {
+        method:"POST",
+        body:JSON.stringify({ p_campana_id: remoteId })
+      });
+
+      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("campaign-soft-delete");
+      }else{
+        save(KEY_TASKS, tasks().filter(x=>String(x.supabaseId || x.campana_id || x.id) !== remoteId));
+      }
+
+      markDirty();
+      const credits = Number(result && result.credits_created || 0);
+      const cancelled = Number(result && result.payments_cancelled || 0);
+      alert(`Campaña eliminada ✅\nCobros anulados: ${cancelled}\nSaldos a favor creados: ${credits}`);
+      go("campanas");
+    }catch(err){
+      console.error("No se pudo eliminar campaña en Supabase", err);
+      alert("No se pudo eliminar la campaña: " + (err && err.message ? err.message : String(err)));
+    }
   };
 
   // ----- Publish report (monthly) -----
