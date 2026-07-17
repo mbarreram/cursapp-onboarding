@@ -1283,6 +1283,7 @@
       metodo_pago: opts?.method || opts?.paymentMethod || "webpay"
     };
     if(amount != null) body.monto_pagado = amount;
+    if(opts?.conciliated) body.conciliacion_estado = "conciliado";
     const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
     const paidRow = rows[0] || Object.assign({id: paymentId}, body);
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
@@ -1292,6 +1293,25 @@
       }
     }catch(e){ console.warn("No se pudo notificar pago a directiva", e); }
     return paidRow || null;
+  }
+  async function reconcilePayments(paymentIds, opts){
+    const ids = (Array.isArray(paymentIds)?paymentIds:[]).filter(isUuid);
+    const updated = [];
+    for(const id of ids){
+      const current = await sb("pagos?id=eq."+q(id)+"&select=id,monto,monto_pagado&limit=1");
+      const row = current[0] || {};
+      const body = {
+        estado:"pagado",
+        monto_pagado:Number(row.monto||row.monto_pagado||0),
+        paid_at:new Date().toISOString(),
+        metodo_pago:opts?.method||"manual",
+        conciliacion_estado:"conciliado"
+      };
+      const rows = await sb("pagos?id=eq."+q(id),{method:"PATCH",body:JSON.stringify(body)});
+      updated.push(rows[0]||Object.assign({id},body));
+    }
+    try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("tesorero-conciliacion"); }catch(e){}
+    return updated;
   }
 
   function getActiveProfileForOptOut(){
@@ -1420,7 +1440,7 @@
   }
 
   window.CURSAPP = window.CURSAPP || {};
-  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, markCampaignOptOut, syncPaidLocalPayment, syncPaidLocalPayments };
+  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, reconcilePayments, markCampaignOptOut, syncPaidLocalPayment, syncPaidLocalPayments };
   window.CURSAPP.refreshPagosSupabase = refresh;
   window.CURSAPP.markPaymentPaidSupabase = markPaid;
   window.CURSAPP.markCampaignOptOutSupabase = markCampaignOptOut;
