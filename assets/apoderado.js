@@ -105,7 +105,8 @@ const KEY_ACTIVE_PROFILE = 'cursapp_active_profile_v1';
   }
   function meKey(){
     const s = getSession();
-    return String(s?.userId||"").toLowerCase().trim();
+    const email = s?.email || s?.userEmail || (String(s?.userId||"").includes("@") ? s.userId : "");
+    return String(email||"").toLowerCase().trim();
   }
 
   
@@ -144,7 +145,8 @@ function paymentMemberIdV584(p){
 
 function isMinePayment(p){
   const mk = meKey();
-  const activeMid = getActiveMemberIdV584();
+  const activeProfile = (typeof getActiveProfile === "function") ? getActiveProfile() : null;
+  const activeMid = String(activeProfile?.supabase?.miembro_id || activeProfile?.miembro_id || activeProfile?.profileId || activeProfile?.id || getActiveMemberIdV584() || "").trim();
   const payMid = paymentMemberIdV584(p);
 
   // V58.4: si existe miembro activo y el pago trae miembro, manda el miembro.
@@ -1073,7 +1075,7 @@ function dueBadge(iso){
     if(!profiles.length) return null;
 
     const s = getSession() || {};
-    const sessionEmail = String(s.userId || s.email || "").trim().toLowerCase();
+    const sessionEmail = String(s.email || s.userEmail || (String(s.userId||"").includes("@") ? s.userId : "")).trim().toLowerCase();
     const activeCourse = String(localStorage.getItem(KEY_ACTIVE_COURSE) || s.courseKey || "").trim();
 
     function parseMaybeJson(raw){
@@ -1129,14 +1131,15 @@ function dueBadge(iso){
     let mine = profiles.filter(p=>{
       const pEmail = String(p?.apoderado?.email || p?.user?.email || "").trim().toLowerCase();
       const pUserId = String(p?.userId || p?.user?.userId || "");
+      const pRole = String(p?.role || p?.user?.role || "").toLowerCase();
       const okUser = (sessionEmail && pEmail === sessionEmail) || (s.userId && pUserId === String(s.userId));
       const okCourse = !activeCourse || String(p?.courseKey || "") === String(activeCourse);
-      return okUser && okCourse;
+      return okUser && okCourse && pRole.includes("apoder");
     });
 
     // Fallback: si no encontró por usuario, al menos respeta curso.
     if(!mine.length && activeCourse){
-      mine = profiles.filter(p => String(p?.courseKey || "") === String(activeCourse));
+      mine = profiles.filter(p => String(p?.courseKey || "") === String(activeCourse) && String(p?.role || p?.user?.role || "").toLowerCase().includes("apoder"));
     }
     if(!mine.length) mine = profiles.slice();
 
@@ -3821,21 +3824,8 @@ window.payNow = async function(id){
   window.apoProfileOpenPrefs = apoProfileOpenPrefs;
 
   function apoProfileCount(type){
-    let n = 0;
-    try{
-      if(type === 'push'){
-        for(let i=0;i<localStorage.length;i++){
-          const k=localStorage.key(i)||'';
-          if(/avisos|notification|notificacion/i.test(k)){
-            const v = JSON.parse(localStorage.getItem(k) || '[]');
-            if(Array.isArray(v)) n += Math.min(v.length, 99);
-          }
-        }
-      }
-      if(type === 'email') n = Number(localStorage.getItem('cursapp_profile_email_count_v1') || 0) || 0;
-      if(type === 'sms') n = Number(localStorage.getItem('cursapp_profile_sms_count_v1') || 0) || 0;
-    }catch(_){ }
-    return n;
+    const counts = window.__apoProfileCommunicationCounts || {push:0,email:0,sms:0};
+    return Number(counts[type] || 0) || 0;
   }
 
   function apoToggle(label,key,desc=''){
@@ -4169,7 +4159,6 @@ __bootApoderadoSupabaseFirst();
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
 
 /* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */
-
 
 
 
