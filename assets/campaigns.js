@@ -205,7 +205,7 @@
     const curso = await getActiveCursoRow();
     const body = {
       curso_id: curso.id,
-      titulo: String(task?.title || task?.titulo || "CampaÃ±a").trim() || "CampaÃ±a",
+      titulo: String(task?.title || task?.titulo || "Campaña").trim() || "Campaña",
       tipo: String(task?.type || task?.tipo || "single"),
       monto: Number(task?.amount || task?.monto || 0) || 0,
       fecha_inicio: cleanDate(task?.startDate || task?.fecha_inicio),
@@ -342,6 +342,30 @@
   function closeModal() {
     const root = document.getElementById("modalRoot");
     if (root) root.innerHTML = "";
+  }
+
+  function showCampaignSuccess(title){
+    const overlay = document.createElement("div");
+    overlay.className = "campaign-success-overlay";
+    overlay.innerHTML = `
+      <div class="campaign-success-card" role="dialog" aria-modal="true" aria-labelledby="campaignSuccessTitle">
+        <div class="campaign-success-icon">✓</div>
+        <h2 id="campaignSuccessTitle">Campaña creada</h2>
+        <p><b>${esc(title || "La campaña")}</b> ya está disponible para el curso y sus indicadores fueron actualizados.</p>
+        <button type="button">Continuar</button>
+      </div>
+      <style>
+        .campaign-success-overlay{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:22px;background:rgba(15,23,42,.48);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+        .campaign-success-card{width:min(100%,390px);padding:28px 22px 22px;border-radius:28px;background:#fff;text-align:center;box-shadow:0 26px 80px rgba(15,23,42,.28)}
+        .campaign-success-icon{width:68px;height:68px;margin:0 auto 14px;border-radius:22px;display:grid;place-items:center;color:#fff;font-size:36px;font-weight:900;background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 14px 30px rgba(34,197,94,.28)}
+        .campaign-success-card h2{margin:0;color:#0f172a;font-size:26px}.campaign-success-card p{margin:10px 0 20px;color:#64748b;line-height:1.45}
+        .campaign-success-card button{width:100%;height:50px;border:0;border-radius:16px;color:#fff;font-size:16px;font-weight:900;background:linear-gradient(135deg,#7c3aed,#5b21b6)}
+      </style>`;
+    const close = ()=> overlay.remove();
+    overlay.querySelector("button")?.addEventListener("click", close);
+    overlay.addEventListener("click", e=>{ if(e.target===overlay) close(); });
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.querySelector("button")?.focus(), 0);
   }
 
   // ---------- lightweight events (so UIs refresh without relog) ----------
@@ -850,7 +874,7 @@
 
   function openQuotesDetail(task){
     if(!task) return;
-    const title = String(task.title||"CampaÃ±a");
+    const title = String(task.title||"Campaña");
     const items = dedupeCotizaciones([...(Array.isArray(task.cotizaciones)?task.cotizaciones:[]), ...((task.cotizacion && typeof task.cotizacion==='object')?[task.cotizacion]:[])]);
     const total = items.reduce((a,x)=>a+Number(x.monto_total||0),0);
 
@@ -858,7 +882,7 @@
       <div class="row">
         <div>
           <div style="font-weight:950;font-size:18px;">Cotizaciones</div>
-          <div class="muted" style="margin-top:6px;">${esc(title)} Â· ${items.length} Ã­tem(s)</div>
+          <div class="muted" style="margin-top:6px;">${esc(title)} · ${items.length} ítem(s)</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
@@ -874,16 +898,16 @@
           ${items.map((c,i)=>`
             <div style="border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:12px;">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                <div style="font-weight:950;">${esc(c.nombre || `CotizaciÃ³n ${i+1}`)}</div>
+                <div style="font-weight:950;">${esc(c.nombre || `Cotización ${i+1}`)}</div>
                 ${c.monto_total?`<div style="font-weight:950;">$${Number(c.monto_total).toLocaleString("es-CL")}</div>`:""}
               </div>
-              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>DescripciÃ³n:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>DescripciÃ³n:</b> â€”</div>`}
+              ${(c.descripcion||c.comentario||c.texto||c.desc||c.description)?`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> ${esc((c.descripcion||c.comentario||c.texto||c.desc||c.description))}</div>`:`<div class="muted" style="margin-top:6px;line-height:1.35;"><b>Descripción:</b> —</div>`}
               ${(c.url||c.link)?`<div class="muted" style="margin-top:6px;line-height:1.35;word-break:break-word;"><b>URL:</b> ${esc((c.url||c.link))}</div>`:""}
-              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">ðŸ”—</a></div>`:""}
+              ${(c.url||c.link)?`<div style="margin-top:10px;"><a class="btnx" style="display:inline-block;border:1px solid rgba(0,0,0,.14);text-decoration:none;padding:6px 10px;font-size:14px;" href="${esc((c.url||c.link))}" target="_blank" rel="noopener">🔗 Abrir</a></div>`:""}
             </div>
           `).join("")}
         </div>
-      ` : `<div class="muted" style="margin-top:12px;">AÃºn no hay cotizaciones registradas.</div>`}
+      ` : `<div class="muted" style="margin-top:12px;">Aún no hay cotizaciones registradas.</div>`}
     `);
   }
 
@@ -901,21 +925,21 @@
     openModal(`
       <div class="row">
         <div>
-          <div style="font-weight:950;font-size:18px;">Detalle campaÃ±a</div>
+          <div style="font-weight:950;font-size:18px;">Detalle campaña</div>
           <div class="muted" style="margin-top:6px;">${esc(t.title||"")}</div>
         </div>
         <button class="btnx" onclick="Campaigns.close()">Cerrar</button>
       </div>
 
       <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <div class="chipInfoPill">ðŸ“„ Tipo <b>${type==="monthly"?"Mensual":"Pago Ãºnico"}</b></div>
-        <div class="chipInfoPill">ðŸ”’ ParticipaciÃ³n <b>${part}</b></div>
-        ${tpl?`<div class="chipInfoPill ok">âœ¨ Plantilla <b>${esc(tpl)}</b></div>`:""}
+        <div class="chipInfoPill">📄 Tipo <b>${type==="monthly"?"Mensual":"Pago único"}</b></div>
+        <div class="chipInfoPill">🔒 Participación <b>${part}</b></div>
+        ${tpl?`<div class="chipInfoPill ok">✨ Plantilla <b>${esc(tpl)}</b></div>`:""}
       </div>
 
       <div class="card" style="margin-top:12px;padding:12px;border:1px solid rgba(0,0,0,.08);">
         <div class="muted">Fechas</div>
-        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} â†’ ${esc(t.dueDate||"")}</div>
+        <div style="margin-top:6px;font-weight:950;">${esc(t.startDate||"")} → ${esc(t.dueDate||"")}</div>
         ${t.description?`<div class="muted" style="margin-top:10px;line-height:1.35;">${esc(t.description)}</div>`:""}
       </div>
 
@@ -939,7 +963,7 @@
       `:""}
 
       <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">âœï¸ Editar</button>` : ``}
+        ${String(mode||"")==="presidente" ? `<button class="btnx" onclick="Campaigns.openEdit('${esc(t.id)}')">✏️ Editar</button>` : ``}
       </div>
     `);
   }
@@ -958,7 +982,7 @@
     let months    = Number(document.getElementById("cc_months").value || 0);
 
     if (!title) { alert("Debes ingresar un nombre."); return; }
-    if (!amount || amount <= 0) { alert("Debes ingresar un monto vÃ¡lido."); return; }
+    if (!amount || amount <= 0) { alert("Debes ingresar un monto válido."); return; }
 
     if (type === "monthly") {
       if (!months || months <= 0) { alert("Si es mensual, indica cuotas/meses."); return; }
@@ -994,7 +1018,7 @@
     };
 
     try{ await saveCampaignToSupabase(task); }
-    catch(e){ alert("No se pudo guardar la campaÃ±a en Supabase: " + (e && e.message ? e.message : e)); return; }
+    catch(e){ alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e)); return; }
 
     ts.unshift(task);
     save(KEY_TASKS, ts);
@@ -1021,7 +1045,7 @@
             pays.unshift({
               id: uid("p"),
               fromTaskId: newTaskId,
-              concept: type === "monthly" ? `${title} Â· Cuota 1/${Math.max(1, Number(months||1))}` : "Pago Ãºnico",
+              concept: type === "monthly" ? `${title} · Cuota 1/${Math.max(1, Number(months||1))}` : "Pago único",
               amount: Number(amount||0),
               status: "pending",
               dueDate,
@@ -1040,7 +1064,7 @@
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("CampaÃ±a creada âœ…");
+    showCampaignSuccess(title);
 }
 
   function openEdit(taskId) {

@@ -1004,7 +1004,9 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const saldoCourse = () => collectedCourse() - spentCourse();
 
   const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
-  const pendingTotal = () => sum(payments().filter(isPendingFinancialStatus), p => (p.amountRemaining ?? p.amount ?? 0));
+  // Pendiente financiero del curso: las campañas obligatorias se proyectan
+  // contra el total oficial de alumnos, no sólo contra cobros materializados.
+  const pendingTotal = () => sum(activeTasks(), t => pendingTaskEstimated(t));
   const deudoresCount = () => {
     const set = new Set();
     payments().filter(isPendingFinancialStatus).forEach(p=>{
@@ -1250,6 +1252,13 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
     const id = String(t?.id || "");
     const all = campaignPayments(id);
     const ps = campaignPendingPayments(id);
+
+    // Regla de negocio: en campañas obligatorias el universo es el total
+    // oficial del curso. Los cobros creados para usuarios registrados son sólo
+    // el detalle operacional; nunca reducen la proyección por sí mismos.
+    if(t?.mandatoryParticipation !== false){
+      return Math.max(0, expectedTaskTotal(t) - collectedTask(id));
+    }
 
     if(ps.length){
       return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
@@ -2147,7 +2156,13 @@ function renderHome(){
   // ----- Campaigns ----// ----- Campaigns -----
   function setFilter(f){
     campaignFilter = f;
+    __TASKS_SIG = __tasksSig();
     renderCampanas();
+    requestAnimationFrame(()=>{
+      const active = document.querySelector('.presCampaignFilters .chip.active');
+      try{ active?.scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'}); }catch(_e){}
+      try{ active?.focus({preventScroll:true}); }catch(_e){}
+    });
   }
   window.setFilter = setFilter;
 
@@ -2801,14 +2816,16 @@ function renderDeudores(){
     }).join("");
 
     out.querySelectorAll('button[data-copy="1"]').forEach((b, idx)=>{
-      b.onclick = ()=>{
+      b.onclick = async (event)=>{
+        event?.preventDefault();
+        event?.stopPropagation();
+        window.__presDebtQueryActive = true;
         const ta = out.querySelectorAll("textarea")[idx];
         const txt = ta?.value || "";
-        if(navigator.clipboard?.writeText){
-          copyTextToClipboard(txt).then(()=> toast("Copiado.")).catch(()=> fallbackCopy(txt));
-        }else{
-          fallbackCopy(txt);
-        }
+        const copied = await copyTextToClipboard(txt);
+        if(copied) toast("Texto copiado para WhatsApp.");
+        else fallbackCopy(txt);
+        setTimeout(()=>{ window.__presDebtQueryActive = false; }, 1500);
       };
     });
   }
