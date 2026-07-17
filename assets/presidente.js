@@ -993,7 +993,9 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const closedTasks = () => tasks().filter(t => !!t.closed);
   const courseStudentTotal = () => {
     const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
-    const configured = Number(c.totalAlumnos || c.total_alumnos || 0);
+    let cached = {};
+    try{ cached = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null") || {}; }catch(e){}
+    const configured = Number(c.totalAlumnos ?? c.total_alumnos ?? cached.totalAlumnos ?? cached.total_alumnos ?? cached.course?.totalAlumnos ?? cached.course?.total_alumnos ?? 0) || 0;
     return Math.max(configured, approvedCount(), 0);
   };
 
