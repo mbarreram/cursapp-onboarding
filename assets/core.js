@@ -1005,11 +1005,12 @@
     const course = courseObject(curso);
 
     // 2) Datos oficiales del curso.
-    const [usuariosRows, miembrosRows, campanasRows, pagosRows] = await Promise.all([
+    const [usuariosRows, miembrosRows, campanasRows, pagosRows, avisosRows] = await Promise.all([
       sb("usuarios?select=*&order=created_at.desc"),
       sb("miembros_curso?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc"),
-      sb("campanas?curso_id=eq." + q(curso.id) + "&estado=neq.eliminada&select=*&order=created_at.desc"),
-      sb("pagos?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc")
+      sb("campanas?curso_id=eq." + q(curso.id) + "&select=*&order=created_at.desc"),
+      sb("pagos?curso_id=eq." + q(curso.id) + "&estado=neq.anulado&select=*&order=created_at.desc"),
+      sb("avisos_curso?curso_id=eq." + q(curso.id) + "&visible=eq.true&select=*&order=created_at.desc")
     ]);
 
     const usersById = {};
@@ -1074,10 +1075,22 @@
       }));
 
     const campanasById = {};
-    const tasks = (campanasRows || []).map(c=>{ campanasById[String(c.id)] = c; return taskFromCampana(c, ck); });
+    (campanasRows || []).forEach(c=>{ if(c && c.id) campanasById[String(c.id)] = c; });
+    const activeCampaignRows = (campanasRows || []).filter(c=>String(c && c.estado || "").toLowerCase() !== "eliminada");
+    const deletedCampaignRows = (campanasRows || []).filter(c=>String(c && c.estado || "").toLowerCase() === "eliminada");
+    const tasks = activeCampaignRows.map(c=>taskFromCampana(c, ck));
+    const deletedTasks = deletedCampaignRows.map(c=>Object.assign(taskFromCampana(c, ck), {
+      status:"eliminada", estado:"eliminada", deletedAt:c.deleted_at || "", deletedBy:c.deleted_by || ""
+    }));
+    const activeCampaignIds = new Set(activeCampaignRows.map(c=>String(c.id)));
     const miembrosById = {};
     miembros.forEach(m=>{ miembrosById[String(m.id)] = m; });
-    const payments = (pagosRows || []).map(p=>paymentFromRow(p, campanasById, miembrosById, ck));
+    const payments = (pagosRows || []).filter(p=>activeCampaignIds.has(String(p && p.campana_id || ""))).map(p=>paymentFromRow(p, campanasById, miembrosById, ck));
+    const avisos = (avisosRows || []).filter(a=>a && a.visible !== false && (!a.expira_en || new Date(a.expira_en).getTime() >= Date.now())).map(a=>({
+      id:a.id, fromSupabase:true, courseKey:ck, title:a.titulo || "", message:a.mensaje || "",
+      priority:a.prioridad || "normal", type:a.tipo || "general", requiresConfirmation:!!a.requiere_confirmacion,
+      expiresAt:a.expira_en || "", createdAt:a.created_at || ""
+    }));
 
     // 4) Escribir caché oficial para pantallas legacy, reemplazando todo lo local.
     const courseObj = { courseKey:ck, inviteCode:course.inviteCode || curso.invite_code || "", course, createdAt:curso.created_at || "", createdByRole:"supabase" };
@@ -1097,34 +1110,16 @@
     }
 
     saveJSON(scopedKey("tasks_v1"), tasks);
-
-    // V58.4 SAFE PAYMENTS HYDRATE:
-    // No sobrescribir pagos locales si Supabase responde 0 pagos para un curso con campañas.
-    // En Safari/PWA, al volver desde Mercado Escolar puede ocurrir una hidratación temprana
-    // antes de que pagos esté disponible por RLS/sincronización; si pisamos con [] desaparecen
-    // los pendientes del apoderado hasta otra acción. Conservamos la última caché válida.
-    try{
-      const scopedPaymentsKey = scopedKey("payments_v1");
-      const prevScoped = loadJSON(scopedPaymentsKey, []);
-      const prevGlobal = loadJSON("cursapp_payments_v1", []);
-      const prev = Array.isArray(prevScoped) && prevScoped.length ? prevScoped : (Array.isArray(prevGlobal) ? prevGlobal : []);
-      const shouldPreservePayments = (!payments.length && tasks.length && prev.length);
-      if(shouldPreservePayments){
-        saveJSON(scopedPaymentsKey, prev);
-        saveJSON("cursapp_payments_v1", prev);
-        try{ console.warn("Cursapp SAFE HYDRATE: pagos vacíos desde Supabase; se conserva caché local", {courseKey:ck, prev:prev.length, tasks:tasks.length}); }catch(_e){}
-      }else{
-        saveJSON(scopedPaymentsKey, payments);
-        saveJSON("cursapp_payments_v1", payments);
-      }
-    }catch(_safePayErr){
-      saveJSON(scopedKey("payments_v1"), payments);
-      saveJSON("cursapp_payments_v1", payments);
-    }
-
+    saveJSON(scopedKey("deleted_tasks_v1"), deletedTasks);
+    saveJSON(scopedKey("avisos_v2"), avisos);
+    // Supabase es la fuente oficial: una respuesta vacía válida limpia la caché.
+    saveJSON(scopedKey("payments_v1"), payments);
+    saveJSON("cursapp_payments_v1", payments);
     saveJSON("cursapp_tasks_v1", tasks);
+    saveJSON("cursapp_deleted_tasks_v1", deletedTasks);
+    saveJSON("cursapp_avisos_v2", avisos);
 
-    const status = { ok:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, usuarios:usuariosRows.length, miembros:miembros.length, apoderados:enrollments.length, campanas:tasks.length, pagos:payments.length, at:new Date().toISOString() };
+    const status = { ok:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, usuarios:usuariosRows.length, miembros:miembros.length, apoderados:enrollments.length, campanas:tasks.length, eliminadas:deletedTasks.length, pagos:payments.length, avisos:avisos.length, at:new Date().toISOString() };
     saveJSON(STATUS_KEY, status);
     try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:"supabase-operational", source:"supabase", status } })); }catch(e){}
     try{ window.dispatchEvent(new CustomEvent("cursapp:dataUpdated", { detail:{ key:"supabase-operational", source:"supabase", status } })); }catch(e){}
