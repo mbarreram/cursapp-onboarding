@@ -991,6 +991,11 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const activeTasks = () => tasks().filter(t => !t.closed && !isExpired(t));
   const expiredTasks = () => tasks().filter(t => !t.closed && isExpired(t));
   const closedTasks = () => tasks().filter(t => !!t.closed);
+  const courseStudentTotal = () => {
+    const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
+    const configured = Number(c.totalAlumnos || c.total_alumnos || 0);
+    return Math.max(configured, approvedCount(), 0);
+  };
 
   const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
   const spentCourse = () => sum(expenses(), e => e.amount);
@@ -1326,32 +1331,6 @@ function cuotasPendientesTask(id){
       // ✅ CAMBIO 3: logout al login real
       logoutBtn.onclick = ()=> location.href="/index.html";
     }
-  }
-
-  // ----- demo seed (if empty) -----
-  function ensureDemo(){
-    if(tasks().length) return;
-
-    save(KEY_TASKS, [
-      {id:"t1", title:"Rifa del curso", description:"", startDate:"2026-01-10", dueDate:"2026-01-31", closed:false, closeType:"", closeReason:"", mandatoryParticipation:true, type:"single", months:1, amount:10000, goalTotal:150000},
-      {id:"t2", title:"Paseo de curso", description:"", startDate:"2026-02-01", dueDate:"2026-04-01", closed:false, closeType:"", closeReason:"", mandatoryParticipation:false, type:"monthly", months:3, amount:20000, goalTotal:null},
-    ]);
-
-    save(KEY_PAYMENTS, [
-      {id:"p1", fromTaskId:"t1", amount:10000, status:"paid"},
-      {id:"p2", fromTaskId:"t1", amount:10000, status:"paid"},
-      {id:"p3", fromTaskId:"t2", amount:20000, status:"pending"},
-      {id:"p4", fromTaskId:"t2", amount:20000, status:"paid"},
-      {id:"c1", fromTaskId:"t1", amount:5000, status:"credit", note:"Saldo a favor por campaña eliminada"}
-    ]);
-
-    save(KEY_EXPENSES, [
-      {id:"e1", scope:"campaign", campaignId:"t1", title:"Flores", date:"2026-01-18", amount:25000, attachments:[{name:"boleta.jpg"}]},
-      {id:"e2", scope:"campaign", campaignId:"t2", title:"Reserva", date:"2026-02-18", amount:60000, attachments:[]},
-    ]);
-
-    save(KEY_MONTHLY_REPORTS, []);
-    clearDirty();
   }
 
   // ----- state -----
@@ -1938,6 +1917,7 @@ function renderHome(){
     const pendProjMes = pendingMonthProjected(ym);
     const debtorsMes = pendMes > 0 ? deudoresMonth(ym) : 0;
     const apods = approvedCount();
+    const studentTotal = courseStudentTotal();
     const active = activeTasks();
     const dirty = isDirty();
     const hasCampaigns = active.length > 0;
@@ -1949,7 +1929,7 @@ function renderHome(){
         const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
         const paidRows = campaignPaidPayments(t.id);
         const paidKeys = new Set(paidRows.map(p=>String(p.apoderadoEmail || p.email || p.apoderadoId || p.userId || p.payerId || "").toLowerCase()).filter(Boolean));
-        const paidFamilies = paidKeys.size || Math.min(apods, Math.round((pct / 100) * apods));
+        const paidFamilies = paidKeys.size || Math.min(studentTotal, Math.round((pct / 100) * studentTotal));
         const dueTime = t.dueDate ? new Date(t.dueDate + "T23:59:59").getTime() : Number.MAX_SAFE_INTEGER;
         return { t, rec, pend, expected, pct, paidFamilies, dueTime: Number.isFinite(dueTime) ? dueTime : Number.MAX_SAFE_INTEGER };
       })
@@ -1963,7 +1943,7 @@ function renderHome(){
             <div><small>Meta</small><b>${clp(item.expected)}</b></div>
             <div><small>Recaudado</small><b>${clp(item.rec)}</b></div>
           </div>
-          <p class="presHeroFamilies">${presSvgIcon("familyHome","presHeroFamiliesIcon")}${item.paidFamilies} de ${apods} familias pagadas</p>
+          <p class="presHeroFamilies">${presSvgIcon("familyHome","presHeroFamiliesIcon")}${item.paidFamilies} de ${studentTotal} alumnos con pago</p>
           <button type="button" onclick="window.go('campanas')">Ver campaña ${presSvgIcon("arrowRight","presBtnArrow")}</button>
         </div>
         <div class="presHeroRing" aria-label="${item.pct}% del objetivo">${presSvgIcon("flag","presHeroRingFlag")}<b>${item.pct}%</b><small>del objetivo</small></div>
@@ -1980,7 +1960,7 @@ function renderHome(){
     const kpiCards = [
       { icon:"$", tone:"green", label:"Cobrado", value:clp(recMes), sub:"Este mes" },
       { icon:"!", tone:"orange", label:"Por cobrar", value:clp(pendMes), sub:"Pendiente" },
-      { icon:"F", tone:"blue", label:"Familias pendientes", value:String(debtorsMes), sub:`De ${apods} familias` },
+      { icon:"F", tone:"blue", label:"Familias pendientes", value:String(debtorsMes), sub:`De ${studentTotal} alumnos del curso` },
       { icon:"B", tone:"purple", label:"Saldo disponible", value:clp(sal), sub:"En arcas" }
     ].map(k=>`
       <article class="presMockKpi presMockTone-${k.tone}">
@@ -1993,14 +1973,14 @@ function renderHome(){
     `).join("");
 
     const quickActions = [
-      { label:"Crear campaña", icon:"plus", action:"openCreateCampaign()" },
-      { label:"Enviar aviso", icon:"megaphone", action:"window.openAvisosConfigSafe()" },
-      { label:"Apoderados", icon:"users", action:"window.location.href='apoderados.html'" },
-      { label:"Informe ejecutivo", icon:"barChart", action:"window.go('informes')" },
-      { label:"Registrar pago", icon:"creditCard", action:"window.location.href='tesorero.html#conciliacion'" },
-      { label:"Ver deudores", icon:"clock", action:"window.go('deudores')" }
+      { label:"Crear campaña", icon:"plus", tone:"violet", action:"openCreateCampaign()" },
+      { label:"Enviar aviso", icon:"megaphone", tone:"cyan", action:"window.openAvisosConfigSafe()" },
+      { label:"Apoderados", icon:"users", tone:"emerald", action:"window.location.href='apoderados.html'" },
+      { label:"Informe ejecutivo", icon:"barChart", tone:"amber", action:"window.go('informes')" },
+      { label:"Registrar pago", icon:"creditCard", tone:"rose", action:"window.location.href='tesorero.html#conciliacion'" },
+      { label:"Ver deudores", icon:"clock", tone:"indigo", action:"window.go('deudores')" }
     ].map(a=>`
-      <button class="presMockQuick" type="button" onclick="${a.action}">
+      <button class="presMockQuick presMockQuick-${a.tone}" type="button" onclick="${a.action}">
         ${presSvgIcon(a.icon,"presMockQuickIcon")}
         <b>${esc(a.label)}</b>
       </button>
@@ -2103,12 +2083,14 @@ function renderHome(){
               ${campaignHeroItems.map((_,idx)=>`<span class="presHeroDot ${idx === 0 ? "active" : ""}"></span>`).join("")}
             </div>
           ` : `
-            <div class="presMockHeroHead">
-              <div><span>I</span><h2>Dashboard ejecutivo</h2><p>No existen campañas activas</p></div>
-              <button type="button" onclick="openCreateCampaign()">Crear primera campaña</button>
+            <div class="presMockHeroEmpty">
+              <span class="presMockHeroEmptyIcon">${presSvgIcon("barChart","presMockHeroEmptySvg")}</span>
+              <div>
+                <h2>Dashboard ejecutivo</h2>
+                <p>No existen campañas activas. Crea la primera para comenzar a visualizar el resumen financiero.</p>
+              </div>
+              <button type="button" onclick="openCreateCampaign()">Crear primera campaña ${presSvgIcon("arrowRight","presBtnArrow")}</button>
             </div>
-            <div class="presMockHeroBody"></div>
-            <div class="presMockDots"><span></span><span></span><span></span><span></span></div>
           `}
         </section>
 
@@ -2723,6 +2705,8 @@ function renderDeudores(){
       out.innerHTML = `<div class="muted">Escribe un nombre o correo para buscar.</div>`;
       return;
     }
+    window.__presDebtSearchCommitted = q;
+    window.__presDebtQueryDraft = qInp?.value || q;
     const matches = aprobados.filter(a=>{
       return a.email.includes(q) ||
         String(a.apoderadoName||"").toLowerCase().includes(q) ||
@@ -2803,7 +2787,10 @@ function renderDeudores(){
   qInp && (qInp.onkeydown = (e)=>{ if(e.key==="Enter") doSearch(); });
   if(qInp){
     qInp.value = debtQueryDraft;
-    qInp.addEventListener("input", ()=>{ window.__presDebtQueryDraft = qInp.value || ""; });
+    qInp.addEventListener("input", ()=>{
+      window.__presDebtQueryDraft = qInp.value || "";
+      if(String(window.__presDebtSearchCommitted || "") !== String(qInp.value || "").trim().toLowerCase()) window.__presDebtSearchCommitted = "";
+    });
     qInp.addEventListener("focus", ()=>{ window.__presDebtQueryActive = true; });
     qInp.addEventListener("blur", ()=>{ setTimeout(()=>{ window.__presDebtQueryActive = false; }, 120); });
     qInp.addEventListener("pointerdown", (e)=>{ e.stopPropagation(); }, { passive:true });
@@ -2815,6 +2802,10 @@ function renderDeudores(){
   out.innerHTML = debtors.length
     ? `<div class="muted">Sugerencia: deudores del mes (obligatorias) → ${debtors.slice(0,5).map(d=>esc(d.alumno||d.apoderadoName||d.email)).join(" · ")} ...</div>`
     : `<div class="muted">No hay deudores obligatorios este mes.</div>`;
+  if(window.__presDebtSearchCommitted && qInp){
+    qInp.value = window.__presDebtQueryDraft || window.__presDebtSearchCommitted;
+    requestAnimationFrame(()=>doSearch());
+  }
 }
 
 function renderInformes(){

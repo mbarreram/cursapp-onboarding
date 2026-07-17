@@ -380,7 +380,17 @@ function uid(prefix = "id") {
     const courseKey = String(courseObj.courseKey || c.courseKey || "").trim();
     if(!courseKey) throw new Error("courseKey vacío al crear curso");
     let row = await sbSelectOne("cursos", "course_key=eq." + sbQ(courseKey) + "&select=*");
-    if(row && row.id) return row;
+    const totalAlumnos = Number(c.estimatedStudents || courseObj?.commercialGoal?.estimatedStudents || 0) || 0;
+    if(row && row.id){
+      if(totalAlumnos > 0 && !Number(row.total_alumnos || 0)){
+        const updated = await sbOnb("cursos?id=eq." + sbQ(row.id), {
+          method:"PATCH",
+          body:JSON.stringify({ total_alumnos:totalAlumnos })
+        });
+        return updated[0] || Object.assign({}, row, { total_alumnos:totalAlumnos });
+      }
+      return row;
+    }
     const colegio = await ensureColegioDB(courseObj);
     const nombre = `${c.schoolName || "Colegio"} · ${c.level || ""}${c.letter || ""} ${c.year || ""}`.replace(/\s+/g," ").trim();
     row = await sbInsert("cursos", {
@@ -392,6 +402,7 @@ function uid(prefix = "id") {
       jornada: c.jornada || null,
       course_key: courseKey,
       invite_code: courseObj.inviteCode || c.inviteCode || generateCode(),
+      total_alumnos: totalAlumnos > 0 ? totalAlumnos : null,
       estado: "activo"
     });
     return row;

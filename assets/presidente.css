@@ -120,3 +120,20 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
 .presBrandRole,.presBrandCourse{font-size:12px!important;line-height:1.25;font-weight:750!important}
 .presMockEmptyNotices{margin:0}
 @media(max-width:420px){.presBrandName{font-size:17px!important}}
+
+/* PR18 · Accesos rápidos y estado vacío Presidente */
+.presMockQuickIcon{color:#fff!important;box-shadow:0 10px 24px rgba(15,23,42,.14)!important;border:1px solid rgba(255,255,255,.28)}
+.presMockQuick-violet .presMockQuickIcon{background:linear-gradient(145deg,#7c3aed,#4f46e5)!important}
+.presMockQuick-cyan .presMockQuickIcon{background:linear-gradient(145deg,#0891b2,#2563eb)!important}
+.presMockQuick-emerald .presMockQuickIcon{background:linear-gradient(145deg,#059669,#16a34a)!important}
+.presMockQuick-amber .presMockQuickIcon{background:linear-gradient(145deg,#f59e0b,#ea580c)!important}
+.presMockQuick-rose .presMockQuickIcon{background:linear-gradient(145deg,#e11d48,#db2777)!important}
+.presMockQuick-indigo .presMockQuickIcon{background:linear-gradient(145deg,#4f46e5,#7c3aed)!important}
+.presMockHero.is-empty{min-height:auto!important;padding:0!important;overflow:hidden}
+.presMockHeroEmpty{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;width:100%;padding:24px}
+.presMockHeroEmptyIcon{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(145deg,#ede9fe,#dbeafe);color:#6d28d9}
+.presMockHeroEmptySvg{width:25px;height:25px}
+.presMockHeroEmpty h2{margin:0 0 5px;font-size:21px}
+.presMockHeroEmpty p{margin:0;color:#64748b;line-height:1.4}
+.presMockHeroEmpty button{grid-column:2;justify-self:start;display:inline-flex;align-items:center;gap:8px;max-width:100%;white-space:normal}
+@media(max-width:480px){.presMockHeroEmpty{grid-template-columns:1fr;padding:20px}.presMockHeroEmpty button{grid-column:1;width:100%;justify-content:center}}

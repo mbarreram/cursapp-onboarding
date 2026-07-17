@@ -107,14 +107,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -1842,6 +1842,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       return inCourse.length || profiles.length || 0;
     }catch(_){ return 0; }
   }
+  function courseStudentTotal(){
+    try{
+      const wrapper = JSON.parse(localStorage.getItem("cursapp_course_v1") || "{}") || {};
+      const c = wrapper.course || wrapper;
+      const configured = Number(c.totalAlumnos || c.total_alumnos || 0);
+      return Math.max(configured, guardianCount(), 0);
+    }catch(_e){ return guardianCount(); }
+  }
 
   renderHome = function(){
     updateTreasurerHeader();
@@ -1857,13 +1865,13 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const collectedThisMonth = monthCollected() || collected;
     const spentThisMonth = monthExpenses() || spent;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
+    const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = active.slice(0,3).map((t,idx)=>{
       const rec = collectedForTask(t.id);
       const goal = Number(t.goal || t.target || t.meta || 0);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? 62 + (idx*8) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       return `<article class="tesCampaignRow"><div class="tesRowIcon">${idx===0?'🎓':'🎉'}</div><div class="tesRowMain"><b>${esc(t.title||'Campaña')}</b><small>${goal?`Meta: ${clp(goal)}`:'Meta por definir'}</small><div class="tesProgress"><i style="width:${pct}%"></i></div><small>Recaudado ${clp(rec)}</small></div><strong>${pct}%</strong></article>`;
     }).join('') || `<article class="tesEmptyRow"><b>Sin campañas activas</b><small>Cuando existan campañas, se verán aquí.</small></article>`;
     const formatMoveDate = (value)=>{
@@ -1903,8 +1911,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
         </section>
 
         <section class="tesSmallKpis">
-          <article><span class="tesIcon green">▤</span><small>Recaudado este mes</small><b>${clp(collectedThisMonth)}</b><em>+12% vs mes anterior</em></article>
-          <article><span class="tesIcon orange">👥</span><small>Participación del curso</small><b>${participation || 78}%</b><em>${guardians || 34} de ${estimated} apoderados</em></article>
+          <article><span class="tesIcon green">▤</span><small>Recaudado este mes</small><b>${clp(collectedThisMonth)}</b><em>Información del mes</em></article>
+          <article><span class="tesIcon orange">👥</span><small>Participación del curso</small><b>${participation}%</b><em>${guardians} de ${estimated} apoderados</em></article>
         </section>
 
         <section class="tesPanel">
@@ -2577,14 +2585,14 @@ __bootTesoreroSupabaseFirst();
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -2723,14 +2731,14 @@ __bootTesoreroSupabaseFirst();
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -3021,14 +3029,14 @@ __bootTesoreroSupabaseFirst();
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -3286,14 +3294,14 @@ __bootTesoreroSupabaseFirst();
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -3494,14 +3502,14 @@ __bootTesoreroSupabaseFirst();
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected() || collected;
     const guardians = guardianCount();
-    const estimated = Math.max(guardians || 0, 44);
-    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 18;
+    const estimated = Math.max(courseStudentTotal(), guardians);
+    const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
       const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
       const goal = tesCampaignGoalV68(t);
-      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec ? (idx===0?72:idx===1?70:10) : 0);
+      const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
@@ -3993,7 +4001,7 @@ __bootTesoreroSupabaseFirst();
   function participation(c, rows){
     const course = activeCourseKey();
     const totalProfiles = profiles().filter(p=>!course || String(p.courseKey||'')===course);
-    const total = Math.max(totalProfiles.length || 0, 30);
+    const total = Math.max(courseStudentTotal(), totalProfiles.length || 0);
     const set = new Set();
     (rows||[]).forEach(p=>{
       const k = String(p.apoderadoEmail || p.email || p.apoderadoKey || p.guardianName || p.apoderadoName || '') + '|' + String(p.studentName || p.alumno || '');
