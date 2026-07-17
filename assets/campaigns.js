@@ -105,6 +105,14 @@
     }
   }
 
+  function officialStudentTotal(){
+    try{
+      const row = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null") || {};
+      const course = row.course || {};
+      return Math.max(0, Number(row.totalAlumnos ?? row.total_alumnos ?? course.totalAlumnos ?? course.total_alumnos ?? 0) || 0);
+    }catch(e){ return 0; }
+  }
+
   function apoderadoEmailFromEnrollment(e){
     return String(
       e?.apoderadoEmail || e?.email || e?.apoderado || e?.apoderado_email || e?.mail || e?.correo || ""
@@ -204,7 +212,10 @@
       fecha_vencimiento: cleanDate(task?.dueDate || task?.fecha_vencimiento || task?.endDate),
       meses: Number(task?.months || task?.meses || 1) || 1,
       obligatoria: task?.mandatoryParticipation !== false,
-      estado: task?.closed ? "cerrada" : "activa"
+      estado: task?.closed ? "cerrada" : "activa",
+      descripcion: String(task?.description || task?.descripcion || "").trim() || null,
+      meta: Number(task?.goalTotal || 0) || null,
+      goal_total: Number(task?.goalTotal || 0) || null
     };
     const inserted = await sb("campanas", { method:"POST", body:JSON.stringify(body) });
     const campana = Array.isArray(inserted) ? inserted[0] : inserted;
@@ -524,7 +535,10 @@
         if (sumMonths) sumMonths.textContent = isMonthly ? String(months || 0) : "1";
         if (sumAmount) sumAmount.textContent = "$" + amount.toLocaleString("es-CL");
         if (sumGoal) sumGoal.textContent = "$" + (goal || amount).toLocaleString("es-CL");
-        const total = isMonthly ? amount * (months || 0) : amount;
+        const perStudent = isMonthly ? amount * (months || 0) : amount;
+        const students = officialStudentTotal();
+        const mandatory = mandatoryEl.value === "true";
+        const total = mandatory && students > 0 ? perStudent * students : (goal || perStudent);
         if (sumTotal) sumTotal.textContent = "$" + total.toLocaleString("es-CL");
       }catch(e){/* ignore */}
     }
@@ -967,7 +981,11 @@
       type,
       months,
       amount,
-      goalTotal: goalTotal > 0 ? goalTotal : null,
+      goalTotal: goalTotal > 0
+        ? goalTotal
+        : (mandatoryParticipation && officialStudentTotal() > 0
+          ? amount * Math.max(1, Number(months || 1)) * officialStudentTotal()
+          : null),
       mandatoryParticipation,
       closed: false,
       closeType: "",
@@ -996,11 +1014,10 @@
           const aps = approvedApoderados();
           const emails = aps.map(apoderadoEmailFromEnrollment).filter(Boolean);
 
-          // Fallback: if enrollments are missing, create a generic pending payment (keeps demo consistent)
-          const targets = emails.length ? emails : ["demo@cursapp.local"];
+          const targets = emails;
 
-          targets.forEach((mail, i)=>{
-            const safeEmail = mail || `unknown_${i+1}@cursapp.local`;
+          targets.forEach((mail)=>{ 
+            const safeEmail = mail;
             pays.unshift({
               id: uid("p"),
               fromTaskId: newTaskId,
@@ -1017,6 +1034,9 @@
       }
     }catch(e){ /* ignore */ }
 
+    if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+      try{ await window.CURSAPP.hydrateOperationalFromSupabase("campaign-created"); }catch(e){ console.warn("No se pudo rehidratar campaña", e); }
+    }
     markDirty();
     emitUpdated("tasks");
     closeModal();
