@@ -212,15 +212,24 @@
 
   function buildWhatsappInvite(curso){
     const p = courseParts(curso);
-    const code = curso?.invite_code || "";
-    const cursoTxt = [p.school, p.course].filter(Boolean).join(" · ");
-    return (
-      "Hola. Te invito a unirte al curso " + cursoTxt + " en Cursapp.\n" +
-      "Ingresa a https://cursapp.cl y utiliza este código de invitación:\n\n" +
-      "*" + code + "*\n\n" +
-      "Una vez registrado podrás revisar campañas, pagos, informes\n" +
-      "y avisos del curso."
-    );
+    const code = String(curso?.invite_code || "").trim();
+    const cursoTxt = [p.school, p.course].filter(Boolean).join(" · ") || "nuestro curso";
+    const joinUrl = location.origin + "/onboarding/dashboard.html?mode=apoderado";
+    return [
+      "👋 ¡Hola!",
+      "",
+      "Te invitamos a formar parte de *" + cursoTxt + "* en Cursapp. 🎓",
+      "",
+      "📲 Regístrate aquí:",
+      joinUrl,
+      "",
+      "🔑 Cuando te lo solicite, ingresa este código del curso:",
+      "*" + (code || "Código no disponible") + "*",
+      "",
+      "✅ En Cursapp podrás revisar campañas, cuotas, pagos, avisos e informes del curso.",
+      "",
+      "Si tienes dudas, responde este mensaje y te ayudamos. 😊"
+    ].join("\n");
   }
 
   async function copyText(text, label){
@@ -248,6 +257,9 @@
   }
 
   async function del(id){
+    const src = (STATE.miembros || []).find(e => String(e.enrollmentId || e.id) === String(id));
+    const nombre = src?.apoderadoName || src?.email || "este apoderado";
+    if(!confirm(`¿Eliminar a ${nombre} del registro del curso?\n\nDejará de participar en los cálculos y accesos, pero se conservará el registro histórico.`)) return;
     try{
       await sb(`miembros_curso?id=${eq(id)}`, {
         method:"PATCH",
@@ -441,8 +453,11 @@
       .apo-history{display:flex;flex-direction:column;gap:9px;margin-top:10px}.apo-history-row{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;font-size:12px;font-weight:800;color:#334155}.apo-history-row svg{width:20px;height:20px;color:#16a34a}
       .apo-modal-footer{height:44px;border-radius:14px;border:1px solid rgba(226,232,240,.95);background:#fff;width:100%;font-weight:900;margin-top:14px;cursor:pointer}
       .apo-empty{background:#fff;border:1px solid rgba(226,232,240,.95);border-radius:24px;padding:20px;box-shadow:0 12px 34px rgba(15,23,42,.06)}.apo-empty-title{font-size:20px;font-weight:900}.apo-empty-text{margin-top:8px;color:#64748b;font-weight:750;line-height:1.45}
+      .apo-pending-alert{display:grid;grid-template-columns:auto 1fr auto;gap:13px;align-items:center;padding:16px 18px;border-radius:20px;background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;color:#9a3412;box-shadow:0 12px 30px rgba(234,88,12,.08)}
+      .apo-pending-alert>span{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:#ffedd5;color:#ea580c}.apo-pending-alert svg{width:22px;height:22px}.apo-pending-alert b{display:block;font-size:15px}.apo-pending-alert small{display:block;margin-top:3px;color:#9a3412;opacity:.82;font-weight:700}.apo-pending-alert button{height:38px;border:0;border-radius:12px;background:#ea580c;color:#fff;padding:0 13px;font-weight:900}
+      .apo-action svg{width:15px;height:15px;vertical-align:-3px;margin-right:4px}
       @media (max-width:760px){
-        .container#app{padding:20px 14px 132px!important}.apo-title-row{grid-template-columns:1fr}.apo-primary{width:100%}.apo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.apo-kpi{padding:15px;min-height:132px}.apo-progress-card{grid-template-columns:1fr;padding:18px}.apo-donut-row{grid-template-columns:1fr;justify-items:center}.apo-total-card{width:100%}.apo-tools{grid-template-columns:1fr}.apo-table{display:block}.apo-table thead{display:none}.apo-table tbody{display:block}.apo-table tr{display:block;padding:12px;border-bottom:1px solid rgba(226,232,240,.75)}.apo-table td{display:block;border:0;padding:5px 2px}.apo-table td[data-label]::before{content:attr(data-label);display:block;color:#94a3b8;font-size:11px;font-weight:850;margin-bottom:3px}.apo-row-actions{justify-content:flex-start}.apo-pagination{flex-direction:column;align-items:flex-start}.apo-code-display{letter-spacing:8px;font-size:25px}.presBrandCourse{max-width:38vw;}
+        .container#app{padding:20px 14px 132px!important}.apo-title-row{grid-template-columns:1fr}.apo-primary{width:100%}.apo-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.apo-kpi{padding:15px;min-height:132px}.apo-progress-card{grid-template-columns:1fr;padding:18px}.apo-donut-row{grid-template-columns:1fr;justify-items:center}.apo-total-card{width:100%}.apo-tools{grid-template-columns:1fr}.apo-table-card{background:transparent;border:0;box-shadow:none;overflow:visible}.apo-table{display:block}.apo-table thead{display:none}.apo-table tbody{display:grid;gap:12px}.apo-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;padding:16px;margin:0;background:#fff;border:1px solid rgba(226,232,240,.95);border-radius:20px;box-shadow:0 10px 26px rgba(15,23,42,.06)}.apo-table td{display:block;border:0;padding:0;min-width:0}.apo-table td:first-child,.apo-table td:last-child{grid-column:1/-1}.apo-table td:nth-child(2){overflow:hidden;text-overflow:ellipsis}.apo-table td[data-label]::before{content:attr(data-label);display:block;color:#94a3b8;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.apo-table td:first-child::before{content:"Registro de apoderado"}.apo-person b{font-size:15px}.apo-row-actions{justify-content:flex-start;padding-top:4px;border-top:1px solid #f1f5f9}.apo-pending-alert{grid-template-columns:auto 1fr}.apo-pending-alert button{grid-column:1/-1;width:100%}.apo-pagination{flex-direction:column;align-items:flex-start}.apo-code-display{letter-spacing:8px;font-size:25px}.presBrandCourse{max-width:38vw;}
       }
     `;
     document.head.appendChild(style);
@@ -517,7 +532,8 @@
         body:JSON.stringify({ total_alumnos:total })
       });
       STATE.curso = rows[0] || Object.assign({}, curso, { total_alumnos:total });
-      try{ await loadData(); }catch(_e){ render(); }
+      render();
+      try{ await loadData(); render(); }catch(_e){}
     }catch(e){
       alert("No se pudo guardar el total de alumnos: " + (e?.message || e));
     }
@@ -543,7 +559,9 @@
     const requestActions = e.status === "pending"
       ? `<button class="apo-action primary" type="button" onclick="window.__approve('${esc(e.enrollmentId)}')">Aceptar</button>
          <button class="apo-action danger" type="button" onclick="window.__delete('${esc(e.enrollmentId)}')">Eliminar</button>`
-      : `<button class="apo-action" type="button" aria-label="Más acciones">${icon("ellipsis")}</button>`;
+      : (e.status === "approved" && role === "presidente"
+        ? `<button class="apo-action danger" type="button" onclick="window.__delete('${esc(e.enrollmentId)}')">${icon("userX")} Eliminar</button>`
+        : "");
 
     return `<tr>
       <td data-label="Apoderado / Alumno">
@@ -879,6 +897,12 @@
       </aside>
     </section>`;
 
+    const pendingAlert = s.applicationsPending > 0 ? `
+      <section class="apo-pending-alert">
+        <span>${icon("hourglass")}</span>
+        <div><b>${s.applicationsPending} solicitud${s.applicationsPending === 1 ? "" : "es"} pendiente${s.applicationsPending === 1 ? "" : "s"} de aprobación</b><small>Revísalas para permitir el acceso al curso.</small></div>
+        <button type="button" onclick="window.__filterApoderados('pending')">Revisar solicitudes</button>
+      </section>` : "";
     const filterCount = STATE.status === "all" ? 0 : 1;
     const tools = `<section class="apo-tools">
       <label class="apo-search" for="apoSearch">${icon("search")}<input id="apoSearch" type="search" autocomplete="off" value="${esc(STATE.query)}" placeholder="Buscar por nombre, email o apoderado..."></label>
@@ -892,7 +916,7 @@
     const filterChips = `<div class="apo-pages" style="margin:0 0 14px;">
       ${statusFilterButton("all", "Todos", list.length)}
       ${statusFilterButton("approved", "Aprobados", s.registered)}
-      ${statusFilterButton("pending", "Pendientes", s.pending)}
+      ${statusFilterButton("pending", "Pendientes", s.applicationsPending)}
       ${statusFilterButton("deleted", "Eliminados", s.deleted)}
     </div>`;
 
@@ -924,6 +948,7 @@
         </div>
         <button class="apo-primary" id="apoInviteBtn" type="button">${icon("userPlus")} Invitar apoderado</button>
       </section>
+      ${pendingAlert}
       ${kpis}
       ${progress}
       ${tools}
