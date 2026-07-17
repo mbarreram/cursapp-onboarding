@@ -1316,6 +1316,38 @@ function cuotasPendientesTask(id){
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
 
+  window.openPresidentManualPayment = function(){
+    const pending = payments().filter(p=>{
+      const st=String(p?.status||p?.estado||'pending').toLowerCase();
+      return ['pending','pendiente','partial','overdue'].includes(st) && p?.id;
+    });
+    const campaigns = normalizeTasks(tasks()).filter(t=>!t.closed);
+    const options = pending.map(p=>{
+      const camp=campaigns.find(t=>String(t.id)===String(p.fromTaskId||p.campaignId||''));
+      const label=[camp?.title||p.concept||'Campaña',p.studentName||p.alumno||'Alumno',p.guardianName||p.apoderadoName||'Apoderado',Number(p.amount||0).toLocaleString('es-CL')].join(' · ');
+      return `<option value="${esc(p.id)}">${esc(label)}</option>`;
+    }).join('');
+    openModal(`<div class="row"><div><div style="font-size:22px;font-weight:950">Registrar pago</div><div class="muted" style="margin-top:5px">Selecciona un cobro pendiente y registra el medio recibido.</div></div><button class="btnMini" onclick="closeModal()">Cerrar</button></div>
+      ${pending.length?`<label style="display:block;margin-top:16px;font-weight:900">Apoderado, alumno y campaña<select id="pres_manual_payment" style="width:100%;margin-top:7px"><option value="">Seleccionar cobro pendiente</option>${options}</select></label>
+      <label style="display:block;margin-top:12px;font-weight:900">Medio de pago<select id="pres_manual_method" style="width:100%;margin-top:7px"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="otro">Otro medio</option></select></label>
+      <div class="actions" style="margin-top:18px;justify-content:flex-end"><button class="btnMini" onclick="closeModal()">Cancelar</button><button class="btnPrimaryMini" onclick="registerPresidentManualPayment()">Registrar pago</button></div>`:`<div class="empty" style="margin-top:16px"><b>No existen cobros pendientes para registrar.</b></div>`}`);
+  };
+
+  window.registerPresidentManualPayment = async function(){
+    const id=String(document.getElementById('pres_manual_payment')?.value||'');
+    const method=String(document.getElementById('pres_manual_method')?.value||'transferencia');
+    const payment=payments().find(p=>String(p.id)===id);
+    if(!payment) return alert('Selecciona un cobro pendiente.');
+    const btn=modalRoot.querySelector('.btnPrimaryMini'); if(btn){btn.disabled=true;btn.textContent='Registrando...';}
+    try{
+      if(!window.CURSAPP_PAYMENTS_V11?.markPaid) throw new Error('El servicio de pagos no está disponible.');
+      await window.CURSAPP_PAYMENTS_V11.markPaid(id,{amount:Number(payment.amount||0),method,conciliated:true});
+      closeModal();
+      openModal(`<div style="text-align:center;padding:10px"><div style="width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#dcfce7;color:#15803d;font-size:30px;font-weight:950;margin:auto">✓</div><h2>Pago registrado</h2><p class="muted">Los indicadores del curso se actualizaron desde Supabase.</p><button class="btnPrimaryMini" onclick="closeModal()">Aceptar</button></div>`);
+      try{window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'presidente-pago-manual'}}));}catch(_){}
+    }catch(err){ if(btn){btn.disabled=false;btn.textContent='Registrar pago';} alert('No se pudo registrar el pago: '+(err?.message||err)); }
+  };
+
   // ----- menu -----
   function initMenu(){
     if(menuBtn && menuDropdown){
@@ -2007,7 +2039,7 @@ function renderHome(){
       { label:"Enviar aviso", icon:"megaphone", tone:"cyan", action:"window.openAvisosConfigSafe()" },
       { label:"Apoderados", icon:"users", tone:"emerald", action:"window.location.href='apoderados.html'" },
       { label:"Informe ejecutivo", icon:"barChart", tone:"amber", action:"window.go('informes')" },
-      { label:"Registrar pago", icon:"creditCard", tone:"rose", action:"window.location.href='tesorero.html#conciliacion'" },
+      { label:"Registrar pago", icon:"creditCard", tone:"rose", action:"window.openPresidentManualPayment()" },
       { label:"Ver deudores", icon:"clock", tone:"indigo", action:"window.go('deudores')" }
     ].map(a=>`
       <button class="presMockQuick presMockQuick-${a.tone}" type="button" onclick="${a.action}">
