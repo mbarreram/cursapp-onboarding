@@ -145,11 +145,9 @@
   }
 
   function totalAlumnos(){
-    const curso = STATE.curso || {};
-    const raw = curso.total_alumnos_onboarding ?? curso.total_alumnos ?? curso.alumnos_onboarding ?? curso.alumnos_estimados ?? curso.cantidad_alumnos ?? curso.target_parents;
-    const n = Number(raw || 0);
-    const activeMembers = (STATE.miembros || []).filter(e => e.role === "apoderado" && e.status !== "deleted").length;
-    return Math.max(n, activeMembers, 0);
+    const configured = Number(STATE.curso?.total_alumnos || 0);
+    const registered = (STATE.miembros || []).filter(e => e.role === "apoderado" && e.status === "approved").length;
+    return Math.max(configured, registered, 0);
   }
 
   function headerUserLine(){
@@ -478,12 +476,13 @@
 
   function stats(list){
     const registered = list.filter(e => e.status === "approved").length;
-    const pending = list.filter(e => e.status === "pending").length;
+    const applicationsPending = list.filter(e => e.status === "pending").length;
     const deleted = list.filter(e => e.status === "deleted").length;
-    const total = totalAlumnos();
-    const pct = total ? Math.round((registered / total) * 100) : 0;
-    const pendingPct = total ? Math.round((pending / total) * 100) : 0;
-    return { registered, pending, deleted, total, pct, pendingPct };
+    const total = Math.max(totalAlumnos(), registered);
+    const pending = Math.max(0, total - registered);
+    const pct = total ? Math.min(100, Math.round((registered / total) * 100)) : 0;
+    const pendingPct = total ? Math.max(0, 100 - pct) : 0;
+    return { registered, pending, applicationsPending, deleted, total, pct, pendingPct };
   }
 
   function kpi(iconName, label, value, note, tone, extra){
@@ -500,8 +499,28 @@
     </article>`;
   }
 
-  function editTotalInfo(){
-    alert("El total de alumnos viene del onboarding del curso. La edición persistente debe habilitarse con el campo aprobado en Supabase.");
+  async function editTotalInfo(){
+    const curso = STATE.curso || {};
+    if(!curso.id) return alert("No se pudo identificar el curso.");
+    if(roleOf() !== "presidente") return alert("Solo el presidente puede editar el total de alumnos.");
+    const registrados = (STATE.miembros || []).filter(e => e.role === "apoderado" && e.status === "approved").length;
+    const current = Math.max(Number(curso.total_alumnos || 0), registrados);
+    const value = prompt(`Total oficial de alumnos del curso (mínimo ${registrados}):`, String(current || ""));
+    if(value == null) return;
+    const total = Number(String(value).trim());
+    if(!Number.isInteger(total) || total < Math.max(1, registrados) || total > 200){
+      return alert(`Ingresa un número entero entre ${Math.max(1, registrados)} y 200.`);
+    }
+    try{
+      const rows = await sb(`cursos?id=${eq(curso.id)}&select=*`, {
+        method:"PATCH",
+        body:JSON.stringify({ total_alumnos:total })
+      });
+      STATE.curso = rows[0] || Object.assign({}, curso, { total_alumnos:total });
+      try{ await loadData(); }catch(_e){ render(); }
+    }catch(e){
+      alert("No se pudo guardar el total de alumnos: " + (e?.message || e));
+    }
   }
 
   function statusFilterButton(id, label, count){
@@ -831,7 +850,7 @@
     const pageRows = rows.slice(start, start + perPage);
 
     const kpis = `<section class="apo-kpis">
-      ${kpi("users", "Total alumnos (onboarding)", s.total, "", "", `<button class="apo-kpi-edit" type="button" onclick="window.__editTotalInfo()">${icon("pencil")} Editar</button>`)}
+      ${kpi("users", "Total alumnos del curso", s.total, "", "", `<button class="apo-kpi-edit" type="button" onclick="window.__editTotalInfo()">${icon("pencil")} Editar</button>`)}
       ${kpi("check", "Registrados", s.registered, `${s.pct}% del total`, "ok")}
       ${kpi("hourglass", "Pendientes", s.pending, `${s.pendingPct}% del total`, "warn")}
       ${kpi("userX", "Eliminados", s.deleted, "0% del total", "gray")}
@@ -853,7 +872,7 @@
         </div>
       </div>
       <aside class="apo-total-card">
-        <div class="apo-invite-title">${icon("users")}<span>Total alumnos (onboarding)</span></div>
+        <div class="apo-invite-title">${icon("users")}<span>Total alumnos del curso</span></div>
         <b>${s.total}</b>
         <p>Este valor se utiliza para calcular los porcentajes del registro.</p>
         <button class="apo-small-btn" type="button" onclick="window.__editTotalInfo()">Editar total</button>
