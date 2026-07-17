@@ -114,3 +114,9 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
 .kpi .val{letter-spacing:-0.3px;}
 .warnBox{border-radius:16px;}
 
+
+/* PR17 · Cabecera uniforme Presidente */
+.presBrandName{font-size:18px!important;line-height:1.15;font-weight:900!important;letter-spacing:-.2px}
+.presBrandRole,.presBrandCourse{font-size:12px!important;line-height:1.25;font-weight:750!important}
+.presMockEmptyNotices{margin:0}
+@media(max-width:420px){.presBrandName{font-size:17px!important}}
