@@ -993,7 +993,9 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   const closedTasks = () => tasks().filter(t => !!t.closed);
   const courseStudentTotal = () => {
     const c = (typeof activeCourse === "function" ? activeCourse() : null) || {};
-    const configured = Number(c.totalAlumnos || c.total_alumnos || 0);
+    let cached = {};
+    try{ cached = JSON.parse(localStorage.getItem("cursapp_course_v1") || "null") || {}; }catch(e){}
+    const configured = Number(c.totalAlumnos ?? c.total_alumnos ?? cached.totalAlumnos ?? cached.total_alumnos ?? cached.course?.totalAlumnos ?? cached.course?.total_alumnos ?? 0) || 0;
     return Math.max(configured, approvedCount(), 0);
   };
 
@@ -1039,16 +1041,20 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function campaignUniqueDebtors(taskId){
-    const set = new Set();
+    const task = tasks().find(t=>String(t?.id||"")===String(taskId||""));
+    const pendingKeys = new Set();
     campaignPendingPayments(taskId).forEach(p=>{
-      const k =
-        String(p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || "")
-          .toLowerCase()
-          .trim()
-        || String(p?.alumnoId || "").trim();
-      if(k) set.add(k);
+      const k = String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim();
+      if(k) pendingKeys.add(k);
     });
-    return set.size;
+    if(task && task.mandatoryParticipation !== false){
+      const total = courseStudentTotal();
+      const paidKeys = new Set(campaignPaidPayments(taskId).map(p=>
+        String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim()
+      ).filter(Boolean));
+      return Math.max(0, total - paidKeys.size);
+    }
+    return pendingKeys.size;
   }
 
   function campaignPendingAmount(taskId){
@@ -1079,8 +1085,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
     }
   }
   function approvedCount(){
-    const n = approvedApoderados().length;
-    return n || 1; // fallback
+    return approvedApoderados().length;
   }
 
   // ---- fechas / periodos ----
@@ -1128,22 +1133,30 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   // Deudores del mes (personas únicas con al menos 1 cuota/pago pendiente del mes)
   function deudoresMonth(ym){
-    const set = new Set();
-    payments().forEach(p=>{
-      if(!isPendingFinancialStatus(p)) return;
-      const due = p.dueDate || "";
-      if(!withinMonth(due, ym)) return;
-      const k = String(p.apoderadoEmail || p.email || "").toLowerCase();
-      if(k) set.add(k);
+    const mandatory = tasks().filter(t=>{
+      if(t.closed || t.mandatoryParticipation === false) return false;
+      const type = String(t.type||"single").toLowerCase();
+      if(type==="monthly"){
+        const startYM = ymFromISO(t.startDate||t.dueDate||"");
+        if(!startYM) return false;
+        const sy=Number(startYM.slice(0,4)), sm=Number(startYM.slice(5,7));
+        const cy=Number(ym.slice(0,4)), cm=Number(ym.slice(5,7));
+        const idx=(cy-sy)*12+(cm-sm)+1;
+        return idx>=1 && idx<=Math.max(1,Number(t.months||1));
+      }
+      return ymFromISO(t.dueDate||"")===ym;
     });
-    // Fallback: si no hay cobros instanciados, estimar por apoderados aprobados
-    if(set.size===0){
-      try{
-        const n = approvedApoderados().length;
-        return n || 0;
-      }catch(e){ return 0; }
-    }
-    return set.size;
+    if(!mandatory.length) return 0;
+    const paid = new Set();
+    payments().forEach(p=>{
+      const task = mandatory.find(t=>String(t.id)===String(p.fromTaskId));
+      if(!task || !isPaid(p)) return;
+      const period = String(p.period || p.dueDate || p.paidAt || p.paidDate || "").slice(0,7);
+      if(period && period!==ym) return;
+      const k=String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim();
+      if(k) paid.add(k);
+    });
+    return Math.max(0, courseStudentTotal() - paid.size);
   }
 
 
@@ -1158,7 +1171,6 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   // Proyección máxima (ajustada por opt-out si existe)
   function pendingMonthProjected(ym){
-    const people = approvedCount();
     const tks = tasks();
     let expected = 0;
 
@@ -1167,6 +1179,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
       if(t.closed) return;
       const type = String(t.type||"single").toLowerCase();
       const amt = Number(t.amount||0);
+      const people = t.mandatoryParticipation === false ? approvedCount() : courseStudentTotal();
 
       if(type==="monthly"){
         // month range: from startDate month to start+months-1
@@ -1227,13 +1240,10 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   function expectedTaskTotal(t){
     if(!t) return 0;
     const monto = Number(t.amount||0);
-    const nApo = approvedCount(); // apoderados aprobados (fallback=1)
+    const people = t.mandatoryParticipation === false ? approvedCount() : courseStudentTotal();
     const type = String(t.type||"single").toLowerCase();
-    if(type==="monthly"){
-      const months = Math.max(1, Number(t.months||1));
-      return monto * months * nApo;
-    }
-    return monto * nApo;
+    const months = type==="monthly" ? Math.max(1, Number(t.months||1)) : 1;
+    return monto * months * people;
   }
 
   function pendingTaskEstimated(t){
@@ -1399,11 +1409,15 @@ function setActive(tab){
         )) return;
       }
 
-      // V11.11: en Home no re-renderizar por eventos internos.
-      // El Dashboard horizontal y el banner parpadeaban porque cambios de localStorage
-      // disparaban renderHome() mientras el usuario estaba mirando/deslizando.
-      // Home se vuelve a pintar solo al entrar explícitamente con go('home').
-      if(tab==='home') return;
+      // El Home se actualiza sólo para cambios operacionales reales.
+      // Así campañas y avisos aparecen inmediatamente sin reaccionar a banners o soporte.
+      if(tab==='home'){
+        const kind = String(ev && ev.detail && ev.detail.kind || '').toLowerCase();
+        const operational = allowedKeys.has(key) || ['tasks','payments','notices','avisos','campaign-created'].includes(kind);
+        if(!operational) return;
+        renderHome();
+        return;
+      }
 
       // materializa pagos faltantes solo si el evento afecta datos operacionales.
       ensurePaymentsForAllApproved();
@@ -2018,12 +2032,15 @@ function renderHome(){
       const priority = String(n.priority || "normal").toLowerCase();
       const tag = priority === "alta" || priority === "urgente" ? "Importante" : "Aviso";
       const when = n.createdAt ? new Date(n.createdAt).toLocaleDateString("es-CL", {day:"2-digit", month:"short"}) : "";
+      const readCount = Math.max(0, Number(n.readCount || n.read_count || 0));
+      const audience = Math.max(0, Number(n.audienceCount || n.audience_count || courseStudentTotal()));
       return `
         <article class="presMockNotice">
           <span>A</span>
           <div>
             <h3>${esc(n.title || "Aviso del curso")} <em>${esc(tag)}</em></h3>
             <p>${esc(n.message || "Sin detalle adicional.")}</p>
+            <small>${readCount} de ${audience} apoderados lo han visto</small>
           </div>
           <time>${esc(when)}</time>
         </article>
@@ -2402,14 +2419,28 @@ function summarizeDebts(email){
 }
 
 function monthMandatoryOutstanding(ym){
-  const pays = payments().filter(isPendingFinancialStatus).filter(p => withinMonth(p.dueDate||"", ym));
-  let total = 0;
-  pays.forEach(p=>{
-    const t = taskById(p.fromTaskId);
-    if(t && t.mandatoryParticipation === false) return;
-    total += Number(p.amount||0);
+  let projected = 0;
+  tasks().forEach(t=>{
+    if(t.closed || t.mandatoryParticipation === false) return;
+    const amount=Number(t.amount||0);
+    const type=String(t.type||"single").toLowerCase();
+    let applies=false;
+    if(type==="monthly"){
+      const start=ymFromISO(t.startDate||t.dueDate||"");
+      if(start){
+        const idx=(Number(ym.slice(0,4))-Number(start.slice(0,4)))*12+(Number(ym.slice(5,7))-Number(start.slice(5,7)))+1;
+        applies=idx>=1 && idx<=Math.max(1,Number(t.months||1));
+      }
+    }else applies=ymFromISO(t.dueDate||"")===ym;
+    if(applies) projected += amount * courseStudentTotal();
   });
-  return total;
+  const collected = sum(payments().filter(p=>{
+    if(!isPaid(p)) return false;
+    const t=taskById(p.fromTaskId);
+    if(!t || t.mandatoryParticipation===false) return false;
+    return String(p.period || p.dueDate || p.paidAt || p.paidDate || "").slice(0,7)===ym;
+  }), p=>Number(p.amount||0));
+  return Math.max(0, projected-collected);
 }
 
 function renderBar(label, value, max){
@@ -2568,16 +2599,16 @@ function renderDeudores(){
 
     <div class="kpiGrid" style="margin-top:12px;">
       <div class="kpi">
-        <div class="kpiLabel">Deudores (mes · obligatorias)</div>
-        <div class="kpiVal">${debtors.length}</div>
+        <div class="kpiLabel">Alumnos pendientes de pago (mes)</div>
+        <div class="kpiVal">${deudoresMonth(ym)}</div>
       </div>
       <div class="kpi">
         <div class="kpiLabel">Deuda obligatoria del mes</div>
         <div class="kpiVal">${clp(totalMandatoryMonth)}</div>
       </div>
       <div class="kpi">
-        <div class="kpiLabel">Apoderados aprobados</div>
-        <div class="kpiVal">${approvedApoderados().length}</div>
+        <div class="kpiLabel">Alumnos al día (mes)</div>
+        <div class="kpiVal">${Math.max(0, courseStudentTotal() - deudoresMonth(ym))}</div>
       </div>
     </div>
 
