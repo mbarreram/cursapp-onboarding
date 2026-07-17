@@ -281,7 +281,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   }
 
   function findEmailNear(btn){ let el=btn; for(let i=0; el && i<10; i++,el=el.parentElement){ const m=String(el.textContent||'').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i); if(m) return m[0].toLowerCase().trim(); } return ''; }
-  function isTreasurerButton(btn){ if(!btn) return false; const txt=String(btn.textContent||btn.value||'').toLowerCase(); const attr=String((btn.getAttribute&&((btn.getAttribute('onclick')||'')+' '+(btn.getAttribute('title')||'')+' '+(btn.getAttribute('aria-label')||'')+' '+(btn.getAttribute('data-assign-treasurer-email')||'')+' '+(btn.getAttribute('data-remove-treasurer-email')||'')))||'').toLowerCase(); return txt.includes('tesorero') || attr.includes('treasurer') || attr.includes('tesorero'); }
+  function isTreasurerButton(btn){
+    if(!btn) return false;
+    const txt=String(btn.textContent||btn.value||'').toLowerCase().replace(/\s+/g,' ').trim();
+    const explicit=String((btn.getAttribute&&((btn.getAttribute('data-assign-treasurer-email')||'')+' '+(btn.getAttribute('data-remove-treasurer-email')||'')))||'').trim();
+    // No inspeccionar onclick/URL: "tesorero.html#conciliacion" pertenece al acceso
+    // Registrar pago y antes era confundido con el botón de asignación de tesorero.
+    return !!explicit || /^(asignar( como)? tesorero|eliminar tesorero)$/.test(txt);
+  }
   function isRemoveTreasurerButton(btn){ const txt=String(btn&&btn.textContent||'').toLowerCase(); const attr=String((btn&&btn.getAttribute&&btn.getAttribute('data-remove-treasurer-email'))||'').toLowerCase(); return !!attr || (txt.includes('eliminar') && txt.includes('tesorero')); }
 
   document.addEventListener('click', async function(ev){
@@ -2710,14 +2717,11 @@ function renderDeudores(){
   });
 
   // bars
-  const pendingAll = payments().filter(isPendingFinancialStatus);
-  const byTask = new Map();
-  pendingAll.forEach(p=>{
-    const id = String(p.fromTaskId||"unknown");
-    byTask.set(id, (byTask.get(id)||0) + Number(p.amount||0));
-  });
-  const bars = Array.from(byTask.entries())
-    .map(([id,amt])=>({ id, amt, title: taskById(id)?.title || "Campaña" }))
+  // La deuda de una campaña obligatoria se proyecta sobre el total oficial del
+  // curso, no únicamente sobre los apoderados que ya se registraron.
+  const bars = activeTasks()
+    .map(t=>({ id:String(t.id), amt:pendingTaskEstimated(t), title:t.title || t.name || "Campaña" }))
+    .filter(r=>r.amt > 0)
     .sort((a,b)=> b.amt - a.amt)
     .slice(0,5);
   const max = bars[0]?.amt || 0;
