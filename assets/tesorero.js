@@ -27,21 +27,20 @@ window.CURSAPP_LOADING = window.CURSAPP_LOADING || {
 document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.show('tesorero'); setTimeout(()=>window.CURSAPP_LOADING.hide(),1200);}catch(e){}});
 // === END LOADING ===
 
-// V10.1 · Mantiene contexto de rol coherente al abrir tesorero.
+// El rol Tesorero debe venir validado desde Supabase; esta pantalla no lo agrega ni lo sobrescribe.
 (function(){
   try{
-    const expected='tesorero';
-    const raw=localStorage.getItem('cursapp_session_v1');
-    const s=raw ? JSON.parse(raw) : {};
-    const roles=Array.isArray(s.roles) ? s.roles.map(r=>String(r).toLowerCase().trim()).filter(Boolean) : [];
-    if(!roles.includes(expected)) roles.push(expected);
-    s.roles=roles; s.currentRole=expected; s.activeRole=expected; s.role=expected;
-    const activeCourse=String(localStorage.getItem('cursapp_active_course_v1') || s.courseKey || '').trim();
-    if(activeCourse) s.courseKey=activeCourse;
-    localStorage.setItem('cursapp_active_role_v1', expected);
-    localStorage.setItem('cursapp_session_v1', JSON.stringify(s));
-    document.documentElement.setAttribute('data-role', expected);
-  }catch(_e){}
+    const expected = "tesorero";
+    const raw = localStorage.getItem("cursapp_session_v1");
+    const s = raw ? JSON.parse(raw) : {};
+    const roles = Array.isArray(s.roles) ? s.roles.map(r=>String(r).toLowerCase().trim()).filter(Boolean) : [];
+    const activeRole = String(s.currentRole || s.activeRole || s.role || localStorage.getItem("cursapp_active_role_v1") || "").toLowerCase().trim();
+    if(!roles.includes(expected) || activeRole !== expected){
+      location.replace(roles.includes("presidente") ? "/presidente.html" : "/login.html");
+      return;
+    }
+    document.documentElement.setAttribute("data-role", expected);
+  }catch(_e){ location.replace("/login.html"); return; }
 
 
   /* =========================================================
@@ -131,7 +130,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('') || `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Sin movimientos</b><small>Los pagos reales aparecerán aquí.</small></span></div><span class="tesMovePerson">—</span><strong class="tesMoveAmount ok">$0</strong><span class="tesMoveDate">—</span></article>`;
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -153,7 +152,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -751,13 +750,6 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function markDirty(){ localStorage.setItem(KEY_REPORTS_DIRTY, "1"); }
   function clearDirty(){ localStorage.removeItem(KEY_REPORTS_DIRTY); }
   function isDirty(){ return localStorage.getItem(KEY_REPORTS_DIRTY)==="1"; }
-
-  // ---------- demo seed ----------
-  function ensureDemo(){
-    // Cursapp v11-clean: demo seed desactivado.
-    // Los estados vacíos se deben mostrar con datos reales del curso.
-    return;
-  }
 
   // ---------- computed ----------
   function tasksAll(){ return load(KEY_TASKS, []); }
@@ -1781,10 +1773,10 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function courseLabelForHeader(){
     try{
       const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
-      const course = s.courseLabel || s.course || s.curso || "2°B";
-      const school = s.schoolName || s.colegio || s.school || "Colegio Central";
+      const course = s.courseLabel || s.course || s.curso || "Curso no informado";
+      const school = s.schoolName || s.colegio || s.school || "Colegio no informado";
       return `${course} · ${school}`;
-    }catch(_){ return "2°B · Colegio Central"; }
+    }catch(_){ return "Curso no informado · Colegio no informado"; }
   }
 
   function treasurerDisplayName(){
@@ -2498,14 +2490,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
   // ---------- Boot ----------
   // ----- boot -----
-// ✅ Seed demo SOLO si está activado globalmente (core.js) o por URL (?demo=1)
-const DEMO_SEED = (
-  (window.CURSAPP && window.CURSAPP.DEMO_MODE === true) ||
-  (new URLSearchParams(location.search).get("demo") === "1") ||
-  (localStorage.getItem("cursapp_demo_mode") === "1")
-);
-if (DEMO_SEED) ensureDemo();
-
+// Datos operativos: exclusivamente Supabase mediante hidratación oficial.
 async function __bootTesoreroSupabaseFirst(){
   try{
     if(window.CURSAPP && typeof window.CURSAPP.clearOperationalCache === "function") window.CURSAPP.clearOperationalCache();
@@ -2609,7 +2594,7 @@ __bootTesoreroSupabaseFirst();
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -2631,7 +2616,7 @@ __bootTesoreroSupabaseFirst();
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -2755,7 +2740,7 @@ __bootTesoreroSupabaseFirst();
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -2777,7 +2762,7 @@ __bootTesoreroSupabaseFirst();
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -2931,7 +2916,7 @@ __bootTesoreroSupabaseFirst();
       const rowsCampaign = rowsForCampaignV70(c);
       const m = metricV70(rowsCampaign);
       const goal = campaignGoalV70(c);
-      const pct = goal ? Math.min(100,Math.round((m.rec/goal)*100)) : (m.rec ? 72 : 0);
+      const pct = goal ? Math.min(100,Math.round((m.rec/goal)*100)) : 0;
       const health = healthV70(c,m);
       const filter = String(window.__tesConcFilter || 'pendientes');
       const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -3053,7 +3038,7 @@ __bootTesoreroSupabaseFirst();
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -3075,7 +3060,7 @@ __bootTesoreroSupabaseFirst();
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -3318,7 +3303,7 @@ __bootTesoreroSupabaseFirst();
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -3340,7 +3325,7 @@ __bootTesoreroSupabaseFirst();
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -3526,7 +3511,7 @@ __bootTesoreroSupabaseFirst();
       return `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido</b><small>${esc(camp)}</small></span></div><span class="tesMovePerson">${esc(p.guardianName || p.apoderadoName || 'Apoderado')}${p.studentName?`<small>(${esc(p.studentName)})</small>`:''}</span><strong class="tesMoveAmount ok">+ ${clp(p.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(p.paidAt||p.createdAt)}</span></article>`;
     }).join('');
     const lastExpense = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||'')))[0];
-    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Gira de estudio</small></span></div><span class="tesMovePerson">Sin pendientes</span><strong class="tesMoveAmount">$0</strong><span class="tesMoveDate">OK</span></article>`;
+    const expenseRow = lastExpense ? `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>${esc(lastExpense.concept||lastExpense.title||'Gasto del curso')}</small></span></div><span class="tesMovePerson">${esc(tesCampaignTitleV68(campaigns.find(c=>String(c.id)===String(lastExpense.taskId||lastExpense.fromTaskId))||{title:'Campaña'}))}</span><strong class="tesMoveAmount">-${clp(lastExpense.amount||0)}</strong><span class="tesMoveDate">${fmtDateTime(lastExpense.date||lastExpense.createdAt)}</span></article>` : `<article class="tesMovementProRow v68"><div class="tesMoveInfo"><span class="tesRowIcon violet">▤</span><span><b>Rendición publicada</b><small>Sin movimientos registrados</small></span></div><span class="tesMovePerson">Sin información</span><strong class="tesMoveAmount">—</strong><span class="tesMoveDate">—</span></article>`;
     const recentRenditions = (expensesAll()||[]).slice().sort((a,b)=>String(b.date||b.createdAt||'').localeCompare(String(a.date||a.createdAt||''))).slice(0,8).map(e=>{ const d=new Date(e.date||e.createdAt||''); const ok=!Number.isNaN(d.getTime()); return `<article class="tesRenditionChip"><b>${ok?d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.',''):'Sin fecha'}</b><strong>${clp(e.amount||0)}</strong><em>${esc(e.status||'Aprobada')}</em></article>`; }).join('') || `<article class="tesRenditionChip is-empty"><b>—</b><span>Sin fecha</span><strong>$0</strong><em>Sin rendiciones</em></article>`;
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
@@ -3548,7 +3533,7 @@ __bootTesoreroSupabaseFirst();
     const metrics = tesConciliationMetrics(rowsForCampaign);
     const goal = tesCampaignGoalV68(selected);
     const rec = sum(metrics.conciliated,p=>p.amount);
-    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : (rec?72:0);
+    const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
     const health = selected ? tesCampaignHealthV68(selected) : {label:'Sin campaña',cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -3777,7 +3762,7 @@ __bootTesoreroSupabaseFirst();
     const campaignRows = rowsByCampaign(c?.id);
     const m = metrics(campaignRows);
     const goal = goalOfCampaign(c);
-    const pct = goal ? Math.min(100, Math.round((m.rec / goal) * 100)) : (m.rec ? 72 : 0);
+    const pct = goal ? Math.min(100, Math.round((m.rec / goal) * 100)) : 0;
     const health = c ? healthForCampaign(c) : {label:'Sin campaña', cls:'warn'};
     const filter = String(window.__tesConcFilter || 'pendientes');
     const q = String(window.__tesConcQuery || '').toLowerCase().trim();
@@ -3867,8 +3852,8 @@ __bootTesoreroSupabaseFirst();
     try{
       const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
       const name=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
-      const course=s.courseLabel||s.course||s.curso||'2°B';
-      const school=s.schoolName||s.colegio||s.school||'Colegio Central';
+      const course=s.courseLabel||s.course||s.curso||'Curso no informado';
+      const school=s.schoolName||s.colegio||s.school||'Colegio no informado';
       const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=String(name).includes('@')?'Tesorero':name;
       const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
       const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
@@ -3896,7 +3881,7 @@ __bootTesoreroSupabaseFirst();
     syncHeader(); markActive();
     const app = appEl(); if(!app) return;
     const list=campaigns(); const c=selectedCampaign(); const all=rowsByCampaign(c?.id);
-    const pending=all.filter(p=>!isConc(p)); const conc=all.filter(isConc); const rec=sum(conc,p=>p.amount); const goal=goalOf(c); const pct=goal?Math.min(100,Math.round((rec/goal)*100)):(rec?72:0); const h=health(c);
+    const pending=all.filter(p=>!isConc(p)); const conc=all.filter(isConc); const rec=sum(conc,p=>p.amount); const goal=goalOf(c); const pct=goal?Math.min(100,Math.round((rec/goal)*100)):0; const h=health(c);
     const q=String(window.__tesConcQuery||'').toLowerCase().trim(); const filter=String(window.__tesConcFilter||'pendientes');
     let rows=filter==='conciliados'?conc:filter==='todos'?all:pending;
     if(q) rows=rows.filter(p=>[p.guardianName,p.apoderadoName,p.studentName,p.concept,p.id,p.code,p.paymentCode].join(' ').toLowerCase().includes(q));
@@ -4019,8 +4004,8 @@ __bootTesoreroSupabaseFirst();
       const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
       const rawName=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
       const name=String(rawName).includes('@') ? 'Tesorero' : rawName;
-      const course=s.courseLabel||s.course||s.curso||'2°B';
-      const school=s.schoolName||s.colegio||s.school||'Colegio Central';
+      const course=s.courseLabel||s.course||s.curso||'Curso no informado';
+      const school=s.schoolName||s.colegio||s.school||'Colegio no informado';
       const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=name;
       const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
       const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
@@ -4051,7 +4036,7 @@ __bootTesoreroSupabaseFirst();
     const app=appEl(); if(!app) return;
     syncHeader(); setActive();
     const list=campaigns(); const c=selectedCampaign(); const all=rowsByCampaign(c?.id);
-    const pending=all.filter(p=>!isConciliated(p)); const conc=all.filter(isConciliated); const rec=sum(conc,p=>p.amount); const goal=goalOf(c); const pct=goal?Math.min(100,Math.round((rec/goal)*100)):(rec?72:0);
+    const pending=all.filter(p=>!isConciliated(p)); const conc=all.filter(isConciliated); const rec=sum(conc,p=>p.amount); const goal=goalOf(c); const pct=goal?Math.min(100,Math.round((rec/goal)*100)):0;
     const st=campaignStatus(c); const part=participation(c, all);
     const q=String(window.__tesConcQuery||'').toLowerCase().trim(); const filter=String(window.__tesConcFilter||'pendientes');
     let rows=filter==='conciliados'?conc:filter==='todos'?all:pending;
@@ -4203,7 +4188,7 @@ __bootTesoreroSupabaseFirst();
     const explicit=Number(session.studentCount || session.alumnos || session.guardianCount || 0);
     const list=profiles();
     const active=String(localStorage.getItem('cursapp_active_course_v1')||session.courseKey||'');
-    const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || explicit || 30;
+    const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || explicit || 0;
     return Math.max(1,count);
   }
   function participation(rows){
@@ -4218,8 +4203,8 @@ __bootTesoreroSupabaseFirst();
       const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
       const raw=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
       const name=String(raw).includes('@')?'Tesorero':raw;
-      const course=s.courseLabel||s.course||s.curso||'2°B';
-      const school=s.schoolName||s.colegio||s.school||'Colegio Central';
+      const course=s.courseLabel||s.course||s.curso||'Curso no informado';
+      const school=s.schoolName||s.colegio||s.school||'Colegio no informado';
       const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=name;
       const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
       const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
@@ -4273,7 +4258,7 @@ __bootTesoreroSupabaseFirst();
     const rec=sum(conc,p=>p.amount);
     const pendAmt=sum(pending,p=>p.amount);
     const goal=goalOf(camp);
-    const pct=goal?Math.min(100,Math.round(rec/goal*100)):(rec?72:0);
+    const pct=goal?Math.min(100,Math.round(rec/goal*100)):0;
     const part=participation(all);
     const filter=String(window.__tesConcFilter||'pendientes');
     const rows=filter==='conciliados'?conc:pending;
@@ -4471,7 +4456,13 @@ __bootTesoreroSupabaseFirst();
   const selected=()=>{const list=campaigns();const id=String(window.__tesReportCampaignId||GENERAL_ID);if(id===GENERAL_ID){window.__tesReportCampaignId=GENERAL_ID;return {id:GENERAL_ID,title:'Todas las campañas'}}const found=list.find(t=>taskId(t)===id)||{id:GENERAL_ID,title:'Todas las campañas'};window.__tesReportCampaignId=taskId(found);return found};
   const session=()=>{try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}')}catch(_){return {}}};
   const actor=()=>{const s=session();return s.fullName||s.displayName||s.name||s.nombre||'Tesorero'};
-  const participantTotal=()=>{const s=session();return Number(s.studentCount||s.alumnos||s.guardianCount||44)||44};
+  const participantTotal=()=>{
+    try{
+      const wrapper=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};
+      const c=wrapper.course||wrapper;
+      return Number(c.totalAlumnos||c.total_alumnos||0)||0;
+    }catch(_){return 0}
+  };
   function snapshot(c){
     const id=taskId(c), isGlobal=id===GENERAL_ID; const ps=payments().filter(p=>isGlobal||!id||pTask(p)===id); const ex=expenses().filter(e=>isGlobal||!id||eTask(e)===id);
     const okP=ps.filter(conc); const okE=ex.filter(approved); const pendingP=ps.filter(p=>!conc(p)); const pendingE=ex.filter(e=>!approved(e));
