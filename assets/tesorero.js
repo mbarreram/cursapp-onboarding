@@ -3376,7 +3376,10 @@ __bootTesoreroSupabaseFirst();
   function readJSON(key, fallback){
     try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
   }
-  function getTreasurerNotices(){
+  function readJSON(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
+  }
+  function getTreasurerLocalNotices(){
     const keys = ['cursapp_avisos_v1','cursapp_notices_v1','cursapp_notifications_v1','cursapp_global_alerts_v1'];
     let out = [];
     keys.forEach(k=>{
@@ -3385,21 +3388,49 @@ __bootTesoreroSupabaseFirst();
     });
     return out.slice().sort((a,b)=>String(b.createdAt||b.date||'').localeCompare(String(a.createdAt||a.date||''))).slice(0,8);
   }
-  window.openTreasurerNotifications = function(){
-    const root = document.getElementById('modalRoot') || document.body;
-    const notices = getTreasurerNotices();
-    const rows = notices.length ? notices.map(n=>{
-      const title = n.title || n.subject || 'Aviso del curso';
-      const msg = n.message || n.body || n.description || '';
-      const date = n.createdAt || n.date || '';
-      return `<article class="tesNoticeRow"><b>${escLocal(title)}</b><span>${escLocal(msg)}</span><small>${escLocal(String(date).slice(0,16).replace('T',' '))}</small></article>`;
+  async function getTreasurerNotices(){
+    const local = getTreasurerLocalNotices();
+    try{
+      if(!window.CURSAPP_SUPABASE || typeof window.CURSAPP_SUPABASE.request !== 'function') return local;
+      const rows = await window.CURSAPP_SUPABASE.request('notificaciones?select=*&order=created_at.desc&limit=40');
+      const remote = (Array.isArray(rows)?rows:[]).filter(n=>{
+        const role=String(n.rol_destino||'').toLowerCase().trim();
+        return !role || ['tesorero','directiva'].includes(role);
+      });
+      const seen=new Set();
+      return remote.concat(local).filter(n=>{ const key=String(n.id||[n.titulo||n.title,n.created_at||n.createdAt].join('|')); if(seen.has(key)) return false; seen.add(key); return true; }).slice(0,20);
+    }catch(e){ console.warn('No se pudieron cargar las notificaciones del tesorero desde Supabase',e); return local; }
+  }
+  function renderTreasurerNoticeRows(notices){
+    return notices.length ? notices.map(n=>{
+      const title = n.titulo || n.title || n.subject || 'Aviso del curso';
+      const msg = n.detalle || n.message || n.body || n.description || '';
+      const date = n.created_at || n.createdAt || n.date || '';
+      return `<article class="tesNoticeRow ${n.leida===false?'is-unread':''}"><b>${escLocal(title)}</b><span>${escLocal(msg)}</span><small>${escLocal(String(date).slice(0,16).replace('T',' '))}</small></article>`;
     }).join('') : `<article class="tesNoticeEmpty"><b>Sin avisos nuevos</b><span>Cuando existan alertas de pagos, informes o rendiciones aparecerán aquí.</span></article>`;
+  }
+  async function markTreasurerNoticesRead(notices){
+    const ids=(notices||[]).filter(n=>n.id&&n.leida===false).map(n=>String(n.id));
+    if(!ids.length || !window.CURSAPP_SUPABASE?.request) return;
+    await Promise.all(ids.map(id=>window.CURSAPP_SUPABASE.request('notificaciones?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({leida:true,leida_at:new Date().toISOString()})}).catch(()=>null)));
+  }
+  async function refreshTreasurerBadge(){
+    const notices=await getTreasurerNotices();
+    const unread=notices.filter(n=>n.leida===false).length;
+    const badge=document.getElementById('tesHeaderBadge');
+    if(badge){ badge.textContent=String(unread); badge.style.display=unread?'inline-flex':'none'; }
+  }
+  window.openTreasurerNotifications = async function(){
+    const root = document.getElementById('modalRoot') || document.body;
     const el = document.createElement('div');
     el.className = 'tesNoticeOverlay';
-    el.innerHTML = `<div class="tesNoticePanel" role="dialog" aria-modal="true" aria-label="Avisos del curso"><header><div><small>CURSAPP</small><h2>Avisos del curso</h2></div><button type="button" aria-label="Cerrar">×</button></header><div class="tesNoticeList">${rows}</div></div>`;
+    el.innerHTML = `<div class="tesNoticePanel" role="dialog" aria-modal="true" aria-label="Avisos del curso"><header><div><small>CURSAPP</small><h2>Avisos del curso</h2></div><button type="button" aria-label="Cerrar">×</button></header><div class="tesNoticeList"><article class="tesNoticeEmpty"><b>Cargando avisos…</b><span>Consultando la información del curso.</span></article></div></div>`;
     el.addEventListener('click', e=>{ if(e.target === el) el.remove(); });
     el.querySelector('button').onclick = ()=>el.remove();
     root.appendChild(el);
+    const notices=await getTreasurerNotices();
+    const list=el.querySelector('.tesNoticeList'); if(list) list.innerHTML=renderTreasurerNoticeRows(notices);
+    markTreasurerNoticesRead(notices).then(refreshTreasurerBadge).catch(()=>{});
   };
 
   function wireBell(){
@@ -3410,7 +3441,10 @@ __bootTesoreroSupabaseFirst();
       e.stopPropagation();
       window.openTreasurerNotifications();
     };
+    setTimeout(refreshTreasurerBadge,150);
   }
+
+  const ICONS = {
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',

@@ -43,6 +43,66 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     document.documentElement.setAttribute('data-role', expected);
   }catch(_e){}
 })();
+/* Presidente V23 · registro de pago con la misma experiencia de conciliación */
+(function(){
+  if(window.__CURSAPP_PRESIDENT_PAYMENT_V23__) return;
+  window.__CURSAPP_PRESIDENT_PAYMENT_V23__ = true;
+  const esc23=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const clp23=v=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(v||0));
+  const paymentKey23=()=>window.CURSAPP?.scopedKey ? window.CURSAPP.scopedKey('payments_v1') : 'cursapp_payments_v1';
+  const rows23=()=>{ try{ const a=JSON.parse(localStorage.getItem(paymentKey23())||'[]'); return Array.isArray(a)?a:[]; }catch(_){ return []; } };
+  const isPending23=p=>['pending','pendiente','por_pagar','por pagar',''].includes(String(p?.status||p?.estado||'').toLowerCase()) && Number(p?.amountRemaining??p?.amount??p?.monto??0)>0;
+  const uuid23=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v||''));
+  function inject23(){
+    if(document.getElementById('presPaymentV23Css')) return;
+    const s=document.createElement('style'); s.id='presPaymentV23Css'; s.textContent=`
+      .presPay23Overlay{position:fixed;inset:0;z-index:120000;background:rgba(15,23,42,.52);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+      .presPay23Sheet{width:min(760px,100%);max-height:90dvh;overflow:auto;background:#fff;border-radius:30px;padding:22px;box-shadow:0 28px 90px rgba(15,23,42,.28);position:relative}
+      .presPay23Close{position:absolute;right:18px;top:16px;width:50px;height:50px;border:0;border-radius:50%;background:#f8fafc;font-size:32px;font-weight:900;color:#0f172a}
+      .presPay23Sheet h2{font-size:30px;margin:4px 60px 18px 0;color:#0f172a}.presPay23Sheet h3{font-size:18px;margin:20px 0 10px;color:#0f172a}
+      .presPay23Select{width:100%;border:1.5px solid #dbe3ec;border-radius:18px;padding:15px;background:#fff;font-size:16px;font-weight:800;color:#0f172a}
+      .presPay23Summary{display:grid;grid-template-columns:58px 1fr auto;gap:13px;align-items:center;border:1.5px solid #e2e8f0;border-radius:20px;padding:15px;margin-top:14px}.presPay23Summary>span{width:58px;height:58px;border-radius:18px;background:#fff3dc;color:#f59e0b;display:grid;place-items:center;font-size:30px;font-weight:900}.presPay23Summary b,.presPay23Summary small{display:block}.presPay23Summary small{color:#64748b;margin-top:3px}.presPay23Summary strong{font-size:24px}
+      .presPay23Methods{display:grid;gap:10px}.presPay23Methods label{border:1.5px solid #dbe3ec;border-radius:18px;padding:14px;display:grid;grid-template-columns:26px 40px 1fr;grid-template-areas:'radio icon name' 'radio icon desc';gap:2px 10px;align-items:center}.presPay23Methods label:has(input:checked){border-color:#5b8def;background:#eff6ff}.presPay23Methods input{grid-area:radio;width:22px;height:22px}.presPay23Methods span{grid-area:icon;font-size:25px}.presPay23Methods b{grid-area:name}.presPay23Methods small{grid-area:desc;color:#64748b}
+      .presPay23Sheet input[type=text],.presPay23Sheet textarea{width:100%;box-sizing:border-box;border:1.5px solid #dbe3ec;border-radius:16px;padding:14px;font:inherit;margin-top:9px}.presPay23Actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}.presPay23Actions button{border:0;border-radius:16px;padding:13px 18px;font-weight:900;font-size:16px}.presPay23Cancel{background:#f1f5f9;color:#475569}.presPay23Confirm{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}.presPay23Confirm:disabled{opacity:.55}
+      .presPay23Empty{text-align:center;padding:34px 10px;color:#64748b}.presPay23Empty b{display:block;color:#0f172a;font-size:20px;margin-bottom:6px}.presPay23Success{text-align:center;padding:22px}.presPay23Success>span{width:72px;height:72px;margin:auto;border-radius:50%;display:grid;place-items:center;background:#dcfce7;color:#16a34a;font-size:40px;font-weight:950}.presPay23Success button{border:0;border-radius:16px;padding:13px 28px;background:#6d28d9;color:#fff;font-weight:900}
+    `; document.head.appendChild(s);
+  }
+  function close23(){ document.querySelector('.presPay23Overlay')?.remove(); }
+  function selected23(overlay){ return rows23().find(p=>String(p.id)===String(overlay.querySelector('#presPay23Row')?.value||'')); }
+  function update23(overlay){ const p=selected23(overlay); const box=overlay.querySelector('.presPay23Summary'); const btn=overlay.querySelector('.presPay23Confirm'); if(!p){box.hidden=true;btn.disabled=true;return;} box.hidden=false;btn.disabled=false;box.querySelector('b').textContent=`${p.studentName||p.alumno||'Alumno'} · ${p.guardianName||p.apoderadoName||'Apoderado'}`;box.querySelector('small').textContent=p.concept||p.title||'Campaña';box.querySelector('strong').textContent=clp23(p.amountRemaining??p.amount??p.monto??0); }
+  async function confirm23(overlay){
+    const p=selected23(overlay); if(!p || !uuid23(p.id)) return;
+    const btn=overlay.querySelector('.presPay23Confirm'); btn.disabled=true; btn.textContent='Guardando…';
+    try{
+      if(!window.CURSAPP_PAYMENTS_V11?.reconcilePayments) throw new Error('La sincronización de pagos no está disponible.');
+      const method=overlay.querySelector('input[name="presPay23Method"]:checked')?.value||'efectivo';
+      await window.CURSAPP_PAYMENTS_V11.reconcilePayments([p.id],{method,reference:overlay.querySelector('#presPay23Ref')?.value||'',note:overlay.querySelector('#presPay23Note')?.value||''});
+      overlay.querySelector('.presPay23Sheet').innerHTML=`<div class="presPay23Success"><span>✓</span><h2>Pago registrado</h2><p>El pago de <b>${esc23(p.studentName||p.alumno||'Alumno')}</b> quedó conciliado en Supabase.</p><button type="button">Aceptar</button></div>`;
+      overlay.querySelector('.presPay23Success button').onclick=()=>{close23(); try{ window.go?.('home'); }catch(_){} window.dispatchEvent(new CustomEvent('cursapp:dataChanged',{detail:{key:paymentKey23()}}));};
+    }catch(e){ btn.disabled=false; btn.textContent='Confirmar pago'; const error=overlay.querySelector('.presPay23Error'); error.textContent=e?.message||String(e); error.hidden=false; }
+  }
+  window.openPresidentPaymentModal=function(){
+    inject23(); close23(); const pending=rows23().filter(p=>isPending23(p)&&uuid23(p.id));
+    const overlay=document.createElement('div'); overlay.className='presPay23Overlay';
+    const options=pending.map(p=>`<option value="${esc23(p.id)}">${esc23(p.studentName||p.alumno||'Alumno')} · ${esc23(p.guardianName||p.apoderadoName||'Apoderado')} · ${esc23(p.concept||p.title||'Campaña')} · ${clp23(p.amountRemaining??p.amount??p.monto??0)}</option>`).join('');
+    overlay.innerHTML=`<section class="presPay23Sheet" role="dialog" aria-modal="true" aria-label="Registrar pago"><button class="presPay23Close" type="button" aria-label="Cerrar">×</button><h2>Registrar pago</h2>${pending.length?`<select id="presPay23Row" class="presPay23Select"><option value="">Selecciona apoderado, alumno y campaña</option>${options}</select><div class="presPay23Summary" hidden><span>✓</span><div><b></b><small></small></div><strong></strong></div><h3>Medio de pago recibido</h3><div class="presPay23Methods"><label><input type="radio" name="presPay23Method" value="efectivo" checked><span>💵</span><b>Efectivo</b><small>Dinero recibido</small></label><label><input type="radio" name="presPay23Method" value="transferencia"><span>🏦</span><b>Transferencia bancaria</b><small>Cuenta bancaria</small></label><label><input type="radio" name="presPay23Method" value="otro"><span>•••</span><b>Otro medio</b><small>Otro método</small></label></div><h3>Observación <small>(opcional)</small></h3><input id="presPay23Ref" type="text" placeholder="N° referencia / comprobante"><textarea id="presPay23Note" rows="3" placeholder="Ej: recibido en reunión de apoderados"></textarea><p class="presPay23Error" hidden style="color:#b91c1c;font-weight:800"></p><div class="presPay23Actions"><button class="presPay23Cancel" type="button">Cancelar</button><button class="presPay23Confirm" type="button" disabled>Confirmar pago</button></div>`:`<div class="presPay23Empty"><b>No hay cobros pendientes disponibles</b><span>Los cobros aparecerán aquí cuando existan campañas activas y apoderados registrados.</span></div>`}</section>`;
+    overlay.onclick=e=>{if(e.target===overlay) close23();}; overlay.querySelector('.presPay23Close').onclick=close23; overlay.querySelector('.presPay23Cancel')?.addEventListener('click',close23); overlay.querySelector('#presPay23Row')?.addEventListener('change',()=>update23(overlay)); overlay.querySelector('.presPay23Confirm')?.addEventListener('click',()=>confirm23(overlay)); document.body.appendChild(overlay);
+  };
+})();
+/* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
+
+/* Cursapp HOTFIX v7 · Presidente estable
+   - Sin loop de banner: render único post Home.
+   - Dashboard ejecutivo sin carrusel horizontal que rebote.
+   - Asignar tesorero abre selector estable y crea rol tesorero en Supabase sin quitar apoderado.
+*/
+(function(){
+  if(window.__CURSAPP_PRESIDENTE_STABLE_V7__) return;
+  window.__CURSAPP_PRESIDENTE_STABLE_V7__ = true;
+
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+
 /* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
 
 /* Cursapp HOTFIX v7 · Presidente estable
@@ -1140,7 +1200,10 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
 
-  // Deudores del mes (personas únicas con al menos 1 cuota/pago pendiente del mes)
+  // Familias deudoras del mes:
+  // una familia deja de contarse solo cuando pagó TODAS las obligaciones
+  // obligatorias del período. Los indicadores por campaña conservan su cálculo
+  // independiente.
   function deudoresMonth(ym){
     const mandatory = tasks().filter(t=>{
       if(t.closed || t.mandatoryParticipation === false) return false;
@@ -1156,17 +1219,30 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
       return ymFromISO(t.dueDate||"")===ym;
     });
     if(!mandatory.length) return 0;
-    const paid = new Set();
+    const identity = p=>String(p?.miembroId || p?.memberId || p?.alumnoId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || "").toLowerCase().trim();
+    const paidByTask = new Map(mandatory.map(t=>[String(t.id), new Set()]));
     payments().forEach(p=>{
-      const task = mandatory.find(t=>String(t.id)===String(p.fromTaskId));
-      if(!task || !isPaid(p)) return;
-      const period = String(p.period || p.dueDate || p.paidAt || p.paidDate || "").slice(0,7);
+      const taskId = String(p.fromTaskId || p.campaignId || p.campana_id || "");
+      const paidForTask = paidByTask.get(taskId);
+      if(!paidForTask || !isPaid(p)) return;
+      const period = String(p.period || p.dueDate || "").slice(0,7);
       if(period && period!==ym) return;
-      const k=String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim();
-      if(k) paid.add(k);
+      const key = identity(p);
+      if(key) paidForTask.add(key);
     });
-    return Math.max(0, courseStudentTotal() - paid.size);
+    const candidates = new Set();
+    paidByTask.forEach(set=>set.forEach(key=>candidates.add(key)));
+    let fullyPaid = 0;
+    candidates.forEach(key=>{
+      if(Array.from(paidByTask.values()).every(set=>set.has(key))) fullyPaid += 1;
+    });
+    return Math.max(0, courseStudentTotal() - fullyPaid);
   }
+
+
+  // Pendiente operacional del mes (dashboard):
+  // - Usa proyección máxima del mes (campañas) menos lo recaudado.
+  // - Evita depender de que los cobros existan ya en payments_v1.
 
 
   // Pendiente operacional del mes (dashboard):
@@ -2039,7 +2115,7 @@ function renderHome(){
       { label:"Enviar aviso", icon:"megaphone", tone:"cyan", action:"window.openAvisosConfigSafe()" },
       { label:"Apoderados", icon:"users", tone:"emerald", action:"window.location.href='apoderados.html'" },
       { label:"Informe ejecutivo", icon:"barChart", tone:"amber", action:"window.go('informes')" },
-      { label:"Registrar pago", icon:"creditCard", tone:"rose", action:"window.openPresidentManualPayment()" },
+      { label:"Registrar pago", icon:"creditCard", tone:"rose", action:"window.openPresidentPaymentModal()" },
       { label:"Ver deudores", icon:"clock", tone:"indigo", action:"window.go('deudores')" }
     ].map(a=>`
       <button class="presMockQuick presMockQuick-${a.tone}" type="button" onclick="${a.action}">
