@@ -90,19 +90,6 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   };
 })();
 /* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
-
-/* Cursapp HOTFIX v7 · Presidente estable
-   - Sin loop de banner: render único post Home.
-   - Dashboard ejecutivo sin carrusel horizontal que rebote.
-   - Asignar tesorero abre selector estable y crea rol tesorero en Supabase sin quitar apoderado.
-*/
-(function(){
-  if(window.__CURSAPP_PRESIDENTE_STABLE_V7__) return;
-  window.__CURSAPP_PRESIDENTE_STABLE_V7__ = true;
-
-  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
-  const SB_URL = SB_CONFIG.url;
-
 /* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
 
 /* Cursapp HOTFIX v7 · Presidente estable
@@ -1200,7 +1187,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
 
-  // Familias deudoras del mes:
+// Familias deudoras del mes:
   // una familia deja de contarse solo cuando pagó TODAS las obligaciones
   // obligatorias del período. Los indicadores por campaña conservan su cálculo
   // independiente.
@@ -1243,7 +1230,6 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   // Pendiente operacional del mes (dashboard):
   // - Usa proyección máxima del mes (campañas) menos lo recaudado.
   // - Evita depender de que los cobros existan ya en payments_v1.
-
 
   // Pendiente operacional del mes (dashboard):
   // - Usa proyección máxima del mes (campañas) menos lo recaudado.
