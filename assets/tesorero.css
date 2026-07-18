@@ -3326,3 +3326,24 @@ body.cursapp-tesorero .tesV80Page [data-monetization-slot="tesorero"]{
   margin-top:8px!important;
   margin-bottom:0!important;
 }
+
+
+/* Tesorero V1087 · reserva inferior única en todos los módulos */
+body.cursapp-tesorero [data-monetization-slot="tesorero"]{
+  margin-top:8px!important;
+  margin-bottom:calc(78px + env(safe-area-inset-bottom))!important;
+}
+body.cursapp-tesorero .tesV57Page:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesConcPage:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesV73Conc:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesV75Conc:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesV77Page:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesV78Page:has([data-monetization-slot="tesorero"]:not(:empty)),
+body.cursapp-tesorero .tesV80Page:has([data-monetization-slot="tesorero"]:not(:empty)){
+  padding-bottom:0!important;
+  min-height:0!important;
+  align-content:start!important;
+}
+body.cursapp-tesorero .tesV80Page [data-monetization-slot="tesorero"]{
+  margin-bottom:calc(78px + env(safe-area-inset-bottom))!important;
+}
