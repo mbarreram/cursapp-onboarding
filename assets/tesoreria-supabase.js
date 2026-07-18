@@ -20,7 +20,7 @@
   const uuid=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
 
   function expenseFromDb(row){
-    const rendition=Array.isArray(row.rendiciones)?row.rendiciones[0]:row.rendiciones||{};
+    const rendition=Array.isArray(row.rendiciones)?(row.rendiciones[0]||{}):(row.rendiciones||{});
     const history=Array.isArray(rendition.historial)?rendition.historial:[];
     const attachment=row.comprobante_url?{name:row.comprobante_nombre||'Comprobante',type:row.comprobante_tipo||'',size:Number(row.comprobante_tamano||0),path:row.comprobante_url}:null;
     return {
