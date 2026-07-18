@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -89,6 +89,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -2261,7 +2263,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return String(p.paymentMethod || p.paidWith || "").toLowerCase() === "transbank";
   }
   function tesIsConciliated(p){
-    return tesIsTransbankAuto(p) || String(p.conciliationStatus || "").toLowerCase() === "conciliado";
+    const status = String(p.status || p.estado || "").toLowerCase();
+    return ["paid","pagado","conciliado"].includes(status) || String(p.conciliationStatus || "").toLowerCase() === "conciliado";
   }
   function tesPaymentCampaignTitle(p){
     return tasksAll().find(t=>String(t.id)===String(p.fromTaskId||""))?.title || p.concept || "Pago del curso";
@@ -2284,7 +2287,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   }
   function tesConciliationRows(){
     return paymentsNormalized()
-      .filter(p=>String(p.status||"").toLowerCase()==="paid")
+      .filter(p=>!["anulado","void","cancelled","opted_out","no_participa"].includes(String(p.status||p.estado||"").toLowerCase()))
       .filter(p=>String(p.conciliationStatus||"").toLowerCase()!=="anulado")
       .sort((a,b)=>String(b.paidAt||b.createdAt||"").localeCompare(String(a.paidAt||a.createdAt||"")));
   }
@@ -2540,7 +2543,7 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -2556,6 +2559,8 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -2686,7 +2691,7 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -2702,6 +2707,8 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -2984,7 +2991,7 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3000,6 +3007,8 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3249,7 +3258,7 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3265,6 +3274,8 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3365,6 +3376,9 @@ __bootTesoreroSupabaseFirst();
   function readJSON(key, fallback){
     try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
   }
+  function readJSON(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
+  }
   function getTreasurerLocalNotices(){
     const keys = ['cursapp_avisos_v1','cursapp_notices_v1','cursapp_notifications_v1','cursapp_global_alerts_v1'];
     let out = [];
@@ -3431,6 +3445,8 @@ __bootTesoreroSupabaseFirst();
   }
 
   const ICONS = {
+
+  const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
     conciliacion: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M9 14l2 2 4-5"/></svg>',
     rendiciones: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l4 4v14H7z"/><path d="M15 3v5h4"/><path d="M10 12h6"/><path d="M10 16h6"/></svg>',
@@ -3486,7 +3502,7 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3502,6 +3518,8 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
+    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
+    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3977,7 +3995,7 @@ __bootTesoreroSupabaseFirst();
   function payments(){ const p = load(KEY_PAYMENTS, []); return Array.isArray(p) ? p : []; }
   function profiles(){ const p = load(KEY_PROFILES, []); return Array.isArray(p) ? p : []; }
   function titleOf(c){ return String(c?.title || c?.name || c?.concept || 'Campaña').trim(); }
-  function goalOf(c){ return Number(c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
+  function goalOf(c){ return Number(c?.goalTotal || c?.goal_total || c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
   function paymentCampaignId(p){ return String(p?.fromTaskId || p?.taskId || p?.campaignId || ''); }
   function method(p){ return String(p?.paymentMethod || p?.paidWith || '').toLowerCase(); }
   function isTransbank(p){ return method(p) === 'transbank'; }
@@ -4172,11 +4190,10 @@ __bootTesoreroSupabaseFirst();
   function payments(){ const arr=load(KEY_PAYMENTS,[]); return Array.isArray(arr)?arr:[]; }
   function profiles(){ const arr=load(KEY_PROFILES,[]); return Array.isArray(arr)?arr:[]; }
   function titleOf(c){ return String(c?.title || c?.name || c?.concept || 'Campaña').trim(); }
-  function goalOf(c){ return Number(c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
+  function goalOf(c){ return Number(c?.goalTotal || c?.goal_total || c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
   function payCampId(p){ return String(p?.fromTaskId || p?.taskId || p?.campaignId || ''); }
-  function isConc(p){ return String(p?.paymentMethod || p?.paidWith || '').toLowerCase()==='transbank' || String(p?.conciliationStatus || '').toLowerCase()==='conciliado'; }
-  function isPaidLike(p){ const st=String(p?.status||'').toLowerCase(); return !st || st==='paid' || st==='pagado'; }
-  function validRows(){ return payments().filter(p=>String(p?.conciliationStatus||'').toLowerCase()!=='anulado').filter(isPaidLike); }
+  function isConc(p){ const st=String(p?.status||p?.estado||'').toLowerCase(); return ['paid','pagado','conciliado'].includes(st) || String(p?.conciliationStatus || '').toLowerCase()==='conciliado'; }
+  function validRows(){ return payments().filter(p=>String(p?.conciliationStatus||'').toLowerCase()!=='anulado').filter(p=>!['anulado','void','cancelled','opted_out','no_participa'].includes(String(p?.status||p?.estado||'').toLowerCase())); }
   function campaigns(){
     const t=tasks().filter(x=>!x?.hidden);
     if(t.length) return t;
@@ -4217,11 +4234,13 @@ __bootTesoreroSupabaseFirst();
   }
   function totalGuardians(){
     const session=(()=>{ try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');}catch(_){return {}} })();
+    let courseTotal=0;
+    try{ const w=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{}; const c=w.course||w; courseTotal=Number(c.totalAlumnos||c.total_alumnos||0)||0; }catch(_){}
     const explicit=Number(session.studentCount || session.alumnos || session.guardianCount || 0);
     const list=profiles();
     const active=String(localStorage.getItem('cursapp_active_course_v1')||session.courseKey||'');
     const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || explicit || 0;
-    return Math.max(1,count);
+    return Math.max(1,courseTotal,explicit,count);
   }
   function participation(rows){
     const total=totalGuardians();
@@ -4235,8 +4254,9 @@ __bootTesoreroSupabaseFirst();
       const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
       const raw=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
       const name=String(raw).includes('@')?'Tesorero':raw;
-      const course=s.courseLabel||s.course||s.curso||'Curso no informado';
-      const school=s.schoolName||s.colegio||s.school||'Colegio no informado';
+      let wrapper={}; try{wrapper=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};}catch(_){} const official=wrapper.course||wrapper;
+      const course=s.courseLabel||s.course||s.curso||[official.level,official.letter,official.year].filter(Boolean).join('')||official.nombre||'Curso no informado';
+      const school=s.schoolName||s.colegio||s.school||official.schoolName||official.colegioNombre||'Colegio no informado';
       const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=name;
       const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
       const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
