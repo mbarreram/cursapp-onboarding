@@ -30,7 +30,7 @@ alter table public.informes
   add column if not exists metadata jsonb not null default '{}'::jsonb;
 
 create unique index if not exists rendiciones_gasto_uidx
-  on public.rendiciones(gasto_id) where gasto_id is not null;
+  on public.rendiciones(gasto_id);
 create index if not exists gastos_curso_fecha_idx on public.gastos(curso_id, fecha_gasto desc);
 create index if not exists rendiciones_curso_estado_idx on public.rendiciones(curso_id, estado);
 create index if not exists informes_curso_periodo_idx on public.informes(curso_id, periodo, actualizado_at desc);
