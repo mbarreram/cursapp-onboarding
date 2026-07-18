@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     document.documentElement.setAttribute('data-role', expected);
   }catch(_e){}
 })();
-
 /* Presidente V23 · registro de pago con la misma experiencia de conciliación */
 (function(){
   if(window.__CURSAPP_PRESIDENT_PAYMENT_V23__) return;
@@ -90,6 +89,20 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     overlay.onclick=e=>{if(e.target===overlay) close23();}; overlay.querySelector('.presPay23Close').onclick=close23; overlay.querySelector('.presPay23Cancel')?.addEventListener('click',close23); overlay.querySelector('#presPay23Row')?.addEventListener('change',()=>update23(overlay)); overlay.querySelector('.presPay23Confirm')?.addEventListener('click',()=>confirm23(overlay)); document.body.appendChild(overlay);
   };
 })();
+/* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
+
+/* Cursapp HOTFIX v7 · Presidente estable
+   - Sin loop de banner: render único post Home.
+   - Dashboard ejecutivo sin carrusel horizontal que rebote.
+   - Asignar tesorero abre selector estable y crea rol tesorero en Supabase sin quitar apoderado.
+*/
+(function(){
+  if(window.__CURSAPP_PRESIDENTE_STABLE_V7__) return;
+  window.__CURSAPP_PRESIDENTE_STABLE_V7__ = true;
+
+  const SB_CONFIG = window.CURSAPP_SUPABASE || {};
+  const SB_URL = SB_CONFIG.url;
+
 /* __CURSAPP_V10_1_ROLE_CONTEXT_PRESIDENTE__ */
 
 /* Cursapp HOTFIX v7 · Presidente estable
@@ -1230,6 +1243,11 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   // Pendiente operacional del mes (dashboard):
   // - Usa proyección máxima del mes (campañas) menos lo recaudado.
   // - Evita depender de que los cobros existan ya en payments_v1.
+
+
+  // Pendiente operacional del mes (dashboard):
+  // - Usa proyección máxima del mes (campañas) menos lo recaudado.
+  // - Evita depender de que los cobros existan ya en payments_v1.
   function pendingMonth(ym){
     const expected = pendingMonthProjected(ym);
     const collected = collectedMonth(ym);
@@ -1373,6 +1391,38 @@ function cuotasPendientesTask(id){
   }
   function closeModal(){ modalRoot.innerHTML=""; }
   window.closeModal = closeModal;
+
+  window.openPresidentManualPayment = function(){
+    const pending = payments().filter(p=>{
+      const st=String(p?.status||p?.estado||'pending').toLowerCase();
+      return ['pending','pendiente','partial','overdue'].includes(st) && p?.id;
+    });
+    const campaigns = normalizeTasks(tasks()).filter(t=>!t.closed);
+    const options = pending.map(p=>{
+      const camp=campaigns.find(t=>String(t.id)===String(p.fromTaskId||p.campaignId||''));
+      const label=[camp?.title||p.concept||'Campaña',p.studentName||p.alumno||'Alumno',p.guardianName||p.apoderadoName||'Apoderado',Number(p.amount||0).toLocaleString('es-CL')].join(' · ');
+      return `<option value="${esc(p.id)}">${esc(label)}</option>`;
+    }).join('');
+    openModal(`<div class="row"><div><div style="font-size:22px;font-weight:950">Registrar pago</div><div class="muted" style="margin-top:5px">Selecciona un cobro pendiente y registra el medio recibido.</div></div><button class="btnMini" onclick="closeModal()">Cerrar</button></div>
+      ${pending.length?`<label style="display:block;margin-top:16px;font-weight:900">Apoderado, alumno y campaña<select id="pres_manual_payment" style="width:100%;margin-top:7px"><option value="">Seleccionar cobro pendiente</option>${options}</select></label>
+      <label style="display:block;margin-top:12px;font-weight:900">Medio de pago<select id="pres_manual_method" style="width:100%;margin-top:7px"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="otro">Otro medio</option></select></label>
+      <div class="actions" style="margin-top:18px;justify-content:flex-end"><button class="btnMini" onclick="closeModal()">Cancelar</button><button class="btnPrimaryMini" onclick="registerPresidentManualPayment()">Registrar pago</button></div>`:`<div class="empty" style="margin-top:16px"><b>No existen cobros pendientes para registrar.</b></div>`}`);
+  };
+
+  window.registerPresidentManualPayment = async function(){
+    const id=String(document.getElementById('pres_manual_payment')?.value||'');
+    const method=String(document.getElementById('pres_manual_method')?.value||'transferencia');
+    const payment=payments().find(p=>String(p.id)===id);
+    if(!payment) return alert('Selecciona un cobro pendiente.');
+    const btn=modalRoot.querySelector('.btnPrimaryMini'); if(btn){btn.disabled=true;btn.textContent='Registrando...';}
+    try{
+      if(!window.CURSAPP_PAYMENTS_V11?.markPaid) throw new Error('El servicio de pagos no está disponible.');
+      await window.CURSAPP_PAYMENTS_V11.markPaid(id,{amount:Number(payment.amount||0),method,conciliated:true});
+      closeModal();
+      openModal(`<div style="text-align:center;padding:10px"><div style="width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#dcfce7;color:#15803d;font-size:30px;font-weight:950;margin:auto">✓</div><h2>Pago registrado</h2><p class="muted">Los indicadores del curso se actualizaron desde Supabase.</p><button class="btnPrimaryMini" onclick="closeModal()">Aceptar</button></div>`);
+      try{window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'presidente-pago-manual'}}));}catch(_){}
+    }catch(err){ if(btn){btn.disabled=false;btn.textContent='Registrar pago';} alert('No se pudo registrar el pago: '+(err?.message||err)); }
+  };
 
   // ----- menu -----
   function initMenu(){
