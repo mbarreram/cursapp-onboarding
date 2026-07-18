@@ -3376,9 +3376,6 @@ __bootTesoreroSupabaseFirst();
   function readJSON(key, fallback){
     try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
   }
-  function readJSON(key, fallback){
-    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(_){ return fallback; }
-  }
   function getTreasurerLocalNotices(){
     const keys = ['cursapp_avisos_v1','cursapp_notices_v1','cursapp_notifications_v1','cursapp_global_alerts_v1'];
     let out = [];
@@ -3443,8 +3440,6 @@ __bootTesoreroSupabaseFirst();
     };
     setTimeout(refreshTreasurerBadge,150);
   }
-
-  const ICONS = {
 
   const ICONS = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 10.5V21h13V10.5"/><path d="M9.5 21v-6h5v6"/></svg>',
