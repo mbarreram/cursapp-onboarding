@@ -3315,3 +3315,14 @@ body.cursapp-tesorero .tesProfileModalActionsV84 button{font-size:var(--tes-type
     --tes-type-action:12.5px;
   }
 }
+
+
+/* Tesorero V1086 · compactar informe y evitar reservas verticales duplicadas */
+body.cursapp-tesorero .tesV80Page{
+  min-height:0!important;
+  align-content:start!important;
+}
+body.cursapp-tesorero .tesV80Page [data-monetization-slot="tesorero"]{
+  margin-top:8px!important;
+  margin-bottom:0!important;
+}
