@@ -72,6 +72,12 @@
     return {path,name:file.name,type:file.type||'',size:file.size};
   }
 
+  async function deleteReceipt(path){
+    if(!path)return;
+    const cfg=api(),token=await cfg.getAccessToken();if(!token)return;
+    await fetch(`${cfg.url}/storage/v1/object/${BUCKET}/${path}`,{method:'DELETE',headers:{apikey:cfg.publishableKey,Authorization:`Bearer ${token}`}}).catch(()=>{});
+  }
+
   async function signedReceipt(path,expiresIn){
     if(!path) return '';
     const cfg=api(),token=await cfg.getAccessToken();
@@ -94,7 +100,15 @@
     const history=Array.isArray(input.approvalHistory)?input.approvalHistory.slice():[];
     history.push({at:now(),action:isUuid?'editada':'registrada',actor:input.createdByName||input.registeredBy||'Tesorero',role:'Tesorero'});
     history.push({at:now(),action:'enviada_aprobacion',actor:'Cursapp',role:'Flujo de aprobación'});
-    await api().request('rendiciones?on_conflict=gasto_id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({gasto_id:row.id,curso_id:cid,campana_id:payload.campana_id,periodo:String(payload.fecha_gasto).slice(0,7),total_gastado:payload.monto,saldo:0,estado:'pendiente_aprobacion',solicitado_por:uid,revisado_por:null,observacion:null,historial:history,actualizado_at:now()})});
+    const renditionPayload={gasto_id:row.id,curso_id:cid,campana_id:payload.campana_id,periodo:String(payload.fecha_gasto).slice(0,7),total_gastado:payload.monto,saldo:0,estado:'pendiente_aprobacion',solicitado_por:uid,revisado_por:null,observacion:null,historial:history,actualizado_at:now()};
+    try{
+      const existingRendition=await api().request(`rendiciones?gasto_id=eq.${encodeURIComponent(row.id)}&select=id&limit=1`);
+      if(Array.isArray(existingRendition)&&existingRendition[0]?.id)await api().request(`rendiciones?id=eq.${encodeURIComponent(existingRendition[0].id)}`,{method:'PATCH',body:JSON.stringify(renditionPayload)});
+      else await api().request('rendiciones',{method:'POST',body:JSON.stringify(renditionPayload)});
+    }catch(error){
+      if(!isUuid){await api().request(`gastos?id=eq.${encodeURIComponent(row.id)}`,{method:'DELETE'}).catch(()=>{});await deleteReceipt(attachment?.path)}
+      throw error;
+    }
     await hydrate('expense-saved');return row;
   }
 
