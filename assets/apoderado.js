@@ -3202,7 +3202,8 @@ window.payNow = async function(id){
   };
 
   function renderInformes(){
-    const reps = reports();
+    const finance = window.CURSAPP_APO_FINANCE?.snapshot?.() || null;
+    try{ window.CURSAPP_APO_FINANCE?.refresh?.(); }catch(_){ }
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Informes</div>
@@ -3648,11 +3649,10 @@ window.payNow = async function(id){
     const pendingRows = paysAll.filter(p=>['pending','partial','overdue'].includes(String(p.status||'').toLowerCase()) && !isPaymentOptedOut(p));
     const amountOf = (p)=> Number(p.amountPaid ?? p.paidAmount ?? p.amount ?? 0) || 0;
     const ingresos = paidRows.reduce((a,p)=>a+amountOf(p),0);
-    const latest = reps[0] || {};
-    const gastos = Number(latest.gastos ?? latest.expenses ?? latest.totalExpenses ?? 0) || 0;
-    const saldoInicial = Number(latest.saldoInicial ?? latest.initialBalance ?? Math.max(0, ingresos - gastos - 3000)) || 0;
-    const saldoActual = Number(latest.saldoActual ?? latest.balance ?? latest.saldo ?? Math.max(0, saldoInicial + ingresos - gastos)) || 0;
-    const rendicionesPendientes = Number(latest.rendicionesPendientes ?? latest.pendingRenditions ?? 0) || 0;
+    const ingresosMes = Number(finance?.income_month ?? 0) || 0;
+    const gastos = Number(finance?.expenses_month ?? 0) || 0;
+    const saldoActual = Number(finance?.balance ?? 0) || 0;
+    const rendicionesPendientes = Number(finance?.pending_renditions ?? 0) || 0;
 
     const monthKeys = [];
     const monthNames = [];
@@ -3661,17 +3661,8 @@ window.payNow = async function(id){
       monthKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
       monthNames.push(d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''));
     }
-    let running = Math.max(0, saldoActual - ingresos + gastos);
-    const evolution = monthKeys.map((key,idx)=>{
-      const monthIn = paidRows.filter(p=>String(p.paidAt || p.createdAt || '').slice(0,7)===key).reduce((a,p)=>a+amountOf(p),0);
-      const monthOut = idx===monthKeys.length-1 ? gastos : 0;
-      running = Math.max(0, running + monthIn - monthOut);
-      return running;
-    });
-    if(evolution.every(v=>v===0)){
-      const base = Math.max(3000, saldoActual || ingresos || 0);
-      for(let i=0;i<evolution.length;i++) evolution[i] = Math.round(base*(0.35 + (i/evolution.length)*0.65));
-    }
+    const evolutionRows = Array.isArray(finance?.evolution) ? finance.evolution : [];
+    const evolution = monthKeys.map(key=>Number(evolutionRows.find(x=>x.month===key)?.balance||0));
     const maxVal = Math.max(...evolution, 1);
     const pts = evolution.map((v,i)=>{
       const x = 36 + i*(264/(Math.max(1,evolution.length-1)));
@@ -3680,13 +3671,8 @@ window.payNow = async function(id){
     }).join(' ');
     const areaPts = `36,140 ${pts} 300,140`;
 
-    const expenseBase = Math.max(gastos, 1);
-    const expenseItems = [
-      ['Actividades', Math.round(expenseBase*0.44), '#5b21b6'],
-      ['Materiales', Math.round(expenseBase*0.26), '#0ea5e9'],
-      ['Transporte', Math.round(expenseBase*0.17), '#22c55e'],
-      ['Otros', Math.max(0, gastos - Math.round(expenseBase*0.44) - Math.round(expenseBase*0.26) - Math.round(expenseBase*0.17)), '#f97316']
-    ];
+    const colors=['#5b21b6','#0ea5e9','#22c55e','#f97316','#ef4444','#64748b'];
+    const expenseItems=(Array.isArray(finance?.expenses_by_category)?finance.expenses_by_category:[]).map((x,i)=>[x.name||'Otros',Number(x.amount||0),colors[i%colors.length]]);
     const donut = (()=>{
       const total = Math.max(gastos, expenseItems.reduce((a,x)=>a+x[1],0), 1);
       let acc = 0;
@@ -3698,12 +3684,12 @@ window.payNow = async function(id){
       }).join('');
     })();
 
-    const recent = paidRows.slice().sort((a,b)=>new Date(b.paidAt||b.createdAt||0)-new Date(a.paidAt||a.createdAt||0)).slice(0,3);
+    const recent = Array.isArray(finance?.recent_renditions) ? finance.recent_renditions.slice(0,3) : [];
     const recentHtml = recent.length ? recent.map(p=>{
-      const date = p.paidAt || p.createdAt || '';
+      const date = p.date || '';
       const d = date ? new Date(date) : null;
       const dateTxt = d && !isNaN(d) ? d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}) : 'Publicado recientemente';
-      return `<article class="apoReportMove"><span>${apoSvg('receipt')}</span><div><strong>${esc(p.campaignTitle || p.concept || 'Pago de curso')}</strong><small>${esc(dateTxt)}</small></div><b>${clp(amountOf(p))}</b><button onclick="openReceipt('${esc(p.id||'')}')">Ver detalle</button></article>`;
+      return `<article class="apoReportMove"><span>${apoSvg('receipt')}</span><div><strong>${esc(p.title || 'Rendición del curso')}</strong><small>${esc(dateTxt)} · ${esc(p.category||'Otros')}</small></div><b>${clp(Number(p.amount||0))}</b></article>`;
     }).join('') : `<article class="apoReportEmptyMove"><strong>Sin rendiciones publicadas</strong><small>Cuando la directiva publique movimientos aparecerán aquí.</small></article>`;
 
     app.innerHTML = `<div class="apoReportPage">
@@ -3741,7 +3727,7 @@ window.payNow = async function(id){
       <section class="apoReportCard">
         <h2>Estado financiero del curso</h2>
         <div class="apoReportStats">
-          <div class="income"><span>↓</span><small>Ingresos</small><strong>${clp(ingresos)}</strong><em>Este mes</em></div>
+          <div class="income"><span>↓</span><small>Ingresos</small><strong>${clp(ingresosMes)}</strong><em>Este mes</em></div>
           <div class="expense"><span>↑</span><small>Gastos</small><strong>${clp(gastos)}</strong><em>Este mes</em></div>
           <div class="balance"><span>▣</span><small>Saldo disponible</small><strong>${clp(saldoActual)}</strong><em>Actualizado hoy</em></div>
           <div class="pending"><span>▤</span><small>Rendiciones pendientes</small><strong>${rendicionesPendientes}</strong><em>Por aprobar</em></div>
@@ -4159,6 +4145,5 @@ __bootApoderadoSupabaseFirst();
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
 
 /* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */
-
 
 
