@@ -101,16 +101,23 @@
         el=document.createElement('div');
         el.id='cursappActionLoading';
         el.innerHTML='<div class="cursapp-action-loading-card"><div class="cursapp-action-spinner">C</div><strong></strong><span>Un momento...</span></div>';
+        el.style.cssText='position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;background:rgba(248,250,252,.94);font-family:inherit';
+        const card=el.firstElementChild;
+        if(card)card.style.cssText='width:min(280px,calc(100vw - 40px));padding:28px 22px;border-radius:24px;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.16);display:grid;gap:10px;text-align:center;color:#0f172a';
         document.body.appendChild(el);
       }
       const st=el.querySelector('strong'); if(st) st.textContent=msg||'Abriendo';
+      el.style.display='flex';
       el.classList.add('show');
+      /* Resguardo para navegaciones interrumpidas: el indicador nunca debe
+         quedar visible como texto suelto al pie de la aplicación. */
+      __actionLoadingTimer=setTimeout(()=>{el.classList.remove('show');el.style.display='none'},8000);
     }catch(_){ }
   }
   function hideActionLoading(delay=550){
     try{
       clearTimeout(__actionLoadingTimer);
-      __actionLoadingTimer=setTimeout(()=>{ const el=document.getElementById('cursappActionLoading'); if(el) el.classList.remove('show'); }, delay);
+      __actionLoadingTimer=setTimeout(()=>{ const el=document.getElementById('cursappActionLoading'); if(el){el.classList.remove('show');el.style.display='none'} }, delay);
     }catch(_){ }
   }
 
