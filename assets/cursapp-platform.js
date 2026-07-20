@@ -637,15 +637,20 @@
   }
   async function persistPushSubscription(subscription){
     const sb=await waitSb();
-    if(!sb) throw new Error('No se pudo conectar con Supabase.');
-    const auth=await sb.auth.getUser();
-    const user=auth && auth.data && auth.data.user;
+    const rest=window.CURSAPP_SUPABASE;
+    let user=null;
+    if(sb && sb.auth){
+      const auth=await sb.auth.getUser();
+      user=auth && auth.data && auth.data.user;
+    }else if(rest && rest.getCurrentUser){
+      user=await rest.getCurrentUser();
+    }
     if(!user || !user.id) throw new Error('Debes iniciar sesión nuevamente para activar notificaciones.');
     const json=subscription.toJSON();
     const keys=json.keys||{};
     if(!json.endpoint || !keys.p256dh || !keys.auth) throw new Error('La suscripción del navegador está incompleta.');
     const info=pushDeviceInfo();
-    const result=await sb.from('push_subscriptions').upsert({
+    const row={
       user_id:user.id,
       endpoint:json.endpoint,
       p256dh:keys.p256dh,
@@ -655,11 +660,31 @@
       device:info.device,
       enabled:true,
       updated_at:nowISO()
-    },{onConflict:'user_id,endpoint'});
-    if(result.error) throw result.error;
+    };
+    if(sb && sb.from){
+      const result=await sb.from('push_subscriptions').upsert(row,{onConflict:'user_id,endpoint'});
+      if(result.error) throw result.error;
+    }else if(rest && rest.request){
+      await rest.request('push_subscriptions?on_conflict=user_id%2Cendpoint',{
+        method:'POST',
+        headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+        body:JSON.stringify(row)
+      });
+    }else{
+      throw new Error('No se pudo conectar con Supabase.');
+    }
     try{
       const role=String((getActiveContext()||{}).role||'apoderado').toLowerCase();
-      await sb.from('notification_preferences').upsert({user_id:user.id,rol_destino:role,push_enabled:true,updated_at:nowISO()},{onConflict:'user_id,rol_destino'});
+      const preference={user_id:user.id,rol_destino:role,push_enabled:true,updated_at:nowISO()};
+      if(sb && sb.from){
+        await sb.from('notification_preferences').upsert(preference,{onConflict:'user_id,rol_destino'});
+      }else if(rest && rest.request){
+        await rest.request('notification_preferences?on_conflict=user_id%2Crol_destino',{
+          method:'POST',
+          headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+          body:JSON.stringify(preference)
+        });
+      }
     }catch(_){ }
     return json;
   }
@@ -704,13 +729,23 @@
     else alert('No se activaron las notificaciones.');
     return false;
   }
+  async function ensurePushSubscriptionPersisted(){
+    if(!('serviceWorker' in navigator)) throw new Error('Este navegador no permite notificaciones web.');
+    const registration=await navigator.serviceWorker.register('/sw.js?v=push1');
+    const ready=registration||await navigator.serviceWorker.ready;
+    const subscription=await ready.pushManager.getSubscription();
+    if(!subscription) throw new Error('Este dispositivo aún no tiene una suscripción push activa.');
+    await persistPushSubscription(subscription);
+  }
   async function sendTestNotification(){
     const ok = (('Notification' in window) && Notification.permission==='granted') || await enablePushNotifications();
     if(!ok) return;
     try{
+      await ensurePushSubscriptionPersisted();
       const sb=await waitSb();
-      if(!sb || !sb.functions) throw new Error('No se pudo conectar con el servicio push.');
-      const result=await sb.functions.invoke('send-web-push',{body:{mode:'test'}});
+      const functions=(sb && sb.functions) || (window.CURSAPP_SUPABASE && window.CURSAPP_SUPABASE.functions);
+      if(!functions || typeof functions.invoke!=='function') throw new Error('No se pudo conectar con el servicio push.');
+      const result=await functions.invoke('send-web-push',{body:{mode:'test'}});
       if(result.error) throw result.error;
       if(!result.data || !result.data.sent) throw new Error((result.data&&result.data.error)||'No hay un dispositivo activo para esta cuenta.');
       addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:'Push enviada por Supabase correctamente.',url_destino:location.pathname,leida:false});
