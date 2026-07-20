@@ -279,13 +279,27 @@
   }
   function notifCacheKey(){ return 'cursapp_notificaciones_cache_' + notifContextKey(); }
   function notifReadKey(){ return 'cursapp_notificaciones_read_' + notifContextKey(); }
+  function notificationKey(n){
+    return String(n?.id||'') || [n?.titulo,n?.detalle||n?.mensaje,n?.created_at,n?.rol_destino,n?.curso_id,n?.curso_key].join('|');
+  }
+  function rememberNotificationsRead(rows, at){
+    const stamp=at||nowISO();
+    const read=readJson(notifReadKey(),{})||{};
+    (rows||[]).forEach(n=>{ const key=notificationKey(n); if(key) read[key]=stamp; });
+    writeJson(notifReadKey(),read);
+    const cached=readJson(notifCacheKey(),null);
+    if(cached&&Array.isArray(cached.rows)){
+      cached.rows=cached.rows.map(n=>read[notificationKey(n)]?Object.assign({},n,{leida:true,leida_at:read[notificationKey(n)]}):n);
+      writeJson(notifCacheKey(),cached);
+    }
+  }
   function withTimeout(promise, ms, fallback){
     return Promise.race([promise, new Promise(resolve=>setTimeout(()=>resolve(fallback), ms))]);
   }
   function applyLocalReadState(rows){
     const read=readJson(notifReadKey(),{})||{};
     return (rows||[]).map(n=>{
-      const k=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
+      const k=notificationKey(n);
       return read[k] ? Object.assign({}, n, {leida:true, leida_at:read[k]}) : n;
     });
   }
@@ -375,12 +389,15 @@
   }
   async function markAllRead(){
     const u=getUser();
+    const visible=(window.__CURSAPP_LAST_NOTIF_ROWS__||[]).slice();
+    rememberNotificationsRead(visible);
+    try{ window.__CURSAPP_LAST_NOTIF_ROWS__=visible.map(n=>Object.assign({},n,{leida:true,leida_at:nowISO()})); }catch(_){ }
     try{ const sb=await waitSb(); if(sb && (u.id||u.email)){
       let q=sb.from('notificaciones').update({leida:true, leida_at:nowISO()});
       q=applyRecipientFilter(q,u);
       await q;
     } }catch(e){}
-    const local=readJson('cursapp_notificaciones_local_v1',[]).map(n=>({...n,leida:true})); writeJson('cursapp_notificaciones_local_v1',local); refreshBell();
+    const local=readJson('cursapp_notificaciones_local_v1',[]).map(n=>({...n,leida:true,leida_at:nowISO()})); writeJson('cursapp_notificaciones_local_v1',local); await refreshBell();
   }
   async function markNotificationRead(n){
     if(!n) return;
@@ -388,8 +405,7 @@
     const id=String(n.id||'').trim();
     const now=nowISO();
     try{
-      const k=String(n.id||'') || [n.titulo,n.detalle,n.created_at,n.rol_destino,n.curso_id,n.curso_key].join('|');
-      const read=readJson(notifReadKey(),{})||{}; read[k]=now; writeJson(notifReadKey(), read);
+      rememberNotificationsRead([n],now);
     }catch(_){ }
     try{
       const sb=await waitSb();
@@ -485,7 +501,7 @@
       try{ window.__CURSAPP_LAST_NOTIF_ROWS__=rows; }catch(_){ }
       const list=rows.length?rows.map((n,i)=>`<div class="cursapp-notif-item ${n.leida?'':'unread'}" data-idx="${i}" data-id="${esc(n.id||'')}" data-url="${esc(n.url_destino||'')}"><div class="cursapp-notif-icon">${notifIcons[n.tipo]||'🔔'}</div><div><div class="cursapp-notif-title">${esc(n.titulo||'Notificación')}</div><div class="cursapp-notif-detail">${esc(n.detalle||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(n.created_at))}</div></div>`).join(''):`<div class="cursapp-notif-empty"><div style="font-size:38px">🔔</div><b>Sin notificaciones</b><p>Aquí aparecerán mensajes, avisos, pagos, calificaciones y actividad de Mercado Escolar.</p></div>`;
       const holder=document.getElementById('cursappNotifList'); if(holder) holder.innerHTML=list;
-      document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; el.classList.remove('unread'); markNotificationRead(n).then(refreshBell).catch(()=>{}); await handleNotificationAction(n);};});
+      document.querySelectorAll('.cursapp-notif-item').forEach(el=>{el.onclick=async()=>{const idx=Number(el.dataset.idx||0); const n=(window.__CURSAPP_LAST_NOTIF_ROWS__||[])[idx]; showActionLoading('Abriendo'); el.style.pointerEvents='none'; el.classList.remove('unread'); await markNotificationRead(n).catch(()=>{}); await handleNotificationAction(n);};});
     };
     $('#cursappMarkRead').onclick=async()=>{await markAllRead(); bindRows((window.__CURSAPP_LAST_NOTIF_ROWS__||[]).map(n=>Object.assign({},n,{leida:true})));};
     $('#cursappNotifPrefs').onclick=()=>{ closePlatformModal(); openNotificationPreferences(); };
@@ -811,6 +827,14 @@
 
   async function openCourseNotices(){
     const rows=await loadCourseNotices();
+    const notifications=await loadNotifications({fast:true}).catch(()=>[]);
+    /* Abrir Avisos del curso confirma sólo comunicaciones; los pagos se leen
+       individualmente desde el centro de notificaciones. */
+    const noticeTypes=new Set(['aviso','campana','cuota','curso']);
+    const courseRows=(notifications||[]).filter(n=>noticeTypes.has(String(n.tipo||'').toLowerCase()));
+    rememberNotificationsRead(courseRows);
+    try{ window.__CURSAPP_LAST_NOTIF_ROWS__=(window.__CURSAPP_LAST_NOTIF_ROWS__||[]).map(n=>courseRows.some(x=>notificationKey(x)===notificationKey(n))?Object.assign({},n,{leida:true,leida_at:nowISO()}):n); }catch(_){ }
+    await refreshBell();
     const html=rows.length ? rows.map(a=>`<div class="cursapp-notif-item"><div class="cursapp-notif-icon">📢</div><div><div class="cursapp-notif-title">${esc(a.titulo||'Aviso del curso')}</div><div class="cursapp-notif-detail">${esc(a.mensaje||a.detalle||a.descripcion||'')}</div></div><div class="cursapp-notif-time">${esc(timeAgo(a.created_at))}</div></div>`).join('') : `<div class="cursapp-notif-empty"><b>Aún no hay avisos.</b><p>Los comunicados importantes de la directiva aparecerán aquí aunque no tengas Push activadas.</p></div>`;
     modal(`<div class="cursapp-notif-backdrop"><div class="cursapp-notif-card compact"><div class="cursapp-notif-head"><div><h2>Avisos del curso</h2><p>Comunicados enviados por la directiva.</p></div><button class="cursapp-btn" onclick="CURSAPP_CLOSE_PLATFORM_MODAL()">Cerrar</button></div><div class="cursapp-notif-list">${html}</div></div></div>`);
   }

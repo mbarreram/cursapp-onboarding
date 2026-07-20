@@ -160,7 +160,7 @@
       const button=document.querySelector('.tesV77ModalActions .primary');if(button){button.disabled=true;button.textContent='Guardando…';}
       try{
         await saveExpense(input,file);
-        document.getElementById('modalRoot').innerHTML='<div class="tesV77ModalOverlay"><section class="tesV77Modal"><div class="tesV77Success"><div>✓</div><h2>Rendición guardada en Supabase</h2><p>El presidente ya puede revisarla.</p><button onclick="tesV77Close();tesV77Render()">Aceptar</button></div></section></div>';
+        document.getElementById('modalRoot').innerHTML='<div class="tesV77ModalOverlay"><section class="tesV77Modal"><div class="tesV77Success"><div>✓</div><h2>Rendición guardada</h2><p>Quedó pendiente de revisión por el presidente.</p><button onclick="tesV77Close();tesV77Render()">Aceptar</button></div></section></div>';
         window.tesV77Render?.();
       }catch(e){alert('No se pudo guardar la rendición: '+(e?.message||e));if(button){button.disabled=false;button.textContent='Enviar a aprobación';}}
     };

@@ -4420,8 +4420,13 @@ __bootTesoreroSupabaseFirst();
   const goalOf=(c)=>Number(c?.goal||c?.target||c?.meta||c?.amountGoal||0);
   const campIcon=(c)=>{const t=titleOf(c).toLowerCase();if(t.includes('gira'))return'🎓';if(t.includes('paseo'))return'🚌';if(t.includes('aseo'))return'🧽';if(t.includes('cuota'))return'🗓️';return'🎯'};
   const expenseCampId=(e)=>String(e?.campaignId||e?.taskId||e?.fromTaskId||'');
-  const paymentCampId=(p)=>String(p?.fromTaskId||p?.taskId||p?.campaignId||'');
-  const isConc=(p)=>String(p?.paymentMethod||p?.paidWith||'').toLowerCase()==='transbank'||String(p?.conciliationStatus||'').toLowerCase()==='conciliado';
+  const paymentCampId=(p)=>String(p?.fromTaskId||p?.taskId||p?.campaignId||p?.campana_id||'');
+  const isConc=(p)=>{
+      const status=String(p?.status||p?.estado||'').toLowerCase();
+      const conciliation=String(p?.conciliationStatus||p?.conciliacion_estado||'').toLowerCase();
+      const method=String(p?.paymentMethod||p?.paidWith||p?.metodo_pago||'').toLowerCase();
+      return ['paid','pagado','conciliado','approved'].includes(status)||conciliation==='conciliado'||method==='transbank'||Boolean(p?.reconciledAt);
+    };
   const campaigns=()=>{const t=tasks().filter(x=>!x?.hidden);if(t.length)return t;const m=new Map();expenses().forEach(e=>{const id=expenseCampId(e)||'general';if(!m.has(id))m.set(id,{id,title:e?.campaignTitle||'Campaña general'})});return [...m.values()]};
   const selectedCampaign=()=>{const list=campaigns();if(!list.length)return{id:'general',title:'Campaña general'};let c=list.find(x=>String(x.id)===String(window.__tesRendCampaignId));if(!c){c=list[0];window.__tesRendCampaignId=String(c.id)}return c};
   const rowsFor=(id)=>expenses().filter(e=>expenseCampId(e)===String(id));
