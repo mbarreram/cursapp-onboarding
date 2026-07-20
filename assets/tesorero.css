@@ -3347,3 +3347,56 @@ body.cursapp-tesorero .tesV80Page:has([data-monetization-slot="tesorero"]:not(:e
 body.cursapp-tesorero .tesV80Page [data-monetization-slot="tesorero"]{
   margin-bottom:calc(78px + env(safe-area-inset-bottom))!important;
 }
+
+/* Tesorero V1088 · estabilidad móvil, cifras y rendiciones */
+body.cursapp-tesorero .tesCashGrid strong{
+  overflow:visible!important;
+  text-overflow:clip!important;
+  font-size:clamp(15px,4.35vw,20px)!important;
+  letter-spacing:-.055em!important;
+}
+body.cursapp-tesorero .tesCampaignRow.v68 u{
+  display:none!important;
+}
+body.cursapp-tesorero .tesV77ModalOverlay{
+  padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom))!important;
+  align-items:center!important;
+  overflow:hidden!important;
+}
+body.cursapp-tesorero .tesV77Modal{
+  box-sizing:border-box!important;
+  width:min(620px,calc(100vw - 20px))!important;
+  max-width:calc(100vw - 20px)!important;
+  max-height:calc(100dvh - 20px)!important;
+  overflow-x:hidden!important;
+}
+body.cursapp-tesorero .tesV77Modal *,
+body.cursapp-tesorero .tesV77Success *{
+  box-sizing:border-box;
+  min-width:0;
+}
+body.cursapp-tesorero .tesV77Success h2,
+body.cursapp-tesorero .tesV77Success p{
+  overflow-wrap:anywhere;
+}
+body.cursapp-tesorero .tesV77Success button{width:100%;}
+
+@media(max-width:430px){
+  body.cursapp-tesorero .tesV77Modal{padding:16px!important;gap:10px!important;}
+  body.cursapp-tesorero .tesV77Expense{
+    grid-template-columns:40px minmax(0,1fr) auto!important;
+    grid-template-areas:'icon main amount' 'icon actions actions'!important;
+  }
+  body.cursapp-tesorero .tesV77ExpActions{
+    width:100%;
+    justify-self:stretch!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  body.cursapp-tesorero .tesV77ExpActions button{
+    width:100%;
+    min-width:0;
+    padding:0 7px!important;
+    white-space:nowrap;
+  }
+}
