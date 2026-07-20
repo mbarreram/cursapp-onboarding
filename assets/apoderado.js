@@ -3900,10 +3900,14 @@ window.payNow = async function(id){
     const hasTesorero = (()=>{
       try{
         const raw = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
-        const roles = Array.isArray(raw.roles) ? raw.roles.map(x=>String(x).toLowerCase()) : [];
-        if(roles.some(r=>r.includes("tesor"))) return true;
-        const profiles = JSON.parse(localStorage.getItem(KEY_PROFILES) || "[]");
-        return (Array.isArray(profiles) ? profiles : []).some(p=>String(p?.role || p?.user?.role || "").toLowerCase().includes("tesor"));
+        const roles = (Array.isArray(raw.roles) ? raw.roles : [])
+          .concat([raw.role,raw.currentRole,raw.activeRole])
+          .filter(Boolean)
+          .map(x=>String(x).trim().toLowerCase());
+        /* No consultar perfiles históricos del navegador: podían habilitar
+           Tesorero por un usuario antiguo aunque el usuario activo no tuviera
+           ese rol en su sesión proveniente de Supabase. */
+        return roles.some(r=>r === "tesorero");
       }catch(_e){ return false; }
     })();
 
@@ -4145,5 +4149,4 @@ __bootApoderadoSupabaseFirst();
 /* __CURSAPP_APODERADO_V11_14_NO_ROLE_PROMPT_ON_PAGE__ */
 
 /* __CURSAPP_V10_1_ROLE_CONTEXT_APODERADO__ */
-
 
