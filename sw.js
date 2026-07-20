@@ -1,4 +1,4 @@
-const CACHE='cursapp-v56-push';
+const CACHE='cursapp-v59-push';
 self.addEventListener('install',e=>self.skipWaiting());
 self.addEventListener('activate',e=>self.clients.claim());
 self.addEventListener('fetch',e=>{});
@@ -10,7 +10,8 @@ self.addEventListener('push', event=>{
     body:data.body || data.detalle || 'Tienes una nueva notificación.',
     icon:data.icon || '/assets/icons/cursapp-icon-192.png',
     badge:data.badge || '/assets/icons/cursapp-icon-192.png',
-    data:{url:data.url || data.url_destino || '/'}
+    tag:data.tag || undefined,
+    data:{url:data.url || data.url_destino || '/', notification_id:data.notification_id || null}
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
