@@ -230,9 +230,16 @@
     };
     function renderSummary(){
       const app=document.getElementById('app'),rows=pending();if(!app)return;
-      app.querySelector('.supaRendSummary')?.remove();
-      if(!rows.length)return;
-      const card=document.createElement('section');card.className='supaRendSummary';card.innerHTML=`<h2>Rendiciones por revisar</h2><p><strong>${rows.length}</strong> ${rows.length===1?'rendición requiere':'rendiciones requieren'} tu revisión.</p><button type="button">Revisar ahora</button>`;card.querySelector('button').onclick=open;app.prepend(card);
+      let card=app.querySelector('.supaRendSummary');
+      if(!rows.length){card?.remove();return;}
+      /* Mantener esta actualización idempotente. Quitar y volver a insertar la
+         tarjeta desde el MutationObserver provoca un ciclo de mutaciones que
+         bloquea la pantalla de Presidencia y evita cerrar la precarga. */
+      if(card?.dataset.count===String(rows.length))return;
+      if(!card){card=document.createElement('section');card.className='supaRendSummary';app.prepend(card)}
+      card.dataset.count=String(rows.length);
+      card.innerHTML=`<h2>Rendiciones por revisar</h2><p><strong>${rows.length}</strong> ${rows.length===1?'rendición requiere':'rendiciones requieren'} tu revisión.</p><button type="button">Revisar ahora</button>`;
+      card.querySelector('button').onclick=open;
     }
     const observer=new MutationObserver(()=>renderSummary());const app=document.getElementById('app');if(app)observer.observe(app,{childList:true,subtree:false});
     window.addEventListener('cursapp:treasuryHydrated',renderSummary);renderSummary();
