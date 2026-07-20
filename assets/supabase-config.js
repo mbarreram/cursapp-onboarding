@@ -7,6 +7,8 @@
 
   const URL = 'https://ngxistgymgdkoaiulfbq.supabase.co';
   const PUBLISHABLE_KEY = 'sb_publishable_bplGqj8tjkUacm9hFJnT8Q_SYhXis4Y';
+  // Clave pública Web Push (VAPID). La clave privada vive sólo en Supabase.
+  const PUSH_VAPID_PUBLIC_KEY = 'BE7xDVAgYInk9cXFtwvDEifmONHC8qrbJkCnM5u61GoIshQfuuiRtHlz6UVSkRAZJSgjm78QY52xO4ThBwI5Wnc';
   const AUTH_SESSION_KEY = 'cursapp_supabase_auth_session_v1';
   const SDK_STORAGE_KEY = 'cursapp_supabase_oauth_v1';
   let refreshPromise = null;
@@ -112,6 +114,7 @@
   window.CURSAPP_SUPABASE = Object.freeze({
     url: URL,
     publishableKey: PUBLISHABLE_KEY,
+    pushVapidPublicKey: PUSH_VAPID_PUBLIC_KEY,
     authSessionKey: AUTH_SESSION_KEY,
     sdkStorageKey: SDK_STORAGE_KEY,
     getAccessToken,

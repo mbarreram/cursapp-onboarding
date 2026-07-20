@@ -612,9 +612,10 @@
   function pushSupportInfo(){
     const hasNotification = 'Notification' in window;
     const hasSW = 'serviceWorker' in navigator;
+    const hasPush = 'PushManager' in window;
     const permission = hasNotification ? Notification.permission : 'unsupported';
     const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    return { hasNotification, hasSW, permission, isiOS, standalone:isStandalonePWA() };
+    return { hasNotification, hasSW, hasPush, permission, isiOS, standalone:isStandalonePWA() };
   }
   function savePushState(patch){
     const cur=readJson(KEY_PUSH_STATE,{})||{};
@@ -622,26 +623,49 @@
     writeJson(KEY_PUSH_STATE,next);
     return next;
   }
-  async function persistPushState(state){
-    const u=getUser();
+  function urlBase64ToUint8Array(value){
+    const padding='='.repeat((4-value.length%4)%4);
+    const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');
+    const raw=atob(base64);
+    return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+  }
+  function pushDeviceInfo(){
+    const ua=String(navigator.userAgent||'');
+    const platform=/iphone|ipad|ipod/i.test(ua)?'ios':/android/i.test(ua)?'android':'web';
+    const browser=/crios|chrome/i.test(ua)?'chrome':/safari/i.test(ua)?'safari':/firefox/i.test(ua)?'firefox':'otro';
+    return {platform,browser,device:platform==='web'?'desktop':'mobile'};
+  }
+  async function persistPushSubscription(subscription){
+    const sb=await waitSb();
+    if(!sb) throw new Error('No se pudo conectar con Supabase.');
+    const auth=await sb.auth.getUser();
+    const user=auth && auth.data && auth.data.user;
+    if(!user || !user.id) throw new Error('Debes iniciar sesión nuevamente para activar notificaciones.');
+    const json=subscription.toJSON();
+    const keys=json.keys||{};
+    if(!json.endpoint || !keys.p256dh || !keys.auth) throw new Error('La suscripción del navegador está incompleta.');
+    const info=pushDeviceInfo();
+    const result=await sb.from('push_subscriptions').upsert({
+      user_id:user.id,
+      endpoint:json.endpoint,
+      p256dh:keys.p256dh,
+      auth:keys.auth,
+      platform:info.platform,
+      browser:info.browser,
+      device:info.device,
+      enabled:true,
+      updated_at:nowISO()
+    },{onConflict:'user_id,endpoint'});
+    if(result.error) throw result.error;
     try{
-      const sb=await waitSb();
-      if(sb && (u.id||u.email)){
-        await sb.from('push_suscripciones').insert({
-          usuario_id:u.id||null,
-          email:u.email||null,
-          endpoint:state.endpoint||'local-device-notifications',
-          permiso:state.permission||null,
-          navegador:navigator.userAgent,
-          activo:state.enabled===true,
-          metadata:{standalone:!!state.standalone, mode:state.mode||'local_test'}
-        });
-      }
-    }catch(e){ console.warn('No se pudo guardar estado push', e); }
+      const role=String((getActiveContext()||{}).role||'apoderado').toLowerCase();
+      await sb.from('notification_preferences').upsert({user_id:user.id,rol_destino:role,push_enabled:true,updated_at:nowISO()},{onConflict:'user_id,rol_destino'});
+    }catch(_){ }
+    return json;
   }
   async function enablePushNotifications(){
     const info=pushSupportInfo();
-    if(!info.hasNotification || !info.hasSW){
+    if(!info.hasNotification || !info.hasSW || !info.hasPush){
       alert('Este navegador no permite notificaciones web en Cursapp.');
       return false;
     }
@@ -649,17 +673,33 @@
       alert('En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar notificaciones.');
       return false;
     }
-    try{ await navigator.serviceWorker.register('/sw.js'); }catch(e){}
+    let registration;
+    try{ registration=await navigator.serviceWorker.register('/sw.js?v=push1'); }
+    catch(e){ alert('No se pudo preparar el dispositivo para recibir notificaciones.'); return false; }
     let permission=Notification.permission;
     if(permission !== 'granted'){
       permission = await Notification.requestPermission();
     }
-    const state = savePushState({permission, enabled:permission==='granted', standalone:info.standalone, mode:'permission'});
-    await persistPushState(state);
     if(permission === 'granted'){
+      try{
+        registration=registration||await navigator.serviceWorker.ready;
+        let subscription=await registration.pushManager.getSubscription();
+        if(!subscription){
+          const key=window.CURSAPP_SUPABASE && window.CURSAPP_SUPABASE.pushVapidPublicKey;
+          if(!key) throw new Error('Falta la clave pública de notificaciones.');
+          subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+        }
+        const stored=await persistPushSubscription(subscription);
+        savePushState({permission,enabled:true,standalone:info.standalone,mode:'web_push',endpoint:stored.endpoint});
+      }catch(e){
+        console.error('No se pudo activar Web Push',e);
+        alert('El navegador dio permiso, pero no pudimos registrar este dispositivo: '+(e.message||e));
+        return false;
+      }
       alert('Notificaciones activadas correctamente.');
       return true;
     }
+    savePushState({permission,enabled:false,standalone:info.standalone,mode:'web_push'});
     if(permission === 'denied') alert('El permiso quedó bloqueado. Debes habilitar notificaciones para Cursapp desde la configuración del dispositivo/navegador.');
     else alert('No se activaron las notificaciones.');
     return false;
@@ -668,16 +708,16 @@
     const ok = (('Notification' in window) && Notification.permission==='granted') || await enablePushNotifications();
     if(!ok) return;
     try{
-      const reg = await navigator.serviceWorker.ready;
-      if(reg && reg.active){
-        reg.active.postMessage({type:'CURSAPP_TEST_NOTIFICATION', title:'Cursapp', body:'Notificación de prueba activada correctamente.'});
-      }else if(reg && reg.showNotification){
-        reg.showNotification('Cursapp', { body:'Notificación de prueba activada correctamente.', icon:'/assets/icons/cursapp-icon-192.png', badge:'/assets/icons/cursapp-icon-192.png', data:{url:'/'} });
-      }
-      addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:'Push local enviada correctamente.',url_destino:location.pathname,leida:false});
+      const sb=await waitSb();
+      if(!sb || !sb.functions) throw new Error('No se pudo conectar con el servicio push.');
+      const result=await sb.functions.invoke('send-web-push',{body:{mode:'test'}});
+      if(result.error) throw result.error;
+      if(!result.data || !result.data.sent) throw new Error((result.data&&result.data.error)||'No hay un dispositivo activo para esta cuenta.');
+      addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:'Push enviada por Supabase correctamente.',url_destino:location.pathname,leida:false});
       refreshBell();
     }catch(e){
-      try{ new Notification('Cursapp', { body:'Notificación de prueba activada correctamente.' }); }catch(_){ alert('No se pudo mostrar la notificación de prueba.'); }
+      console.error('No se pudo enviar push de prueba',e);
+      alert('No se pudo enviar la notificación de prueba: '+(e.message||e));
     }
   }
   function addLocalNotification(n){
@@ -938,7 +978,7 @@
     const info=pushSupportInfo();
     const state=readJson(KEY_PUSH_STATE,{})||{};
     const enabled=(info.permission==='granted') || state.enabled===true;
-    const status = !info.hasNotification ? 'No soportadas' : (enabled ? 'Activas' : (info.permission==='denied' ? 'Bloqueadas' : 'No configuradas'));
+    const status = (!info.hasNotification || !info.hasSW || !info.hasPush) ? 'No soportadas' : (enabled ? 'Activas' : (info.permission==='denied' ? 'Bloqueadas' : 'No configuradas'));
     const iosNote = (info.isiOS && !info.standalone) ? '<div class="cursapp-consent-note">En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar push. En Chrome iPhone usa Safari para instalar Cursapp.</div>' : '';
     const noPushNote = !enabled ? '<div class="cursapp-consent-note"><b>Puedes seguir usando Cursapp normalmente.</b> Si no activas Push, las alertas seguirán llegando a la campana interna. Los avisos importantes del curso para apoderados también aparecerán en Avisos del curso.</div>' : '';
     const prefs=readJson('cursapp_notif_prefs_v1',{chat:true,mercado:true,cuotas:true,pagos:true,campanas:true,avisos:true,tickets:true,push:true,email:true});
