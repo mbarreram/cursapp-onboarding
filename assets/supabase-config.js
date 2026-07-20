@@ -111,6 +111,42 @@
     return data;
   }
 
+  async function getCurrentUser() {
+    const response = await fetch(URL + '/auth/v1/user', {
+      method: 'GET',
+      headers: await headers()
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+    if (!response.ok || !data || !data.id) {
+      const message = data && (data.message || data.error || data.error_description);
+      const error = new Error(message || 'La sesión expiró. Inicia sesión nuevamente.');
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  async function invokeFunction(name, options) {
+    const response = await fetch(URL + '/functions/v1/' + encodeURIComponent(String(name || '')), {
+      method: 'POST',
+      headers: await headers(),
+      body: JSON.stringify((options && options.body) || {})
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = text; }
+    if (!response.ok) {
+      const message = data && (data.error || data.message || data.details);
+      const error = new Error(message || text || ('HTTP ' + response.status));
+      error.status = response.status;
+      error.data = data;
+      return { data: null, error };
+    }
+    return { data, error: null };
+  }
+
   window.CURSAPP_SUPABASE = Object.freeze({
     url: URL,
     publishableKey: PUBLISHABLE_KEY,
@@ -118,7 +154,9 @@
     authSessionKey: AUTH_SESSION_KEY,
     sdkStorageKey: SDK_STORAGE_KEY,
     getAccessToken,
+    getCurrentUser,
     headers,
-    request
+    request,
+    functions: Object.freeze({ invoke: invokeFunction })
   });
 })();
