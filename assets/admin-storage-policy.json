@@ -1,0 +1,17 @@
+{
+  "allowedTechnicalKeys": [
+    "cursapp_supabase_auth_session_v1",
+    "cursapp_supabase_oauth_v1",
+    "cursapp_session_v1"
+  ],
+  "forbiddenBusinessEntities": [
+    "tickets",
+    "ticket_responses",
+    "global_alerts",
+    "admin_banners",
+    "notifications",
+    "notification_preferences",
+    "mercado_publicaciones"
+  ],
+  "note": "cursapp_session_v1 es compatibilidad temporal y sólo puede derivarse de un rol previamente validado en admin_users."
+}
