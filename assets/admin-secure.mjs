@@ -50,4 +50,5 @@ window.CURSAPP_ADMIN_AUTH = Object.freeze({
 
 await import('/assets/admin.js?v=18');
 await import('/assets/admin-addons.js?v=26');
-await import('/assets/admin-supabase-modules.mjs?v=1');
+await import('/assets/admin-tickets-supabase.mjs?v=1');
+await import('/assets/admin-comms-supabase.mjs?v=1');
