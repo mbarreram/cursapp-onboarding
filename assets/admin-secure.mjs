@@ -8,6 +8,13 @@ function showBlocked(title, message) {
   }
 }
 
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ]);
+}
+
 try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
 
 const sb = window.CURSAPP_SUPABASE;
@@ -18,13 +25,28 @@ if (!sb || typeof sb.getCurrentUser !== 'function' || typeof sb.request !== 'fun
 
 let user;
 try {
-  user = await sb.getCurrentUser();
+  user = await withTimeout(
+    sb.getCurrentUser(),
+    8000,
+    'La validación de la sesión tardó demasiado. Recarga la página e intenta nuevamente.'
+  );
 } catch (error) {
-  showBlocked('Sesión requerida', 'Inicia sesión con una cuenta administrativa válida.');
+  showBlocked('Sesión requerida', error?.message || 'Inicia sesión con una cuenta administrativa válida.');
   throw error;
 }
 
-const rows = await sb.request(`admin_users?select=user_id,role,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`);
+let rows;
+try {
+  rows = await withTimeout(
+    sb.request(`admin_users?select=user_id,role,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`),
+    8000,
+    'La validación del rol administrativo tardó demasiado.'
+  );
+} catch (error) {
+  showBlocked('No se pudo validar el acceso', error?.message || 'Error al consultar el rol administrativo.');
+  throw error;
+}
+
 const admin = Array.isArray(rows) ? rows[0] : null;
 if (!admin) {
   showBlocked('Acceso denegado', 'Esta cuenta no tiene un rol administrativo activo en la base de datos.');
@@ -41,3 +63,8 @@ await import('/admin-console/assets/admin.js?v=18');
 await import('/admin-console/assets/admin-addons.js?v=26');
 await import('/assets/admin-tickets-supabase.mjs?v=1');
 await import('/assets/admin-comms-supabase.mjs?v=1');
+
+// Los módulos heredados registran su inicio en DOMContentLoaded. Como se importan
+// después de validar Supabase Auth, el evento original ya ocurrió en móviles.
+// Se emite una vez para iniciar la consola sin quedar en “Validando acceso…”.
+document.dispatchEvent(new Event('DOMContentLoaded'));
