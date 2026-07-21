@@ -32,23 +32,12 @@ if (!admin) {
 }
 
 try {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    role: 'admin',
-    isAdmin: true,
-    userId: user.id,
-    email: user.email || '',
-    verifiedBy: 'supabase-admin-users',
-    verifiedAt: new Date().toISOString()
-  }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({role:'admin',isAdmin:true,userId:user.id,email:user.email||'',verifiedBy:'supabase-admin-users',verifiedAt:new Date().toISOString()}));
 } catch (_) {}
 
-window.CURSAPP_ADMIN_AUTH = Object.freeze({
-  user: Object.freeze({ id: user.id, email: user.email || '' }),
-  role: admin.role,
-  active: true
-});
+window.CURSAPP_ADMIN_AUTH = Object.freeze({user:Object.freeze({id:user.id,email:user.email||''}),role:admin.role,active:true});
 
-await import('/assets/admin.js?v=18');
-await import('/assets/admin-addons.js?v=26');
+await import('/admin-console/assets/admin.js?v=18');
+await import('/admin-console/assets/admin-addons.js?v=26');
 await import('/assets/admin-tickets-supabase.mjs?v=1');
 await import('/assets/admin-comms-supabase.mjs?v=1');
