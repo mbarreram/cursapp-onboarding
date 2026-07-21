@@ -733,8 +733,12 @@
     if(!('serviceWorker' in navigator)) throw new Error('Este navegador no permite notificaciones web.');
     const registration=await navigator.serviceWorker.register('/sw.js?v=push1');
     const ready=registration||await navigator.serviceWorker.ready;
-    const subscription=await ready.pushManager.getSubscription();
-    if(!subscription) throw new Error('Este dispositivo aún no tiene una suscripción push activa.');
+    let subscription=await ready.pushManager.getSubscription();
+    if(!subscription){
+      const key=window.CURSAPP_SUPABASE && window.CURSAPP_SUPABASE.pushVapidPublicKey;
+      if(!key) throw new Error('Falta la clave pública de notificaciones.');
+      subscription=await ready.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(key)});
+    }
     await persistPushSubscription(subscription);
   }
   async function sendTestNotification(){
@@ -745,14 +749,29 @@
       const sb=await waitSb();
       const functions=(sb && sb.functions) || (window.CURSAPP_SUPABASE && window.CURSAPP_SUPABASE.functions);
       if(!functions || typeof functions.invoke!=='function') throw new Error('No se pudo conectar con el servicio push.');
-      const result=await functions.invoke('send-web-push',{body:{mode:'test'}});
+      const context=getActiveContext()||{};
+      const role=String(context.role||'').toLowerCase();
+      const courseBroadcast=!!context.cursoId && /presidente|tesorero/.test(role);
+      const requestBody=courseBroadcast
+        ? {mode:'course',curso_id:context.cursoId,title:'Aviso de tu curso',body:'La directiva envió una notificación de prueba.',url:location.pathname,tag:'cursapp-course-test'}
+        : {mode:'test'};
+      const result=await functions.invoke('send-web-push',{body:requestBody});
       if(result.error) throw result.error;
       if(!result.data || !result.data.sent) throw new Error((result.data&&result.data.error)||'No hay un dispositivo activo para esta cuenta.');
-      addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:'Push enviada por Supabase correctamente.',url_destino:location.pathname,leida:false});
+      const detail=courseBroadcast
+        ? `Prueba enviada a ${result.data.sent} dispositivo(s) de ${result.data.recipients||0} integrante(s).`
+        : `Prueba enviada a ${result.data.sent} dispositivo(s) de tu cuenta.`;
+      addLocalNotification({tipo:'sistema',titulo:'Notificación de prueba',detalle:detail,url_destino:location.pathname,leida:false});
       refreshBell();
+      alert(detail);
     }catch(e){
       console.error('No se pudo enviar push de prueba',e);
-      alert('No se pudo enviar la notificación de prueba: '+(e.message||e));
+      const message=String((e&&e.message)||e||'');
+      if(/load failed|failed to fetch|network request failed/i.test(message)){
+        alert('La solicitud fue enviada, pero iPhone cerró la conexión antes de confirmar el resultado. Revisa los dispositivos destinatarios.');
+      }else{
+        alert('No se pudo enviar la notificación de prueba: '+message);
+      }
     }
   }
   function addLocalNotification(n){
@@ -953,6 +972,21 @@
         inserts.push({usuario_id:uid,user_id:uid,email:email,destinatario_email:email,curso_id:ctx.cursoId,curso_key:ctx.cursoKey||null,colegio_id:ctx.colegioId||null,rol_destino:'apoderado',tipo:base.tipo,titulo:base.titulo,detalle:base.detalle,url_destino:base.url_destino||'/apoderado.html',icono:base.icono||'📅',origen:base.origen||'campanas',prioridad:base.prioridad||'normal',leida:false,push_enviado:false,metadata:base.metadata||{}});
       });
       if(inserts.length) await sb.from('notificaciones').insert(inserts);
+
+      // La comunicación visible dentro de la app también se despacha como Web Push
+      // a todos los dispositivos registrados de los integrantes activos del curso.
+      const role=String(ctx.role||'').toLowerCase();
+      if(ctx.cursoId && /presidente|tesorero/.test(role) && sb.functions && typeof sb.functions.invoke==='function'){
+        const pushResult=await sb.functions.invoke('send-web-push',{body:{
+          mode:'course',
+          curso_id:ctx.cursoId,
+          title:String(base.titulo||'Nuevo aviso de tu curso'),
+          body:String(base.detalle||'Tienes una nueva comunicación en Cursapp.'),
+          url:String(base.url_destino||'/apoderado.html'),
+          tag:`cursapp-course-${String(base.tipo||'aviso')}-${ctx.cursoId}`
+        }});
+        if(pushResult.error) console.warn('El aviso se guardó, pero Web Push no confirmó el despacho',pushResult.error);
+      }
     }catch(e){
       // Si no se pueden enumerar miembros por RLS, al menos queda aviso curso y notificación local para QA.
       console.warn('No se pudo crear notificaciones masivas a apoderados', e);
