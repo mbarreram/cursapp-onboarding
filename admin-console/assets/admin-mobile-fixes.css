@@ -1,0 +1,32 @@
+/* Admin mobile closing fixes: scrollable navigation and iPhone safe areas */
+.adminSide{
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+}
+.sideBrand,.sideUser,.sideHelp{flex:0 0 auto}
+.sideNav{flex:0 0 auto;padding-bottom:8px}
+
+@media(max-width:1100px){
+  .adminSide{
+    height:100dvh;
+    max-height:100dvh;
+    top:0;
+    bottom:auto;
+    padding-top:calc(22px + env(safe-area-inset-top,0px));
+    padding-bottom:calc(36px + env(safe-area-inset-bottom,0px));
+  }
+  .sideHelp{margin-top:8px}
+  .sideUser{margin-bottom:8px}
+  body.sideOpen{overflow:hidden}
+}
+
+@media(max-width:640px){
+  .adminSide{width:min(82vw,320px);left:min(-84vw,-330px)}
+  body.sideOpen .adminSide{left:0}
+  .sideItem{padding:13px 12px;font-size:15px}
+  .sideNav{gap:5px}
+  .sideBrand{position:sticky;top:calc(-22px - env(safe-area-inset-top,0px));z-index:2;background:#12102b;padding:8px 0 12px}
+}
