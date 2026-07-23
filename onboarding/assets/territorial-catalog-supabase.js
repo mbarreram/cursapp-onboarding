@@ -6,32 +6,48 @@
   let regions=[],communes=[],schools=[];
   let applying=false;
 
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const readDraft=()=>{try{return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}')}catch(_){return{}}};
   const saveDraft=patch=>{try{const d={...readDraft(),...patch};localStorage.setItem(DRAFT_KEY,JSON.stringify(d));return d}catch(_){return patch}};
   const normalize=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 
   function fieldKind(select){
-    const own=normalize([select.id,select.name,select.getAttribute('aria-label')].filter(Boolean).join(' '));
-    const wrap=select.closest('label,.field,.formGroup,.onbField,.card,div');
-    const nearby=normalize(wrap?.textContent||'');
-    const text=own+' '+nearby.slice(0,100);
-    if(/region/.test(text))return'region';
-    if(/comuna|ciudad/.test(text))return'commune';
-    if(/colegio|establecimiento|school/.test(text))return'school';
-    const values=[...select.options].map(o=>String(o.value)).join(' ');
-    if(/rm-stgo|v-valpo|iv-coq/.test(values))return'commune';
-    if(/sch-central|sch-santa/.test(values))return'school';
-    if(/\brm\b|\bviii\b|\bix\b/.test(values))return'region';
+    if(!select)return'';
+    if(select.id==='onbRegion')return'region';
+    if(select.id==='onbComuna')return'commune';
+    if(select.id==='onbSchool')return'school';
     return'';
   }
 
-  function findSelect(kind){return [...document.querySelectorAll('#app select')].find(s=>fieldKind(s)===kind)||null}
+  function findSelect(kind){
+    return kind==='region'?document.getElementById('onbRegion'):
+      kind==='commune'?document.getElementById('onbComuna'):
+      kind==='school'?document.getElementById('onbSchool'):null;
+  }
+
+  function sameOptions(select,rows,valueField,labelField,placeholder){
+    if(!select)return false;
+    const expected=[['',placeholder],...rows.map(r=>[String(r[valueField]),String(r[labelField])])];
+    if(select.options.length!==expected.length)return false;
+    return expected.every((pair,i)=>String(select.options[i]?.value||'')===pair[0]&&String(select.options[i]?.textContent||'')===pair[1]);
+  }
+
   function setOptions(select,rows,valueField,labelField,placeholder,current){
     if(!select)return;
-    const html=[`<option value="">${esc(placeholder)}</option>`,...rows.map(r=>`<option value="${esc(r[valueField])}" ${String(r[valueField])===String(current)?'selected':''}>${esc(r[labelField])}</option>`)].join('');
-    if(select.innerHTML!==html)select.innerHTML=html;
+    if(!sameOptions(select,rows,valueField,labelField,placeholder)){
+      const frag=document.createDocumentFragment();
+      const first=document.createElement('option');
+      first.value='';first.textContent=placeholder;frag.appendChild(first);
+      rows.forEach(r=>{
+        const option=document.createElement('option');
+        option.value=String(r[valueField]);
+        option.textContent=String(r[labelField]);
+        frag.appendChild(option);
+      });
+      select.replaceChildren(frag);
+    }
     select.disabled=!rows.length;
+    const desired=String(current||'');
+    if(select.value!==desired)select.value=desired;
   }
 
   async function loadCatalog(){
@@ -52,27 +68,28 @@
 
   function apply(){
     if(applying||!regions.length)return;
+    const regionSel=findSelect('region');
+    const communeSel=findSelect('commune');
+    const schoolSel=findSelect('school');
+    if(!regionSel||!communeSel)return;
     applying=true;
     try{
       const d=readDraft();
-      const regionSel=findSelect('region');
-      const communeSel=findSelect('commune');
-      const schoolSel=findSelect('school');
-      if(!regionSel||!communeSel)return;
-
-      let regionCode=d.regionId&&regions.some(r=>r.codigo===d.regionId)?d.regionId:(regionSel.value&&regions.some(r=>r.codigo===regionSel.value)?regionSel.value:'');
+      let regionCode=regions.some(r=>r.codigo===String(d.regionId||''))?String(d.regionId):'';
+      if(!regionCode&&regions.some(r=>r.codigo===String(regionSel.value||'')))regionCode=String(regionSel.value);
       if(!regionCode)regionCode='13';
       const region=regions.find(r=>r.codigo===regionCode)||regions[0];
       setOptions(regionSel,regions,'codigo','nombre','Selecciona una región',region.codigo);
 
       const regionCommunes=communes.filter(c=>c.region_codigo===region.codigo);
-      let communeCode=d.comunaId&&regionCommunes.some(c=>c.codigo===d.comunaId)?d.comunaId:(communeSel.value&&regionCommunes.some(c=>c.codigo===communeSel.value)?communeSel.value:'');
+      let communeCode=regionCommunes.some(c=>c.codigo===String(d.comunaId||''))?String(d.comunaId):'';
+      if(!communeCode&&regionCommunes.some(c=>c.codigo===String(communeSel.value||'')))communeCode=String(communeSel.value);
       const commune=regionCommunes.find(c=>c.codigo===communeCode)||null;
       setOptions(communeSel,regionCommunes,'codigo','nombre','Selecciona una comuna',commune?.codigo||'');
 
       if(schoolSel){
         const available=matchingSchools(commune);
-        const current=d.schoolId&&available.some(s=>String(s.id)===String(d.schoolId))?d.schoolId:'';
+        const current=available.some(s=>String(s.id)===String(d.schoolId||''))?String(d.schoolId):'';
         setOptions(schoolSel,available,'id','nombre',commune?(available.length?'Selecciona un colegio':'No hay colegios cargados en esta comuna'):'Selecciona primero una comuna',current);
       }
 
@@ -91,24 +108,29 @@
 
   document.addEventListener('change',e=>{
     const select=e.target instanceof HTMLSelectElement?e.target:null;
-    if(!select)return;
     const kind=fieldKind(select);
     if(!kind)return;
-    const d=readDraft();
+
     if(kind==='region'){
-      const r=regions.find(x=>x.codigo===select.value);
+      const r=regions.find(x=>x.codigo===String(select.value));
       saveDraft({regionId:r?.codigo||'',regionName:r?.nombre||'',comunaId:'',comunaName:'',schoolId:'',schoolName:''});
     }else if(kind==='commune'){
-      const c=communes.find(x=>x.codigo===select.value);
+      const c=communes.find(x=>x.codigo===String(select.value));
       saveDraft({comunaId:c?.codigo||'',comunaName:c?.nombre||'',schoolId:'',schoolName:''});
     }else if(kind==='school'){
       const s=schools.find(x=>String(x.id)===String(select.value));
       saveDraft({schoolId:s?.id||'',schoolName:s?.nombre||''});
     }
-    setTimeout(apply,0);setTimeout(apply,80);setTimeout(apply,250);
+
+    e.stopImmediatePropagation();
+    apply();
   },true);
 
-  const observer=new MutationObserver(()=>{clearTimeout(observer._t);observer._t=setTimeout(apply,20)});
+  const observer=new MutationObserver(()=>{
+    clearTimeout(observer._t);
+    observer._t=setTimeout(apply,60);
+  });
+
   document.addEventListener('DOMContentLoaded',async()=>{
     try{
       await loadCatalog();
