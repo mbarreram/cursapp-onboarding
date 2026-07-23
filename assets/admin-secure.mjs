@@ -17,5 +17,6 @@ await import('/admin-console/assets/admin.js?v=18');
 await import('/admin-console/assets/admin-addons.js?v=26');
 await import('/assets/admin-tickets-supabase.mjs?v=2');
 await import('/assets/admin-comms-supabase.mjs?v=4');
+await import('/assets/admin-banner-upload.mjs?v=1');
 await import('/assets/admin-notifications-dashboard.mjs?v=1');
 document.dispatchEvent(new Event('DOMContentLoaded'));
