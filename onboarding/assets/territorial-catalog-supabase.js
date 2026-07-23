@@ -1,174 +1,21 @@
 (function(){
   'use strict';
-  const sb=window.CURSAPP_SUPABASE;
-  if(!sb?.request)return;
-  const DRAFT_KEY='cursapp_onb_draft_v1';
-  let regions=[],communes=[],schools=[];
-  let loadedCommune='';
-  let applying=false;
-
+  const sb=window.CURSAPP_SUPABASE;if(!sb?.request)return;
+  const DRAFT_KEY='cursapp_onb_draft_v1';let regions=[],communes=[],applying=false,searchTimer=null;
   const readDraft=()=>{try{return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}')}catch(_){return{}}};
   const saveDraft=patch=>{try{const d={...readDraft(),...patch};localStorage.setItem(DRAFT_KEY,JSON.stringify(d));return d}catch(_){return patch}};
-
-  function fieldKind(select){
-    if(!select)return'';
-    if(select.id==='onbRegion')return'region';
-    if(select.id==='onbComuna')return'commune';
-    if(select.id==='onbSchool')return'school';
-    return'';
-  }
-
-  function findSelect(kind){
-    return kind==='region'?document.getElementById('onbRegion'):
-      kind==='commune'?document.getElementById('onbComuna'):
-      kind==='school'?document.getElementById('onbSchool'):null;
-  }
-
-  function sameOptions(select,rows,valueField,labelField,placeholder){
-    if(!select)return false;
-    const expected=[['',placeholder],...rows.map(r=>[String(r[valueField]),String(r[labelField])])];
-    if(select.options.length!==expected.length)return false;
-    return expected.every((pair,i)=>String(select.options[i]?.value||'')===pair[0]&&String(select.options[i]?.textContent||'')===pair[1]);
-  }
-
-  function setOptions(select,rows,valueField,labelField,placeholder,current){
-    if(!select)return;
-    if(!sameOptions(select,rows,valueField,labelField,placeholder)){
-      const frag=document.createDocumentFragment();
-      const first=document.createElement('option');
-      first.value='';first.textContent=placeholder;frag.appendChild(first);
-      rows.forEach(r=>{
-        const option=document.createElement('option');
-        option.value=String(r[valueField]);
-        option.textContent=String(r[labelField]);
-        frag.appendChild(option);
-      });
-      select.replaceChildren(frag);
-    }
-    select.disabled=!rows.length;
-    const desired=String(current||'');
-    if(select.value!==desired)select.value=desired;
-  }
-
-  async function loadTerritories(){
-    const [r,c]=await Promise.all([
-      sb.request('regiones?select=codigo,nombre,nombre_corto,orden&activa=eq.true&order=orden.asc'),
-      sb.request('comunas?select=codigo,region_codigo,nombre&activa=eq.true&order=nombre.asc')
-    ]);
-    regions=Array.isArray(r)?r:[];
-    communes=Array.isArray(c)?c:[];
-  }
-
-  async function loadSchoolsForCommune(communeCode){
-    const code=String(communeCode||'');
-    if(!code){schools=[];loadedCommune='';return schools;}
-    if(loadedCommune===code)return schools;
-    const result=await sb.request(
-      'colegios?select=id,nombre,nombre_oficial,rbd,region_codigo,comuna_codigo,catalogo_oficial,estado_establecimiento'+
-      '&comuna_codigo=eq.'+encodeURIComponent(code)+
-      '&order=nombre.asc'
-    );
-    schools=(Array.isArray(result)?result:[]).filter(row=>row.estado_establecimiento==null||Number(row.estado_establecimiento)===1);
-    loadedCommune=code;
-    return schools;
-  }
-
-  function selectedTerritory(){
-    const d=readDraft();
-    const regionSel=findSelect('region');
-    const communeSel=findSelect('commune');
-    let regionCode=regions.some(r=>r.codigo===String(d.regionId||''))?String(d.regionId):'';
-    if(!regionCode&&regions.some(r=>r.codigo===String(regionSel?.value||'')))regionCode=String(regionSel.value);
-    if(!regionCode)regionCode='13';
-    const region=regions.find(r=>r.codigo===regionCode)||regions[0]||null;
-    const availableCommunes=communes.filter(c=>c.region_codigo===region?.codigo);
-    let communeCode=availableCommunes.some(c=>c.codigo===String(d.comunaId||''))?String(d.comunaId):'';
-    if(!communeCode&&availableCommunes.some(c=>c.codigo===String(communeSel?.value||'')))communeCode=String(communeSel.value);
-    const commune=availableCommunes.find(c=>c.codigo===communeCode)||null;
-    return{region,availableCommunes,commune};
-  }
-
-  async function apply(){
-    if(applying||!regions.length)return;
-    const regionSel=findSelect('region');
-    const communeSel=findSelect('commune');
-    const schoolSel=findSelect('school');
-    if(!regionSel||!communeSel)return;
-    applying=true;
-    try{
-      const d=readDraft();
-      const {region,availableCommunes,commune}=selectedTerritory();
-      if(!region)return;
-      setOptions(regionSel,regions,'codigo','nombre','Selecciona una región',region.codigo);
-      setOptions(communeSel,availableCommunes,'codigo','nombre','Selecciona una comuna',commune?.codigo||'');
-
-      if(schoolSel){
-        if(commune&&loadedCommune!==commune.codigo){
-          schoolSel.disabled=true;
-          setOptions(schoolSel,[],'id','nombre','Cargando colegios…','');
-          await loadSchoolsForCommune(commune.codigo);
-        }else if(!commune){
-          schools=[];loadedCommune='';
-        }
-        const current=schools.some(s=>String(s.id)===String(d.schoolId||''))?String(d.schoolId):'';
-        const placeholder=commune?(schools.length?'Selecciona un colegio':'No hay colegios cargados en esta comuna'):'Selecciona primero una comuna';
-        setOptions(schoolSel,schools,'id','nombre',placeholder,current);
-      }
-
-      saveDraft({
-        regionId:region.codigo,
-        regionName:region.nombre,
-        comunaId:commune?.codigo||'',
-        comunaName:commune?.nombre||'',
-        ...(commune?{}:{schoolId:'',schoolName:'',schoolRbd:''})
-      });
-      regionSel.dataset.territorialReady='1';
-      communeSel.dataset.territorialReady='1';
-      if(schoolSel)schoolSel.dataset.territorialReady='1';
-    }catch(err){
-      console.error('Catálogo territorial Cursapp',err);
-      const schoolSel=findSelect('school');
-      if(schoolSel)setOptions(schoolSel,[],'id','nombre','No fue posible cargar colegios','');
-    }finally{applying=false}
-  }
-
-  document.addEventListener('change',async e=>{
-    const select=e.target instanceof HTMLSelectElement?e.target:null;
-    const kind=fieldKind(select);
-    if(!kind)return;
-
-    if(kind==='region'){
-      const r=regions.find(x=>x.codigo===String(select.value));
-      schools=[];loadedCommune='';
-      saveDraft({regionId:r?.codigo||'',regionName:r?.nombre||'',comunaId:'',comunaName:'',schoolId:'',schoolName:'',schoolRbd:''});
-    }else if(kind==='commune'){
-      const c=communes.find(x=>x.codigo===String(select.value));
-      schools=[];loadedCommune='';
-      saveDraft({comunaId:c?.codigo||'',comunaName:c?.nombre||'',schoolId:'',schoolName:'',schoolRbd:''});
-    }else if(kind==='school'){
-      const s=schools.find(x=>String(x.id)===String(select.value));
-      saveDraft({schoolId:s?.id||'',schoolName:s?.nombre||'',schoolRbd:s?.rbd||''});
-    }
-
-    e.stopImmediatePropagation();
-    await apply();
-  },true);
-
-  const observer=new MutationObserver(()=>{
-    clearTimeout(observer._t);
-    observer._t=setTimeout(()=>{void apply()},80);
-  });
-
-  document.addEventListener('DOMContentLoaded',async()=>{
-    try{
-      await loadTerritories();
-      observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
-      await apply();
-      window.CURSAPP_TERRITORIAL_CATALOG={
-        regions,
-        communes,
-        refresh:async()=>{await loadTerritories();loadedCommune='';schools=[];await apply()}
-      };
-    }catch(err){console.error('Catálogo territorial Cursapp',err)}
-  });
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const regionSel=()=>document.getElementById('onbRegion'),communeSel=()=>document.getElementById('onbComuna'),schoolSel=()=>document.getElementById('onbSchool');
+  function sameOptions(select,rows,valueField,labelField,placeholder){const expected=[['',placeholder],...rows.map(r=>[String(r[valueField]),String(r[labelField])])];return select&&select.options.length===expected.length&&expected.every((p,i)=>String(select.options[i]?.value||'')===p[0]&&String(select.options[i]?.textContent||'')===p[1])}
+  function setOptions(select,rows,valueField,labelField,placeholder,current){if(!select)return;if(!sameOptions(select,rows,valueField,labelField,placeholder)){const frag=document.createDocumentFragment();const first=document.createElement('option');first.value='';first.textContent=placeholder;frag.appendChild(first);rows.forEach(r=>{const o=document.createElement('option');o.value=String(r[valueField]);o.textContent=String(r[labelField]);frag.appendChild(o)});select.replaceChildren(frag)}select.disabled=!rows.length;select.value=String(current||'')}
+  async function loadCatalog(){[regions,communes]=await Promise.all([sb.request('regiones?select=codigo,nombre,orden&activa=eq.true&order=orden.asc'),sb.request('comunas?select=codigo,region_codigo,nombre&activa=eq.true&order=nombre.asc')]);regions=Array.isArray(regions)?regions:[];communes=Array.isArray(communes)?communes:[]}
+  function ensureSchoolFinder(){const select=schoolSel();if(!select)return null;let host=document.getElementById('onbSchoolFinder');if(host)return host;select.style.display='none';host=document.createElement('div');host.id='onbSchoolFinder';host.className='onbSchoolFinder';host.innerHTML=`<div style="position:relative"><input id="onbSchoolSearch" type="search" autocomplete="off" placeholder="Buscar colegio por nombre o RBD" style="width:100%;padding:13px 14px;border:1px solid #dbe1ea;border-radius:13px;font:inherit"><div id="onbSchoolResults" style="display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:80;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 18px 40px rgba(15,23,42,.16);max-height:280px;overflow:auto"></div></div><button id="onbSchoolMissing" type="button" style="margin-top:8px;border:0;background:transparent;color:#6d28d9;font-weight:900;padding:6px 0">No encuentro mi colegio</button><div id="onbSchoolHint" class="muted" style="font-size:12px;margin-top:4px">Selecciona primero una comuna.</div>`;select.parentElement.insertAdjacentElement('afterend',host);const input=host.querySelector('#onbSchoolSearch');input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>searchSchools(input.value),250)});input.addEventListener('focus',()=>searchSchools(input.value));host.querySelector('#onbSchoolMissing').addEventListener('click',requestMissingSchool);return host}
+  async function searchSchools(term=''){const d=readDraft(),host=ensureSchoolFinder();if(!host)return;const box=host.querySelector('#onbSchoolResults'),hint=host.querySelector('#onbSchoolHint');if(!d.comunaId){hint.textContent='Selecciona primero una comuna.';box.style.display='none';return}hint.textContent='Buscando colegios oficiales de la comuna...';const q=String(term||'').trim();let path=`colegios?select=id,nombre,rbd,dependencia_nombre&comuna_codigo=eq.${encodeURIComponent(d.comunaId)}&estado_establecimiento=eq.1&catalogo_oficial=eq.true&order=nombre.asc&limit=60`;if(q)path+=`&or=(nombre.ilike.*${encodeURIComponent(q)}*,rbd.ilike.*${encodeURIComponent(q)}*)`;try{const rows=await sb.request(path);renderSchoolResults(Array.isArray(rows)?rows:[]);hint.textContent=rows?.length?'Selecciona tu establecimiento oficial.':'No se encontraron coincidencias.'}catch(e){hint.textContent='No fue posible consultar colegios.';box.style.display='none'}}
+  function renderSchoolResults(rows){const host=ensureSchoolFinder(),box=host.querySelector('#onbSchoolResults');if(!rows.length){box.innerHTML='<div style="padding:14px;color:#64748b">Sin resultados</div>';box.style.display='block';return}box.innerHTML=rows.map(r=>`<button type="button" data-id="${esc(r.id)}" data-name="${esc(r.nombre)}" style="display:block;width:100%;border:0;border-bottom:1px solid #f1f5f9;background:#fff;text-align:left;padding:12px 14px"><b style="display:block;color:#0f172a">${esc(r.nombre)}</b><small style="color:#64748b">RBD ${esc(r.rbd||'—')}${r.dependencia_nombre?' · '+esc(r.dependencia_nombre):''}</small></button>`).join('');box.style.display='block';box.querySelectorAll('button').forEach(btn=>btn.addEventListener('click',()=>chooseSchool(btn.dataset.id,btn.dataset.name)))}
+  function chooseSchool(id,name){const select=schoolSel(),host=ensureSchoolFinder();select.replaceChildren(new Option(name,id,true,true));select.value=id;host.querySelector('#onbSchoolSearch').value=name;host.querySelector('#onbSchoolResults').style.display='none';host.querySelector('#onbSchoolHint').textContent='Colegio seleccionado.';saveDraft({schoolId:id,schoolName:name});select.dispatchEvent(new Event('change',{bubbles:true}))}
+  async function requestMissingSchool(){const d=readDraft();if(!d.comunaId)return alert('Selecciona primero una comuna');const name=prompt('Escribe el nombre del colegio que no encontraste:','');if(!name||name.trim().length<3)return;try{let userId=null,email='';try{const u=await sb.getCurrentUser?.();userId=u?.id||null;email=u?.email||''}catch(_){}await sb.request('solicitudes_colegio',{method:'POST',body:JSON.stringify({region_codigo:d.regionId,comuna_codigo:d.comunaId,nombre_sugerido:name.trim(),usuario_id:userId,correo:email||null})});alert('Solicitud enviada. El equipo Cursapp revisará el establecimiento.')}catch(e){alert('No fue posible enviar la solicitud: '+(e.message||e))}}
+  function apply(){if(applying||!regions.length)return;const rs=regionSel(),cs=communeSel();if(!rs||!cs)return;applying=true;try{const d=readDraft();let rc=regions.some(r=>r.codigo===String(d.regionId||''))?String(d.regionId):String(rs.value||'');if(!regions.some(r=>r.codigo===rc))rc='13';const region=regions.find(r=>r.codigo===rc)||regions[0];setOptions(rs,regions,'codigo','nombre','Selecciona una región',region.codigo);const list=communes.filter(c=>c.region_codigo===region.codigo);let cc=list.some(c=>c.codigo===String(d.comunaId||''))?String(d.comunaId):String(cs.value||'');if(!list.some(c=>c.codigo===cc))cc='';const comuna=list.find(c=>c.codigo===cc)||null;setOptions(cs,list,'codigo','nombre','Selecciona una comuna',comuna?.codigo||'');saveDraft({regionId:region.codigo,regionName:region.nombre,comunaId:comuna?.codigo||'',comunaName:comuna?.nombre||'',...(comuna?{}:{schoolId:'',schoolName:''})});const host=ensureSchoolFinder();if(host){const selected=readDraft();host.querySelector('#onbSchoolSearch').disabled=!comuna;host.querySelector('#onbSchoolMissing').disabled=!comuna;host.querySelector('#onbSchoolSearch').value=selected.schoolName||'';host.querySelector('#onbSchoolHint').textContent=comuna?'Escribe para buscar entre los colegios oficiales de la comuna.':'Selecciona primero una comuna.'}}finally{applying=false}}
+  document.addEventListener('change',e=>{const s=e.target;if(!(s instanceof HTMLSelectElement))return;if(s.id==='onbRegion'){const r=regions.find(x=>x.codigo===s.value);saveDraft({regionId:r?.codigo||'',regionName:r?.nombre||'',comunaId:'',comunaName:'',schoolId:'',schoolName:''});e.stopImmediatePropagation();apply()}else if(s.id==='onbComuna'){const c=communes.find(x=>x.codigo===s.value);saveDraft({comunaId:c?.codigo||'',comunaName:c?.nombre||'',schoolId:'',schoolName:''});e.stopImmediatePropagation();apply();searchSchools('')}},true);
+  const observer=new MutationObserver(()=>{clearTimeout(observer._t);observer._t=setTimeout(apply,80)});
+  document.addEventListener('DOMContentLoaded',async()=>{try{await loadCatalog();observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});apply();window.CURSAPP_TERRITORIAL_CATALOG={regions,communes,refresh:async()=>{await loadCatalog();apply()}}}catch(e){console.error('Catálogo territorial Cursapp',e)}});
 })();
