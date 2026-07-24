@@ -67,9 +67,20 @@
     host.innerHTML=`<div class="onbSchoolSearchWrap"><span class="onbSchoolSearchIcon">🔎</span><input id="onbSchoolSearch" class="onbSchoolSearch" type="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Buscar colegio por nombre o RBD"><button id="onbSchoolClear" class="onbSchoolClear" type="button">×</button><div id="onbSchoolResults" class="onbSchoolResults"></div></div><div id="onbSchoolSelected" class="onbSchoolSelected"></div><button id="onbSchoolMissing" class="onbSchoolMissing" type="button">No encuentro mi colegio</button><div id="onbSchoolHint" class="muted onbSchoolHint">Selecciona primero una comuna.</div>`;
     select.parentElement.insertAdjacentElement('afterend',host);
     const input=host.querySelector('#onbSchoolSearch');
-    input.addEventListener('focus',()=>{searchFocused=true;searchSchools(input.value)});
+    input.addEventListener('focus',()=>{searchFocused=true;if(input.value.trim().length>=2)searchSchools(input.value)});
     input.addEventListener('blur',()=>setTimeout(()=>{searchFocused=false},180));
-    input.addEventListener('input',()=>{clearTimeout(searchTimer);const typed=input.value;searchTimer=setTimeout(()=>searchSchools(typed),250)});
+    input.addEventListener('input',()=>{
+      clearTimeout(searchTimer);
+      const typed=input.value.trim();
+      if(typed.length<2){
+        lastRequest++;
+        host.querySelector('#onbSchoolResults').style.display='none';
+        host.querySelector('#onbSchoolResults').replaceChildren();
+        host.querySelector('#onbSchoolHint').textContent='Escribe al menos 2 caracteres del nombre o el RBD.';
+        return;
+      }
+      searchTimer=setTimeout(()=>searchSchools(typed),250);
+    });
     host.querySelector('#onbSchoolClear').addEventListener('click',clearSchool);
     host.querySelector('#onbSchoolMissing').addEventListener('click',openMissingSchoolModal);
     document.addEventListener('click',e=>{if(!host.contains(e.target))host.querySelector('#onbSchoolResults').style.display='none'});
@@ -81,11 +92,11 @@
     if(!host)return;
     const box=host.querySelector('#onbSchoolResults'),hint=host.querySelector('#onbSchoolHint');
     if(!d.comunaId){hint.textContent='Selecciona primero una comuna.';box.style.display='none';return}
+    const q=String(term||'').trim();
+    if(q.length<2){lastRequest++;box.style.display='none';box.replaceChildren();hint.textContent='Escribe al menos 2 caracteres del nombre o el RBD.';return}
     const requestId=++lastRequest;
     hint.textContent='Buscando colegios oficiales de la comuna...';
-    const q=String(term||'').trim();
-    let path=`colegios?select=id,nombre,rbd,dependencia_nombre,direccion,comuna&comuna_codigo=eq.${encodeURIComponent(d.comunaId)}&estado_establecimiento=eq.1&catalogo_oficial=eq.true&order=nombre.asc&limit=60`;
-    if(q)path+=`&or=(nombre.ilike.*${encodeURIComponent(q)}*,rbd.ilike.*${encodeURIComponent(q)}*)`;
+    const path=`colegios?select=id,nombre,rbd,dependencia_nombre,direccion,comuna&comuna_codigo=eq.${encodeURIComponent(d.comunaId)}&estado_establecimiento=eq.1&catalogo_oficial=eq.true&order=nombre.asc&limit=60&or=(nombre.ilike.*${encodeURIComponent(q)}*,rbd.ilike.*${encodeURIComponent(q)}*)`;
     try{
       const rows=await sb.request(path);
       if(requestId!==lastRequest)return;
@@ -104,17 +115,21 @@
 
   function selectedCard(row){
     const host=ensureSchoolFinder(),card=host.querySelector('#onbSchoolSelected');
-    if(!row?.id){card.classList.remove('isVisible');card.innerHTML='';return}
+    const wrap=host.querySelector('.onbSchoolSearchWrap');
+    const missing=host.querySelector('#onbSchoolMissing');
+    if(!row?.id){card.classList.remove('isVisible');card.innerHTML='';wrap.style.display='block';missing.style.display='inline-flex';return}
     card.innerHTML=`<div class="onbSchoolSelectedTop"><div class="onbSchoolBadge">🏫</div><div><div class="onbSchoolSelectedName">${esc(row.nombre)}</div><div class="onbSchoolMeta">RBD ${esc(row.rbd||'—')}${row.dependencia_nombre?' · '+esc(row.dependencia_nombre):''}${row.direccion?' · '+esc(row.direccion):''}</div><button type="button" class="onbSchoolChange">Cambiar colegio</button></div></div>`;
     card.classList.add('isVisible');
-    card.querySelector('.onbSchoolChange').addEventListener('click',()=>{const input=host.querySelector('#onbSchoolSearch');input.value='';input.focus();searchSchools('')});
+    wrap.style.display='none';
+    missing.style.display='none';
+    card.querySelector('.onbSchoolChange').addEventListener('click',clearSchool);
   }
 
   function chooseSchool(row){
     const select=schoolSel(),host=ensureSchoolFinder();
     select.replaceChildren(new Option(row.nombre,row.id,true,true));
     select.value=row.id;
-    host.querySelector('#onbSchoolSearch').value=row.nombre;
+    host.querySelector('#onbSchoolSearch').value='';
     host.querySelector('#onbSchoolResults').style.display='none';
     host.querySelector('#onbSchoolHint').textContent='Colegio seleccionado correctamente.';
     saveDraft({schoolId:row.id,schoolName:row.nombre,schoolRbd:row.rbd||'',schoolDependencia:row.dependencia_nombre||'',schoolDireccion:row.direccion||''});
@@ -127,10 +142,11 @@
     saveDraft({schoolId:'',schoolName:'',schoolRbd:'',schoolDependencia:'',schoolDireccion:''});
     if(select)select.replaceChildren(new Option('Selecciona un colegio','',true,true));
     host.querySelector('#onbSchoolSearch').value='';
+    host.querySelector('#onbSchoolResults').style.display='none';
+    host.querySelector('#onbSchoolResults').replaceChildren();
     selectedCard(null);
-    host.querySelector('#onbSchoolHint').textContent=readDraft().comunaId?'Escribe para buscar entre los colegios oficiales de la comuna.':'Selecciona primero una comuna.';
-    host.querySelector('#onbSchoolSearch').focus();
-    searchSchools('');
+    host.querySelector('#onbSchoolHint').textContent=readDraft().comunaId?'Escribe al menos 2 caracteres del nombre o el RBD.':'Selecciona primero una comuna.';
+    setTimeout(()=>host.querySelector('#onbSchoolSearch').focus(),0);
   }
 
   function openMissingSchoolModal(){
@@ -172,12 +188,10 @@
       const host=ensureSchoolFinder();
       if(host){
         const input=host.querySelector('#onbSchoolSearch');
-        const selected=readDraft();
         input.disabled=!comuna;
         host.querySelector('#onbSchoolMissing').disabled=!comuna;
-        if(!searchFocused&&document.activeElement!==input)input.value=selected.schoolName||'';
         if(!comuna){host.querySelector('#onbSchoolHint').textContent='Selecciona primero una comuna.';selectedCard(null)}
-        else if(!searchFocused)host.querySelector('#onbSchoolHint').textContent='Escribe para buscar entre los colegios oficiales de la comuna.';
+        else if(!readDraft().schoolId)host.querySelector('#onbSchoolHint').textContent='Escribe al menos 2 caracteres del nombre o el RBD.';
         if(comuna&&!searchFocused)restoreSelectedSchool();
       }
     }finally{applying=false}
