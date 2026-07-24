@@ -1,0 +1,30 @@
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/onboarding/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/admin-console/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Service-Worker-Allowed: /
+
+/manifest.webmanifest
+  Cache-Control: no-cache, must-revalidate
+
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/assets/*.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*.mjs
+  Cache-Control: public, max-age=0, must-revalidate
+
+/onboarding/assets/*.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/admin-console/assets/*.js
+  Cache-Control: public, max-age=0, must-revalidate
