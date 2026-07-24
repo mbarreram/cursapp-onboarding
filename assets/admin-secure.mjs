@@ -20,5 +20,5 @@ await import('/assets/admin-comms-supabase.mjs?v=4');
 await import('/assets/admin-banner-upload.mjs?v=1');
 await import('/assets/admin-banner-rotation.mjs?v=1');
 await import('/assets/admin-notifications-dashboard.mjs?v=1');
-await import('/assets/admin-territories.mjs?v=1');
+await import('/assets/admin-territories.mjs?v=2');
 document.dispatchEvent(new Event('DOMContentLoaded'));
