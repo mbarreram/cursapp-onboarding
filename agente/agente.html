@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Cursapp · Panel agente</title>
   <link rel="stylesheet" href="assets/agente.css?v=5"/>
+  <link rel="stylesheet" href="assets/agente-operativo.css?v=1"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=55">
@@ -14,6 +16,9 @@
     <div class="brand"><div class="logo">C</div><div><strong>Cursapp</strong><span>Panel agente</span></div></div>
     <nav>
       <button class="nav active" data-view="home">🏠 Inicio</button>
+      <button class="nav" data-view="territorio">🗺️ Mi territorio</button>
+      <button class="nav" data-view="colegios">🏫 Mis colegios</button>
+      <button class="nav" data-view="agenda">📅 Mi agenda</button>
       <button class="nav" data-view="cursos">🎓 Mis cursos</button>
       <button class="nav" data-view="metas">📈 Mis metas</button>
       <button class="nav" data-view="codigo">🔗 Mi código</button>
@@ -25,13 +30,16 @@
   <main class="main">
     <header class="top">
       <button id="menuBtn" class="menu">☰</button>
-      <div><h1 id="helloTitle">¡Hola! 👋</h1><p>Este es tu resumen comercial. Sigue motivando a más cursos y apoderados.</p></div>
+      <div><h1 id="helloTitle">¡Hola! 👋</h1><p id="agentSubtitle">Este es tu resumen comercial.</p></div>
       <button class="logout" id="logoutBtn">Salir</button>
     </header>
     <section id="app"></section>
   </main>
+  <script src="/assets/supabase-config.js?v=2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="assets/agente.js?v=5"></script>
-<div id="agentModalRoot"></div>
+  <script type="module" src="assets/agente-operativo.mjs?v=1"></script>
+  <div id="agentModalRoot"></div>
   <script defer src="/assets/cursapp-platform.js?v=55"></script>
 </body>
 </html>
