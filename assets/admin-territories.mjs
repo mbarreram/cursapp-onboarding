@@ -22,7 +22,7 @@ function ensureAssets(){
 async function loadLeaflet(){
   ensureAssets();
   if(window.L)return;
-  await withTimeout(new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-leaflet]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.dataset.leaflet='1';s.onload=resolve;s.onerror=()=>reject(new Error('No fue posible descargar el mapa'));document.head.appendChild(s)}),8000,'El mapa tardó demasiado en cargar.');
+  await withTimeout(new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-leaflet]');if(existing){if(window.L)return resolve();existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.dataset.leaflet='1';s.onload=resolve;s.onerror=()=>reject(new Error('No fue posible descargar el mapa'));document.head.appendChild(s)}),8000,'El mapa tardó demasiado en cargar.');
 }
 
 async function load(){
@@ -46,6 +46,7 @@ function radius(row){return Math.max(6,Math.min(18,6+Math.sqrt(Number(row.total_
 function filtered(){const r=$('#territoryRegion')?.value||'';const c=$('#territoryCommune')?.value||'';return coverage.filter(x=>(!r||x.region_codigo===r)&&(!c||x.comuna_codigo===c))}
 
 function drawMap(rows){
+  if(!window.L)return;
   if(!map){map=L.map('territoryMap',{preferCanvas:true}).setView([-33.45,-70.66],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map)}
   if(layer)layer.remove();layer=L.layerGroup().addTo(map);const bounds=[];
   rows.forEach(row=>{const lat=Number(row.latitud),lng=Number(row.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;bounds.push([lat,lng]);const marker=L.circleMarker([lat,lng],{radius:radius(row),color:color(row),fillColor:color(row),fillOpacity:.72,weight:2});marker.bindPopup(`<b>${esc(row.comuna_nombre)}</b><br>${Number(row.total_colegios||0)} colegios<br>${row.agent_nombre?'Agente: '+esc(row.agent_nombre):'Sin agente asignado'}`);marker.on('click',()=>selectCommune(row));marker.addTo(layer)});
@@ -70,6 +71,7 @@ function renderData(){
 }
 
 async function render(){
+  document.body.classList.remove('sideOpen');
   $('#viewTitle').textContent='Territorios y cobertura';$('#viewSub').textContent='Mapa comercial de colegios y comunas asignadas a agentes';app.innerHTML='<section class="panel"><p class="muted" style="font-weight:800">Cargando mapa y cobertura territorial…</p></section>';
   try{await ensureInitialized()}catch(e){app.innerHTML=`<section class="panel"><div class="panelHead"><h2>No se pudo cargar el mapa</h2></div><p class="muted">${esc(e.message||e)}</p><button class="adminBtn" id="territoryRetry">Reintentar</button></section>`;$('#territoryRetry').onclick=()=>{initialized=false;render()};return}
   app.innerHTML=`<div class="territoryToolbar"><select id="territoryRegion"><option value="">Todas las regiones</option></select><select id="territoryCommune"><option value="">Todas las comunas</option></select></div><div id="territoryStats" class="territoryStats"></div><div class="territoryLegend"><span><i class="territoryDot" style="background:#6d28d9"></i>Asignada a agente</span><span><i class="territoryDot" style="background:#16a34a"></i>Presencia Cursapp sin territorio</span><span><i class="territoryDot" style="background:#94a3b8"></i>Sin cobertura</span></div><div class="territoryGrid"><div id="territoryMap" class="territoryMap"></div><aside class="territoryPanel"><div id="territorySelected"><h3>Cobertura por comuna</h3><p class="muted">Selecciona un punto del mapa o una comuna de la lista para revisar sus colegios y asignarla a un agente.</p></div><div id="territoryList" class="territoryList"></div></aside></div>`;
@@ -77,5 +79,14 @@ async function render(){
   $('#territoryRegion').onchange=()=>{const r=$('#territoryRegion').value;const cs=coverage.filter(x=>!r||x.region_codigo===r).sort((a,b)=>a.comuna_nombre.localeCompare(b.comuna_nombre));$('#territoryCommune').innerHTML='<option value="">Todas las comunas</option>'+cs.map(x=>`<option value="${x.comuna_codigo}">${esc(x.comuna_nombre)}</option>`).join('');renderData()};$('#territoryCommune').onchange=renderData;renderData();
 }
 
-const old=window.Admin.go.bind(window.Admin);
-window.Admin.go=tab=>{if(tab==='territorios'){void render();return}old(tab)};
+const previousGo=window.Admin?.go?.bind(window.Admin);
+if(window.Admin){window.Admin.go=tab=>{if(tab==='territorios'){void render();return}previousGo?.(tab)}}
+
+document.addEventListener('click',event=>{
+  const button=event.target.closest?.('.sideItem[data-tab="territorios"]');
+  if(!button)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  document.querySelectorAll('.sideItem').forEach(x=>x.classList.toggle('active',x===button));
+  void render();
+},true);
