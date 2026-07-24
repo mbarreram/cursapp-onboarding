@@ -5,9 +5,19 @@
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
   padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  z-index:12050;
+  isolation:isolate;
 }
 .sideBrand,.sideUser,.sideHelp{flex:0 0 auto}
 .sideNav{flex:0 0 auto;padding-bottom:8px}
+
+/* Leaflet creates several stacking contexts. The Admin navigation must always
+   remain above tiles, controls, markers and popups. */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom,
+.leaflet-control,
+.leaflet-popup{z-index:400!important}
 
 @media(max-width:1100px){
   .adminSide{
@@ -17,10 +27,21 @@
     bottom:auto;
     padding-top:calc(22px + env(safe-area-inset-top,0px));
     padding-bottom:calc(36px + env(safe-area-inset-bottom,0px));
+    box-shadow:22px 0 55px rgba(2,6,23,.34);
   }
   .sideHelp{margin-top:8px}
   .sideUser{margin-bottom:8px}
   body.sideOpen{overflow:hidden}
+  body.sideOpen:after{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:12000;
+    background:rgba(15,23,42,.48);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+  }
+  body.sideOpen .adminSide{z-index:12050}
 }
 
 @media(max-width:640px){
