@@ -21,4 +21,5 @@ await import('/assets/admin-banner-upload.mjs?v=1');
 await import('/assets/admin-banner-rotation.mjs?v=1');
 await import('/assets/admin-notifications-dashboard.mjs?v=1');
 await import('/assets/admin-territories.mjs?v=5');
+await import('/assets/admin-territories-phase3.mjs?v=1');
 document.dispatchEvent(new Event('DOMContentLoaded'));
