@@ -2,10 +2,11 @@ const sb=window.CURSAPP_SUPABASE;
 const app=document.getElementById('adminApp');
 const $=(s,r=document)=>r.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let coverage=[],agents=[],map=null,layer=null,selected=null;
+let coverage=[],agents=[],map=null,layer=null,selected=null,initialized=false,initializing=null;
 
 async function req(path,options={}){return sb.request(path,options)}
 async function rpc(name,body={}){return req(`rpc/${name}`,{method:'POST',body:JSON.stringify(body)})}
+function withTimeout(promise,ms,message){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(message)),ms))])}
 
 function ensureAssets(){
   if(!document.querySelector('link[data-leaflet]')){
@@ -21,7 +22,7 @@ function ensureAssets(){
 async function loadLeaflet(){
   ensureAssets();
   if(window.L)return;
-  await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});
+  await withTimeout(new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-leaflet]');if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.dataset.leaflet='1';s.onload=resolve;s.onerror=()=>reject(new Error('No fue posible descargar el mapa'));document.head.appendChild(s)}),8000,'El mapa tardó demasiado en cargar.');
 }
 
 async function load(){
@@ -32,28 +33,23 @@ async function load(){
   coverage=Array.isArray(c)?c:[];agents=(Array.isArray(a)?a:[]).filter(x=>x.estado!=='inactivo');
 }
 
-function stats(rows){
-  const schools=rows.reduce((n,x)=>n+Number(x.total_colegios||0),0);
-  const active=rows.reduce((n,x)=>n+Number(x.colegios_con_cursapp||0),0);
-  const covered=rows.filter(x=>x.agent_id).length;
-  return {schools,active,covered,uncovered:rows.length-covered};
+async function ensureInitialized(){
+  if(initialized)return;
+  if(initializing)return initializing;
+  initializing=(async()=>{await loadLeaflet();await load();initialized=true})();
+  try{await initializing}finally{initializing=null}
 }
 
+function stats(rows){const schools=rows.reduce((n,x)=>n+Number(x.total_colegios||0),0);const active=rows.reduce((n,x)=>n+Number(x.colegios_con_cursapp||0),0);const covered=rows.filter(x=>x.agent_id).length;return{schools,active,covered,uncovered:rows.length-covered}}
 function color(row){if(row.agent_id)return '#6d28d9';if(Number(row.colegios_con_cursapp||0)>0)return '#16a34a';return '#94a3b8'}
 function radius(row){return Math.max(6,Math.min(18,6+Math.sqrt(Number(row.total_colegios||0))))}
-
-function filtered(){
-  const r=$('#territoryRegion')?.value||'';const c=$('#territoryCommune')?.value||'';
-  return coverage.filter(x=>(!r||x.region_codigo===r)&&(!c||x.comuna_codigo===c));
-}
+function filtered(){const r=$('#territoryRegion')?.value||'';const c=$('#territoryCommune')?.value||'';return coverage.filter(x=>(!r||x.region_codigo===r)&&(!c||x.comuna_codigo===c))}
 
 function drawMap(rows){
   if(!map){map=L.map('territoryMap',{preferCanvas:true}).setView([-33.45,-70.66],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:18}).addTo(map)}
-  if(layer)layer.remove();layer=L.layerGroup().addTo(map);
-  const bounds=[];
+  if(layer)layer.remove();layer=L.layerGroup().addTo(map);const bounds=[];
   rows.forEach(row=>{const lat=Number(row.latitud),lng=Number(row.longitud);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;bounds.push([lat,lng]);const marker=L.circleMarker([lat,lng],{radius:radius(row),color:color(row),fillColor:color(row),fillOpacity:.72,weight:2});marker.bindPopup(`<b>${esc(row.comuna_nombre)}</b><br>${Number(row.total_colegios||0)} colegios<br>${row.agent_nombre?'Agente: '+esc(row.agent_nombre):'Sin agente asignado'}`);marker.on('click',()=>selectCommune(row));marker.addTo(layer)});
-  if(bounds.length===1)map.setView(bounds[0],11);else if(bounds.length)map.fitBounds(bounds,{padding:[24,24],maxZoom:10});
-  setTimeout(()=>map.invalidateSize(),50);
+  if(bounds.length===1)map.setView(bounds[0],11);else if(bounds.length)map.fitBounds(bounds,{padding:[24,24],maxZoom:10});setTimeout(()=>map.invalidateSize(),50);
 }
 
 async function selectCommune(row){
@@ -63,8 +59,7 @@ async function selectCommune(row){
 }
 
 async function assign(){
-  if(!selected)return;const agent=$('#territoryAgent').value;if(!agent)return alert('Selecciona un agente');
-  const btn=$('#territorySave');btn.disabled=true;btn.textContent='Guardando…';
+  if(!selected)return;const agent=$('#territoryAgent').value;if(!agent)return alert('Selecciona un agente');const btn=$('#territorySave');btn.disabled=true;btn.textContent='Guardando…';
   try{await rpc('admin_assign_agent_territory',{p_agent_id:agent,p_region_codigo:selected.region_codigo,p_comuna_codigo:selected.comuna_codigo,p_notes:$('#territoryNotes').value.trim()||null});await load();renderData();const updated=coverage.find(x=>x.comuna_codigo===selected.comuna_codigo);if(updated)selectCommune(updated)}catch(e){alert('No fue posible asignar: '+(e.message||e))}finally{btn.disabled=false;btn.textContent='Asignar comuna'}
 }
 
@@ -75,12 +70,12 @@ function renderData(){
 }
 
 async function render(){
-  $('#viewTitle').textContent='Territorios y cobertura';$('#viewSub').textContent='Mapa comercial de colegios y comunas asignadas a agentes';
+  $('#viewTitle').textContent='Territorios y cobertura';$('#viewSub').textContent='Mapa comercial de colegios y comunas asignadas a agentes';app.innerHTML='<section class="panel"><p class="muted" style="font-weight:800">Cargando mapa y cobertura territorial…</p></section>';
+  try{await ensureInitialized()}catch(e){app.innerHTML=`<section class="panel"><div class="panelHead"><h2>No se pudo cargar el mapa</h2></div><p class="muted">${esc(e.message||e)}</p><button class="adminBtn" id="territoryRetry">Reintentar</button></section>`;$('#territoryRetry').onclick=()=>{initialized=false;render()};return}
   app.innerHTML=`<div class="territoryToolbar"><select id="territoryRegion"><option value="">Todas las regiones</option></select><select id="territoryCommune"><option value="">Todas las comunas</option></select></div><div id="territoryStats" class="territoryStats"></div><div class="territoryLegend"><span><i class="territoryDot" style="background:#6d28d9"></i>Asignada a agente</span><span><i class="territoryDot" style="background:#16a34a"></i>Presencia Cursapp sin territorio</span><span><i class="territoryDot" style="background:#94a3b8"></i>Sin cobertura</span></div><div class="territoryGrid"><div id="territoryMap" class="territoryMap"></div><aside class="territoryPanel"><div id="territorySelected"><h3>Cobertura por comuna</h3><p class="muted">Selecciona un punto del mapa o una comuna de la lista para revisar sus colegios y asignarla a un agente.</p></div><div id="territoryList" class="territoryList"></div></aside></div>`;
-  const regions=[...new Map(coverage.map(x=>[x.region_codigo,x.region_nombre])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));$('#territoryRegion').innerHTML+=[...regions].map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
+  const regions=[...new Map(coverage.map(x=>[x.region_codigo,x.region_nombre])).entries()].sort((a,b)=>a[1].localeCompare(b[1]));$('#territoryRegion').innerHTML+=regions.map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('');
   $('#territoryRegion').onchange=()=>{const r=$('#territoryRegion').value;const cs=coverage.filter(x=>!r||x.region_codigo===r).sort((a,b)=>a.comuna_nombre.localeCompare(b.comuna_nombre));$('#territoryCommune').innerHTML='<option value="">Todas las comunas</option>'+cs.map(x=>`<option value="${x.comuna_codigo}">${esc(x.comuna_nombre)}</option>`).join('');renderData()};$('#territoryCommune').onchange=renderData;renderData();
 }
 
-await loadLeaflet();await load();
 const old=window.Admin.go.bind(window.Admin);
-window.Admin.go=tab=>tab==='territorios'?render():old(tab);
+window.Admin.go=tab=>{if(tab==='territorios'){void render();return}old(tab)};
