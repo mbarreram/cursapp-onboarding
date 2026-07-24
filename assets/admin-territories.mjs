@@ -28,7 +28,7 @@ async function loadLeaflet(){
 async function load(){
   const [c,a]=await Promise.all([
     rpc('admin_territory_coverage'),
-    req('agentes?select=id,nombre,email,codigo,estado&order=nombre.asc')
+    rpc('admin_agents')
   ]);
   coverage=Array.isArray(c)?c:[];agents=(Array.isArray(a)?a:[]).filter(x=>x.estado!=='inactivo');
 }
