@@ -1,7 +1,16 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.24.1';
+  const APP_VERSION='2026.07.24.2';
   const RELOAD_KEY='cursapp_version_reload_v1';
+
+  function loadMiCursoXBrand(){
+    if(!document.querySelector('link[data-micursox-brand]')){
+      const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=1';css.dataset.micursoxBrand='1';document.head.appendChild(css);
+    }
+    if(!document.querySelector('script[data-micursox-brand]')){
+      const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=1';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
+    }
+  }
 
   function reloadOnce(version){
     try{
@@ -32,7 +41,7 @@
         });
       });
     }catch(error){
-      console.warn('No se pudo actualizar el Service Worker de Cursapp',error);
+      console.warn('No se pudo actualizar el Service Worker de MiCursoX',error);
     }
   }
 
@@ -52,6 +61,7 @@
     }catch(_){ }
   }
 
+  loadMiCursoXBrand();
   registerWorker();
   checkVersion();
   window.addEventListener('pageshow',event=>{
