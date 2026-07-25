@@ -1,1 +1,73 @@
-(function(){'use strict';if(window.__MICURSOX_BRAND_V1__)return;window.__MICURSOX_BRAND_V1__=true;const LOGO='/assets/brand/micursox-compact.svg';const ICON='/assets/brand/micursox-isotype.svg';const replacements=[[/\bCursapp\b/g,'MiCursoX'],[/\bCURSAPP\b/g,'MiCursoX'],[/Mercado Escolar/g,'MiCursoX Mercado']];function replaceText(root){const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){if(!n.nodeValue||!/(Cursapp|CURSAPP|Mercado Escolar)/.test(n.nodeValue))return NodeFilter.FILTER_REJECT;const p=n.parentElement;if(!p||/^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA)$/.test(p.tagName))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);nodes.forEach(n=>{let v=n.nodeValue;replacements.forEach(([r,t])=>v=v.replace(r,t));n.nodeValue=v})}function brandAnchor(el,compact){if(!el||el.dataset.micursoxBranded)return;el.dataset.micursoxBranded='1';el.innerHTML='<img src="'+LOGO+'" alt="MiCursoX">';el.classList.add('micursox-brand');if(compact)el.classList.add('compact');el.setAttribute('aria-label','MiCursoX inicio')}function apply(){document.documentElement.dataset.brand='micursox';document.title=document.title.replace(/Cursapp/gi,'MiCursoX');document.querySelectorAll('meta[name="description"]').forEach(m=>m.content=m.content.replace(/Cursapp/gi,'MiCursoX'));document.querySelectorAll('link[rel="apple-touch-icon"],link[rel="icon"]').forEach(l=>l.href=ICON);document.querySelectorAll('a.brand,.onbBrand,.sideBrand .brand,.landing-nav .brand,.footer .brand').forEach(el=>brandAnchor(el,true));document.querySelectorAll('.sideBrand').forEach(el=>{const logo=el.querySelector('.sideLogo');if(logo){logo.textContent='';logo.style.backgroundImage='url('+ICON+')';logo.style.backgroundSize='contain';logo.style.backgroundRepeat='no-repeat';logo.style.backgroundPosition='center'}const strong=el.querySelector('strong');if(strong)strong.textContent='MiCursoX';const span=el.querySelector('span');if(span&&/Cursapp|Admin Console|Panel agente/i.test(span.textContent))span.textContent=location.pathname.includes('admin')?'Admin':'Agentes'});document.querySelectorAll('.logo').forEach(el=>{if(el.textContent.trim()==='C'){el.textContent='';el.style.backgroundImage='url('+ICON+')';el.style.backgroundSize='contain';el.style.backgroundPosition='center';el.style.backgroundRepeat='no-repeat'}});replaceText(document.body)}document.addEventListener('DOMContentLoaded',apply);const observer=new MutationObserver(m=>{for(const x of m){x.addedNodes.forEach(n=>{if(n.nodeType===1){replaceText(n);if(n.matches?.('a.brand,.onbBrand'))brandAnchor(n,true)}else if(n.nodeType===3&&/(Cursapp|CURSAPP|Mercado Escolar)/.test(n.nodeValue||'')){let v=n.nodeValue;replacements.forEach(([r,t])=>v=v.replace(r,t));n.nodeValue=v}})}});document.addEventListener('DOMContentLoaded',()=>observer.observe(document.body,{childList:true,subtree:true}));})();
+(function(){
+  'use strict';
+  if(window.__MICURSOX_BRAND_V2__)return;
+  window.__MICURSOX_BRAND_V2__=true;
+  const LOGO='/assets/brand/micursox-compact.svg';
+  const ICON='/assets/brand/micursox-isotype.svg';
+  const replacements=[[/\bCursapp\b/g,'MiCursoX'],[/\bCURSAPP\b/g,'MiCursoX']];
+
+  function replaceText(root){
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
+      if(!n.nodeValue||!/(Cursapp|CURSAPP)/.test(n.nodeValue))return NodeFilter.FILTER_REJECT;
+      const p=n.parentElement;
+      if(!p||/^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA)$/.test(p.tagName))return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }});
+    const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+    nodes.forEach(n=>{let v=n.nodeValue;replacements.forEach(([r,t])=>v=v.replace(r,t));n.nodeValue=v});
+  }
+
+  function setFullLogo(el){
+    if(!el||el.dataset.micursoxLogo==='full')return;
+    el.dataset.micursoxLogo='full';
+    el.innerHTML='<img class="mx-app-wordmark" src="'+LOGO+'" alt="MiCursoX">';
+    el.classList.add('micursox-brand','mx-app-brand');
+    el.setAttribute('aria-label','MiCursoX');
+  }
+
+  function setIcon(el){
+    if(!el||el.dataset.micursoxLogo==='icon')return;
+    el.dataset.micursoxLogo='icon';
+    el.textContent='';
+    el.innerHTML='<img class="mx-app-isotype" src="'+ICON+'" alt="" aria-hidden="true">';
+    el.classList.add('mx-isotype-holder');
+  }
+
+  function brandStructuredHeaders(){
+    document.querySelectorAll('.onbBrand,a.brand,.appBrand,.headerBrand,.topBrand').forEach(el=>{
+      if(el.closest('.landing-header,.footer'))return;
+      setFullLogo(el);
+    });
+
+    document.querySelectorAll('header,nav,.topbar,.appHeader,.roleHeader,.profileHeader').forEach(scope=>{
+      scope.querySelectorAll('a,div').forEach(el=>{
+        if(el.dataset.micursoxLogo||el.children.length>3)return;
+        const text=(el.textContent||'').replace(/\s+/g,' ').trim();
+        if(!/^(Cursapp|MiCursoX)$/i.test(text))return;
+        if(el.closest('button'))return;
+        setFullLogo(el);
+      });
+    });
+
+    document.querySelectorAll('.logo,.sideLogo,.brandMark,.appLogo,.headerLogo').forEach(el=>{
+      const text=(el.textContent||'').trim();
+      if(text==='C'||text==='M'||el.classList.contains('sideLogo'))setIcon(el);
+    });
+  }
+
+  function apply(){
+    document.documentElement.dataset.brand='micursox';
+    document.title=document.title.replace(/Cursapp/gi,'MiCursoX');
+    document.querySelectorAll('meta[name="description"]').forEach(m=>m.content=m.content.replace(/Cursapp/gi,'MiCursoX'));
+    document.querySelectorAll('link[rel="apple-touch-icon"],link[rel="icon"]').forEach(l=>l.href=ICON);
+    brandStructuredHeaders();
+    replaceText(document.body);
+  }
+
+  function start(){
+    apply();
+    const observer=new MutationObserver(()=>apply());
+    observer.observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
