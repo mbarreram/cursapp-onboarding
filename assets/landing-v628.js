@@ -1,6 +1,11 @@
-
 (function(){
   const btn = document.querySelector('[data-menu-btn]');
   const menu = document.querySelector('[data-mobile-menu]');
   if(btn && menu){ btn.addEventListener('click', ()=> menu.classList.toggle('open')); }
+  if(!document.querySelector('link[data-micursox-brand]')){
+    const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=1';css.dataset.micursoxBrand='1';document.head.appendChild(css);
+  }
+  if(!document.querySelector('script[data-micursox-brand]')){
+    const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=1';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
+  }
 })();
