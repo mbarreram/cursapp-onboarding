@@ -3,18 +3,19 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>Cursapp · Admin Console</title>
+  <title>MiCursoX · Admin</title>
   <link rel="stylesheet" href="assets/admin.css?v=15"/>
   <link rel="stylesheet" href="assets/admin-addons.css?v=25"/>
   <link rel="stylesheet" href="assets/admin-mobile-fixes.css?v=2"/>
+  <link rel="stylesheet" href="/assets/micursox-brand.css?v=1"/>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
+  <link rel="apple-touch-icon" href="/assets/brand/micursox-isotype.svg">
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=55">
 </head>
 <body>
   <div class="adminShell">
     <aside class="adminSide">
-      <div class="sideBrand"><div class="sideLogo">C</div><div><strong>Cursapp</strong><span>Admin Console</span></div></div>
+      <div class="sideBrand"><div class="sideLogo"></div><div><strong>MiCursoX</strong><span>Admin</span></div></div>
       <nav class="sideNav" aria-label="Panel administrador">
         <button class="sideItem active" data-tab="dashboard">🏠 Dashboard</button>
         <button class="sideItem" data-tab="logs">🧾 Logs de movimientos</button>
@@ -26,13 +27,13 @@
         <button class="sideItem" data-tab="territorios">🗺️ Territorios y cobertura</button>
         <button class="sideItem" data-tab="colegios">🏫 Colegios y cursos</button>
         <button class="sideItem" data-tab="campanas">📌 Campañas</button>
-        <button class="sideItem" data-tab="mercado">🛍️ Mercado Escolar</button>
+        <button class="sideItem" data-tab="mercado">🛍️ MiCursoX Mercado</button>
         <button class="sideItem" data-tab="monetizacion">💼 Monetización</button>
         <button class="sideItem" data-tab="alertas">🚨 Alertas y banners</button>
         <button class="sideItem" data-tab="auditoria">🛡️ Auditoría</button>
       </nav>
-      <div class="sideHelp"><strong>¿Necesitas ayuda?</strong><p>Panel interno operacional de Cursapp.</p><button onclick="Admin.go('tickets')">Ir a soporte ›</button></div>
-      <div class="sideUser"><div class="avatar">C</div><div><strong>Admin Cursapp</strong><span>Super Administrador</span></div></div>
+      <div class="sideHelp"><strong>¿Necesitas ayuda?</strong><p>Panel interno operacional de MiCursoX.</p><button onclick="Admin.go('tickets')">Ir a soporte ›</button></div>
+      <div class="sideUser"><div class="avatar">MX</div><div><strong>Admin MiCursoX</strong><span>Super Administrador</span></div></div>
     </aside>
     <main class="adminMain">
       <header class="adminTop">
@@ -51,5 +52,6 @@
   <script type="module" src="/assets/admin-ui-layer-fix.mjs?v=1"></script>
   <script defer src="assets/admin-push-dispatch.js?v=1"></script>
   <script defer src="/assets/cursapp-platform.js?v=55"></script>
+  <script defer src="/assets/micursox-brand.js?v=1"></script>
 </body>
 </html>
