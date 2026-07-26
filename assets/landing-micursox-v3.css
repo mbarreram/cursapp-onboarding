@@ -1,5 +1,11 @@
 /* MiCursoX landing brand prominence */
 .landing-header .micursox-brand img{width:365px!important;max-height:84px!important}
+.footer .footer-brand>.micursox-brand img{width:300px!important;height:auto!important;max-width:min(300px,78vw)!important;max-height:none!important}
+.social-links a:before{display:none!important;content:none!important}
+.social-links a{font-size:initial!important;display:grid!important;place-items:center!important}
+.social-links a svg{display:block!important;width:30px!important;height:30px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+.social-links a svg .social-fill{fill:currentColor!important;stroke:none!important}
+.social-links a[aria-label="Facebook"] svg{fill:currentColor!important;stroke:none!important}
 @media(max-width:980px){.landing-header .micursox-brand img{width:310px!important;max-height:76px!important}}
-@media(max-width:640px){.landing-header .landing-nav{min-height:104px!important}.landing-header .micursox-brand img{width:270px!important;max-height:72px!important}}
-@media(max-width:390px){.landing-header .micursox-brand img{width:245px!important;max-height:68px!important}}
+@media(max-width:640px){.landing-header .landing-nav{min-height:104px!important}.landing-header .micursox-brand img{width:290px!important;max-width:76vw!important;max-height:78px!important}.footer .footer-brand>.micursox-brand img{width:260px!important;max-width:72vw!important}}
+@media(max-width:390px){.landing-header .micursox-brand img{width:265px!important;max-height:72px!important}.footer .footer-brand>.micursox-brand img{width:235px!important}}
