@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>Cursapp · Mercado Escolar</title>
+<title>MiCursoX · Mercado Escolar</title>
 <link rel="stylesheet" href="assets/mercado-escolar.css?v=41"/>
 <link rel="stylesheet" href="assets/mercado-production-v38.css?v=53"/>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/assets/icons/cursapp-icon-192.png">
+  <link rel="apple-touch-icon" href="/assets/brand/micursox-isotype.svg">
   <link rel="stylesheet" href="/assets/cursapp-platform.css?v=583">
+  <link rel="stylesheet" href="/assets/micursox-components.css?v=1">
 </head>
 <body class="market-v8">
 <main class="marketApp">
   <header class="marketHeader">
-    <div class="brandIcon">🛍️</div>
+    <div class="brandIcon mx-market-brand-icon" aria-label="MiCursoX"><img src="/assets/brand/micursox-isotype.svg" alt="MiCursoX"></div>
     <div><h1>Mercado Escolar</h1><p>Comunidad registrada · compra, venta e intercambio</p></div>
     <div class="marketHeaderActions">
       <button class="headerIconBtn chatHeaderBtn" id="btnConversations" aria-label="Conversaciones">💬<em id="conversationBadge" style="display:none">0</em></button>
@@ -77,7 +78,7 @@
   <section id="view-publicar" class="view">
     <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Publicar aviso</h2></div>
     <section class="panel">
-      <p class="muted">Solo artículos escolares permitidos. Cursapp no procesa pagos entre apoderados.</p>
+      <p class="muted">Solo artículos escolares permitidos. MiCursoX no procesa pagos entre apoderados.</p>
       <form id="publishForm" class="formGrid">
         <label>Fotos reales del producto<input id="pubPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
         <div id="photoPreview" class="photoPreview"><p>Agrega hasta 3 fotos reales. La primera será la principal. Puedes seleccionar una o varias fotos. Máx. 1 MB c/u.</p></div>
@@ -87,12 +88,12 @@
         <label>Precio<input id="pubPrice" type="number" min="0" value="0"></label>
         <section class="contactPrefsBox">
           <h3>Métodos de contacto</h3>
-          <label class="contactCheck"><input id="pubChatEnabled" type="checkbox" checked> Chat interno Cursapp <small>Recomendado para cuidar privacidad</small></label>
+          <label class="contactCheck"><input id="pubChatEnabled" type="checkbox" checked> Chat interno MiCursoX <small>Recomendado para cuidar privacidad</small></label>
           <label class="contactCheck"><input id="pubWhatsappConsent" type="checkbox"> Permitir contacto por WhatsApp</label>
           <label class="whatsappField">WhatsApp contacto<input id="pubWhatsapp" type="tel" placeholder="Ej: 56912345678"></label>
           <p class="contactPrivacyHint">Tu número solo se usará si autorizas WhatsApp. Si no, los interesados contactan por chat interno.</p>
         </section>
-        <label>Visibilidad<select id="pubScope"><option value="colegio">Solo mi colegio</option><option value="cercanos">Colegios cercanos</option><option value="comuna">Mi comuna</option><option value="todo">Todo Cursapp</option></select></label>
+        <label>Visibilidad<select id="pubScope"><option value="colegio">Solo mi colegio</option><option value="cercanos">Colegios cercanos</option><option value="comuna">Mi comuna</option><option value="todo">Todo MiCursoX</option></select></label>
         <label>Descripción<textarea id="pubDesc" required placeholder="Describe estado, talla, año, etc."></textarea></label>
         <button class="primary" type="submit">Publicar artículo</button>
       </form>
@@ -136,7 +137,7 @@
     <button data-view="explorar"><span>🔎</span><small>Explorar</small></button>
     <button class="center" data-view="publicar"><span>＋</span><small>Publicar</small></button>
     <button data-view="mis"><span>📦</span><small>Mis avisos</small></button>
-    <a href="/apoderado.html" class="returnCursapp"><span>↩️</span><small>Cursapp</small></a>
+    <a href="/apoderado.html" class="returnCursapp"><span>↩️</span><small>MiCursoX</small></a>
   </nav>
 </main>
 <div id="modal"></div><div id="toast"></div>
