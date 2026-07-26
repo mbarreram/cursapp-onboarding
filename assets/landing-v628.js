@@ -6,14 +6,14 @@
   if(!document.querySelector('link[data-micursox-landing-v3]')){
     const landingCss=document.createElement('link');
     landingCss.rel='stylesheet';
-    landingCss.href='/assets/landing-micursox-v3.css?v=1';
+    landingCss.href='/assets/landing-micursox-v3.css?v=2';
     landingCss.dataset.micursoxLandingV3='1';
     document.head.appendChild(landingCss);
   }
   if(!document.querySelector('link[data-micursox-brand]')){
-    const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=3';css.dataset.micursoxBrand='1';document.head.appendChild(css);
+    const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=4';css.dataset.micursoxBrand='1';document.head.appendChild(css);
   }
   if(!document.querySelector('script[data-micursox-brand]')){
-    const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=3';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
+    const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=4';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
   }
 })();
