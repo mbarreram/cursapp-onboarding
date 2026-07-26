@@ -1,14 +1,14 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.26.1';
+  const APP_VERSION='2026.07.26.2';
   const RELOAD_KEY='cursapp_version_reload_v1';
 
   function loadMiCursoXBrand(){
     if(!document.querySelector('link[data-micursox-brand]')){
-      const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=3';css.dataset.micursoxBrand='1';document.head.appendChild(css);
+      const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=4';css.dataset.micursoxBrand='1';document.head.appendChild(css);
     }
     if(!document.querySelector('script[data-micursox-brand]')){
-      const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=3';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
+      const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=4';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
     }
   }
 
