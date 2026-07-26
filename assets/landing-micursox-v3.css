@@ -1,0 +1,5 @@
+/* MiCursoX landing brand prominence */
+.landing-header .micursox-brand img{width:365px!important;max-height:84px!important}
+@media(max-width:980px){.landing-header .micursox-brand img{width:310px!important;max-height:76px!important}}
+@media(max-width:640px){.landing-header .landing-nav{min-height:104px!important}.landing-header .micursox-brand img{width:270px!important;max-height:72px!important}}
+@media(max-width:390px){.landing-header .micursox-brand img{width:245px!important;max-height:68px!important}}
