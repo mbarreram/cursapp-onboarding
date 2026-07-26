@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  if(window.__MICURSOX_BRAND_V2__)return;
-  window.__MICURSOX_BRAND_V2__=true;
+  if(window.__MICURSOX_BRAND_V3__)return;
+  window.__MICURSOX_BRAND_V3__=true;
   const LOGO='/assets/brand/micursox-compact.svg';
   const ICON='/assets/brand/micursox-isotype.svg';
   const replacements=[[/\bCursapp\b/g,'MiCursoX'],[/\bCURSAPP\b/g,'MiCursoX']];
@@ -29,8 +29,32 @@
     if(!el||el.dataset.micursoxLogo==='icon')return;
     el.dataset.micursoxLogo='icon';
     el.textContent='';
-    el.innerHTML='<img class="mx-app-isotype" src="'+ICON+'" alt="" aria-hidden="true">';
-    el.classList.add('mx-isotype-holder');
+    el.innerHTML='<img class="mx-app-isotype" src="'+ICON+'" alt="MiCursoX">';
+    el.classList.add('mx-isotype-holder','mx-brand-presence');
+    el.setAttribute('aria-label','MiCursoX');
+  }
+
+  function isTopPresenceCandidate(el){
+    if(!el||el.closest('.landing-header,.footer,.bottom-nav,.bottomNav'))return false;
+    if(el.matches('button,a,input,select,textarea'))return false;
+    const r=el.getBoundingClientRect();
+    if(r.top>320||r.bottom<0||r.width<34||r.height<34||r.width>130||r.height>130)return false;
+    return true;
+  }
+
+  function brandPresenceMarks(){
+    const selectors='[class*="avatar" i],[class*="profilePic" i],[class*="profile-pic" i],[class*="userIcon" i],[class*="user-icon" i],[class*="marketLogo" i],[class*="market-logo" i],[class*="brandIcon" i],[class*="brand-icon" i]';
+    document.querySelectorAll(selectors).forEach(el=>{
+      if(!isTopPresenceCandidate(el)||el.dataset.micursoxLogo)return;
+      const text=(el.textContent||'').replace(/\s+/g,'').trim();
+      if(/^[A-ZÁÉÍÓÚÑ]$/i.test(text)||/[🛍️🎒🏪]/u.test(text)||el.className.toString().toLowerCase().includes('market'))setIcon(el);
+    });
+
+    document.querySelectorAll('header div,header span,.appHeader div,.roleHeader div,.profileHeader div,.marketHeader div,.market-header div').forEach(el=>{
+      if(!isTopPresenceCandidate(el)||el.dataset.micursoxLogo||el.children.length>1)return;
+      const text=(el.textContent||'').replace(/\s+/g,'').trim();
+      if(/^[A-ZÁÉÍÓÚÑ]$/i.test(text)||/^[🛍️🎒🏪]$/u.test(text))setIcon(el);
+    });
   }
 
   function brandStructuredHeaders(){
@@ -53,6 +77,8 @@
       const text=(el.textContent||'').trim();
       if(text==='C'||text==='M'||el.classList.contains('sideLogo'))setIcon(el);
     });
+
+    brandPresenceMarks();
   }
 
   function apply(){
@@ -66,8 +92,9 @@
 
   function start(){
     apply();
-    const observer=new MutationObserver(()=>apply());
+    const observer=new MutationObserver(()=>requestAnimationFrame(apply));
     observer.observe(document.body,{childList:true,subtree:true});
+    window.addEventListener('load',apply,{once:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
