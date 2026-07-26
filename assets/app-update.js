@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.26.3';
+  const APP_VERSION='2026.07.26.4';
   const RELOAD_KEY='cursapp_version_reload_v1';
 
   function loadMiCursoXBrand(){
@@ -8,7 +8,7 @@
       const css=document.createElement('link');css.rel='stylesheet';css.href='/assets/micursox-brand.css?v=4';css.dataset.micursoxBrand='1';document.head.appendChild(css);
     }
     if(!document.querySelector('link[data-micursox-components]')){
-      const components=document.createElement('link');components.rel='stylesheet';components.href='/assets/micursox-components.css?v=1';components.dataset.micursoxComponents='1';document.head.appendChild(components);
+      const components=document.createElement('link');components.rel='stylesheet';components.href='/assets/micursox-components.css?v=2';components.dataset.micursoxComponents='1';document.head.appendChild(components);
     }
     if(!document.querySelector('script[data-micursox-brand]')){
       const js=document.createElement('script');js.src='/assets/micursox-brand.js?v=4';js.defer=true;js.dataset.micursoxBrand='1';document.head.appendChild(js);
