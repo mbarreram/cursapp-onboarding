@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  if(window.__MICURSOX_BRAND_V3__)return;
-  window.__MICURSOX_BRAND_V3__=true;
+  if(window.__MICURSOX_BRAND_V4__)return;
+  window.__MICURSOX_BRAND_V4__=true;
   const LOGO='/assets/brand/micursox-compact.svg';
   const ICON='/assets/brand/micursox-isotype.svg';
   const replacements=[[/\bCursapp\b/g,'MiCursoX'],[/\bCURSAPP\b/g,'MiCursoX']];
@@ -26,7 +26,7 @@
   }
 
   function setIcon(el){
-    if(!el||el.dataset.micursoxLogo==='icon')return;
+    if(!el)return;
     el.dataset.micursoxLogo='icon';
     el.textContent='';
     el.innerHTML='<img class="mx-app-isotype" src="'+ICON+'" alt="MiCursoX">';
@@ -34,24 +34,31 @@
     el.setAttribute('aria-label','MiCursoX');
   }
 
-  function isTopPresenceCandidate(el){
-    if(!el||el.closest('.landing-header,.footer,.bottom-nav,.bottomNav'))return false;
-    if(el.matches('button,a,input,select,textarea'))return false;
+  function isTopArea(el){
+    if(!el||el.closest('.landing-header,.footer,.bottom-nav,.bottomNav,.bottom-navigation'))return false;
+    const header=el.closest('header,.topbar,.appHeader,.app-header,.roleHeader,.role-header,.profileHeader,.profile-header,.marketHeader,.market-header,.header');
+    if(header)return true;
     const r=el.getBoundingClientRect();
-    if(r.top>320||r.bottom<0||r.width<34||r.height<34||r.width>130||r.height>130)return false;
-    return true;
+    return r.bottom>0&&r.top<260;
   }
 
   function brandPresenceMarks(){
-    const selectors='[class*="avatar" i],[class*="profilePic" i],[class*="profile-pic" i],[class*="userIcon" i],[class*="user-icon" i],[class*="marketLogo" i],[class*="market-logo" i],[class*="brandIcon" i],[class*="brand-icon" i]';
+    const selectors=[
+      '.avatar','.user-avatar','.profile-avatar','.profileAvatar','.profile-pic','.profilePic',
+      '.user-icon','.userIcon','.header-avatar','.headerAvatar','.role-avatar','.roleAvatar',
+      '.market-logo','.marketLogo','.market-icon','.marketIcon','.brand-icon','.brandIcon',
+      '[class*="avatar" i]','[class*="market-logo" i]','[class*="marketLogo" i]'
+    ].join(',');
+
     document.querySelectorAll(selectors).forEach(el=>{
-      if(!isTopPresenceCandidate(el)||el.dataset.micursoxLogo)return;
+      if(!isTopArea(el))return;
       const text=(el.textContent||'').replace(/\s+/g,'').trim();
-      if(/^[A-ZÁÉÍÓÚÑ]$/i.test(text)||/[🛍️🎒🏪]/u.test(text)||el.className.toString().toLowerCase().includes('market'))setIcon(el);
+      const cls=String(el.className||'').toLowerCase();
+      if(/^[A-ZÁÉÍÓÚÑ]$/i.test(text)||/[🛍️🎒🏪]/u.test(text)||cls.includes('avatar')||cls.includes('market'))setIcon(el);
     });
 
-    document.querySelectorAll('header div,header span,.appHeader div,.roleHeader div,.profileHeader div,.marketHeader div,.market-header div').forEach(el=>{
-      if(!isTopPresenceCandidate(el)||el.dataset.micursoxLogo||el.children.length>1)return;
+    document.querySelectorAll('header div,header span,.topbar div,.appHeader div,.app-header div,.roleHeader div,.role-header div,.profileHeader div,.profile-header div,.marketHeader div,.market-header div').forEach(el=>{
+      if(!isTopArea(el)||el.matches('button,a,input,select,textarea')||el.children.length>1)return;
       const text=(el.textContent||'').replace(/\s+/g,'').trim();
       if(/^[A-ZÁÉÍÓÚÑ]$/i.test(text)||/^[🛍️🎒🏪]$/u.test(text))setIcon(el);
     });
@@ -63,12 +70,11 @@
       setFullLogo(el);
     });
 
-    document.querySelectorAll('header,nav,.topbar,.appHeader,.roleHeader,.profileHeader').forEach(scope=>{
+    document.querySelectorAll('header,nav,.topbar,.appHeader,.app-header,.roleHeader,.role-header,.profileHeader,.profile-header').forEach(scope=>{
       scope.querySelectorAll('a,div').forEach(el=>{
-        if(el.dataset.micursoxLogo||el.children.length>3)return;
+        if(el.children.length>3)return;
         const text=(el.textContent||'').replace(/\s+/g,' ').trim();
-        if(!/^(Cursapp|MiCursoX)$/i.test(text))return;
-        if(el.closest('button'))return;
+        if(!/^(Cursapp|MiCursoX)$/i.test(text)||el.closest('button'))return;
         setFullLogo(el);
       });
     });
@@ -92,9 +98,16 @@
 
   function start(){
     apply();
-    const observer=new MutationObserver(()=>requestAnimationFrame(apply));
-    observer.observe(document.body,{childList:true,subtree:true});
+    let scheduled=false;
+    const observer=new MutationObserver(()=>{
+      if(scheduled)return;
+      scheduled=true;
+      requestAnimationFrame(()=>{scheduled=false;apply()});
+    });
+    observer.observe(document.body,{childList:true,subtree:true,characterData:true});
     window.addEventListener('load',apply,{once:true});
+    setTimeout(apply,400);
+    setTimeout(apply,1200);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
