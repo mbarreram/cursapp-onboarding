@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.26.4';
+  const APP_VERSION='2026.07.26.5';
   const RELOAD_KEY='cursapp_version_reload_v1';
 
   function loadMiCursoXBrand(){
