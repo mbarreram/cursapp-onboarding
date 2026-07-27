@@ -1,0 +1,247 @@
+/* MiCursoX desktop v2
+   Overrides only apply to desktop/tablet landscape. Mobile remains untouched. */
+@media (min-width:900px){
+  html,body{min-width:0!important}
+
+  /* Onboarding */
+  body.onboardingPremium .onbAppHeader .topbar{
+    width:min(1180px,calc(100% - 64px))!important;
+    max-width:1180px!important;
+    min-height:88px!important;
+    margin:0 auto!important;
+    padding:12px 24px!important;
+  }
+  body.onboardingPremium main.container#app{
+    width:min(1040px,calc(100% - 64px))!important;
+    max-width:1040px!important;
+    margin:0 auto!important;
+    padding:34px 0 72px!important;
+  }
+  body.onboardingPremium #app>.card,
+  body.onboardingPremium #app>.onbHeroCard,
+  body.onboardingPremium #app>.onbFormCard{
+    width:100%!important;
+    max-width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+  body.onboardingPremium .onbHeroCard{
+    padding:28px 34px!important;
+  }
+  body.onboardingPremium .onbFormCard{
+    padding:30px 34px!important;
+  }
+  body.onboardingPremium .onbFieldGrid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:20px 28px!important;
+    width:100%!important;
+  }
+  body.onboardingPremium .onbInputGroup,
+  body.onboardingPremium .onbSelectShell,
+  body.onboardingPremium .onbSelectShell select,
+  body.onboardingPremium input,
+  body.onboardingPremium select,
+  body.onboardingPremium textarea{
+    width:100%!important;
+    max-width:none!important;
+  }
+  body.onboardingPremium .onbRangeGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  body.onboardingPremium .wizardWrap{
+    max-width:760px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+
+  /* Shared role shell */
+  body.cursapp-app-shell{
+    --mx-side:230px;
+    background:#f5f7fb!important;
+  }
+  body.cursapp-app-shell>header,
+  body.cursapp-app-shell>.tesPremiumHeader{
+    position:sticky!important;
+    top:0!important;
+    left:auto!important;
+    width:calc(100% - var(--mx-side))!important;
+    max-width:none!important;
+    margin-left:var(--mx-side)!important;
+    z-index:50000!important;
+  }
+  body.cursapp-app-shell>header .topbar,
+  body.cursapp-app-shell .tesHeaderInner,
+  body.apoderado-ui-v24 header .topbar{
+    width:min(1180px,calc(100% - 56px))!important;
+    max-width:1180px!important;
+    min-height:88px!important;
+    margin:0 auto!important;
+    padding:12px 20px!important;
+  }
+  body.cursapp-app-shell>main.container,
+  body.apoderado-ui-v24>main.container{
+    width:min(1180px,calc(100% - var(--mx-side) - 64px))!important;
+    max-width:1180px!important;
+    margin-left:calc(var(--mx-side) + max(32px,(100vw - var(--mx-side) - 1180px)/2))!important;
+    margin-right:0!important;
+    padding:34px 0 80px!important;
+  }
+  body.cursapp-app-shell #app,
+  body.cursapp-app-shell #app>*{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  body.cursapp-app-shell .bottomNav,
+  body.apoderado-ui-v24 .bottomNav{
+    position:fixed!important;
+    top:0!important;
+    bottom:0!important;
+    left:0!important;
+    right:auto!important;
+    width:var(--mx-side)!important;
+    max-width:var(--mx-side)!important;
+    height:100vh!important;
+    min-height:100vh!important;
+    transform:none!important;
+    margin:0!important;
+    padding:112px 16px 24px!important;
+    border-radius:0!important;
+    border:0!important;
+    border-right:1px solid #e2e8f0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:10px!important;
+    background:#fff!important;
+    box-shadow:10px 0 34px rgba(15,23,42,.06)!important;
+    z-index:49000!important;
+  }
+  body.cursapp-app-shell .bottomNav .navItem,
+  body.cursapp-app-shell .bottomNav .marketBottomTab,
+  body.apoderado-ui-v24 .bottomNav .navItem,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:62px!important;
+    display:grid!important;
+    grid-template-columns:34px minmax(0,1fr)!important;
+    align-items:center!important;
+    justify-items:start!important;
+    gap:12px!important;
+    padding:10px 14px!important;
+    border-radius:16px!important;
+    text-align:left!important;
+  }
+  body.cursapp-app-shell .bottomNav .nav-label,
+  body.cursapp-app-shell .bottomNav .tesNavLabel,
+  body.cursapp-app-shell .bottomNav .navItem>span:last-child{
+    display:block!important;
+    font-size:15px!important;
+    line-height:1.2!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+  body.apoderado-ui-v24 #menuDropdown{
+    top:88px!important;
+    right:24px!important;
+    width:min(390px,calc(100vw - 280px))!important;
+  }
+
+  /* Dashboard cards: use the available width without changing component logic */
+  body.cursapp-apoderado #app>.apoHomeV40,
+  body.cursapp-apoderado #app>.apoHome,
+  body.cursapp-apoderado #app>.homeWrap,
+  body.cursapp-presidente #app>*,
+  body.cursapp-tesorero #app>*{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  body.cursapp-apoderado #app .apoQuickAccessList,
+  body.cursapp-apoderado #app .quickAccessList{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:16px!important;
+  }
+  body.cursapp-app-shell table{width:100%!important}
+
+  /* Mercado Escolar */
+  body.market-v8 .marketApp{
+    width:min(1280px,calc(100% - 72px))!important;
+    max-width:1280px!important;
+    margin:0 auto!important;
+    padding:0 0 96px!important;
+  }
+  body.market-v8 .marketHeader{
+    width:100%!important;
+    max-width:none!important;
+    min-height:96px!important;
+    padding:18px 30px!important;
+  }
+  body.market-v8 .view,
+  body.market-v8 .view.active{
+    width:100%!important;
+    max-width:none!important;
+  }
+  body.market-v8 .searchRow{
+    width:100%!important;
+    max-width:none!important;
+    margin:22px 0!important;
+  }
+  body.market-v8 .categoryRow{
+    width:100%!important;
+    max-width:none!important;
+    justify-content:center!important;
+    gap:26px!important;
+    overflow:visible!important;
+  }
+  body.market-v8 .heroRetail{
+    width:100%!important;
+    max-width:none!important;
+    min-height:260px!important;
+    margin:28px 0 20px!important;
+    padding:34px 42px!important;
+  }
+  body.market-v8 .locationCard,
+  body.market-v8 .creditPromoCard,
+  body.market-v8 .sectionHead{
+    width:100%!important;
+    max-width:none!important;
+  }
+  body.market-v8 .productGridV6,
+  body.market-v8 .recommendationGrid,
+  body.market-v8 #marketGrid,
+  body.market-v8 #marketRecentList{
+    width:100%!important;
+    max-width:none!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:22px!important;
+    overflow:visible!important;
+  }
+  body.market-v8 .bottomBar{
+    position:sticky!important;
+    bottom:18px!important;
+    width:min(760px,calc(100% - 64px))!important;
+    max-width:760px!important;
+    margin:30px auto 0!important;
+    transform:none!important;
+  }
+
+  /* Admin */
+  .adminShell{grid-template-columns:280px minmax(0,1fr)!important}
+  .adminSide{width:280px!important}
+  .adminMain{min-width:0!important}
+  .adminTop,.adminContent{width:100%!important;max-width:1600px!important;margin-inline:auto!important}
+}
+
+@media (min-width:1440px){
+  body.cursapp-app-shell{--mx-side:250px}
+  body.market-v8 .marketApp{max-width:1400px!important}
+  body.market-v8 .productGridV6,
+  body.market-v8 .recommendationGrid,
+  body.market-v8 #marketGrid,
+  body.market-v8 #marketRecentList{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+}
