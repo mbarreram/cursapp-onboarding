@@ -1,4 +1,4 @@
-const APP_VERSION='2026.07.27.9';
+const APP_VERSION='2026.07.27.10';
 const CACHE=`cursapp-${APP_VERSION}`;
 
 self.addEventListener('install',event=>{
@@ -15,7 +15,6 @@ self.addEventListener('activate',event=>{
   })());
 });
 
-// HTML, JS, CSS y manifiestos siempre se solicitan a red para evitar shells obsoletos.
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET')return;
