@@ -3,15 +3,6 @@
   const menu=document.querySelector('[data-mobile-menu]');
   if(btn&&menu)btn.addEventListener('click',()=>menu.classList.toggle('open'));
 
-  document.querySelectorAll('a[href^="/recursos/"]').forEach(a=>{
-    const href=a.getAttribute('href')||'';
-    a.setAttribute('href',href.replace(/^\/recursos\//,'/recursos/index.html'));
-  });
-  document.querySelectorAll('a[href^="/legal/"]').forEach(a=>{
-    const href=a.getAttribute('href')||'';
-    a.setAttribute('href',href.replace(/^\/legal\//,'/legal/index.html'));
-  });
-
   if(!document.querySelector('link[data-micursox-landing-v3]')){
     const landingCss=document.createElement('link');
     landingCss.rel='stylesheet';
