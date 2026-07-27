@@ -1,33 +1,38 @@
-/
-  Cache-Control: no-cache, no-store, must-revalidate
+/*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
 
 /*.html
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /onboarding/*
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /admin-console/*
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /sw.js
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
   Service-Worker-Allowed: /
 
 /manifest.webmanifest
-  Cache-Control: no-cache, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /version.json
-  Cache-Control: no-cache, no-store, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /assets/*.js
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /assets/*.mjs
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/assets/*.css
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /onboarding/assets/*.js
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
 /admin-console/assets/*.js
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
