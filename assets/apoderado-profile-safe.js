@@ -4,13 +4,14 @@
   window.__MICURSOX_APODERADO_PROFILE_SAFE__=true;
 
   const read=(key,fallback)=>{try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback;}catch(_){return fallback;}};
-  const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt',"'":'&#39;','"':'&quot;'}[c]));
+  const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const first=(v)=>String(v||'').trim().split(/\s+/).filter(Boolean)[0]||'';
   let lastTouch=0;
 
   function profileData(){
     const session=read('cursapp_session_v1',{})||{};
-    const stored=read('cursapp_active_profile_v1',{})||{};
+    const storedRaw=read('cursapp_active_profile_v1',{})||{};
+    const stored=(storedRaw&&typeof storedRaw==='object')?storedRaw:{};
     const alumno=read('cursapp_alumno_activo_v1',{})||{};
     const course=read('cursapp_course_v1',{})||{};
     const editable=read('cursapp_profile_editable_v1',{})||{};
@@ -73,27 +74,21 @@
 
   function capture(ev){
     if(!isProfileEvent(ev))return;
-    if(ev.type==='touchend')lastTouch=Date.now();
-    if(ev.type==='click'&&Date.now()-lastTouch<700)return;
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation?.();
+    if(ev.type==='touchend') lastTouch=Date.now();
+    if(ev.type==='click'&&Date.now()-lastTouch<900) return;
     const menu=document.getElementById('menuDropdown');
     if(menu)menu.style.display='none';
-    render();
+    try{render();}catch(error){
+      console.error('MiCursoX: perfil integrado no pudo renderizar',error);
+      const app=document.getElementById('app');
+      if(app) app.innerHTML='<section class="apoProfileCard"><h2>Mi perfil</h2><p>No fue posible cargar todos los datos. Vuelve a Inicio y reintenta.</p></section>';
+    }
   }
 
   document.addEventListener('touchend',capture,true);
   document.addEventListener('click',capture,true);
-
-  window.addEventListener('load',()=>{
-    setTimeout(()=>{
-      const app=document.getElementById('app');
-      if(app&&!app.children.length&&!String(app.textContent||'').trim()&&typeof window.go==='function'){
-        try{window.go('home');}catch(_){}
-      }
-    },8500);
-  });
-
   window.MICURSOX_OPEN_SAFE_PROFILE=render;
 })();
