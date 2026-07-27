@@ -1,0 +1,232 @@
+/* MiCursoX desktop v3
+   Conservative desktop layout. Mobile remains untouched. */
+@media (min-width:1024px){
+  html,body{min-width:0!important;overflow-x:hidden!important}
+
+  /* Onboarding: wide but controlled, without changing the mobile flow. */
+  body.onboardingPremium .onbAppHeader .topbar{
+    width:min(1120px,calc(100% - 64px))!important;
+    max-width:1120px!important;
+    margin-inline:auto!important;
+  }
+  body.onboardingPremium main.container#app{
+    width:min(980px,calc(100% - 64px))!important;
+    max-width:980px!important;
+    margin-inline:auto!important;
+    padding:32px 0 72px!important;
+  }
+  body.onboardingPremium #app>.card,
+  body.onboardingPremium #app>.onbHeroCard,
+  body.onboardingPremium #app>.onbFormCard{
+    width:100%!important;
+    max-width:100%!important;
+    margin-inline:0!important;
+  }
+  body.onboardingPremium .onbFieldGrid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:20px 24px!important;
+  }
+  body.onboardingPremium .onbRangeGrid{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:14px!important;
+  }
+
+  /* Roles: keep the approved top header and horizontal navigation. */
+  body.cursapp-app-shell{--mx-side:0!important;background:#f5f7fb!important}
+  body.cursapp-app-shell>header,
+  body.cursapp-app-shell>.tesPremiumHeader{
+    position:sticky!important;
+    top:0!important;
+    left:0!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    z-index:50000!important;
+  }
+  body.cursapp-app-shell>header .topbar,
+  body.cursapp-app-shell .tesHeaderInner,
+  body.apoderado-ui-v24 header .topbar{
+    width:min(1180px,calc(100% - 64px))!important;
+    max-width:1180px!important;
+    min-height:88px!important;
+    margin-inline:auto!important;
+    padding:12px 18px!important;
+  }
+  body.cursapp-app-shell>main.container,
+  body.apoderado-ui-v24>main.container{
+    width:min(1120px,calc(100% - 64px))!important;
+    max-width:1120px!important;
+    margin:0 auto!important;
+    padding:112px 0 84px!important;
+    overflow:visible!important;
+  }
+  body.cursapp-app-shell #app{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0 auto!important;
+  }
+  body.cursapp-app-shell #app>*{
+    max-width:100%!important;
+  }
+
+  body.cursapp-app-shell .bottomNav,
+  body.apoderado-ui-v24 .bottomNav{
+    position:fixed!important;
+    top:98px!important;
+    bottom:auto!important;
+    left:50%!important;
+    right:auto!important;
+    width:min(720px,calc(100% - 96px))!important;
+    max-width:720px!important;
+    height:68px!important;
+    min-height:68px!important;
+    transform:translateX(-50%)!important;
+    margin:0!important;
+    padding:8px!important;
+    border:1px solid rgba(226,232,240,.95)!important;
+    border-radius:24px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:stretch!important;
+    justify-content:center!important;
+    gap:6px!important;
+    background:rgba(255,255,255,.97)!important;
+    box-shadow:0 18px 42px rgba(15,23,42,.12)!important;
+    z-index:49000!important;
+  }
+  body.cursapp-app-shell .bottomNav .navItem,
+  body.cursapp-app-shell .bottomNav .marketBottomTab,
+  body.apoderado-ui-v24 .bottomNav .navItem,
+  body.apoderado-ui-v24 .bottomNav .marketBottomTab{
+    width:auto!important;
+    min-width:130px!important;
+    max-width:none!important;
+    min-height:52px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:9px!important;
+    padding:8px 14px!important;
+    border-radius:18px!important;
+    text-align:center!important;
+  }
+  body.cursapp-app-shell .bottomNav .nav-label,
+  body.cursapp-app-shell .bottomNav .tesNavLabel,
+  body.cursapp-app-shell .bottomNav .navItem>span:last-child{
+    display:block!important;
+    font-size:14px!important;
+    white-space:nowrap!important;
+  }
+
+  /* Apoderado: centered content instead of a stretched or right-shifted mobile column. */
+  body.apoderado-ui-v24 .container{
+    width:min(980px,calc(100% - 64px))!important;
+    max-width:980px!important;
+    margin-inline:auto!important;
+  }
+  body.apoderado-ui-v24 .apoderado-home,
+  body.apoderado-ui-v24 .apoV2Page.apoderado-home{
+    width:100%!important;
+    max-width:980px!important;
+    margin-inline:auto!important;
+  }
+  body.apoderado-ui-v24 .apoV2DueCarousel.next-payment-card,
+  body.apoderado-ui-v24 .apoV2SummaryCard.quick-summary-card{
+    width:100%!important;
+    max-width:900px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  body.apoderado-ui-v24 .apoV2QuickAccess,
+  body.apoderado-ui-v24 .apoQuickAccessList,
+  body.apoderado-ui-v24 .quickAccessList{
+    width:100%!important;
+    max-width:900px!important;
+    margin-inline:auto!important;
+  }
+  body.apoderado-ui-v24 #menuDropdown{
+    top:92px!important;
+    right:max(24px,calc((100vw - 1180px)/2))!important;
+    width:min(390px,calc(100vw - 48px))!important;
+  }
+
+  /* Generic role pages and reports. */
+  body.cursapp-app-shell #app .card,
+  body.cursapp-app-shell #app .panel,
+  body.cursapp-app-shell #app .reportCard,
+  body.cursapp-app-shell #app .tableWrap{
+    max-width:100%!important;
+  }
+  body.cursapp-app-shell table{width:100%!important}
+
+  /* Mercado Escolar: balanced width and useful product grids. */
+  body.market-v8 .marketApp{
+    width:min(1180px,calc(100% - 64px))!important;
+    max-width:1180px!important;
+    margin:0 auto!important;
+    padding:0 0 110px!important;
+  }
+  body.market-v8 .marketHeader{
+    width:100%!important;
+    max-width:none!important;
+    min-height:92px!important;
+    padding:16px 24px!important;
+  }
+  body.market-v8 .view,
+  body.market-v8 .view.active,
+  body.market-v8 .searchRow,
+  body.market-v8 .locationCard,
+  body.market-v8 .creditPromoCard,
+  body.market-v8 .sectionHead{
+    width:100%!important;
+    max-width:none!important;
+  }
+  body.market-v8 .categoryRow{
+    justify-content:flex-start!important;
+    gap:18px!important;
+    overflow-x:auto!important;
+    padding-bottom:8px!important;
+  }
+  body.market-v8 .heroRetail{
+    width:100%!important;
+    max-width:none!important;
+    min-height:190px!important;
+    margin:24px 0 18px!important;
+    padding:28px 34px!important;
+  }
+  body.market-v8 .productGridV6,
+  body.market-v8 .recommendationGrid,
+  body.market-v8 #marketGrid{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr))!important;
+    gap:20px!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+  body.market-v8 #marketRecentList{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;
+    gap:16px!important;
+    width:100%!important;
+  }
+  body.market-v8 .bottomBar{
+    position:fixed!important;
+    left:50%!important;
+    right:auto!important;
+    bottom:20px!important;
+    width:min(720px,calc(100% - 64px))!important;
+    max-width:720px!important;
+    margin:0!important;
+    transform:translateX(-50%)!important;
+  }
+}
+
+@media (min-width:1440px){
+  body.cursapp-app-shell>main.container,
+  body.apoderado-ui-v24>main.container{max-width:1240px!important;width:min(1240px,calc(100% - 96px))!important}
+  body.apoderado-ui-v24 .container{max-width:1080px!important;width:min(1080px,calc(100% - 96px))!important}
+  body.market-v8 .marketApp{max-width:1320px!important;width:min(1320px,calc(100% - 96px))!important}
+}
