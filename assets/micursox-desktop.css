@@ -122,6 +122,144 @@
   .footer { grid-template-columns: 1.35fr repeat(3, minmax(150px, .7fr)); gap: 48px; padding-block: 64px 40px; }
   .footer-bottom { grid-column: 1 / -1; }
 
+  /* Desktop landing polish. Explicit !important only overrides existing desktop-level brand rules. */
+  .landing-header .landing-nav {
+    min-height: 92px !important;
+    padding: 12px 0 !important;
+    gap: 34px !important;
+  }
+  .landing-header .micursox-brand img {
+    width: clamp(190px, 16vw, 225px) !important;
+    max-height: 62px !important;
+  }
+  .landing-nav .nav-links {
+    gap: clamp(28px, 3vw, 44px) !important;
+  }
+  .landing-nav .nav-links a {
+    font-size: 16px !important;
+  }
+  .landing-nav .nav-cta {
+    min-height: 54px;
+    padding-inline: 30px !important;
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  .landing-nav .nav-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 34px rgba(91,33,182,.30) !important;
+    filter: brightness(1.03);
+  }
+
+  .hero.mx-hero {
+    width: min(1180px, calc(100% - 64px)) !important;
+    max-width: 1180px !important;
+    min-height: 720px !important;
+    padding: 76px 0 82px !important;
+    overflow: visible !important;
+    background: linear-gradient(90deg,#fff 0%,#fff 44%,#f7f5ff 100%) !important;
+  }
+  .mx-hero-copy {
+    padding: 24px 0 34px 26px !important;
+    justify-content: center;
+  }
+  .mx-hero h1 {
+    font-size: clamp(58px, 5.2vw, 78px) !important;
+    line-height: 1.01 !important;
+    margin-bottom: 26px !important;
+  }
+  .mx-lead {
+    max-width: 610px;
+    margin-bottom: 34px;
+    line-height: 1.58;
+  }
+  .mx-benefits {
+    gap: 24px;
+    margin-bottom: 38px;
+  }
+  .mx-benefit {
+    grid-template-columns: 54px 1fr;
+    gap: 13px;
+    align-items: start;
+  }
+  .mx-benefit-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 23px;
+  }
+  .mx-benefit strong {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+  .mx-benefit small {
+    margin-top: 5px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .mx-actions {
+    gap: 22px;
+  }
+  .mx-primary,
+  .mx-secondary {
+    min-height: 64px;
+    padding-inline: 34px;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .mx-primary:hover,
+  .mx-secondary:hover {
+    transform: translateY(-2px);
+  }
+  .mx-primary:hover {
+    box-shadow: 0 20px 38px rgba(91,33,182,.30);
+  }
+  .mx-secondary:hover {
+    border-color: #b9b5e8;
+    box-shadow: 0 12px 28px rgba(31,24,91,.10);
+  }
+
+  .mx-hero-media {
+    min-height: 640px !important;
+    align-self: center;
+    overflow: visible;
+  }
+  .mx-family {
+    height: 640px !important;
+    max-height: none !important;
+    border-radius: 0 0 0 0;
+    object-position: center center;
+  }
+  .mx-market-card {
+    left: 5%;
+    right: 2%;
+    bottom: 28px;
+    max-width: none;
+    min-height: 150px;
+    padding: 20px 22px;
+    grid-template-columns: 82px minmax(0,1fr) 155px;
+    gap: 20px;
+  }
+  .mx-market-icon {
+    width: 78px;
+    height: 78px;
+  }
+  .mx-market-card h2 { font-size: 26px; }
+  .mx-market-card p { font-size: 15px; }
+  .mx-market-card img {
+    width: 155px;
+    height: 96px;
+  }
+
+  .footer {
+    align-items: start;
+  }
+  .footer > div:not(.footer-bottom) {
+    min-width: 0;
+  }
+  .footer h2 {
+    min-height: 24px;
+  }
+  .footer .social-links {
+    margin-top: 20px;
+  }
+
   /* Login */
   body.authPremium .loginPanel { box-shadow: 0 32px 90px rgba(15,23,42,.16); }
 
@@ -156,6 +294,16 @@
   .highlight-card,
   .mx-resource-section,
   .footer { width: min(1280px, calc(100% - 96px)); }
+
+  .hero.mx-hero {
+    width: min(1280px, calc(100% - 96px)) !important;
+    max-width: 1280px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(520px, .95fr) !important;
+    gap: 76px !important;
+  }
+  .mx-hero-copy {
+    padding-left: 34px !important;
+  }
 
   body.onboardingPremium > main.container,
   body.onboardingPremium .onbModeWrap.container { width: min(1120px, calc(100% - 96px)); max-width: 1120px; }
