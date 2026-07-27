@@ -1,0 +1,246 @@
+/* MiCursoX role and module desktop layer.
+   Mobile styles remain untouched. */
+
+@media (min-width: 1024px) {
+  body.cursapp-app-shell {
+    --mx-desktop-nav: 220px;
+    min-height: 100vh;
+    background: #f5f7fb;
+  }
+
+  body.cursapp-app-shell > header,
+  body.cursapp-app-shell > .tesPremiumHeader {
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    margin-left: var(--mx-desktop-nav);
+    background: rgba(255,255,255,.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(226,232,240,.9);
+  }
+
+  body.cursapp-app-shell > header .topbar,
+  body.cursapp-app-shell .tesHeaderInner {
+    width: min(1180px, calc(100vw - var(--mx-desktop-nav) - 64px));
+    max-width: 1180px;
+    min-height: 88px;
+    margin: 0 auto;
+  }
+
+  body.cursapp-app-shell > main.container {
+    width: min(1180px, calc(100vw - var(--mx-desktop-nav) - 64px));
+    max-width: 1180px;
+    margin: 0 auto 0 calc(var(--mx-desktop-nav) + max(32px, (100vw - var(--mx-desktop-nav) - 1180px)/2));
+    padding: 32px 0 72px;
+  }
+
+  body.cursapp-app-shell .bottomNav {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    width: var(--mx-desktop-nav) !important;
+    height: 100vh !important;
+    padding: 116px 18px 28px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    border-radius: 0 !important;
+    border: 0 !important;
+    border-right: 1px solid rgba(226,232,240,.95) !important;
+    background: rgba(255,255,255,.98) !important;
+    box-shadow: 12px 0 36px rgba(15,23,42,.06) !important;
+    transform: none !important;
+    z-index: 110 !important;
+  }
+
+  body.cursapp-app-shell .bottomNav .navItem,
+  body.cursapp-app-shell .bottomNav .marketBottomTab {
+    width: 100% !important;
+    min-height: 62px !important;
+    padding: 10px 14px !important;
+    display: grid !important;
+    grid-template-columns: 34px minmax(0,1fr) !important;
+    align-items: center !important;
+    justify-items: start !important;
+    gap: 12px !important;
+    border-radius: 16px !important;
+    text-align: left !important;
+    text-decoration: none !important;
+  }
+
+  body.cursapp-app-shell .bottomNav .navItem.active {
+    background: #f1ebff !important;
+  }
+
+  body.cursapp-app-shell .bottomNav .nav-icon,
+  body.cursapp-app-shell .bottomNav .presNavIcon,
+  body.cursapp-app-shell .bottomNav .tesNavIcon {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  body.cursapp-app-shell .bottomNav .nav-label,
+  body.cursapp-app-shell .bottomNav .tesNavLabel,
+  body.cursapp-app-shell .bottomNav .navItem > span:last-child {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+  }
+
+  body.cursapp-app-shell #menuDropdown {
+    right: 0 !important;
+    left: auto !important;
+    width: min(390px, calc(100vw - 40px)) !important;
+    max-height: calc(100vh - 120px) !important;
+    overflow: auto !important;
+  }
+
+  body.cursapp-app-shell #app > .card,
+  body.cursapp-app-shell #app > section,
+  body.cursapp-app-shell #app > form {
+    max-width: 100%;
+  }
+
+  body.cursapp-app-shell #app .modal,
+  body.cursapp-app-shell #app .modalCard,
+  body.cursapp-app-shell #modalRoot > div > div {
+    max-width: min(760px, calc(100vw - var(--mx-desktop-nav) - 96px)) !important;
+  }
+
+  body.cursapp-apoderado #app,
+  body.cursapp-presidente #app,
+  body.cursapp-tesorero #app {
+    min-height: calc(100vh - 120px);
+  }
+
+  body.cursapp-apoderado #app .quickGrid,
+  body.cursapp-apoderado #app .summaryGrid,
+  body.cursapp-presidente #app .summaryGrid,
+  body.cursapp-tesorero #app .summaryGrid,
+  body.cursapp-tesorero #app .kpiGrid {
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  }
+
+  body.cursapp-presidente #app table,
+  body.cursapp-tesorero #app table,
+  body.cursapp-apoderado #app table {
+    width: 100%;
+    min-width: 760px;
+  }
+
+  body.cursapp-presidente #app .tableWrap,
+  body.cursapp-tesorero #app .tableWrap,
+  body.cursapp-apoderado #app .tableWrap {
+    overflow-x: auto;
+  }
+
+  /* Mercado Escolar */
+  body.market-v8 {
+    background: #f5f7fb;
+  }
+
+  body.market-v8 .marketApp {
+    width: min(1280px, calc(100% - 64px));
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-bottom: 72px;
+  }
+
+  body.market-v8 .marketHeader {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    min-height: 94px;
+    padding-inline: 28px;
+    border-radius: 0 0 28px 28px;
+    background: rgba(255,255,255,.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  body.market-v8 .searchRow {
+    max-width: 920px;
+    margin-inline: auto;
+  }
+
+  body.market-v8 .categoryRow {
+    justify-content: center;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  body.market-v8 .heroRetail {
+    min-height: 300px;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto minmax(280px,.65fr);
+    align-items: center;
+    gap: 28px;
+    padding: 38px 44px;
+  }
+
+  body.market-v8 .productGridV6,
+  body.market-v8 .recommendationGrid,
+  body.market-v8 #marketRecentList {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    gap: 22px !important;
+    overflow: visible !important;
+  }
+
+  body.market-v8 .featuredScroller > *,
+  body.market-v8 #marketRecentList > * {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  /* Admin already has a desktop shell; these rules only improve large screens. */
+  .adminShell {
+    min-height: 100vh;
+  }
+
+  .adminSide {
+    width: 270px;
+  }
+
+  .adminMain {
+    min-width: 0;
+  }
+
+  .adminTop,
+  .adminContent {
+    max-width: 1600px;
+    margin-inline: auto;
+  }
+
+  .adminContent {
+    padding: 30px 34px 56px;
+  }
+
+  .adminContent table {
+    width: 100%;
+  }
+}
+
+@media (min-width: 1440px) {
+  body.cursapp-app-shell {
+    --mx-desktop-nav: 242px;
+  }
+
+  body.cursapp-app-shell > main.container,
+  body.cursapp-app-shell > header .topbar,
+  body.cursapp-app-shell .tesHeaderInner {
+    max-width: 1280px;
+  }
+
+  body.market-v8 .marketApp {
+    max-width: 1400px;
+  }
+
+  body.market-v8 .productGridV6,
+  body.market-v8 .recommendationGrid,
+  body.market-v8 #marketRecentList {
+    grid-template-columns: repeat(5, minmax(0,1fr)) !important;
+  }
+}
