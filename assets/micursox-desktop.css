@@ -1,0 +1,162 @@
+/* MiCursoX desktop foundation
+   Mobile remains the source of truth. These rules only apply on larger viewports. */
+
+@media (min-width: 768px) {
+  html { scroll-behavior: smooth; }
+  body { min-width: 0; }
+
+  /* Shared form and modal ergonomics */
+  input, select, textarea, button { font-size: 16px; }
+  .modal, .modalCard, .cardModal, [role="dialog"] {
+    max-width: min(680px, calc(100vw - 64px));
+    margin-inline: auto;
+  }
+
+  /* Login */
+  body.authPremium .loginPageShell {
+    width: min(1180px, calc(100% - 48px));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 40px 0;
+    display: grid;
+    align-items: center;
+  }
+  body.authPremium .loginPanel {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(420px, .9fr);
+    overflow: hidden;
+    border-radius: 32px;
+  }
+  body.authPremium .loginVisual {
+    min-height: 680px;
+    display: block;
+  }
+  body.authPremium .loginContent {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px;
+  }
+  body.authPremium .authCard { width: 100%; }
+  body.authPremium .loginBack { position: fixed; top: 28px; left: max(28px, calc((100vw - 1180px)/2)); }
+
+  /* Onboarding shell */
+  body.onboardingPremium .onbAppHeader .topbar {
+    width: min(1180px, calc(100% - 48px));
+    margin: 0 auto;
+    min-height: 82px;
+  }
+  body.onboardingPremium > main.container,
+  body.onboardingPremium .onbModeWrap.container {
+    width: min(1040px, calc(100% - 48px));
+    max-width: 1040px;
+    margin-inline: auto;
+  }
+  body.onboardingPremium #app {
+    padding-top: 28px;
+    padding-bottom: 56px;
+  }
+  body.onboardingPremium #app > .card,
+  body.onboardingPremium #app > section,
+  body.onboardingPremium #app > form {
+    max-width: 920px;
+    margin-inline: auto;
+  }
+  body.onboardingPremium .onbMenuDropdown {
+    right: 0;
+    left: auto;
+    min-width: 260px;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Landing */
+  .landing-shell { overflow-x: clip; }
+  .landing-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .landing-nav,
+  .hero,
+  .mx-trust,
+  .access-section,
+  .features-section,
+  .highlight-card,
+  .mx-resource-section,
+  .footer {
+    width: min(1180px, calc(100% - 64px));
+    margin-inline: auto;
+  }
+  .landing-nav { min-height: 84px; }
+  .landing-nav .brand img { width: clamp(180px, 18vw, 240px); }
+  .landing-nav .nav-links { display: flex; }
+  .landing-nav .menu-btn,
+  .landing-header .mobile-menu { display: none !important; }
+
+  .hero.mx-hero {
+    min-height: 680px;
+    grid-template-columns: minmax(0, 1fr) minmax(460px, .92fr);
+    gap: 64px;
+    align-items: center;
+    padding-block: 72px 56px;
+  }
+  .mx-hero-copy h1 { max-width: 720px; font-size: clamp(56px, 5.4vw, 82px); line-height: .98; }
+  .mx-lead { max-width: 670px; font-size: 21px; }
+  .mx-hero-media { min-height: 590px; }
+  .mx-family { width: 100%; max-height: 610px; object-fit: cover; }
+  .mx-market-card { max-width: 520px; }
+
+  .mx-trust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .access-section { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .feature-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+  .features-section { padding-block: 76px; }
+  .highlight-card { min-height: 390px; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 56px; }
+  .whatsapp-highlight { grid-template-columns: auto minmax(0, 1fr) minmax(320px, .75fr); }
+  .mx-resource-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .footer { grid-template-columns: 1.35fr repeat(3, minmax(150px, .7fr)); gap: 48px; padding-block: 64px 40px; }
+  .footer-bottom { grid-column: 1 / -1; }
+
+  /* Login */
+  body.authPremium .loginPanel { box-shadow: 0 32px 90px rgba(15,23,42,.16); }
+
+  /* Onboarding cards and forms */
+  body.onboardingPremium #app .card {
+    border-radius: 28px;
+  }
+  body.onboardingPremium #app form,
+  body.onboardingPremium #app .formGrid,
+  body.onboardingPremium #app .onbFormGrid {
+    max-width: 860px;
+  }
+  body.onboardingPremium #app .formGrid,
+  body.onboardingPremium #app .onbFormGrid,
+  body.onboardingPremium #app .twoCol {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 24px;
+  }
+  body.onboardingPremium #app .actions,
+  body.onboardingPremium #app .buttonRow {
+    justify-content: flex-end;
+  }
+}
+
+@media (min-width: 1440px) {
+  .landing-nav,
+  .hero,
+  .mx-trust,
+  .access-section,
+  .features-section,
+  .highlight-card,
+  .mx-resource-section,
+  .footer { width: min(1280px, calc(100% - 96px)); }
+
+  body.onboardingPremium > main.container,
+  body.onboardingPremium .onbModeWrap.container { width: min(1120px, calc(100% - 96px)); max-width: 1120px; }
+}
