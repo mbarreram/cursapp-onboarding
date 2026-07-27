@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.27.18';
+  const APP_VERSION='2026.07.27.19';
 
   function loadMiCursoXBrand(){
     if(!document.querySelector('link[data-micursox-brand]')){
