@@ -4,8 +4,9 @@
   window.__MICURSOX_APODERADO_PROFILE_SAFE__=true;
 
   const read=(key,fallback)=>{try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback;}catch(_){return fallback;}};
-  const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt',"'":'&#39;','"':'&quot;'}[c]));
   const first=(v)=>String(v||'').trim().split(/\s+/).filter(Boolean)[0]||'';
+  let lastTouch=0;
 
   function profileData(){
     const session=read('cursapp_session_v1',{})||{};
@@ -31,9 +32,7 @@
     return {name,phone,email,student,courseLabel,school};
   }
 
-  function prefs(){
-    return Object.assign({push:true,email:true,sms:false},read('cursapp_profile_comm_prefs_v1',{})||{});
-  }
+  function prefs(){ return Object.assign({push:true,email:true,sms:false},read('cursapp_profile_comm_prefs_v1',{})||{}); }
 
   function edit(field){
     const d=profileData();
@@ -54,19 +53,9 @@
     const initials=String(d.name||'A').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'A';
     const counts=window.__apoProfileCommunicationCounts||{push:0,email:0,sms:0};
     app.innerHTML=`<div class="apoProfilePage">
-      <section class="apoProfileHero">
-        <div class="apoProfileAvatar"><span>${esc(initials)}</span></div>
-        <div class="apoProfileHeroText"><h1>${esc(d.name)}</h1><p>Apoderado de ${esc(first(d.student)||d.student)}</p><div><span>✉️ ${esc(d.email||'correo no registrado')}</span><span class="apoProfileLock">🔒</span></div><div><span>📱 ${esc(d.phone||'Agregar teléfono')}</span><button class="apoProfileEdit" id="profileEditPhone" type="button">✎</button></div></div>
-      </section>
-      <section class="apoProfileCard apoProfileLockedCard">
-        <article><span>🎓</span><div><b>Curso</b><small>${esc(d.courseLabel)}</small></div><span class="apoProfileLock">🔒</span></article>
-        <article><span>🏫</span><div><b>Colegio</b><small>${esc(d.school)}</small></div><span class="apoProfileLock">🔒</span></article>
-        <p>ⓘ Estos datos son administrados por la directiva del curso y no pueden ser modificados.</p>
-      </section>
-      <section class="apoProfileCard"><h2>Información personal</h2>
-        <article class="apoProfileRow"><span>👤</span><div><b>Nombre completo</b><small>${esc(d.name)}</small></div><button class="apoProfileEdit" id="profileEditName" type="button">✎</button></article>
-        <article class="apoProfileRow"><span>📱</span><div><b>Teléfono</b><small>${esc(d.phone||'Agregar teléfono')}</small></div><button class="apoProfileEdit" id="profileEditPhone2" type="button">✎</button></article>
-      </section>
+      <section class="apoProfileHero"><div class="apoProfileAvatar"><span>${esc(initials)}</span></div><div class="apoProfileHeroText"><h1>${esc(d.name)}</h1><p>Apoderado de ${esc(first(d.student)||d.student)}</p><div><span>✉️ ${esc(d.email||'correo no registrado')}</span><span class="apoProfileLock">🔒</span></div><div><span>📱 ${esc(d.phone||'Agregar teléfono')}</span><button class="apoProfileEdit" id="profileEditPhone" type="button">✎</button></div></div></section>
+      <section class="apoProfileCard apoProfileLockedCard"><article><span>🎓</span><div><b>Curso</b><small>${esc(d.courseLabel)}</small></div><span class="apoProfileLock">🔒</span></article><article><span>🏫</span><div><b>Colegio</b><small>${esc(d.school)}</small></div><span class="apoProfileLock">🔒</span></article><p>ⓘ Estos datos son administrados por la directiva del curso y no pueden ser modificados.</p></section>
+      <section class="apoProfileCard"><h2>Información personal</h2><article class="apoProfileRow"><span>👤</span><div><b>Nombre completo</b><small>${esc(d.name)}</small></div><button class="apoProfileEdit" id="profileEditName" type="button">✎</button></article><article class="apoProfileRow"><span>📱</span><div><b>Teléfono</b><small>${esc(d.phone||'Agregar teléfono')}</small></div><button class="apoProfileEdit" id="profileEditPhone2" type="button">✎</button></article></section>
       <section class="apoProfileCard apoProfileCommCard"><div class="apoProfileCardHead"><h2>Mis preferencias de comunicación</h2></div><div class="apoProfileChannels"><article class="apoProfileChannel push"><span>🔔</span><b>Push</b><small>${p.push?'Activado':'Desactivado'}</small></article><article class="apoProfileChannel email"><span>✉️</span><b>Correos</b><small>${p.email?'Activado':'Desactivado'}</small></article><article class="apoProfileChannel sms"><span>💬</span><b>SMS</b><small>${p.sms?'Activado':'Desactivado'}</small></article></div></section>
       <section class="apoProfileCard apoProfileSummary"><div class="apoProfileCardHead"><div><h2>Resumen de comunicaciones</h2><p>Últimos 30 días</p></div></div><div class="apoProfileSummaryGrid"><article><span>🔔</span><b>${Number(counts.push||0)}</b><small>Push recibidas</small></article><article><span>✉️</span><b>${Number(counts.email||0)}</b><small>Correos recibidos</small></article><article><span>💬</span><b>${Number(counts.sms||0)}</b><small>SMS recibidos</small></article></div></section>
     </div>`;
@@ -76,23 +65,35 @@
     document.querySelectorAll('.navItem').forEach(b=>b.classList.remove('active'));
   }
 
-  function bind(){
+  function isProfileEvent(ev){
     const menu=document.getElementById('menuDropdown');
-    if(!menu)return;
-    const button=menu.querySelector('[data-action="perfil"],[data-action="profile"]');
-    if(!button||button.dataset.safeProfileBound==='1')return;
-    button.dataset.safeProfileBound='1';
-    button.addEventListener('click',ev=>{
-      ev.preventDefault();
-      ev.stopPropagation();
-      ev.stopImmediatePropagation();
-      menu.style.display='none';
-      render();
-    },true);
+    const control=ev.target?.closest?.('[data-action="perfil"],[data-action="profile"]');
+    return !!(menu&&control&&menu.contains(control));
   }
 
-  const observer=new MutationObserver(bind);
-  observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.addEventListener('load',()=>setTimeout(bind,100));
+  function capture(ev){
+    if(!isProfileEvent(ev))return;
+    if(ev.type==='touchend')lastTouch=Date.now();
+    if(ev.type==='click'&&Date.now()-lastTouch<700)return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation?.();
+    const menu=document.getElementById('menuDropdown');
+    if(menu)menu.style.display='none';
+    render();
+  }
+
+  document.addEventListener('touchend',capture,true);
+  document.addEventListener('click',capture,true);
+
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{
+      const app=document.getElementById('app');
+      if(app&&!app.children.length&&!String(app.textContent||'').trim()&&typeof window.go==='function'){
+        try{window.go('home');}catch(_){}
+      }
+    },8500);
+  });
+
   window.MICURSOX_OPEN_SAFE_PROFILE=render;
 })();
