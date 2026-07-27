@@ -1,4 +1,4 @@
-const APP_VERSION='2026.07.24.1';
+const APP_VERSION='2026.07.27.7';
 const CACHE=`cursapp-${APP_VERSION}`;
 
 self.addEventListener('install',event=>{
@@ -15,26 +15,25 @@ self.addEventListener('activate',event=>{
   })());
 });
 
-// Las navegaciones y archivos críticos se resuelven siempre contra red.
-// No se mantiene una caché de aplicación que pueda dejar HTML/JS demo obsoleto.
+// HTML, JS, CSS y manifiestos siempre se solicitan a red para evitar shells obsoletos.
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET')return;
   const url=new URL(request.url);
   if(url.origin!==self.location.origin)return;
   if(request.mode==='navigate'||/\.(?:html|js|mjs|css|json|webmanifest)$/i.test(url.pathname)){
-    event.respondWith(fetch(request,{cache:'no-store'}).catch(()=>caches.match(request)));
+    event.respondWith(fetch(request,{cache:'no-store'}));
   }
 });
 
 self.addEventListener('push', event=>{
   let data={};
   try{ data=event.data ? event.data.json() : {}; }catch(e){ data={body:event.data ? event.data.text() : ''}; }
-  const title=data.title || 'Cursapp';
+  const title=data.title || 'MiCursoX';
   const options={
     body:data.body || data.detalle || 'Tienes una nueva notificación.',
-    icon:data.icon || '/assets/icons/cursapp-icon-192.png',
-    badge:data.badge || '/assets/icons/cursapp-icon-192.png',
+    icon:data.icon || '/assets/brand/micursox-isotype.svg',
+    badge:data.badge || '/assets/brand/micursox-isotype.svg',
     tag:data.tag || undefined,
     data:{url:data.url || data.url_destino || '/', notification_id:data.notification_id || null}
   };
@@ -45,10 +44,10 @@ self.addEventListener('message', event=>{
   const data=event.data || {};
   if(data.type==='SKIP_WAITING')self.skipWaiting();
   if(data.type === 'CURSAPP_TEST_NOTIFICATION'){
-    self.registration.showNotification(data.title || 'Cursapp', {
+    self.registration.showNotification(data.title || 'MiCursoX', {
       body:data.body || 'Notificación de prueba activada correctamente.',
-      icon:'/assets/icons/cursapp-icon-192.png',
-      badge:'/assets/icons/cursapp-icon-192.png',
+      icon:'/assets/brand/micursox-isotype.svg',
+      badge:'/assets/brand/micursox-isotype.svg',
       data:{url:data.url || '/'}
     });
   }
