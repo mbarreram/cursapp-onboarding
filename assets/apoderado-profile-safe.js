@@ -6,15 +6,12 @@
   const read=(key,fallback)=>{try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):fallback;}catch(_){return fallback;}};
   const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const first=(v)=>String(v||'').trim().split(/\s+/).filter(Boolean)[0]||'';
-  let lastTouch=0;
-  let profileOpening=false;
+  let opening=false;
 
-  function diagnostic(error,stage){
-    try{
-      const e=error instanceof Error?error:new Error(String(error||'Error desconocido'));
-      console.error('[MiCursoX Perfil]',stage,e);
-      alert(['ERROR PERFIL','','Etapa: '+String(stage||'render'),'Tipo: '+String(e.name||'Error'),'Mensaje: '+String(e.message||e),'',String(e.stack||'Sin stack disponible')].join('\n'));
-    }catch(_){try{alert('ERROR PERFIL\nNo fue posible mostrar el detalle técnico.');}catch(__){}}
+  function diagnostic(stage,error){
+    const e=error instanceof Error?error:new Error(String(error||'Error desconocido'));
+    console.error('[MiCursoX Perfil]',stage,e);
+    alert(['ERROR PERFIL','','Etapa: '+stage,'Tipo: '+String(e.name||'Error'),'Mensaje: '+String(e.message||e),'',String(e.stack||'Sin stack disponible')].join('\n'));
   }
 
   function profileData(){
@@ -34,12 +31,14 @@
     })||{};
     const ap=match.apoderado||stored.apoderado||{};
     const c=match.course||stored.course||course||{};
-    const name=editable.name||ap.name||ap.nombre||session.name||session.nombre||'Apoderado';
-    const phone=editable.phone||ap.phone||ap.telefono||session.phone||session.telefono||'';
-    const student=ap.alumno||match.alumno||alumno.alumno||alumno.nombre||stored.alumno||'Alumno/a';
-    const courseLabel=stored.courseLabel||stored.courseName||c.courseLabel||c.name||`${c.level||''}${c.letter||''} ${c.year||''}`.trim()||'Curso actual';
-    const school=stored.schoolName||stored.colegio||c.schoolName||c.colegio||c.school||course.schoolName||course.colegio||'Colegio';
-    return {name,phone,email,student,courseLabel,school};
+    return {
+      name:editable.name||ap.name||ap.nombre||session.name||session.nombre||'Apoderado',
+      phone:editable.phone||ap.phone||ap.telefono||session.phone||session.telefono||'',
+      email:email||ap.email||'',
+      student:ap.alumno||match.alumno||alumno.alumno||alumno.nombre||stored.alumno||'Alumno/a',
+      courseLabel:stored.courseLabel||stored.courseName||c.courseLabel||c.name||`${c.level||''}${c.letter||''} ${c.year||''}`.trim()||'Curso actual',
+      school:stored.schoolName||stored.colegio||c.schoolName||c.colegio||c.school||course.schoolName||course.colegio||'Colegio'
+    };
   }
 
   function prefs(){return Object.assign({push:true,email:true,sms:false},read('cursapp_profile_comm_prefs_v1',{})||{});}
@@ -47,14 +46,13 @@
   function edit(field){
     try{
       const d=profileData();
-      const current=field==='phone'?d.phone:d.name;
-      const next=prompt(field==='phone'?'Editar teléfono':'Editar nombre completo',current||'');
+      const next=prompt(field==='phone'?'Editar teléfono':'Editar nombre completo',field==='phone'?d.phone:d.name);
       if(next===null)return;
       const data=read('cursapp_profile_editable_v1',{})||{};
       data[field]=String(next||'').trim();
-      try{localStorage.setItem('cursapp_profile_editable_v1',JSON.stringify(data));}catch(_){}
-      renderSafe('edit-'+field);
-    }catch(e){diagnostic(e,'edit-'+field);}
+      localStorage.setItem('cursapp_profile_editable_v1',JSON.stringify(data));
+      renderSafe('editar '+field);
+    }catch(error){diagnostic('editar '+field,error);}
   }
 
   function render(){
@@ -78,46 +76,23 @@
   }
 
   function renderSafe(stage){
-    if(profileOpening)return;
-    profileOpening=true;
+    if(opening)return;
+    opening=true;
     try{render();}
-    catch(e){diagnostic(e,stage||'render');}
-    finally{setTimeout(()=>{profileOpening=false;},350);}
+    catch(error){diagnostic(stage,error);}
+    finally{setTimeout(()=>{opening=false;},250);}
   }
 
-  function isProfileEvent(ev){
+  document.addEventListener('click',function(ev){
     const menu=document.getElementById('menuDropdown');
     const control=ev.target?.closest?.('[data-action="perfil"],[data-action="profile"]');
-    return !!(menu&&control&&menu.contains(control));
-  }
+    if(!menu||!control||!menu.contains(control))return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation?.();
+    menu.style.display='none';
+    renderSafe('click perfil');
+  },true);
 
-  function stop(ev){
-    try{ev.preventDefault();}catch(_){}
-    try{ev.stopPropagation();}catch(_){}
-    try{ev.stopImmediatePropagation?.();}catch(_){}
-  }
-
-  function capture(ev){
-    if(!isProfileEvent(ev))return;
-    if(ev.type==='touchend'){
-      lastTouch=Date.now();
-      stop(ev);
-      const menu=document.getElementById('menuDropdown');
-      if(menu)menu.style.display='none';
-      renderSafe('touchend');
-      return;
-    }
-    if(ev.type==='click'&&Date.now()-lastTouch<900){
-      stop(ev);
-      return;
-    }
-    stop(ev);
-    const menu=document.getElementById('menuDropdown');
-    if(menu)menu.style.display='none';
-    renderSafe('click');
-  }
-
-  document.addEventListener('touchend',capture,true);
-  document.addEventListener('click',capture,true);
-  window.MICURSOX_OPEN_SAFE_PROFILE=()=>renderSafe('manual');
+  window.MICURSOX_OPEN_SAFE_PROFILE=()=>renderSafe('apertura directa');
 })();
