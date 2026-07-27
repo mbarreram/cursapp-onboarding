@@ -6,6 +6,15 @@
   const ICON='/assets/brand/micursox-isotype.svg';
   const replacements=[[/\bCursapp\b/g,'MiCursoX'],[/\bCURSAPP\b/g,'MiCursoX']];
 
+  function ensureDesktopLayer(){
+    if(document.querySelector('link[data-micursox-modules-desktop]'))return;
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='/assets/micursox-modules-desktop.css?v=1';
+    link.dataset.micursoxModulesDesktop='1';
+    document.head.appendChild(link);
+  }
+
   function replaceText(root){
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(n){
       if(!n.nodeValue||!/(Cursapp|CURSAPP)/.test(n.nodeValue))return NodeFilter.FILTER_REJECT;
@@ -88,6 +97,7 @@
   }
 
   function apply(){
+    ensureDesktopLayer();
     document.documentElement.dataset.brand='micursox';
     document.title=document.title.replace(/Cursapp/gi,'MiCursoX');
     document.querySelectorAll('meta[name="description"]').forEach(m=>m.content=m.content.replace(/Cursapp/gi,'MiCursoX'));
