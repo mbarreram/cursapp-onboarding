@@ -1,7 +1,6 @@
 (function(){
   'use strict';
-  const APP_VERSION='2026.07.26.6';
-  const RELOAD_KEY='cursapp_version_reload_v1';
+  const APP_VERSION='2026.07.27.17';
 
   function loadMiCursoXBrand(){
     if(!document.querySelector('link[data-micursox-brand]')){
@@ -15,16 +14,6 @@
     }
   }
 
-  function reloadOnce(version){
-    try{
-      if(sessionStorage.getItem(RELOAD_KEY)===version)return;
-      sessionStorage.setItem(RELOAD_KEY,version);
-    }catch(_){ }
-    const url=new URL(window.location.href);
-    url.searchParams.set('_cv',version.replace(/[^0-9]/g,''));
-    window.location.replace(url.toString());
-  }
-
   async function registerWorker(){
     if(!('serviceWorker' in navigator))return;
     try{
@@ -32,7 +21,7 @@
         scope:'/',
         updateViaCache:'none'
       });
-      await registration.update();
+      registration.update().catch(()=>{});
       if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
       registration.addEventListener('updatefound',()=>{
         const worker=registration.installing;
@@ -48,19 +37,14 @@
     }
   }
 
-  navigator.serviceWorker?.addEventListener('controllerchange',()=>reloadOnce(APP_VERSION));
-  navigator.serviceWorker?.addEventListener('message',event=>{
-    if(event.data?.type==='CURSAPP_VERSION_ACTIVATED'&&event.data.version===APP_VERSION){
-      reloadOnce(APP_VERSION);
-    }
-  });
-
   async function checkVersion(){
     try{
       const response=await fetch('/version.json?t='+Date.now(),{cache:'no-store'});
       if(!response.ok)return;
       const data=await response.json();
-      if(data.version&&data.version!==APP_VERSION)reloadOnce(data.version);
+      if(data.version&&data.version!==APP_VERSION){
+        console.info('Nueva versión MiCursoX disponible:',data.version);
+      }
     }catch(_){ }
   }
 
