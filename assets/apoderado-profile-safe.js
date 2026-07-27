@@ -7,6 +7,15 @@
   const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const first=(v)=>String(v||'').trim().split(/\s+/).filter(Boolean)[0]||'';
   let lastTouch=0;
+  let profileOpening=false;
+
+  function diagnostic(error,stage){
+    try{
+      const e=error instanceof Error?error:new Error(String(error||'Error desconocido'));
+      console.error('[MiCursoX Perfil]',stage,e);
+      alert(['ERROR PERFIL','','Etapa: '+String(stage||'render'),'Tipo: '+String(e.name||'Error'),'Mensaje: '+String(e.message||e),'',String(e.stack||'Sin stack disponible')].join('\n'));
+    }catch(_){try{alert('ERROR PERFIL\nNo fue posible mostrar el detalle técnico.');}catch(__){}}
+  }
 
   function profileData(){
     const session=read('cursapp_session_v1',{})||{};
@@ -33,22 +42,24 @@
     return {name,phone,email,student,courseLabel,school};
   }
 
-  function prefs(){ return Object.assign({push:true,email:true,sms:false},read('cursapp_profile_comm_prefs_v1',{})||{}); }
+  function prefs(){return Object.assign({push:true,email:true,sms:false},read('cursapp_profile_comm_prefs_v1',{})||{});}
 
   function edit(field){
-    const d=profileData();
-    const current=field==='phone'?d.phone:d.name;
-    const next=prompt(field==='phone'?'Editar teléfono':'Editar nombre completo',current||'');
-    if(next===null)return;
-    const data=read('cursapp_profile_editable_v1',{})||{};
-    data[field]=String(next||'').trim();
-    try{localStorage.setItem('cursapp_profile_editable_v1',JSON.stringify(data));}catch(_){}
-    render();
+    try{
+      const d=profileData();
+      const current=field==='phone'?d.phone:d.name;
+      const next=prompt(field==='phone'?'Editar teléfono':'Editar nombre completo',current||'');
+      if(next===null)return;
+      const data=read('cursapp_profile_editable_v1',{})||{};
+      data[field]=String(next||'').trim();
+      try{localStorage.setItem('cursapp_profile_editable_v1',JSON.stringify(data));}catch(_){}
+      renderSafe('edit-'+field);
+    }catch(e){diagnostic(e,'edit-'+field);}
   }
 
   function render(){
     const app=document.getElementById('app');
-    if(!app)return;
+    if(!app) throw new Error('No existe el contenedor #app');
     const d=profileData();
     const p=prefs();
     const initials=String(d.name||'A').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0)).join('').toUpperCase()||'A';
@@ -66,29 +77,47 @@
     document.querySelectorAll('.navItem').forEach(b=>b.classList.remove('active'));
   }
 
+  function renderSafe(stage){
+    if(profileOpening)return;
+    profileOpening=true;
+    try{render();}
+    catch(e){diagnostic(e,stage||'render');}
+    finally{setTimeout(()=>{profileOpening=false;},350);}
+  }
+
   function isProfileEvent(ev){
     const menu=document.getElementById('menuDropdown');
     const control=ev.target?.closest?.('[data-action="perfil"],[data-action="profile"]');
     return !!(menu&&control&&menu.contains(control));
   }
 
+  function stop(ev){
+    try{ev.preventDefault();}catch(_){}
+    try{ev.stopPropagation();}catch(_){}
+    try{ev.stopImmediatePropagation?.();}catch(_){}
+  }
+
   function capture(ev){
     if(!isProfileEvent(ev))return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    ev.stopImmediatePropagation?.();
-    if(ev.type==='touchend') lastTouch=Date.now();
-    if(ev.type==='click'&&Date.now()-lastTouch<900) return;
+    if(ev.type==='touchend'){
+      lastTouch=Date.now();
+      stop(ev);
+      const menu=document.getElementById('menuDropdown');
+      if(menu)menu.style.display='none';
+      renderSafe('touchend');
+      return;
+    }
+    if(ev.type==='click'&&Date.now()-lastTouch<900){
+      stop(ev);
+      return;
+    }
+    stop(ev);
     const menu=document.getElementById('menuDropdown');
     if(menu)menu.style.display='none';
-    try{render();}catch(error){
-      console.error('MiCursoX: perfil integrado no pudo renderizar',error);
-      const app=document.getElementById('app');
-      if(app) app.innerHTML='<section class="apoProfileCard"><h2>Mi perfil</h2><p>No fue posible cargar todos los datos. Vuelve a Inicio y reintenta.</p></section>';
-    }
+    renderSafe('click');
   }
 
   document.addEventListener('touchend',capture,true);
   document.addEventListener('click',capture,true);
-  window.MICURSOX_OPEN_SAFE_PROFILE=render;
+  window.MICURSOX_OPEN_SAFE_PROFILE=()=>renderSafe('manual');
 })();
