@@ -105,14 +105,12 @@
     <section class="panel myMarketPanel"><div id="myPosts"></div></section>
   </section>
 
-
   <section id="view-conversaciones" class="view">
     <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Conversaciones</h2></div>
     <section class="panel conversationsPanel">
       <div id="conversationsList" class="conversationsList"><div class="emptyState"><div class="emptyIcon">💬</div><h3>Aún no tienes conversaciones</h3><p>Cuando contactes o te contacten por una publicación, aparecerá aquí.</p></div></div>
     </section>
   </section>
-
 
   <section id="view-reputacion" class="view" style="display:none">
     <div class="viewTop"><button data-view="inicio" class="backBtn">←</button><h2>Mi perfil de vendedor</h2></div>
@@ -144,31 +142,8 @@
 <script src="/assets/supabase-config.js?v=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/assets/supabaseClient.js?v=20260616"></script>
-<script src="assets/mercado-escolar.js?v=53"></script>
+<script src="assets/mercado-escolar.js?v=54"></script>
 <script src="assets/mercado-creditos.js?v=38"></script>
-  <script defer src="/assets/cursapp-platform.js?v=583"></script>
-
-<script id="cursappMarketFlowDebugMarket">
-(function(){
-  if(window.__CURSAPP_MARKET_FLOW_DEBUG_MARKET__) return;
-  window.__CURSAPP_MARKET_FLOW_DEBUG_MARKET__=true;
-  function read(k){ try{return localStorage.getItem(k)||'';}catch(e){return '';} }
-  function obj(k){ try{var v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch(e){return read(k);} }
-  function ctx(){
-    var s=obj('cursapp_session_v1')||{}; var p=obj('cursapp_active_profile_v1')||{}; var alumno=obj('cursapp_alumno_activo_v1')||{};
-    return {page:'MERCADO', role:read('cursapp_active_role_v1')||s.currentRole||s.role||'', email:s.email||p.email||alumno.email||'', cursoKey:read('cursapp_active_course_v1')||s.activeCourse||s.courseKey||p.courseKey||alumno.courseKey||'', cursoId:s.curso_id||s.courseId||(p.supabase&&p.supabase.curso_id)||p.curso_id||p.courseId||alumno.curso_id||'', profileId:read('cursapp_active_profile_id_v1')||s.activeProfile||s.profileId||p.profileId||p.id||alumno.profileId||'', alumno:alumno.alumno||alumno.nombre||p.alumno||p.nombre_alumno||''};
-  }
-  function show(label){ try{alert('[DEBUG '+label+']\n'+JSON.stringify(ctx(), null, 2));}catch(e){alert('[DEBUG '+label+'] error '+(e.message||e));} }
-  window.addEventListener('pageshow', function(){ setTimeout(function(){ show('ENTRANDO A MERCADO'); }, 450); });
-  document.addEventListener('click', function(ev){
-    var a=ev.target && ev.target.closest && ev.target.closest('a,button'); if(!a) return;
-    var href=a.getAttribute('href')||''; var txt=(a.textContent||'').toLowerCase();
-    if(href.indexOf('/apoderado')>=0 || txt.indexOf('cursapp')>=0 || txt.indexOf('volver')>=0){
-      try{localStorage.setItem('cursapp_debug_return_from_market_v1','1');}catch(e){}
-      show('ANTES DE VOLVER A CURSAPP');
-    }
-  }, true);
-})();
-</script>
+<script defer src="/assets/cursapp-platform.js?v=583"></script>
 </body>
 </html>
