@@ -6,6 +6,7 @@
   <title>Iniciar sesi&oacute;n &middot; MiCursoX</title>
   <link rel="stylesheet" href="assets/login-pro.css?v=73-micursox">
   <link rel="stylesheet" href="/assets/micursox-components.css?v=2">
+  <link rel="stylesheet" href="/assets/micursox-desktop.css?v=1">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/brand/micursox-isotype.svg">
   <link rel="icon" href="/assets/brand/micursox-isotype.svg" type="image/svg+xml">
@@ -86,17 +87,11 @@
             <div class="loginEntryLinks" aria-label="Accesos de registro">
               <a href="registro-apoderado.html">
                 <span class="entryMiniIcon entryMiniIcon--parent" aria-hidden="true"></span>
-                <span>
-                  <strong>Soy apoderado</strong>
-                  <small>Unirme con c&oacute;digo</small>
-                </span>
+                <span><strong>Soy apoderado</strong><small>Unirme con c&oacute;digo</small></span>
               </a>
               <a href="registro-presidente.html">
                 <span class="entryMiniIcon entryMiniIcon--board" aria-hidden="true"></span>
-                <span>
-                  <strong>Crear mi curso</strong>
-                  <small>Presidente / Directiva</small>
-                </span>
+                <span><strong>Crear mi curso</strong><small>Presidente / Directiva</small></span>
               </a>
             </div>
           </form>
@@ -120,7 +115,7 @@
         input.type = show ? "text" : "password";
         btn.classList.toggle("isActive", show);
         btn.setAttribute("aria-pressed", show ? "true" : "false");
-        btn.setAttribute("aria-label", show ? "Ocultar contrase\u00f1a" : "Mostrar contrase\u00f1a");
+        btn.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña");
         input.focus();
       });
     })();
