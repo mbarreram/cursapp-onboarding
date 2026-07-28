@@ -15,6 +15,9 @@
     'mis avisos':'<svg viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3"/></svg>',
     micursox:'<svg viewBox="0 0 24 24"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/></svg>'
   };
+  let sourceObserver=null;
+  let documentObserver=null;
+
   function cleanLabel(el){
     const node=el.querySelector('.nav-label,.tesNavLabel,small')||el.querySelector('span:last-child');
     return String(node?.textContent||el.textContent||'').replace(/\s+/g,' ').trim();
@@ -23,6 +26,13 @@
     const key=label.toLowerCase();
     return ICONS[key]||ICONS[Object.keys(ICONS).find(k=>key.includes(k))]||ICONS.inicio;
   }
+  function hideSourceNavigations(){
+    if(!query.matches)return;
+    document.querySelectorAll('nav.bottomNav,nav.bottomBar,.apoderado-bottom-nav,.presBottomNav,.tesBottomNav,.bottomBarV7').forEach(nav=>{
+      nav.classList.add('mxDesktopSourceNav');
+      nav.setAttribute('aria-hidden','true');
+    });
+  }
   function sync(shell,source){
     const originals=[...source.children].filter(el=>el.matches('button,a'));
     shell.querySelectorAll('[data-mx-index]').forEach(btn=>{
@@ -30,16 +40,24 @@
       btn.classList.toggle('is-active',!!original?.classList.contains('active'));
     });
   }
+  function removeDesktop(){
+    document.body.classList.remove('mx-desktop-active');
+    document.getElementById('mxDesktopShell')?.remove();
+    document.querySelectorAll('.mxDesktopSourceNav').forEach(nav=>{
+      nav.classList.remove('mxDesktopSourceNav');
+      nav.removeAttribute('aria-hidden');
+    });
+    sourceObserver?.disconnect();sourceObserver=null;
+    documentObserver?.disconnect();documentObserver=null;
+  }
   function build(){
-    if(!query.matches){
-      document.body.classList.remove('mx-desktop-active');
-      document.getElementById('mxDesktopShell')?.remove();
-      return;
-    }
+    if(!query.matches){removeDesktop();return;}
     document.body.classList.add('mx-desktop-active');
+    hideSourceNavigations();
+    if(document.body.classList.contains('onboardingPremium'))return;
     if(document.getElementById('mxDesktopShell'))return;
-    const source=document.querySelector('nav.bottomNav, nav.bottomBar');
-    if(!source || document.body.classList.contains('onboardingPremium'))return;
+    const source=document.querySelector('nav.bottomNav,nav.bottomBar');
+    if(!source)return;
     const shell=document.createElement('aside');
     shell.id='mxDesktopShell';
     shell.className='mxDesktopShell';
@@ -54,15 +72,20 @@
       button.addEventListener('click',()=>{
         if(original.tagName==='A'&&original.href){window.location.href=original.href;return;}
         original.click();
-        setTimeout(()=>sync(shell,source),30);
+        setTimeout(()=>sync(shell,source),40);
       });
       target.appendChild(button);
     });
     document.body.appendChild(shell);
     source.classList.add('mxDesktopSourceNav');
+    source.setAttribute('aria-hidden','true');
     sync(shell,source);
-    new MutationObserver(()=>sync(shell,source)).observe(source,{attributes:true,subtree:true,attributeFilter:['class']});
+    sourceObserver=new MutationObserver(()=>sync(shell,source));
+    sourceObserver.observe(source,{attributes:true,subtree:true,attributeFilter:['class']});
+    documentObserver=new MutationObserver(()=>hideSourceNavigations());
+    documentObserver.observe(document.body,{childList:true,subtree:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
+  window.addEventListener('load',()=>{hideSourceNavigations();setTimeout(hideSourceNavigations,500);});
   query.addEventListener?.('change',build);
 })();
