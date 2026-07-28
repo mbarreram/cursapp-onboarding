@@ -1,7 +1,7 @@
 (function(){
   'use strict';
   const mq=window.matchMedia('(min-width:1024px)');
-  let observer=null, timer=null, rendering=false, lastSignature='';
+  let timer=null, rendering=false, lastSignature='', hydrationOpen=true;
 
   const icons={
     card:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
@@ -103,13 +103,32 @@
     if(!isHome(app)){cleanup(app);return;}
     const source=sourceHome(app), sig=signature(source);
     if(app.querySelector('#mxApoderadoDesktopHome')&&sig===lastSignature)return;
-    rendering=true; app.querySelector('#mxApoderadoDesktopHome')?.remove();
-    app.prepend(build(source)); app.classList.add('mx-apo-desktop-home-active');document.body.classList.add('mx-apo-home-view');lastSignature=sig;
-    document.getElementById('menuBtn')?.classList.add('mxApoHideDesktop');document.getElementById('menuDropdown')?.classList.add('mxApoHideDesktop');rendering=false;
+    rendering=true;
+    try{
+      app.querySelector('#mxApoderadoDesktopHome')?.remove();
+      app.prepend(build(source));
+      app.classList.add('mx-apo-desktop-home-active');
+      document.body.classList.add('mx-apo-home-view');
+      lastSignature=sig;
+      document.getElementById('menuBtn')?.classList.add('mxApoHideDesktop');
+      document.getElementById('menuDropdown')?.classList.add('mxApoHideDesktop');
+    }finally{
+      rendering=false;
+    }
   }
-  function schedule(){clearTimeout(timer);timer=setTimeout(mount,140);}
-  function start(){if(!mq.matches)return;mount();observer?.disconnect();const app=document.getElementById('app');if(app){observer=new MutationObserver(m=>{if(rendering)return;if(m.some(x=>x.type==='childList'))schedule();});observer.observe(app,{childList:true,subtree:true});}}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-  window.addEventListener('cursapp:dataChanged',schedule);
-  mq.addEventListener?.('change',()=>{const app=document.getElementById('app');if(mq.matches)start();else{observer?.disconnect();cleanup(app);}});
+  function schedule(delay=500){
+    clearTimeout(timer);
+    timer=setTimeout(mount,delay);
+  }
+  function start(){
+    if(!mq.matches)return;
+    hydrationOpen=true;
+    schedule(250);
+    setTimeout(()=>schedule(0),1400);
+    setTimeout(()=>schedule(0),3200);
+    setTimeout(()=>{hydrationOpen=false;},4500);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  window.addEventListener('cursapp:dataChanged',()=>{if(hydrationOpen)schedule(650);});
+  mq.addEventListener?.('change',()=>{const app=document.getElementById('app');if(mq.matches)start();else cleanup(app);});
 })();
