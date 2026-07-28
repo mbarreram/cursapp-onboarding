@@ -1,7 +1,9 @@
 (function(){
   'use strict';
   const mq=window.matchMedia('(min-width:1024px)');
-  let timer=null, rendering=false, lastSignature='', hydrationOpen=true;
+  let rendering=false;
+  let waitToken=0;
+  let lastSignature='';
 
   const icons={
     card:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
@@ -16,13 +18,14 @@
   const text=el=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+  function activeTab(){
+    return document.querySelector('.apoderado-bottom-nav-item.active,[data-tab].active')?.getAttribute('data-tab')||'home';
+  }
   function isHome(app){
-    const active=document.querySelector('.apoderado-bottom-nav-item.active,[data-tab].active');
-    if(active?.getAttribute('data-tab') && active.getAttribute('data-tab')!=='home') return false;
+    if(activeTab()!=='home')return false;
     return !!app.querySelector('.apoV2DueCarousel.next-payment-card,.apoV2SummaryCard.quick-summary-card');
   }
-
-  function sourceHome(app){return app.querySelector('.apoV2Page,.apoderado-home,.cpHomeV5')||app;}
+  function sourceHome(app){return app.querySelector('.apoV2Page,.apoderado-home,.cpHomeV5');}
 
   function collectDues(source){
     const slides=[...source.querySelectorAll('.apoV2DueSlide')];
@@ -95,14 +98,21 @@
     return shell;
   }
 
-  function cleanup(app){app?.classList.remove('mx-apo-desktop-home-active');document.body.classList.remove('mx-apo-home-view');app?.querySelector('#mxApoderadoDesktopHome')?.remove();lastSignature='';}
+  function cleanup(app){
+    waitToken++;
+    app?.classList.remove('mx-apo-desktop-home-active');
+    document.body.classList.remove('mx-apo-home-view');
+    app?.querySelector('#mxApoderadoDesktopHome')?.remove();
+    lastSignature='';
+  }
   function signature(source){return [text(source.querySelector('.apoV2DueCarousel')),text(source.querySelector('.apoV2SummaryCard')),text(source.querySelector('details.cpV5Section'))].join('|');}
-  function mount(){
-    if(rendering||!mq.matches||!document.body.classList.contains('cursapp-apoderado'))return;
-    const app=document.getElementById('app'); if(!app)return;
-    if(!isHome(app)){cleanup(app);return;}
-    const source=sourceHome(app), sig=signature(source);
-    if(app.querySelector('#mxApoderadoDesktopHome')&&sig===lastSignature)return;
+  function mountReadyHome(app){
+    if(rendering||!mq.matches||!isHome(app))return false;
+    const source=sourceHome(app);
+    if(!source)return false;
+    const sig=signature(source);
+    if(!sig)return false;
+    if(app.querySelector('#mxApoderadoDesktopHome')&&sig===lastSignature)return true;
     rendering=true;
     try{
       app.querySelector('#mxApoderadoDesktopHome')?.remove();
@@ -112,23 +122,42 @@
       lastSignature=sig;
       document.getElementById('menuBtn')?.classList.add('mxApoHideDesktop');
       document.getElementById('menuDropdown')?.classList.add('mxApoHideDesktop');
-    }finally{
-      rendering=false;
-    }
+      return true;
+    }finally{rendering=false;}
   }
-  function schedule(delay=500){
-    clearTimeout(timer);
-    timer=setTimeout(mount,delay);
+  function waitForCurrentModule(maxFrames=900){
+    const token=++waitToken;
+    let frames=0;
+    const tick=()=>{
+      if(token!==waitToken||!mq.matches)return;
+      const app=document.getElementById('app');
+      if(!app)return;
+      if(activeTab()!=='home'){
+        cleanup(app);
+        return;
+      }
+      if(mountReadyHome(app))return;
+      if(++frames<maxFrames)requestAnimationFrame(tick);
+      else cleanup(app);
+    };
+    requestAnimationFrame(tick);
+  }
+  function onNavigation(event){
+    const target=event.target.closest?.('.apoderado-bottom-nav-item,[data-tab]');
+    if(!target)return;
+    requestAnimationFrame(()=>{
+      const app=document.getElementById('app');
+      if(target.getAttribute('data-tab')==='home')waitForCurrentModule();
+      else cleanup(app);
+    });
   }
   function start(){
     if(!mq.matches)return;
-    hydrationOpen=true;
-    schedule(250);
-    setTimeout(()=>schedule(0),1400);
-    setTimeout(()=>schedule(0),3200);
-    setTimeout(()=>{hydrationOpen=false;},4500);
+    waitForCurrentModule();
   }
+
+  document.addEventListener('click',onNavigation,true);
+  window.addEventListener('cursapp:apoderado-ready',start);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-  window.addEventListener('cursapp:dataChanged',()=>{if(hydrationOpen)schedule(650);});
   mq.addEventListener?.('change',()=>{const app=document.getElementById('app');if(mq.matches)start();else cleanup(app);});
 })();
