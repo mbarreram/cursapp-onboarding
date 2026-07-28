@@ -33,6 +33,23 @@
       nav.setAttribute('aria-hidden','true');
     });
   }
+  function stabilizeTransbank(){
+    if(!query.matches || !document.body.classList.contains('cursapp-apoderado'))return;
+    const nodes=[...document.querySelectorAll('img[alt*="Transbank" i],img[src*="transbank" i],[class*="transbank" i]')];
+    nodes.forEach(node=>{
+      const host=node.closest('div,section,aside,span')||node.parentElement;
+      if(!host || host.classList.contains('mxTransbankStable'))return;
+      if(host.querySelector(':scope > .mxTransbankStable')){
+        if(node.tagName==='IMG')node.style.display='none';
+        return;
+      }
+      if(node.tagName==='IMG')node.style.display='none';
+      const badge=document.createElement('span');
+      badge.className='mxTransbankStable';
+      badge.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span><strong>Pago seguro</strong><br>Débito y crédito</span>';
+      host.appendChild(badge);
+    });
+  }
   function sync(shell,source){
     const originals=[...source.children].filter(el=>el.matches('button,a'));
     shell.querySelectorAll('[data-mx-index]').forEach(btn=>{
@@ -54,6 +71,7 @@
     if(!query.matches){removeDesktop();return;}
     document.body.classList.add('mx-desktop-active');
     hideSourceNavigations();
+    stabilizeTransbank();
     if(document.body.classList.contains('onboardingPremium'))return;
     if(document.getElementById('mxDesktopShell'))return;
     const source=document.querySelector('nav.bottomNav,nav.bottomBar');
@@ -82,10 +100,14 @@
     sync(shell,source);
     sourceObserver=new MutationObserver(()=>sync(shell,source));
     sourceObserver.observe(source,{attributes:true,subtree:true,attributeFilter:['class']});
-    documentObserver=new MutationObserver(()=>hideSourceNavigations());
+    let scheduled=false;
+    documentObserver=new MutationObserver(()=>{
+      hideSourceNavigations();
+      if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;stabilizeTransbank();});}
+    });
     documentObserver.observe(document.body,{childList:true,subtree:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
-  window.addEventListener('load',()=>{hideSourceNavigations();setTimeout(hideSourceNavigations,500);});
+  window.addEventListener('load',()=>{hideSourceNavigations();stabilizeTransbank();setTimeout(()=>{hideSourceNavigations();stabilizeTransbank();},500);});
   query.addEventListener?.('change',build);
 })();
