@@ -1,0 +1,43 @@
+@media (min-width:1024px){
+  body.cursapp-apoderado.mx-apo-native-home #app{display:none!important}
+  body.cursapp-apoderado .mxApoNativeDesktop{margin-left:232px;padding:34px 38px 54px;background:#f6f9fc;min-height:calc(100vh - 88px);font-family:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;color:#172033}
+  .mxNativeWrap{width:min(1440px,100%);margin:0 auto}
+  .mxNativePageHead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}
+  .mxNativePageHead span{display:block;color:#635bff;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-bottom:8px}
+  .mxNativePageHead h1{margin:0;font-size:34px;line-height:1.08;font-weight:650;letter-spacing:-.035em;color:#172033}
+  .mxNativePageHead p,.mxNativeSectionHead p{margin:8px 0 0;color:#697386;font-size:15px;line-height:1.5;font-weight:400}
+  .mxNativePageHead>button,.mxNativeSectionHead>button{border:1px solid #d8dee8;background:#fff;color:#4f46e5;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .mxNativePanel{background:#fff;border:1px solid #e5e9f0;border-radius:18px;padding:22px;box-shadow:0 8px 24px rgba(31,45,61,.055)}
+  .mxNativeSectionHead{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
+  .mxNativeSectionHead h2{margin:0;color:#172033;font-size:20px;font-weight:620;letter-spacing:-.02em}
+  .mxNativeDuesGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .mxNativeDuesGrid.one{grid-template-columns:minmax(0,520px)}
+  .mxNativeDueCard{display:grid;grid-template-columns:76px minmax(0,1fr);gap:16px;padding:18px;border:1px solid #e5e9f0;border-radius:15px;background:linear-gradient(180deg,#fff,#fbfcff)}
+  .mxNativeDate{height:94px;border:1px solid #e5e9f0;border-radius:13px;display:flex;flex-direction:column;align-items:center;overflow:hidden;background:#fff}
+  .mxNativeDate b{width:100%;padding:7px 4px;background:#ff4d67;color:#fff;text-align:center;font-size:12px;letter-spacing:.08em}
+  .mxNativeDate strong{font-size:26px;line-height:1;margin-top:10px;font-weight:650}
+  .mxNativeDate span{font-size:11px;color:#697386;margin-top:6px;text-transform:capitalize}
+  .mxNativeDueCopy>span{color:#635bff;font-size:12px;font-weight:650}
+  .mxNativeDueCopy h3{font-size:18px;line-height:1.25;margin:5px 0 0;font-weight:620;letter-spacing:-.02em}
+  .mxNativeDueCopy p{font-size:13px;color:#697386;margin:6px 0}
+  .mxNativeDueCopy>strong{display:block;font-size:24px;line-height:1.15;font-weight:650;margin-top:8px}
+  .mxNativeActions{display:flex;gap:9px;margin-top:14px}
+  .mxNativeActions button{border:1px solid #d8dee8;background:#fff;color:#4f46e5;border-radius:9px;padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer}
+  .mxNativeActions button.primary{background:#635bff;border-color:#635bff;color:#fff}
+  .mxNativeMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}
+  .mxNativeMetric{background:#fff;border:1px solid #e5e9f0;border-radius:15px;padding:18px;display:flex;gap:13px;align-items:center;box-shadow:0 6px 18px rgba(31,45,61,.04)}
+  .mxNativeMetric>span{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto}
+  .mxNativeMetric>span svg,.mxNativeQuickGrid svg,.mxNativeNotices svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .mxNativeMetric>span.purple{color:#635bff;background:#eeecff}.mxNativeMetric>span.green{color:#0e9f6e;background:#e4f8f1}.mxNativeMetric>span.orange{color:#d97706;background:#fff1db}.mxNativeMetric>span.blue{color:#2563eb;background:#e8f1ff}
+  .mxNativeMetric small{display:block;color:#697386;font-size:12px;font-style:normal}.mxNativeMetric strong{display:block;color:#172033;font-size:23px;font-weight:650;margin-top:3px}.mxNativeMetric em{display:block;color:#8a94a6;font-size:12px;font-style:normal;margin-top:2px}
+  .mxNativeLower{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(360px,.9fr);gap:16px}
+  .mxNativeQuickGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .mxNativeQuickGrid button{position:relative;display:grid;grid-template-columns:42px 1fr 20px;align-items:center;gap:13px;text-align:left;border:1px solid #e5e9f0;background:#fff;border-radius:13px;padding:15px;color:#172033;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+  .mxNativeQuickGrid button:hover{border-color:#c9c5ff;box-shadow:0 8px 20px rgba(99,91,255,.08);transform:translateY(-1px)}
+  .mxNativeQuickGrid button>span{width:42px;height:42px;border-radius:11px;background:#eeecff;color:#635bff;display:grid;place-items:center}
+  .mxNativeQuickGrid button>div b{display:block;font-size:15px;font-weight:620}.mxNativeQuickGrid button>div small{display:block;color:#697386;font-size:12px;line-height:1.35;margin-top:3px}
+  .mxNativeQuickGrid button>svg{width:18px;height:18px;color:#98a2b3}
+  .mxNativeNotices{display:grid;gap:10px}.mxNativeNotices article{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:14px;border:1px solid #e5e9f0;border-radius:13px;background:#fbfcff}.mxNativeNotices article>span{width:40px;height:40px;border-radius:10px;background:#eef4ff;color:#2563eb;display:grid;place-items:center}.mxNativeNotices h3{margin:0;font-size:15px;font-weight:620}.mxNativeNotices p{margin:5px 0 0;color:#697386;font-size:13px;line-height:1.42}
+  .mxNativeEmpty{min-height:150px;border:1px dashed #d8dee8;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#697386;background:#fbfcff}.mxNativeEmpty strong{color:#172033;font-size:16px;font-weight:620}.mxNativeEmpty span{font-size:13px;margin-top:5px}.mxNativeEmpty.compact{min-height:120px}
+  @media (max-width:1250px){.mxNativeDuesGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mxNativeMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mxNativeLower{grid-template-columns:1fr}.mxNativeQuickGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+}
