@@ -1,0 +1,87 @@
+@media (min-width:1024px){
+  body.cursapp-apoderado.mx-apo-native-home{background:#f4f7fb}
+  body.cursapp-apoderado .mxApoNativeDesktop{padding:0 34px 34px;background:linear-gradient(180deg,#f5f8fd 0%,#f7f9fc 38%,#f4f7fb 100%)}
+  .mxNativeWrap{width:min(1460px,100%);padding-top:18px;animation:mxPremiumFade .28s ease both}
+
+  .mxNativeHero{min-height:142px;grid-template-columns:minmax(430px,1fr) minmax(320px,430px);padding:22px 30px 0;border-radius:24px;margin:0 10px 14px;background:radial-gradient(circle at 76% 22%,rgba(130,166,255,.24),transparent 24%),radial-gradient(circle at 91% 72%,rgba(79,209,169,.16),transparent 18%),linear-gradient(120deg,#f9fbff 0%,#eef4ff 54%,#f7f2ff 100%);border:1px solid #dfe6f2;box-shadow:0 18px 44px rgba(37,55,91,.08)}
+  .mxNativeHero:before{content:"";position:absolute;left:42%;top:18px;width:82px;height:82px;border-radius:50%;background:rgba(85,111,255,.08);filter:blur(3px)}
+  .mxNativeHero:after{left:8%;right:8%;bottom:-62px;height:86px;background:rgba(255,255,255,.9);box-shadow:0 -1px 0 rgba(215,223,236,.85)}
+  .mxNativeHeroCopy{padding-bottom:18px}
+  .mxNativeHeroCopy>span{margin-bottom:7px;font-size:11px;font-weight:700;letter-spacing:.13em}
+  .mxNativeHeroCopy h1{font-size:34px;line-height:1.08;font-weight:680;letter-spacing:-.042em;color:#14203a}
+  .mxNativeHeroCopy p{margin-top:10px;font-size:15px;color:#65738a}
+  .mxNativeHeroArt{height:142px}
+  .mxHeroFamily{width:min(420px,100%);filter:drop-shadow(0 16px 22px rgba(41,64,116,.1))}
+  .mxNativeHero>button{right:24px;bottom:18px;padding:10px 14px;border-radius:11px;font-size:12px;box-shadow:0 8px 18px rgba(44,72,133,.1);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .mxNativeHero>button:hover{transform:translateY(-1px);border-color:#bfcaf2;box-shadow:0 12px 24px rgba(44,72,133,.14)}
+
+  .mxNativePanel{border-radius:18px;border-color:#e2e8f1;box-shadow:0 10px 30px rgba(37,55,91,.05)}
+  .mxNativeDuesPanel{padding:20px 22px 22px;margin:0 10px 14px}
+  .mxNativeSectionHead{margin-bottom:14px}
+  .mxNativeSectionHead h2{font-size:18px;font-weight:660;color:#1e293b}
+  .mxNativeSectionHead p{font-size:12px;color:#7a879a}
+  .mxNativeSectionHead>button{padding:7px 10px;border-radius:9px;transition:background .15s ease,color .15s ease}
+  .mxNativeSectionHead>button:hover{background:#eef3ff;color:#1748ed}
+
+  .mxNativeDuesGrid{gap:14px}
+  .mxNativeDueCard{min-height:174px;padding:16px;grid-template-columns:68px minmax(0,1fr);gap:14px;border-radius:16px;background:linear-gradient(180deg,#fff,#fbfdff);box-shadow:0 7px 20px rgba(33,49,80,.045)}
+  .mxNativeDueCard:before{content:"Pendiente";position:absolute;right:15px;top:14px;padding:4px 8px;border-radius:999px;background:#fff2f4;color:#d83b55;font-size:9px;font-weight:750;letter-spacing:.02em}
+  .mxNativeDueCard:nth-child(2):before{content:"Próxima";background:#eefbf4;color:#159957}
+  .mxNativeDueCard:nth-child(3):before{content:"Programada";background:#fff7e7;color:#d78600}
+  .mxNativeDueTop{padding-right:72px}
+  .mxNativeDueTop>span{font-size:10px;letter-spacing:.02em}
+  .mxNativeDueTop>svg{display:none}
+  .mxNativeDueCopy h3{font-size:16px;font-weight:680}
+  .mxNativeDueCopy p{font-size:11px}
+  .mxNativeDueCopy>strong{font-size:22px;font-weight:720;margin-top:8px}
+  .mxNativeActions{margin-top:11px}
+  .mxNativeActions button{padding:8px 13px;min-width:100px;border-radius:9px;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+  .mxNativeActions button:hover{transform:translateY(-1px);box-shadow:0 8px 16px rgba(36,84,230,.12)}
+
+  .mxNativeMetrics{gap:12px;margin:0 10px 14px}
+  .mxNativeMetric{min-height:104px;padding:15px 17px;border-radius:15px;box-shadow:0 8px 22px rgba(33,49,80,.045);transition:transform .15s ease,box-shadow .15s ease}
+  .mxNativeMetric:hover{transform:translateY(-2px);box-shadow:0 13px 28px rgba(33,49,80,.08)}
+  .mxNativeMetric:after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:999px;background:currentColor;opacity:.42}
+  .mxNativeMetric.purple{color:#e13d57}.mxNativeMetric.green{color:#1aa35e}.mxNativeMetric.orange{color:#e58a00}.mxNativeMetric.blue{color:#3568e8}
+  .mxNativeMetric>span{width:44px;height:44px;border-radius:12px}
+  .mxNativeMetric small{font-size:11px;color:#718096}.mxNativeMetric strong{font-size:21px;color:#172033}.mxNativeMetric em{font-size:10px}
+  .mxNativeMetric>i{right:14px;width:30px;height:30px;opacity:.65}
+
+  .mxNativeLower{gap:14px;margin:0 10px 14px;align-items:stretch}
+  .mxNativeLower>.mxNativePanel{height:100%;padding:19px}
+  .mxNativeQuickGrid{gap:11px}
+  .mxNativeQuickGrid button{min-height:84px;border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#fcfdff);box-shadow:0 4px 14px rgba(31,45,61,.025)}
+  .mxNativeQuickGrid button:hover{transform:translateY(-2px);box-shadow:0 13px 25px rgba(43,74,145,.1);border-color:#bbc8f4}
+  .mxNativeQuickGrid button>span{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#edf2ff,#e5edff)}
+  .mxNativeQuickGrid button>div b{font-size:14px;font-weight:660}.mxNativeQuickGrid button>div small{font-size:11px;color:#718096}
+
+  .mxNativeNotices{position:relative;gap:10px}
+  .mxNativeNotices:before{content:"";position:absolute;left:20px;top:10px;bottom:10px;width:1px;background:#e3e9f2}
+  .mxNativeNotices article{position:relative;min-height:82px;border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#fcfdff);box-shadow:0 4px 14px rgba(31,45,61,.025);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .mxNativeNotices article:hover{transform:translateY(-1px);box-shadow:0 11px 22px rgba(43,74,145,.08);border-color:#cbd5e6}
+  .mxNativeNotices article:first-child:after{content:"Nuevo";position:absolute;right:34px;top:12px;background:#e9f8ef;color:#149750;padding:3px 7px;border-radius:999px;font-size:9px;font-weight:750}
+  .mxNativeNotices article>span{position:relative;z-index:1;width:40px;height:40px;border-radius:12px}
+  .mxNativeNotices h3{font-size:14px;font-weight:660}.mxNativeNotices p{font-size:11px;max-width:360px}.mxNativeNotices time{font-size:10px;color:#8b97aa}
+
+  .mxNativeSupport{grid-template-columns:minmax(250px,1.1fr) repeat(3,minmax(180px,.8fr));gap:9px;margin:0 10px;padding:13px 15px;border-radius:17px;background:linear-gradient(120deg,#fafbff,#f5f8ff);border-color:#dde5f1;box-shadow:0 9px 24px rgba(31,45,61,.045)}
+  .mxNativeSupportLead,.mxNativeSupport a,.mxNativeSupport button{min-height:62px;border-radius:13px}
+  .mxNativeSupport a,.mxNativeSupport button{background:rgba(255,255,255,.86);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+  .mxNativeSupport a:hover,.mxNativeSupport button:hover{transform:translateY(-1px);border-color:#becbf1;box-shadow:0 8px 18px rgba(43,74,145,.08)}
+  .mxNativeSupport strong,.mxNativeSupport b{font-size:13px;font-weight:660}.mxNativeSupport small{font-size:10px}
+
+  .mxNativeEmpty{border-radius:13px;background:linear-gradient(180deg,#fbfcff,#f8faff)}
+
+  @media (max-width:1320px){
+    .mxNativeHero{grid-template-columns:minmax(360px,1fr) minmax(280px,390px)}
+    .mxNativeHeroCopy h1{font-size:31px}
+    .mxNativeSupport{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:1120px){
+    .mxNativeHero{min-height:132px;grid-template-columns:1fr;padding-right:24px}
+    .mxNativeHeroArt{opacity:.28;width:360px}
+    .mxNativeHeroCopy{max-width:560px}
+    .mxNativeHeroCopy h1{font-size:29px}
+  }
+  @keyframes mxPremiumFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.mxNativeWrap,.mxNativeDueCard,.mxNativeMetric,.mxNativeQuickGrid button,.mxNativeNotices article,.mxNativeSupport a,.mxNativeSupport button{animation:none!important;transition:none!important}}
+}
