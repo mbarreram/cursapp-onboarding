@@ -1,4 +1,4 @@
-const APP_VERSION='2026.07.27.19';
+const APP_VERSION='2026.07.27.20';
 const CACHE=`cursapp-${APP_VERSION}`;
 
 self.addEventListener('install',event=>{
