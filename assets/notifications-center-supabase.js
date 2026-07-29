@@ -6,7 +6,7 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const icon=c=>({ticket:'🛠️',pago:'💰',payment:'💰',campana:'📅',campaign:'📅',aviso:'📢',announcement:'📢',rendicion:'🧾',rendition:'🧾',mercado:'🛍️',sistema:'🔔',system:'🔔'})[String(c||'').toLowerCase()]||'🔔';
   const ago=v=>{const t=Date.parse(v||'');if(!t)return'';const m=Math.floor((Date.now()-t)/60000);if(m<1)return'Hace segundos';if(m<60)return`Hace ${m} min`;const h=Math.floor(m/60);if(h<24)return`Hace ${h} h`;return`Hace ${Math.floor(h/24)} día(s)`};
-  let user=null,rows=[],lastError='',painting=false;
+  let user=null,rows=[],lastError='';
   const stats=()=>({total:rows.length,unread:rows.filter(x=>!x.is_read).length,read:rows.filter(x=>x.is_read).length,delivered:rows.filter(x=>String(x.delivery_state||'').toLowerCase()==='delivered').length});
   function emit(){try{window.dispatchEvent(new CustomEvent('micursox:notification-stats',{detail:stats()}));}catch(_){}}
   async function load(){
@@ -15,14 +15,16 @@
     rows=Array.isArray(data)?data:[];
     lastError='';paintBadge();emit();return rows;
   }
+  function setDisplay(el,value){if(el.style.display!==value)el.style.display=value}
   function paintBadge(){
-    const n=stats().unread;painting=true;
+    const n=stats().unread;
     document.querySelectorAll('#tesHeaderBadge,[data-cursapp-bell] em,.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]').forEach(el=>{
-      el.dataset.canonicalNotificationCount='1';
-      if(el.classList.contains('apoV42BellDot')){el.style.display=n?'block':'none';return}
-      el.textContent=n?String(n):'';el.style.display=n?'inline-flex':'none';
+      if(el.dataset.canonicalNotificationCount!=='1')el.dataset.canonicalNotificationCount='1';
+      if(el.classList.contains('apoV42BellDot')){setDisplay(el,n?'block':'none');return}
+      const next=n?String(n):'';
+      if(el.textContent!==next)el.textContent=next;
+      setDisplay(el,n?'inline-flex':'none');
     });
-    painting=false;
   }
   async function mark(ids){
     ids=Array.from(new Set((ids||[]).filter(Boolean)));
@@ -79,8 +81,21 @@
     if(isBell(control)){e.preventDefault();e.stopPropagation();if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();open();return}
     if(isSupport(control)){const api=window.CURSAPP_SUPPORT;if(api&&typeof api.openMyTickets==='function'){e.preventDefault();e.stopPropagation();if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();api.openMyTickets()}}
   },true);
-  const observer=new MutationObserver(()=>{if(!painting)paintBadge()});
-  function observe(){observer.observe(document.body,{childList:true,subtree:true,characterData:true});}
+  let badgePaintTimer=null;
+  const observer=new MutationObserver(mutations=>{
+    let needsPaint=false;
+    for(const mutation of mutations){
+      for(const node of mutation.addedNodes||[]){
+        if(node.nodeType!==1)continue;
+        if(node.matches?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]')||node.querySelector?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]')){needsPaint=true;break}
+      }
+      if(needsPaint)break;
+    }
+    if(!needsPaint)return;
+    clearTimeout(badgePaintTimer);
+    badgePaintTimer=setTimeout(paintBadge,50);
+  });
+  function observe(){if(document.body)observer.observe(document.body,{childList:true,subtree:true})}
   async function boot(){try{await load()}catch(e){lastError=e?.message||String(e);console.error('Centro notificaciones:',e)}observe();setInterval(()=>load().catch(e=>{lastError=e?.message||String(e)}),15000)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   window.CURSAPP_NOTIFICATIONS=Object.assign({},window.CURSAPP_NOTIFICATIONS||{},{open,refresh:load,preferences:openPreferences,mark,markByCategories,getStats:stats,getRows:()=>rows.slice()});
