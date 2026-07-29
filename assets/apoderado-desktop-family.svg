@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-labelledby="title desc">
+  <title id="title">Familia revisando la gestión del curso</title>
+  <desc id="desc">Ilustración exclusiva para el panel desktop de MiCursoX.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#edf4ff"/>
+      <stop offset="1" stop-color="#f6f0ff"/>
+    </linearGradient>
+    <linearGradient id="shirt1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f4ed8"/>
+      <stop offset="1" stop-color="#6d4aff"/>
+    </linearGradient>
+    <linearGradient id="shirt2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#15a669"/>
+      <stop offset="1" stop-color="#58d3a2"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#213a6b" flood-opacity=".15"/>
+    </filter>
+  </defs>
+  <rect width="720" height="360" rx="32" fill="url(#bg)"/>
+  <circle cx="610" cy="62" r="54" fill="#dce8ff"/>
+  <circle cx="92" cy="76" r="30" fill="#e6dcff"/>
+  <circle cx="650" cy="285" r="36" fill="#d9f7e9"/>
+  <g filter="url(#shadow)">
+    <rect x="420" y="224" width="212" height="92" rx="18" fill="#fff"/>
+    <rect x="443" y="246" width="74" height="10" rx="5" fill="#dbe5f5"/>
+    <rect x="443" y="266" width="132" height="10" rx="5" fill="#e7edf7"/>
+    <rect x="443" y="286" width="98" height="10" rx="5" fill="#e7edf7"/>
+    <circle cx="600" cy="270" r="20" fill="#e8efff"/>
+    <path d="M591 270h18M600 261v18" stroke="#315fe6" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <g filter="url(#shadow)">
+    <ellipse cx="318" cy="294" rx="198" ry="28" fill="#cfd9ec" opacity=".45"/>
+    <g>
+      <circle cx="220" cy="126" r="45" fill="#d69b72"/>
+      <path d="M177 123c4-44 25-67 59-60 31 6 40 34 28 67-9-26-31-42-61-30-8 4-17 12-26 23Z" fill="#25324a"/>
+      <path d="M154 286c4-79 31-122 70-122 42 0 72 42 74 122Z" fill="url(#shirt2)"/>
+      <path d="M183 197c22 18 53 18 78 0" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".55"/>
+    </g>
+    <g>
+      <circle cx="388" cy="118" r="48" fill="#bb7a55"/>
+      <path d="M343 117c1-48 23-71 61-65 34 6 48 35 36 71-9-28-37-45-67-31-10 4-20 13-30 25Z" fill="#17233b"/>
+      <path d="M312 286c5-84 33-130 79-130 45 0 78 44 82 130Z" fill="url(#shirt1)"/>
+      <path d="M349 199c24 18 57 18 83 0" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".45"/>
+    </g>
+    <g>
+      <circle cx="308" cy="161" r="38" fill="#c88962"/>
+      <path d="M273 158c2-36 21-55 49-50 28 5 37 28 28 56-8-21-29-33-52-22-8 3-16 9-25 16Z" fill="#2b3147"/>
+      <path d="M258 286c4-65 23-101 53-101 33 0 55 35 57 101Z" fill="#ffb84d"/>
+      <path d="M282 217c17 13 39 13 57 0" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".62"/>
+    </g>
+    <rect x="260" y="226" width="106" height="70" rx="12" fill="#1d2b4b"/>
+    <rect x="273" y="239" width="80" height="43" rx="7" fill="#f8fbff"/>
+    <circle cx="313" cy="289" r="4" fill="#8aa1c8"/>
+  </g>
+</svg>
