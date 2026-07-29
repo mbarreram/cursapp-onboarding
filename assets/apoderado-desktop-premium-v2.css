@@ -1,9 +1,9 @@
 @media (min-width:1024px){
   body.cursapp-apoderado.mx-apo-native-home{background:#f4f7fb}
-  body.cursapp-apoderado .mxApoNativeDesktop{padding:0 22px 34px 20px;background:linear-gradient(180deg,#f5f8fd 0%,#f7f9fc 38%,#f4f7fb 100%)}
-  .mxNativeWrap{width:100%;max-width:none;margin:0;padding-top:16px;animation:none}
+  body.cursapp-apoderado .mxApoNativeDesktop{margin-left:0!important;padding:0 22px 40px 22px;background:linear-gradient(180deg,#f5f8fd 0%,#f7f9fc 38%,#f4f7fb 100%)}
+  .mxNativeWrap{width:100%;max-width:none;margin:0!important;padding-top:16px;animation:none}
 
-  .mxNativeHero{min-height:166px;grid-template-columns:minmax(360px,1.08fr) minmax(360px,.92fr);padding:22px 28px 0;border-radius:24px;margin:0 0 14px;background:radial-gradient(circle at 74% 20%,rgba(130,166,255,.22),transparent 26%),linear-gradient(120deg,#f9fbff 0%,#eef4ff 58%,#f8f3ff 100%);border:1px solid #dfe6f2;box-shadow:0 18px 44px rgba(37,55,91,.08);overflow:hidden}
+  .mxNativeHero{min-height:166px;grid-template-columns:minmax(360px,1.08fr) minmax(360px,.92fr);padding:22px 28px 0;border-radius:24px;margin:0 0 28px;background:radial-gradient(circle at 74% 20%,rgba(130,166,255,.22),transparent 26%),linear-gradient(120deg,#f9fbff 0%,#eef4ff 58%,#f8f3ff 100%);border:1px solid #dfe6f2;box-shadow:0 18px 44px rgba(37,55,91,.08);overflow:hidden}
   .mxNativeHero:before{content:"";position:absolute;left:43%;top:22px;width:72px;height:72px;border-radius:50%;background:rgba(85,111,255,.07)}
   .mxNativeHero:after{left:7%;right:7%;bottom:-62px;height:86px;background:rgba(255,255,255,.92);box-shadow:0 -1px 0 rgba(215,223,236,.85)}
   .mxNativeHeroCopy{padding-bottom:20px;max-width:620px}
@@ -12,12 +12,12 @@
   .mxNativeHeroCopy p{margin-top:10px;font-size:15px;color:#65738a}
   .mxNativeHeroArt{height:166px;position:relative;align-self:end;justify-content:flex-end;overflow:hidden;border-radius:18px 18px 0 0}
   .mxNativeHeroArt .mxHeroFamily{display:none!important}
-  .mxNativeHeroArt:before{content:"";position:absolute;inset:0 0 0 0;background:url('/assets/landing/mockup-hero-family.png') center 36%/cover no-repeat;border-radius:18px 18px 0 0;filter:saturate(.96) contrast(1.02)}
-  .mxNativeHeroArt:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(238,244,255,.38),transparent 30%);pointer-events:none}
+  .mxNativeHeroArt:before{content:"";position:absolute;inset:0;background:url('/assets/apoderado-desktop-family.svg') center 48%/cover no-repeat;border-radius:18px 18px 0 0;filter:none}
+  .mxNativeHeroArt:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(238,244,255,.28),transparent 26%);pointer-events:none}
   .mxNativeHero>button{right:22px;bottom:16px;padding:9px 13px;border-radius:11px;font-size:12px;box-shadow:0 8px 18px rgba(44,72,133,.10)}
 
   .mxNativePanel{border-radius:18px;border-color:#e2e8f1;box-shadow:0 10px 30px rgba(37,55,91,.05)}
-  .mxNativeDuesPanel{padding:20px 22px 22px;margin:0 0 14px}
+  .mxNativeDuesPanel{padding:20px 22px 22px;margin:0 0 22px}
   .mxNativeSectionHead{margin-bottom:14px}
   .mxNativeSectionHead h2{font-size:18px;font-weight:660;color:#1e293b}
   .mxNativeSectionHead p{font-size:12px;color:#7a879a}
@@ -32,15 +32,15 @@
   .mxNativeDueCopy h3{font-size:16px;font-weight:680}.mxNativeDueCopy p{font-size:11px}.mxNativeDueCopy>strong{font-size:22px;font-weight:720;margin-top:8px}
   .mxNativeActions{margin-top:11px}.mxNativeActions button{padding:8px 13px;min-width:100px;border-radius:9px}
 
-  .mxNativeMetrics{gap:12px;margin:0 0 14px}
+  .mxNativeMetrics{gap:12px;margin:0 0 24px}
   .mxNativeMetric{min-height:104px;padding:15px 17px;border-radius:15px;box-shadow:0 8px 22px rgba(33,49,80,.045)}
   .mxNativeMetric:after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:999px;background:currentColor;opacity:.42}
   .mxNativeMetric.purple{color:#e13d57}.mxNativeMetric.green{color:#1aa35e}.mxNativeMetric.orange{color:#e58a00}.mxNativeMetric.blue{color:#3568e8}
   .mxNativeMetric>span{width:44px;height:44px;border-radius:12px}.mxNativeMetric small{font-size:11px;color:#718096}.mxNativeMetric strong{font-size:21px;color:#172033}.mxNativeMetric em{font-size:10px}.mxNativeMetric>i{right:14px;width:30px;height:30px;opacity:.65}
 
-  .mxNativeLower{gap:14px;margin:0 0 14px;align-items:stretch;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr)}
-  .mxNativeLower>.mxNativePanel{height:100%;padding:19px}
-  .mxNativeQuickGrid{gap:11px}
+  .mxNativeLower{gap:18px;margin:0 0 18px;align-items:stretch;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr)}
+  .mxNativeLower>.mxNativePanel{height:100%;padding:20px}
+  .mxNativeQuickGrid{gap:12px}
   .mxNativeQuickGrid button{min-height:88px;border-radius:14px;padding:14px;background:linear-gradient(180deg,#fff,#fcfdff);box-shadow:0 4px 14px rgba(31,45,61,.025)}
   .mxNativeQuickGrid button>span{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#edf2ff,#e5edff)}
   .mxNativeQuickGrid button>div b{font-size:14px;font-weight:660}.mxNativeQuickGrid button>div small{font-size:11px;color:#718096}
