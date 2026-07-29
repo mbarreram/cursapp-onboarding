@@ -1,130 +1,237 @@
-/* MiCursoX Apoderado desktop modules v2. Desktop only; visual layer only. */
+/* MiCursoX · Apoderado desktop modules
+   Visual layer only. Mobile, Supabase and business rules remain untouched. */
 @media (min-width:1024px){
   body.apoderado-ui-v24[data-apo-module="payments"] #app,
   body.apoderado-ui-v24[data-apo-module="informes"] #app{
     width:auto!important;
     max-width:none!important;
+    min-width:0!important;
     margin:0!important;
-    padding:28px 34px 64px!important;
+    padding:30px 34px 72px!important;
+    overflow:visible!important;
   }
 
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage,
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
     width:100%!important;
-    max-width:1220px!important;
+    max-width:1240px!important;
+    min-width:0!important;
     margin:0!important;
     font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;
-    color:#172033!important;
+    color:#1c2738!important;
   }
 
-  /* PAGOS */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage *,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage *{
+    box-sizing:border-box!important;
+  }
+
+  /* Typography: lighter and closer to the approved desktop Home. */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage h1,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h1{
+    font-weight:650!important;
+    letter-spacing:-.035em!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage h2,
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage h3,
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage h4,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h2,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h3{
+    font-weight:600!important;
+    letter-spacing:-.018em!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage p,
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage small,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage p,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage small{
+    font-weight:400!important;
+  }
+
+  /* ===================== PAGOS ===================== */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:18px!important;
+  }
+
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeader{
-    min-height:150px!important;
-    padding:30px 32px!important;
-    border:1px solid #dbe5f2!important;
-    border-radius:28px!important;
-    background:linear-gradient(135deg,#ffffff 0%,#f7fbff 58%,#eef5ff 100%)!important;
-    box-shadow:0 18px 50px rgba(30,64,175,.07)!important;
+    min-height:168px!important;
+    margin:0!important;
+    padding:32px 34px!important;
+    border:1px solid rgba(199,214,233,.82)!important;
+    border-radius:30px!important;
+    background:
+      radial-gradient(circle at 88% 28%,rgba(59,130,246,.14) 0 66px,transparent 67px),
+      radial-gradient(circle at 78% 82%,rgba(45,212,191,.10) 0 46px,transparent 47px),
+      linear-gradient(135deg,#fff 0%,#f7fbff 60%,#edf5ff 100%)!important;
+    box-shadow:0 18px 48px rgba(30,64,175,.07)!important;
     display:flex!important;
     align-items:center!important;
     justify-content:space-between!important;
-    gap:28px!important;
+    gap:34px!important;
+    overflow:hidden!important;
   }
+
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeader h1{
     margin:0!important;
-    font-size:34px!important;
+    font-size:32px!important;
     line-height:1.08!important;
-    font-weight:720!important;
-    letter-spacing:-.035em!important;
+    color:#172033!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeader p{
     margin:10px 0 0!important;
     max-width:620px!important;
-    color:#64748b!important;
-    font-size:15px!important;
-    font-weight:450!important;
+    color:#65748a!important;
+    font-size:14px!important;
+    line-height:1.55!important;
+  }
+
+  /* Stable payment-security seal. The external image is hidden on desktop to
+     avoid repaints/flicker; the brand name remains visible as static text. */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustBadge{
+    display:flex!important;
+    align-items:center!important;
+    gap:12px!important;
+    min-width:0!important;
+    height:auto!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustBadge.header{
-    min-width:240px!important;
-    padding:16px 18px!important;
-    border:1px solid #d9e5f3!important;
-    border-radius:20px!important;
-    background:#fff!important;
-    box-shadow:0 12px 30px rgba(15,23,42,.06)!important;
+    flex:0 0 270px!important;
+    min-height:94px!important;
+    padding:18px 20px!important;
+    border:1px solid #d7e3f1!important;
+    border-radius:22px!important;
+    background:rgba(255,255,255,.92)!important;
+    box-shadow:0 12px 30px rgba(15,23,42,.055)!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustLogo{
+    display:none!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustLock{
-    font-size:0!important;
-    width:42px!important;
-    height:42px!important;
+    flex:0 0 44px!important;
+    width:44px!important;
+    height:44px!important;
     border-radius:14px!important;
-    background:#edf5ff!important;
+    background:#eaf3ff!important;
     position:relative!important;
+    font-size:0!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustLock:before{
     content:"";
     position:absolute;
-    left:13px;top:17px;
-    width:16px;height:13px;
+    left:13px;top:18px;
+    width:18px;height:14px;
     border:2px solid #2563eb;
     border-radius:4px;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustLock:after{
     content:"";
     position:absolute;
-    left:16px;top:10px;
+    left:17px;top:10px;
     width:10px;height:10px;
     border:2px solid #2563eb;
     border-bottom:0;
     border-radius:8px 8px 0 0;
   }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustText{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:3px!important;
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustText:before{
+    content:"Transbank";
+    color:#3563c5!important;
+    font-size:12px!important;
+    font-weight:600!important;
+    letter-spacing:.01em!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustText b{
+    color:#1f2d42!important;
+    font-size:14px!important;
+    font-weight:600!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustText small{
+    color:#708096!important;
+    font-size:12px!important;
+  }
+
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHero,
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayUpToDateHero{
-    margin-top:20px!important;
+    margin:0!important;
     padding:24px 28px!important;
-    border:1px solid #dfe7f1!important;
+    border:1px solid #dde7f2!important;
     border-radius:24px!important;
     background:#fff!important;
-    box-shadow:0 12px 34px rgba(15,23,42,.05)!important;
+    box-shadow:0 10px 30px rgba(15,23,42,.045)!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayUpToDateHero{
-    min-height:118px!important;
+    min-height:116px!important;
     display:flex!important;
     align-items:center!important;
     gap:18px!important;
-    background:linear-gradient(135deg,#f0fdf4,#ffffff)!important;
+    background:linear-gradient(135deg,#effbf5,#fff)!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeroIcon{
-    width:54px!important;height:54px!important;
+    flex:0 0 52px!important;
+    width:52px!important;height:52px!important;
     display:grid!important;place-items:center!important;
-    border-radius:17px!important;
-    background:#dcfce7!important;
-    font-size:25px!important;
+    border-radius:16px!important;
+    background:#dcf8e8!important;
+    font-size:24px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayUpToDateHero span{
+    color:#228154!important;
+    font-size:12px!important;
+    font-weight:600!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayUpToDateHero h2{
     margin:4px 0!important;
-    font-size:23px!important;
-    letter-spacing:-.02em!important;
+    font-size:22px!important;
+    color:#1b293d!important;
   }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayUpToDateHero p{
+    margin:0!important;
+    color:#637389!important;
+    font-size:13px!important;
+  }
+
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary{
     display:grid!important;
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
     gap:14px!important;
-    margin-top:18px!important;
+    margin:0!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary article{
-    min-height:122px!important;
+    min-width:0!important;
+    min-height:124px!important;
     padding:20px!important;
     border:1px solid #dfe7f1!important;
-    border-radius:20px!important;
+    border-radius:21px!important;
     background:#fff!important;
-    box-shadow:0 9px 26px rgba(15,23,42,.045)!important;
+    box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
   }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary article p{
+    margin:10px 0 4px!important;
+    color:#697990!important;
+    font-size:12px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary article strong{
+    color:#1d2a3e!important;
+    font-size:21px!important;
+    font-weight:620!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary article small{
+    margin-top:5px!important;
+    font-size:11px!important;
+  }
+
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTabs{
-    margin-top:18px!important;
+    margin:0!important;
     padding:5px!important;
     border:1px solid #dfe7f1!important;
     border-radius:17px!important;
-    background:#f7f9fc!important;
+    background:#f4f7fb!important;
     display:grid!important;
     grid-template-columns:repeat(3,1fr)!important;
     gap:6px!important;
@@ -134,145 +241,310 @@
     border:0!important;
     border-radius:13px!important;
     background:transparent!important;
-    color:#66758b!important;
-    font-weight:650!important;
+    color:#69798e!important;
+    font-size:13px!important;
+    font-weight:520!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTabs button.active{
     background:#fff!important;
-    color:#2557c7!important;
-    box-shadow:0 6px 18px rgba(37,99,235,.10)!important;
+    color:#2858c6!important;
+    box-shadow:0 6px 18px rgba(37,99,235,.09)!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayList{
     display:grid!important;
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:18px!important;
-    margin-top:20px!important;
+    margin:0!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayGroup,
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayEmpty,
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayCelebrate{
+    min-width:0!important;
     margin:0!important;
     padding:24px!important;
     border:1px solid #dfe7f1!important;
     border-radius:22px!important;
     background:#fff!important;
-    box-shadow:0 10px 30px rgba(15,23,42,.045)!important;
+    box-shadow:0 10px 28px rgba(15,23,42,.04)!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayEmpty{
+    grid-column:1/-1!important;
+    min-height:180px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
   }
   body.apoderado-ui-v24[data-apo-module="payments"] .apoPayLine{
-    border:1px solid #e5ebf3!important;
+    border:1px solid #e4ebf3!important;
     border-radius:16px!important;
     background:#fbfdff!important;
   }
 
-  /* INFORMES */
+  /* ===================== INFORMES ===================== */
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
     display:grid!important;
-    grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr)!important;
+    grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr)!important;
+    grid-template-areas:
+      "hero hero"
+      "chart donut"
+      "moves stats"
+      "trust trust"!important;
     gap:20px!important;
-    align-items:start!important;
+    align-items:stretch!important;
   }
+
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero{
-    grid-column:1/-1!important;
-    min-height:180px!important;
+    grid-area:hero!important;
+    min-width:0!important;
+    min-height:190px!important;
+    margin:0!important;
     padding:30px 34px!important;
-    border:1px solid #dbe5f2!important;
-    border-radius:28px!important;
+    border:1px solid rgba(199,214,233,.82)!important;
+    border-radius:30px!important;
     background:
-      radial-gradient(circle at 88% 22%,rgba(59,130,246,.15) 0 62px,transparent 63px),
-      radial-gradient(circle at 79% 76%,rgba(20,184,166,.12) 0 44px,transparent 45px),
-      linear-gradient(135deg,#fff 0%,#f7fbff 62%,#eef5ff 100%)!important;
-    box-shadow:0 18px 50px rgba(30,64,175,.07)!important;
+      radial-gradient(circle at 88% 24%,rgba(59,130,246,.16) 0 66px,transparent 67px),
+      radial-gradient(circle at 77% 80%,rgba(45,212,191,.11) 0 46px,transparent 47px),
+      linear-gradient(135deg,#fff 0%,#f7fbff 62%,#edf5ff 100%)!important;
+    box-shadow:0 18px 48px rgba(30,64,175,.07)!important;
     text-align:left!important;
     position:relative!important;
+    overflow:hidden!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportBrand{
-    font-size:12px!important;
-    letter-spacing:.12em!important;
     color:#3563c5!important;
+    font-size:11px!important;
+    font-weight:600!important;
+    letter-spacing:.12em!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero h1{
-    margin:30px 0 6px!important;
-    font-size:34px!important;
+    margin:26px 0 7px!important;
+    font-size:32px!important;
     line-height:1.08!important;
-    font-weight:720!important;
-    letter-spacing:-.035em!important;
+    color:#172033!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero p{
     margin:0!important;
-    color:#64748b!important;
-    font-size:15px!important;
+    color:#65748a!important;
+    font-size:14px!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportActions{
     position:absolute!important;
-    top:26px!important;
-    right:28px!important;
+    top:28px!important;
+    right:30px!important;
     display:flex!important;
     gap:10px!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportActions button{
     width:auto!important;
-    min-width:92px!important;
+    min-width:96px!important;
     height:42px!important;
     padding:0 15px!important;
-    border:1px solid #d8e3f1!important;
+    border:1px solid #d7e2ef!important;
     border-radius:13px!important;
     background:#fff!important;
-    color:#2855ba!important;
-    box-shadow:0 8px 22px rgba(15,23,42,.05)!important;
+    color:#2858c6!important;
+    font-size:13px!important;
+    font-weight:560!important;
+    box-shadow:0 8px 20px rgba(15,23,42,.045)!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPeriod{
     margin-top:22px!important;
-    min-width:260px!important;
+    width:270px!important;
+    max-width:100%!important;
     height:46px!important;
     padding:0 16px!important;
-    border:1px solid #d8e3f1!important;
+    border:1px solid #d7e2ef!important;
     border-radius:14px!important;
     background:#fff!important;
+    color:#29374c!important;
     text-align:left!important;
-    color:#26364f!important;
+    font-size:13px!important;
+    font-weight:520!important;
   }
+
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportCard{
+    min-width:0!important;
+    width:auto!important;
+    height:auto!important;
     margin:0!important;
     padding:24px!important;
     border:1px solid #dfe7f1!important;
     border-radius:24px!important;
     background:#fff!important;
-    box-shadow:0 10px 32px rgba(15,23,42,.05)!important;
+    box-shadow:0 10px 30px rgba(15,23,42,.045)!important;
+    overflow:hidden!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportCard h2{
+    margin:0!important;
+    color:#253248!important;
+    font-size:18px!important;
+    line-height:1.25!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard{
-    min-height:390px!important;
-  }
-  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart{
-    width:100%!important;
-    min-height:280px!important;
+    grid-area:chart!important;
+    min-height:400px!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard{
-    min-height:390px!important;
+    grid-area:donut!important;
+    min-height:400px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:nth-of-type(4){
+    grid-area:moves!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:nth-of-type(5){
+    grid-area:stats!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportCardHead{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:16px!important;
+    margin-bottom:18px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportTabs{
+    flex:0 0 auto!important;
+    display:flex!important;
+    gap:4px!important;
+    padding:4px!important;
+    border-radius:13px!important;
+    background:#f1f5fa!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportTabs span{
+    padding:8px 11px!important;
+    border-radius:10px!important;
+    font-size:11px!important;
+    font-weight:520!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart{
+    display:block!important;
+    width:100%!important;
+    height:300px!important;
+    min-height:0!important;
+    overflow:visible!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
-    gap:20px!important;
+    justify-content:center!important;
+    gap:22px!important;
+    min-width:0!important;
+    padding-top:20px!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonut{
+    flex:0 0 auto!important;
     width:190px!important;
     height:190px!important;
+    max-width:100%!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend{
+    width:100%!important;
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend > div{
+    display:grid!important;
+    grid-template-columns:12px minmax(0,1fr) auto 38px!important;
+    align-items:center!important;
+    gap:8px!important;
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend b,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend strong,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend small{
+    min-width:0!important;
+    font-size:11px!important;
+    font-weight:500!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMoves{
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMove{
+    display:grid!important;
+    grid-template-columns:42px minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:12px!important;
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMove div{
+    min-width:0!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMove strong,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMove small{
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px!important;
+    margin-top:18px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats > div{
+    min-width:0!important;
+    min-height:132px!important;
+    padding:18px!important;
+    border-radius:18px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats strong{
+    display:block!important;
+    margin:8px 0 4px!important;
+    font-size:19px!important;
+    font-weight:620!important;
+    word-break:break-word!important;
   }
   body.apoderado-ui-v24[data-apo-module="informes"] .apoReportTrust{
-    grid-column:1/-1!important;
+    grid-area:trust!important;
+    min-width:0!important;
     margin:0!important;
+    padding:24px 28px!important;
+    border:1px solid #dfe7f1!important;
     border-radius:24px!important;
+    background:linear-gradient(135deg,#fff,#f7fbff)!important;
+    box-shadow:0 10px 30px rgba(15,23,42,.04)!important;
   }
 
-  @media (max-width:1199px){
-    body.apoderado-ui-v24[data-apo-module="payments"] .apoPayList,
+  @media (max-width:1279px){
+    body.apoderado-ui-v24[data-apo-module="payments"] #app,
+    body.apoderado-ui-v24[data-apo-module="informes"] #app{
+      padding-left:24px!important;
+      padding-right:24px!important;
+    }
     body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
       grid-template-columns:1fr!important;
+      grid-template-areas:
+        "hero"
+        "chart"
+        "donut"
+        "moves"
+        "stats"
+        "trust"!important;
     }
-    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero,
-    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportTrust{
-      grid-column:1!important;
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard,
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard{
+      min-height:auto!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
+      flex-direction:row!important;
+      align-items:center!important;
+    }
+  }
+
+  @media (max-width:1120px){
+    body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeader{
+      align-items:flex-start!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="payments"] .apoPayTrustBadge.header{
+      flex-basis:230px!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary{
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="payments"] .apoPayList{
+      grid-template-columns:1fr!important;
     }
   }
 }
