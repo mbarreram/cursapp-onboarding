@@ -1,0 +1,152 @@
+/* MiCursoX Apoderado · Informe desktop final
+   Visual only. Loaded after legacy desktop layers. */
+@media (min-width:1024px){
+  body.apoderado-ui-v24[data-apo-module="informes"] #app{
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    padding:28px 34px 72px!important;
+    overflow:visible!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > *{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
+    display:grid!important;
+    width:100%!important;
+    max-width:1240px!important;
+    min-width:0!important;
+    margin:0!important;
+    grid-template-columns:repeat(12,minmax(0,1fr))!important;
+    grid-auto-flow:row!important;
+    grid-auto-rows:auto!important;
+    gap:20px!important;
+    align-items:stretch!important;
+    justify-items:stretch!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > *{
+    min-width:0!important;
+    width:100%!important;
+    max-width:none!important;
+    grid-area:auto!important;
+    margin:0!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero{
+    grid-column:1/-1!important;
+    min-height:190px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard{
+    grid-column:span 7!important;
+    min-height:410px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard{
+    grid-column:span 5!important;
+    min-height:410px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:has(.apoReportMoves){
+    grid-column:span 5!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:has(.apoReportStats){
+    grid-column:span 7!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportTrust{
+    grid-column:1/-1!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportCard{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    padding:26px!important;
+    border-radius:24px!important;
+    overflow:hidden!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart svg,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart canvas{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
+    width:100%!important;
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(180px,.8fr) minmax(210px,1.2fr)!important;
+    align-items:center!important;
+    gap:24px!important;
+    padding-top:16px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonut{
+    width:190px!important;
+    height:190px!important;
+    justify-self:center!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats > div{
+    min-width:0!important;
+    min-height:138px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportMove{
+    width:100%!important;
+    grid-template-columns:44px minmax(0,1fr) auto!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h1{
+    font-weight:640!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h2,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage h3,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage strong,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage b{
+    font-weight:560!important;
+  }
+
+  @media (max-width:1180px){
+    body.apoderado-ui-v24[data-apo-module="informes"] #app{
+      padding-left:22px!important;
+      padding-right:22px!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard,
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard,
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:has(.apoReportMoves),
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage > .apoReportCard:has(.apoReportStats){
+      grid-column:1/-1!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
+      grid-template-columns:220px minmax(0,1fr)!important;
+    }
+  }
+}
