@@ -1,0 +1,243 @@
+/* MiCursoX · módulos Apoderado desktop
+   Capa exclusivamente visual. No modifica mobile, Supabase ni reglas de negocio. */
+@media (min-width:1024px){
+  body.apoderado-ui-v24[data-apo-module="payments"] #app,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app{
+    width:100%!important;
+    max-width:1180px!important;
+    margin:0!important;
+    padding:34px 34px 64px!important;
+    overflow:visible!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app{
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif!important;
+    color:#172033!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app > .card:first-child,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:first-child{
+    position:relative!important;
+    min-height:152px!important;
+    margin:0 0 22px!important;
+    padding:30px 34px!important;
+    border:1px solid rgba(201,213,230,.82)!important;
+    border-radius:28px!important;
+    background:
+      radial-gradient(circle at 91% 23%,rgba(59,130,246,.17) 0 58px,transparent 59px),
+      radial-gradient(circle at 82% 72%,rgba(20,184,166,.13) 0 42px,transparent 43px),
+      linear-gradient(135deg,#fff 0%,#f4f8ff 58%,#edf5ff 100%)!important;
+    box-shadow:0 20px 55px rgba(30,64,175,.08)!important;
+    overflow:hidden!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app > .card:first-child:after,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:first-child:after{
+    content:"";
+    position:absolute;
+    right:34px;
+    top:50%;
+    width:150px;
+    height:96px;
+    transform:translateY(-50%);
+    border-radius:24px;
+    background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(219,234,254,.64));
+    border:1px solid rgba(147,197,253,.35);
+    box-shadow:0 16px 36px rgba(37,99,235,.08);
+    pointer-events:none;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app > .card:first-child .kTitle,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:first-child .kTitle{
+    position:relative!important;
+    z-index:1!important;
+    font-size:31px!important;
+    line-height:1.08!important;
+    font-weight:720!important;
+    letter-spacing:-.035em!important;
+    color:#172033!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app > .card:first-child .muted,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:first-child .muted{
+    position:relative!important;
+    z-index:1!important;
+    max-width:640px!important;
+    margin-top:10px!important;
+    font-size:14px!important;
+    line-height:1.55!important;
+    font-weight:480!important;
+    color:#66758c!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .card,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .card{
+    border:1px solid rgba(214,223,236,.9)!important;
+    border-radius:24px!important;
+    background:rgba(255,255,255,.94)!important;
+    box-shadow:0 12px 36px rgba(15,23,42,.055)!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app > .card:not(:first-child),
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:not(:first-child){
+    margin-top:18px!important;
+    padding:24px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .kTitle,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .kTitle{
+    font-size:18px!important;
+    line-height:1.25!important;
+    font-weight:680!important;
+    letter-spacing:-.018em!important;
+    color:#1b2638!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .muted,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .muted{
+    color:#718096!important;
+    font-weight:450!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .btnx,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .btnx{
+    min-height:42px!important;
+    padding:10px 18px!important;
+    border-radius:13px!important;
+    border:1px solid #d8e1ee!important;
+    background:#fff!important;
+    color:#2855ba!important;
+    font-size:13px!important;
+    line-height:1!important;
+    font-weight:650!important;
+    box-shadow:none!important;
+    transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .btnx:hover,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .btnx:hover{
+    transform:translateY(-1px)!important;
+    border-color:#b8c8e3!important;
+    box-shadow:0 9px 22px rgba(37,99,235,.09)!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .btnx.primary,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .btnx.primary{
+    border-color:#2463eb!important;
+    background:linear-gradient(135deg,#2463eb,#4f46e5)!important;
+    color:#fff!important;
+    box-shadow:0 10px 24px rgba(37,99,235,.20)!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app select,
+  body.apoderado-ui-v24[data-apo-module="payments"] #app input,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app select{
+    min-height:44px!important;
+    border:1px solid #d7e0ec!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    color:#293548!important;
+    font-size:13px!important;
+    font-weight:520!important;
+    box-shadow:0 5px 15px rgba(15,23,42,.035)!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .tag,
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .tag{
+    border-radius:999px!important;
+    padding:7px 11px!important;
+    font-size:11px!important;
+    font-weight:700!important;
+  }
+
+  /* Pagos: filtros y campañas con estructura de panel profesional */
+  body.apoderado-ui-v24[data-apo-module="payments"] #app{
+    display:block!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .chips,
+  body.apoderado-ui-v24[data-apo-module="payments"] #app [class*="chip"]{
+    gap:9px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .kCampRail{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:14px!important;
+    overflow:visible!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .kCampRail > *{
+    min-width:0!important;
+    margin:0!important;
+    border:1px solid #e0e7f0!important;
+    border-radius:18px!important;
+    background:#fbfdff!important;
+    box-shadow:none!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="payments"] #app .toastOk{
+    position:static!important;
+    margin:0 0 18px!important;
+    padding:14px 18px!important;
+    border-radius:16px!important;
+    border:1px solid #bbf7d0!important;
+    background:#f0fdf4!important;
+    color:#166534!important;
+    box-shadow:none!important;
+  }
+
+  /* Informes: tarjetas ordenadas, dos columnas y mejor jerarquía */
+  body.apoderado-ui-v24[data-apo-module="informes"] #app{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:18px!important;
+    align-items:start!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:first-child{
+    grid-column:1/-1!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .accentCard{
+    min-height:150px!important;
+    margin:0!important;
+    padding:24px!important;
+    background:linear-gradient(145deg,#fff 0%,#f7faff 100%)!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .accentCard .row{
+    height:100%!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:22px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app .accentCard:before{
+    content:"";
+    display:block;
+    width:42px;
+    height:42px;
+    margin-bottom:16px;
+    border-radius:14px;
+    background:linear-gradient(135deg,#dbeafe,#ede9fe);
+    box-shadow:inset 0 0 0 1px rgba(99,102,241,.10);
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] #app > .card:last-child:only-child{
+    grid-column:1/-1!important;
+  }
+
+  @media (max-width:1199px){
+    body.apoderado-ui-v24[data-apo-module="payments"] #app,
+    body.apoderado-ui-v24[data-apo-module="informes"] #app{
+      padding-left:24px!important;
+      padding-right:24px!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="payments"] #app .kCampRail{
+      grid-template-columns:1fr!important;
+    }
+  }
+}
