@@ -3,21 +3,23 @@
   body.cursapp-apoderado .mxApoNativeDesktop{margin-left:0!important;padding:0 22px 40px 22px;background:linear-gradient(180deg,#f5f8fd 0%,#f7f9fc 38%,#f4f7fb 100%)}
   .mxNativeWrap{width:100%;max-width:none;margin:0!important;padding-top:16px;animation:none}
 
-  .mxNativeHero{min-height:166px;grid-template-columns:minmax(360px,1.08fr) minmax(360px,.92fr);padding:22px 28px 0;border-radius:24px;margin:0 0 28px;background:radial-gradient(circle at 74% 20%,rgba(130,166,255,.22),transparent 26%),linear-gradient(120deg,#f9fbff 0%,#eef4ff 58%,#f8f3ff 100%);border:1px solid #dfe6f2;box-shadow:0 18px 44px rgba(37,55,91,.08);overflow:hidden}
+  .mxNativeHero{min-height:190px;grid-template-columns:minmax(390px,1.05fr) minmax(360px,.95fr);padding:26px 28px 0;border-radius:24px;margin:0 0 32px;background:radial-gradient(circle at 74% 20%,rgba(130,166,255,.18),transparent 28%),linear-gradient(120deg,#f9fbff 0%,#eef4ff 58%,#f8f3ff 100%);border:1px solid #dfe6f2;box-shadow:0 18px 44px rgba(37,55,91,.08);overflow:hidden}
   .mxNativeHero:before{content:"";position:absolute;left:43%;top:22px;width:72px;height:72px;border-radius:50%;background:rgba(85,111,255,.07)}
   .mxNativeHero:after{left:7%;right:7%;bottom:-62px;height:86px;background:rgba(255,255,255,.92);box-shadow:0 -1px 0 rgba(215,223,236,.85)}
-  .mxNativeHeroCopy{padding-bottom:20px;max-width:620px}
-  .mxNativeHeroCopy>span{margin-bottom:7px;font-size:11px;font-weight:750;letter-spacing:.13em}
-  .mxNativeHeroCopy h1{font-size:34px;line-height:1.08;font-weight:680;letter-spacing:-.042em;color:#14203a}
-  .mxNativeHeroCopy p{margin-top:10px;font-size:15px;color:#65738a}
-  .mxNativeHeroArt{height:166px;position:relative;align-self:end;justify-content:flex-end;overflow:hidden;border-radius:18px 18px 0 0}
-  .mxNativeHeroArt .mxHeroFamily{display:none!important}
-  .mxNativeHeroArt:before{content:"";position:absolute;inset:0;background:url('/assets/apoderado-desktop-family.svg') center 48%/cover no-repeat;border-radius:18px 18px 0 0;filter:none}
-  .mxNativeHeroArt:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(238,244,255,.28),transparent 26%);pointer-events:none}
-  .mxNativeHero>button{right:22px;bottom:16px;padding:9px 13px;border-radius:11px;font-size:12px;box-shadow:0 8px 18px rgba(44,72,133,.10)}
+  .mxNativeHeroCopy{padding-bottom:26px;max-width:650px;align-self:center;position:relative;z-index:2}
+  .mxNativeHeroCopy>span{margin-bottom:8px;font-size:11px;font-weight:780;letter-spacing:.13em;text-transform:uppercase;color:#4966d6}
+  .mxNativeHeroCopy h1{font-size:36px;line-height:1.06;font-weight:700;letter-spacing:-.045em;color:#14203a}
+  .mxNativeHeroCopy p{margin-top:11px;max-width:630px;font-size:15px;line-height:1.55;color:#65738a}
+  .mxHeroHighlights{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .mxHeroHighlights b{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(105,124,173,.18);border-radius:999px;background:rgba(255,255,255,.72);font-size:11px;font-weight:650;color:#43506a}
+  .mxHeroHighlights svg{width:14px;height:14px;fill:none;stroke:#526fd4;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .mxNativeHeroArt{height:190px;position:relative;align-self:end;justify-content:flex-end;overflow:hidden;border-radius:18px 18px 0 0;background:#dfe8f7}
+  .mxNativeHeroArt:before{content:"";position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(238,244,255,.48),rgba(238,244,255,0) 28%),url('https://images.unsplash.com/photo-1758687126499-9ff30d1c5762?auto=format&fit=crop&q=82&w=1400');background-position:center,center 46%;background-size:auto,cover;background-repeat:no-repeat;border-radius:18px 18px 0 0;filter:saturate(.92) contrast(.98)}
+  .mxNativeHeroArt:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 58%,rgba(22,35,66,.12));pointer-events:none}
+  .mxNativeHero>button{right:22px;bottom:16px;padding:9px 13px;border-radius:11px;font-size:12px;box-shadow:0 8px 18px rgba(44,72,133,.10);z-index:3}
 
   .mxNativePanel{border-radius:18px;border-color:#e2e8f1;box-shadow:0 10px 30px rgba(37,55,91,.05)}
-  .mxNativeDuesPanel{padding:20px 22px 22px;margin:0 0 22px}
+  .mxNativeDuesPanel{padding:20px 22px 22px;margin:0 0 24px}
   .mxNativeSectionHead{margin-bottom:14px}
   .mxNativeSectionHead h2{font-size:18px;font-weight:660;color:#1e293b}
   .mxNativeSectionHead p{font-size:12px;color:#7a879a}
@@ -32,7 +34,7 @@
   .mxNativeDueCopy h3{font-size:16px;font-weight:680}.mxNativeDueCopy p{font-size:11px}.mxNativeDueCopy>strong{font-size:22px;font-weight:720;margin-top:8px}
   .mxNativeActions{margin-top:11px}.mxNativeActions button{padding:8px 13px;min-width:100px;border-radius:9px}
 
-  .mxNativeMetrics{gap:12px;margin:0 0 24px}
+  .mxNativeMetrics{gap:12px;margin:0 0 26px}
   .mxNativeMetric{min-height:104px;padding:15px 17px;border-radius:15px;box-shadow:0 8px 22px rgba(33,49,80,.045)}
   .mxNativeMetric:after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:3px;border-radius:999px;background:currentColor;opacity:.42}
   .mxNativeMetric.purple{color:#e13d57}.mxNativeMetric.green{color:#1aa35e}.mxNativeMetric.orange{color:#e58a00}.mxNativeMetric.blue{color:#3568e8}
@@ -51,29 +53,51 @@
   .mxNativeNotices article>span{position:relative;z-index:1;width:40px;height:40px;border-radius:12px}.mxNativeNotices h3{font-size:14px;font-weight:660}.mxNativeNotices p{font-size:11px;max-width:360px}.mxNativeNotices time{font-size:10px;color:#8b97aa}
 
   .mxNativeSupport{grid-template-columns:minmax(230px,1.05fr) repeat(3,minmax(155px,.8fr));gap:9px;margin:0;padding:13px 15px;border-radius:17px;background:linear-gradient(120deg,#fafbff,#f5f8ff);border-color:#dde5f1;box-shadow:0 9px 24px rgba(31,45,61,.045)}
-  .mxNativeSupportLead,.mxNativeSupport a,.mxNativeSupport button{min-height:62px;border-radius:13px}.mxNativeSupport a,.mxNativeSupport button{background:rgba(255,255,255,.86)}
+  .mxNativeSupportLead,.mxNativeSupport button{min-height:62px;border-radius:13px}
+  .mxNativeSupport button{background:rgba(255,255,255,.86);border:1px solid #e3e9f2;text-align:left;cursor:pointer}
+  .mxNativeSupport button:hover{border-color:#cbd7ee;background:#fff;transform:translateY(-1px)}
   .mxNativeSupport strong,.mxNativeSupport b{font-size:13px;font-weight:660}.mxNativeSupport small{font-size:10px}
+
+  body.mx-support-modal-open{overflow:hidden}
+  .mxSupportModal[hidden]{display:none!important}
+  .mxSupportModal{position:fixed;inset:0;z-index:120000;display:grid;place-items:center;padding:24px}
+  .mxSupportModalBackdrop{position:absolute;inset:0;background:rgba(15,23,42,.48);backdrop-filter:blur(8px)}
+  .mxSupportModalCard{position:relative;z-index:1;width:min(560px,calc(100vw - 48px));padding:28px;border:1px solid rgba(221,229,241,.95);border-radius:24px;background:linear-gradient(180deg,#fff 0%,#fbfcff 100%);box-shadow:0 28px 80px rgba(15,23,42,.24)}
+  .mxSupportModalClose{position:absolute;right:18px;top:18px;width:38px;height:38px;display:grid;place-items:center;border:1px solid #e1e7f0;border-radius:12px;background:#fff;color:#526079;cursor:pointer}
+  .mxSupportModalClose svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+  .mxSupportModalIcon{width:54px;height:54px;display:grid;place-items:center;margin-bottom:16px;border-radius:16px;background:linear-gradient(135deg,#edf2ff,#e8f7f3);color:#4165d8}
+  .mxSupportModalIcon svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .mxSupportModalEyebrow{display:block;margin-bottom:7px;font-size:10px;font-weight:780;letter-spacing:.13em;text-transform:uppercase;color:#6074ce}
+  .mxSupportModalCard h2{margin:0;color:#172033;font-size:26px;line-height:1.15;letter-spacing:-.03em}
+  .mxSupportModalCard>p{margin:10px 0 18px;color:#6b778b;font-size:14px;line-height:1.55}
+  .mxSupportModalCard ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+  .mxSupportModalCard li{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid #e6ebf3;border-radius:13px;background:#fff;color:#344158;font-size:13px;line-height:1.45}
+  .mxSupportModalCard li svg{flex:0 0 auto;width:17px;height:17px;margin-top:1px;fill:none;stroke:#2f9d68;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .mxSupportModalActions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+  .mxSupportModalActions button{min-width:110px;padding:10px 15px;border-radius:11px;font-size:13px;font-weight:680;cursor:pointer}
+  .mxSupportModalActions .secondary{border:1px solid #dce3ee;background:#fff;color:#4b5870}
+  .mxSupportModalActions .primary{border:1px solid #315bdb;background:linear-gradient(135deg,#315bdb,#6941d9);color:#fff;box-shadow:0 8px 18px rgba(49,91,219,.2)}
 
   @media (max-width:1360px){
     body.cursapp-apoderado .mxApoNativeDesktop{padding-left:16px;padding-right:16px}
     .mxNativeHero{grid-template-columns:minmax(320px,1fr) minmax(320px,.9fr);padding-left:24px;padding-right:22px}
-    .mxNativeHeroCopy h1{font-size:31px}
+    .mxNativeHeroCopy h1{font-size:32px}
     .mxNativeLower{grid-template-columns:1fr}
     .mxNativeSupport{grid-template-columns:repeat(2,minmax(0,1fr))}.mxNativeSupportLead{grid-column:1/-1}
   }
   @media (max-width:1180px){
     body.cursapp-apoderado .mxApoNativeDesktop{padding-left:12px;padding-right:12px}
-    .mxNativeHero{min-height:154px;grid-template-columns:minmax(0,1fr) 310px;padding-left:20px;padding-right:18px}
-    .mxNativeHeroCopy h1{font-size:28px}.mxNativeHeroCopy p{font-size:13px}
-    .mxNativeHeroArt{height:154px}.mxNativeHero>button{right:16px}
+    .mxNativeHero{min-height:174px;grid-template-columns:minmax(0,1fr) 330px;padding-left:20px;padding-right:18px}
+    .mxNativeHeroCopy h1{font-size:29px}.mxNativeHeroCopy p{font-size:13px}.mxHeroHighlights b:nth-child(2){display:none}
+    .mxNativeHeroArt{height:174px}.mxNativeHero>button{right:16px}
     .mxNativeDuesGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mxNativeMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
   @media (max-width:1060px){
-    .mxNativeHero{grid-template-columns:1fr;min-height:146px}
-    .mxNativeHeroArt{position:absolute;right:0;top:0;width:44%;height:100%;opacity:.42}
-    .mxNativeHeroCopy{max-width:62%;z-index:2}.mxNativeHeroCopy h1{font-size:27px}
+    .mxNativeHero{grid-template-columns:1fr;min-height:164px}
+    .mxNativeHeroArt{position:absolute;right:0;top:0;width:44%;height:100%;opacity:.52}
+    .mxNativeHeroCopy{max-width:62%;z-index:2}.mxNativeHeroCopy h1{font-size:27px}.mxNativeHeroCopy p{line-height:1.4}.mxHeroHighlights{display:none}
     .mxNativeHero>button{right:14px;bottom:14px}
     .mxNativeDuesGrid{grid-template-columns:1fr}.mxNativeMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
-  @media (prefers-reduced-motion:reduce){.mxNativeWrap,.mxNativeDueCard,.mxNativeMetric,.mxNativeQuickGrid button,.mxNativeNotices article,.mxNativeSupport a,.mxNativeSupport button{animation:none!important;transition:none!important}}
+  @media (prefers-reduced-motion:reduce){.mxNativeWrap,.mxNativeDueCard,.mxNativeMetric,.mxNativeQuickGrid button,.mxNativeNotices article,.mxNativeSupport button,.mxSupportModalCard{animation:none!important;transition:none!important}}
 }
