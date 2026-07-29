@@ -1,49 +1,66 @@
 (function(){
   'use strict';
-  if(window.__APODERADO_DESKTOP_MODULE_STATE__) return;
-  window.__APODERADO_DESKTOP_MODULE_STATE__ = true;
+  if(window.__APODERADO_DESKTOP_MODULE_STATE_V2__) return;
+  window.__APODERADO_DESKTOP_MODULE_STATE_V2__ = true;
 
   const mq = window.matchMedia('(min-width:1024px)');
   let timer = 0;
 
   function detectModule(){
+    if(!document.body) return;
     if(!mq.matches){
       document.body.removeAttribute('data-apo-module');
       return;
     }
 
-    const hash = String(location.hash || '').toLowerCase();
     const app = document.getElementById('app');
-    const firstTitle = String(app?.querySelector('.kTitle')?.textContent || '').toLowerCase();
+    const activeNav = document.querySelector('.navItem.active[data-tab]');
+    const activeTab = String(activeNav?.dataset?.tab || '').toLowerCase();
+    const hash = String(location.hash || '').toLowerCase();
+    const text = String(app?.textContent || '').toLowerCase();
     let module = 'home';
 
-    if(hash.includes('payment') || hash.includes('pago') || /^pagos\b/.test(firstTitle)) module = 'payments';
-    else if(hash.includes('informe') || /^informes\b/.test(firstTitle)) module = 'informes';
+    if(activeTab === 'payments') module = 'payments';
+    else if(activeTab === 'informes') module = 'informes';
+    else if(activeTab === 'profile' || activeTab === 'perfil') module = 'profile';
+    else if(app?.querySelector('.apoPayPage')) module = 'payments';
+    else if(app?.querySelector('.apoReportPage')) module = 'informes';
+    else if(hash.includes('payment') || hash.includes('pago')) module = 'payments';
+    else if(hash.includes('informe') || text.includes('informe apoderado')) module = 'informes';
     else if(hash.includes('profile') || hash.includes('perfil')) module = 'profile';
 
-    if(document.body.getAttribute('data-apo-module') !== module){
-      document.body.setAttribute('data-apo-module',module);
-    }
+    document.body.setAttribute('data-apo-module', module);
   }
 
-  function schedule(){
+  function schedule(delay){
     clearTimeout(timer);
-    timer = setTimeout(detectModule,40);
+    timer = setTimeout(detectModule, typeof delay === 'number' ? delay : 25);
   }
 
   function boot(){
     detectModule();
     const app = document.getElementById('app');
     if(app){
-      const observer = new MutationObserver(schedule);
-      observer.observe(app,{childList:true,subtree:false});
+      const observer = new MutationObserver(function(){ schedule(10); });
+      observer.observe(app,{childList:true,subtree:true});
     }
-    window.addEventListener('hashchange',schedule);
-    window.addEventListener('popstate',schedule);
-    mq.addEventListener?.('change',schedule);
+    const nav = document.querySelector('.bottomNav');
+    if(nav){
+      const navObserver = new MutationObserver(function(){ schedule(0); });
+      navObserver.observe(nav,{attributes:true,subtree:true,attributeFilter:['class']});
+    }
+    window.addEventListener('hashchange',function(){ schedule(0); });
+    window.addEventListener('popstate',function(){ schedule(0); });
+    mq.addEventListener?.('change',function(){ schedule(0); });
     document.addEventListener('click',function(ev){
-      if(ev.target.closest('[data-tab],#menuDropdown,.apoV42MenuItem')) schedule();
+      if(ev.target.closest('[data-tab],#menuDropdown,.apoV42MenuItem')){
+        schedule(0);
+        schedule(80);
+        schedule(220);
+      }
     },true);
+    setTimeout(detectModule,300);
+    setTimeout(detectModule,1200);
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
