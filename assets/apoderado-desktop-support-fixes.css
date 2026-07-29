@@ -1,0 +1,12 @@
+@media (min-width:1024px){
+  .mxNativeHeroArt:before{
+    background-image:linear-gradient(90deg,rgba(238,244,255,.42),rgba(238,244,255,0) 28%),url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=82&w=1400')!important;
+    background-position:center,center 48%!important;
+    background-size:auto,cover!important;
+    background-repeat:no-repeat!important;
+  }
+  #mxSupportModalDesktop.mxSupportModal{position:fixed!important;inset:0!important;z-index:2147483000!important;display:grid!important;place-items:center!important;padding:24px!important}
+  #mxSupportModalDesktop.mxSupportModal[hidden]{display:none!important}
+  #mxSupportModalDesktop .mxSupportModalBackdrop{position:absolute!important;inset:0!important}
+  #mxSupportModalDesktop .mxSupportModalCard{position:relative!important;z-index:1!important}
+}
