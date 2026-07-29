@@ -1,0 +1,73 @@
+/* Estabilidad exclusiva para dashboard desktop de Apoderado.
+   No modifica reglas ni componentes de la versión móvil. */
+@media (min-width:1024px){
+  body.cursapp-apoderado.mx-apo-native-home,
+  body.cursapp-apoderado.mx-apo-native-home *{
+    animation:none!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxApoNativeDesktop{
+    display:block!important;
+    opacity:1!important;
+    visibility:visible!important;
+    min-height:calc(100vh - 88px)!important;
+    overflow:visible!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeWrap{
+    opacity:1!important;
+    visibility:visible!important;
+    transform:none!important;
+    min-height:760px;
+    transition:none!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeWrap *,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeHero,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativePanel,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeDueCard,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeMetric,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeQuickGrid button,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeNotices article{
+    transition:none!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeHero,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeDuesPanel,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeMetrics,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeLower,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeSupport{
+    width:auto!important;
+    max-width:none!important;
+    box-sizing:border-box!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeHero{
+    contain:layout paint;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeDuesGrid,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeMetrics,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeLower{
+    align-items:stretch!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeDueCard,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeMetric,
+  body.cursapp-apoderado.mx-apo-native-home .mxNativeLower>.mxNativePanel{
+    height:auto!important;
+    min-width:0!important;
+  }
+
+  body.cursapp-apoderado.mx-apo-native-home #app{
+    display:none!important;
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    body.cursapp-apoderado.mx-apo-native-home .mxNativeDueCard:hover,
+    body.cursapp-apoderado.mx-apo-native-home .mxNativeQuickGrid button:hover,
+    body.cursapp-apoderado.mx-apo-native-home .mxNativeHero>button:hover{
+      transform:none!important;
+    }
+  }
+}
