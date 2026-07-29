@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  if(window.__APODERADO_MENU_RECOVERY__) return;
-  window.__APODERADO_MENU_RECOVERY__ = true;
+  if(window.__APODERADO_MENU_RECOVERY_V2__) return;
+  window.__APODERADO_MENU_RECOVERY_V2__ = true;
 
   const esc = (value)=>String(value ?? '').replace(/[&<>"']/g, ch=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -45,15 +45,24 @@
       ].join(''))}`;
   }
 
-  function closeMenu(menu){
-    if(!menu) return;
-    menu.style.display = 'none';
-    menu.setAttribute('aria-hidden','true');
-    document.body.classList.remove('apo-menu-open');
+  function setOpen(menu,btn,open){
+    if(!menu || !btn) return;
+    if(open){
+      menu.innerHTML = menuMarkup();
+      menu.dataset.open = 'true';
+      menu.setAttribute('aria-hidden','false');
+      btn.setAttribute('aria-expanded','true');
+      document.body.classList.add('apo-menu-open');
+    }else{
+      delete menu.dataset.open;
+      menu.setAttribute('aria-hidden','true');
+      btn.setAttribute('aria-expanded','false');
+      document.body.classList.remove('apo-menu-open');
+    }
   }
 
-  function runAction(action, menu){
-    closeMenu(menu);
+  function runAction(action, menu, btn){
+    setOpen(menu,btn,false);
     if(['home','payments','informes','profile'].includes(action)){
       if(typeof window.go === 'function') window.go(action);
       return;
@@ -91,24 +100,24 @@
 
     menu.className = 'apoV42Menu';
     menu.innerHTML = menuMarkup();
-    menu.style.display = 'none';
-    menu.setAttribute('aria-hidden','true');
+    setOpen(menu,btn,false);
 
+    const toggle = function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      setOpen(menu,btn,menu.dataset.open !== 'true');
+    };
+
+    btn.addEventListener('pointerdown', toggle, true);
     btn.addEventListener('click', function(ev){
       ev.preventDefault();
       ev.stopPropagation();
       ev.stopImmediatePropagation();
-      const open = menu.style.display === 'block';
-      if(open){
-        closeMenu(menu);
-        btn.setAttribute('aria-expanded','false');
-      }else{
-        menu.innerHTML = menuMarkup();
-        menu.style.display = 'block';
-        menu.setAttribute('aria-hidden','false');
-        btn.setAttribute('aria-expanded','true');
-        document.body.classList.add('apo-menu-open');
-      }
+    }, true);
+
+    menu.addEventListener('pointerdown', function(ev){
+      ev.stopPropagation();
     }, true);
 
     menu.addEventListener('click', function(ev){
@@ -116,34 +125,31 @@
       if(!item) return;
       ev.preventDefault();
       ev.stopPropagation();
-      runAction(item.dataset.action || '', menu);
+      runAction(item.dataset.action || '', menu, btn);
     }, true);
 
-    document.addEventListener('click', function(ev){
+    document.addEventListener('pointerdown', function(ev){
       if(ev.target.closest('#menuBtn,#menuDropdown')) return;
-      closeMenu(menu);
-      btn.setAttribute('aria-expanded','false');
-    });
+      setOpen(menu,btn,false);
+    }, true);
 
     document.addEventListener('keydown', function(ev){
-      if(ev.key !== 'Escape') return;
-      closeMenu(menu);
-      btn.setAttribute('aria-expanded','false');
+      if(ev.key === 'Escape') setOpen(menu,btn,false);
     });
 
     return true;
   }
 
   function boot(){
-    if(install()) return;
     let attempts = 0;
-    const timer = setInterval(()=>{
+    const tryInstall = ()=>{
       attempts += 1;
-      if(install() || attempts >= 20) clearInterval(timer);
-    },250);
+      if(install() || attempts >= 30) return;
+      setTimeout(tryInstall,250);
+    };
+    tryInstall();
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
   else boot();
-  window.addEventListener('cursapp:apoderado-ready',()=>setTimeout(boot,0));
 })();
