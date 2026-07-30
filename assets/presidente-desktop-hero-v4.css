@@ -1,0 +1,87 @@
+/* MiCursoX · Presidente desktop hero v4
+   Compacta la variante real presMockHero exclusivamente en escritorio. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty){
+    box-sizing:border-box!important;
+    position:relative!important;
+    width:100%!important;
+    min-height:190px!important;
+    height:190px!important;
+    max-height:190px!important;
+    margin:0 0 12px!important;
+    padding:18px 230px 16px 22px!important;
+    overflow:hidden!important;
+    border-radius:18px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) h1,
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) h2,
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) .presMockHeroTitle{
+    margin:4px 0 8px!important;
+    max-width:620px!important;
+    font-size:22px!important;
+    line-height:1.08!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) p,
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) small,
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Meta"],
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Eyebrow"]{
+    margin-top:0!important;
+    margin-bottom:5px!important;
+    font-size:11px!important;
+    line-height:1.25!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) strong,
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Amount"]{
+    line-height:1.05!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) button{
+    min-height:34px!important;
+    height:34px!important;
+    margin-top:8px!important;
+    padding:0 13px!important;
+    border-radius:9px!important;
+    font-size:12px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Progress"]{
+    height:7px!important;
+    margin-top:8px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Percent"],
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Pct"]{
+    right:22px!important;
+    bottom:28px!important;
+    font-size:22px!important;
+    line-height:1!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Footer"],
+  body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) [class*="Counter"]{
+    left:22px!important;
+    bottom:10px!important;
+    font-size:11px!important;
+    line-height:1.2!important;
+  }
+
+  @media (max-width:1240px){
+    body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty){
+      min-height:175px!important;
+      height:175px!important;
+      max-height:175px!important;
+      padding:15px 180px 14px 18px!important;
+    }
+    body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) h1,
+    body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) h2,
+    body.cursapp-presidente.mx-desktop-active .presMockHero:not(.is-empty) .presMockHeroTitle{
+      font-size:20px!important;
+    }
+  }
+}
