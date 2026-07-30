@@ -6,10 +6,16 @@
   const mq = window.matchMedia('(min-width:1024px)');
   let timer = 0;
 
+  function setModule(module){
+    if(!document.body) return;
+    const current = document.body.getAttribute('data-apo-module');
+    if(current !== module) document.body.setAttribute('data-apo-module', module);
+  }
+
   function detectModule(){
     if(!document.body) return;
     if(!mq.matches){
-      document.body.removeAttribute('data-apo-module');
+      if(document.body.hasAttribute('data-apo-module')) document.body.removeAttribute('data-apo-module');
       return;
     }
 
@@ -29,7 +35,7 @@
     else if(hash.includes('informe') || text.includes('informe apoderado')) module = 'informes';
     else if(hash.includes('profile') || hash.includes('perfil')) module = 'profile';
 
-    document.body.setAttribute('data-apo-module', module);
+    setModule(module);
   }
 
   function schedule(delay){
@@ -41,7 +47,7 @@
     detectModule();
     const app = document.getElementById('app');
     if(app){
-      const observer = new MutationObserver(function(){ schedule(10); });
+      const observer = new MutationObserver(function(){ schedule(24); });
       observer.observe(app,{childList:true,subtree:true});
     }
     const nav = document.querySelector('.bottomNav');
@@ -55,8 +61,7 @@
     document.addEventListener('click',function(ev){
       if(ev.target.closest('[data-tab],#menuDropdown,.apoV42MenuItem')){
         schedule(0);
-        schedule(80);
-        schedule(220);
+        setTimeout(detectModule,120);
       }
     },true);
     setTimeout(detectModule,300);
