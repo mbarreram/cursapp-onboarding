@@ -1,0 +1,107 @@
+/* MiCursoX · estabilidad final Pagos/Informes desktop.
+   Solo presentación >=1024px. Evita desbordes y repintados de gráficos. */
+@media (min-width:1024px){
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
+    contain:layout style;
+  }
+
+  /* Evita que pseudo-elementos y SVG decorativos provoquen repintados. */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayHeader,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportHero{
+    transform:translateZ(0);
+    backface-visibility:hidden;
+  }
+
+  /* Gráfico de evolución: todo queda dentro de su tarjeta. */
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportCard{
+    overflow:hidden!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard{
+    min-height:420px!important;
+    padding:26px 28px 28px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart{
+    width:100%!important;
+    height:300px!important;
+    min-height:300px!important;
+    padding:12px 22px 28px 10px!important;
+    overflow:hidden!important;
+    contain:layout paint!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart svg,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart canvas{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:300px!important;
+    max-height:300px!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+
+  /* El donut y su leyenda comparten el ancho sin salirse de la tarjeta. */
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard{
+    min-height:420px!important;
+    padding:26px 28px 28px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
+    width:100%!important;
+    min-height:300px!important;
+    grid-template-columns:minmax(170px,.85fr) minmax(190px,1.15fr)!important;
+    gap:18px!important;
+    overflow:hidden!important;
+    align-items:center!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonut{
+    width:180px!important;
+    height:180px!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend{
+    width:100%!important;
+    min-width:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend > div{
+    width:100%!important;
+    min-width:0!important;
+    grid-template-columns:10px minmax(70px,1fr) auto 36px!important;
+    column-gap:7px!important;
+  }
+
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend span,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLegend strong{
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* La franja de ayuda no altera el alto de los gráficos durante el render. */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoDesktopHelp,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoDesktopHelp{
+    content-visibility:auto;
+    contain-intrinsic-size:110px;
+  }
+
+  @media (max-width:1180px){
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutWrap{
+      grid-template-columns:190px minmax(0,1fr)!important;
+    }
+    body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonut{
+      width:170px!important;
+      height:170px!important;
+    }
+  }
+}
