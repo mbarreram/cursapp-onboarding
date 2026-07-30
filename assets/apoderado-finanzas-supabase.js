@@ -1,9 +1,10 @@
 (function(){
   'use strict';
   const CACHE='cursapp_apoderado_financial_summary_v1';
-  let state=null,loading=null;
+  let state=null,loading=null,lastSignature='';
   const read=(k,d)=>{try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):d}catch(_){return d}};
   const clean=v=>String(v||'').trim();
+  const signature=value=>{try{return JSON.stringify(value&&typeof value==='object'?value:{});}catch(_){return '';}};
 
   function firstId(source){
     if(!source||typeof source!=='object')return '';
@@ -30,8 +31,8 @@
     const cid=courseId();
     if(state&&(!cid||clean(state.course_id)===cid))return state;
     const cached=read(CACHE,null);
-    if(cached&&cid&&clean(cached.course_id)===cid){state=cached;return cached;}
-    if(cached&&cid&&clean(cached.course_id)!==cid){try{localStorage.removeItem(CACHE)}catch(_){}}
+    if(cached&&cid&&clean(cached.course_id)===cid){state=cached;lastSignature=signature(cached);return cached;}
+    if(cached&&cid&&clean(cached.course_id)!==cid){try{localStorage.removeItem(CACHE)}catch(_){} }
     return null;
   }
 
@@ -40,12 +41,19 @@
     const cid=courseId(),api=window.CURSAPP_SUPABASE?.request;
     if(!cid||!api)return null;
     const cached=read(CACHE,null);
-    if(cached&&clean(cached.course_id)!==cid){try{localStorage.removeItem(CACHE)}catch(_){}}
+    if(cached&&clean(cached.course_id)!==cid){try{localStorage.removeItem(CACHE)}catch(_){} }
     loading=api('rpc/apoderado_financial_summary',{method:'POST',body:JSON.stringify({p_curso_id:cid})})
       .then(data=>{
-        state=data&&typeof data==='object'?data:null;
-        if(state)localStorage.setItem(CACHE,JSON.stringify(state));
-        window.dispatchEvent(new CustomEvent('cursapp:apoderado-finanzas',{detail:state}));
+        const next=data&&typeof data==='object'?data:null;
+        const nextSignature=signature(next);
+        const changed=nextSignature!==lastSignature;
+        state=next;
+        if(state){
+          lastSignature=nextSignature;
+          const serialized=JSON.stringify(state);
+          if(localStorage.getItem(CACHE)!==serialized)localStorage.setItem(CACHE,serialized);
+        }
+        if(changed)window.dispatchEvent(new CustomEvent('cursapp:apoderado-finanzas',{detail:state}));
         return state;
       })
       .catch(error=>{console.warn('No se pudo cargar el resumen financiero del curso',error);return null})
@@ -54,12 +62,9 @@
   }
 
   window.CURSAPP_APO_FINANCE={snapshot,refresh,courseId};
-  window.addEventListener('cursapp:apoderado-finanzas',()=>{
-    if(document.querySelector('.navItem[data-tab="informes"].active')&&typeof window.go==='function')window.go('informes');
-  });
   window.addEventListener('cursapp:dataChanged',event=>{
     const key=String(event?.detail?.key||'');
-    if(/course|profile|alumno|session/i.test(key)){state=null;refresh();}
+    if(/course|profile|alumno|session/i.test(key)){state=null;lastSignature='';refresh();}
   });
   let tries=0,timer=setInterval(()=>{
     if(courseId()&&window.CURSAPP_SUPABASE?.request){clearInterval(timer);refresh();}
