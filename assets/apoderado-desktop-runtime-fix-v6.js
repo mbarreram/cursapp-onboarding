@@ -6,6 +6,32 @@
   const desktop = window.matchMedia('(min-width:1024px)');
   if(!desktop.matches) return;
 
+  /*
+   * apoderado.js emite cursapp:dataChanged desde el parche de setItem y,
+   * adicionalmente, save() vuelve a emitir el mismo evento. Pagos recibía dos
+   * avisos por una sola escritura. Marcamos cada escritura real para permitir
+   * solo el primer evento y bloqueamos claves de caché/interfaz.
+   */
+  const changedKeys = new Set();
+  const uiOnlyKey = name =>
+    name.includes('last_seen_payments') ||
+    name.includes('payments_snapshot_v584');
+
+  try{
+    const patchedDispatch = window.dispatchEvent.bind(window);
+    window.dispatchEvent = function(event){
+      try{
+        if(event?.type === 'cursapp:dataChanged'){
+          const name = String(event?.detail?.key || '');
+          if(uiOnlyKey(name)) return true;
+          if(!changedKeys.has(name)) return true;
+          changedKeys.delete(name);
+        }
+      }catch(_e){}
+      return patchedDispatch(event);
+    };
+  }catch(_e){}
+
   try{
     const patchedSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key,value){
@@ -14,9 +40,10 @@
       let current = null;
       try{current = Storage.prototype.getItem.call(localStorage,key);}catch(_e){}
       if(current === next) return;
-      if(name.includes('last_seen_payments')){
+      if(uiOnlyKey(name)){
         return Storage.prototype.setItem.call(localStorage,key,next);
       }
+      changedKeys.add(name);
       return patchedSetItem(key,next);
     };
   }catch(_e){}
