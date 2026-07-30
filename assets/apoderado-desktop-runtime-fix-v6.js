@@ -6,21 +6,18 @@
   const desktop = window.matchMedia('(min-width:1024px)');
   if(!desktop.matches) return;
 
-  /*
-   * El render de Pagos escribe cursapp_*last_seen_payments* después de pintar.
-   * apoderado.js parchea localStorage.setItem y emite cursapp:dataChanged para
-   * cualquier clave; su listener interpreta esa clave como un cambio real de
-   * pagos y vuelve a pintar, creando un ciclo permanente. Para esta clave de
-   * interfaz usamos el método nativo, sin emitir el evento global de negocio.
-   */
   try{
     const patchedSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key,value){
       const name = String(key || '');
+      const next = String(value ?? '');
+      let current = null;
+      try{current = Storage.prototype.getItem.call(localStorage,key);}catch(_e){}
+      if(current === next) return;
       if(name.includes('last_seen_payments')){
-        return Storage.prototype.setItem.call(localStorage,key,value);
+        return Storage.prototype.setItem.call(localStorage,key,next);
       }
-      return patchedSetItem(key,value);
+      return patchedSetItem(key,next);
     };
   }catch(_e){}
 
