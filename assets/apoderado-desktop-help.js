@@ -8,10 +8,12 @@
   }
 
   function getTarget(){
+    var app = document.getElementById('app');
+    if(!app) return null;
     var module = document.body && document.body.getAttribute('data-apo-module');
-    if(module === 'payments') return document.querySelector('.apoPayPage');
-    if(module === 'informes') return document.querySelector('.apoReportPage');
-    return null;
+    if(module === 'payments') return app.querySelector('.apoPayPage');
+    if(module === 'informes') return app.querySelector('.apoReportPage');
+    return app.querySelector('.apoPayPage,.apoReportPage');
   }
 
   function modalContent(type){
@@ -73,26 +75,33 @@
   }
 
   function mount(){
-    if(!isDesktop()) return;
+    if(!isDesktop()) return false;
     var target = getTarget();
-    if(!target) return;
+    if(!target || !target.isConnected) return false;
     enhanceDescriptions(target);
-    if(!target.querySelector(':scope > .apoDesktopHelp')) target.appendChild(buildHelp());
+    var existing = target.querySelector(':scope > .apoDesktopHelp');
+    if(!existing) target.appendChild(buildHelp());
+    return true;
   }
 
   function scheduleMounts(){
     timers.forEach(window.clearTimeout);
-    timers = [80,300,900].map(function(delay){ return window.setTimeout(mount,delay); });
+    timers = [60,180,420,850,1400,2300,3600,5200].map(function(delay){
+      return window.setTimeout(mount,delay);
+    });
   }
 
   function start(){
     scheduleMounts();
     document.addEventListener('click',function(event){
-      if(event.target.closest('[data-tab], .navItem, [data-desktop-nav]')) scheduleMounts();
+      if(event.target.closest('[data-tab], .navItem, [data-desktop-nav], #menuDropdown, .apoV42MenuItem')) scheduleMounts();
     },true);
     window.addEventListener('resize',scheduleMounts,{passive:true});
+    window.addEventListener('hashchange',scheduleMounts);
+    window.addEventListener('popstate',scheduleMounts);
     window.addEventListener('keydown',function(event){ if(event.key === 'Escape') closeModal(); });
     window.addEventListener('cursapp:apoderado-ready',scheduleMounts);
+    window.addEventListener('cursapp:dataChanged',scheduleMounts);
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
