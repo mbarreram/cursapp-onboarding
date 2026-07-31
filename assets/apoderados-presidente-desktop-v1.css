@@ -1,0 +1,211 @@
+/* MiCursoX · Presidente > Apoderados · Desktop v1
+   Solo presentación de escritorio. No modifica lógica ni móvil. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active{
+    background:#eef4ff!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active > header{
+    display:none!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active > .bottomNav{
+    display:none!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app.container{
+    width:auto!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:26px 30px 54px!important;
+    color:#172033!important;
+  }
+
+  /* Tipografía más liviana */
+  body.cursapp-presidente.mx-desktop-active #app h1{
+    margin:0 0 5px!important;
+    font-size:30px!important;
+    line-height:1.08!important;
+    font-weight:720!important;
+    letter-spacing:-.035em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app h2,
+  body.cursapp-presidente.mx-desktop-active #app h3{
+    font-weight:680!important;
+    letter-spacing:-.025em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app p,
+  body.cursapp-presidente.mx-desktop-active #app .muted{
+    font-weight:450!important;
+    color:#667085!important;
+  }
+
+  /* Cabecera y botón invitar */
+  body.cursapp-presidente.mx-desktop-active #app > .row:first-child,
+  body.cursapp-presidente.mx-desktop-active #app .apodHeader,
+  body.cursapp-presidente.mx-desktop-active #app .apoderadosHeader{
+    align-items:flex-end!important;
+    margin-bottom:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app button.primary,
+  body.cursapp-presidente.mx-desktop-active #app .btnx.primary{
+    border:0!important;
+    border-radius:12px!important;
+    background:#175cff!important;
+    color:#fff!important;
+    min-height:42px!important;
+    padding:0 17px!important;
+    font-size:13px!important;
+    font-weight:650!important;
+    box-shadow:0 8px 18px rgba(23,92,255,.18)!important;
+  }
+
+  /* KPI superiores */
+  body.cursapp-presidente.mx-desktop-active #app .kpiGrid{
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:13px!important;
+    margin:0 0 17px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .kpi{
+    min-height:116px!important;
+    padding:17px 18px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:17px!important;
+    background:#fff!important;
+    box-shadow:0 5px 16px rgba(15,23,42,.04)!important;
+    overflow:hidden!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .kpi::before{
+    width:4px!important;
+    top:16px!important;
+    bottom:16px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .kpi .lbl{
+    font-size:12px!important;
+    line-height:1.25!important;
+    font-weight:600!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .kpi .val{
+    margin-top:9px!important;
+    font-size:25px!important;
+    line-height:1!important;
+    font-weight:720!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .kpi small,
+  body.cursapp-presidente.mx-desktop-active #app .kpi a,
+  body.cursapp-presidente.mx-desktop-active #app .kpi button{
+    font-weight:550!important;
+  }
+
+  /* Cards generales */
+  body.cursapp-presidente.mx-desktop-active #app .card{
+    margin-bottom:16px!important;
+    padding:19px 20px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:18px!important;
+    background:#fff!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.04)!important;
+  }
+
+  /* Registro del curso */
+  body.cursapp-presidente.mx-desktop-active #app .card:has(canvas),
+  body.cursapp-presidente.mx-desktop-active #app .card:has(.donut),
+  body.cursapp-presidente.mx-desktop-active #app .registrationCard,
+  body.cursapp-presidente.mx-desktop-active #app .apodChartCard{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 190px!important;
+    gap:22px!important;
+    align-items:center!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app canvas{
+    max-height:175px!important;
+  }
+
+  /* Buscador y filtros */
+  body.cursapp-presidente.mx-desktop-active #app input[type="search"],
+  body.cursapp-presidente.mx-desktop-active #app input[placeholder*="Buscar"]{
+    height:44px!important;
+    border:1px solid #dde4ee!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    padding:0 15px!important;
+    font-size:13px!important;
+    font-weight:480!important;
+    box-shadow:0 3px 10px rgba(15,23,42,.025)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .chips,
+  body.cursapp-presidente.mx-desktop-active #app .tabs,
+  body.cursapp-presidente.mx-desktop-active #app .filterTabs{
+    gap:7px!important;
+    margin:12px 0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .chip,
+  body.cursapp-presidente.mx-desktop-active #app .tab,
+  body.cursapp-presidente.mx-desktop-active #app [data-filter]{
+    min-height:34px!important;
+    padding:0 13px!important;
+    border-radius:10px!important;
+    font-size:11px!important;
+    font-weight:620!important;
+  }
+
+  /* Tabla */
+  body.cursapp-presidente.mx-desktop-active #app table{
+    width:100%!important;
+    border-collapse:separate!important;
+    border-spacing:0!important;
+    overflow:hidden!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:16px!important;
+    background:#fff!important;
+    box-shadow:0 5px 16px rgba(15,23,42,.035)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app thead th{
+    padding:12px 14px!important;
+    background:#f8fafc!important;
+    border-bottom:1px solid #e6ebf2!important;
+    color:#667085!important;
+    font-size:10px!important;
+    font-weight:650!important;
+    text-transform:none!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app tbody td{
+    padding:12px 14px!important;
+    border-bottom:1px solid #edf1f6!important;
+    font-size:12px!important;
+    font-weight:480!important;
+    vertical-align:middle!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app tbody tr:last-child td{
+    border-bottom:0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app tbody tr:hover{
+    background:#f9fbff!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app table button{
+    min-height:32px!important;
+    padding:0 10px!important;
+    border-radius:9px!important;
+    font-size:10px!important;
+    font-weight:600!important;
+  }
+
+  /* Estados y paginación */
+  body.cursapp-presidente.mx-desktop-active #app .pill{
+    padding:5px 9px!important;
+    font-size:10px!important;
+    font-weight:620!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .pagination,
+  body.cursapp-presidente.mx-desktop-active #app .pager{
+    margin-top:10px!important;
+    justify-content:flex-end!important;
+  }
+
+  @media (max-width:1240px){
+    body.cursapp-presidente.mx-desktop-active #app .kpiGrid{
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+  }
+}
