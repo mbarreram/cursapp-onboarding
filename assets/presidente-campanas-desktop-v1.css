@@ -1,0 +1,197 @@
+/* MiCursoX · Presidente · Campañas desktop v1
+   Rediseño visual incremental. No altera lógica ni móvil. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips){
+    max-width:none!important;
+    padding:24px 28px 48px!important;
+  }
+
+  /* Cabecera de la pantalla */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) > .row:first-child{
+    align-items:center!important;
+    margin-bottom:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) > .row:first-child h1,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) > .row:first-child h2{
+    margin:0 0 4px!important;
+    font-size:28px!important;
+    line-height:1.1!important;
+    letter-spacing:-.035em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) > .row:first-child .btnx.primary{
+    min-height:42px!important;
+    padding:0 18px!important;
+    border-radius:12px!important;
+    background:#175cff!important;
+    border-color:#175cff!important;
+    box-shadow:0 8px 18px rgba(23,92,255,.18)!important;
+  }
+
+  /* Secciones generales */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .card{
+    margin-bottom:16px!important;
+    padding:18px 20px!important;
+    border:1px solid #e6ebf3!important;
+    border-radius:18px!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.04)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .card h2,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .card h3{
+    margin-top:0!important;
+    letter-spacing:-.025em!important;
+  }
+
+  /* Plantillas destacadas: compactas y sin espacio sobrante */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .card:has(.campCard),
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .card:has(.templateCard){
+    padding-bottom:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campTemplates,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templatesGrid,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateGrid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,190px))!important;
+    gap:12px!important;
+    justify-content:start!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard{
+    min-height:0!important;
+    padding:14px 15px!important;
+    border-radius:15px!important;
+    box-shadow:none!important;
+  }
+
+  /* Filtros */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .chips{
+    gap:8px!important;
+    margin:10px 0 16px!important;
+    padding:4px!important;
+    width:max-content!important;
+    max-width:100%!important;
+    border:1px solid #e6eaf2!important;
+    border-radius:14px!important;
+    background:#f8fafc!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .chip{
+    height:34px!important;
+    padding:0 14px!important;
+    border:0!important;
+    background:transparent!important;
+    color:#667085!important;
+    font-size:12px!important;
+    font-weight:650!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .chip.active{
+    background:#fff!important;
+    color:#175cff!important;
+    box-shadow:0 2px 8px rgba(15,23,42,.08)!important;
+  }
+
+  /* Lista de campañas: dos columnas cuando existe espacio */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLines{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:14px!important;
+    margin-top:0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLines .lineItem{
+    display:flex!important;
+    flex-direction:column!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:17px 18px 16px!important;
+    border:1px solid #e3e8f0!important;
+    border-radius:17px!important;
+    background:#fff!important;
+    box-shadow:0 5px 16px rgba(15,23,42,.035)!important;
+    overflow:visible!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLines .lineItem::before{
+    display:none!important;
+  }
+
+  /* Cabecera y etiquetas de cada campaña */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem > .row:first-child{
+    align-items:flex-start!important;
+    margin-bottom:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem h2,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem h3{
+    margin:0 0 4px!important;
+    font-size:19px!important;
+    line-height:1.15!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .pill{
+    padding:5px 9px!important;
+    font-size:10px!important;
+    font-weight:700!important;
+  }
+
+  /* Métricas más compactas */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpiGrid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:0!important;
+    margin:12px 0 10px!important;
+    padding:10px 0!important;
+    border-top:1px solid #edf0f5!important;
+    border-bottom:1px solid #edf0f5!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi{
+    min-width:0!important;
+    padding:0 10px!important;
+    border:0!important;
+    border-right:1px solid #edf0f5!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi:first-child{padding-left:0!important}
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi:last-child{padding-right:0!important;border-right:0!important}
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi::before{display:none!important}
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi .lbl{
+    font-size:10px!important;
+    font-weight:650!important;
+    white-space:nowrap!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .kpi .val{
+    margin-top:3px!important;
+    font-size:16px!important;
+    line-height:1.1!important;
+    white-space:nowrap!important;
+  }
+
+  /* Progreso y acciones */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem progress,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .progress,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .progressBar{
+    height:7px!important;
+    border-radius:999px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .actions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    gap:8px!important;
+    width:100%!important;
+    margin-top:auto!important;
+    padding-top:12px!important;
+    align-items:center!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .actions .btnx{
+    height:38px!important;
+    padding:0 14px!important;
+    border-radius:10px!important;
+    font-size:12px!important;
+    font-weight:650!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .lineItem .actions .btnx.primary{
+    width:100%!important;
+    background:#175cff!important;
+    border-color:#175cff!important;
+  }
+
+  @media (max-width:1260px){
+    body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLines{
+      grid-template-columns:1fr!important;
+    }
+  }
+}
