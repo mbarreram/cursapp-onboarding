@@ -1,0 +1,268 @@
+/* MiCursoX · Presidente > Deudores · Desktop v1
+   Solo presentación de escritorio. No modifica lógica ni móvil. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero){
+    max-width:none!important;
+    padding:24px 28px 52px!important;
+    color:#172033!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtHero{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(360px,470px)!important;
+    gap:18px!important;
+    align-items:stretch!important;
+    margin-bottom:15px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtHero > div:first-child{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    min-height:112px!important;
+    padding:20px 22px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:18px!important;
+    background:#fff!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.04)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtHero .kTitle{
+    font-size:27px!important;
+    line-height:1.08!important;
+    font-weight:720!important;
+    letter-spacing:-.035em!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtHero .muted{
+    margin-top:6px!important;
+    max-width:590px!important;
+    color:#667085!important;
+    font-size:13px!important;
+    line-height:1.5!important;
+    font-weight:450!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportCard{
+    min-height:112px!important;
+    padding:17px 18px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:18px!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.04)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportTitle{
+    margin-bottom:9px!important;
+    color:#344054!important;
+    font-size:12px!important;
+    font-weight:620!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportActions{
+    height:62px!important;
+    border:1px solid #edf0f5!important;
+    border-radius:13px!important;
+    overflow:hidden!important;
+    background:#fafcff!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportBtn{
+    min-height:60px!important;
+    padding:6px 10px!important;
+    gap:8px!important;
+    border-radius:0!important;
+    color:#344054!important;
+    font-size:12px!important;
+    font-weight:600!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportIcon,
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtExportIcon svg{
+    width:24px!important;
+    height:24px!important;
+  }
+
+  /* KPI */
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .kpiGrid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:13px!important;
+    margin-bottom:15px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .kpi{
+    min-height:96px!important;
+    padding:16px 18px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:16px!important;
+    background:#fff!important;
+    box-shadow:0 5px 15px rgba(15,23,42,.035)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .kpi::before{
+    width:4px!important;
+    top:15px!important;
+    bottom:15px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .kpiLbl{
+    color:#667085!important;
+    font-size:10px!important;
+    line-height:1.3!important;
+    font-weight:620!important;
+    letter-spacing:.01em!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .kpiVal{
+    margin-top:6px!important;
+    color:#172033!important;
+    font-size:23px!important;
+    line-height:1!important;
+    font-weight:720!important;
+  }
+
+  /* Cards de indicador y búsqueda */
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) > .card{
+    margin:0 0 14px!important;
+    padding:18px 20px!important;
+    border:1px solid #e1e7f0!important;
+    border-radius:18px!important;
+    background:#fff!important;
+    box-shadow:0 6px 18px rgba(15,23,42,.04)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) > .card > div:first-child{
+    color:#344054!important;
+    font-size:14px!important;
+    font-weight:650!important;
+    letter-spacing:-.015em!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) > .card .muted{
+    color:#667085!important;
+    font-size:11px!important;
+    line-height:1.45!important;
+    font-weight:450!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #barsMount{
+    display:grid!important;
+    gap:9px!important;
+    margin-top:13px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #barsMount > div{
+    align-items:center!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #barsMount progress,
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #barsMount .progress,
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #barsMount [style*="height"]{
+    border-radius:999px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtSearchCard{
+    padding:18px 20px 17px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtSearchControls{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:9px!important;
+    margin-top:10px!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorQuery{
+    height:43px!important;
+    padding:0 14px!important;
+    border:1px solid #dde4ee!important;
+    border-radius:12px!important;
+    color:#344054!important;
+    font-size:12px!important;
+    font-weight:450!important;
+    box-shadow:none!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorQuery:focus{
+    border-color:#8db0ff!important;
+    outline:3px solid rgba(23,92,255,.1)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorSearchBtn{
+    height:43px!important;
+    min-width:94px!important;
+    padding:0 16px!important;
+    border:0!important;
+    border-radius:11px!important;
+    background:#175cff!important;
+    color:#fff!important;
+    font-size:12px!important;
+    font-weight:620!important;
+    box-shadow:0 7px 15px rgba(23,92,255,.16)!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults{
+    margin-top:11px!important;
+  }
+
+  /* Resultados */
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults .card,
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults > div:not(.muted){
+    border:1px solid #e5eaf2!important;
+    border-radius:15px!important;
+    box-shadow:none!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults button{
+    min-height:35px!important;
+    padding:0 12px!important;
+    border-radius:10px!important;
+    font-size:11px!important;
+    font-weight:600!important;
+  }
+
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults textarea{
+    border:1px solid #dde4ee!important;
+    border-radius:12px!important;
+    font-size:11px!important;
+    font-weight:430!important;
+  }
+
+  /* Ayuda */
+  .presDebtHelp{
+    display:grid;
+    grid-template-columns:42px minmax(0,1fr) auto;
+    gap:14px;
+    align-items:center;
+    margin-top:15px;
+    padding:17px 18px;
+    border:1px solid #dbe6ff;
+    border-radius:17px;
+    background:linear-gradient(135deg,#f7faff,#fff);
+    box-shadow:0 5px 16px rgba(15,23,42,.035);
+  }
+  .presDebtHelpIcon{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#e9f0ff;color:#175cff;font-size:20px;font-weight:650}
+  .presDebtHelp small{display:block;color:#667085;font-size:10px;font-weight:500}
+  .presDebtHelp h2{margin:2px 0 3px;font-size:16px;font-weight:680;letter-spacing:-.02em}
+  .presDebtHelp p{margin:0;color:#667085;font-size:11px;font-weight:430}
+  .presDebtHelp button{height:37px;padding:0 14px;border:1px solid #cbd8f4;border-radius:10px;background:#fff;color:#175cff;font-size:11px;font-weight:620;cursor:pointer}
+
+  .presDebtHelpOverlay{position:fixed;inset:0;z-index:130000;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.48);backdrop-filter:blur(8px)}
+  .presDebtHelpModal{width:min(610px,calc(100vw - 40px));max-height:calc(100dvh - 48px);overflow:auto;padding:20px;border-radius:22px;background:#fff;box-shadow:0 28px 80px rgba(15,23,42,.24)}
+  .presDebtHelpModal header{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+  .presDebtHelpModal header small{color:#667085;font-size:10px;font-weight:500}
+  .presDebtHelpModal h2{margin:3px 0 0;font-size:22px;font-weight:700;letter-spacing:-.03em}
+  .presDebtHelpModal header button{width:37px;height:37px;border:0;border-radius:11px;background:#f3f6fa;font-size:22px;cursor:pointer}
+  .presDebtHelpSteps{display:grid;gap:9px;margin-top:16px}
+  .presDebtHelpSteps article{display:grid;grid-template-columns:31px 1fr;gap:11px;padding:13px;border:1px solid #e6ebf2;border-radius:14px;background:#fbfcff}
+  .presDebtHelpSteps article>span{width:31px;height:31px;border-radius:10px;display:grid;place-items:center;background:#e9f0ff;color:#175cff;font-size:12px;font-weight:700}
+  .presDebtHelpSteps h3{margin:1px 0 4px;font-size:14px;font-weight:650}
+  .presDebtHelpSteps p{margin:0;color:#667085;font-size:11px;line-height:1.5;font-weight:430}
+  .presDebtHelpModal footer{display:flex;justify-content:flex-end;margin-top:15px}
+  .presDebtHelpModal footer button{height:39px;padding:0 17px;border:0;border-radius:11px;background:#175cff;color:#fff;font-size:11px;font-weight:620;cursor:pointer}
+
+  @media (max-width:1200px){
+    body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtHero{
+      grid-template-columns:1fr!important;
+    }
+  }
+}
