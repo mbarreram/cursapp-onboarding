@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="/assets/ux-dashboard-mockups-v1.css?v=40">
   <link rel="stylesheet" href="/assets/micursox-desktop-shell.css?v=1">
   <link rel="stylesheet" href="/assets/apoderados-presidente-desktop-v1.css?v=1">
+  <link rel="stylesheet" href="/assets/apoderados-presidente-desktop-v2.css?v=2">
 </head>
 
 <body class="cursapp-app-shell cursapp-presidente">
@@ -43,7 +44,6 @@
   </nav>
 
   <script>
-    // volver al home correcto según rol
     window.__goBackHome = function(){
       try{
         const u = JSON.parse(localStorage.getItem("cursapp_demo_user") || "null");
@@ -58,6 +58,7 @@
   </script>
 
   <script defer src="/assets/micursox-desktop-shell.js?v=1"></script>
+  <script defer src="/assets/apoderados-presidente-menu-v1.js?v=1"></script>
   <script defer src="/assets/supabase-config.js?v=2"></script>
   <script defer src="/assets/core.js?v=5818"></script>
   <script defer src="/assets/support-ticket.js?v=1"></script>
