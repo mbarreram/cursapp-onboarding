@@ -3,8 +3,6 @@
 
   const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
   let activeHero = 0;
-  let initAttempts = 0;
-  let initTimer = null;
 
   const icons = {
     avisos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11 14v4a2 2 0 0 1-2 2H8l-2-6"/></svg>',
@@ -31,14 +29,15 @@
   }
 
   function setupSidebar(){
-    if(!isDesktop()) return;
-    addSidebarItem('Crear avisos', 'avisos', () => {
+    if(!isDesktop()) return false;
+    const avisos = addSidebarItem('Crear avisos', 'avisos', () => {
       if(typeof window.openAvisosConfigSafe === 'function') window.openAvisosConfigSafe();
       else if(typeof window.go === 'function') window.go('avisos');
     }, 'Campañas');
-    addSidebarItem('Apoderados', 'apoderados', () => {
+    const apoderados = addSidebarItem('Apoderados', 'apoderados', () => {
       window.location.href = 'apoderados.html';
     }, 'Crear avisos');
+    return avisos && apoderados;
   }
 
   function heroElements(){
@@ -48,11 +47,8 @@
     return {hero, track, slides};
   }
 
-  function updateHero(index){
-    const {hero, track, slides} = heroElements();
-    if(!hero || !track || slides.length < 2) return;
+  function paintHeroState(hero, slides, index){
     activeHero = Math.max(0, Math.min(index, slides.length - 1));
-    track.scrollTo({left: slides[activeHero].offsetLeft, behavior:'smooth'});
     hero.querySelectorAll('.presHeroDot').forEach((dot, i) => dot.classList.toggle('active', i === activeHero));
     const prev = hero.querySelector('[data-stable-hero="prev"]');
     const next = hero.querySelector('[data-stable-hero="next"]');
@@ -60,53 +56,65 @@
     if(next) next.disabled = activeHero === slides.length - 1;
   }
 
+  function updateHero(index){
+    const {hero, track, slides} = heroElements();
+    if(!hero || !track || slides.length < 2) return;
+    const target = Math.max(0, Math.min(index, slides.length - 1));
+    paintHeroState(hero, slides, target);
+    track.scrollTo({left: slides[target].offsetLeft, behavior:'smooth'});
+  }
+
   function setupCarousel(){
     if(!isDesktop()) return false;
     const {hero, track, slides} = heroElements();
-    if(!hero || !track || slides.length < 2) return false;
+    if(!hero || !track) return false;
+    if(slides.length < 2) return true;
+    if(hero.dataset.presCarouselReady === '1') return true;
 
-    if(!hero.querySelector('.presHeroStableNav')){
-      const nav = document.createElement('div');
-      nav.className = 'presHeroNav presHeroStableNav';
-      nav.innerHTML = '<button type="button" data-stable-hero="prev" aria-label="Campaña anterior">‹</button><button type="button" data-stable-hero="next" aria-label="Campaña siguiente">›</button>';
-      nav.addEventListener('click', event => {
-        const button = event.target.closest('button');
-        if(!button) return;
-        event.preventDefault();
-        event.stopPropagation();
-        updateHero(activeHero + (button.dataset.stableHero === 'next' ? 1 : -1));
-      });
-      hero.appendChild(nav);
-    }
+    hero.dataset.presCarouselReady = '1';
+    activeHero = 0;
+
+    const nav = document.createElement('div');
+    nav.className = 'presHeroNav presHeroStableNav';
+    nav.innerHTML = '<button type="button" data-stable-hero="prev" aria-label="Campaña anterior">‹</button><button type="button" data-stable-hero="next" aria-label="Campaña siguiente">›</button>';
+    nav.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if(!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      updateHero(activeHero + (button.dataset.stableHero === 'next' ? 1 : -1));
+    });
+    hero.appendChild(nav);
 
     hero.querySelectorAll('.presHeroDot').forEach((dot, index) => {
-      if(dot.dataset.stableBound) return;
-      dot.dataset.stableBound = '1';
       dot.style.cursor = 'pointer';
+      dot.setAttribute('role', 'button');
+      dot.setAttribute('tabindex', '0');
       dot.addEventListener('click', () => updateHero(index));
+      dot.addEventListener('keydown', event => {
+        if(event.key === 'Enter' || event.key === ' '){
+          event.preventDefault();
+          updateHero(index);
+        }
+      });
     });
 
-    if(!track.dataset.stableScrollBound){
-      track.dataset.stableScrollBound = '1';
-      let timer = 0;
-      track.addEventListener('scroll', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          const center = track.scrollLeft + track.clientWidth / 2;
-          let closest = 0;
-          let distance = Infinity;
-          slides.forEach((slide, index) => {
-            const current = Math.abs((slide.offsetLeft + slide.offsetWidth / 2) - center);
-            if(current < distance){ distance = current; closest = index; }
-          });
-          activeHero = closest;
-          hero.querySelectorAll('.presHeroDot').forEach((dot, i) => dot.classList.toggle('active', i === closest));
-        }, 80);
-      }, {passive:true});
-    }
+    let scrollTimer = 0;
+    track.addEventListener('scroll', () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let closest = 0;
+        let distance = Infinity;
+        slides.forEach((slide, index) => {
+          const current = Math.abs((slide.offsetLeft + slide.offsetWidth / 2) - center);
+          if(current < distance){ distance = current; closest = index; }
+        });
+        paintHeroState(hero, slides, closest);
+      }, 100);
+    }, {passive:true});
 
-    activeHero = Math.min(activeHero, slides.length - 1);
-    hero.querySelectorAll('.presHeroDot').forEach((dot, i) => dot.classList.toggle('active', i === activeHero));
+    paintHeroState(hero, slides, 0);
     return true;
   }
 
@@ -143,7 +151,6 @@
     if(!page) return false;
     if(page.querySelector('.presRoleHelpCompact')) return true;
 
-    page.querySelectorAll('.presRoleHelp').forEach(node => node.remove());
     const help = document.createElement('section');
     help.className = 'presRoleHelp presRoleHelpCompact';
     help.innerHTML = '<div class="presRoleHelpIcon">?</div><div><small>¿Necesitas orientación?</small><h2>Ayuda para Presidente</h2><p>Revisa el paso a paso para crear campañas, gestionar deudores y administrar apoderados.</p></div><button type="button">Ver guía</button>';
@@ -153,38 +160,23 @@
     return true;
   }
 
-  function initialize(){
+  function initializeOnceReady(attempt = 0){
     if(!isDesktop()) return;
-    setupSidebar();
-    setupCarousel();
-    setupHelp();
+    const sidebarReady = setupSidebar();
+    const carouselReady = setupCarousel();
+    const helpReady = setupHelp();
+    if(sidebarReady && carouselReady && helpReady) return;
+    if(attempt < 12) setTimeout(() => initializeOnceReady(attempt + 1), 250);
   }
 
-  function startFiniteInitialization(){
-    clearInterval(initTimer);
-    initAttempts = 0;
-    initialize();
-    initTimer = setInterval(() => {
-      initAttempts += 1;
-      initialize();
-      if(initAttempts >= 60) clearInterval(initTimer);
-    }, 250);
-  }
-
-  document.addEventListener('click', event => {
-    if(event.target.closest('#mxDesktopShell, .presBottomNav, .presMockQuick, .presMockSection header button')){
-      setTimeout(initialize, 120);
-      setTimeout(initialize, 500);
-    }
-  });
   document.addEventListener('keydown', event => {
     if(event.key === 'Escape') closeHelp();
   });
-  window.addEventListener('resize', () => {
-    if(isDesktop()) startFiniteInitialization();
-    else closeHelp();
-  });
 
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startFiniteInitialization, {once:true});
-  else startFiniteInitialization();
+  const start = () => {
+    requestAnimationFrame(() => initializeOnceReady());
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+  else start();
 })();
