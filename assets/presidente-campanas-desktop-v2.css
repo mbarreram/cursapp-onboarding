@@ -1,0 +1,198 @@
+/* MiCursoX · Presidente · Campañas desktop v2
+   Plantillas, modal y ayuda. Solo escritorio. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips){
+    color:#17213a;
+  }
+
+  /* Tipografía más fina y moderna */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) h1{
+    font-size:28px!important;
+    font-weight:720!important;
+    letter-spacing:-.035em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) h2{
+    font-weight:680!important;
+    letter-spacing:-.025em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) h3{
+    font-weight:650!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .muted,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) p{
+    font-weight:430!important;
+    color:#667085!important;
+  }
+
+  /* Plantillas destacadas */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campTemplates,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templatesGrid,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateGrid{
+    grid-template-columns:repeat(2,minmax(0,230px))!important;
+    gap:14px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) [class*="template"]:is(article,button,div):has(a,button){
+    position:relative!important;
+    min-height:150px!important;
+    padding:17px 17px 15px!important;
+    border:1px solid #e5eaf2!important;
+    border-radius:19px!important;
+    background:linear-gradient(145deg,#fff 0%,#fbfcff 100%)!important;
+    box-shadow:0 8px 24px rgba(15,23,42,.045)!important;
+    transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+    overflow:hidden!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard:hover,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard:hover{
+    transform:translateY(-2px)!important;
+    border-color:#cbd8ff!important;
+    box-shadow:0 14px 30px rgba(37,99,235,.09)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard::before,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard::before{
+    display:none!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard h3,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard h3{
+    margin:10px 0 5px!important;
+    font-size:15px!important;
+    line-height:1.25!important;
+    font-weight:680!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard p,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard p{
+    margin:0 0 12px!important;
+    font-size:12px!important;
+    line-height:1.4!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard a,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .campCard button,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard a,
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .templateCard button{
+    font-size:12px!important;
+    font-weight:620!important;
+  }
+
+  /* Ayuda de campañas */
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelp{
+    display:grid!important;
+    grid-template-columns:46px minmax(0,1fr) auto!important;
+    gap:14px!important;
+    align-items:center!important;
+    margin:4px 0 18px!important;
+    padding:15px 17px!important;
+    border:1px solid #dfe6f2!important;
+    border-radius:18px!important;
+    background:linear-gradient(135deg,#f8faff,#fff)!important;
+    box-shadow:0 7px 20px rgba(15,23,42,.035)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpIcon{
+    width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+    background:#eaf0ff;color:#175cff;font-size:20px;font-weight:700;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelp small{
+    display:block;margin-bottom:2px;color:#667085;font-size:10px;font-weight:550;text-transform:uppercase;letter-spacing:.055em;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelp h2{
+    margin:0 0 3px!important;font-size:16px!important;font-weight:670!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelp p{
+    margin:0!important;font-size:12px!important;line-height:1.45!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelp button{
+    min-height:38px;padding:0 15px;border:1px solid #d9e2ff;border-radius:11px;background:#fff;color:#175cff;font-size:12px;font-weight:620;cursor:pointer;
+  }
+
+  /* Modal Crear campaña */
+  body.cursapp-presidente.mx-desktop-active #modalRoot > div:has(input):has(button),
+  body.cursapp-presidente.mx-desktop-active #modalRoot > section:has(input):has(button){
+    backdrop-filter:blur(7px)!important;
+    background:rgba(15,23,42,.46)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input),
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input){
+    width:min(760px,calc(100vw - 80px))!important;
+    max-height:82vh!important;
+    border:1px solid rgba(255,255,255,.75)!important;
+    border-radius:24px!important;
+    background:#fff!important;
+    box-shadow:0 28px 80px rgba(15,23,42,.24)!important;
+    overflow:hidden!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) h2,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) h2{
+    font-size:22px!important;
+    font-weight:700!important;
+    letter-spacing:-.03em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) h3,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) h3{
+    font-size:16px!important;
+    font-weight:650!important;
+    letter-spacing:-.02em!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) label,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) label{
+    color:#344054!important;
+    font-size:12px!important;
+    font-weight:570!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) input,
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) textarea,
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) select,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) input,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) textarea,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) select{
+    border:1px solid #dce3ec!important;
+    border-radius:13px!important;
+    background:#fff!important;
+    color:#17213a!important;
+    font-size:13px!important;
+    font-weight:450!important;
+    box-shadow:0 1px 2px rgba(15,23,42,.02)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) input:focus,
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) textarea:focus,
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) select:focus,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) input:focus,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) textarea:focus,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) select:focus{
+    border-color:#9bb5ff!important;
+    box-shadow:0 0 0 3px rgba(23,92,255,.10)!important;
+    outline:0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) .card,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) .card{
+    border:1px solid #e7ebf2!important;
+    border-radius:18px!important;
+    box-shadow:none!important;
+    background:#fcfdff!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #modalRoot [role="dialog"]:has(input) button,
+  body.cursapp-presidente.mx-desktop-active #modalRoot form:has(input) button{
+    border-radius:12px!important;
+    font-size:12px!important;
+    font-weight:620!important;
+  }
+
+  /* Modal de ayuda Campañas */
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpOverlay{
+    position:fixed;inset:0;z-index:130000;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.48);backdrop-filter:blur(7px);
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal{
+    width:min(650px,100%);max-height:82vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;box-shadow:0 28px 80px rgba(15,23,42,.25);
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:15px}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal header small{color:#667085;font-size:10px;font-weight:550;text-transform:uppercase;letter-spacing:.06em}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal h2{margin:3px 0 0;font-size:21px;font-weight:700;letter-spacing:-.03em}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal header button{width:36px;height:36px;border:0;border-radius:11px;background:#f2f4f7;color:#475467;font-size:22px;cursor:pointer}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpSteps{display:grid;gap:10px}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpSteps article{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:13px;border:1px solid #e7ebf2;border-radius:15px;background:#fbfcff}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpSteps article>span{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#eaf0ff;color:#175cff;font-size:12px;font-weight:700}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpSteps h3{margin:0 0 4px;font-size:14px;font-weight:660}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpSteps p{margin:0;color:#667085;font-size:12px;line-height:1.5;font-weight:430}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal footer{display:flex;justify-content:flex-end;margin-top:16px}
+  body.cursapp-presidente.mx-desktop-active .presCampaignHelpModal footer button{min-height:40px;padding:0 18px;border:0;border-radius:12px;background:#175cff;color:#fff;font-size:12px;font-weight:620;cursor:pointer}
+}
