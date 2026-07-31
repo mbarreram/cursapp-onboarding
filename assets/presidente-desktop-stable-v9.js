@@ -3,7 +3,6 @@
 
   const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
   const configuredPages = new WeakSet();
-  let activeHero = 0;
 
   const icons = {
     avisos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11 14v4a2 2 0 0 1-2 2H8l-2-6"/></svg>',
@@ -48,21 +47,29 @@
     return {hero, track, slides};
   }
 
-  function paintHeroState(hero, slides, index){
-    activeHero = Math.max(0, Math.min(index, slides.length - 1));
-    hero.querySelectorAll('.presHeroDot').forEach((dot, i) => dot.classList.toggle('active', i === activeHero));
+  function showHero(page, requestedIndex){
+    const {hero, track, slides} = heroElements(page);
+    if(!hero || !track || !slides.length) return;
+    const index = Math.max(0, Math.min(requestedIndex, slides.length - 1));
+    hero.dataset.activeCampaign = String(index);
+
+    track.scrollLeft = 0;
+    slides.forEach((slide, slideIndex) => {
+      const active = slideIndex === index;
+      slide.hidden = !active;
+      slide.style.display = active ? '' : 'none';
+      slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+
+    hero.querySelectorAll('.presHeroDot').forEach((dot, dotIndex) => {
+      dot.classList.toggle('active', dotIndex === index);
+      dot.setAttribute('aria-current', dotIndex === index ? 'true' : 'false');
+    });
+
     const prev = hero.querySelector('[data-stable-hero="prev"]');
     const next = hero.querySelector('[data-stable-hero="next"]');
-    if(prev) prev.disabled = activeHero === 0;
-    if(next) next.disabled = activeHero === slides.length - 1;
-  }
-
-  function updateHero(page, index){
-    const {hero, track, slides} = heroElements(page);
-    if(!hero || !track || slides.length < 2) return;
-    const target = Math.max(0, Math.min(index, slides.length - 1));
-    paintHeroState(hero, slides, target);
-    track.scrollTo({left: target * track.clientWidth, behavior:'smooth'});
+    if(prev) prev.disabled = index === 0;
+    if(next) next.disabled = index === slides.length - 1;
   }
 
   function setupCarousel(page){
@@ -71,7 +78,8 @@
     if(!hero || !track || slides.length < 2 || hero.dataset.presCarouselReady === '1') return;
 
     hero.dataset.presCarouselReady = '1';
-    activeHero = 0;
+    track.style.overflow = 'hidden';
+    track.style.scrollSnapType = 'none';
 
     const nav = document.createElement('div');
     nav.className = 'presHeroNav presHeroStableNav';
@@ -81,7 +89,8 @@
       if(!button) return;
       event.preventDefault();
       event.stopPropagation();
-      updateHero(page, activeHero + (button.dataset.stableHero === 'next' ? 1 : -1));
+      const current = Number(hero.dataset.activeCampaign || 0);
+      showHero(page, current + (button.dataset.stableHero === 'next' ? 1 : -1));
     });
     hero.appendChild(nav);
 
@@ -89,26 +98,20 @@
       dot.style.cursor = 'pointer';
       dot.setAttribute('role', 'button');
       dot.setAttribute('tabindex', '0');
-      dot.addEventListener('click', () => updateHero(page, index));
+      dot.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        showHero(page, index);
+      });
       dot.addEventListener('keydown', event => {
         if(event.key === 'Enter' || event.key === ' '){
           event.preventDefault();
-          updateHero(page, index);
+          showHero(page, index);
         }
       });
     });
 
-    let scrollTimer = 0;
-    track.addEventListener('scroll', () => {
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => {
-        if(!track.clientWidth) return;
-        const closest = Math.round(track.scrollLeft / track.clientWidth);
-        paintHeroState(hero, slides, closest);
-      }, 100);
-    }, {passive:true});
-
-    paintHeroState(hero, slides, 0);
+    showHero(page, 0);
   }
 
   function closeHelp(){
@@ -116,7 +119,7 @@
   }
 
   function openHelp(){
-    if(document.querySelector('.presHelpOverlay')) return;
+    if(!isDesktop() || document.querySelector('.presHelpOverlay')) return;
     const overlay = document.createElement('div');
     overlay.className = 'presHelpOverlay';
     overlay.innerHTML = `
@@ -132,18 +135,17 @@
         </div>
         <footer><button type="button" data-help-close>Entendido</button></footer>
       </section>`;
-    overlay.addEventListener('click', event => {
-      if(event.target === overlay || event.target.closest('[data-help-close]')) closeHelp();
-    });
     document.body.appendChild(overlay);
   }
+
+  window.openPresidentDesktopHelp = openHelp;
+  window.closePresidentDesktopHelp = closeHelp;
 
   function setupHelp(page){
     if(!isDesktop() || !page || page.querySelector('.presRoleHelpCompact')) return;
     const help = document.createElement('section');
     help.className = 'presRoleHelp presRoleHelpCompact';
-    help.innerHTML = '<div class="presRoleHelpIcon">?</div><div><small>¿Necesitas orientación?</small><h2>Ayuda para Presidente</h2><p>Revisa el paso a paso para crear campañas, gestionar deudores y administrar apoderados.</p></div><button type="button">Ver guía</button>';
-    help.querySelector('button').addEventListener('click', openHelp);
+    help.innerHTML = '<div class="presRoleHelpIcon">?</div><div><small>¿Necesitas orientación?</small><h2>Ayuda para Presidente</h2><p>Revisa el paso a paso para crear campañas, gestionar deudores y administrar apoderados.</p></div><button type="button" data-president-help-open>Ver guía</button>';
     const banner = page.querySelector('[data-monetization-slot="presidente"]');
     page.insertBefore(help, banner || null);
   }
@@ -180,6 +182,19 @@
       if(setupSidebar() || sidebarAttempts >= 20) clearInterval(sidebarTimer);
     }, 150);
   }
+
+  document.addEventListener('click', event => {
+    if(event.target.closest('[data-president-help-open]')){
+      event.preventDefault();
+      event.stopPropagation();
+      openHelp();
+      return;
+    }
+    if(event.target.classList.contains('presHelpOverlay') || event.target.closest('[data-help-close]')){
+      event.preventDefault();
+      closeHelp();
+    }
+  }, true);
 
   document.addEventListener('keydown', event => {
     if(event.key === 'Escape') closeHelp();
