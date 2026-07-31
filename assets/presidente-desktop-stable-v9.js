@@ -3,6 +3,7 @@
 
   const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
   const configuredPages = new WeakSet();
+  let selectedCampaignIndex = 0;
 
   const icons = {
     avisos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2Z"/><path d="M11 14v4a2 2 0 0 1-2 2H8l-2-6"/></svg>',
@@ -50,14 +51,17 @@
   function showHero(page, requestedIndex){
     const {hero, track, slides} = heroElements(page);
     if(!hero || !track || !slides.length) return;
-    const index = Math.max(0, Math.min(requestedIndex, slides.length - 1));
-    hero.dataset.activeCampaign = String(index);
 
+    const index = Math.max(0, Math.min(requestedIndex, slides.length - 1));
+    selectedCampaignIndex = index;
+    hero.dataset.activeCampaign = String(index);
     track.scrollLeft = 0;
+
     slides.forEach((slide, slideIndex) => {
       const active = slideIndex === index;
       slide.hidden = !active;
-      slide.style.display = active ? '' : 'none';
+      slide.style.setProperty('display', active ? 'block' : 'none', 'important');
+      slide.style.setProperty('visibility', active ? 'visible' : 'hidden', 'important');
       slide.setAttribute('aria-hidden', active ? 'false' : 'true');
     });
 
@@ -78,8 +82,8 @@
     if(!hero || !track || slides.length < 2 || hero.dataset.presCarouselReady === '1') return;
 
     hero.dataset.presCarouselReady = '1';
-    track.style.overflow = 'hidden';
-    track.style.scrollSnapType = 'none';
+    track.style.setProperty('overflow', 'hidden', 'important');
+    track.style.setProperty('scroll-snap-type', 'none', 'important');
 
     const nav = document.createElement('div');
     nav.className = 'presHeroNav presHeroStableNav';
@@ -89,7 +93,7 @@
       if(!button) return;
       event.preventDefault();
       event.stopPropagation();
-      const current = Number(hero.dataset.activeCampaign || 0);
+      const current = Number(hero.dataset.activeCampaign || selectedCampaignIndex || 0);
       showHero(page, current + (button.dataset.stableHero === 'next' ? 1 : -1));
     });
     hero.appendChild(nav);
@@ -111,7 +115,7 @@
       });
     });
 
-    showHero(page, 0);
+    showHero(page, selectedCampaignIndex);
   }
 
   function closeHelp(){
