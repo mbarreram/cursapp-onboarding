@@ -2,6 +2,7 @@
   'use strict';
 
   const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
+  const configuredPages = new WeakSet();
   let activeHero = 0;
 
   const icons = {
@@ -40,8 +41,8 @@
     return avisos && apoderados;
   }
 
-  function heroElements(){
-    const hero = document.querySelector('.cursapp-presidente .presMockHero.is-campaign');
+  function heroElements(page){
+    const hero = page?.querySelector('.presMockHero.is-campaign');
     const track = hero?.querySelector('.presHeroCarousel');
     const slides = track ? Array.from(track.querySelectorAll('.presHeroCampaign')) : [];
     return {hero, track, slides};
@@ -56,20 +57,18 @@
     if(next) next.disabled = activeHero === slides.length - 1;
   }
 
-  function updateHero(index){
-    const {hero, track, slides} = heroElements();
+  function updateHero(page, index){
+    const {hero, track, slides} = heroElements(page);
     if(!hero || !track || slides.length < 2) return;
     const target = Math.max(0, Math.min(index, slides.length - 1));
     paintHeroState(hero, slides, target);
-    track.scrollTo({left: slides[target].offsetLeft, behavior:'smooth'});
+    track.scrollTo({left: target * track.clientWidth, behavior:'smooth'});
   }
 
-  function setupCarousel(){
-    if(!isDesktop()) return false;
-    const {hero, track, slides} = heroElements();
-    if(!hero || !track) return false;
-    if(slides.length < 2) return true;
-    if(hero.dataset.presCarouselReady === '1') return true;
+  function setupCarousel(page){
+    if(!isDesktop()) return;
+    const {hero, track, slides} = heroElements(page);
+    if(!hero || !track || slides.length < 2 || hero.dataset.presCarouselReady === '1') return;
 
     hero.dataset.presCarouselReady = '1';
     activeHero = 0;
@@ -82,7 +81,7 @@
       if(!button) return;
       event.preventDefault();
       event.stopPropagation();
-      updateHero(activeHero + (button.dataset.stableHero === 'next' ? 1 : -1));
+      updateHero(page, activeHero + (button.dataset.stableHero === 'next' ? 1 : -1));
     });
     hero.appendChild(nav);
 
@@ -90,11 +89,11 @@
       dot.style.cursor = 'pointer';
       dot.setAttribute('role', 'button');
       dot.setAttribute('tabindex', '0');
-      dot.addEventListener('click', () => updateHero(index));
+      dot.addEventListener('click', () => updateHero(page, index));
       dot.addEventListener('keydown', event => {
         if(event.key === 'Enter' || event.key === ' '){
           event.preventDefault();
-          updateHero(index);
+          updateHero(page, index);
         }
       });
     });
@@ -103,19 +102,13 @@
     track.addEventListener('scroll', () => {
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => {
-        const center = track.scrollLeft + track.clientWidth / 2;
-        let closest = 0;
-        let distance = Infinity;
-        slides.forEach((slide, index) => {
-          const current = Math.abs((slide.offsetLeft + slide.offsetWidth / 2) - center);
-          if(current < distance){ distance = current; closest = index; }
-        });
+        if(!track.clientWidth) return;
+        const closest = Math.round(track.scrollLeft / track.clientWidth);
         paintHeroState(hero, slides, closest);
       }, 100);
     }, {passive:true});
 
     paintHeroState(hero, slides, 0);
-    return true;
   }
 
   function closeHelp(){
@@ -145,37 +138,52 @@
     document.body.appendChild(overlay);
   }
 
-  function setupHelp(){
-    if(!isDesktop()) return false;
-    const page = document.querySelector('.presMockPage');
-    if(!page) return false;
-    if(page.querySelector('.presRoleHelpCompact')) return true;
-
+  function setupHelp(page){
+    if(!isDesktop() || !page || page.querySelector('.presRoleHelpCompact')) return;
     const help = document.createElement('section');
     help.className = 'presRoleHelp presRoleHelpCompact';
     help.innerHTML = '<div class="presRoleHelpIcon">?</div><div><small>¿Necesitas orientación?</small><h2>Ayuda para Presidente</h2><p>Revisa el paso a paso para crear campañas, gestionar deudores y administrar apoderados.</p></div><button type="button">Ver guía</button>';
     help.querySelector('button').addEventListener('click', openHelp);
     const banner = page.querySelector('[data-monetization-slot="presidente"]');
     page.insertBefore(help, banner || null);
-    return true;
   }
 
-  function initializeOnceReady(attempt = 0){
+  function configurePage(page){
+    if(!isDesktop() || !page || configuredPages.has(page)) return;
+    configuredPages.add(page);
+    setupCarousel(page);
+    setupHelp(page);
+  }
+
+  function configureCurrentPage(){
+    setupSidebar();
+    const page = document.querySelector('#app > .presMockPage, #app .presMockPage');
+    if(page) configurePage(page);
+  }
+
+  function start(){
     if(!isDesktop()) return;
-    const sidebarReady = setupSidebar();
-    const carouselReady = setupCarousel();
-    const helpReady = setupHelp();
-    if(sidebarReady && carouselReady && helpReady) return;
-    if(attempt < 12) setTimeout(() => initializeOnceReady(attempt + 1), 250);
+    configureCurrentPage();
+
+    const app = document.getElementById('app');
+    if(app){
+      const observer = new MutationObserver(() => {
+        const page = app.querySelector('.presMockPage');
+        if(page && !configuredPages.has(page)) requestAnimationFrame(() => configurePage(page));
+      });
+      observer.observe(app, {childList:true, subtree:false});
+    }
+
+    let sidebarAttempts = 0;
+    const sidebarTimer = setInterval(() => {
+      sidebarAttempts += 1;
+      if(setupSidebar() || sidebarAttempts >= 20) clearInterval(sidebarTimer);
+    }, 150);
   }
 
   document.addEventListener('keydown', event => {
     if(event.key === 'Escape') closeHelp();
   });
-
-  const start = () => {
-    requestAnimationFrame(() => initializeOnceReady());
-  };
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
   else start();
