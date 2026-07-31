@@ -36,17 +36,12 @@
     const app = document.getElementById('app');
     if(!app || app.querySelector('.presCampaignHelp')) return;
 
-    const list = app.querySelector('.listLines');
-    const chips = app.querySelector('.chips');
-    const host = chips?.parentElement || list?.parentElement || app;
-    if(!host) return;
-
     const help = document.createElement('section');
     help.className = 'presCampaignHelp';
     help.innerHTML = '<div class="presCampaignHelpIcon">?</div><div><small>¿Necesitas orientación?</small><h2>Ayuda para campañas</h2><p>Consulta cómo crear, usar plantillas y administrar campañas activas.</p></div><button type="button" data-campaign-help-open>Ver guía</button>';
-    if(chips && chips.parentElement === host) host.insertBefore(help, chips);
-    else if(list && list.parentElement === host) host.insertBefore(help, list);
-    else host.appendChild(help);
+
+    /* La ayuda queda como último bloque de la pantalla Campañas. */
+    app.appendChild(help);
   }
 
   document.addEventListener('click', event => {
