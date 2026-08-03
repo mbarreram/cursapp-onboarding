@@ -7,10 +7,10 @@
 
   const URL = 'https://ngxistgymgdkoaiulfbq.supabase.co';
   const PUBLISHABLE_KEY = 'sb_publishable_bplGqj8tjkUacm9hFJnT8Q_SYhXis4Y';
-  // Clave pública Web Push (VAPID). La clave privada vive sólo en Supabase.
   const PUSH_VAPID_PUBLIC_KEY = 'BE7xDVAgYInk9cXFtwvDEifmONHC8qrbJkCnM5u61GoIshQfuuiRtHlz6UVSkRAZJSgjm78QY52xO4ThBwI5Wnc';
   const AUTH_SESSION_KEY = 'cursapp_supabase_auth_session_v1';
   const SDK_STORAGE_KEY = 'cursapp_supabase_oauth_v1';
+  const SESSION_LOOKUP_TIMEOUT_MS = 1200;
   let refreshPromise = null;
 
   function readJson(key) {
@@ -35,6 +35,18 @@
   function sessionExpiresSoon(session) {
     const expiresAt = Number(session && session.expires_at);
     return Boolean(expiresAt) && expiresAt <= Math.floor(Date.now() / 1000) + 60;
+  }
+
+  function withTimeout(promise, timeoutMs, fallbackValue) {
+    let timer = null;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise(function (resolve) {
+        timer = setTimeout(function () { resolve(fallbackValue); }, timeoutMs);
+      })
+    ]).finally(function () {
+      if (timer) clearTimeout(timer);
+    });
   }
 
   async function refreshSession(session) {
@@ -72,7 +84,11 @@
   async function getAccessToken() {
     try {
       if (window.cursappSupabase && window.cursappSupabase.auth) {
-        const result = await window.cursappSupabase.auth.getSession();
+        const result = await withTimeout(
+          window.cursappSupabase.auth.getSession(),
+          SESSION_LOOKUP_TIMEOUT_MS,
+          null
+        );
         const token = result && result.data && result.data.session && result.data.session.access_token;
         if (token) return token;
       }
