@@ -1,0 +1,62 @@
+/* MiCursoX · Ajustes finales del resumen de onboarding (móvil y desktop) */
+.onbSuccessHero .onbSuccessIcon.onbSuccessIcon--clear {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  min-width: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  color: #0f766e;
+  background: linear-gradient(145deg, #eefcf6 0%, #e6f8f1 100%);
+  border: 1px solid rgba(16, 185, 129, .22);
+  box-shadow: 0 12px 28px rgba(15, 118, 110, .12);
+  overflow: visible;
+}
+
+.onbSuccessHero .onbSuccessIcon.onbSuccessIcon--clear > svg {
+  width: 52px;
+  height: 52px;
+  display: block;
+}
+
+.onbSuccessHero .onbSuccessIconCheck {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #16a34a;
+  border: 4px solid #fff;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, .28);
+}
+
+.onbSuccessHero .onbSuccessIconCheck svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 767px) {
+  .onbSuccessHero .onbSuccessIcon.onbSuccessIcon--clear {
+    width: 76px;
+    height: 76px;
+    min-width: 76px;
+    border-radius: 22px;
+  }
+
+  .onbSuccessHero .onbSuccessIcon.onbSuccessIcon--clear > svg {
+    width: 44px;
+    height: 44px;
+  }
+
+  .onbSuccessHero .onbSuccessIconCheck {
+    width: 30px;
+    height: 30px;
+    right: -7px;
+    bottom: -7px;
+  }
+}
