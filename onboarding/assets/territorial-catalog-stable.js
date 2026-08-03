@@ -17,7 +17,7 @@
     {codigo:'12',nombre:'Magallanes y de la Antártica Chilena'}
   ];
 
-  let regions=[],communes=[],applying=false,observer=null,searchTimer=null,lastSearch=0;
+  let regions=[],communes=[],applying=false,observer=null,searchTimer=null,lastSearch=0,loadingRegion='';
   const readDraft=()=>{try{return JSON.parse(localStorage.getItem(DRAFT_KEY)||'{}')}catch(_){return{}}};
   const writeDraft=patch=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify({...readDraft(),...patch}))}catch(_){}};
   const regionSelect=()=>document.getElementById('onbRegion');
@@ -32,24 +32,48 @@
 
   async function load(){
     try{
-      const [r,c]=await Promise.all([
-        request('regiones?select=codigo,nombre,orden&order=orden.asc'),
-        request('comunas?select=codigo,region_codigo,nombre&order=nombre.asc')
-      ]);
+      const r=await request('regiones?select=codigo,nombre,orden&order=orden.asc');
       regions=Array.isArray(r)&&r.length?r:FALLBACK_REGIONS;
-      communes=Array.isArray(c)?c:[];
-    }catch(firstError){
+    }catch(_){
       try{
-        const [r,c]=await Promise.all([
-          request('regiones?select=codigo,nombre&order=nombre.asc'),
-          request('comunas?select=codigo,region_codigo,nombre&order=nombre.asc')
-        ]);
+        const r=await request('regiones?select=codigo,nombre&order=nombre.asc');
         regions=Array.isArray(r)&&r.length?r:FALLBACK_REGIONS;
-        communes=Array.isArray(c)?c:[];
-      }catch(secondError){
-        console.error('Catálogo territorial MiCursoX',secondError||firstError);
-        regions=FALLBACK_REGIONS;communes=[];
+      }catch(e){
+        console.error('Regiones MiCursoX',e);regions=FALLBACK_REGIONS;
       }
+    }
+
+    try{
+      const c=await request('comunas?select=codigo,region_codigo,nombre&order=nombre.asc');
+      communes=Array.isArray(c)?c:[];
+    }catch(e){
+      console.warn('Carga global de comunas no disponible; se cargarán por región.',e);
+      communes=[];
+    }
+  }
+
+  async function loadCommunesForRegion(regionCode){
+    const code=String(regionCode||'');
+    if(!code)return [];
+    const cached=communes.filter(c=>String(c.region_codigo)===code);
+    if(cached.length)return cached;
+    if(loadingRegion===code)return [];
+    loadingRegion=code;
+    const cs=communeSelect();
+    if(cs){cs.disabled=true;cs.replaceChildren(new Option('Cargando comunas…','',true,true));}
+    try{
+      const rows=await request(`comunas?select=codigo,region_codigo,nombre&region_codigo=eq.${encodeURIComponent(code)}&order=nombre.asc`);
+      const list=Array.isArray(rows)?rows:[];
+      if(list.length){
+        const existing=new Set(communes.map(c=>String(c.codigo)));
+        list.forEach(c=>{if(!existing.has(String(c.codigo)))communes.push(c)});
+      }
+      return list;
+    }catch(e){
+      console.error('Comunas MiCursoX',e);
+      return [];
+    }finally{
+      loadingRegion='';
     }
   }
 
@@ -58,7 +82,8 @@
     const selected=String(current||''),frag=document.createDocumentFragment();
     frag.appendChild(new Option(placeholder,''));
     rows.forEach(row=>frag.appendChild(new Option(String(row.nombre||''),String(row.codigo||''))));
-    select.replaceChildren(frag);select.disabled=!rows.length;
+    select.replaceChildren(frag);
+    select.disabled=!rows.length;
     select.value=rows.some(row=>String(row.codigo)===selected)?selected:'';
   }
 
@@ -115,18 +140,22 @@
       replaceOptions(rs,regions,'Selecciona una región',regionCode);
       const regionCommunes=regionCode?communes.filter(c=>String(c.region_codigo)===regionCode):[];
       let communeCode=String(draft.comunaId||cs.value||'');if(!regionCommunes.some(c=>String(c.codigo)===communeCode))communeCode='';
-      replaceOptions(cs,regionCommunes,regionCode?'Selecciona una comuna':'Selecciona primero una región',communeCode);
+      replaceOptions(cs,regionCommunes,regionCode?(regionCommunes.length?'Selecciona una comuna':'Cargando comunas…'):'Selecciona primero una región',communeCode);
       const region=regions.find(r=>String(r.codigo)===regionCode),commune=regionCommunes.find(c=>String(c.codigo)===communeCode);
       writeDraft({regionId:regionCode,regionName:region?.nombre||'',comunaId:communeCode,comunaName:commune?.nombre||'',...(!communeCode?{schoolId:'',schoolName:'',schoolRbd:'',schoolDependencia:'',schoolDireccion:''}:{})});
       const host=ensureFinder();if(host){host.querySelector('#onbSchoolSearchStable').disabled=!communeCode;host.querySelector('#onbSchoolMissingStable').disabled=!communeCode;host.querySelector('#onbSchoolHintStable').textContent=communeCode?'Escribe al menos 2 caracteres del nombre o RBD.':'Selecciona primero una comuna.'}
+      if(regionCode&&!regionCommunes.length){
+        setTimeout(async()=>{await loadCommunesForRegion(regionCode);apply()},0);
+      }
     }finally{applying=false}
   }
 
-  document.addEventListener('change',event=>{
+  document.addEventListener('change',async event=>{
     const target=event.target;if(!(target instanceof HTMLSelectElement))return;
     if(target.id==='onbRegion'){
-      event.stopImmediatePropagation();const region=regions.find(r=>String(r.codigo)===String(target.value));
-      writeDraft({regionId:String(target.value||''),regionName:region?.nombre||'',comunaId:'',comunaName:'',schoolId:'',schoolName:'',schoolRbd:'',schoolDependencia:'',schoolDireccion:''});clearSchool();apply();
+      event.stopImmediatePropagation();const code=String(target.value||''),region=regions.find(r=>String(r.codigo)===code);
+      writeDraft({regionId:code,regionName:region?.nombre||'',comunaId:'',comunaName:'',schoolId:'',schoolName:'',schoolRbd:'',schoolDependencia:'',schoolDireccion:''});
+      clearSchool();await loadCommunesForRegion(code);apply();
     }else if(target.id==='onbComuna'){
       event.stopImmediatePropagation();const commune=communes.find(c=>String(c.codigo)===String(target.value));
       writeDraft({comunaId:String(target.value||''),comunaName:commune?.nombre||'',schoolId:'',schoolName:'',schoolRbd:'',schoolDependencia:'',schoolDireccion:''});clearSchool();apply();
@@ -134,8 +163,13 @@
   },true);
 
   async function start(){
-    await load();apply();observer=new MutationObserver(mutations=>{if(mutations.every(m=>m.target.closest?.('#onbSchoolFinderStable')))return;clearTimeout(observer._timer);observer._timer=setTimeout(apply,60)});
-    observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});window.MICURSOX_TERRITORIAL_CATALOG={regions,communes,refresh:async()=>{await load();apply()}};
+    await load();
+    const initialRegion=String(readDraft().regionId||'');
+    if(initialRegion&&!communes.some(c=>String(c.region_codigo)===initialRegion))await loadCommunesForRegion(initialRegion);
+    apply();
+    observer=new MutationObserver(mutations=>{if(mutations.every(m=>m.target.closest?.('#onbSchoolFinderStable')))return;clearTimeout(observer._timer);observer._timer=setTimeout(apply,60)});
+    observer.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+    window.MICURSOX_TERRITORIAL_CATALOG={regions,communes,refresh:async()=>{await load();const code=String(readDraft().regionId||'');if(code)await loadCommunesForRegion(code);apply()}};
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
