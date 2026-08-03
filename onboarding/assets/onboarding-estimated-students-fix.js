@@ -1,32 +1,38 @@
 (function(){
   'use strict';
-  if(window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V3__) return;
-  window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V3__ = true;
+  if(window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V4__) return;
+  window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V4__ = true;
 
   const DRAFT_KEY = 'cursapp_onb_draft_v1';
-  let dispatching = false;
 
   function readDraft(){
     try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); }
     catch (_) { return {}; }
   }
 
-  function saveSelected(input){
-    if(!input) return 0;
-    const value = Number(input.value || 0);
-    if(!value) return 0;
-
+  function persistValue(value){
+    const numeric = Number(value || 0);
+    if(!numeric) return 0;
     const draft = readDraft();
-    draft.estimatedStudents = value;
+    draft.estimatedStudents = numeric;
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
+    return numeric;
+  }
 
+  function applyVisualSelection(selected, value){
     document.querySelectorAll('input[name="onbEstimatedStudentsRadio"]').forEach(function(radio){
-      const active = radio === input;
+      const active = radio === selected;
       radio.checked = active;
       const label = radio.closest('.onbRangeOption');
       if(label) label.classList.toggle('active', active);
     });
-    return value;
+
+    const select = document.getElementById('onbEstimatedStudents');
+    if(select){
+      select.value = String(value);
+      // Este manejador actualiza el estado interno del onboarding sin render().
+      if(typeof select.onchange === 'function') select.onchange.call(select);
+    }
   }
 
   function radioFromTarget(target){
@@ -34,37 +40,28 @@
     return option ? option.querySelector('input[name="onbEstimatedStudentsRadio"]') : null;
   }
 
-  /* Safari/PWA puede marcar el label sin emitir change. Guardamos primero el
-     valor y, solo si el manejador principal todavía no lo reflejó, emitimos un
-     único change. La capa de estabilidad fusiona el draft y conserva región,
-     comuna y colegio. */
+  // Se ejecuta antes que el onchange original del radio. Evita el render()
+  // que reconstruía el paso con una copia antigua y borraba región/comuna/colegio.
   document.addEventListener('click', function(event){
     const input = radioFromTarget(event.target);
-    if(!input || dispatching) return;
-    const value = saveSelected(input);
+    if(!input) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    const value = persistValue(input.value);
     if(!value) return;
-
-    setTimeout(function(){
-      const current = document.querySelector(
-        'input[name="onbEstimatedStudentsRadio"][value="' + String(value) + '"]'
-      );
-      if(!current) return;
-      const draft = readDraft();
-      if(Number(draft.estimatedStudents || 0) !== value) saveSelected(current);
-
-      dispatching = true;
-      try {
-        current.dispatchEvent(new Event('change', { bubbles:true }));
-      } finally {
-        setTimeout(function(){ dispatching = false; }, 0);
-      }
-    }, 0);
+    applyVisualSelection(input, value);
   }, true);
 
+  // Protección adicional para interacción por teclado/accesibilidad.
   document.addEventListener('change', function(event){
     const input = event.target;
-    if(input && input.matches && input.matches('input[name="onbEstimatedStudentsRadio"]')){
-      saveSelected(input);
-    }
+    if(!input || !input.matches || !input.matches('input[name="onbEstimatedStudentsRadio"]')) return;
+
+    event.stopImmediatePropagation();
+    const value = persistValue(input.value);
+    if(value) applyVisualSelection(input, value);
   }, true);
 })();
