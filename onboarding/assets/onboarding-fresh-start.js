@@ -7,17 +7,22 @@
     'cursapp_onboarding_mode',
     'cursapp_onboarding_progress'
   ];
+  const INTERNAL_RELOAD_KEY = 'micursox_onboarding_internal_reload';
 
-  /*
-   * El onboarding es un flujo transitorio. Cada carga nueva del documento debe
-   * comenzar desde el paso 1 y no recuperar información incompleta de una sesión
-   * anterior. Los cambios entre pasos ocurren dentro de la misma página, por lo
-   * que esta limpieza no interrumpe el avance normal del usuario.
-   */
-  DRAFT_KEYS.forEach(function(key){
-    try { localStorage.removeItem(key); } catch (_) {}
-    try { sessionStorage.removeItem(key); } catch (_) {}
-  });
+  let preserveInternalReload = false;
+  try {
+    preserveInternalReload = sessionStorage.getItem(INTERNAL_RELOAD_KEY) === '1';
+    sessionStorage.removeItem(INTERNAL_RELOAD_KEY);
+  } catch (_) {}
+
+  // Una apertura nueva comienza desde cero. Solo una recarga interna controlada
+  // para avanzar de paso conserva el borrador actual.
+  if(!preserveInternalReload){
+    DRAFT_KEYS.forEach(function(key){
+      try { localStorage.removeItem(key); } catch (_) {}
+      try { sessionStorage.removeItem(key); } catch (_) {}
+    });
+  }
 
   window.__MICURSOX_ONBOARDING_FRESH_START__ = true;
 })();
