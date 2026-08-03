@@ -1,10 +1,20 @@
 (function(){
   'use strict';
-  if(window.__MICURSOX_ONBOARDING_STATE_STABILITY_V3__) return;
-  window.__MICURSOX_ONBOARDING_STATE_STABILITY_V3__ = true;
+  if(window.__MICURSOX_ONBOARDING_STATE_STABILITY_V4__) return;
+  window.__MICURSOX_ONBOARDING_STATE_STABILITY_V4__ = true;
 
   const DRAFT_KEY = 'cursapp_onb_draft_v1';
   const nativeSetItem = Storage.prototype.setItem;
+  const PROTECTED_FIELDS = [
+    'regionId',
+    'regionName',
+    'comunaId',
+    'comunaName',
+    'schoolId',
+    'schoolName',
+    'schoolRbd',
+    'rbd'
+  ];
 
   function parseObject(value){
     try {
@@ -15,15 +25,15 @@
     }
   }
 
+  function hasValue(value){
+    return value !== undefined && value !== null && String(value).trim() !== '';
+  }
+
   /*
-   * El onboarding principal mantiene una copia del draft dentro de su render.
-   * Los catálogos de región, comuna y colegio actualizan el draft real después.
-   * Cuando otro control (por ejemplo cantidad de alumnos) guardaba la copia
-   * anterior, reemplazaba el objeto completo y eliminaba los datos territoriales.
-   *
-   * Para este único draft transitorio, fusionamos la escritura entrante con el
-   * valor vigente. Así se conserva la información más reciente sin alterar el
-   * comportamiento del resto de localStorage.
+   * Los catálogos territoriales se sincronizan después del render original.
+   * Al elegir la cantidad de alumnos, el manejador principal puede guardar una
+   * copia anterior del draft con región, comuna o colegio vacíos. Conservamos
+   * esos campos cuando la escritura entrante no trae un valor real.
    */
   Storage.prototype.setItem = function(key, value){
     if(String(key) !== DRAFT_KEY){
@@ -33,6 +43,13 @@
     const current = parseObject(this.getItem(DRAFT_KEY));
     const incoming = parseObject(value);
     const merged = Object.assign({}, current, incoming);
+
+    PROTECTED_FIELDS.forEach(function(field){
+      if(hasValue(current[field]) && !hasValue(incoming[field])){
+        merged[field] = current[field];
+      }
+    });
+
     return nativeSetItem.call(this, DRAFT_KEY, JSON.stringify(merged));
   };
 })();
