@@ -1,9 +1,10 @@
 (function(){
   'use strict';
-  if(window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V5__) return;
-  window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V5__ = true;
+  if(window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V6__) return;
+  window.__MICURSOX_ESTIMATED_STUDENTS_FIX_V6__ = true;
 
   const DRAFT_KEY = 'cursapp_onb_draft_v1';
+  const INTERNAL_RELOAD_KEY = 'micursox_onboarding_internal_reload';
 
   function readDraft(){
     try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); }
@@ -59,9 +60,7 @@
     if(persistValue(input.value)) applyVisualSelection(input);
   }, true);
 
-  // La validación original conserva una copia interna antigua del draft.
-  // En el paso 1 avanzamos usando la fuente vigente de localStorage, sin
-  // reconstruir ni borrar región, comuna o colegio.
+  // Avance seguro del paso 1 usando el borrador vigente.
   document.addEventListener('click', function(event){
     const next = event.target && event.target.closest ? event.target.closest('#btnNext') : null;
     if(!next) return;
@@ -82,8 +81,9 @@
     draft.step = 2;
     writeDraft(draft);
 
-    // Recarga controlada para que onboarding.js cree una nueva instancia con
-    // el draft correcto. onboarding-fresh-start mantiene el flujo en esta pestaña.
+    // Marcar esta recarga como interna para que onboarding-fresh-start
+    // conserve el borrador y permita entrar al paso 2.
+    try { sessionStorage.setItem(INTERNAL_RELOAD_KEY, '1'); } catch (_) {}
     window.location.reload();
   }, true);
 })();
