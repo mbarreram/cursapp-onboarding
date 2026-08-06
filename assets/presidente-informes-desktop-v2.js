@@ -40,25 +40,20 @@
     return card.parentElement;
   }
 
-  function ensureAnalyticsRow(root, campanas, trend){
-    if(!campanas || !trend) return null;
-
-    let row = root.querySelector(':scope > .mxInformeAnalyticsRow');
-    if(!row){
-      row = document.createElement('div');
-      row.className = 'mxInformeAnalyticsRow';
-      campanas.parentElement.insertBefore(row, campanas);
-    }
-
-    if(campanas.parentElement !== row) row.appendChild(campanas);
-    if(trend.parentElement !== row) row.appendChild(trend);
-    return row;
+  function restoreMovedCards(root){
+    const row = root.querySelector(':scope > .mxInformeAnalyticsRow');
+    if(!row) return;
+    const cards = Array.from(row.children);
+    cards.forEach(card => row.parentElement.insertBefore(card, row));
+    row.remove();
   }
 
   function configureInformes(){
     if(!isDesktop()) return;
     const root = document.getElementById('informeRoot');
     if(!root) return;
+
+    restoreMovedCards(root);
 
     const cumplimiento = findNearestCardFromTitle(root, 'Cumplimiento del mes');
     const cuadratura = findNearestCardFromTitle(root, 'Cuadratura del periodo');
@@ -67,10 +62,11 @@
 
     const campanas = findNearestCardFromTitle(root, 'Recaudado por campañas activas');
     const trend = findNearestCardFromTitle(root, 'Evolución semanal');
-    ensureAnalyticsRow(root, campanas, trend);
 
-    if(trend && !trend.classList.contains('mxInformeTrendCard')){
+    if(campanas) campanas.classList.add('mxInformeSectionCard');
+    if(trend){
       trend.classList.add('mxInformeTrendCard', 'mxInformeSectionCard');
+      trend.style.setProperty('margin-top', '24px', 'important');
       trend.querySelectorAll('svg text').forEach(text => {
         text.style.setProperty('font-size', '9px', 'important');
         text.style.setProperty('font-weight', '500', 'important');
@@ -80,8 +76,6 @@
         if(current > 5) circle.setAttribute('r', '4');
       });
     }
-
-    if(campanas) campanas.classList.add('mxInformeSectionCard');
 
     const published = findNearestCardFromTitle(document.getElementById('app') || root, 'Informes mensuales publicados');
     if(published) published.classList.add('mxInformePublishedCard');
