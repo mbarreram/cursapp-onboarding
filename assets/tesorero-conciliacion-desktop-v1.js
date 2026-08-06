@@ -19,6 +19,35 @@
       .find(node => norm(node.textContent).startsWith(wanted)) || null;
   }
 
+  function ensureEmptySelectText(root){
+    root.querySelectorAll('select').forEach(select => {
+      const meaningful = Array.from(select.options).filter(option => {
+        const value = String(option.value || '').trim();
+        const label = norm(option.textContent);
+        return value && !option.disabled && label && !label.includes('selecciona') && !label.includes('seleccione');
+      });
+
+      if(meaningful.length === 0){
+        let emptyOption = Array.from(select.options).find(option => option.dataset.mxEmpty === 'true');
+        if(!emptyOption){
+          emptyOption = document.createElement('option');
+          emptyOption.dataset.mxEmpty = 'true';
+          emptyOption.value = '';
+          emptyOption.disabled = true;
+          select.insertBefore(emptyOption, select.firstChild);
+        }
+        emptyOption.textContent = 'Sin datos disponibles';
+        emptyOption.selected = true;
+        select.disabled = true;
+        select.setAttribute('aria-label', 'Sin datos disponibles');
+      }else{
+        const emptyOption = Array.from(select.options).find(option => option.dataset.mxEmpty === 'true');
+        emptyOption?.remove();
+        select.disabled = false;
+      }
+    });
+  }
+
   function configure(){
     if(!isDesktop()) return;
     const app = document.getElementById('app');
@@ -32,6 +61,7 @@
 
     document.body.classList.add('mx-tes-conciliacion');
     title.classList.add('mxTesConciliacionTitle');
+    title.parentElement?.classList.add('mxTesConciliacionHeadingWrap');
 
     let root = title.parentElement;
     while(root && root.parentElement !== app && root.parentElement){
@@ -42,7 +72,9 @@
     root.classList.add('mxTesConciliacionRoot');
 
     const campaignCard = closestBlock(title, root);
-    campaignCard?.classList.add('mxTesConciliacionCard','mxTesConciliacionCampaignCard');
+    if(campaignCard && campaignCard !== title.parentElement){
+      campaignCard.classList.add('mxTesConciliacionCard','mxTesConciliacionCampaignCard');
+    }
 
     const pending = findByText(root, 'Pendientes');
     const reconciled = findByText(root, 'Conciliados');
@@ -57,6 +89,8 @@
 
     const summaryTitle = findByText(root, 'Resumen de la campaña');
     closestBlock(summaryTitle, root)?.classList.add('mxTesConciliacionCard','mxTesConciliacionSummaryCard');
+
+    ensureEmptySelectText(root);
   }
 
   function start(){
