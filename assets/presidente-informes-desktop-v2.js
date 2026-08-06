@@ -40,6 +40,21 @@
     return card.parentElement;
   }
 
+  function ensureAnalyticsRow(root, campanas, trend){
+    if(!campanas || !trend) return null;
+
+    let row = root.querySelector(':scope > .mxInformeAnalyticsRow');
+    if(!row){
+      row = document.createElement('div');
+      row.className = 'mxInformeAnalyticsRow';
+      campanas.parentElement.insertBefore(row, campanas);
+    }
+
+    if(campanas.parentElement !== row) row.appendChild(campanas);
+    if(trend.parentElement !== row) row.appendChild(trend);
+    return row;
+  }
+
   function configureInformes(){
     if(!isDesktop()) return;
     const root = document.getElementById('informeRoot');
@@ -52,15 +67,7 @@
 
     const campanas = findNearestCardFromTitle(root, 'Recaudado por campañas activas');
     const trend = findNearestCardFromTitle(root, 'Evolución semanal');
-    const analyticsRow = findRowForCard(campanas || trend, root);
-    if(analyticsRow){
-      analyticsRow.classList.add('mxInformeAnalyticsRow');
-      analyticsRow.style.setProperty('display', 'grid', 'important');
-      analyticsRow.style.setProperty('grid-template-columns', 'minmax(0, 1fr) minmax(0, 1fr)', 'important');
-      analyticsRow.style.setProperty('column-gap', '24px', 'important');
-      analyticsRow.style.setProperty('row-gap', '24px', 'important');
-      analyticsRow.style.setProperty('align-items', 'stretch', 'important');
-    }
+    ensureAnalyticsRow(root, campanas, trend);
 
     if(trend && !trend.classList.contains('mxInformeTrendCard')){
       trend.classList.add('mxInformeTrendCard', 'mxInformeSectionCard');
