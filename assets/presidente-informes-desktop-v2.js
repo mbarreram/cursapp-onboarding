@@ -27,17 +27,39 @@
     return titleNode.parentElement;
   }
 
+  function findRowForCard(card, root){
+    if(!card) return null;
+    let node = card.parentElement;
+    while(node && node !== root){
+      const children = Array.from(node.children || []);
+      const cards = children.filter(child => child.classList?.contains('card'));
+      const style = getComputedStyle(node);
+      if(cards.length >= 2 || style.display === 'grid') return node;
+      node = node.parentElement;
+    }
+    return card.parentElement;
+  }
+
   function configureInformes(){
     if(!isDesktop()) return;
     const root = document.getElementById('informeRoot');
     if(!root) return;
 
+    const cumplimiento = findNearestCardFromTitle(root, 'Cumplimiento del mes');
+    const cuadratura = findNearestCardFromTitle(root, 'Cuadratura del periodo');
+    const resumenRow = findRowForCard(cumplimiento || cuadratura, root);
+    if(resumenRow) resumenRow.classList.add('mxInformeSummaryRow');
+
+    const campanas = findNearestCardFromTitle(root, 'Recaudado por campañas activas');
     const trend = findNearestCardFromTitle(root, 'Evolución semanal');
+    const analyticsRow = findRowForCard(campanas || trend, root);
+    if(analyticsRow) analyticsRow.classList.add('mxInformeAnalyticsRow');
+
     if(trend && !trend.classList.contains('mxInformeTrendCard')){
       trend.classList.add('mxInformeTrendCard', 'mxInformeSectionCard');
       trend.querySelectorAll('svg text').forEach(text => {
-        text.style.setProperty('font-size', '11px', 'important');
-        text.style.setProperty('font-weight', '650', 'important');
+        text.style.setProperty('font-size', '9px', 'important');
+        text.style.setProperty('font-weight', '500', 'important');
       });
       trend.querySelectorAll('svg circle').forEach(circle => {
         const current = Number(circle.getAttribute('r') || 0);
@@ -45,10 +67,10 @@
       });
     }
 
-    ['Recaudado por campañas activas', 'Informes mensuales publicados'].forEach(title => {
-      const card = findNearestCardFromTitle(document.getElementById('app') || root, title);
-      if(card) card.classList.add('mxInformeSectionCard');
-    });
+    if(campanas) campanas.classList.add('mxInformeSectionCard');
+
+    const published = findNearestCardFromTitle(document.getElementById('app') || root, 'Informes mensuales publicados');
+    if(published) published.classList.add('mxInformePublishedCard');
   }
 
   function start(){
