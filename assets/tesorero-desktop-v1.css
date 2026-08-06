@@ -1,63 +1,70 @@
-/* MiCursoX · Tesorero desktop v1
-   Adaptación exclusivamente visual para escritorio.
-   No modifica móvil, datos, eventos ni lógica. */
+/* MiCursoX · Tesorero desktop v2
+   Adaptación visual segura para escritorio.
+   Conserva el orden, las secciones, la lógica y la vista móvil. */
 @media (min-width:1024px){
+  /* El shell desktop ya administra el desplazamiento por el menú lateral. */
   body.cursapp-tesorero.mx-desktop-active .tesPremiumHeader{
-    margin-left:var(--mx-desktop-sidebar-width,184px)!important;
+    margin-left:0!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesHeaderInner{
-    min-height:92px!important;
+    min-height:88px!important;
     max-width:none!important;
-    padding:16px 28px!important;
+    padding:14px 28px!important;
     grid-template-columns:58px minmax(0,1fr) 48px 48px!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesHeaderName{
     font-size:19px!important;
-    font-weight:760!important;
+    font-weight:720!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesHeaderRole,
   body.cursapp-tesorero.mx-desktop-active .tesHeaderCourse{
     font-size:12px!important;
-    font-weight:620!important;
+    font-weight:600!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .container{
-    width:auto!important;
+    width:100%!important;
     max-width:none!important;
-    margin-left:var(--mx-desktop-sidebar-width,184px)!important;
-    padding:28px 28px 48px!important;
+    margin:0!important;
+    padding:24px 28px 48px!important;
   }
 
+  /* Mantener el flujo original para no perder ni reordenar secciones. */
   body.cursapp-tesorero.mx-desktop-active .tesV57Page{
-    display:grid!important;
-    grid-template-columns:repeat(12,minmax(0,1fr))!important;
-    gap:22px!important;
-    align-items:start!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:20px!important;
+    width:100%!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active .tesCashCard,
+  body.cursapp-tesorero.mx-desktop-active .tesPanel,
+  body.cursapp-tesorero.mx-desktop-active .tesSmallKpis{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesCashCard{
-    grid-column:1 / -1!important;
     padding:22px!important;
     border-radius:18px!important;
     box-shadow:0 8px 24px rgba(15,23,42,.045)!important;
   }
 
-  body.cursapp-tesorero.mx-desktop-active .tesCardHead{
-    margin-bottom:18px!important;
-  }
+  body.cursapp-tesorero.mx-desktop-active .tesCardHead{margin-bottom:18px!important;}
   body.cursapp-tesorero.mx-desktop-active .tesCardHead h1{
     font-size:20px!important;
-    font-weight:720!important;
+    font-weight:700!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCardHead p{
     font-size:12px!important;
-    font-weight:560!important;
+    font-weight:540!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCardHead>b{
     font-size:12px!important;
-    font-weight:650!important;
+    font-weight:620!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesCashGrid{
@@ -65,40 +72,39 @@
     gap:16px!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCashGrid button{
-    min-height:112px!important;
-    padding:16px!important;
+    min-height:104px!important;
+    padding:15px!important;
     border-radius:16px!important;
     box-shadow:none!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCashGrid small{
     font-size:12px!important;
-    font-weight:620!important;
+    font-weight:600!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCashGrid strong{
     font-size:20px!important;
-    font-weight:720!important;
+    font-weight:700!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesWideAction{
     min-height:48px!important;
     margin-top:16px!important;
     font-size:13px!important;
-    font-weight:650!important;
+    font-weight:620!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesSmallKpis{
-    grid-column:1 / -1!important;
+    display:grid!important;
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:18px!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesSmallKpis article{
-    min-height:110px!important;
+    min-height:108px!important;
     padding:18px!important;
     border-radius:18px!important;
     box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesPanel{
-    grid-column:1 / -1!important;
     padding:20px 22px!important;
     border-radius:18px!important;
     box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
@@ -106,41 +112,26 @@
   body.cursapp-tesorero.mx-desktop-active .tesPanel h2,
   body.cursapp-tesorero.mx-desktop-active .tesPanel h1{
     font-size:18px!important;
-    font-weight:700!important;
+    font-weight:680!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesPanel header button{
     font-size:12px!important;
-    font-weight:620!important;
+    font-weight:600!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active .tesCampaignRow,
-  body.cursapp-tesorero.mx-desktop-active .tesMovementRow{
-    padding:14px 0!important;
-  }
+  body.cursapp-tesorero.mx-desktop-active .tesMovementRow{padding:14px 0!important;}
   body.cursapp-tesorero.mx-desktop-active .tesCampaignRow b,
   body.cursapp-tesorero.mx-desktop-active .tesMovementRow b{
     font-size:14px!important;
-    font-weight:680!important;
+    font-weight:650!important;
   }
   body.cursapp-tesorero.mx-desktop-active .tesCampaignRow small,
   body.cursapp-tesorero.mx-desktop-active .tesMovementRow small{
     font-size:12px!important;
-    font-weight:520!important;
+    font-weight:500!important;
   }
 
-  body.cursapp-tesorero.mx-desktop-active .bottomNav.tesBottomNav{
-    display:none!important;
-  }
-  body.cursapp-tesorero.mx-desktop-active .tesSupportBtn{
-    bottom:24px!important;
-  }
-
-  @media (min-width:1280px){
-    body.cursapp-tesorero.mx-desktop-active .tesV57Page .tesPanel:nth-of-type(1){
-      grid-column:1 / 7!important;
-    }
-    body.cursapp-tesorero.mx-desktop-active .tesV57Page .tesPanel:nth-of-type(2){
-      grid-column:7 / -1!important;
-    }
-  }
+  body.cursapp-tesorero.mx-desktop-active .bottomNav.tesBottomNav{display:none!important;}
+  body.cursapp-tesorero.mx-desktop-active .tesSupportBtn{bottom:24px!important;}
 }
