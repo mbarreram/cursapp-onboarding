@@ -9,8 +9,7 @@
     apoderados: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.4-3.4 2.3-5.2 5.5-5.2s5.1 1.8 5.5 5.2"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.5c2.8-.5 4.7.9 5 3.6"/></svg>',
     pendientes: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 1.8"/></svg>',
     recaudado: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2.5"/><path d="M4 10h16M8 14h4"/></svg>',
-    meta: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="13" r="7"/><circle cx="11" cy="13" r="3"/><path d="M14 10l6-6M16 4h4v4"/></svg>',
-    empty: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h16v10.5H4z"/><path d="M4 8.5 7 4h10l3 4.5"/><path d="M8.5 13h7"/></svg>'
+    meta: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="13" r="7"/><circle cx="11" cy="13" r="3"/><path d="M14 10l6-6M16 4h4v4"/></svg>'
   };
 
   function closestBlock(node, root){
@@ -56,7 +55,7 @@
   }
 
   function addIcon(container, key, className){
-    if(!container) return null;
+    if(!container) return;
     let icon = container.querySelector(`:scope > .${className}`);
     if(!icon){
       icon = document.createElement('span');
@@ -64,7 +63,6 @@
       container.prepend(icon);
     }
     icon.innerHTML = ICONS[key];
-    return icon;
   }
 
   function modernizeSelector(root){
@@ -76,7 +74,6 @@
   }
 
   function modernizeMetrics(root){
-    const items = [];
     [
       ['Apoderados', 'apoderados'],
       ['Pendientes', 'pendientes'],
@@ -85,49 +82,25 @@
     ].forEach(([label, key]) => {
       const labelNode = Array.from(root.querySelectorAll('div,span,small,b,strong'))
         .find(node => norm(node.textContent) === norm(label));
-      if(!labelNode) return;
-      const item = labelNode.parentElement;
-      if(!item || items.includes(item)) return;
-      items.push(item);
+      const item = labelNode?.parentElement;
+      if(!item) return;
       item.classList.add('mxTesMetricItem');
       addIcon(item, key, 'mxTesMetricIcon');
       item.querySelectorAll('svg').forEach(svg => {
         if(!svg.closest('.mxTesMetricIcon')) svg.closest('span,div')?.classList.add('mxTesLegacyIcon');
       });
     });
-    if(items.length >= 3){
-      const parent = items.map(item => item.parentElement).find(parent => parent && items.filter(item => item.parentElement === parent).length >= 3);
-      parent?.classList.add('mxTesMetricGrid');
-    }
   }
 
-  function modernizeEmptyState(root){
-    const node = Array.from(root.querySelectorAll('div,p,section'))
-      .find(el => norm(el.textContent).includes('no hay pagos en esta vista'));
+  function markEmptyState(root){
+    const candidates = Array.from(root.querySelectorAll('p,span,small,b,strong,div'))
+      .filter(node => norm(node.textContent).includes('no hay pagos en esta vista'))
+      .sort((a, b) => a.children.length - b.children.length || a.textContent.length - b.textContent.length);
+    const node = candidates[0];
     if(!node) return;
     const card = closestBlock(node, root);
-    if(!card) return;
-    card.classList.add('mxTesConciliacionCard','mxTesConciliacionListCard');
-
-    let state = card.querySelector('.mxTesEmptyState');
-    if(!state){
-      state = document.createElement('div');
-      state.className = 'mxTesEmptyState';
-      state.innerHTML = `<span class="mxTesEmptyStateIcon">${ICONS.empty}</span><b>No hay pagos en esta vista.</b><span>Esta campaña no tiene pagos pendientes.</span>`;
-      const target = node.closest('div') || node;
-      target.replaceWith(state);
-    }
-  }
-
-  function markOuterFrame(root, app){
-    let node = root.parentElement;
-    while(node && node !== app){
-      const styles = getComputedStyle(node);
-      const hasFrame = styles.borderStyle !== 'none' || styles.boxShadow !== 'none' || parseFloat(styles.borderRadius) > 0;
-      if(hasFrame) node.classList.add('mxTesConciliacionOuterFrame');
-      node.classList.add('mxTesConciliacionWidthNode');
-      node = node.parentElement;
-    }
+    card?.classList.add('mxTesConciliacionCard','mxTesConciliacionListCard');
+    node.classList.add('mxTesEmptyMessage');
   }
 
   function configure(){
@@ -152,7 +125,12 @@
     }
     if(!root || root === document.body) root = app;
     root.classList.add('mxTesConciliacionRoot');
-    markOuterFrame(root, app);
+
+    let widthNode = root;
+    while(widthNode && widthNode !== app){
+      widthNode.classList?.add('mxTesConciliacionWidthNode');
+      widthNode = widthNode.parentElement;
+    }
 
     const campaignCard = closestBlock(title, root);
     if(campaignCard && campaignCard !== title.parentElement){
@@ -171,7 +149,7 @@
     ensureEmptySelectText(root);
     modernizeSelector(root);
     modernizeMetrics(root);
-    modernizeEmptyState(root);
+    markEmptyState(root);
   }
 
   function start(){
