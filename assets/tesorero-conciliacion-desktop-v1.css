@@ -1,4 +1,4 @@
-/* MiCursoX · Tesorero · Conciliación desktop v3
+/* MiCursoX · Tesorero · Conciliación desktop v4
    Solo adaptación visual para escritorio. */
 @media (min-width:1024px){
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .container{
@@ -23,6 +23,20 @@
     display:flex!important;
     flex-direction:column!important;
     gap:20px!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    padding:0!important;
+    outline:0!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionWidthNode:not(.mxTesConciliacionCard):not(.card){
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    outline:0!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot > *{
@@ -55,6 +69,7 @@
     padding:18px 20px!important;
     width:100%!important;
     max-width:none!important;
+    background:#fff!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionCampaignCard{
@@ -122,5 +137,59 @@
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionSummaryCard strong{
     font-size:14px!important;
     font-weight:680!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorWrap{
+    position:relative!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorWrap select{
+    padding-left:48px!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorIcon{
+    position:absolute;
+    left:16px;
+    top:50%;
+    width:22px;
+    height:22px;
+    transform:translateY(-50%);
+    display:grid;
+    place-items:center;
+    color:#2563eb;
+    pointer-events:none;
+    z-index:2;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorIcon svg,
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricIcon svg{
+    width:100%;
+    height:100%;
+    fill:none;
+    stroke:currentColor;
+    stroke-width:1.8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem{
+    position:relative!important;
+    padding-top:30px!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricIcon{
+    position:absolute;
+    top:2px;
+    left:50%;
+    width:20px;
+    height:20px;
+    transform:translateX(-50%);
+    display:grid;
+    place-items:center;
+    color:#475569;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesLegacyIcon{
+    display:none!important;
   }
 }
