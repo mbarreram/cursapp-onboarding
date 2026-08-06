@@ -4,6 +4,14 @@
   const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
   const norm = value => String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
 
+  const ICONS = {
+    selector: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/><path d="M4.8 4.8 7 7"/></svg>',
+    apoderados: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M17 11a4 4 0 0 1 4 4v2"/><path d="M16 3.2a4 4 0 0 1 0 7.6"/></svg>',
+    pendientes: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    recaudado: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 10h8M8 14h5"/></svg>',
+    meta: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M15 9l5-5"/></svg>'
+  };
+
   function closestBlock(node, root){
     let current = node;
     while(current && current !== root){
@@ -45,6 +53,41 @@
         emptyOption?.remove();
         select.disabled = false;
       }
+    });
+  }
+
+  function addModernIcon(container, key, className){
+    if(!container || container.querySelector(`.${className}`)) return;
+    const icon = document.createElement('span');
+    icon.className = className;
+    icon.innerHTML = ICONS[key];
+    container.prepend(icon);
+  }
+
+  function modernizeIcons(root){
+    const selector = root.querySelector('select');
+    if(selector){
+      const selectorWrap = selector.parentElement;
+      selectorWrap?.classList.add('mxTesSelectorWrap');
+      addModernIcon(selectorWrap, 'selector', 'mxTesSelectorIcon');
+    }
+
+    [
+      ['Apoderados', 'apoderados'],
+      ['Pendientes', 'pendientes'],
+      ['Recaudado', 'recaudado'],
+      ['Meta total', 'meta']
+    ].forEach(([label, key]) => {
+      const labelNode = Array.from(root.querySelectorAll('div,span,small,b,strong'))
+        .find(node => norm(node.textContent) === norm(label));
+      if(!labelNode) return;
+      const item = labelNode.parentElement;
+      if(!item) return;
+      item.classList.add('mxTesMetricItem');
+      addModernIcon(item, key, 'mxTesMetricIcon');
+      item.querySelectorAll('svg').forEach(svg => {
+        if(!svg.closest('.mxTesMetricIcon')) svg.classList.add('mxTesLegacyIcon');
+      });
     });
   }
 
@@ -97,6 +140,7 @@
     closestBlock(summaryTitle, root)?.classList.add('mxTesConciliacionCard','mxTesConciliacionSummaryCard');
 
     ensureEmptySelectText(root);
+    modernizeIcons(root);
   }
 
   function start(){
