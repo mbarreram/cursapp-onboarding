@@ -1,0 +1,58 @@
+/* MiCursoX · Presidente · Informes desktop v1
+   Ajustes exclusivamente visuales para escritorio.
+   No modifica móvil, datos, eventos ni lógica de los informes. */
+
+@media (min-width: 1024px) {
+  /* Contenedor principal del módulo Informes */
+  .cursapp-presidente #app > .card:has(#informeRoot) {
+    padding: 20px !important;
+  }
+
+  /* Da respiración uniforme entre los bloques del informe. */
+  .cursapp-presidente #informeRoot {
+    display: block;
+    margin-top: 18px;
+  }
+
+  .cursapp-presidente #informeRoot .card {
+    border-radius: 18px !important;
+  }
+
+  .cursapp-presidente #informeRoot .card + .card {
+    margin-top: 22px !important;
+  }
+
+  /* Separa las tarjetas incluidas en grillas sin cambiar su estructura. */
+  .cursapp-presidente #informeRoot [style*="display:grid"] {
+    gap: 20px !important;
+  }
+
+  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > .card,
+  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div {
+    min-width: 0;
+  }
+
+  /* Mayor separación del bloque de informes mensuales respecto del ejecutivo. */
+  .cursapp-presidente #app > .card:has(#informeRoot) + .card {
+    margin-top: 22px !important;
+  }
+
+  /* Corrige la escala tipográfica del gráfico lineal en desktop. */
+  .cursapp-presidente #informeRoot svg text {
+    font-size: 11px !important;
+    font-weight: 650 !important;
+  }
+
+  .cursapp-presidente #informeRoot svg circle {
+    r: 4px;
+  }
+
+  /* Evita que las etiquetas del gráfico dominen visualmente el bloque. */
+  .cursapp-presidente #informeRoot svg {
+    overflow: visible;
+  }
+
+  .cursapp-presidente #informeRoot canvas {
+    max-height: 310px !important;
+  }
+}
