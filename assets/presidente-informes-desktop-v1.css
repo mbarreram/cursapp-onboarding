@@ -1,4 +1,4 @@
-/* MiCursoX · Presidente · Informes desktop v4
+/* MiCursoX · Presidente · Informes desktop v5
    Ajustes exclusivamente visuales para escritorio.
    No modifica móvil, datos, eventos ni lógica de los informes. */
 
@@ -86,13 +86,28 @@
     font-weight: 550 !important;
   }
 
+  /* Separación vertical explícita entre KPI, cumplimiento/cuadratura y campañas. */
+  .cursapp-presidente #informeRoot > .card > [style*="display:grid"] + .card,
+  .cursapp-presidente #informeRoot > .card > [style*="grid-template-columns"] + .card {
+    margin-top: 30px !important;
+  }
+
+  .cursapp-presidente #informeRoot > .card > .card + .card,
+  .cursapp-presidente #informeRoot > .card > .mxInformeSectionCard {
+    margin-top: 28px !important;
+  }
+
+  .cursapp-presidente #informeRoot .mxInformeSectionCard + .mxInformeSectionCard {
+    margin-top: 28px !important;
+  }
+
   /* Separa secciones grandes del informe. */
   .cursapp-presidente .mxInformeSectionCard {
-    margin-top: 22px !important;
+    margin-top: 28px !important;
   }
 
   .cursapp-presidente #app > .card:has(#informeRoot) + .card {
-    margin-top: 22px !important;
+    margin-top: 28px !important;
   }
 
   /* Gráfico semanal: más pequeño y con etiquetas discretas. */
