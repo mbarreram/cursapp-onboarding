@@ -36,10 +36,10 @@
           emptyOption.disabled = true;
           select.insertBefore(emptyOption, select.firstChild);
         }
-        emptyOption.textContent = 'Sin datos disponibles';
+        emptyOption.textContent = 'Sin campañas disponibles';
         emptyOption.selected = true;
         select.disabled = true;
-        select.setAttribute('aria-label', 'Sin datos disponibles');
+        select.setAttribute('aria-label', 'Sin campañas disponibles');
       }else{
         const emptyOption = Array.from(select.options).find(option => option.dataset.mxEmpty === 'true');
         emptyOption?.remove();
@@ -70,6 +70,12 @@
     }
     if(!root || root === document.body) root = app;
     root.classList.add('mxTesConciliacionRoot');
+
+    let widthNode = root;
+    while(widthNode && widthNode !== app){
+      widthNode.classList?.add('mxTesConciliacionWidthNode');
+      widthNode = widthNode.parentElement;
+    }
 
     const campaignCard = closestBlock(title, root);
     if(campaignCard && campaignCard !== title.parentElement){
