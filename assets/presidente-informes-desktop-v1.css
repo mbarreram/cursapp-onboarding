@@ -1,4 +1,4 @@
-/* MiCursoX · Presidente · Informes desktop v7
+/* MiCursoX · Presidente · Informes desktop v8
    Ajustes exclusivamente visuales para escritorio.
    No modifica móvil, datos, eventos ni lógica de los informes. */
 
@@ -25,13 +25,23 @@
   .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div > .muted:first-child { font-size:12px!important; font-weight:550!important; }
 
   .cursapp-presidente #informeRoot .mxInformeSummaryRow { margin-top:32px!important; gap:20px!important; }
-  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow { margin-top:30px!important; gap:20px!important; }
-  .cursapp-presidente #informeRoot .mxInformeSummaryRow > .card,
-  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow > .card { margin-top:0!important; }
 
-  /* Separación directa y estable entre las dos cards analíticas, incluso si renderizan apiladas. */
-  .cursapp-presidente #informeRoot .mxInformeTrendCard { margin-top:24px!important; }
-  .cursapp-presidente #informeRoot .mxInformeSectionCard + .mxInformeTrendCard { margin-top:24px!important; }
+  /* Fila analítica creada explícitamente por JS: dos cards reales lado a lado. */
+  .cursapp-presidente #informeRoot > .mxInformeAnalyticsRow {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    column-gap:24px!important;
+    row-gap:0!important;
+    align-items:stretch!important;
+    width:100%!important;
+    margin-top:30px!important;
+  }
+  .cursapp-presidente #informeRoot > .mxInformeAnalyticsRow > .card {
+    width:auto!important;
+    min-width:0!important;
+    margin:0!important;
+    box-sizing:border-box!important;
+  }
 
   .cursapp-presidente .mxInformePublishedCard { margin-top:30px!important; }
   .cursapp-presidente #app > .card:has(#informeRoot) + .card { margin-top:30px!important; }
