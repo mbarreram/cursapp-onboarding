@@ -1,4 +1,4 @@
-/* MiCursoX · Presidente · Informes desktop v2
+/* MiCursoX · Presidente · Informes desktop v3
    Ajustes exclusivamente visuales para escritorio.
    No modifica móvil, datos, eventos ni lógica de los informes. */
 
@@ -34,17 +34,9 @@
     margin-top: 24px !important;
   }
 
-  /* El ajuste del gráfico se aplica solo al bloque identificado por JS. */
+  /* Solo espaciado del bloque semanal. No cambia tamaños globales de SVG. */
   .cursapp-presidente .mxInformeTrendCard {
     padding-bottom: 18px !important;
-  }
-
-  .cursapp-presidente .mxInformeTrendCard svg {
-    display: block !important;
-    width: 100% !important;
-    height: auto !important;
-    max-height: 300px !important;
-    overflow: hidden !important;
   }
 
   .cursapp-presidente .mxInformeTrendCard svg text {
@@ -53,7 +45,6 @@
   }
 
   .cursapp-presidente .mxInformeTrendCard canvas {
-    width: 100% !important;
     max-height: 300px !important;
   }
 
