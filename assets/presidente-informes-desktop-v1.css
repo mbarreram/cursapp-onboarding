@@ -1,9 +1,8 @@
-/* MiCursoX · Presidente · Informes desktop v5
+/* MiCursoX · Presidente · Informes desktop v6
    Ajustes exclusivamente visuales para escritorio.
    No modifica móvil, datos, eventos ni lógica de los informes. */
 
 @media (min-width: 1024px) {
-  /* Contenedor general del módulo */
   .cursapp-presidente #app > .card:has(#informeRoot) {
     padding: 18px !important;
   }
@@ -16,7 +15,6 @@
     line-height: 1.35 !important;
   }
 
-  /* Reduce tamaño y grosor general sin tocar íconos SVG. */
   .cursapp-presidente #informeRoot .kTitle {
     font-size: 17px !important;
     font-weight: 750 !important;
@@ -49,7 +47,6 @@
     padding: 9px 13px !important;
   }
 
-  /* Cards claramente separadas. */
   .cursapp-presidente #informeRoot > .card {
     border-radius: 18px !important;
     padding: 18px !important;
@@ -60,11 +57,6 @@
     box-shadow: 0 5px 16px rgba(15, 23, 42, .045) !important;
   }
 
-  .cursapp-presidente #informeRoot .card + .card {
-    margin-top: 20px !important;
-  }
-
-  /* Fuerza separación en todas las grillas del informe. */
   .cursapp-presidente #informeRoot [style*="display:grid"] {
     column-gap: 18px !important;
     row-gap: 18px !important;
@@ -75,7 +67,6 @@
     min-width: 0;
   }
 
-  /* KPI superiores: más aire entre tarjetas y texto más liviano. */
   .cursapp-presidente #informeRoot [style*="grid-template-columns:repeat(2"] > div,
   .cursapp-presidente #informeRoot [style*="grid-template-columns:repeat(4"] > div {
     padding: 14px !important;
@@ -86,31 +77,30 @@
     font-weight: 550 !important;
   }
 
-  /* Separación vertical explícita entre KPI, cumplimiento/cuadratura y campañas. */
-  .cursapp-presidente #informeRoot > .card > [style*="display:grid"] + .card,
-  .cursapp-presidente #informeRoot > .card > [style*="grid-template-columns"] + .card {
+  /* Filas reales identificadas por JS: separación visible entre bloques. */
+  .cursapp-presidente #informeRoot .mxInformeSummaryRow {
+    margin-top: 32px !important;
+    gap: 20px !important;
+  }
+
+  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow {
+    margin-top: 30px !important;
+    gap: 20px !important;
+  }
+
+  .cursapp-presidente #informeRoot .mxInformeSummaryRow > .card,
+  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow > .card {
+    margin-top: 0 !important;
+  }
+
+  .cursapp-presidente .mxInformePublishedCard {
     margin-top: 30px !important;
   }
 
-  .cursapp-presidente #informeRoot > .card > .card + .card,
-  .cursapp-presidente #informeRoot > .card > .mxInformeSectionCard {
-    margin-top: 28px !important;
-  }
-
-  .cursapp-presidente #informeRoot .mxInformeSectionCard + .mxInformeSectionCard {
-    margin-top: 28px !important;
-  }
-
-  /* Separa secciones grandes del informe. */
-  .cursapp-presidente .mxInformeSectionCard {
-    margin-top: 28px !important;
-  }
-
   .cursapp-presidente #app > .card:has(#informeRoot) + .card {
-    margin-top: 28px !important;
+    margin-top: 30px !important;
   }
 
-  /* Gráfico semanal: más pequeño y con etiquetas discretas. */
   .cursapp-presidente .mxInformeTrendCard {
     padding: 16px 18px 14px !important;
     min-height: 0 !important;
@@ -140,7 +130,6 @@
     margin: 4px auto 0 !important;
   }
 
-  /* Títulos de las secciones internas. */
   .cursapp-presidente .mxInformeSectionCard > div:first-child,
   .cursapp-presidente .mxInformeTrendCard > div:first-child {
     font-size: 16px !important;
