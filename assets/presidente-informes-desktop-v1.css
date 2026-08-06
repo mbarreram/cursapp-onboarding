@@ -1,138 +1,45 @@
-/* MiCursoX · Presidente · Informes desktop v6
+/* MiCursoX · Presidente · Informes desktop v7
    Ajustes exclusivamente visuales para escritorio.
    No modifica móvil, datos, eventos ni lógica de los informes. */
 
 @media (min-width: 1024px) {
-  .cursapp-presidente #app > .card:has(#informeRoot) {
-    padding: 18px !important;
-  }
-
-  .cursapp-presidente #informeRoot {
-    display: block;
-    margin-top: 16px;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    line-height: 1.35 !important;
-  }
-
-  .cursapp-presidente #informeRoot .kTitle {
-    font-size: 17px !important;
-    font-weight: 750 !important;
-    line-height: 1.2 !important;
-  }
-
+  .cursapp-presidente #app > .card:has(#informeRoot) { padding: 18px !important; }
+  .cursapp-presidente #informeRoot { display:block; margin-top:16px; font-size:13px!important; font-weight:500!important; line-height:1.35!important; }
+  .cursapp-presidente #informeRoot .kTitle { font-size:17px!important; font-weight:750!important; line-height:1.2!important; }
   .cursapp-presidente #informeRoot .muted,
-  .cursapp-presidente #informeRoot small {
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    line-height: 1.35 !important;
-  }
-
-  .cursapp-presidente #informeRoot .big {
-    font-size: 21px !important;
-    font-weight: 750 !important;
-    line-height: 1.15 !important;
-  }
-
+  .cursapp-presidente #informeRoot small { font-size:12px!important; font-weight:500!important; line-height:1.35!important; }
+  .cursapp-presidente #informeRoot .big { font-size:21px!important; font-weight:750!important; line-height:1.15!important; }
   .cursapp-presidente #informeRoot b,
-  .cursapp-presidente #informeRoot strong {
-    font-weight: 700 !important;
-  }
-
+  .cursapp-presidente #informeRoot strong { font-weight:700!important; }
   .cursapp-presidente #informeRoot .btn,
   .cursapp-presidente #informeRoot .btnx,
-  .cursapp-presidente #app > .card:has(#informeRoot) > .row .btnx {
-    font-size: 12px !important;
-    font-weight: 650 !important;
-    padding: 9px 13px !important;
-  }
+  .cursapp-presidente #app > .card:has(#informeRoot) > .row .btnx { font-size:12px!important; font-weight:650!important; padding:9px 13px!important; }
 
-  .cursapp-presidente #informeRoot > .card {
-    border-radius: 18px !important;
-    padding: 18px !important;
-  }
-
-  .cursapp-presidente #informeRoot .card {
-    border: 1px solid rgba(51, 65, 85, .14) !important;
-    box-shadow: 0 5px 16px rgba(15, 23, 42, .045) !important;
-  }
-
-  .cursapp-presidente #informeRoot [style*="display:grid"] {
-    column-gap: 18px !important;
-    row-gap: 18px !important;
-  }
-
+  .cursapp-presidente #informeRoot > .card { border-radius:18px!important; padding:18px!important; }
+  .cursapp-presidente #informeRoot .card { border:1px solid rgba(51,65,85,.14)!important; box-shadow:0 5px 16px rgba(15,23,42,.045)!important; }
+  .cursapp-presidente #informeRoot [style*="display:grid"] { column-gap:18px!important; row-gap:18px!important; }
   .cursapp-presidente #informeRoot [style*="grid-template-columns"] > .card,
-  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div {
-    min-width: 0;
-  }
-
+  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div { min-width:0; }
   .cursapp-presidente #informeRoot [style*="grid-template-columns:repeat(2"] > div,
-  .cursapp-presidente #informeRoot [style*="grid-template-columns:repeat(4"] > div {
-    padding: 14px !important;
-  }
+  .cursapp-presidente #informeRoot [style*="grid-template-columns:repeat(4"] > div { padding:14px!important; }
+  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div > .muted:first-child { font-size:12px!important; font-weight:550!important; }
 
-  .cursapp-presidente #informeRoot [style*="grid-template-columns"] > div > .muted:first-child {
-    font-size: 12px !important;
-    font-weight: 550 !important;
-  }
-
-  /* Filas reales identificadas por JS: separación visible entre bloques. */
-  .cursapp-presidente #informeRoot .mxInformeSummaryRow {
-    margin-top: 32px !important;
-    gap: 20px !important;
-  }
-
-  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow {
-    margin-top: 30px !important;
-    gap: 20px !important;
-  }
-
+  .cursapp-presidente #informeRoot .mxInformeSummaryRow { margin-top:32px!important; gap:20px!important; }
+  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow { margin-top:30px!important; gap:20px!important; }
   .cursapp-presidente #informeRoot .mxInformeSummaryRow > .card,
-  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow > .card {
-    margin-top: 0 !important;
-  }
+  .cursapp-presidente #informeRoot .mxInformeAnalyticsRow > .card { margin-top:0!important; }
 
-  .cursapp-presidente .mxInformePublishedCard {
-    margin-top: 30px !important;
-  }
+  /* Separación directa y estable entre las dos cards analíticas, incluso si renderizan apiladas. */
+  .cursapp-presidente #informeRoot .mxInformeTrendCard { margin-top:24px!important; }
+  .cursapp-presidente #informeRoot .mxInformeSectionCard + .mxInformeTrendCard { margin-top:24px!important; }
 
-  .cursapp-presidente #app > .card:has(#informeRoot) + .card {
-    margin-top: 30px !important;
-  }
+  .cursapp-presidente .mxInformePublishedCard { margin-top:30px!important; }
+  .cursapp-presidente #app > .card:has(#informeRoot) + .card { margin-top:30px!important; }
 
-  .cursapp-presidente .mxInformeTrendCard {
-    padding: 16px 18px 14px !important;
-    min-height: 0 !important;
-  }
-
-  .cursapp-presidente .mxInformeTrendCard svg {
-    display: block !important;
-    width: 76% !important;
-    max-width: 760px !important;
-    height: auto !important;
-    max-height: 235px !important;
-    margin: 4px auto 0 !important;
-    overflow: visible !important;
-  }
-
-  .cursapp-presidente .mxInformeTrendCard svg text {
-    font-size: 9px !important;
-    font-weight: 500 !important;
-  }
-
-  .cursapp-presidente .mxInformeTrendCard canvas {
-    display: block !important;
-    width: 76% !important;
-    max-width: 760px !important;
-    height: 220px !important;
-    max-height: 220px !important;
-    margin: 4px auto 0 !important;
-  }
-
+  .cursapp-presidente .mxInformeTrendCard { padding:16px 18px 14px!important; min-height:0!important; }
+  .cursapp-presidente .mxInformeTrendCard svg { display:block!important; width:76%!important; max-width:760px!important; height:auto!important; max-height:235px!important; margin:4px auto 0!important; overflow:visible!important; }
+  .cursapp-presidente .mxInformeTrendCard svg text { font-size:9px!important; font-weight:500!important; }
+  .cursapp-presidente .mxInformeTrendCard canvas { display:block!important; width:76%!important; max-width:760px!important; height:220px!important; max-height:220px!important; margin:4px auto 0!important; }
   .cursapp-presidente .mxInformeSectionCard > div:first-child,
-  .cursapp-presidente .mxInformeTrendCard > div:first-child {
-    font-size: 16px !important;
-    font-weight: 700 !important;
-  }
+  .cursapp-presidente .mxInformeTrendCard > div:first-child { font-size:16px!important; font-weight:700!important; }
 }
