@@ -1,4 +1,4 @@
-/* MiCursoX · Tesorero · Conciliación desktop v2
+/* MiCursoX · Tesorero · Conciliación desktop v3
    Solo adaptación visual para escritorio. */
 @media (min-width:1024px){
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .container{
@@ -11,17 +11,25 @@
     margin:0!important;
   }
 
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionWidthNode,
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot{
+    width:100%!important;
+    max-width:none!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot{
     display:flex!important;
     flex-direction:column!important;
     gap:20px!important;
-    width:100%!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot > *{
     margin-top:0!important;
     margin-bottom:0!important;
     width:100%!important;
+    max-width:none!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionHeadingWrap{
@@ -46,6 +54,7 @@
     box-shadow:0 7px 20px rgba(15,23,42,.045)!important;
     padding:18px 20px!important;
     width:100%!important;
+    max-width:none!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionCampaignCard{
