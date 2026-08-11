@@ -27,17 +27,65 @@
       .find(node => norm(node.textContent).startsWith(wanted)) || null;
   }
 
+  function validPersonName(value){
+    const text = String(value || '').replace(/\s+/g,' ').trim();
+    if(!text || text.includes('@')) return '';
+    const low = norm(text);
+    if(['tesorero','presidente','apoderado','gestión financiera del curso','gestion financiera del curso'].includes(low)) return '';
+    if(/^\d/.test(text) || text.length > 80) return '';
+    return text;
+  }
+
+  function namesFromObject(obj, out = []){
+    if(!obj || typeof obj !== 'object') return out;
+    const preferred = ['displayName','fullName','nombreCompleto','name','nombre','guardianName','apoderadoName'];
+    preferred.forEach(key => {
+      const value = validPersonName(obj[key]);
+      if(value) out.push(value);
+    });
+    ['user','profile','usuario','apoderado','metadata','user_metadata'].forEach(key => {
+      if(obj[key] && typeof obj[key] === 'object') namesFromObject(obj[key], out);
+    });
+    return out;
+  }
+
   function sessionDisplayName(){
+    const keys = [
+      'cursapp_session_v1','cursapp_user_v1','cursapp_profile_v1','cursapp_active_profile_v1',
+      'cursapp_current_user_v1','cursapp_current_profile_v1'
+    ];
     try{
-      const raw = localStorage.getItem('cursapp_session_v1');
-      const s = raw ? JSON.parse(raw) : {};
-      const candidates = [
-        s.displayName, s.name, s.nombre, s.fullName,
-        s.user?.displayName, s.user?.name, s.user?.nombre, s.user?.fullName,
-        s.profile?.displayName, s.profile?.name, s.profile?.nombre, s.profile?.fullName
-      ];
-      return String(candidates.find(v => String(v || '').trim()) || '').trim();
-    }catch(_e){ return ''; }
+      for(const key of keys){
+        const raw = localStorage.getItem(key);
+        if(!raw) continue;
+        try{
+          const parsed = JSON.parse(raw);
+          const found = namesFromObject(parsed).find(Boolean);
+          if(found) return found;
+        }catch(_e){}
+      }
+
+      const profilesRaw = localStorage.getItem('cursapp_profiles_v1');
+      if(profilesRaw){
+        try{
+          const profiles = JSON.parse(profilesRaw);
+          const sessionRaw = localStorage.getItem('cursapp_session_v1');
+          const session = sessionRaw ? JSON.parse(sessionRaw) : {};
+          const email = String(session.email || session.user?.email || session.profile?.email || '').toLowerCase().trim();
+          const activeCourse = String(localStorage.getItem('cursapp_active_course_v1') || '').trim();
+          if(Array.isArray(profiles)){
+            const match = profiles.find(p => {
+              const pEmail = String(p?.email || p?.user?.email || p?.apoderado?.email || '').toLowerCase().trim();
+              const pCourse = String(p?.courseKey || '').trim();
+              return (!email || pEmail === email) && (!activeCourse || !pCourse || pCourse === activeCourse);
+            });
+            const found = namesFromObject(match).find(Boolean);
+            if(found) return found;
+          }
+        }catch(_e){}
+      }
+    }catch(_e){}
+    return '';
   }
 
   function syncDesktopHeader(){
@@ -47,16 +95,21 @@
     if(!nameNode || !courseNode) return;
 
     const userName = sessionDisplayName();
-    if(userName && norm(nameNode.textContent) === 'tesorero') nameNode.textContent = userName;
+    if(userName) nameNode.textContent = userName;
     if(roleNode) roleNode.textContent = 'Tesorero';
 
     if(!courseNode.dataset.mxSplit){
       const raw = String(courseNode.textContent || '').trim();
-      const parts = raw.split(/\s*[·|\-]\s*/).filter(Boolean);
+      const parts = raw.split(/\s*[·|]\s*/).filter(Boolean);
       if(parts.length >= 2){
         const course = parts.shift();
         const school = parts.join(' · ');
         courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${course}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${school}</span>`;
+      }else{
+        const dash = raw.match(/^(.+?\d+[A-Za-z]?)\s*-\s*(.+)$/);
+        if(dash){
+          courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${dash[1].trim()}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${dash[2].trim()}</span>`;
+        }
       }
       courseNode.dataset.mxSplit = 'true';
     }
@@ -107,6 +160,8 @@
     wrap?.classList.add('mxTesSelectorWrap');
     select.classList.add('mxTesCampaignSelect');
     addIcon(wrap, 'selector', 'mxTesSelectorIcon');
+    const legacyIcon = root.querySelector('.tesCampaignSelectorIcon');
+    legacyIcon?.classList.add('mxTesHideLegacyCampaignIcon');
   }
 
   function modernizeMetrics(root){
