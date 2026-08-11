@@ -1,0 +1,68 @@
+/* MiCursoX · Tesorero · modal Agregar rendición · solo desktop */
+@media (min-width:1024px){
+  #modalRoot .mxTesRendicionOverlay{
+    align-items:center!important;
+    justify-content:center!important;
+    padding:16px 24px!important;
+    overflow:hidden!important;
+  }
+
+  #modalRoot .mxTesRendicionModal{
+    width:min(760px,calc(100vw - 330px))!important;
+    max-width:760px!important;
+    max-height:calc(100vh - 118px)!important;
+    margin:auto!important;
+    padding:22px 24px!important;
+    border-radius:22px!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior:contain!important;
+    scrollbar-width:thin!important;
+  }
+
+  #modalRoot .mxTesRendicionModal label{
+    margin:9px 0 5px!important;
+    font-size:12px!important;
+    line-height:1.2!important;
+    font-weight:700!important;
+  }
+
+  #modalRoot .mxTesRendicionModal input,
+  #modalRoot .mxTesRendicionModal select,
+  #modalRoot .mxTesRendicionModal textarea{
+    min-height:42px!important;
+    padding:9px 12px!important;
+    border-radius:12px!important;
+    font-size:13px!important;
+    line-height:1.25!important;
+  }
+
+  #modalRoot .mxTesRendicionModal textarea{
+    min-height:72px!important;
+    max-height:90px!important;
+    resize:vertical!important;
+  }
+
+  #modalRoot .mxTesRendicionModal input[type="file"]{
+    min-height:38px!important;
+    padding:7px 10px!important;
+  }
+
+  #modalRoot .mxTesRendicionModal .row,
+  #modalRoot .mxTesRendicionModal .actions,
+  #modalRoot .mxTesRendicionModal [style*="gap:10px"]{
+    gap:10px!important;
+  }
+
+  #modalRoot .mxTesRendicionModal [style*="margin-top:12px"]{margin-top:9px!important;}
+  #modalRoot .mxTesRendicionModal [style*="margin-top:14px"]{margin-top:10px!important;}
+  #modalRoot .mxTesRendicionModal .card{padding:12px!important;margin:10px 0!important;}
+  #modalRoot .mxTesRendicionModal .btnMini,
+  #modalRoot .mxTesRendicionModal .btnPrimaryMini,
+  #modalRoot .mxTesRendicionModal .btnDangerMini{
+    min-height:38px!important;
+    height:38px!important;
+    padding:0 13px!important;
+    font-size:12px!important;
+  }
+}
