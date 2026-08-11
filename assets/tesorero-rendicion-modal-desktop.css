@@ -1,68 +1,79 @@
 /* MiCursoX · Tesorero · modal Agregar rendición · solo desktop */
 @media (min-width:1024px){
   #modalRoot .mxTesRendicionOverlay{
+    position:fixed!important;
+    inset:0!important;
+    z-index:2200!important;
+    display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    padding:16px 24px!important;
+    padding:20px 28px!important;
     overflow:hidden!important;
+    box-sizing:border-box!important;
   }
 
   #modalRoot .mxTesRendicionModal{
-    width:min(760px,calc(100vw - 330px))!important;
-    max-width:760px!important;
-    max-height:calc(100vh - 118px)!important;
-    margin:auto!important;
-    padding:22px 24px!important;
+    position:relative!important;
+    inset:auto!important;
+    transform:none!important;
+    width:min(840px,calc(100vw - 360px))!important;
+    max-width:840px!important;
+    max-height:calc(100vh - 40px)!important;
+    margin:0!important;
+    padding:18px 22px!important;
     border-radius:22px!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
     overscroll-behavior:contain!important;
     scrollbar-width:thin!important;
+    box-sizing:border-box!important;
   }
 
   #modalRoot .mxTesRendicionModal label{
-    margin:9px 0 5px!important;
+    margin:7px 0 4px!important;
     font-size:12px!important;
-    line-height:1.2!important;
+    line-height:1.15!important;
     font-weight:700!important;
   }
 
   #modalRoot .mxTesRendicionModal input,
   #modalRoot .mxTesRendicionModal select,
   #modalRoot .mxTesRendicionModal textarea{
-    min-height:42px!important;
-    padding:9px 12px!important;
-    border-radius:12px!important;
+    min-height:38px!important;
+    padding:8px 11px!important;
+    border-radius:11px!important;
     font-size:13px!important;
-    line-height:1.25!important;
+    line-height:1.2!important;
   }
 
   #modalRoot .mxTesRendicionModal textarea{
-    min-height:72px!important;
-    max-height:90px!important;
+    min-height:64px!important;
+    max-height:76px!important;
     resize:vertical!important;
   }
 
   #modalRoot .mxTesRendicionModal input[type="file"]{
-    min-height:38px!important;
-    padding:7px 10px!important;
+    min-height:34px!important;
+    padding:5px 8px!important;
   }
 
   #modalRoot .mxTesRendicionModal .row,
   #modalRoot .mxTesRendicionModal .actions,
   #modalRoot .mxTesRendicionModal [style*="gap:10px"]{
-    gap:10px!important;
+    gap:8px!important;
   }
 
-  #modalRoot .mxTesRendicionModal [style*="margin-top:12px"]{margin-top:9px!important;}
-  #modalRoot .mxTesRendicionModal [style*="margin-top:14px"]{margin-top:10px!important;}
-  #modalRoot .mxTesRendicionModal .card{padding:12px!important;margin:10px 0!important;}
+  #modalRoot .mxTesRendicionModal [style*="margin-top:12px"]{margin-top:7px!important;}
+  #modalRoot .mxTesRendicionModal [style*="margin-top:14px"]{margin-top:8px!important;}
+  #modalRoot .mxTesRendicionModal [style*="margin-bottom:12px"]{margin-bottom:7px!important;}
+  #modalRoot .mxTesRendicionModal .card{padding:10px!important;margin:8px 0!important;}
+
   #modalRoot .mxTesRendicionModal .btnMini,
   #modalRoot .mxTesRendicionModal .btnPrimaryMini,
   #modalRoot .mxTesRendicionModal .btnDangerMini{
-    min-height:38px!important;
-    height:38px!important;
-    padding:0 13px!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:0 12px!important;
     font-size:12px!important;
   }
 }
