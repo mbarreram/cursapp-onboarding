@@ -27,6 +27,41 @@
       .find(node => norm(node.textContent).startsWith(wanted)) || null;
   }
 
+  function sessionDisplayName(){
+    try{
+      const raw = localStorage.getItem('cursapp_session_v1');
+      const s = raw ? JSON.parse(raw) : {};
+      const candidates = [
+        s.displayName, s.name, s.nombre, s.fullName,
+        s.user?.displayName, s.user?.name, s.user?.nombre, s.user?.fullName,
+        s.profile?.displayName, s.profile?.name, s.profile?.nombre, s.profile?.fullName
+      ];
+      return String(candidates.find(v => String(v || '').trim()) || '').trim();
+    }catch(_e){ return ''; }
+  }
+
+  function syncDesktopHeader(){
+    const nameNode = document.querySelector('.tesHeaderName');
+    const roleNode = document.querySelector('.tesHeaderRole');
+    const courseNode = document.querySelector('.tesHeaderCourse');
+    if(!nameNode || !courseNode) return;
+
+    const userName = sessionDisplayName();
+    if(userName && norm(nameNode.textContent) === 'tesorero') nameNode.textContent = userName;
+    if(roleNode) roleNode.textContent = 'Tesorero';
+
+    if(!courseNode.dataset.mxSplit){
+      const raw = String(courseNode.textContent || '').trim();
+      const parts = raw.split(/\s*[·|\-]\s*/).filter(Boolean);
+      if(parts.length >= 2){
+        const course = parts.shift();
+        const school = parts.join(' · ');
+        courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${course}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${school}</span>`;
+      }
+      courseNode.dataset.mxSplit = 'true';
+    }
+  }
+
   function ensureEmptySelectText(root){
     root.querySelectorAll('select').forEach(select => {
       const meaningful = Array.from(select.options).filter(option => {
@@ -70,10 +105,12 @@
     if(!select) return;
     const wrap = select.parentElement;
     wrap?.classList.add('mxTesSelectorWrap');
+    select.classList.add('mxTesCampaignSelect');
     addIcon(wrap, 'selector', 'mxTesSelectorIcon');
   }
 
   function modernizeMetrics(root){
+    const items = [];
     [
       ['Apoderados', 'apoderados'],
       ['Pendientes', 'pendientes'],
@@ -83,13 +120,18 @@
       const labelNode = Array.from(root.querySelectorAll('div,span,small,b,strong'))
         .find(node => norm(node.textContent) === norm(label));
       const item = labelNode?.parentElement;
-      if(!item) return;
+      if(!item || items.includes(item)) return;
+      items.push(item);
       item.classList.add('mxTesMetricItem');
       addIcon(item, key, 'mxTesMetricIcon');
       item.querySelectorAll('svg').forEach(svg => {
         if(!svg.closest('.mxTesMetricIcon')) svg.closest('span,div')?.classList.add('mxTesLegacyIcon');
       });
     });
+    if(items.length >= 3){
+      const parent = items.map(item => item.parentElement).find(parent => parent && items.filter(item => item.parentElement === parent).length >= 3);
+      parent?.classList.add('mxTesMetricGrid');
+    }
   }
 
   function markEmptyState(root){
@@ -115,6 +157,7 @@
     }
 
     document.body.classList.add('mx-tes-conciliacion');
+    syncDesktopHeader();
     title.classList.add('mxTesConciliacionTitle');
     title.parentElement?.classList.add('mxTesConciliacionHeadingWrap');
 
