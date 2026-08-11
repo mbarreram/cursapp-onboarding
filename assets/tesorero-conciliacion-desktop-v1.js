@@ -27,71 +27,6 @@
       .find(node => norm(node.textContent).startsWith(wanted)) || null;
   }
 
-  function validPersonName(value){
-    const text = String(value || '').replace(/\s+/g,' ').trim();
-    if(!text || text.includes('@')) return '';
-    const low = norm(text);
-    if(['tesorero','presidente','apoderado','gestión financiera del curso','gestion financiera del curso'].includes(low)) return '';
-    if(/^\d/.test(text) || text.length > 80) return '';
-    return text;
-  }
-
-  function namesFromObject(obj, out = []){
-    if(!obj || typeof obj !== 'object') return out;
-    ['displayName','fullName','nombreCompleto','name','nombre','guardianName','apoderadoName'].forEach(key => {
-      const value = validPersonName(obj[key]);
-      if(value) out.push(value);
-    });
-    ['user','profile','usuario','apoderado','metadata','user_metadata'].forEach(key => {
-      if(obj[key] && typeof obj[key] === 'object') namesFromObject(obj[key], out);
-    });
-    return out;
-  }
-
-  function sessionDisplayName(){
-    const keys = ['cursapp_session_v1','cursapp_user_v1','cursapp_profile_v1','cursapp_active_profile_v1','cursapp_current_user_v1','cursapp_current_profile_v1'];
-    try{
-      for(const key of keys){
-        const raw = localStorage.getItem(key);
-        if(!raw) continue;
-        try{
-          const found = namesFromObject(JSON.parse(raw)).find(Boolean);
-          if(found) return found;
-        }catch(_e){}
-      }
-    }catch(_e){}
-    return '';
-  }
-
-  function cleanCourseLabel(raw){
-    let text = String(raw || '').replace(/\s+/g,' ').trim();
-    text = text.replace(/(\d+\s*[°º]?\s*[A-Za-z]?)\s*202\d\b/i, '$1');
-    text = text.replace(/\b202\d\b/g,'').replace(/\s{2,}/g,' ').trim();
-    return text;
-  }
-
-  function syncDesktopHeader(){
-    const nameNode = document.querySelector('.tesHeaderName');
-    const roleNode = document.querySelector('.tesHeaderRole');
-    const courseNode = document.querySelector('.tesHeaderCourse');
-    if(!nameNode || !courseNode) return;
-
-    const userName = sessionDisplayName();
-    if(userName) nameNode.textContent = userName;
-    if(roleNode) roleNode.textContent = 'Tesorero';
-
-    const raw = cleanCourseLabel(courseNode.textContent);
-    const parts = raw.split(/\s*[·|]\s*/).filter(Boolean);
-    if(parts.length >= 2){
-      const course = cleanCourseLabel(parts.shift());
-      const school = parts.join(' · ').trim();
-      courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${course}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${school}</span>`;
-    }else{
-      courseNode.textContent = raw;
-    }
-    courseNode.dataset.mxSplit = 'true';
-  }
-
   function ensureEmptySelectText(root){
     root.querySelectorAll('select').forEach(select => {
       const meaningful = Array.from(select.options).filter(option => {
@@ -139,7 +74,6 @@
     wrap.classList.add('mxTesSelectorWrap');
     select.classList.add('mxTesCampaignSelect');
 
-    /* El selector debe tener solo calendario + select + una flecha. */
     Array.from(wrap.children).forEach(child => {
       if(child === select) return;
       if(child.classList?.contains('mxTesSelectorIcon')) return;
@@ -195,7 +129,7 @@
     if(!title){ document.body.classList.remove('mx-tes-conciliacion'); return; }
 
     document.body.classList.add('mx-tes-conciliacion');
-    syncDesktopHeader();
+    /* La cabecera queda 100% a cargo del componente base de Tesorero, igual que Inicio. */
     title.classList.add('mxTesConciliacionTitle');
     title.parentElement?.classList.add('mxTesConciliacionHeadingWrap');
 
