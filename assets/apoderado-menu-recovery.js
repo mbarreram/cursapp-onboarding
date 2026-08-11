@@ -1,10 +1,10 @@
 (function(){
   'use strict';
-  if(window.__APODERADO_MENU_RECOVERY_V3__) return;
-  window.__APODERADO_MENU_RECOVERY_V3__ = true;
+  if(window.__APODERADO_MENU_RECOVERY_V4__) return;
+  window.__APODERADO_MENU_RECOVERY_V4__ = true;
 
   const esc = (value)=>String(value ?? '').replace(/[&<>"']/g, ch=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'
   }[ch]));
 
   function getRoleData(){
@@ -63,10 +63,13 @@
 
   function openProfile(){
     try{
+      const app=document.getElementById('app');
       document.body.setAttribute('data-apo-module','profile');
       document.querySelectorAll('.navItem[data-tab]').forEach(function(el){ el.classList.remove('active'); });
       if(typeof window.renderProfile === 'function'){
         window.renderProfile(false);
+        if(app) app.scrollTop=0;
+        window.scrollTo({top:0,left:0,behavior:'auto'});
         return true;
       }
       if(typeof window.go === 'function'){
@@ -136,12 +139,26 @@
       ev.stopImmediatePropagation();
     }, true);
 
-    menu.addEventListener('pointerdown', function(ev){ ev.stopPropagation(); }, true);
+    menu.addEventListener('pointerdown', function(ev){
+      const item = ev.target.closest('.apoV42MenuItem');
+      if(!item){ ev.stopPropagation(); return; }
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      item.dataset.pointerHandled='1';
+      runAction(item.dataset.action || '', menu, btn);
+    }, true);
+
     menu.addEventListener('click', function(ev){
       const item = ev.target.closest('.apoV42MenuItem');
       if(!item) return;
       ev.preventDefault();
       ev.stopPropagation();
+      ev.stopImmediatePropagation();
+      if(item.dataset.pointerHandled === '1'){
+        delete item.dataset.pointerHandled;
+        return;
+      }
       runAction(item.dataset.action || '', menu, btn);
     }, true);
 
