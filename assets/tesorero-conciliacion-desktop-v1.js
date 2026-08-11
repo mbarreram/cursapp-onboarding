@@ -38,8 +38,7 @@
 
   function namesFromObject(obj, out = []){
     if(!obj || typeof obj !== 'object') return out;
-    const preferred = ['displayName','fullName','nombreCompleto','name','nombre','guardianName','apoderadoName'];
-    preferred.forEach(key => {
+    ['displayName','fullName','nombreCompleto','name','nombre','guardianName','apoderadoName'].forEach(key => {
       const value = validPersonName(obj[key]);
       if(value) out.push(value);
     });
@@ -50,42 +49,25 @@
   }
 
   function sessionDisplayName(){
-    const keys = [
-      'cursapp_session_v1','cursapp_user_v1','cursapp_profile_v1','cursapp_active_profile_v1',
-      'cursapp_current_user_v1','cursapp_current_profile_v1'
-    ];
+    const keys = ['cursapp_session_v1','cursapp_user_v1','cursapp_profile_v1','cursapp_active_profile_v1','cursapp_current_user_v1','cursapp_current_profile_v1'];
     try{
       for(const key of keys){
         const raw = localStorage.getItem(key);
         if(!raw) continue;
         try{
-          const parsed = JSON.parse(raw);
-          const found = namesFromObject(parsed).find(Boolean);
+          const found = namesFromObject(JSON.parse(raw)).find(Boolean);
           if(found) return found;
-        }catch(_e){}
-      }
-
-      const profilesRaw = localStorage.getItem('cursapp_profiles_v1');
-      if(profilesRaw){
-        try{
-          const profiles = JSON.parse(profilesRaw);
-          const sessionRaw = localStorage.getItem('cursapp_session_v1');
-          const session = sessionRaw ? JSON.parse(sessionRaw) : {};
-          const email = String(session.email || session.user?.email || session.profile?.email || '').toLowerCase().trim();
-          const activeCourse = String(localStorage.getItem('cursapp_active_course_v1') || '').trim();
-          if(Array.isArray(profiles)){
-            const match = profiles.find(p => {
-              const pEmail = String(p?.email || p?.user?.email || p?.apoderado?.email || '').toLowerCase().trim();
-              const pCourse = String(p?.courseKey || '').trim();
-              return (!email || pEmail === email) && (!activeCourse || !pCourse || pCourse === activeCourse);
-            });
-            const found = namesFromObject(match).find(Boolean);
-            if(found) return found;
-          }
         }catch(_e){}
       }
     }catch(_e){}
     return '';
+  }
+
+  function cleanCourseLabel(raw){
+    let text = String(raw || '').replace(/\s+/g,' ').trim();
+    text = text.replace(/(\d+\s*[°º]?\s*[A-Za-z]?)\s*202\d\b/i, '$1');
+    text = text.replace(/\b202\d\b/g,'').replace(/\s{2,}/g,' ').trim();
+    return text;
   }
 
   function syncDesktopHeader(){
@@ -98,21 +80,16 @@
     if(userName) nameNode.textContent = userName;
     if(roleNode) roleNode.textContent = 'Tesorero';
 
-    if(!courseNode.dataset.mxSplit){
-      const raw = String(courseNode.textContent || '').trim();
-      const parts = raw.split(/\s*[·|]\s*/).filter(Boolean);
-      if(parts.length >= 2){
-        const course = parts.shift();
-        const school = parts.join(' · ');
-        courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${course}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${school}</span>`;
-      }else{
-        const dash = raw.match(/^(.+?\d+[A-Za-z]?)\s*-\s*(.+)$/);
-        if(dash){
-          courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${dash[1].trim()}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${dash[2].trim()}</span>`;
-        }
-      }
-      courseNode.dataset.mxSplit = 'true';
+    const raw = cleanCourseLabel(courseNode.textContent);
+    const parts = raw.split(/\s*[·|]\s*/).filter(Boolean);
+    if(parts.length >= 2){
+      const course = cleanCourseLabel(parts.shift());
+      const school = parts.join(' · ').trim();
+      courseNode.innerHTML = `<span class="mxTesHeaderCoursePart">${course}</span><span class="mxTesHeaderDivider" aria-hidden="true"></span><span class="mxTesHeaderSchoolPart">${school}</span>`;
+    }else{
+      courseNode.textContent = raw;
     }
+    courseNode.dataset.mxSplit = 'true';
   }
 
   function ensureEmptySelectText(root){
@@ -143,7 +120,7 @@
   }
 
   function addIcon(container, key, className){
-    if(!container) return;
+    if(!container) return null;
     let icon = container.querySelector(`:scope > .${className}`);
     if(!icon){
       icon = document.createElement('span');
@@ -151,37 +128,48 @@
       container.prepend(icon);
     }
     icon.innerHTML = ICONS[key];
+    return icon;
   }
 
   function modernizeSelector(root){
     const select = root.querySelector('select');
     if(!select) return;
     const wrap = select.parentElement;
-    wrap?.classList.add('mxTesSelectorWrap');
+    if(!wrap) return;
+    wrap.classList.add('mxTesSelectorWrap');
     select.classList.add('mxTesCampaignSelect');
+
+    /* El selector debe tener solo calendario + select + una flecha. */
+    Array.from(wrap.children).forEach(child => {
+      if(child === select) return;
+      if(child.classList?.contains('mxTesSelectorIcon')) return;
+      if(child.classList?.contains('mxTesSelectorArrow')) return;
+      child.classList.add('mxTesSelectorLegacyChild');
+    });
+
     addIcon(wrap, 'selector', 'mxTesSelectorIcon');
-    const legacyIcon = root.querySelector('.tesCampaignSelectorIcon');
-    legacyIcon?.classList.add('mxTesHideLegacyCampaignIcon');
+    let arrow = wrap.querySelector(':scope > .mxTesSelectorArrow');
+    if(!arrow){
+      arrow = document.createElement('span');
+      arrow.className = 'mxTesSelectorArrow';
+      arrow.setAttribute('aria-hidden','true');
+      arrow.textContent = '⌄';
+      wrap.appendChild(arrow);
+    }
+
+    root.querySelectorAll('.tesCampaignSelectorIcon').forEach(node => node.classList.add('mxTesHideLegacyCampaignIcon'));
   }
 
   function modernizeMetrics(root){
     const items = [];
-    [
-      ['Apoderados', 'apoderados'],
-      ['Pendientes', 'pendientes'],
-      ['Recaudado', 'recaudado'],
-      ['Meta total', 'meta']
-    ].forEach(([label, key]) => {
-      const labelNode = Array.from(root.querySelectorAll('div,span,small,b,strong'))
-        .find(node => norm(node.textContent) === norm(label));
+    [['Apoderados','apoderados'],['Pendientes','pendientes'],['Recaudado','recaudado'],['Meta total','meta']].forEach(([label,key]) => {
+      const labelNode = Array.from(root.querySelectorAll('div,span,small,b,strong')).find(node => norm(node.textContent) === norm(label));
       const item = labelNode?.parentElement;
       if(!item || items.includes(item)) return;
       items.push(item);
       item.classList.add('mxTesMetricItem');
-      addIcon(item, key, 'mxTesMetricIcon');
-      item.querySelectorAll('svg').forEach(svg => {
-        if(!svg.closest('.mxTesMetricIcon')) svg.closest('span,div')?.classList.add('mxTesLegacyIcon');
-      });
+      addIcon(item,key,'mxTesMetricIcon');
+      item.querySelectorAll('svg').forEach(svg => { if(!svg.closest('.mxTesMetricIcon')) svg.closest('span,div')?.classList.add('mxTesLegacyIcon'); });
     });
     if(items.length >= 3){
       const parent = items.map(item => item.parentElement).find(parent => parent && items.filter(item => item.parentElement === parent).length >= 3);
@@ -192,11 +180,10 @@
   function markEmptyState(root){
     const candidates = Array.from(root.querySelectorAll('p,span,small,b,strong,div'))
       .filter(node => norm(node.textContent).includes('no hay pagos en esta vista'))
-      .sort((a, b) => a.children.length - b.children.length || a.textContent.length - b.textContent.length);
+      .sort((a,b) => a.children.length - b.children.length || a.textContent.length - b.textContent.length);
     const node = candidates[0];
     if(!node) return;
-    const card = closestBlock(node, root);
-    card?.classList.add('mxTesConciliacionCard','mxTesConciliacionListCard');
+    closestBlock(node,root)?.classList.add('mxTesConciliacionCard','mxTesConciliacionListCard');
     node.classList.add('mxTesEmptyMessage');
   }
 
@@ -204,12 +191,8 @@
     if(!isDesktop()) return;
     const app = document.getElementById('app');
     if(!app) return;
-
-    const title = findByText(app, 'Conciliación por campaña');
-    if(!title){
-      document.body.classList.remove('mx-tes-conciliacion');
-      return;
-    }
+    const title = findByText(app,'Conciliación por campaña');
+    if(!title){ document.body.classList.remove('mx-tes-conciliacion'); return; }
 
     document.body.classList.add('mx-tes-conciliacion');
     syncDesktopHeader();
@@ -219,30 +202,24 @@
     let root = title.parentElement;
     while(root && root.parentElement !== app && root.parentElement){
       root = root.parentElement;
-      if(root.querySelector && findByText(root, 'Resumen de la campaña')) break;
+      if(root.querySelector && findByText(root,'Resumen de la campaña')) break;
     }
     if(!root || root === document.body) root = app;
     root.classList.add('mxTesConciliacionRoot');
 
     let widthNode = root;
-    while(widthNode && widthNode !== app){
-      widthNode.classList?.add('mxTesConciliacionWidthNode');
-      widthNode = widthNode.parentElement;
-    }
+    while(widthNode && widthNode !== app){ widthNode.classList?.add('mxTesConciliacionWidthNode'); widthNode = widthNode.parentElement; }
 
-    const campaignCard = closestBlock(title, root);
-    if(campaignCard && campaignCard !== title.parentElement){
-      campaignCard.classList.add('mxTesConciliacionCard','mxTesConciliacionCampaignCard');
-    }
+    const campaignCard = closestBlock(title,root);
+    if(campaignCard && campaignCard !== title.parentElement) campaignCard.classList.add('mxTesConciliacionCard','mxTesConciliacionCampaignCard');
 
-    const pending = findByText(root, 'Pendientes');
-    const reconciled = findByText(root, 'Conciliados');
-    const tabsParent = pending && reconciled && pending.parentElement === reconciled.parentElement
-      ? pending.parentElement : pending?.parentElement;
+    const pending = findByText(root,'Pendientes');
+    const reconciled = findByText(root,'Conciliados');
+    const tabsParent = pending && reconciled && pending.parentElement === reconciled.parentElement ? pending.parentElement : pending?.parentElement;
     tabsParent?.classList.add('mxTesConciliacionTabs');
 
-    const summaryTitle = findByText(root, 'Resumen de la campaña');
-    closestBlock(summaryTitle, root)?.classList.add('mxTesConciliacionCard','mxTesConciliacionSummaryCard');
+    const summaryTitle = findByText(root,'Resumen de la campaña');
+    closestBlock(summaryTitle,root)?.classList.add('mxTesConciliacionCard','mxTesConciliacionSummaryCard');
 
     ensureEmptySelectText(root);
     modernizeSelector(root);
@@ -259,9 +236,9 @@
       if(scheduled) return;
       scheduled = true;
       requestAnimationFrame(() => { scheduled = false; configure(); });
-    }).observe(app, {childList:true, subtree:true});
+    }).observe(app,{childList:true,subtree:true});
   }
 
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 })();
