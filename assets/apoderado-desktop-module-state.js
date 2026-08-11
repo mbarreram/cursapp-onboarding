@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  if(window.__APODERADO_DESKTOP_MODULE_STATE_V2__) return;
-  window.__APODERADO_DESKTOP_MODULE_STATE_V2__ = true;
+  if(window.__APODERADO_DESKTOP_MODULE_STATE_V3__) return;
+  window.__APODERADO_DESKTOP_MODULE_STATE_V3__ = true;
 
   const mq = window.matchMedia('(min-width:1024px)');
   let timer = 0;
@@ -31,6 +31,7 @@
     else if(activeTab === 'profile' || activeTab === 'perfil') module = 'profile';
     else if(app?.querySelector('.apoPayPage')) module = 'payments';
     else if(app?.querySelector('.apoReportPage')) module = 'informes';
+    else if(app?.querySelector('.apoProfilePage')) module = 'profile';
     else if(hash.includes('payment') || hash.includes('pago')) module = 'payments';
     else if(hash.includes('informe') || text.includes('informe apoderado')) module = 'informes';
     else if(hash.includes('profile') || hash.includes('perfil')) module = 'profile';
