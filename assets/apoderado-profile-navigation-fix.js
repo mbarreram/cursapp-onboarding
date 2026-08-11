@@ -1,7 +1,7 @@
 (function(){
   'use strict';
-  if(window.__APODERADO_PROFILE_NAV_FIX_V1__) return;
-  window.__APODERADO_PROFILE_NAV_FIX_V1__ = true;
+  if(window.__APODERADO_PROFILE_NAV_FIX_V2__) return;
+  window.__APODERADO_PROFILE_NAV_FIX_V2__ = true;
 
   function closeMenu(){
     const menu=document.getElementById('menuDropdown');
@@ -17,6 +17,8 @@
   function openProfile(){
     closeMenu();
     document.body.setAttribute('data-apo-module','profile');
+    document.querySelectorAll('.navItem[data-tab]').forEach(function(el){ el.classList.remove('active'); });
+
     try{
       if(typeof window.go === 'function') window.go('profile');
     }catch(err){
@@ -34,15 +36,18 @@
       }
       document.body.setAttribute('data-apo-module','profile');
       try{ window.scrollTo(0,0); }catch(_e){}
-    },40);
+    },30);
   }
 
-  document.addEventListener('click',function(ev){
+  function intercept(ev){
     const item=ev.target.closest?.('.apoV42MenuItem[data-action="profile"],#menuDropdown [data-action="profile"]');
     if(!item) return;
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     openProfile();
-  },true);
+  }
+
+  document.addEventListener('pointerdown',intercept,true);
+  document.addEventListener('click',intercept,true);
 })();
