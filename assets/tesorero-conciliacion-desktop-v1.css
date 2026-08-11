@@ -1,7 +1,19 @@
-/* MiCursoX · Tesorero · Conciliación desktop v5
+/* MiCursoX · Tesorero · Conciliación desktop v6
    Adaptación visual exclusiva para escritorio. */
 @media (min-width:1024px){
-  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .container{padding-top:30px!important;}
+  /* La cabecera debe conservar exactamente el shell desktop del inicio. */
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .tesPremiumHeader{
+    background:rgba(255,255,255,.96)!important;
+    border-bottom:1px solid var(--mx-line)!important;
+    box-shadow:0 4px 18px rgba(15,23,42,.045)!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .tesHeaderInner{
+    min-height:88px!important;
+    padding:14px 28px!important;
+    background:transparent!important;
+  }
+
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion .container{padding-top:34px!important;}
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionWidthNode,
@@ -10,25 +22,29 @@
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot{
-    display:flex!important;flex-direction:column!important;gap:26px!important;
+    display:flex!important;flex-direction:column!important;gap:24px!important;
     padding:0!important;background:transparent!important;border:0!important;
     border-radius:0!important;box-shadow:none!important;outline:0!important;overflow:visible!important;
   }
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionOuterFrame,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionWidthNode:not(.mxTesConciliacionCard):not(.card){
-    padding:0!important;margin:0!important;background:transparent!important;border:0!important;
+    padding:0!important;background:transparent!important;border:0!important;
     border-radius:0!important;box-shadow:none!important;outline:0!important;
   }
 
-  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot>*{
-    width:100%!important;max-width:none!important;margin:0!important;
+  /* Evitar que wrappers heredados vuelvan a apilar visualmente las secciones. */
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionWidthNode{
+    position:static!important;transform:none!important;top:auto!important;bottom:auto!important;
   }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot>*{
+    position:relative!important;width:100%!important;max-width:none!important;margin:0 0 24px!important;transform:none!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot>*:last-child{margin-bottom:0!important;}
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionHeadingWrap{
     padding:0 2px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionTitle{
     margin:0!important;font-size:23px!important;line-height:1.2!important;font-weight:720!important;
     letter-spacing:-.025em!important;color:#172033!important;
@@ -37,7 +53,8 @@
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionCampaignCard,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionListCard,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionSummaryCard{
-    width:100%!important;max-width:none!important;padding:24px!important;background:#fff!important;
+    position:relative!important;inset:auto!important;transform:none!important;
+    width:100%!important;max-width:none!important;margin:0 0 24px!important;padding:24px!important;background:#fff!important;
     border:1px solid #e2e8f0!important;border-radius:20px!important;
     box-shadow:0 8px 24px rgba(15,23,42,.045)!important;
   }
@@ -48,7 +65,6 @@
     border-radius:16px!important;background:#fff!important;color:#243047!important;
     font-size:13px!important;font-weight:650!important;box-shadow:0 3px 10px rgba(15,23,42,.025)!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorIcon{
     position:absolute!important;left:18px!important;top:50%!important;width:28px!important;height:28px!important;
     transform:translateY(-50%)!important;display:grid!important;place-items:center!important;
@@ -59,32 +75,27 @@
     display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
     margin-top:20px!important;padding:20px 0 8px!important;border-top:1px solid #e5eaf1!important;border-bottom:1px solid #e5eaf1!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem{
     position:relative!important;min-width:0!important;padding:0 18px 16px!important;text-align:center!important;border-right:1px solid #e5eaf1!important;
   }
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem:last-child{border-right:0!important;}
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricIcon{
     position:static!important;width:34px!important;height:34px!important;margin:0 auto 8px!important;
     transform:none!important;display:grid!important;place-items:center!important;border-radius:11px!important;
     background:#f7f7ff!important;color:#6657f3!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesSelectorIcon svg,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricIcon svg{
     width:20px!important;height:20px!important;fill:none!important;stroke:currentColor!important;
     stroke-width:1.9!important;stroke-linecap:round!important;stroke-linejoin:round!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem:nth-child(2) .mxTesMetricIcon{color:#ef4444!important;background:#fff1f2!important;}
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem:nth-child(3) .mxTesMetricIcon{color:#2f8f2f!important;background:#eefbea!important;}
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricItem:nth-child(4) .mxTesMetricIcon{color:#6d4df5!important;background:#f3efff!important;}
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesLegacyIcon{display:none!important;}
 
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionTabs{
-    display:flex!important;gap:14px!important;margin:0!important;padding:0 4px!important;
+    position:relative!important;display:flex!important;gap:14px!important;margin:0 0 24px!important;padding:0 4px!important;transform:none!important;
   }
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionTabs button{
     min-height:44px!important;padding:0 20px!important;border-radius:13px!important;font-size:13px!important;font-weight:650!important;
@@ -94,7 +105,6 @@
     min-height:230px!important;display:flex!important;flex-direction:column!important;
     justify-content:center!important;align-items:stretch!important;text-align:center!important;
   }
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesEmptyState{
     display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
     gap:8px!important;margin:auto!important;color:#5d6879!important;
@@ -109,9 +119,7 @@
   }
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesEmptyState b{font-size:15px!important;font-weight:700!important;color:#243047!important;}
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesEmptyState span{font-size:13px!important;font-weight:500!important;color:#6b7280!important;}
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionSummaryCard{padding:22px 24px!important;}
-
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app button,
   body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app input{font-size:12px!important;font-weight:620!important;}
 }
