@@ -27,4 +27,5 @@ await import('/assets/admin-territories-phase4.mjs?v=1');
 await import('/assets/admin-territories-official-data.mjs?v=1');
 await import('/assets/admin-territories-phase5.mjs?v=1');
 await import('/assets/admin-territories-ux.mjs?v=2');
+await import('/assets/admin-withdrawals.mjs?v=1');
 document.dispatchEvent(new Event('DOMContentLoaded'));
