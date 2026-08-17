@@ -78,12 +78,6 @@ window.CURSAPP_ADMIN_AUTH = Object.freeze({
   active:true
 });
 
-/*
- * El núcleo del Admin debe arrancar antes que cualquier módulo adicional.
- * Antes esperábamos a que TODOS los imports terminaran para disparar
- * DOMContentLoaded; si un addon fallaba, la consola quedaba eternamente en
- * "Validando acceso" aunque Auth y el rol fueran correctos.
- */
 setStatus('Cargando Admin…', 'Inicializando consola administrativa');
 try {
   await import('/admin-console/assets/admin.js?v=19');
@@ -94,7 +88,6 @@ try {
   throw error;
 }
 
-/* Los módulos secundarios ya no bloquean el acceso al Admin. */
 const optionalModules = [
   '/admin-console/assets/admin-addons.js?v=26',
   '/assets/admin-tickets-supabase.mjs?v=2',
@@ -110,7 +103,7 @@ const optionalModules = [
   '/assets/admin-territories-phase5.mjs?v=1',
   '/assets/admin-territories-ux.mjs?v=2',
   '/assets/admin-withdrawals.mjs?v=2',
-  '/assets/admin-withdrawals-nav-fix.mjs?v=1'
+  '/assets/admin-withdrawals-nav-fix.mjs?v=2'
 ];
 
 const results = await Promise.allSettled(optionalModules.map(src => import(src)));
