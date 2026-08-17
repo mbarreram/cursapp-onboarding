@@ -69,9 +69,8 @@ try {
   throw error;
 }
 
-/* La navegación de Retiros se instala siempre y carga el módulo funcional bajo demanda al hacer click. */
 try {
-  await import('/assets/admin-withdrawals-nav-fix.mjs?v=4');
+  await import('/assets/admin-withdrawals-nav-fix.mjs?v=5');
 } catch (error) {
   console.error('[Admin] Navegación Retiros no cargada:', error);
 }
