@@ -1,0 +1,1 @@
+document.addEventListener('click',function(e){const b=e.target.closest?.('.sideItem[data-tab="retiros"]');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();document.querySelectorAll('.sideItem').forEach(x=>x.classList.remove('active'));b.classList.add('active');window.MX_ADMIN_WITHDRAWALS?.open?.();},true);
