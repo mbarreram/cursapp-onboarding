@@ -1,12 +1,11 @@
 (function(){
   'use strict';
-  if(window.__MX_PRES_INF_PROGRESS__) return;
-  window.__MX_PRES_INF_PROGRESS__=true;
+  if(window.__MX_PRES_INF_PROGRESS_V3__) return;
+  window.__MX_PRES_INF_PROGRESS_V3__=true;
 
   const clp=v=>'$'+Math.round(Number(v)||0).toLocaleString('es-CL');
   const q=v=>encodeURIComponent(String(v??''));
   const norm=v=>String(v||'').replace(/\s+/g,' ').trim().toLowerCase();
-  let applying=false;
 
   function courseKey(){
     try{
@@ -32,29 +31,19 @@
     }
     return title.parentElement;
   }
-  function hideLegacyDonut(card){
-    card.querySelectorAll('[data-mx-legacy-donut="1"]').forEach(n=>n.style.setProperty('display','none','important'));
-    const label=Array.from(card.querySelectorAll('*')).find(n=>norm(n.textContent)==='total por cobrar');
-    if(!label) return;
-    let node=label;
-    for(let i=0;i<5&&node?.parentElement;i++,node=node.parentElement){
-      const r=node.getBoundingClientRect();
-      if(r.width>=120&&r.width<=520&&r.height>=120&&r.height<=520){
-        node.style.setProperty('display','none','important');
-        node.dataset.mxLegacyDonut='1';
-        break;
-      }
-    }
-  }
   function injectCss(){
-    if(document.getElementById('mxPresProgressCss')) return;
-    const s=document.createElement('style');s.id='mxPresProgressCss';s.textContent=`
-      .mxPresProgressWrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:18px 0 16px}
+    if(document.getElementById('mxPresProgressCssV3')) return;
+    const s=document.createElement('style');s.id='mxPresProgressCssV3';s.textContent=`
+      .mxPresProgressShell{padding:0}
+      .mxPresProgressShell h3{margin:0 0 4px;font-size:inherit}
+      .mxPresProgressSub{color:#64748b;font-weight:700;margin-bottom:18px}
+      .mxPresProgressWrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:8px 0 8px}
       .mxPresProgressDonut{--p:0deg;width:190px;height:190px;border-radius:50%;background:conic-gradient(#6d28d9 var(--p),#e9e5f5 0);display:grid;place-items:center;position:relative;flex:0 0 auto}
       .mxPresProgressDonut:after{content:'';position:absolute;inset:25px;background:white;border-radius:50%}
       .mxPresProgressCenter{position:relative;z-index:1;text-align:center;line-height:1.1}.mxPresProgressCenter small{display:block;color:#64748b;font-weight:800;margin-bottom:5px}.mxPresProgressCenter b{font-size:26px;color:#0f172a}.mxPresProgressCenter span{display:block;color:#6d28d9;font-weight:900;margin-top:6px}
       .mxPresProgressLegend{display:grid;gap:10px;min-width:180px}.mxPresProgressLegend div{display:flex;justify-content:space-between;gap:18px;font-weight:800}.mxPresProgressLegend small{color:#64748b}.mxPresProgressLegend b{color:#0f172a}
-      @media(max-width:700px){.mxPresProgressWrap{justify-content:center;gap:14px}.mxPresProgressDonut{width:168px;height:168px}.mxPresProgressDonut:after{inset:22px}.mxPresProgressLegend{width:100%;min-width:0}.mxPresProgressCenter b{font-size:23px}}
+      .mxPresProgressLink{display:inline-block;margin-top:14px;color:#6d28d9;font-weight:850;text-decoration:none}
+      @media(max-width:700px){.mxPresProgressWrap{justify-content:center;gap:14px}.mxPresProgressDonut{width:168px;height:168px}.mxPresProgressDonut:after{inset:22px}.mxPresProgressLegend{width:100%;min-width:0}.mxPresProgressCenter b{font-size:23px}.mxPresProgressSub{font-size:14px}}
     `;document.head.appendChild(s);
   }
   async function data(){
@@ -72,36 +61,20 @@
     return {target,paid,pending,pct};
   }
   async function apply(){
-    if(applying) return;
-    const card=findCard();
-    if(!card) return;
-    applying=true;
+    const card=findCard(); if(!card||card.dataset.mxProgressReplacing==='1') return;
+    card.dataset.mxProgressReplacing='1';
     try{
-      const d=await data();
-      injectCss();
-      hideLegacyDonut(card);
-      const all=Array.from(card.querySelectorAll('.mxPresProgressWrap'));
-      let box=all.shift()||null;
-      all.forEach(n=>n.remove());
-      if(!box){
-        box=document.createElement('div');
-        box.className='mxPresProgressWrap';
-        const title=Array.from(card.querySelectorAll('h1,h2,h3,h4,.kTitle,strong,b,div')).find(n=>norm(n.textContent)==='recaudado por campañas activas');
-        const anchor=title?.parentElement||card.firstElementChild;
-        if(anchor?.nextSibling) anchor.parentElement.insertBefore(box,anchor.nextSibling); else card.appendChild(box);
-      }
-      const html='<div class="mxPresProgressDonut" style="--p:'+((d.pct/100)*360).toFixed(2)+'deg"><div class="mxPresProgressCenter"><small>Recaudado</small><b>'+clp(d.paid)+'</b><span>'+d.pct.toFixed(1).replace('.0','')+'%</span></div></div><div class="mxPresProgressLegend"><div><small>Meta total</small><b>'+clp(d.target)+'</b></div><div><small>Pagado</small><b>'+clp(d.paid)+'</b></div><div><small>Pendiente</small><b>'+clp(d.pending)+'</b></div></div>';
-      if(box.innerHTML!==html) box.innerHTML=html;
-    }catch(_e){}finally{applying=false;}
+      const d=await data(); injectCss();
+      card.innerHTML='<div class="mxPresProgressShell"><h3>Recaudado por campañas activas</h3><div class="mxPresProgressSub">Avance de recaudación de campañas activas</div><div class="mxPresProgressWrap"><div class="mxPresProgressDonut" style="--p:'+((d.pct/100)*360).toFixed(2)+'deg"><div class="mxPresProgressCenter"><small>Recaudado</small><b>'+clp(d.paid)+'</b><span>'+d.pct.toFixed(1).replace('.0','')+'%</span></div></div><div class="mxPresProgressLegend"><div><small>Meta total</small><b>'+clp(d.target)+'</b></div><div><small>Pagado</small><b>'+clp(d.paid)+'</b></div><div><small>Pendiente</small><b>'+clp(d.pending)+'</b></div></div></div><a class="mxPresProgressLink" href="#" data-mx-go-campanas>Ver todas las campañas activas →</a></div>';
+      const link=card.querySelector('[data-mx-go-campanas]');
+      if(link) link.onclick=function(e){e.preventDefault();const b=document.querySelector('.bottomNav [data-tab="campanas"]');if(b)b.click();};
+      card.dataset.mxProgressStable='1';
+    }catch(_e){}finally{card.dataset.mxProgressReplacing='0';}
   }
-  function schedule(){ [120,350,800,1500].forEach(t=>setTimeout(apply,t)); }
+  function schedule(){[0,120,350,800].forEach(t=>setTimeout(apply,t));}
   function boot(){
     schedule();
-    document.addEventListener('click',e=>{
-      const btn=e.target.closest?.('[data-tab="informes"]');
-      if(btn) schedule();
-    },true);
-    window.addEventListener('cursapp:dataChanged',schedule);
+    document.addEventListener('click',function(e){const b=e.target.closest?.('.bottomNav [data-tab="informes"]');if(b)schedule();},true);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
