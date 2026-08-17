@@ -32,11 +32,7 @@ if (!sb || typeof sb.getCurrentUser !== 'function' || typeof sb.request !== 'fun
 setStatus('Validando acceso…', 'Comprobando sesión Supabase');
 let user;
 try {
-  user = await withTimeout(
-    sb.getCurrentUser(),
-    10000,
-    'La validación de la sesión tardó demasiado. Reintenta el acceso.'
-  );
+  user = await withTimeout(sb.getCurrentUser(),10000,'La validación de la sesión tardó demasiado. Reintenta el acceso.');
 } catch (error) {
   showBlocked('Sesión requerida', error?.message || 'Inicia sesión con una cuenta administrativa válida.');
   throw error;
@@ -45,11 +41,7 @@ try {
 setStatus('Validando acceso…', 'Comprobando rol administrativo');
 let rows;
 try {
-  rows = await withTimeout(
-    sb.request(`admin_users?select=user_id,role,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`),
-    10000,
-    'La validación del rol administrativo tardó demasiado.'
-  );
+  rows = await withTimeout(sb.request(`admin_users?select=user_id,role,active&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&limit=1`),10000,'La validación del rol administrativo tardó demasiado.');
 } catch (error) {
   showBlocked('No se pudo validar el acceso', error?.message || 'Error al consultar el rol administrativo.');
   throw error;
@@ -62,21 +54,10 @@ if (!admin) {
 }
 
 try {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    role:'admin',
-    isAdmin:true,
-    userId:user.id,
-    email:user.email||'',
-    verifiedBy:'supabase-admin-users',
-    verifiedAt:new Date().toISOString()
-  }));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({role:'admin',isAdmin:true,userId:user.id,email:user.email||'',verifiedBy:'supabase-admin-users',verifiedAt:new Date().toISOString()}));
 } catch (_) {}
 
-window.CURSAPP_ADMIN_AUTH = Object.freeze({
-  user:Object.freeze({id:user.id,email:user.email||''}),
-  role:admin.role,
-  active:true
-});
+window.CURSAPP_ADMIN_AUTH = Object.freeze({user:Object.freeze({id:user.id,email:user.email||''}),role:admin.role,active:true});
 
 setStatus('Cargando Admin…', 'Inicializando consola administrativa');
 try {
@@ -86,6 +67,14 @@ try {
   console.error('[Admin] No se pudo iniciar el núcleo', error);
   showBlocked('Error al iniciar Admin', 'La sesión fue validada, pero no se pudo cargar la consola administrativa. Reintenta.');
   throw error;
+}
+
+/* Retiros debe cargar en orden: primero el módulo funcional y luego su navegación. */
+try {
+  await import('/assets/admin-withdrawals.mjs?v=3');
+  await import('/assets/admin-withdrawals-nav-fix.mjs?v=3');
+} catch (error) {
+  console.error('[Admin] Módulo Retiros no cargado:', error);
 }
 
 const optionalModules = [
@@ -101,14 +90,10 @@ const optionalModules = [
   '/assets/admin-territories-phase4.mjs?v=1',
   '/assets/admin-territories-official-data.mjs?v=1',
   '/assets/admin-territories-phase5.mjs?v=1',
-  '/assets/admin-territories-ux.mjs?v=2',
-  '/assets/admin-withdrawals.mjs?v=2',
-  '/assets/admin-withdrawals-nav-fix.mjs?v=2'
+  '/assets/admin-territories-ux.mjs?v=2'
 ];
 
 const results = await Promise.allSettled(optionalModules.map(src => import(src)));
 results.forEach((result, index) => {
-  if (result.status === 'rejected') {
-    console.error('[Admin] Módulo opcional no cargado:', optionalModules[index], result.reason);
-  }
+  if (result.status === 'rejected') console.error('[Admin] Módulo opcional no cargado:', optionalModules[index], result.reason);
 });
