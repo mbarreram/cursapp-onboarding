@@ -3,10 +3,10 @@
   if(window.__MX_PRES_INF_PROGRESS__) return;
   window.__MX_PRES_INF_PROGRESS__=true;
 
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const clp=v=>'$'+Math.round(Number(v)||0).toLocaleString('es-CL');
   const q=v=>encodeURIComponent(String(v??''));
   const norm=v=>String(v||'').replace(/\s+/g,' ').trim().toLowerCase();
+  let applying=false;
 
   function courseKey(){
     try{
@@ -33,15 +33,16 @@
     return title.parentElement;
   }
   function hideLegacyDonut(card){
+    card.querySelectorAll('[data-mx-legacy-donut="1"]').forEach(n=>n.style.setProperty('display','none','important'));
     const label=Array.from(card.querySelectorAll('*')).find(n=>norm(n.textContent)==='total por cobrar');
     if(!label) return;
     let node=label;
-    for(let i=0;i<4&&node?.parentElement;i++,node=node.parentElement){
+    for(let i=0;i<5&&node?.parentElement;i++,node=node.parentElement){
       const r=node.getBoundingClientRect();
-      if(r.width>=120&&r.width<=460&&r.height>=120&&r.height<=460){
+      if(r.width>=120&&r.width<=520&&r.height>=120&&r.height<=520){
         node.style.setProperty('display','none','important');
         node.dataset.mxLegacyDonut='1';
-        return;
+        break;
       }
     }
   }
@@ -71,22 +72,36 @@
     return {target,paid,pending,pct};
   }
   async function apply(){
-    const card=findCard(); if(!card||card.dataset.mxProgressLoading==='1') return;
-    card.dataset.mxProgressLoading='1';
+    if(applying) return;
+    const card=findCard();
+    if(!card) return;
+    applying=true;
     try{
       const d=await data();
-      hideLegacyDonut(card); injectCss();
-      let box=card.querySelector('.mxPresProgressWrap');
+      injectCss();
+      hideLegacyDonut(card);
+      const all=Array.from(card.querySelectorAll('.mxPresProgressWrap'));
+      let box=all.shift()||null;
+      all.forEach(n=>n.remove());
       if(!box){
-        box=document.createElement('div');box.className='mxPresProgressWrap';
+        box=document.createElement('div');
+        box.className='mxPresProgressWrap';
         const title=Array.from(card.querySelectorAll('h1,h2,h3,h4,.kTitle,strong,b,div')).find(n=>norm(n.textContent)==='recaudado por campañas activas');
         const anchor=title?.parentElement||card.firstElementChild;
         if(anchor?.nextSibling) anchor.parentElement.insertBefore(box,anchor.nextSibling); else card.appendChild(box);
       }
-      box.innerHTML='<div class="mxPresProgressDonut" style="--p:'+((d.pct/100)*360).toFixed(2)+'deg"><div class="mxPresProgressCenter"><small>Recaudado</small><b>'+clp(d.paid)+'</b><span>'+d.pct.toFixed(1).replace('.0','')+'%</span></div></div><div class="mxPresProgressLegend"><div><small>Meta total</small><b>'+clp(d.target)+'</b></div><div><small>Pagado</small><b>'+clp(d.paid)+'</b></div><div><small>Pendiente</small><b>'+clp(d.pending)+'</b></div></div>';
-    }catch(_e){}finally{card.dataset.mxProgressLoading='0';}
+      const html='<div class="mxPresProgressDonut" style="--p:'+((d.pct/100)*360).toFixed(2)+'deg"><div class="mxPresProgressCenter"><small>Recaudado</small><b>'+clp(d.paid)+'</b><span>'+d.pct.toFixed(1).replace('.0','')+'%</span></div></div><div class="mxPresProgressLegend"><div><small>Meta total</small><b>'+clp(d.target)+'</b></div><div><small>Pagado</small><b>'+clp(d.paid)+'</b></div><div><small>Pendiente</small><b>'+clp(d.pending)+'</b></div></div>';
+      if(box.innerHTML!==html) box.innerHTML=html;
+    }catch(_e){}finally{applying=false;}
   }
-  function boot(){ apply(); const app=document.getElementById('app'); if(app&&!app.dataset.mxProgressObserved){app.dataset.mxProgressObserved='1';new MutationObserver(()=>setTimeout(apply,80)).observe(app,{childList:true,subtree:true});}}
+  function schedule(){ [120,350,800,1500].forEach(t=>setTimeout(apply,t)); }
+  function boot(){
+    schedule();
+    document.addEventListener('click',e=>{
+      const btn=e.target.closest?.('[data-tab="informes"]');
+      if(btn) schedule();
+    },true);
+    window.addEventListener('cursapp:dataChanged',schedule);
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-  [500,1200,2500].forEach(t=>setTimeout(apply,t));
 })();
