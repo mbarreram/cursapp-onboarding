@@ -23,7 +23,7 @@
   async function ensureModule(){
     if(window.MX_ADMIN_WITHDRAWALS?.open) return window.MX_ADMIN_WITHDRAWALS;
     if(!loadingPromise){
-      loadingPromise=import('/assets/admin-withdrawals.mjs?v=4').then(()=>{
+      loadingPromise=import('/assets/admin-withdrawals.mjs?v=5').then(()=>{
         if(!window.MX_ADMIN_WITHDRAWALS?.open) throw new Error('El módulo cargó pero no expuso su función de apertura.');
         return window.MX_ADMIN_WITHDRAWALS;
       }).finally(()=>{loadingPromise=null});
