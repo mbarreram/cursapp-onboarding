@@ -1,11 +1,34 @@
 (function(){
   'use strict';
 
+  let loadingPromise=null;
+
   function activateRetiroButton(){
     document.querySelectorAll('.sideItem').forEach(x=>x.classList.remove('active'));
     const btn=document.querySelector('.sideItem[data-tab="retiros"]');
     if(btn) btn.classList.add('active');
     document.body.classList.remove('sideOpen');
+  }
+
+  function showError(message){
+    const app=document.getElementById('adminApp');
+    const title=document.getElementById('viewTitle');
+    const sub=document.getElementById('viewSub');
+    if(title) title.textContent='Retiros';
+    if(sub) sub.textContent='Control de solicitudes, depósitos y saldos por curso';
+    if(app) app.innerHTML=`<section class="panel"><div class="panelHead"><h2>No se pudo cargar Retiros</h2></div><p class="muted" style="font-weight:800;color:#b42318">${String(message||'Error desconocido')}</p><button class="adminBtn" id="mxRetryWithdrawals">Reintentar</button></section>`;
+    document.getElementById('mxRetryWithdrawals')?.addEventListener('click',openRetiros);
+  }
+
+  async function ensureModule(){
+    if(window.MX_ADMIN_WITHDRAWALS?.open) return window.MX_ADMIN_WITHDRAWALS;
+    if(!loadingPromise){
+      loadingPromise=import('/assets/admin-withdrawals.mjs?v=4').then(()=>{
+        if(!window.MX_ADMIN_WITHDRAWALS?.open) throw new Error('El módulo cargó pero no expuso su función de apertura.');
+        return window.MX_ADMIN_WITHDRAWALS;
+      }).finally(()=>{loadingPromise=null});
+    }
+    return loadingPromise;
   }
 
   async function openRetiros(){
@@ -15,16 +38,13 @@
     const sub=document.getElementById('viewSub');
     if(title) title.textContent='Retiros';
     if(sub) sub.textContent='Control de solicitudes, depósitos y saldos por curso';
-    if(!window.MX_ADMIN_WITHDRAWALS || typeof window.MX_ADMIN_WITHDRAWALS.open!=='function'){
-      if(app) app.innerHTML='<section class="panel"><div class="panelHead"><h2>Retiros</h2></div><p class="muted" style="font-weight:800;color:#b42318">El módulo de Retiros no terminó de cargar. Recarga la página e intenta nuevamente.</p></section>';
-      return;
-    }
+    if(app) app.innerHTML='<section class="panel"><p class="muted" style="font-weight:800">Cargando retiros…</p></section>';
     try{
-      await window.MX_ADMIN_WITHDRAWALS.open();
+      const mod=await ensureModule();
+      await mod.open();
     }catch(error){
       console.error('[Admin Retiros]',error);
-      if(app) app.innerHTML='<section class="panel"><div class="panelHead"><h2>No se pudo cargar Retiros</h2></div><p class="muted" style="font-weight:800;color:#b42318">'+String(error?.message||error||'Error desconocido')+'</p><button class="adminBtn" id="mxRetryWithdrawals">Reintentar</button></section>';
-      document.getElementById('mxRetryWithdrawals')?.addEventListener('click',openRetiros);
+      showError(error?.message||error);
     }
   }
 
@@ -55,7 +75,7 @@
     let tries=0;
     const timer=setInterval(()=>{
       tries+=1;
-      if(patchAdminGo() || tries>20) clearInterval(timer);
+      if(patchAdminGo() || tries>40) clearInterval(timer);
     },150);
   }
 
