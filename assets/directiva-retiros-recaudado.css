@@ -1,0 +1,46 @@
+/* MiCursoX · Retiros / Recaudado · Presidente + Tesorero · mobile/desktop */
+.mxFundsPage{display:flex;flex-direction:column;gap:14px;padding-bottom:96px;color:#172033}
+.mxFundsHead{display:flex;align-items:flex-end;justify-content:space-between;gap:14px}
+.mxFundsHead h1{margin:0;font-size:24px;line-height:1.15;font-weight:780;letter-spacing:-.025em}
+.mxFundsHead p{margin:6px 0 0;color:#64748b;font-size:13px;line-height:1.45;font-weight:520}
+.mxFundsBadge{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#eefbf0;color:#247a2b;font-size:11px;font-weight:750;white-space:nowrap}
+.mxFundsHero{padding:20px;border:1px solid #e4e8ef;border-radius:20px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.045)}
+.mxFundsHeroTop{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.mxFundsHero small{display:block;color:#64748b;font-size:12px;font-weight:650}
+.mxFundsHero strong{display:block;margin-top:5px;font-size:31px;line-height:1;font-weight:800;letter-spacing:-.035em;color:#172033}
+.mxFundsHero .mxFundsWithdrawBtn{border:0;border-radius:14px;padding:12px 16px;background:#635bdf;color:#fff;font-size:13px;font-weight:760;cursor:pointer;box-shadow:0 7px 18px rgba(99,91,223,.18)}
+.mxFundsHero .mxFundsWithdrawBtn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.mxFundsHint{margin-top:14px;padding:11px 13px;border-radius:13px;background:#f7f8fc;color:#5f6879;font-size:12px;line-height:1.45;font-weight:550}
+.mxFundsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mxFundsCard{min-width:0;padding:16px;border:1px solid #e4e8ef;border-radius:18px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.035)}
+.mxFundsCard span{display:flex;align-items:center;gap:7px;color:#64748b;font-size:11px;font-weight:700}
+.mxFundsCard b{display:block;margin-top:8px;font-size:21px;line-height:1.1;font-weight:780;letter-spacing:-.02em;color:#1d2939}
+.mxFundsCard em{display:block;margin-top:5px;color:#8a94a6;font-size:10px;line-height:1.35;font-style:normal;font-weight:550}
+.mxFundsCard.online span{color:#2563eb}.mxFundsCard.manual span{color:#b7791f}.mxFundsCard.total span{color:#247a2b}.mxFundsCard.pending span{color:#a855f7}
+.mxFundsPanel{padding:18px;border:1px solid #e4e8ef;border-radius:20px;background:#fff;box-shadow:0 7px 22px rgba(15,23,42,.04)}
+.mxFundsPanel h2{margin:0;font-size:16px;font-weight:760;letter-spacing:-.015em}.mxFundsPanel>p{margin:5px 0 0;color:#718096;font-size:11px;line-height:1.45}
+.mxFundsBreakdown{margin-top:14px;display:flex;flex-direction:column;gap:0}
+.mxFundsLine{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid #eef1f5}
+.mxFundsLine:last-child{border-bottom:0}.mxFundsLine div b{display:block;font-size:12px;font-weight:700;color:#273247}.mxFundsLine div small{display:block;margin-top:3px;color:#8791a2;font-size:10px;line-height:1.35}.mxFundsLine>strong{font-size:13px;font-weight:760;color:#273247;white-space:nowrap}
+.mxFundsFeeBox{margin-top:13px;padding:13px;border-radius:15px;border:1px solid #ece9ff;background:#faf9ff}
+.mxFundsFeeBox h3{margin:0 0 9px;font-size:12px;font-weight:760;color:#473fa5}.mxFundsFeeRow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:11px;color:#5f6879}.mxFundsFeeRow b{color:#312e81}.mxFundsFeeNote{margin-top:9px;padding-top:9px;border-top:1px solid #e9e5ff;font-size:10px;line-height:1.45;color:#6b7280}
+.mxFundsHistory{margin-top:12px;display:flex;flex-direction:column;gap:8px}.mxFundsHistoryItem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:12px 13px;border-radius:14px;background:#f8fafc}.mxFundsHistoryItem b{font-size:11px}.mxFundsHistoryItem small{display:block;margin-top:3px;color:#7c8798;font-size:10px}.mxFundsHistoryItem strong{font-size:12px}.mxFundsHistoryItem em{display:block;margin-top:4px;text-align:right;font-size:9px;font-style:normal;text-transform:uppercase;color:#685fd7;font-weight:800}
+.mxFundsEmpty{padding:18px;text-align:center;color:#7c8798;font-size:11px;background:#f8fafc;border-radius:14px}
+.mxFundsModal{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.mxFundsModalCard{width:min(100%,480px);padding:20px;border-radius:22px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.25)}
+.mxFundsModalCard h2{margin:0;font-size:18px}.mxFundsModalCard p{margin:7px 0 14px;color:#64748b;font-size:11px;line-height:1.45}.mxFundsModalCard label{display:block;margin-bottom:7px;font-size:11px;font-weight:750}.mxFundsModalCard input{width:100%;box-sizing:border-box;height:48px;padding:0 14px;border:1px solid #dfe4ec;border-radius:14px;font-size:16px;font-weight:700;outline:none}.mxFundsModalCard input:focus{border-color:#7168e8;box-shadow:0 0 0 4px rgba(113,104,232,.1)}.mxFundsModalActions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.mxFundsModalActions button{height:42px;padding:0 14px;border-radius:12px;border:1px solid #dfe4ec;background:#fff;font-weight:720;cursor:pointer}.mxFundsModalActions button.primary{border-color:#635bdf;background:#635bdf;color:#fff}
+.mxFundsError{padding:15px;border-radius:15px;background:#fff3f3;color:#a33;font-size:12px;font-weight:650}
+
+@media (min-width:1024px){
+  .mxFundsPage{gap:20px;padding:2px 0 40px}
+  .mxFundsHead h1{font-size:26px}.mxFundsHead p{font-size:12px}
+  .mxFundsHero{padding:24px}.mxFundsHero strong{font-size:34px}
+  .mxFundsGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.mxFundsCard{padding:19px}.mxFundsCard b{font-size:22px}
+  .mxFundsPanelsDesktop{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:16px;align-items:start}
+  .mxFundsPanel{padding:21px}.mxFundsPanel h2{font-size:17px}
+}
+
+@media (max-width:430px){
+  .mxFundsHead{align-items:flex-start;flex-direction:column;gap:9px}.mxFundsBadge{padding:7px 9px}
+  .mxFundsHeroTop{flex-direction:column}.mxFundsHero .mxFundsWithdrawBtn{width:100%}.mxFundsHero strong{font-size:28px}
+}
