@@ -69,12 +69,11 @@ try {
   throw error;
 }
 
-/* Retiros debe cargar en orden: primero el módulo funcional y luego su navegación. */
+/* La navegación de Retiros se instala siempre y carga el módulo funcional bajo demanda al hacer click. */
 try {
-  await import('/assets/admin-withdrawals.mjs?v=3');
-  await import('/assets/admin-withdrawals-nav-fix.mjs?v=3');
+  await import('/assets/admin-withdrawals-nav-fix.mjs?v=4');
 } catch (error) {
-  console.error('[Admin] Módulo Retiros no cargado:', error);
+  console.error('[Admin] Navegación Retiros no cargada:', error);
 }
 
 const optionalModules = [
