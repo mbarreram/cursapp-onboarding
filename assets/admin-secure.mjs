@@ -70,7 +70,7 @@ try {
 }
 
 try {
-  await import('/assets/admin-withdrawals-nav-fix.mjs?v=5');
+  await import('/assets/admin-withdrawals-nav-fix.mjs?v=6');
 } catch (error) {
   console.error('[Admin] Navegación Retiros no cargada:', error);
 }
