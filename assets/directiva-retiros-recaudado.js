@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-if(window.__MX_DIRECTIVA_FUNDS_V4__) return; window.__MX_DIRECTIVA_FUNDS_V4__=true;
+if(window.__MX_DIRECTIVA_FUNDS_V5__) return; window.__MX_DIRECTIVA_FUNDS_V5__=true;
 const sb=async(path,opts)=>{if(!window.CURSAPP_SUPABASE?.request)throw new Error('Supabase no disponible');const d=await window.CURSAPP_SUPABASE.request(path,opts);return Array.isArray(d)?d:(d?[d]:[])};
 const q=v=>encodeURIComponent(String(v??'')),clp=v=>'$'+Math.round(Number(v)||0).toLocaleString('es-CL'),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function role(){return document.body.classList.contains('cursapp-tesorero')?'tesorero':document.body.classList.contains('cursapp-presidente')?'presidente':''}
@@ -12,21 +12,22 @@ function active(){
   const fund=document.querySelector('.bottomNav [data-mx-funds]'); if(fund){fund.classList.add('active');fund.setAttribute('aria-current','page')}
   document.body.dataset.mxModule='retiros-recaudado';
 }
+function deactivateFunds(){
+  const fund=document.querySelector('.bottomNav [data-mx-funds]');
+  if(fund){fund.classList.remove('active');fund.removeAttribute('aria-current')}
+  if(document.body.dataset.mxModule==='retiros-recaudado') delete document.body.dataset.mxModule;
+}
 function syncNativeState(){
   if(role()!=='presidente') return;
-  try{
-    // Presidente mantiene el tab actual en un closure. Si queda en "informes",
-    // cualquier evento cursapp:dataChanged vuelve a pintar Informes encima de Retiros.
-    // Usamos su router oficial solo para actualizar ese estado interno a un tab neutro
-    // que no tiene renderer propio; luego este módulo pinta Retiros.
-    if(typeof window.__cursappPresidentGo==='function') window.__cursappPresidentGo('retiros-recaudado');
-  }catch(_e){}
+  try{ if(typeof window.__cursappPresidentGo==='function') window.__cursappPresidentGo('retiros-recaudado'); }catch(_e){}
 }
 async function open(){syncNativeState();active();const app=document.getElementById('app');if(app)app.innerHTML='<div class="mxFundsPage"><section class="mxFundsPanel"><h2>Cargando Retiros / Recaudado…</h2></section></div>';try{render(await state())}catch(e){if(app)app.innerHTML='<div class="mxFundsPage"><div class="mxFundsError">No se pudo cargar Retiros / Recaudado: '+esc(e.message||e)+'</div></div>'}}
 function installGlobalIntercept(){
- if(window.__MX_FUNDS_INTERCEPT_V4__)return;window.__MX_FUNDS_INTERCEPT_V4__=true;
- const handler=e=>{const b=e.target?.closest?.('[data-mx-funds]');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();};
- document.addEventListener('pointerdown',handler,true);document.addEventListener('click',handler,true);
+ if(window.__MX_FUNDS_INTERCEPT_V5__)return;window.__MX_FUNDS_INTERCEPT_V5__=true;
+ const fundsHandler=e=>{const b=e.target?.closest?.('[data-mx-funds]');if(!b)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();};
+ const leaveHandler=e=>{const b=e.target?.closest?.('.bottomNav .navItem,.bottomNav a');if(!b||b.hasAttribute('data-mx-funds'))return;deactivateFunds();};
+ document.addEventListener('pointerdown',fundsHandler,true);document.addEventListener('click',fundsHandler,true);
+ document.addEventListener('pointerdown',leaveHandler,true);document.addEventListener('click',leaveHandler,true);
 }
 function installNav(){const nav=document.querySelector('.bottomNav');if(!nav)return;let b=nav.querySelector('[data-mx-funds]');if(!b){b=document.createElement('button');b.type='button';b.className='navItem mxFundsNavItem';b.dataset.mxFunds='1';b.innerHTML='<span class="'+(role()==='presidente'?'presNavIcon':'tesNavIcon')+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M4 7h16v12H4z"/><path d="M8 12h8"/></svg></span><span>Retiros</span>';nav.appendChild(b)}b.style.display='';}
 function render(s){const app=document.getElementById('app'),b=s.balance,a=n(b,'disponible_retiro'),hist=(s.withdrawals||[]).map(r=>'<article class="mxFundsHistoryItem"><div><b>Retiro '+esc(r.estado||'solicitado')+'</b><small>'+new Date(r.solicitado_at).toLocaleDateString('es-CL')+'</small></div><strong>'+clp(r.monto_solicitado)+'</strong></article>').join('')||'<div class="mxFundsEmpty">Aún no existen solicitudes de retiro.</div>';app.innerHTML='<div class="mxFundsPage"><section class="mxFundsHead"><div><h1>Retiros / Recaudado</h1><p>Saldo y movimientos financieros del curso.</p></div></section><section class="mxFundsHero"><div class="mxFundsHeroTop"><div><small>Disponible para retirar desde MiCursoX</small><strong>'+clp(a)+'</strong></div><button id="mxRequestWithdrawal" class="mxFundsWithdrawBtn" type="button" '+(a<=0?'disabled':'')+'>Solicitar retiro</button></div><div class="mxFundsHint">Los pagos manuales no forman parte del saldo retirable desde MiCursoX.</div></section><section class="mxFundsGrid"><article class="mxFundsCard total"><span>Recaudado total</span><b>'+clp(n(b,'recaudado_total'))+'</b></article><article class="mxFundsCard online"><span>Vía Transbank</span><b>'+clp(n(b,'recaudado_transbank'))+'</b></article><article class="mxFundsCard manual"><span>Pagos manuales</span><b>'+clp(n(b,'recaudado_manual'))+'</b></article><article class="mxFundsCard pending"><span>Retirado</span><b>'+clp(n(b,'retiros_pagados'))+'</b></article></section><div class="mxFundsPanelsDesktop"><section class="mxFundsPanel"><h2>Comisiones</h2><div class="mxFundsFeeBox"><div class="mxFundsFeeRow"><span>Transbank · 1,79%</span><b>'+clp(n(b,'comision_transbank'))+'</b></div><div class="mxFundsFeeRow"><span>MiCursoX · 2,25%</span><b>'+clp(n(b,'comision_micursox'))+'</b></div></div></section><section class="mxFundsPanel"><h2>Historial de retiros</h2><div class="mxFundsHistory">'+hist+'</div></section></div></div>';active();const btn=document.getElementById('mxRequestWithdrawal');if(btn)btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();modal(s,a)})}
