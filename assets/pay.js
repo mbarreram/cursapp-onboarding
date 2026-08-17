@@ -43,6 +43,17 @@
     return rows[0] || null;
   }
 
+  function financialBreakdown(pago){
+    const camp = pago?.campanas || {};
+    const cuota = Math.max(0, Number(pago?.monto_cuota ?? pago?.monto ?? 0) || 0);
+    const tasaTb = Number(pago?.tasa_transbank ?? camp?.tasa_transbank ?? 1.79) || 1.79;
+    const tasaMx = Number(pago?.tasa_micursox ?? camp?.tasa_micursox ?? 2.25) || 2.25;
+    const tb = Math.round(Number(pago?.comision_transbank ?? (cuota*tasaTb/100)) || 0);
+    const mx = Math.round(Number(pago?.comision_micursox ?? (cuota*tasaMx/100)) || 0);
+    const total = Math.round(Number(pago?.monto_total_cobrado ?? (cuota+tb+mx)) || 0);
+    return {cuota,tasaTb,tasaMx,tb,mx,total};
+  }
+
   async function pagarDemo(pago){
     const monto = Number(pago.monto || pago.amount || 0) || 0;
     if(window.CURSAPP && typeof window.CURSAPP.markPaymentPaidSupabase === "function"){
@@ -76,6 +87,7 @@
       }
       const camp = pago.campanas || {};
       const miembro = pago.miembros_curso || {};
+      const fin = financialBreakdown(pago);
       const montoPendiente = Math.max(0, Number(pago.monto || 0) - Number(pago.monto_pagado || 0));
       const estado = String(pago.estado || "pendiente").toLowerCase();
       const yaPagado = estado === "pagado" || estado === "paid";
@@ -86,7 +98,13 @@
           <div class="muted" style="margin-top:6px;">Campaña: <b>${esc(camp.titulo || "Campaña")}</b></div>
           <div class="muted" style="margin-top:6px;">Alumno/a: <b>${esc(miembro.nombre_alumno || "—")}</b></div>
           <div class="muted" style="margin-top:6px;">Vence: <b>${esc(pago.fecha_vencimiento || camp.fecha_vencimiento || "—")}</b></div>
-          <div style="margin-top:10px;font-weight:950;font-size:22px;">Total: ${clp(montoPendiente || pago.monto)}</div>
+          <div style="margin-top:14px;border-top:1px solid rgba(15,23,42,.08);padding-top:12px;display:grid;gap:8px;">
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px;"><span>Cuota destinada al curso</span><b>${clp(fin.cuota)}</b></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#64748b;"><span>Transbank · ${String(fin.tasaTb).replace('.',',')}%</span><b>${clp(fin.tb)}</b></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#64748b;"><span>MiCursoX · ${String(fin.tasaMx).replace('.',',')}%</span><b>${clp(fin.mx)}</b></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid rgba(15,23,42,.08);padding-top:10px;font-size:20px;font-weight:950;"><span>Total a pagar</span><b>${clp(fin.total)}</b></div>
+          </div>
+          <div class="muted" style="margin-top:10px;font-size:11px;line-height:1.45;">Los cargos se agregan al monto de la cuota. El valor destinado al curso permanece íntegro.</div>
           ${yaPagado ? `<div style="margin-top:10px;"><span class="badge">Pagado</span></div>` : ``}
         </div>
 
@@ -95,14 +113,14 @@
             <div class="kTitle">Modo demo Supabase</div>
             <span class="badge">MVP</span>
           </div>
-          <div class="muted" style="margin-top:6px;">Transbank queda desactivado temporalmente. Este botón actualiza la tabla <b>pagos</b> en Supabase.</div>
+          <div class="muted" style="margin-top:6px;">Transbank queda desactivado temporalmente. El demo simula una recaudación vía Transbank para validar saldos, comisiones y retiros.</div>
           <div class="method" style="margin-top:12px;">
             <div>
               <div class="t">Pago demo</div>
-              <div class="muted s">Marca el pago como pagado para validar deudores, avisos e informes.</div>
+              <div class="muted s">Registra ${clp(fin.cuota)} como cuota del curso y ${clp(fin.tb + fin.mx)} como cargos asociados.</div>
             </div>
             <div style="display:flex;justify-content:flex-end;align-items:center;">
-              ${yaPagado ? `<button class="btnx" onclick="location.href='/apoderado.html#payments_paid'">Volver</button>` : `<button class="btnx primary" id="btnDemoPay">Pagar ahora</button>`}
+              ${yaPagado ? `<button class="btnx" onclick="location.href='/apoderado.html#payments_paid'">Volver</button>` : `<button class="btnx primary" id="btnDemoPay">Pagar ${clp(fin.total)}</button>`}
             </div>
           </div>
         </div>
@@ -117,7 +135,7 @@
           try{
             await pagarDemo(pago);
             try{ sessionStorage.setItem("justPaid", "1"); sessionStorage.setItem("justPaidPaymentId", pago.id); }catch(e){}
-            location.href = `/pay_result.html?ok=1&pid=${encodeURIComponent(pago.id)}&amount=${encodeURIComponent(pago.monto||0)}&method=demo`;
+            location.href = `/pay_result.html?ok=1&pid=${encodeURIComponent(pago.id)}&amount=${encodeURIComponent(fin.total)}&method=demo`;
           }catch(e){
             btn.disabled = false;
             btn.textContent = old;
