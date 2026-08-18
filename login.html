@@ -10,6 +10,14 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/assets/brand/micursox-isotype.svg">
   <link rel="icon" href="/assets/brand/micursox-isotype.svg" type="image/svg+xml">
+  <style>
+    .forgotPasswordRow{display:flex;justify-content:flex-end;margin-top:-2px;margin-bottom:8px}
+    .forgotPasswordLink{border:0;background:transparent;padding:6px 0;color:#6d28d9;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+    .forgotPasswordLink:hover{text-decoration:underline}
+    .recoveryMessage{display:none;margin:8px 0 2px;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.4}
+    .recoveryMessage.isSuccess{display:block;background:#ecfdf5;color:#166534}
+    .recoveryMessage.isError{display:block;background:#fef2f2;color:#b91c1c}
+  </style>
 </head>
 <body class="authPremium authPremium--loginOnly">
   <main class="loginPageShell">
@@ -64,6 +72,11 @@
               <button class="eyeBtn eyeBtn--premium" type="button" data-password-toggle aria-label="Mostrar contrase&ntilde;a" aria-pressed="false"></button>
             </label>
 
+            <div class="forgotPasswordRow">
+              <button class="forgotPasswordLink" id="forgotPasswordBtn" type="button">&iquest;Olvidaste tu contrase&ntilde;a?</button>
+            </div>
+            <div id="recoveryMessage" class="recoveryMessage" aria-live="polite"></div>
+
             <div id="loginError" class="error" style="display:none;"></div>
 
             <button class="btnPrimary btnPrimary--login" type="submit">
@@ -105,6 +118,7 @@
   <script defer src="/assets/supabase-config.js?v=1"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="assets/login.js?v=72-google-oauth"></script>
+  <script defer src="/assets/password-recovery.js?v=1"></script>
   <script>
     (function(){
       const btn = document.querySelector("[data-password-toggle]");
