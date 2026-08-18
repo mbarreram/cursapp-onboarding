@@ -12,28 +12,6 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
   }
 
-  function getClient(){
-    if(!window.CURSAPP_SUPABASE || !window.CURSAPP_SUPABASE.url || !window.CURSAPP_SUPABASE.publishableKey){
-      throw new Error('No se pudo iniciar la conexión con Supabase.');
-    }
-    if(!window.supabase || typeof window.supabase.createClient !== 'function'){
-      throw new Error('No se pudo cargar Supabase Auth.');
-    }
-    return window.supabase.createClient(
-      window.CURSAPP_SUPABASE.url,
-      window.CURSAPP_SUPABASE.publishableKey,
-      {
-        auth:{
-          flowType:'pkce',
-          detectSessionInUrl:true,
-          persistSession:true,
-          autoRefreshToken:true,
-          storageKey:'micursox_password_recovery_v1'
-        }
-      }
-    );
-  }
-
   async function sendRecovery(){
     var input = document.getElementById('username');
     var button = document.getElementById('forgotPasswordBtn');
@@ -45,15 +23,31 @@
       return;
     }
 
+    if(!window.CURSAPP_SUPABASE || !window.CURSAPP_SUPABASE.url || !window.CURSAPP_SUPABASE.publishableKey){
+      message('No se pudo iniciar la conexión con Supabase.', true);
+      return;
+    }
+
     if(button) button.disabled = true;
     message('Enviando enlace de recuperación…', false);
 
     try{
-      var client = getClient();
       var redirectTo = new URL('/reset-password.html', window.location.origin).toString();
-      var result = await client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
-      if(result && result.error) throw result.error;
-      message('Te enviamos un correo para crear una nueva contraseña. Revisa también spam o promociones.', false);
+      var response = await fetch(window.CURSAPP_SUPABASE.url + '/functions/v1/password-recovery-email', {
+        method: 'POST',
+        headers: {
+          apikey: window.CURSAPP_SUPABASE.publishableKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email, redirectTo: redirectTo })
+      });
+
+      if(!response.ok){
+        throw new Error('No se pudo procesar la solicitud de recuperación.');
+      }
+
+      // Respuesta genérica: evita revelar si el correo existe o no.
+      message('Si el correo está registrado en MiCursoX, recibirás un enlace para crear una nueva contraseña. Revisa también spam o promociones.', false);
     }catch(error){
       console.error('Password recovery error', error);
       message((error && error.message) || 'No se pudo enviar el correo de recuperación.', true);
