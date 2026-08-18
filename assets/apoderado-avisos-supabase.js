@@ -2,12 +2,14 @@
   'use strict';
 
   const esc = (value)=>String(value ?? '').replace(/[&<>"']/g, c=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'
   }[c]));
 
   let lastItems = [];
   let lastCourseId = null;
   let refreshTimer = null;
+  let lastRenderedHost = null;
+  let lastRenderedSignature = '';
 
   function formatDate(value){
     if(!value) return '';
@@ -16,6 +18,12 @@
       if(Number.isNaN(d.getTime())) return '';
       return d.toLocaleString('es-CL', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
     }catch(_){ return ''; }
+  }
+
+  function signature(items){
+    return JSON.stringify((Array.isArray(items) ? items : []).slice(0,3).map(a=>[
+      a && a.id || '', a && a.titulo || '', a && a.mensaje || '', a && a.created_at || ''
+    ]));
   }
 
   async function loadCurrentCourseNotices(){
@@ -38,28 +46,33 @@
     return Array.isArray(rows) ? rows : [];
   }
 
-  function renderHome(items){
+  function renderHome(items, force){
     const host = document.querySelector('.apoV2RealAvisos');
     if(!host) return false;
 
+    const sig = signature(items);
+    if(!force && host === lastRenderedHost && sig === lastRenderedSignature) return true;
+
     if(!items.length){
       host.innerHTML = '<article class="apoV2Notice"><span>📣</span><div><h3>Sin avisos nuevos</h3><p>Aún no hay mensajes publicados por la directiva.</p></div></article>';
-      return true;
+    }else{
+      host.innerHTML = items.slice(0,3).map(a=>{
+        const date = formatDate(a.created_at);
+        return '<article class="apoV2Notice apoV40NoticeCard">'
+          + '<span class="apoV40NoticeIcon">📣</span>'
+          + '<div class="apoV40NoticeCopy"><h3>'+esc(a.titulo || 'Aviso del curso')+'</h3>'
+          + '<p>'+esc(a.mensaje || 'Revisa el detalle del aviso publicado por la directiva.')+'</p>'
+          + (date ? '<small>'+esc(date)+'</small>' : '')
+          + '</div><button type="button" data-current-course-notices="1">Ver</button></article>';
+      }).join('');
+
+      host.querySelectorAll('[data-current-course-notices]').forEach(btn=>{
+        btn.addEventListener('click', openCurrentCourseNotices);
+      });
     }
 
-    host.innerHTML = items.slice(0,3).map(a=>{
-      const date = formatDate(a.created_at);
-      return '<article class="apoV2Notice apoV40NoticeCard">'
-        + '<span class="apoV40NoticeIcon">📣</span>'
-        + '<div class="apoV40NoticeCopy"><h3>'+esc(a.titulo || 'Aviso del curso')+'</h3>'
-        + '<p>'+esc(a.mensaje || 'Revisa el detalle del aviso publicado por la directiva.')+'</p>'
-        + (date ? '<small>'+esc(date)+'</small>' : '')
-        + '</div><button type="button" data-current-course-notices="1">Ver</button></article>';
-    }).join('');
-
-    host.querySelectorAll('[data-current-course-notices]').forEach(btn=>{
-      btn.addEventListener('click', openCurrentCourseNotices);
-    });
+    lastRenderedHost = host;
+    lastRenderedSignature = sig;
     return true;
   }
 
@@ -99,7 +112,7 @@
     try{
       const items = await loadCurrentCourseNotices();
       lastItems = items;
-      if(renderHome(items)) wireSectionHeader();
+      if(renderHome(items, true)) wireSectionHeader();
     }catch(error){
       console.warn('MiCursoX: no se pudieron cargar los avisos del curso activo desde Supabase.', error);
     }
@@ -117,8 +130,10 @@
   window.addEventListener('hashchange', ()=>scheduleRefresh(120));
 
   const observer = new MutationObserver(()=>{
-    if(document.querySelector('.apoV2NoticeSection')){
-      renderHome(lastItems);
+    const host = document.querySelector('.apoV2RealAvisos');
+    if(!host) return;
+    if(host !== lastRenderedHost){
+      renderHome(lastItems, true);
       wireSectionHeader();
     }
   });
