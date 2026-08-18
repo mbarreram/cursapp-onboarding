@@ -7,14 +7,38 @@
   if(!cfg || !cfg.url || !cfg.publishableKey) return;
 
   const AUTH_SESSION_KEY = cfg.authSessionKey || 'cursapp_supabase_auth_session_v1';
+  const SDK_STORAGE_KEY = cfg.sdkStorageKey || 'cursapp_supabase_oauth_v1';
+  const DRAFT_KEY = 'cursapp_onb_draft_v1';
   const URL = cfg.url;
   const KEY = cfg.publishableKey;
 
-  function readSession(){
+  function readJson(key){
     try{
-      const raw = localStorage.getItem(AUTH_SESSION_KEY);
+      const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : null;
     }catch(_){ return null; }
+  }
+
+  function readSession(){ return readJson(AUTH_SESSION_KEY); }
+  function readDraft(){ return readJson(DRAFT_KEY) || {}; }
+
+  function clearStaleAuth(){
+    try{ localStorage.removeItem(AUTH_SESSION_KEY); }catch(_){ }
+    try{ sessionStorage.removeItem(AUTH_SESSION_KEY); }catch(_){ }
+    try{ localStorage.removeItem(SDK_STORAGE_KEY); }catch(_){ }
+  }
+
+  function persistSession(data){
+    if(!data || !data.access_token) return null;
+    const next = {
+      access_token:String(data.access_token),
+      refresh_token:String(data.refresh_token || ''),
+      expires_at:data.expires_at || (data.expires_in ? Math.floor(Date.now()/1000)+Number(data.expires_in) : null),
+      user:data.user || null
+    };
+    try{ localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next)); }catch(_){ }
+    try{ sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next)); }catch(_){ }
+    return next;
   }
 
   function expiredSoon(session){
@@ -22,8 +46,29 @@
     return !!exp && exp <= Math.floor(Date.now()/1000) + 30;
   }
 
+  async function passwordReauth(){
+    const draft = readDraft();
+    const email = String(draft.pEmail || draft.email || '').trim().toLowerCase();
+    const password = String(draft.pPass || draft.pass || '');
+    if(!email || !password) return null;
+
+    const res = await fetch(URL + '/auth/v1/token?grant_type=password', {
+      method:'POST',
+      headers:{ apikey:KEY, 'Content-Type':'application/json' },
+      body:JSON.stringify({ email:email, password:password })
+    });
+    const text = await res.text();
+    let data = null;
+    try{ data = text ? JSON.parse(text) : null; }catch(_){ }
+    if(!res.ok || !data || !data.access_token){
+      const msg = (data && (data.msg || data.message || data.error_description || data.error)) || text || 'No se pudo iniciar sesión nuevamente';
+      throw new Error(msg);
+    }
+    return persistSession(data);
+  }
+
   async function refresh(session){
-    if(!session || !session.refresh_token) return session;
+    if(!session || !session.refresh_token) return null;
     const res = await fetch(URL + '/auth/v1/token?grant_type=refresh_token', {
       method:'POST',
       headers:{ apikey:KEY, 'Content-Type':'application/json' },
@@ -32,23 +77,31 @@
     const text = await res.text();
     let data = null;
     try{ data = text ? JSON.parse(text) : null; }catch(_){ }
-    if(!res.ok || !data || !data.access_token){
-      throw new Error((data && (data.message || data.error_description || data.error)) || text || 'No se pudo renovar la sesión');
-    }
-    const next = {
-      access_token:String(data.access_token),
-      refresh_token:String(data.refresh_token || session.refresh_token || ''),
-      expires_at:data.expires_at || (data.expires_in ? Math.floor(Date.now()/1000)+Number(data.expires_in) : null),
-      user:data.user || session.user || null
-    };
-    try{ localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next)); }catch(_){ }
-    return next;
+    if(!res.ok || !data || !data.access_token) return null;
+    return persistSession(data);
   }
 
   async function freshToken(){
     let session = readSession();
-    if(!session || !session.access_token) return '';
-    if(expiredSoon(session)) session = await refresh(session);
+
+    // Si no hay sesión utilizable, reautentica con las credenciales ya validadas
+    // del draft de onboarding. No reutiliza refresh tokens de cuentas borradas.
+    if(!session || !session.access_token){
+      clearStaleAuth();
+      session = await passwordReauth();
+      return session && session.access_token ? String(session.access_token) : '';
+    }
+
+    if(expiredSoon(session)){
+      const renewed = await refresh(session);
+      if(renewed && renewed.access_token) return String(renewed.access_token);
+
+      // El refresh token puede pertenecer a una cuenta eliminada/recreada.
+      // En ese caso se descarta por completo y se obtiene una sesión nueva por password.
+      clearStaleAuth();
+      session = await passwordReauth();
+    }
+
     return session && session.access_token ? String(session.access_token) : '';
   }
 
@@ -77,8 +130,6 @@
     return data;
   }
 
-  // Durante onboarding evitamos que una sesión SDK antigua tenga prioridad sobre
-  // la sesión recién creada por signup/password. Conservamos el resto de helpers.
   try{
     window.CURSAPP_SUPABASE = Object.freeze(Object.assign({}, cfg, {
       getAccessToken:freshToken,
