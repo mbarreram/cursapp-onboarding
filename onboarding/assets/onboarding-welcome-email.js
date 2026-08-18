@@ -7,6 +7,7 @@
   if(!cfg || !cfg.url || !cfg.publishableKey) return;
   const originalFetch = window.fetch.bind(window);
   const SENT_PREFIX = 'micursox_welcome_sent_';
+  const LOGO_URL = 'https://cursapp-onboarding.pages.dev/assets/brand/micursox-compact.svg';
 
   function requestUrl(input){
     try{return typeof input==='string'?input:(input&&input.url)||'';}catch(_){return '';}
@@ -42,8 +43,32 @@
       const anio = String(d.year||'').trim();
       const cursoLabel = [nivel + letra, anio].filter(Boolean).join(' ');
       const subject = 'Bienvenido a MiCursoX';
-      const html = `<!doctype html><html><body style="margin:0;background:#f6f7fb;font-family:Arial,sans-serif;color:#111827"><div style="max-width:620px;margin:0 auto;padding:28px 18px"><div style="background:#fff;border-radius:22px;padding:30px;border:1px solid #e5e7eb"><div style="font-size:28px;font-weight:800;color:#6d28d9;margin-bottom:20px">MiCursoX</div><h1 style="font-size:28px;margin:0 0 16px">¡Bienvenido${nombre?' '+esc(nombre):''}! 👋</h1><p style="font-size:16px;line-height:1.6;color:#475569">Tu registro como <b>Presidente</b> fue creado correctamente en MiCursoX.</p><div style="background:#f8fafc;border-radius:16px;padding:18px;margin:22px 0"><div style="font-size:14px;color:#64748b;margin-bottom:8px">Curso registrado</div><div style="font-size:18px;font-weight:700">${esc(colegio || 'Tu colegio')}${cursoLabel?' · '+esc(cursoLabel):''}</div></div><p style="font-size:16px;line-height:1.6;color:#475569">Desde ahora puedes crear campañas, invitar a la directiva y apoderados, revisar pagos e informes y administrar los fondos del curso.</p><p style="font-size:14px;line-height:1.6;color:#64748b;margin-top:26px">Correo de acceso: <b>${esc(email)}</b></p><p style="font-size:13px;color:#94a3b8;margin-top:28px">Este es un correo automático de MiCursoX.</p></div></div></body></html>`;
-      const text = `Bienvenido a MiCursoX${nombre?' '+nombre:''}. Tu registro como Presidente fue creado correctamente.${cursoLabel?' Curso: '+cursoLabel+'.':''} Correo de acceso: ${email}.`;
+      const html = `<!doctype html><html><body style="margin:0;background:#f6f7fb;font-family:Arial,sans-serif;color:#111827">
+        <div style="max-width:620px;margin:0 auto;padding:28px 18px">
+          <div style="background:#fff;border-radius:22px;border:1px solid #e5e7eb;overflow:hidden">
+            <div style="padding:26px 30px 22px;text-align:center;border-bottom:1px solid #ede9fe">
+              <img src="${LOGO_URL}" alt="MiCursoX" width="210" style="display:inline-block;max-width:210px;width:100%;height:auto;border:0;outline:none;text-decoration:none">
+            </div>
+            <div style="padding:30px">
+              <h1 style="font-size:28px;line-height:1.2;margin:0 0 16px;color:#111827">¡Bienvenido${nombre?' '+esc(nombre):''}! 👋</h1>
+              <p style="font-size:16px;line-height:1.6;color:#475569;margin:0">Tu registro como <b>Presidente</b> fue creado correctamente en MiCursoX.</p>
+              <div style="background:#f8fafc;border-radius:16px;padding:18px;margin:22px 0">
+                <div style="font-size:14px;color:#64748b;margin-bottom:8px">Curso registrado</div>
+                <div style="font-size:18px;line-height:1.4;font-weight:700;color:#111827">${esc(colegio || 'Tu colegio')}${cursoLabel?' · '+esc(cursoLabel):''}</div>
+              </div>
+              <p style="font-size:16px;line-height:1.6;color:#475569;margin:0">Desde ahora puedes crear campañas, invitar a la directiva y apoderados, revisar pagos e informes y administrar los fondos del curso.</p>
+              <p style="font-size:14px;line-height:1.6;color:#64748b;margin:26px 0 0">Correo de acceso: <b>${esc(email)}</b></p>
+            </div>
+            <div style="background:#faf8ff;border-top:1px solid #ede9fe;padding:18px 30px;text-align:center">
+              <div style="font-size:14px;font-weight:700;color:#6d28d9;margin-bottom:6px">MiCursoX</div>
+              <div style="font-size:12px;line-height:1.5;color:#64748b">Gestión simple y segura para tu curso.</div>
+              <div style="font-size:11px;line-height:1.5;color:#94a3b8;margin-top:10px">Este es un correo automático. Por favor, no respondas a este mensaje.</div>
+            </div>
+          </div>
+          <div style="font-size:11px;line-height:1.5;color:#94a3b8;text-align:center;padding:14px 8px 0">© 2026 MiCursoX · Todos los derechos reservados.</div>
+        </div>
+      </body></html>`;
+      const text = `Bienvenido a MiCursoX${nombre?' '+nombre:''}. Tu registro como Presidente fue creado correctamente.${cursoLabel?' Curso: '+cursoLabel+'.':''} Correo de acceso: ${email}. MiCursoX · Gestión simple y segura para tu curso.`;
 
       const res = await originalFetch(cfg.url + '/functions/v1/send-email', {
         method:'POST',
