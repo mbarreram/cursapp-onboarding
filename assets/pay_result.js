@@ -8,6 +8,7 @@
   const txId = u.searchParams.get("tx") || "";
   const reason = u.searchParams.get("reason") || "";
   const el = document.getElementById("content");
+  const paidUrl = "/apoderado.html#payments_paid";
 
   function card(title, body, success){
     if(!el) return;
@@ -17,7 +18,7 @@
         <div class="muted" style="margin-top:8px;line-height:1.5;">${body}</div>
         ${success ? `<div style="margin-top:12px;height:10px;border-radius:999px;background:rgba(17,24,39,.08);overflow:hidden;"><div style="height:100%;width:100%;background:rgba(34,197,94,.65);"></div></div>` : ``}
         <div class="actions" style="margin-top:14px;justify-content:flex-end;">
-          <button class="btnx ${success ? 'primary' : ''}" onclick="location.href='${success ? '/apoderado.html#payments_paid' : '/apoderado.html#payments'}'">${success ? 'Ver pagos' : 'Volver a Pagos'}</button>
+          <button class="btnx ${success ? 'primary' : ''}" onclick="location.href='${success ? paidUrl : '/apoderado.html#payments'}'">${success ? 'Ver pagos' : 'Volver a Pagos'}</button>
         </div>
       </div>`;
   }
@@ -40,7 +41,10 @@
         try{ sessionStorage.setItem("justPaid","1"); if(tx.pago_id) sessionStorage.setItem("justPaidPaymentId", tx.pago_id); }catch(e){}
         const auth = tx.authorization_code ? `<br>Autorización: <b>${esc(tx.authorization_code)}</b>` : "";
         const date = tx.transaction_date ? `<br>Fecha: <b>${esc(new Date(tx.transaction_date).toLocaleString('es-CL'))}</b>` : "";
-        card("✅ Pago confirmado", `Transbank confirmó correctamente tu pago por <b>${clp(tx.amount)}</b>.${auth}${date}<br><br>La cuota ya quedó registrada como pagada en MiCursoX.`, true);
+        card("✅ Pago confirmado", `Transbank confirmó correctamente tu pago por <b>${clp(tx.amount)}</b>.${auth}${date}<br><br>La cuota ya quedó registrada como pagada en MiCursoX.<br><br>Volviendo a tus pagos…`, true);
+        setTimeout(function(){
+          location.replace(paidUrl);
+        }, 1600);
         return;
       }
       if(state === "CANCELLED"){
