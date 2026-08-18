@@ -12,7 +12,7 @@
 
   function qs(){
     const u = new URL(location.href);
-    return { pid: u.searchParams.get("pid")||u.searchParams.get("pago")||"", cid: u.searchParams.get("cid")||"" };
+    return { pid: u.searchParams.get("pid")||u.searchParams.get("pago")||"" };
   }
 
   async function sb(path, opts){
@@ -54,23 +54,29 @@
     return {cuota,tasaTb,tasaMx,tb,mx,total};
   }
 
-  async function pagarDemo(pago){
-    const monto = Number(pago.monto || pago.amount || 0) || 0;
-    if(window.CURSAPP && typeof window.CURSAPP.markPaymentPaidSupabase === "function"){
-      try{
-        await window.CURSAPP.markPaymentPaidSupabase(pago.id, { amount:monto, method:"demo", paidAt:new Date().toISOString() });
-        return;
-      }catch(e){ console.warn("markPaymentPaidSupabase falló, usando REST directo", e); }
+  async function startWebpay(pagoId){
+    if(!window.CURSAPP_SUPABASE || !window.CURSAPP_SUPABASE.functions){
+      throw new Error("No se pudo iniciar la conexión de pago.");
     }
-    await sb("pagos?id=eq." + q(pago.id), {
-      method:"PATCH",
-      body: JSON.stringify({
-        estado:"pagado",
-        monto_pagado:monto,
-        metodo_pago:"demo",
-        paid_at:new Date().toISOString()
-      })
-    });
+    const result = await window.CURSAPP_SUPABASE.functions.invoke("webpay-create", { body:{ pago_id:pagoId } });
+    if(result.error) throw result.error;
+    const data = result.data || {};
+    if(!data.token || !data.url) throw new Error("Transbank no devolvió los datos de inicio.");
+    return data;
+  }
+
+  function submitToWebpay(url, token){
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = url;
+    form.style.display = "none";
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "token_ws";
+    input.value = token;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
   }
 
   async function render(){
@@ -86,9 +92,8 @@
         return;
       }
       const camp = pago.campanas || {};
-      const miembro = pago.miembros_curso || {};
+      const miembro = Array.isArray(pago.miembros_curso) ? (pago.miembros_curso[0] || {}) : (pago.miembros_curso || {});
       const fin = financialBreakdown(pago);
-      const montoPendiente = Math.max(0, Number(pago.monto || 0) - Number(pago.monto_pagado || 0));
       const estado = String(pago.estado || "pendiente").toLowerCase();
       const yaPagado = estado === "pagado" || estado === "paid";
 
@@ -110,36 +115,42 @@
 
         <div class="card" style="margin-top:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div class="kTitle">Modo demo Supabase</div>
-            <span class="badge">MVP</span>
+            <div class="kTitle">Pago seguro con Webpay Plus</div>
+            <span class="badge">Integración</span>
           </div>
-          <div class="muted" style="margin-top:6px;">Transbank queda desactivado temporalmente. El demo simula una recaudación vía Transbank para validar saldos, comisiones y retiros.</div>
+          <div class="muted" style="margin-top:6px;">Serás redirigido al ambiente de integración de Transbank. MiCursoX nunca recibe ni almacena los datos de tu tarjeta.</div>
           <div class="method" style="margin-top:12px;">
             <div>
-              <div class="t">Pago demo</div>
-              <div class="muted s">Registra ${clp(fin.cuota)} como cuota del curso y ${clp(fin.tb + fin.mx)} como cargos asociados.</div>
+              <div class="t">Webpay Plus</div>
+              <div class="muted s">Transbank confirmará el resultado antes de registrar la cuota como pagada.</div>
             </div>
             <div style="display:flex;justify-content:flex-end;align-items:center;">
-              ${yaPagado ? `<button class="btnx" onclick="location.href='/apoderado.html#payments_paid'">Volver</button>` : `<button class="btnx primary" id="btnDemoPay">Pagar ${clp(fin.total)}</button>`}
+              ${yaPagado ? `<button class="btnx" onclick="location.href='/apoderado.html#payments_paid'">Volver</button>` : `<button class="btnx primary" id="btnWebpay">Pagar ${clp(fin.total)}</button>`}
             </div>
           </div>
+          <div id="paymentMessage" class="muted" style="margin-top:10px;font-size:12px;"></div>
         </div>
       `;
 
-      const btn = document.getElementById("btnDemoPay");
+      const btn = document.getElementById("btnWebpay");
+      const msg = document.getElementById("paymentMessage");
       if(btn){
         btn.onclick = async ()=>{
           const old = btn.textContent;
           btn.disabled = true;
-          btn.textContent = "Registrando…";
+          btn.textContent = "Conectando con Transbank…";
+          if(msg) msg.textContent = "Creando una transacción segura…";
           try{
-            await pagarDemo(pago);
-            try{ sessionStorage.setItem("justPaid", "1"); sessionStorage.setItem("justPaidPaymentId", pago.id); }catch(e){}
-            location.href = `/pay_result.html?ok=1&pid=${encodeURIComponent(pago.id)}&amount=${encodeURIComponent(fin.total)}&method=demo`;
+            const tx = await startWebpay(pago.id);
+            try{
+              sessionStorage.setItem("micursox_webpay_tx", tx.transaction_id || "");
+              sessionStorage.setItem("micursox_webpay_pid", pago.id);
+            }catch(e){}
+            submitToWebpay(tx.url, tx.token);
           }catch(e){
             btn.disabled = false;
             btn.textContent = old;
-            alert("No se pudo registrar el pago demo: " + (e.message || e));
+            if(msg) msg.textContent = (e && e.message) ? e.message : "No se pudo iniciar el pago.";
           }
         };
       }
