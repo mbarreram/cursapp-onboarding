@@ -95,4 +95,13 @@ document.addEventListener('click',function(e){
 },true);
 
 window.MX_RUT_VALIDATION={isValidRut,normalizeRut,formatRut};
+
+// Carga incremental del flujo de confirmación final de retiros del Presidente.
+if(document.body.classList.contains('cursapp-presidente')&&!document.querySelector('script[data-mx-withdraw-confirm]')){
+  const s=document.createElement('script');
+  s.src='/assets/presidente-retiro-confirmacion-v1.js?v=1';
+  s.defer=true;
+  s.dataset.mxWithdrawConfirm='1';
+  document.head.appendChild(s);
+}
 })();
