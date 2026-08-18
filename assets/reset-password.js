@@ -23,7 +23,9 @@
       window.CURSAPP_SUPABASE.publishableKey,
       {
         auth:{
-          flowType:'pkce',
+          // Los enlaces generados server-side con admin.generateLink(type: recovery)
+          // vuelven mediante sesión implicit (#access_token / #refresh_token).
+          flowType:'implicit',
           detectSessionInUrl:true,
           persistSession:true,
           autoRefreshToken:true,
@@ -34,15 +36,63 @@
     return client;
   }
 
+  function hashParams(){
+    var raw = String(window.location.hash || '').replace(/^#/, '');
+    return new URLSearchParams(raw);
+  }
+
+  async function hydrateImplicitRecoverySession(auth){
+    var hp = hashParams();
+    var accessToken = hp.get('access_token');
+    var refreshToken = hp.get('refresh_token');
+    var type = hp.get('type');
+    var errorDescription = hp.get('error_description') || hp.get('error');
+
+    if(errorDescription){
+      throw new Error(decodeURIComponent(String(errorDescription).replace(/\+/g, ' ')));
+    }
+
+    if(accessToken && refreshToken){
+      var setResult = await auth.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+      if(setResult && setResult.error) throw setResult.error;
+
+      // Una vez persistida la sesión, quitamos los tokens del URL visible.
+      try{
+        history.replaceState(null, document.title, window.location.pathname + window.location.search);
+      }catch(_){ }
+      return setResult && setResult.data && setResult.data.session;
+    }
+
+    // Si Supabase JS ya procesó el fragmento automáticamente, la sesión estará
+    // disponible por getSession().
+    if(type === 'recovery'){
+      var autoResult = await auth.auth.getSession();
+      if(autoResult && autoResult.error) throw autoResult.error;
+      if(autoResult && autoResult.data && autoResult.data.session) return autoResult.data.session;
+    }
+
+    return null;
+  }
+
   async function ensureRecoverySession(){
     var auth = getClient();
     var params = new URLSearchParams(window.location.search || '');
     var code = params.get('code');
 
+    // Compatibilidad con enlaces PKCE si se usan en el futuro.
     if(code && typeof auth.auth.exchangeCodeForSession === 'function'){
       var exchanged = await auth.auth.exchangeCodeForSession(code);
       if(exchanged && exchanged.error) throw exchanged.error;
+      if(exchanged && exchanged.data && exchanged.data.session) return exchanged.data.session;
     }
+
+    // Flujo actual de MiCursoX/Resend: enlace server-side de Supabase con
+    // tokens implicit en el fragmento URL.
+    var implicitSession = await hydrateImplicitRecoverySession(auth);
+    if(implicitSession) return implicitSession;
 
     var result = await auth.auth.getSession();
     if(result && result.error) throw result.error;
