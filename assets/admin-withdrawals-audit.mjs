@@ -1,0 +1,37 @@
+const sb=window.CURSAPP_SUPABASE;
+if(!window.__MX_ADMIN_WITHDRAWALS_AUDIT__){
+window.__MX_ADMIN_WITHDRAWALS_AUDIT__=true;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clp=v=>'$'+Math.round(Number(v)||0).toLocaleString('es-CL');
+const fmtDate=v=>v?new Date(v).toLocaleString('es-CL'):'—';
+const request=async(path,opts)=>{const r=await sb.request(path,opts);return Array.isArray(r)?r:(r?[r]:[])};
+let loading=false,lastKey='';
+function css(){if(document.getElementById('mxAwAuditCss'))return;const s=document.createElement('style');s.id='mxAwAuditCss';s.textContent=`
+.mxAwAudit{margin:0 0 18px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px}.mxAwAuditHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.mxAwAuditHead h2{margin:0;font-size:17px}.mxAwAuditHead p{margin:4px 0 0;color:#64748b;font-size:11px;line-height:1.4}.mxAwAuditGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}.mxAwAuditKpi{padding:12px;border-radius:14px;background:#f8fafc;border:1px solid #eef2f7;min-width:0}.mxAwAuditKpi small{display:block;color:#64748b;font-size:10px;font-weight:800}.mxAwAuditKpi b{display:block;margin-top:5px;font-size:17px}.mxAwAuditChart{margin-top:16px;padding-top:14px;border-top:1px solid #eef2f7}.mxAwAuditChart h3{margin:0 0 10px;font-size:13px}.mxAwAuditBars{display:flex;flex-direction:column;gap:9px}.mxAwAuditBar{display:grid;grid-template-columns:92px 1fr auto;gap:9px;align-items:center;font-size:11px}.mxAwAuditBar span{font-weight:750;color:#475569}.mxAwAuditTrack{height:10px;background:#eef2f7;border-radius:999px;overflow:hidden}.mxAwAuditFill{height:100%;border-radius:999px;background:#2563eb;min-width:2px}.mxAwAuditBar.done .mxAwAuditFill{background:#16a34a}.mxAwAuditBar.rejected .mxAwAuditFill{background:#dc2626}.mxAwAuditBar.processing .mxAwAuditFill{background:#7c3aed}.mxAwAuditBar strong{font-size:11px;white-space:nowrap}.mxAwAuditDeposits{margin-top:16px;padding-top:14px;border-top:1px solid #eef2f7}.mxAwAuditDeposits h3{margin:0 0 10px;font-size:13px}.mxAwAuditDeposit{display:grid;grid-template-columns:minmax(0,1.3fr) .7fr .9fr;gap:10px;padding:11px 0;border-bottom:1px solid #eef2f7}.mxAwAuditDeposit:last-child{border-bottom:0}.mxAwAuditDeposit small{display:block;color:#64748b;font-size:10px;font-weight:750}.mxAwAuditDeposit b{display:block;margin-top:3px;font-size:11px;overflow-wrap:anywhere}.mxAwAuditRef{color:#166534}.mxAwAuditObs{margin-top:5px;color:#64748b;font-size:10px;line-height:1.4}.mxAwAuditEmpty{padding:12px;border-radius:12px;background:#f8fafc;color:#64748b;font-size:11px}
+@media(max-width:800px){.mxAwAuditGrid{grid-template-columns:1fr 1fr}.mxAwAuditDeposit{grid-template-columns:1fr}.mxAwAuditBar{grid-template-columns:78px 1fr auto}}
+@media(max-width:480px){.mxAwAudit{padding:13px;border-radius:16px}.mxAwAuditGrid{gap:8px}.mxAwAuditKpi{padding:10px}.mxAwAuditKpi b{font-size:15px}.mxAwAuditHead{display:block}.mxAwAuditBar{grid-template-columns:72px 1fr}.mxAwAuditBar strong{grid-column:2;text-align:right;margin-top:-5px}.mxAwAuditDeposit{padding:10px 0}}
+`;document.head.appendChild(s)}
+function statusData(rows){
+ const defs=[['solicitado','En revisión','pending'],['en_proceso','En proceso','processing'],['depositado','Depositados','done'],['rechazado','Rechazados','rejected']];
+ return defs.map(([estado,label,klass])=>{const list=rows.filter(r=>r.estado===estado);return{estado,label,klass,count:list.length,amount:list.reduce((a,r)=>a+Number(estado==='depositado'?(r.monto_pagado||r.monto_solicitado):r.monto_solicitado||0),0)}})
+}
+function renderPanel(rows,courses,schools){
+ const host=document.querySelector('#adminApp .mxAwStats');if(!host)return;
+ document.querySelector('#mxAwAuditPanel')?.remove();
+ const sm=new Map(schools.map(x=>[x.id,x.nombre])),cm=new Map(courses.map(x=>[x.id,x]));
+ const d=statusData(rows),pending=d[0],processing=d[1],done=d[2],rejected=d[3];
+ const max=Math.max(1,...d.map(x=>x.amount));
+ const deposited=rows.filter(r=>r.estado==='depositado').slice().sort((a,b)=>new Date(b.depositado_at||b.pagado_at||0)-new Date(a.depositado_at||a.pagado_at||0));
+ const panel=document.createElement('section');panel.className='mxAwAudit';panel.id='mxAwAuditPanel';
+ panel.innerHTML=`<div class="mxAwAuditHead"><div><h2>Auditoría y cuadratura de retiros</h2><p>Resumen operacional y trazabilidad de depósitos. Los montos se calculan directamente desde las solicitudes registradas.</p></div></div>
+ <div class="mxAwAuditGrid"><div class="mxAwAuditKpi"><small>Pendiente de revisión</small><b>${clp(pending.amount)}</b></div><div class="mxAwAuditKpi"><small>En proceso</small><b>${clp(processing.amount)}</b></div><div class="mxAwAuditKpi"><small>Depositado</small><b>${clp(done.amount)}</b></div><div class="mxAwAuditKpi"><small>Rechazado</small><b>${clp(rejected.amount)}</b></div></div>
+ <div class="mxAwAuditChart"><h3>Montos por estado</h3><div class="mxAwAuditBars">${d.map(x=>`<div class="mxAwAuditBar ${x.klass}"><span>${x.label}</span><div class="mxAwAuditTrack"><div class="mxAwAuditFill" style="width:${Math.max(2,(x.amount/max)*100)}%"></div></div><strong>${clp(x.amount)} · ${x.count}</strong></div>`).join('')}</div></div>
+ <div class="mxAwAuditDeposits"><h3>Depósitos efectuados y comprobantes</h3>${deposited.length?deposited.map(r=>{const c=cm.get(r.curso_id)||{};const school=sm.get(c.colegio_id)||'Colegio';return`<div class="mxAwAuditDeposit"><div><small>Curso / depósito</small><b>${esc(school)} · ${esc(c.nombre||c.course_key||'Curso')}</b><div class="mxAwAuditObs">Depositado ${esc(fmtDate(r.depositado_at||r.pagado_at))}</div></div><div><small>Monto</small><b>${clp(r.monto_pagado||r.monto_solicitado)}</b></div><div><small>Referencia / folio</small><b class="mxAwAuditRef">${esc(r.referencia_deposito||'Sin referencia')}</b>${r.observacion?`<div class="mxAwAuditObs">${esc(r.observacion)}</div>`:''}${r.comprobante_url?`<div class="mxAwAuditObs">Comprobante adjunto registrado</div>`:''}</div></div>`}).join(''):'<div class="mxAwAuditEmpty">Aún no existen depósitos efectuados.</div>'}</div>`;
+ host.insertAdjacentElement('afterend',panel)
+}
+async function refresh(){if(loading)return;const title=document.getElementById('viewTitle');if(!title||title.textContent.trim()!=='Retiros')return;const stats=document.querySelector('#adminApp .mxAwStats');if(!stats)return;loading=true;try{const [rows,courses,schools]=await Promise.all([request('retiros_curso?select=*&order=solicitado_at.asc',{method:'GET'}),request('cursos?select=id,nombre,course_key,colegio_id',{method:'GET'}),request('colegios?select=id,nombre',{method:'GET'})]);const key=rows.map(r=>[r.id,r.estado,r.updated_at,r.referencia_deposito].join(':')).join('|');if(key!==lastKey||!document.getElementById('mxAwAuditPanel')){lastKey=key;renderPanel(rows,courses,schools)}}catch(e){console.warn('[MiCursoX] auditoría retiros',e)}finally{loading=false}}
+css();
+const obs=new MutationObserver(()=>{if(document.getElementById('viewTitle')?.textContent.trim()==='Retiros'&&document.querySelector('#adminApp .mxAwStats'))setTimeout(refresh,40)});obs.observe(document.body,{childList:true,subtree:true});
+document.addEventListener('click',e=>{if(e.target.closest?.('.sideItem[data-tab="retiros"],#mxAwRefresh,[data-action]'))setTimeout(refresh,500)},true);
+setInterval(()=>{if(document.getElementById('viewTitle')?.textContent.trim()==='Retiros')refresh()},15000);
+}
