@@ -23,8 +23,6 @@
       window.CURSAPP_SUPABASE.publishableKey,
       {
         auth:{
-          // Los enlaces generados server-side con admin.generateLink(type: recovery)
-          // vuelven mediante sesión implicit (#access_token / #refresh_token).
           flowType:'implicit',
           detectSessionInUrl:true,
           persistSession:true,
@@ -58,16 +56,12 @@
         refresh_token: refreshToken
       });
       if(setResult && setResult.error) throw setResult.error;
-
-      // Una vez persistida la sesión, quitamos los tokens del URL visible.
       try{
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
       }catch(_){ }
       return setResult && setResult.data && setResult.data.session;
     }
 
-    // Si Supabase JS ya procesó el fragmento automáticamente, la sesión estará
-    // disponible por getSession().
     if(type === 'recovery'){
       var autoResult = await auth.auth.getSession();
       if(autoResult && autoResult.error) throw autoResult.error;
@@ -82,15 +76,12 @@
     var params = new URLSearchParams(window.location.search || '');
     var code = params.get('code');
 
-    // Compatibilidad con enlaces PKCE si se usan en el futuro.
     if(code && typeof auth.auth.exchangeCodeForSession === 'function'){
       var exchanged = await auth.auth.exchangeCodeForSession(code);
       if(exchanged && exchanged.error) throw exchanged.error;
       if(exchanged && exchanged.data && exchanged.data.session) return exchanged.data.session;
     }
 
-    // Flujo actual de MiCursoX/Resend: enlace server-side de Supabase con
-    // tokens implicit en el fragmento URL.
     var implicitSession = await hydrateImplicitRecoverySession(auth);
     if(implicitSession) return implicitSession;
 
@@ -101,6 +92,29 @@
       throw new Error('El enlace de recuperación expiró o ya fue utilizado. Solicita uno nuevo desde el inicio de sesión.');
     }
     return session;
+  }
+
+  async function sendPasswordChangedEmail(accessToken){
+    try{
+      if(!accessToken || !window.CURSAPP_SUPABASE) return false;
+      var response = await fetch(window.CURSAPP_SUPABASE.url + '/functions/v1/password-changed-email', {
+        method:'POST',
+        headers:{
+          apikey: window.CURSAPP_SUPABASE.publishableKey,
+          Authorization:'Bearer ' + accessToken,
+          'Content-Type':'application/json'
+        },
+        body:'{}'
+      });
+      if(!response.ok){
+        try{ console.warn('[MiCursoX] password changed email failed', await response.text()); }catch(_){ }
+        return false;
+      }
+      return true;
+    }catch(error){
+      try{ console.warn('[MiCursoX] password changed email error', error); }catch(_){ }
+      return false;
+    }
   }
 
   async function submit(event){
@@ -122,9 +136,20 @@
     setMessage('Validando enlace y actualizando contraseña…', false);
 
     try{
-      await ensureRecoverySession();
+      var recoverySession = await ensureRecoverySession();
       var result = await getClient().auth.updateUser({ password: password });
       if(result && result.error) throw result.error;
+
+      // Notificación de seguridad best-effort antes de cerrar la sesión de recuperación.
+      var accessToken = recoverySession && recoverySession.access_token ? recoverySession.access_token : '';
+      if(!accessToken){
+        try{
+          var current = await getClient().auth.getSession();
+          accessToken = current && current.data && current.data.session && current.data.session.access_token || '';
+        }catch(_){ }
+      }
+      await sendPasswordChangedEmail(accessToken);
+
       setMessage('Contraseña actualizada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.', false);
       var p1 = document.getElementById('newPassword');
       var p2 = document.getElementById('confirmPassword');
