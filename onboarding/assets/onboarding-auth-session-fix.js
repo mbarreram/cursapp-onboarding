@@ -4,12 +4,13 @@
   window.__MICURSOX_ONBOARDING_AUTH_SESSION_FIX__ = true;
 
   const AUTH_SESSION_KEY='cursapp_supabase_auth_session_v1';
+  const SDK_STORAGE_KEY='cursapp_supabase_oauth_v1';
   const originalFetch=window.fetch.bind(window);
 
   function isAuthSessionUrl(input){
     try{
       const url=typeof input==='string'?input:(input&&input.url)||'';
-      return /\/auth\/v1\/(signup|token\?grant_type=password)/i.test(String(url));
+      return /\/auth\/v1\/(signup|token\?grant_type=(password|refresh_token))/i.test(String(url));
     }catch(_){return false;}
   }
 
@@ -24,6 +25,8 @@
         user:payload.user||null
       };
       localStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session));
+      // Evita que el cliente SDK conserve una sesión anterior/expirada con prioridad.
+      try{localStorage.removeItem(SDK_STORAGE_KEY);}catch(_){ }
       try{sessionStorage.setItem(AUTH_SESSION_KEY,JSON.stringify(session));}catch(_){ }
     }catch(_){ }
   }
