@@ -35,6 +35,28 @@
     }
     return data;
   }
+  async function sendPasswordChangedEmail(accessToken){
+    try{
+      if(!accessToken || !window.CURSAPP_SUPABASE) return false;
+      var response = await fetch(window.CURSAPP_SUPABASE.url + '/functions/v1/password-changed-email', {
+        method:'POST',
+        headers:{
+          apikey: window.CURSAPP_SUPABASE.publishableKey,
+          Authorization:'Bearer ' + accessToken,
+          'Content-Type':'application/json'
+        },
+        body:'{}'
+      });
+      if(!response.ok){
+        try{ console.warn('[MiCursoX] password changed email failed', await response.text()); }catch(_){ }
+        return false;
+      }
+      return true;
+    }catch(error){
+      try{ console.warn('[MiCursoX] password changed email error', error); }catch(_){ }
+      return false;
+    }
+  }
   async function updatePasswordSecure(event){
     var target = event.target && event.target.closest ? event.target.closest('#pfPasswordSave') : null;
     if(!target) return;
@@ -80,6 +102,10 @@
           user:authSession.user || data || null
         }));
       }catch(_){ }
+
+      // El cambio de contraseña ya fue confirmado por Supabase. El correo es
+      // una notificación de seguridad best-effort y nunca revierte el cambio.
+      await sendPasswordChangedEmail(authSession.access_token);
 
       if(qs('#pfCurrentPassword')) qs('#pfCurrentPassword').value = '';
       if(qs('#pfNewPassword')) qs('#pfNewPassword').value = '';
