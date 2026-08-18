@@ -8,7 +8,6 @@
 
   const AUTH_SESSION_KEY = cfg.authSessionKey || 'cursapp_supabase_auth_session_v1';
   const SDK_STORAGE_KEY = cfg.sdkStorageKey || 'cursapp_supabase_oauth_v1';
-  const DRAFT_KEY = 'cursapp_onb_draft_v1';
   const URL = cfg.url;
   const KEY = cfg.publishableKey;
 
@@ -20,7 +19,6 @@
   }
 
   function readSession(){ return readJson(AUTH_SESSION_KEY); }
-  function readDraft(){ return readJson(DRAFT_KEY) || {}; }
 
   function clearStaleAuth(){
     try{ localStorage.removeItem(AUTH_SESSION_KEY); }catch(_){ }
@@ -46,27 +44,6 @@
     return !!exp && exp <= Math.floor(Date.now()/1000) + 30;
   }
 
-  async function passwordReauth(){
-    const draft = readDraft();
-    const email = String(draft.pEmail || draft.email || '').trim().toLowerCase();
-    const password = String(draft.pPass || draft.pass || '');
-    if(!email || !password) return null;
-
-    const res = await fetch(URL + '/auth/v1/token?grant_type=password', {
-      method:'POST',
-      headers:{ apikey:KEY, 'Content-Type':'application/json' },
-      body:JSON.stringify({ email:email, password:password })
-    });
-    const text = await res.text();
-    let data = null;
-    try{ data = text ? JSON.parse(text) : null; }catch(_){ }
-    if(!res.ok || !data || !data.access_token){
-      const msg = (data && (data.msg || data.message || data.error_description || data.error)) || text || 'No se pudo iniciar sesión nuevamente';
-      throw new Error(msg);
-    }
-    return persistSession(data);
-  }
-
   async function refresh(session){
     if(!session || !session.refresh_token) return null;
     const res = await fetch(URL + '/auth/v1/token?grant_type=refresh_token', {
@@ -84,25 +61,23 @@
   async function freshToken(){
     let session = readSession();
 
-    // Si no hay sesión utilizable, reautentica con las credenciales ya validadas
-    // del draft de onboarding. No reutiliza refresh tokens de cuentas borradas.
-    if(!session || !session.access_token){
-      clearStaleAuth();
-      session = await passwordReauth();
-      return session && session.access_token ? String(session.access_token) : '';
-    }
+    // El onboarding realiza lecturas públicas antes de crear/autenticar al usuario
+    // (por ejemplo, validar que el curso aún no exista). Esas lecturas deben poder
+    // continuar con la publishable key, sin forzar un login que todavía no existe.
+    if(!session || !session.access_token) return '';
 
     if(expiredSoon(session)){
       const renewed = await refresh(session);
       if(renewed && renewed.access_token) return String(renewed.access_token);
 
-      // El refresh token puede pertenecer a una cuenta eliminada/recreada.
-      // En ese caso se descarta por completo y se obtiene una sesión nueva por password.
+      // Una sesión antigua (por ejemplo de una cuenta eliminada) no debe bloquear
+      // el onboarding. Se elimina y la siguiente fase de signup/password creará
+      // y persistirá una sesión nueva mediante onboarding-auth-session-fix.js.
       clearStaleAuth();
-      session = await passwordReauth();
+      return '';
     }
 
-    return session && session.access_token ? String(session.access_token) : '';
+    return String(session.access_token || '');
   }
 
   async function request(path, options){
