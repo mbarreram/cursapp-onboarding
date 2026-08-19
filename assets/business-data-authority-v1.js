@@ -41,20 +41,28 @@
       const jobs = [];
 
       try {
+        // Hidratador operacional canónico: campañas, pagos y contexto desde BD.
+        if(window.CURSAPP?.hydrateOperationalFromSupabase){
+          jobs.push(Promise.resolve(window.CURSAPP.hydrateOperationalFromSupabase(reason || 'role-authority')));
+        }
+
+        // Apoderado mantiene su adaptador de forma visual, siempre leyendo BD.
         if(currentRole === 'apoderado' && window.CURSAPP_APODERADO_FINANCE?.hydrate){
           jobs.push(Promise.resolve(window.CURSAPP_APODERADO_FINANCE.hydrate()));
         }
 
+        // Contexto/campañas legacy se rehidrata desde BD para la directiva.
         if((currentRole === 'presidente' || currentRole === 'tesorero') && window.CURSAPP?.hydrateSupabase){
           jobs.push(Promise.resolve(window.CURSAPP.hydrateSupabase()));
         }
 
-        // Pagos pendientes, conciliaciones y estados se reconstruyen desde BD.
-        if(window.CURSAPP_PAYMENTS_V11?.refresh){
+        // Sólo Presidente puede crear pagos faltantes por RLS. Tesorero y
+        // Apoderado únicamente consumen la hidratación operacional canónica.
+        if(currentRole === 'presidente' && window.CURSAPP_PAYMENTS_V11?.refresh){
           jobs.push(Promise.resolve(window.CURSAPP_PAYMENTS_V11.refresh(reason || 'role-authority')));
         }
 
-        // Rendiciones, cuenta e informes de directiva: Supabase -> caché visual.
+        // Rendiciones, cuenta e informes de directiva: BD -> caché visual.
         if((currentRole === 'presidente' || currentRole === 'tesorero') && window.CURSAPP_TREASURY?.hydrate){
           jobs.push(Promise.resolve(window.CURSAPP_TREASURY.hydrate()));
         }
