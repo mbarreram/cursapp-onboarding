@@ -16,7 +16,7 @@
     if(r==='tesorero') return [['🏠','Inicio','/tesorero.html#home'],['💳','Conciliar pagos','/tesorero.html#conciliacion'],['🧾','Rendiciones','/tesorero.html#rendiciones'],['📊','Informes','/tesorero.html#informes'],['💰','Retiros / Recaudado','/tesorero.html#retiros']];
     return [['🏠','Inicio','/apoderado.html#home'],['💳','Pagos','/apoderado.html#payments'],['📄','Informes','/apoderado.html#informes'],['🏪','Mercado Escolar','/mercado-escolar/mercado-escolar.html']];
   }
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]})}
   function css(){
     if(document.getElementById('mxUnifiedMenuCss'))return;
     var s=document.createElement('style');s.id='mxUnifiedMenuCss';s.textContent=`
@@ -29,6 +29,18 @@
     `;document.head.appendChild(s);
   }
   function close(){document.getElementById('mxUnifiedRoleMenu')?.remove();document.getElementById('menuBtn')?.setAttribute('aria-expanded','false')}
+  function waitForApi(getter,method,tries){
+    tries=tries||0;
+    var api=getter();
+    if(api&&typeof api[method]==='function'){api[method]();return}
+    if(tries<20){setTimeout(function(){waitForApi(getter,method,tries+1)},100);return}
+    alert('La opción todavía se está cargando. Intenta nuevamente.');
+  }
+  function route(href){
+    var m=href.match(/^\/(apoderado|presidente|tesorero)\.html#(.+)$/);
+    if(m){try{sessionStorage.setItem('micursox_pending_tab',m[2])}catch(_){ }}
+    location.href=href;
+  }
   function open(){
     close();css();var r=role(),root=document.createElement('div');root.id='mxUnifiedRoleMenu';root.className='mxUnifiedMenuBackdrop';
     var body=items(r).map(function(x){return'<button class="mxUnifiedMenuItem" type="button" data-href="'+esc(x[2])+'"><span>'+x[0]+'</span><span>'+esc(x[1])+'</span></button>'}).join('');
@@ -37,11 +49,16 @@
     root.addEventListener('click',function(e){
       if(e.target===root){close();return}
       var b=e.target.closest('button');if(!b)return;
-      if(b.dataset.href){close();location.href=b.dataset.href;return}
-      var a=b.dataset.action;
-      if(a==='notifications'){close();window.CURSAPP_NOTIFICATIONS?.open?.();return}
-      if(a==='privacy'){close();var c=window.CURSAPP_USER_CONSENTS||window.CURSAPP_CONSENT;c?.open?.();c?.openSummary?.();return}
-      if(a==='preferences'){close();window.CURSAPP_NOTIFICATION_PREFERENCES?.open?.();return}
+      if(b.dataset.href){var href=b.dataset.href;close();route(href);return}
+      var a=b.dataset.action;close();
+      if(a==='notifications'){waitForApi(function(){return window.CURSAPP_NOTIFICATIONS},'open');return}
+      if(a==='privacy'){
+        var api=window.CURSAPP_USER_CONSENTS||window.CURSAPP_CONSENT;
+        if(api&&typeof api.open==='function'){api.open();return}
+        if(api&&typeof api.openSummary==='function'){api.openSummary();return}
+        waitForApi(function(){return window.CURSAPP_USER_CONSENTS||window.CURSAPP_CONSENT},'open');return
+      }
+      if(a==='preferences'){waitForApi(function(){return window.CURSAPP_NOTIFICATION_PREFERENCES},'open');return}
       if(a==='logout'){try{localStorage.removeItem('cursapp_session_v1');localStorage.removeItem('cursapp_active_profile_v1');localStorage.removeItem('cursapp_active_role_v1')}catch(_){ }location.href='/index.html'}
     });
   }
