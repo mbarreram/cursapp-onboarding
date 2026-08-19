@@ -2,13 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const entrypoints = [
+const guardedEntrypoints = [
   'login.html',
   'onboarding/dashboard.html',
   'apoderado.html',
   'presidente.html',
   'tesorero.html',
-  'perfil.html'
+  'perfil.html',
+  'pay.html',
+  'pay_result.html'
 ];
 const requiredScript = '/assets/user-facing-copy-production-v1.js?v=1';
 const forbiddenInEntrypoints = [
@@ -23,7 +25,7 @@ const forbiddenInEntrypoints = [
 ];
 
 const errors = [];
-for (const rel of entrypoints) {
+for (const rel of guardedEntrypoints) {
   const file = path.join(ROOT, rel);
   if (!fs.existsSync(file)) {
     errors.push(`${rel}: archivo no encontrado`);
@@ -40,9 +42,16 @@ for (const rel of entrypoints) {
 const login = fs.readFileSync(path.join(ROOT,'login.html'),'utf8');
 if (!login.includes('/legal.html#terminos')) errors.push('login.html: términos legales no apuntan a la página legal');
 if (!login.includes('/legal.html#privacidad')) errors.push('login.html: privacidad no apunta a la página legal');
+if (/Apple disponible|pr[oó]xima integraci[oó]n/i.test(login)) errors.push('login.html: no debe mostrar integraciones no disponibles');
 
 const onboarding = fs.readFileSync(path.join(ROOT,'onboarding/dashboard.html'),'utf8');
 if (!/No pudimos continuar/.test(onboarding)) errors.push('onboarding/dashboard.html: falta mensaje de error productivo');
+if (/Error JS:/i.test(onboarding)) errors.push('onboarding/dashboard.html: expone diagnóstico técnico');
+
+for (const rel of ['registro-apoderado.html','registro-presidente.html']) {
+  const html = fs.readFileSync(path.join(ROOT,rel),'utf8');
+  if (!/<title>[^<]*MiCursoX/i.test(html)) errors.push(`${rel}: branding anterior en título`);
+}
 
 const copyFile = path.join(ROOT, 'assets/user-facing-copy-production-v1.js');
 if (!fs.existsSync(copyFile)) errors.push('Falta user-facing-copy-production-v1.js');
@@ -50,7 +59,7 @@ else {
   const copy = fs.readFileSync(copyFile, 'utf8');
   if (!/DEMO_MODE\s*=\s*false/.test(copy)) errors.push('La capa productiva no fuerza DEMO_MODE=false');
   if (!/searchParams\.delete\(key\)/.test(copy)) errors.push('La capa productiva no elimina flags debug/demo de URL');
-  for (const token of ['Supabase Auth','RLS/DELETE','UUID','localStorage','(demo)']) {
+  for (const token of ['Supabase Auth','RLS/DELETE','UUID','localStorage','(demo)','En celular no existe F12','permission denied']) {
     if (!copy.includes(token)) errors.push(`La capa productiva no contempla sanitización de ${token}`);
   }
 }
@@ -62,4 +71,4 @@ if (errors.length) {
 }
 
 console.log('MiCursoX · Production Core Audit: OK');
-console.log(`Entry points validados: ${entrypoints.join(', ')}`);
+console.log(`Entry points validados: ${guardedEntrypoints.join(', ')}`);
