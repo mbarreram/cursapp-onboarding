@@ -23,9 +23,9 @@
       .mxPrivacyLaw{background:linear-gradient(135deg,#f5f3ff,#eef2ff);border:1px solid #ddd6fe;border-radius:18px;padding:14px;margin-top:12px;color:#475569;font-size:13px;font-weight:700;line-height:1.45}.mxPrivacyLaw b{color:#312e81}
       .mxPrivacyRightsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.mxPrivacyRight{border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:12px;text-align:left;color:#0f172a;font-weight:900}.mxPrivacyRight small{display:block;color:#64748b;font-weight:700;line-height:1.35;margin-top:4px}.mxPrivacyRight:hover{border-color:#c4b5fd;background:#faf5ff}
       .mxPrivacyForm{margin-top:14px;border-top:1px solid #eef2f7;padding-top:14px}.mxPrivacyForm h4{margin:0 0 5px}.mxPrivacyForm p{margin:0 0 10px;color:#64748b;font-size:13px;font-weight:700}.mxPrivacyForm textarea{width:100%;box-sizing:border-box;min-height:92px;border:1px solid #dbe3ec;border-radius:14px;padding:11px;font:inherit;resize:vertical}.mxPrivacyFormActions{display:flex;justify-content:flex-end;gap:8px;margin-top:9px}.mxPrivacyFormActions button{border:0;border-radius:12px;padding:10px 13px;font-weight:900}.mxPrivacyCancel{background:#f1f5f9;color:#475569}.mxPrivacySend{background:#6d28d9;color:#fff}.mxPrivacySend:disabled{opacity:.55}
-      .mxPrivacyHistory{margin-top:15px;border-top:1px solid #eef2f7;padding-top:13px}.mxPrivacyHistory h4{margin:0 0 9px}.mxPrivacyReq{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px 0;border-bottom:1px solid #f1f5f9}.mxPrivacyReq:last-child{border-bottom:0}.mxPrivacyReq b,.mxPrivacyReq small{display:block}.mxPrivacyReq small{color:#64748b;margin-top:3px}.mxPrivacyStatus{align-self:start;border-radius:999px;background:#eef2ff;color:#4338ca;padding:6px 9px;font-size:11px;font-weight:900}.mxPrivacyStatus.done{background:#dcfce7;color:#166534}.mxPrivacyStatus.bad{background:#fee2e2;color:#991b1b}.mxPrivacyEmpty{color:#64748b;font-size:13px;font-weight:700}
+      .mxPrivacyHistory{margin-top:18px;border-top:1px solid #eef2f7;padding-top:14px}.mxPrivacyHistory h4{margin:0 0 10px}.mxPrivacyReq{border:1px solid #e2e8f0;border-radius:18px;background:#fff;padding:14px;margin-bottom:12px;box-shadow:0 4px 16px rgba(15,23,42,.035)}.mxPrivacyReq:last-child{margin-bottom:0}.mxPrivacyReqHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.mxPrivacyReqTitle{font-weight:950;color:#0f172a;font-size:15px}.mxPrivacyReqMeta{color:#64748b;font-size:12px;font-weight:750;margin-top:3px}.mxPrivacyStatus{flex:0 0 auto;border-radius:999px;background:#eef2ff;color:#4338ca;padding:6px 9px;font-size:11px;font-weight:900}.mxPrivacyStatus.done{background:#dcfce7;color:#166534}.mxPrivacyStatus.bad{background:#fee2e2;color:#991b1b}.mxPrivacyOriginal{margin-top:11px;padding:10px 12px;border-radius:13px;background:#f8fafc;color:#475569;font-size:13px;line-height:1.45}.mxPrivacyOriginal b{display:block;color:#334155;margin-bottom:3px}.mxPrivacyThread{margin-top:12px;padding-top:11px;border-top:1px solid #eef2f7}.mxPrivacyThreadTitle{font-size:12px;font-weight:950;color:#475569;margin-bottom:8px}.mxPrivacyMsg{position:relative;margin-left:9px;padding:0 0 12px 18px;border-left:2px solid #ddd6fe}.mxPrivacyMsg:last-child{padding-bottom:0}.mxPrivacyMsg:before{content:'';position:absolute;left:-5px;top:4px;width:8px;height:8px;border-radius:50%;background:#7c3aed}.mxPrivacyMsgCard{background:#faf5ff;border:1px solid #ede9fe;border-radius:14px;padding:11px 12px}.mxPrivacyMsgLabel{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:950;color:#5b21b6}.mxPrivacyMsgText{margin-top:6px;color:#334155;font-size:13px;line-height:1.5;white-space:pre-wrap}.mxPrivacyNoReply{margin-top:10px;color:#64748b;font-size:12px;font-weight:750}.mxPrivacyEmpty{color:#64748b;font-size:13px;font-weight:700}
       .mxPrivacyMinor{margin-top:12px;padding:13px;border-radius:16px;background:#f8fafc;color:#475569;font-size:13px;font-weight:700;line-height:1.45}.mxPrivacyMinor b{color:#0f172a}
-      @media(max-width:560px){.mxPrivacyRightsGrid{grid-template-columns:1fr}}
+      @media(max-width:560px){.mxPrivacyRightsGrid{grid-template-columns:1fr}.mxPrivacyReq{padding:12px}.mxPrivacyReqHead{align-items:center}.mxPrivacyMsgLabel{align-items:flex-start;flex-direction:column;gap:2px}}
     `;document.head.appendChild(s);
   }
 
@@ -36,17 +36,23 @@
 
   async function rows(){
     const user=await currentUser();
-    const data=await sb.request(`privacy_rights_requests?user_id=eq.${encodeURIComponent(user.id)}&select=id,request_type,detail,status,created_at,resolved_at,response_note&order=created_at.desc&limit=20`);
-    return Array.isArray(data)?data:[];
+    const reqs=await sb.request(`privacy_rights_requests?user_id=eq.${encodeURIComponent(user.id)}&select=id,request_type,detail,status,created_at,resolved_at,response_note&order=created_at.desc&limit=20`);
+    const msgs=await sb.request(`privacy_case_messages?user_id=eq.${encodeURIComponent(user.id)}&select=id,privacy_request_id,sender_type,message,created_at&order=created_at.asc&limit=200`);
+    const byReq={};
+    (Array.isArray(msgs)?msgs:[]).forEach(m=>{if(!m.privacy_request_id)return;(byReq[m.privacy_request_id]||(byReq[m.privacy_request_id]=[])).push(m);});
+    return (Array.isArray(reqs)?reqs:[]).map(r=>({...r,messages:byReq[r.id]||[]}));
   }
 
   function historyHtml(list){
     if(!list.length) return '<div class="mxPrivacyEmpty">Aún no tienes solicitudes de privacidad registradas.</div>';
     return list.map(r=>{
-      const type=TYPES[r.request_type]||{label:r.request_type||'Solicitud'};
+      const type=TYPES[r.request_type]||{label:r.request_type||'Solicitud',icon:'🛡️'};
       const st=STATUS[r.status]||r.status||'Recibida';
       const cls=r.status==='completed'?'done':r.status==='rejected'?'bad':'';
-      return `<article class="mxPrivacyReq"><div><b>${esc(type.label)}</b><small>${esc(fmt(r.created_at))}${r.response_note?` · ${esc(r.response_note)}`:''}</small></div><span class="mxPrivacyStatus ${cls}">${esc(st)}</span></article>`;
+      let messages=Array.isArray(r.messages)?r.messages.slice():[];
+      if(!messages.length && r.response_note) messages=[{id:'legacy',sender_type:'admin',message:r.response_note,created_at:r.resolved_at||r.created_at}];
+      const thread=messages.length?`<div class="mxPrivacyThread"><div class="mxPrivacyThreadTitle">Historial de respuestas</div>${messages.map(m=>`<div class="mxPrivacyMsg"><div class="mxPrivacyMsgCard"><div class="mxPrivacyMsgLabel"><span>MiCursoX · Privacidad</span><span>${esc(fmt(m.created_at))}</span></div><div class="mxPrivacyMsgText">${esc(m.message)}</div></div></div>`).join('')}</div>`:`<div class="mxPrivacyNoReply">Todavía no hay una respuesta de MiCursoX. Podrás verla aquí cuando el caso sea atendido.</div>`;
+      return `<article class="mxPrivacyReq"><div class="mxPrivacyReqHead"><div><div class="mxPrivacyReqTitle">${esc(type.icon+' '+type.label)}</div><div class="mxPrivacyReqMeta">Solicitud ingresada ${esc(fmt(r.created_at))}</div></div><span class="mxPrivacyStatus ${cls}">${esc(st)}</span></div>${r.detail?`<div class="mxPrivacyOriginal"><b>Tu solicitud</b>${esc(r.detail)}</div>`:''}${thread}</article>`;
     }).join('');
   }
 
@@ -77,7 +83,7 @@
     try{
       const user=await currentUser();
       await sb.request('privacy_rights_requests',{method:'POST',body:JSON.stringify({user_id:user.id,request_type:type,detail:detail||null,status:'received',source:'profile'})});
-      slot.innerHTML='<div class="mxPrivacyLaw"><b>Solicitud registrada.</b> Puedes seguir su estado en el historial de esta misma sección.</div>';
+      slot.innerHTML='<div class="mxPrivacyLaw"><b>Solicitud registrada.</b> Puedes seguir su estado y las respuestas de MiCursoX en el historial de esta misma sección.</div>';
       delete slot.dataset.type;
       await refresh(host);
     }catch(e){
@@ -90,7 +96,7 @@
     const body=document.querySelector('#mxConsentOverlay .mxConsentBody');
     if(!body||body.querySelector('[data-mx-privacy-rights]')) return;
     const card=document.createElement('section');card.className='mxConsentCard';card.setAttribute('data-mx-privacy-rights','1');
-    card.innerHTML=`<h3 style="margin:0">Tus derechos sobre tus datos</h3><p style="margin:6px 0 0;color:#64748b;font-weight:700;line-height:1.45">Puedes ejercer solicitudes sobre tus datos personales directamente desde MiCursoX.</p><div class="mxPrivacyLaw"><b>Protección de datos en Chile.</b> MiCursoX considera la Ley 19.628 y se está adecuando a la Ley 21.719, cuya entrada en vigencia es el 1 de diciembre de 2026. Las solicitudes quedan registradas para su revisión y trazabilidad.</div><div class="mxPrivacyMinor"><b>Datos de niños, niñas y adolescentes.</b> La información asociada al alumno requiere protección reforzada y debe usarse únicamente para finalidades legítimas relacionadas con la gestión del curso y el servicio.</div><div class="mxPrivacyRightsGrid">${Object.entries(TYPES).map(([k,v])=>`<button type="button" class="mxPrivacyRight" data-privacy-type="${k}">${v.icon} ${esc(v.label)}<small>${esc(v.help)}</small></button>`).join('')}</div><div data-privacy-form></div><div class="mxPrivacyHistory"><h4>Mis solicitudes</h4><div data-privacy-history></div></div>`;
+    card.innerHTML=`<h3 style="margin:0">Tus derechos sobre tus datos</h3><p style="margin:6px 0 0;color:#64748b;font-weight:700;line-height:1.45">Puedes ejercer solicitudes sobre tus datos personales directamente desde MiCursoX.</p><div class="mxPrivacyLaw"><b>Protección de datos en Chile.</b> MiCursoX considera la Ley 19.628 y se está adecuando a la Ley 21.719, cuya entrada en vigencia es el 1 de diciembre de 2026. Las solicitudes y respuestas quedan registradas para su revisión y trazabilidad.</div><div class="mxPrivacyMinor"><b>Datos de niños, niñas y adolescentes.</b> La información asociada al alumno requiere protección reforzada y debe usarse únicamente para finalidades legítimas relacionadas con la gestión del curso y el servicio.</div><div class="mxPrivacyRightsGrid">${Object.entries(TYPES).map(([k,v])=>`<button type="button" class="mxPrivacyRight" data-privacy-type="${k}">${v.icon} ${esc(v.label)}<small>${esc(v.help)}</small></button>`).join('')}</div><div data-privacy-form></div><div class="mxPrivacyHistory"><h4>Mis solicitudes e historial</h4><div data-privacy-history></div></div>`;
     body.appendChild(card);
     card.querySelectorAll('[data-privacy-type]').forEach(b=>b.addEventListener('click',()=>openForm(card,b.dataset.privacyType)));
     refresh(card);
