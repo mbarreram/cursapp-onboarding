@@ -65,11 +65,13 @@
       });
     })();
 
-    window.onerror = function(msg, src, line){
-      document.getElementById("app").innerHTML =
-        '<div class="card"><b>Error JS:</b><div class="debugCard">' +
-        String(msg) + '<br>' + String(src) + ':' + String(line) +
-        '</div></div>';
+    window.onerror = function(msg, src, line, col, err){
+      try{ console.error('[MiCursoX onboarding]', msg, src, line, col, err); }catch(_){ }
+      const app = document.getElementById("app");
+      if(app){
+        app.innerHTML = '<div class="card"><b>No pudimos continuar</b><div class="muted" style="margin-top:8px">Ocurrió un problema al cargar esta etapa. Intenta nuevamente. Si continúa, vuelve al inicio e inicia el proceso otra vez.</div><div style="margin-top:14px"><button class="btn primary" type="button" onclick="location.reload()">Reintentar</button></div></div>';
+      }
+      return true;
     };
   </script>
 
@@ -96,5 +98,6 @@
   <script defer src="/onboarding/assets/onboarding-school-state-fix.js?v=2026080302"></script>
   <script defer src="/onboarding/assets/onboarding-final-summary-fix.js?v=2026080302"></script>
   <script defer src="/assets/cursapp-platform.js?v=553"></script>
+  <script defer src="/assets/user-facing-copy-production-v1.js?v=1"></script>
 </body>
 </html>
