@@ -3,7 +3,7 @@
   const sb=window.CURSAPP_SUPABASE;
   if(!sb||typeof sb.request!=='function'||typeof sb.getCurrentUser!=='function')return;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const role=()=>{const p=location.pathname.toLowerCase();if(p.includes('presidente'))return'presidente';if(p.includes('tesorero'))return'tesorero';return'apoderado'};
+  const role=()=>{const p=location.pathname.toLowerCase();if(p.includes('presidente'))return'presidente';if(p.includes('tesorero'))return'tesorero';try{const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}')||{};const r=String(localStorage.getItem('cursapp_active_role_v1')||s.currentRole||s.activeRole||s.role||'apoderado').toLowerCase();if(r.includes('pres'))return'presidente';if(r.includes('tesor'))return'tesorero'}catch(_){ }return'apoderado'};
   const isStandalone=()=>!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||!!navigator.standalone;
   const support=()=>({notification:'Notification'in window,sw:'serviceWorker'in navigator,push:'PushManager'in window,permission:'Notification'in window?Notification.permission:'unsupported',ios:/iphone|ipad|ipod/i.test(navigator.userAgent),standalone:isStandalone()});
   const b64=v=>{const pad='='.repeat((4-v.length%4)%4),raw=atob((v+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...raw].map(x=>x.charCodeAt(0)))};
