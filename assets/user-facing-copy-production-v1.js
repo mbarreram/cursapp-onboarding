@@ -64,7 +64,8 @@
       .replace(/\bRLS\/DELETE\b/gi, 'permisos de seguridad')
       .replace(/\bUUID\b/gi, 'identificador')
       .replace(/\blegacy\b/gi, 'anterior')
-      .replace(/\blocalStorage\b/gi, 'datos del dispositivo');
+      .replace(/\blocalStorage\b/gi, 'datos del dispositivo')
+      .replace(/\bCursapp\b/g, 'MiCursoX');
   }
 
   function sanitizeTextNode(node){
