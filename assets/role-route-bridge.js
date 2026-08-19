@@ -9,21 +9,43 @@
     try{return String(sessionStorage.getItem('micursox_pending_tab')||'').trim()}catch(_){return''}
   }
   function clearPending(){try{sessionStorage.removeItem('micursox_pending_tab')}catch(_){ }}
-  function tryOpen(){
-    var tab=requestedTab();if(!tab)return true;
+  function normalize(tab){
     var aliases={inicio:'home',pagos:'payments',reportes:'informes',conciliar:'conciliacion'};
-    tab=aliases[tab]||tab;
-    var direct=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
-    if(direct){direct.click();clearPending();try{history.replaceState(null,'',location.pathname+location.search)}catch(_){ }return true}
+    return aliases[String(tab||'').trim()]||String(tab||'').trim();
+  }
+  function clickTab(tab){
+    tab=normalize(tab);if(!tab)return false;
     if(tab==='retiros'){
-      var funds=document.querySelector('[data-mx-funds="1"]');if(funds){funds.click();clearPending();try{history.replaceState(null,'',location.pathname+location.search)}catch(_){ }return true}
+      var funds=document.querySelector('[data-mx-funds="1"]');
+      if(funds){funds.click();return true}
     }
+    var direct=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
+    if(direct){direct.click();return true}
     if(typeof window.go==='function'){
-      try{window.go(tab);clearPending();try{history.replaceState(null,'',location.pathname+location.search)}catch(_){ }return true}catch(_){ }
+      try{window.go(tab);return true}catch(_){ }
     }
     return false;
   }
-  var tries=0,timer=setInterval(function(){if(tryOpen()||++tries>30)clearInterval(timer)},120);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',tryOpen,{once:true});else setTimeout(tryOpen,0);
-  window.addEventListener('hashchange',tryOpen);
+  function cleanup(){
+    clearPending();
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(_){ }
+  }
+  function tryOpen(){
+    var tab=requestedTab();if(!tab)return true;
+    if(clickTab(tab)){setTimeout(cleanup,80);return true}
+    return false;
+  }
+  function start(){
+    var tries=0;
+    function attempt(){
+      if(tryOpen())return;
+      if(++tries<40)setTimeout(attempt,150);
+    }
+    // Los módulos de rol terminan de enlazar navegación después de DOMContentLoaded.
+    // Esperar evita que un click prematuro se pierda y la pantalla quede en Inicio.
+    setTimeout(attempt,320);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  window.addEventListener('hashchange',function(){setTimeout(tryOpen,120)});
+  window.MICURSOX_ROLE_ROUTE={openTab:function(tab){return clickTab(tab)}};
 })();
