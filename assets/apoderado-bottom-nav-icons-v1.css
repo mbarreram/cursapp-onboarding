@@ -1,0 +1,65 @@
+/* MiCursoX · Apoderado bottom nav icon parity
+   Ajuste visual aislado: no modifica navegación ni lógica. */
+@media (max-width:1023px){
+  body.cursapp-apoderado .bottomNav .apoderado-bottom-nav-item,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .apoderado-bottom-nav-item{
+    gap:5px!important;
+  }
+
+  body.cursapp-apoderado .bottomNav .nav-icon,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .nav-icon{
+    width:27px!important;
+    height:27px!important;
+    min-width:27px!important;
+    min-height:27px!important;
+    max-width:27px!important;
+    max-height:27px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex:0 0 27px!important;
+    margin:0!important;
+    padding:0!important;
+    line-height:1!important;
+  }
+
+  body.cursapp-apoderado .bottomNav .nav-icon svg,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .nav-icon svg{
+    width:25px!important;
+    height:25px!important;
+    min-width:25px!important;
+    min-height:25px!important;
+    max-width:25px!important;
+    max-height:25px!important;
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    fill:none!important;
+    stroke:currentColor!important;
+    stroke-width:2!important;
+    stroke-linecap:round!important;
+    stroke-linejoin:round!important;
+    vector-effect:non-scaling-stroke!important;
+    transform:none!important;
+  }
+
+  body.cursapp-apoderado .bottomNav .nav-label,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .nav-label,
+  body.cursapp-apoderado .bottomNav .apoderado-bottom-nav-item > span:last-child,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .apoderado-bottom-nav-item > span:last-child{
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    font-size:11px!important;
+    font-weight:850!important;
+    line-height:1.05!important;
+    text-align:center!important;
+    letter-spacing:-.01em!important;
+  }
+
+  body.cursapp-apoderado .bottomNav #marketBottomTab .nav-label,
+  body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .marketBottomTab .nav-label{
+    max-width:68px!important;
+  }
+}
