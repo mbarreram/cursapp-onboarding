@@ -9,6 +9,7 @@
 
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function fmt(v){ try{return v?new Date(v).toLocaleString('es-CL',{dateStyle:'medium',timeStyle:'short'}):'Sin registro de fecha';}catch(_){return v||'Sin registro de fecha';} }
+  function versionLabel(v){const x=String(v||'');return x==='historic-v1'?'Registro histórico':(x||'Sin versión registrada');}
   function injectCss(){
     if(document.getElementById('mxConsentCss')) return;
     const s=document.createElement('style');s.id='mxConsentCss';s.textContent=`
@@ -17,7 +18,7 @@
       .mxConsentHead{position:sticky;top:0;z-index:2;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);padding:22px 22px 17px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:14px;align-items:start}.mxConsentHead h2{margin:0;font-size:25px;color:#0f172a}.mxConsentHead p{margin:6px 0 0;color:#64748b;font-weight:700;line-height:1.4}.mxConsentClose{border:1px solid #e5e7eb;background:#fff;width:42px;height:42px;border-radius:14px;font-size:25px;font-weight:900;color:#334155}
       .mxConsentBody{padding:18px;display:grid;gap:14px}.mxConsentCard{background:#fff;border:1px solid #e5e7eb;border-radius:22px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.04)}.mxConsentTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.mxConsentTitle{display:flex;gap:12px;align-items:flex-start}.mxConsentIcon{width:44px;height:44px;border-radius:14px;background:#ede9fe;color:#6d28d9;display:grid;place-items:center;font-size:21px;flex:0 0 auto}.mxConsentTitle h3{margin:1px 0 4px;font-size:18px;color:#0f172a}.mxConsentTitle p{margin:0;color:#64748b;font-size:13px;font-weight:700}.mxConsentBadge{background:#dcfce7;color:#166534;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;white-space:nowrap}.mxConsentBadge.pending{background:#f1f5f9;color:#64748b}
       .mxConsentList{margin:14px 0 0;padding-left:22px;color:#334155;display:grid;gap:8px;font-size:14px;font-weight:700;line-height:1.4}.mxConsentMeta{margin-top:15px;padding-top:13px;border-top:1px solid #eef2f7;display:flex;gap:8px;flex-wrap:wrap;color:#64748b;font-size:12px;font-weight:800}.mxConsentActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.mxConsentBtn{border:0;border-radius:13px;padding:11px 14px;font-weight:900;background:#6d28d9;color:#fff;text-decoration:none}.mxConsentBtn.ghost{background:#f8fafc;color:#6d28d9;border:1px solid #ddd6fe}
-      .mxConsentControls h3{margin:0 0 8px;font-size:17px}.mxConsentControls p{margin:0;color:#64748b;font-weight:700;line-height:1.45}.mxConsentControlGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.mxConsentControl{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:13px;text-align:left;font-weight:900;color:#0f172a}.mxConsentControl small{display:block;margin-top:4px;color:#64748b;font-weight:700}
+      .mxConsentControls h3{margin:0 0 8px;font-size:17px}.mxConsentControls p{margin:0;color:#64748b;font-weight:700;line-height:1.45}.mxConsentControlGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.mxConsentControl{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:13px;text-align:left;font-weight:900;color:#0f172a}.mxConsentControl small{display:block;margin-top:4px;color:#64748b;font-weight:700}.mxConsentNote{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:16px;padding:12px 14px;font-size:12px;font-weight:800;line-height:1.4}
       @media(min-width:761px){.mxConsentOverlay{align-items:center;padding:20px}.mxConsentSheet{border-radius:28px;max-height:88vh}.mxConsentBody{padding:22px}}
       @media(max-width:560px){.mxConsentControlGrid{grid-template-columns:1fr}.mxConsentTop{align-items:flex-start}.mxConsentBadge{font-size:11px;padding:7px 9px}}
     `;document.head.appendChild(s);
@@ -29,7 +30,7 @@
     return {user,row:Array.isArray(rows)?rows[0]:null};
   }
   function card(title,icon,accepted,meta,items,url){
-    return `<section class="mxConsentCard"><div class="mxConsentTop"><div class="mxConsentTitle"><span class="mxConsentIcon">${icon}</span><div><h3>${esc(title)}</h3><p>${accepted?'Autorización entregada durante el registro':'No encontramos una aceptación registrada'}</p></div></div><span class="mxConsentBadge ${accepted?'':'pending'}">${accepted?'✓ Aceptado':'Sin registro'}</span></div><ul class="mxConsentList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mxConsentMeta"><span>${esc(meta.date)}</span><span>·</span><span>Versión: ${esc(meta.version)}</span></div><div class="mxConsentActions"><a class="mxConsentBtn ghost" href="${url}" target="_blank" rel="noopener">Ver documento completo</a></div></section>`;
+    return `<section class="mxConsentCard"><div class="mxConsentTop"><div class="mxConsentTitle"><span class="mxConsentIcon">${icon}</span><div><h3>${esc(title)}</h3><p>${accepted?'Autorización entregada durante el registro':'No encontramos una aceptación registrada'}</p></div></div><span class="mxConsentBadge ${accepted?'':'pending'}">${accepted?'✓ Aceptado':'Sin registro'}</span></div><ul class="mxConsentList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mxConsentMeta"><span>${esc(meta.date)}</span><span>·</span><span>${esc(meta.version)}</span></div><div class="mxConsentActions"><a class="mxConsentBtn ghost" href="${url}" target="_blank" rel="noopener">Ver documento completo</a></div></section>`;
   }
   async function open(){
     injectCss();document.getElementById('mxConsentOverlay')?.remove();
@@ -40,9 +41,11 @@
     try{
       const {row}=await getConsent();
       const date=fmt(row?.fecha_aceptacion||row?.created_at);
-      const version=String(row?.version||'sin versión registrada');
+      const historical=String(row?.version||'')==='historic-v1';
+      const version=versionLabel(row?.version);
       const terms=!!row?.terminos_aceptados,privacy=!!row?.privacidad_aceptada;
       root.querySelector('.mxConsentBody').innerHTML =
+        (historical?'<div class="mxConsentNote">Registro histórico: para cuentas creadas antes de esta trazabilidad detallada, la fecha corresponde a la creación de la cuenta.</div>':'')+
         card('Términos y Condiciones','📄',terms,{date,version},[
           'Uso de MiCursoX para la gestión y participación en actividades del curso.',
           'Acceso a campañas, cuotas, pagos, comprobantes, avisos e informes según tu rol.',
