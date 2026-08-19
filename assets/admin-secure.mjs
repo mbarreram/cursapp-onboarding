@@ -83,6 +83,7 @@ try {
 
 try {
   await import('/assets/admin-privacy-compliance.mjs?v=1');
+  await import('/assets/admin-privacy-response-tools.mjs?v=1');
 } catch (error) {
   console.error('[Admin] Privacidad y Cumplimiento no cargó:', error);
 }
