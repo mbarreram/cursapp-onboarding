@@ -1,46 +1,46 @@
 /* MiCursoX · Apoderado bottom nav icon parity
-   Ajuste visual aislado: no modifica navegación ni lógica. */
+   Replica la escala visual nativa V40 sin tocar navegación ni lógica. */
 @media (max-width:1023px){
   body.cursapp-apoderado .bottomNav .apoderado-bottom-nav-item,
   body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .apoderado-bottom-nav-item{
-    gap:5px!important;
+    gap:4px!important;
   }
 
   body.cursapp-apoderado .bottomNav .nav-icon,
   body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .nav-icon{
-    width:27px!important;
-    height:27px!important;
-    min-width:27px!important;
-    min-height:27px!important;
-    max-width:27px!important;
-    max-height:27px!important;
+    width:22px!important;
+    height:22px!important;
+    min-width:22px!important;
+    min-height:22px!important;
+    max-width:22px!important;
+    max-height:22px!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    flex:0 0 27px!important;
+    flex:0 0 22px!important;
     margin:0!important;
     padding:0!important;
     line-height:1!important;
+    font-size:0!important;
   }
 
   body.cursapp-apoderado .bottomNav .nav-icon svg,
   body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .nav-icon svg{
-    width:25px!important;
-    height:25px!important;
-    min-width:25px!important;
-    min-height:25px!important;
-    max-width:25px!important;
-    max-height:25px!important;
+    width:21px!important;
+    height:21px!important;
+    min-width:21px!important;
+    min-height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
     display:block!important;
     margin:0!important;
     padding:0!important;
     overflow:visible!important;
     fill:none!important;
     stroke:currentColor!important;
-    stroke-width:2!important;
+    stroke-width:2.2!important;
     stroke-linecap:round!important;
     stroke-linejoin:round!important;
-    vector-effect:non-scaling-stroke!important;
     transform:none!important;
   }
 
@@ -49,17 +49,20 @@
   body.cursapp-apoderado .bottomNav .apoderado-bottom-nav-item > span:last-child,
   body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .apoderado-bottom-nav-item > span:last-child{
     display:block!important;
+    width:100%!important;
+    max-width:100%!important;
     margin:0!important;
     padding:0!important;
-    font-size:11px!important;
-    font-weight:850!important;
+    font-size:10px!important;
+    font-weight:800!important;
     line-height:1.05!important;
     text-align:center!important;
-    letter-spacing:-.01em!important;
+    letter-spacing:0!important;
   }
 
   body.cursapp-apoderado .bottomNav #marketBottomTab .nav-label,
   body.cursapp-profile[data-profile-role="apoderado"] .bottomNav .marketBottomTab .nav-label{
-    max-width:68px!important;
+    max-width:64px!important;
+    margin-inline:auto!important;
   }
 }
