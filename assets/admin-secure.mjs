@@ -76,7 +76,7 @@ try {
 }
 
 try {
-  await import('/assets/admin-finance.mjs?v=1');
+  await import('/assets/admin-finance.mjs?v=2');
 } catch (error) {
   console.error('[Admin] Finanzas / Contabilidad no cargó:', error);
 }
