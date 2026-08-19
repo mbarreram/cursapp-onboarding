@@ -43,7 +43,8 @@
     ['No se encontró el perfil autenticado en Supabase.','No pudimos encontrar tu perfil. Vuelve a iniciar sesión.'],
     ['Pago realizado ✅ (demo)','Pago realizado ✅'],
     ['Reset demo presidente. ¿Continuar?','¿Deseas reiniciar estos datos?'],
-    ['Esto eliminará datos demo. ¿Continuar?','¿Deseas eliminar estos datos? Esta acción no se puede deshacer.']
+    ['Esto eliminará datos demo. ¿Continuar?','¿Deseas eliminar estos datos? Esta acción no se puede deshacer.'],
+    ['Los pagos reales aparecerán aquí.','Los pagos registrados aparecerán aquí.']
   ]);
 
   function clean(value){
@@ -76,6 +77,13 @@
   }
   function sanitizeElement(el){
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
+
+    // No mostrar stack traces, instrucciones F12 ni diagnósticos internos al usuario final.
+    if (el.classList?.contains('warnBox') && /En celular no existe F12|ui-monospace|Error en Informe/i.test(el.textContent || '')) {
+      el.innerHTML = '<div style="font-weight:950;">No pudimos cargar el informe</div><div class="muted" style="margin-top:6px;">Ocurrió un problema al preparar esta información. Intenta nuevamente. Si continúa, contacta a soporte.</div>';
+      return;
+    }
+
     ['title','placeholder','aria-label'].forEach(function(attr){
       if (!el.hasAttribute(attr)) return;
       const before = el.getAttribute(attr) || '';
