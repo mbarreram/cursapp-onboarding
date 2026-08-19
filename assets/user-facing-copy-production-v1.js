@@ -3,7 +3,6 @@
   if (window.__MICURSOX_USER_FACING_COPY_PRODUCTION_V1__) return;
   window.__MICURSOX_USER_FACING_COPY_PRODUCTION_V1__ = true;
 
-  // Cierre productivo: nunca activar demo/debug desde los roles de usuario.
   try {
     window.CURSAPP = window.CURSAPP || {};
     window.CURSAPP.DEMO_MODE = false;
@@ -51,6 +50,14 @@
     let text = String(value == null ? '' : value);
     if (!text) return text;
     if (exact.has(text)) return exact.get(text);
+
+    if (/(invalid jwt|jwt expired|missing authorization|auth\.uid|http\s*(401|403))/i.test(text)) {
+      return 'No pudimos validar tu sesión. Vuelve a iniciar sesión.';
+    }
+    if (/(permission denied|row-level security|violates row level security|pgrst\d+|sqlstate|relation\s+.+\s+does not exist|duplicate key|foreign key constraint|apikey|service[_ -]?role|http\s*5\d\d)/i.test(text)) {
+      return 'No pudimos completar la operación. Intenta nuevamente. Si continúa, contacta a soporte.';
+    }
+
     return text
       .replace(/El pago de\s+(.+?)\s+quedó conciliado en Supabase\./gi, 'El pago de $1 quedó registrado correctamente.')
       .replace(/No se pudo guardar la conciliación en Supabase:\s*[\s\S]*/gi, 'No se pudo guardar la conciliación. Intenta nuevamente.')
@@ -78,13 +85,10 @@
   }
   function sanitizeElement(el){
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
-
-    // No mostrar stack traces, instrucciones F12 ni diagnósticos internos al usuario final.
     if (el.classList?.contains('warnBox') && /En celular no existe F12|ui-monospace|Error en Informe/i.test(el.textContent || '')) {
       el.innerHTML = '<div style="font-weight:950;">No pudimos cargar el informe</div><div class="muted" style="margin-top:6px;">Ocurrió un problema al preparar esta información. Intenta nuevamente. Si continúa, contacta a soporte.</div>';
       return;
     }
-
     ['title','placeholder','aria-label'].forEach(function(attr){
       if (!el.hasAttribute(attr)) return;
       const before = el.getAttribute(attr) || '';
