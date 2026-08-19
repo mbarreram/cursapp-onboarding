@@ -18,6 +18,12 @@
   }
   function q(v){return encodeURIComponent(String(v == null ? '' : v));}
 
+  function canonicalSchoolId(row, colegio, current){
+    const courseKey = String(row && row.course_key || '').trim();
+    const first = courseKey ? courseKey.split('|')[0] : '';
+    return String(first || (row && row.colegio_id) || (colegio && colegio.id) || current || '').trim();
+  }
+
   async function resolveSchool(){
     if(pending) return;
     const api = window.CURSAPP_SUPABASE;
@@ -30,7 +36,7 @@
     }
     pending = true;
     try{
-      const rows = await api.request('cursos?invite_code=eq.' + q(invite) + '&select=id,nombre,nivel,letra,anio,jornada,course_key,invite_code,colegios(nombre,region,comuna,rbd)&limit=1', {method:'GET'});
+      const rows = await api.request('cursos?invite_code=eq.' + q(invite) + '&select=id,nombre,nivel,letra,anio,jornada,course_key,colegio_id,invite_code,colegios(id,nombre,region,comuna,rbd)&limit=1', {method:'GET'});
       const row = Array.isArray(rows) ? rows[0] : rows;
       if(!row) return;
       const colegio = row.colegios || {};
@@ -39,8 +45,8 @@
         d.schoolName = schoolName;
         d.regionName = String(colegio.region || d.regionName || '');
         d.comunaName = String(colegio.comuna || d.comunaName || '');
-        d.schoolId = String(colegio.rbd || d.schoolId || '');
       }
+      d.schoolId = canonicalSchoolId(row, colegio, d.schoolId);
       d.level = row.nivel || d.level || '';
       d.letter = row.letra || d.letter || '';
       d.year = row.anio || d.year || '';
@@ -59,10 +65,17 @@
   function paint(d){
     const school = String(d.schoolName || '').trim();
     if(!school || school === 'Colegio') return;
-    const text = [school, String(d.level || '') + String(d.letter || ''), d.year || '', d.jornada || '']
-      .filter(Boolean).join(' · ').replace(' · ' + String(d.year || '') + ' · ', ' ' + String(d.year || '') + ' · ');
+    const course = String(d.level || '') + String(d.letter || '');
+    const text = [school, course + (d.year ? ' ' + d.year : ''), d.jornada || ''].filter(Boolean).join(' · ');
     document.querySelectorAll('.onbCourseBannerText').forEach(function(el){
       if(el.textContent !== text) el.textContent = text;
+    });
+
+    document.querySelectorAll('.onbApoderadoSummaryCard .muted').forEach(function(el){
+      const current = String(el.textContent || '');
+      if(/Te registrarás en el colegio/i.test(current)){
+        el.innerHTML = 'Te registrarás en el colegio <b>' + school.replace(/[&<>\"]/g,function(s){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[s]||s;}) + '</b>, curso <b>' + course + '</b>, jornada <b>' + String(d.jornada || '—') + '</b>, año <b>' + String(d.year || '—') + '</b>.';
+      }
     });
   }
 
@@ -75,7 +88,8 @@
 
   const observer = new MutationObserver(function(){
     const banner = document.querySelector('.onbCourseBannerText');
-    if(!banner) return;
+    const summary = document.querySelector('.onbApoderadoSummaryCard');
+    if(!banner && !summary) return;
     const d = draft();
     if(d.schoolName && d.schoolName !== 'Colegio') paint(d);
     else schedule();
