@@ -81,6 +81,12 @@ try {
   console.error('[Admin] Finanzas / Contabilidad no cargó:', error);
 }
 
+try {
+  await import('/assets/admin-privacy-compliance.mjs?v=1');
+} catch (error) {
+  console.error('[Admin] Privacidad y Cumplimiento no cargó:', error);
+}
+
 const optionalModules = [
   '/admin-console/assets/admin-addons.js?v=26',
   '/assets/admin-tickets-supabase.mjs?v=2',
