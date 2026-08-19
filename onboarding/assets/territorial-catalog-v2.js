@@ -7,18 +7,6 @@
 
   const DRAFT_KEY = 'cursapp_onb_draft_v1';
   const REQUEST_TIMEOUT_MS = 10000;
-  const REGION_FALLBACK = [
-    ['15','Región de Arica y Parinacota'],['01','Región de Tarapacá'],
-    ['02','Región de Antofagasta'],['03','Región de Atacama'],
-    ['04','Región de Coquimbo'],['05','Región de Valparaíso'],
-    ['13','Región Metropolitana de Santiago'],
-    ['06',"Región del Libertador General Bernardo O’Higgins"],
-    ['07','Región del Maule'],['16','Región de Ñuble'],
-    ['08','Región del Biobío'],['09','Región de La Araucanía'],
-    ['14','Región de Los Ríos'],['10','Región de Los Lagos'],
-    ['11','Región Aysén del General Carlos Ibáñez del Campo'],
-    ['12','Región de Magallanes y de la Antártica Chilena']
-  ].map((item,index)=>({codigo:item[0],nombre:item[1],orden:index+1}));
 
   let regions = [];
   let communes = [];
@@ -42,7 +30,7 @@
   function config(){
     const current = window.CURSAPP_SUPABASE;
     if(!current || !current.url || !current.publishableKey){
-      throw new Error('Configuración pública de Supabase no disponible');
+      throw new Error('El servicio de registro no está disponible');
     }
     return current;
   }
@@ -168,6 +156,7 @@
       if(/^\d+$/.test(normalized)) filter += ',rbd.eq.' + encodeURIComponent(normalized);
       const rows = await publicGet(
         'colegios?select=id,nombre,rbd,dependencia_nombre,direccion,comuna' +
+        '&catalogo_oficial=eq.true&estado_establecimiento=eq.1' +
         '&comuna_codigo=eq.' + encodeURIComponent(communeCode) +
         '&order=nombre.asc&limit=60&or=(' + filter + ')'
       );
@@ -254,21 +243,34 @@
     }
   }, true);
 
+  function showCatalogError(){
+    const region = regionSelect();
+    const commune = communeSelect();
+    if(region) setOptions(region, [], 'No fue posible cargar regiones', '', true);
+    if(commune) setOptions(commune, [], 'No fue posible cargar comunas', '', true);
+    const host = ensureSchoolFinder();
+    if(host){
+      host.querySelector('.onbSchoolSearch').disabled = true;
+      host.querySelector('.onbSchoolMissing').disabled = true;
+      host.querySelector('.onbSchoolHint').textContent = 'No pudimos cargar el catálogo. Reintenta en unos segundos.';
+    }
+  }
+
   async function start(){
     try {
       const result = await Promise.all([
         publicGet('regiones?select=codigo,nombre,orden&order=orden.asc'),
         publicGet('comunas?select=codigo,region_codigo,nombre&order=nombre.asc&limit=500')
       ]);
-      regions = result[0].length === 16 ? result[0] : REGION_FALLBACK;
+      regions = result[0];
       communes = result[1];
+      if(regions.length !== 16) throw new Error('Catálogo de regiones incompleto');
       if(communes.length < 300) throw new Error('Catálogo de comunas incompleto');
     } catch (error) {
       console.error('Catálogo territorial MiCursoX', error);
-      regions = REGION_FALLBACK;
+      regions = [];
       communes = [];
-      const commune = communeSelect();
-      if(commune) setOptions(commune, [], 'No fue posible cargar comunas', '', true);
+      showCatalogError();
       return;
     }
     render();
@@ -278,6 +280,7 @@
     });
     observer.observe(document.getElementById('app') || document.body, {childList:true,subtree:true});
     window.MICURSOX_TERRITORIAL_CATALOG = {
+      source:'supabase',
       get regions(){ return regions.slice(); },
       get communes(){ return communes.slice(); },
       refresh:render
