@@ -3,6 +3,18 @@
   if (window.__MICURSOX_USER_FACING_COPY_PRODUCTION_V1__) return;
   window.__MICURSOX_USER_FACING_COPY_PRODUCTION_V1__ = true;
 
+  // Cierre productivo: nunca activar demo/debug desde los roles de usuario.
+  try {
+    window.CURSAPP = window.CURSAPP || {};
+    window.CURSAPP.DEMO_MODE = false;
+    const url = new URL(window.location.href);
+    let changed = false;
+    ['debug','demo','seed','reset'].forEach(function(key){
+      if (url.searchParams.has(key)) { url.searchParams.delete(key); changed = true; }
+    });
+    if (changed) history.replaceState(history.state, document.title, url.pathname + (url.search || '') + url.hash);
+  } catch (_) {}
+
   const exact = new Map([
     ['Cargando perfil desde Supabase…','Cargando tu perfil…'],
     ['Cargando perfil desde Supabase...','Cargando tu perfil...'],
@@ -38,8 +50,7 @@
     let text = String(value == null ? '' : value);
     if (!text) return text;
     if (exact.has(text)) return exact.get(text);
-
-    text = text
+    return text
       .replace(/El pago de\s+(.+?)\s+quedó conciliado en Supabase\./gi, 'El pago de $1 quedó registrado correctamente.')
       .replace(/No se pudo guardar la conciliación en Supabase:\s*[\s\S]*/gi, 'No se pudo guardar la conciliación. Intenta nuevamente.')
       .replace(/No se pudo actualizar en Supabase:\s*[\s\S]*/gi, 'No se pudo guardar el cambio. Intenta nuevamente.')
@@ -53,8 +64,6 @@
       .replace(/\bUUID\b/gi, 'identificador')
       .replace(/\blegacy\b/gi, 'anterior')
       .replace(/\blocalStorage\b/gi, 'datos del dispositivo');
-
-    return text;
   }
 
   function sanitizeTextNode(node){
@@ -65,7 +74,6 @@
     const after = clean(before);
     if (after !== before) node.nodeValue = after;
   }
-
   function sanitizeElement(el){
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
     ['title','placeholder','aria-label'].forEach(function(attr){
@@ -74,11 +82,8 @@
       const after = clean(before);
       if (after !== before) el.setAttribute(attr, after);
     });
-    Array.from(el.childNodes || []).forEach(function(node){
-      if (node.nodeType === Node.TEXT_NODE) sanitizeTextNode(node);
-    });
+    Array.from(el.childNodes || []).forEach(function(node){ if (node.nodeType === Node.TEXT_NODE) sanitizeTextNode(node); });
   }
-
   function sanitizeTree(root){
     if (!root) return;
     if (root.nodeType === Node.TEXT_NODE) { sanitizeTextNode(root); return; }
@@ -86,19 +91,26 @@
     if (root.nodeType === Node.ELEMENT_NODE) sanitizeElement(root);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
     let node;
-    while ((node = walker.nextNode())) {
-      if (node.nodeType === Node.TEXT_NODE) sanitizeTextNode(node);
-      else sanitizeElement(node);
-    }
+    while ((node = walker.nextNode())) node.nodeType === Node.TEXT_NODE ? sanitizeTextNode(node) : sanitizeElement(node);
   }
 
   const originalAlert = typeof window.alert === 'function' ? window.alert.bind(window) : null;
-  if (originalAlert) {
-    window.alert = function(message){ return originalAlert(clean(message)); };
-  }
+  if (originalAlert) window.alert = function(message){ return originalAlert(clean(message)); };
   const originalConfirm = typeof window.confirm === 'function' ? window.confirm.bind(window) : null;
-  if (originalConfirm) {
-    window.confirm = function(message){ return originalConfirm(clean(message)); };
+  if (originalConfirm) window.confirm = function(message){ return originalConfirm(clean(message)); };
+
+  const DEV_IDS = ['resetBtn','resetDemoBtn','demoResetBtn','presResetBtn','tesResetBtn','debugBtn','debugPanel','demoPanel','seedDemoBtn'];
+  function neutralizeDevControls(root){
+    DEV_IDS.forEach(function(id){
+      const el = document.getElementById(id);
+      if (!el) return;
+      try { el.disabled = true; el.hidden = true; el.setAttribute('aria-hidden','true'); el.tabIndex = -1; } catch (_) {}
+    });
+    try {
+      (root && root.querySelectorAll ? root : document).querySelectorAll('[data-debug],[data-demo-action],[data-reset-demo]').forEach(function(el){
+        el.disabled = true; el.hidden = true; el.setAttribute('aria-hidden','true'); el.tabIndex = -1;
+      });
+    } catch (_) {}
   }
 
   let queued = false;
@@ -109,16 +121,16 @@
       queued = false;
       mutations.forEach(function(m){
         if (m.type === 'characterData') sanitizeTextNode(m.target);
-        Array.from(m.addedNodes || []).forEach(sanitizeTree);
+        Array.from(m.addedNodes || []).forEach(function(node){ sanitizeTree(node); if (node?.nodeType === Node.ELEMENT_NODE) neutralizeDevControls(node); });
       });
     });
   });
 
   function start(){
     sanitizeTree(document.body || document.documentElement);
+    neutralizeDevControls(document);
     observer.observe(document.documentElement, {subtree:true, childList:true, characterData:true});
   }
-
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
   else start();
 })();
