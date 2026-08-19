@@ -15,9 +15,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Validate production role entrypoints
+      - name: Validate production core entrypoints
         run: node qa/production-core-audit.mjs
+      - name: Block new business localStorage writes
+        run: node qa/no-new-business-localstorage.mjs
