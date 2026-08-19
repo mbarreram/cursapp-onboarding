@@ -3,6 +3,11 @@
   if(window.__MICURSOX_UNIFIED_ROLE_MENU__) return;
   window.__MICURSOX_UNIFIED_ROLE_MENU__=true;
 
+  function ensureParityCss(){
+    if(document.querySelector('link[data-mx-role-nav-parity]'))return;
+    var l=document.createElement('link');l.rel='stylesheet';l.href='/assets/role-bottom-nav-parity.css?v=1';l.setAttribute('data-mx-role-nav-parity','1');document.head.appendChild(l);
+  }
+  ensureParityCss();
   function read(k,d){try{return JSON.parse(localStorage.getItem(k)||'')||d}catch(_){return d}}
   function role(){
     var s=read('cursapp_session_v1',{})||{};
@@ -52,8 +57,7 @@
     return false;
   }
   function route(href){
-    var parsed=parsedRoleRoute(href);
-    var current=String(location.pathname||'').toLowerCase();
+    var parsed=parsedRoleRoute(href);var current=String(location.pathname||'').toLowerCase();
     if(parsed&&current.endsWith('/'+parsed.role+'.html')){
       if(openLocal(parsed.tab))return;
       setTimeout(function(){openLocal(parsed.tab)},180);return;
