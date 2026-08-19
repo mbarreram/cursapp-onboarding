@@ -12,11 +12,11 @@
     return'apoderado';
   }
   function items(r){
-    if(r==='presidente') return [['🏠','Inicio','/presidente.html#home'],['📣','Campañas','/presidente.html#campanas'],['🕘','Deudores','/presidente.html#deudores'],['📊','Informes','/presidente.html#informes'],['👥','Apoderados del curso','/apoderados.html']];
+    if(r==='presidente') return [['🏠','Inicio','/presidente.html#home'],['📣','Campañas','/presidente.html#campanas'],['🕘','Deudores','/presidente.html#deudores'],['📊','Informes','/presidente.html#informes'],['💰','Retiros / Recaudado','/presidente.html#retiros'],['👥','Apoderados del curso','/apoderados.html']];
     if(r==='tesorero') return [['🏠','Inicio','/tesorero.html#home'],['💳','Conciliar pagos','/tesorero.html#conciliacion'],['🧾','Rendiciones','/tesorero.html#rendiciones'],['📊','Informes','/tesorero.html#informes'],['💰','Retiros / Recaudado','/tesorero.html#retiros']];
     return [['🏠','Inicio','/apoderado.html#home'],['💳','Pagos','/apoderado.html#payments'],['📄','Informes','/apoderado.html#informes'],['🏪','Mercado Escolar','/mercado-escolar/mercado-escolar.html']];
   }
-  function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]})}
+  function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
   function css(){
     if(document.getElementById('mxUnifiedMenuCss'))return;
     var s=document.createElement('style');s.id='mxUnifiedMenuCss';s.textContent=`
@@ -30,15 +30,35 @@
   }
   function close(){document.getElementById('mxUnifiedRoleMenu')?.remove();document.getElementById('menuBtn')?.setAttribute('aria-expanded','false')}
   function waitForApi(getter,method,tries){
-    tries=tries||0;
-    var api=getter();
+    tries=tries||0;var api=getter();
     if(api&&typeof api[method]==='function'){api[method]();return}
     if(tries<20){setTimeout(function(){waitForApi(getter,method,tries+1)},100);return}
     alert('La opción todavía se está cargando. Intenta nuevamente.');
   }
+  function parsedRoleRoute(href){
+    var m=String(href||'').match(/^\/(apoderado|presidente|tesorero)\.html#(.+)$/);
+    return m?{role:m[1],tab:m[2]}:null;
+  }
+  function openLocal(tab){
+    var api=window.MICURSOX_ROLE_ROUTE;
+    if(api&&typeof api.openTab==='function'&&api.openTab(tab))return true;
+    var aliases={inicio:'home',pagos:'payments',conciliar:'conciliacion'};tab=aliases[tab]||tab;
+    if(tab==='retiros'){
+      var f=document.querySelector('[data-mx-funds="1"]');if(f){f.click();return true}
+    }
+    var b=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
+    if(b){b.click();return true}
+    if(typeof window.go==='function'){try{window.go(tab);return true}catch(_){ }}
+    return false;
+  }
   function route(href){
-    var m=href.match(/^\/(apoderado|presidente|tesorero)\.html#(.+)$/);
-    if(m){try{sessionStorage.setItem('micursox_pending_tab',m[2])}catch(_){ }}
+    var parsed=parsedRoleRoute(href);
+    var current=String(location.pathname||'').toLowerCase();
+    if(parsed&&current.endsWith('/'+parsed.role+'.html')){
+      if(openLocal(parsed.tab))return;
+      setTimeout(function(){openLocal(parsed.tab)},180);return;
+    }
+    if(parsed){try{sessionStorage.setItem('micursox_pending_tab',parsed.tab)}catch(_){ }}
     location.href=href;
   }
   function open(){
