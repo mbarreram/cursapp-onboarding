@@ -4,8 +4,8 @@
   window.__MICURSOX_UNIFIED_ROLE_MENU__=true;
 
   function ensureParityCss(){
-    if(document.querySelector('link[data-mx-role-nav-parity]'))return;
-    var l=document.createElement('link');l.rel='stylesheet';l.href='/assets/role-bottom-nav-parity.css?v=1';l.setAttribute('data-mx-role-nav-parity','1');document.head.appendChild(l);
+    var old=document.querySelector('link[data-mx-role-nav-parity]');if(old)old.remove();
+    var l=document.createElement('link');l.rel='stylesheet';l.href='/assets/role-bottom-nav-parity.css?v=2';l.setAttribute('data-mx-role-nav-parity','1');document.head.appendChild(l);
   }
   ensureParityCss();
   function read(k,d){try{return JSON.parse(localStorage.getItem(k)||'')||d}catch(_){return d}}
@@ -16,6 +16,22 @@
     if(r.indexOf('tesor')>=0)return'tesorero';
     return'apoderado';
   }
+  function openNotifications(){
+    var tries=0;(function wait(){var api=window.CURSAPP_NOTIFICATIONS;if(api&&typeof api.open==='function'){api.open();return}if(++tries<20)setTimeout(wait,100)})();
+  }
+  function ensureProfileHeader(){
+    if(!document.body.classList.contains('cursapp-profile'))return;
+    var top=document.querySelector('.topbar'),menu=document.getElementById('menuBtn');if(!top||!menu)return;
+    var r=role();document.body.setAttribute('data-profile-role',r);
+    var actions=top.querySelector('.mxProfileHeaderActions');if(!actions){actions=document.createElement('div');actions.className='mxProfileHeaderActions';top.appendChild(actions)}
+    var bell=document.getElementById('notificationBtn');
+    if(!bell){bell=document.createElement('button');bell.id='notificationBtn';bell.type='button';bell.setAttribute('aria-label','Notificaciones');bell.textContent='🔔';bell.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openNotifications()})}
+    if(bell.parentElement!==actions)actions.appendChild(bell);if(menu.parentElement!==actions)actions.appendChild(menu);
+    document.querySelectorAll('body.cursapp-profile button[aria-label="Notificaciones"],body.cursapp-profile button[aria-label="Avisos"]').forEach(function(el){if(el!==bell&&el.id!=='notificationBtn')el.style.display='none'});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureProfileHeader,{once:true});else ensureProfileHeader();
+  [250,700,1400,2600].forEach(function(t){setTimeout(ensureProfileHeader,t)});
+
   function items(r){
     if(r==='presidente') return [['🏠','Inicio','/presidente.html#home'],['📣','Campañas','/presidente.html#campanas'],['🕘','Deudores','/presidente.html#deudores'],['📊','Informes','/presidente.html#informes'],['💰','Retiros / Recaudado','/presidente.html#retiros'],['👥','Apoderados del curso','/apoderados.html']];
     if(r==='tesorero') return [['🏠','Inicio','/tesorero.html#home'],['💳','Conciliar pagos','/tesorero.html#conciliacion'],['🧾','Rendiciones','/tesorero.html#rendiciones'],['📊','Informes','/tesorero.html#informes'],['💰','Retiros / Recaudado','/tesorero.html#retiros']];
