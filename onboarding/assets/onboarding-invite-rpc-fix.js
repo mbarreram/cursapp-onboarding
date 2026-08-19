@@ -9,20 +9,30 @@
     try{return typeof input === 'string' ? input : (input && input.url) || '';}catch(_){return '';}
   }
 
-  function inviteCodeFromUrl(url){
+  function restLookupFromUrl(url){
     try{
       const u = new URL(url, location.origin);
-      if(!/\/rest\/v1\/cursos$/i.test(u.pathname)) return '';
-      const raw = String(u.searchParams.get('invite_code') || '');
-      const value = raw.replace(/^eq\./i,'').trim();
-      return decodeURIComponent(value).toUpperCase();
-    }catch(_){ return ''; }
+      if(!/\/rest\/v1\/cursos$/i.test(u.pathname)) return null;
+
+      const inviteRaw = String(u.searchParams.get('invite_code') || '');
+      if(inviteRaw){
+        const value = decodeURIComponent(inviteRaw.replace(/^eq\./i,'').trim()).toUpperCase();
+        return value ? {kind:'invite', value} : null;
+      }
+
+      const courseKeyRaw = String(u.searchParams.get('course_key') || '');
+      if(courseKeyRaw){
+        const value = decodeURIComponent(courseKeyRaw.replace(/^eq\./i,'').trim());
+        return value ? {kind:'course_key', value} : null;
+      }
+    }catch(_){ }
+    return null;
   }
 
   window.fetch = async function(input, init){
     const url = getUrl(input);
-    const code = inviteCodeFromUrl(url);
-    if(!code) return originalFetch(input, init);
+    const lookup = restLookupFromUrl(url);
+    if(!lookup) return originalFetch(input, init);
 
     try{
       const api = window.CURSAPP_SUPABASE;
@@ -35,10 +45,17 @@
       const token = typeof api.getAccessToken === 'function' ? await api.getAccessToken() : '';
       headers.set('Authorization', 'Bearer ' + (token || api.publishableKey));
 
-      const res = await originalFetch(api.url + '/rest/v1/rpc/lookup_course_by_invite_code', {
+      const rpcName = lookup.kind === 'invite'
+        ? 'lookup_course_by_invite_code'
+        : 'lookup_course_by_course_key';
+      const body = lookup.kind === 'invite'
+        ? {p_code:lookup.value}
+        : {p_course_key:lookup.value};
+
+      const res = await originalFetch(api.url + '/rest/v1/rpc/' + rpcName, {
         method:'POST',
         headers,
-        body:JSON.stringify({p_code:code})
+        body:JSON.stringify(body)
       });
 
       const text = await res.text();
@@ -49,7 +66,7 @@
       const payload = row ? [row] : [];
       return new Response(JSON.stringify(payload), {status:200, headers:{'Content-Type':'application/json'}});
     }catch(err){
-      try{console.warn('[MiCursoX] invite RPC fallback', err);}catch(_){ }
+      try{console.warn('[MiCursoX] onboarding course RPC fallback', err);}catch(_){ }
       return originalFetch(input, init);
     }
   };
