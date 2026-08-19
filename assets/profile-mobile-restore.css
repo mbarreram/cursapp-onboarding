@@ -1,0 +1,27 @@
+@media (max-width: 760px){
+  body.cursapp-profile{background:#f6f8fb!important;padding-bottom:92px!important}
+  body.cursapp-profile header{border-top:0!important;box-shadow:0 1px 0 rgba(15,23,42,.08)!important}
+  body.cursapp-profile header:before{content:"";display:block;height:4px;background:linear-gradient(90deg,#2563eb 0 70%,#f59e0b 70% 100%)}
+  body.cursapp-profile .topbar{min-height:76px!important;padding:12px 16px!important;gap:10px!important}
+  body.cursapp-profile .mx-role-brand-icon{width:46px!important;height:46px!important;flex-basis:46px!important}
+  body.cursapp-profile #roleTitle{font-size:20px!important;line-height:1.05!important}
+  body.cursapp-profile #perfilSubline{font-size:12px!important;max-width:48vw!important}
+  body.cursapp-profile #menuBtn{width:46px!important;height:46px!important;border-radius:15px!important;font-size:20px!important}
+  body.cursapp-profile .container{padding:14px 12px 96px!important;max-width:100%!important}
+  body.cursapp-profile .profileCard{padding:16px!important;border-radius:20px!important;margin-bottom:12px!important;box-shadow:0 8px 24px rgba(15,23,42,.05)!important}
+  body.cursapp-profile .profileTitleRow .h2{font-size:20px!important;line-height:1.15!important}
+  body.cursapp-profile .profileTitleRow .muted{font-size:12px!important}
+  body.cursapp-profile .profileIdentity{margin:12px 0!important;padding:13px!important;border-radius:16px!important;gap:12px!important}
+  body.cursapp-profile .profileAvatar{width:54px!important;height:54px!important;flex-basis:54px!important;border-radius:16px!important}
+  body.cursapp-profile .profileIdentity .h3{font-size:18px!important}
+  body.cursapp-profile .profileIdentity a{font-size:13px!important}
+  body.cursapp-profile .profileField{margin:12px 0!important}
+  body.cursapp-profile .profileField>span{font-size:13px!important;margin-bottom:6px!important}
+  body.cursapp-profile .profileField input{padding:12px 13px!important;border-radius:14px!important;font-size:16px!important;min-height:46px!important}
+  body.cursapp-profile .profileActions{gap:8px!important;margin-top:14px!important}
+  body.cursapp-profile .btnPrimary,body.cursapp-profile .btnGhost{min-height:46px!important;border-radius:14px!important;padding:0 14px!important;font-size:14px!important}
+  body.cursapp-profile .profileKv{font-size:13px!important}
+  body.cursapp-profile .bottomNav{bottom:max(8px,env(safe-area-inset-bottom))!important;width:calc(100% - 20px)!important;padding:7px!important;border-radius:22px!important;gap:2px!important}
+  body.cursapp-profile .bottomNav .navItem{min-height:56px!important;border-radius:16px!important;font-size:12px!important}
+  body.cursapp-profile .bottomNav .navIcon{font-size:19px!important}
+}
