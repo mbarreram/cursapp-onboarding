@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const entrypoints = ['apoderado.html','presidente.html','tesorero.html','perfil.html'];
+const entrypoints = [
+  'login.html',
+  'onboarding/dashboard.html',
+  'apoderado.html',
+  'presidente.html',
+  'tesorero.html',
+  'perfil.html'
+];
 const requiredScript = '/assets/user-facing-copy-production-v1.js?v=1';
 const forbiddenInEntrypoints = [
   /\bdebug=1\b/i,
@@ -10,6 +17,8 @@ const forbiddenInEntrypoints = [
   /Datos guardados en Supabase/i,
   /Cargando perfil desde Supabase/i,
   /Supabase Auth/i,
+  /Error JS:/i,
+  /Login Apple disponible en pr[oó]xima integraci[oó]n/i,
   /\(demo\)/i
 ];
 
@@ -27,6 +36,13 @@ for (const rel of entrypoints) {
   }
   if (/admin-console|admin-secure|admin\.js/i.test(html)) errors.push(`${rel}: referencia inesperada a recursos Admin`);
 }
+
+const login = fs.readFileSync(path.join(ROOT,'login.html'),'utf8');
+if (!login.includes('/legal.html#terminos')) errors.push('login.html: términos legales no apuntan a la página legal');
+if (!login.includes('/legal.html#privacidad')) errors.push('login.html: privacidad no apunta a la página legal');
+
+const onboarding = fs.readFileSync(path.join(ROOT,'onboarding/dashboard.html'),'utf8');
+if (!/No pudimos continuar/.test(onboarding)) errors.push('onboarding/dashboard.html: falta mensaje de error productivo');
 
 const copyFile = path.join(ROOT, 'assets/user-facing-copy-production-v1.js');
 if (!fs.existsSync(copyFile)) errors.push('Falta user-facing-copy-production-v1.js');
