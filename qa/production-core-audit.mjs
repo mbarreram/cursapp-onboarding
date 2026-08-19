@@ -3,10 +3,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const entrypoints = ['apoderado.html','presidente.html','tesorero.html','perfil.html'];
-const requiredScripts = [
-  '/assets/production-core-guard-v1.js?v=1',
-  '/assets/user-facing-copy-production-v1.js?v=1'
-];
+const requiredScript = '/assets/user-facing-copy-production-v1.js?v=1';
 const forbiddenInEntrypoints = [
   /\bdebug=1\b/i,
   /\bDEMO_MODE\s*=\s*true\b/i,
@@ -24,23 +21,22 @@ for (const rel of entrypoints) {
     continue;
   }
   const html = fs.readFileSync(file, 'utf8');
-  for (const script of requiredScripts) {
-    if (!html.includes(script)) errors.push(`${rel}: falta ${script}`);
-  }
+  if (!html.includes(requiredScript)) errors.push(`${rel}: falta ${requiredScript}`);
   for (const rule of forbiddenInEntrypoints) {
     if (rule.test(html)) errors.push(`${rel}: contiene patrón productivo prohibido ${rule}`);
   }
-  if (/admin-console|admin-secure|admin\.js/i.test(html)) {
-    errors.push(`${rel}: referencia inesperada a recursos Admin`);
-  }
+  if (/admin-console|admin-secure|admin\.js/i.test(html)) errors.push(`${rel}: referencia inesperada a recursos Admin`);
 }
 
-const guardFile = path.join(ROOT, 'assets/production-core-guard-v1.js');
-if (!fs.existsSync(guardFile)) errors.push('Falta production-core-guard-v1.js');
+const copyFile = path.join(ROOT, 'assets/user-facing-copy-production-v1.js');
+if (!fs.existsSync(copyFile)) errors.push('Falta user-facing-copy-production-v1.js');
 else {
-  const guard = fs.readFileSync(guardFile, 'utf8');
-  if (!/DEMO_MODE\s*=\s*false/.test(guard)) errors.push('El guard no fuerza DEMO_MODE=false');
-  if (!/searchParams\.delete\(key\)/.test(guard)) errors.push('El guard no elimina flags de debug/demo de URL');
+  const copy = fs.readFileSync(copyFile, 'utf8');
+  if (!/DEMO_MODE\s*=\s*false/.test(copy)) errors.push('La capa productiva no fuerza DEMO_MODE=false');
+  if (!/searchParams\.delete\(key\)/.test(copy)) errors.push('La capa productiva no elimina flags debug/demo de URL');
+  for (const token of ['Supabase Auth','RLS/DELETE','UUID','localStorage','(demo)']) {
+    if (!copy.includes(token)) errors.push(`La capa productiva no contempla sanitización de ${token}`);
+  }
 }
 
 if (errors.length) {
