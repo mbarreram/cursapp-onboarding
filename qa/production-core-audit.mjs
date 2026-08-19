@@ -47,6 +47,31 @@ if (/Apple disponible|pr[oó]xima integraci[oó]n/i.test(login)) errors.push('lo
 const onboarding = fs.readFileSync(path.join(ROOT,'onboarding/dashboard.html'),'utf8');
 if (!/No pudimos continuar/.test(onboarding)) errors.push('onboarding/dashboard.html: falta mensaje de error productivo');
 if (/Error JS:/i.test(onboarding)) errors.push('onboarding/dashboard.html: expone diagnóstico técnico');
+if (!onboarding.includes('/onboarding/assets/onboarding-production-source-v1.js?v=1')) errors.push('onboarding/dashboard.html: falta guard de fuente productiva');
+
+const territorialFile = path.join(ROOT,'onboarding/assets/territorial-catalog-v2.js');
+if (!fs.existsSync(territorialFile)) errors.push('Falta catálogo territorial productivo');
+else {
+  const territorial = fs.readFileSync(territorialFile,'utf8');
+  if (/REGION_FALLBACK/.test(territorial)) errors.push('territorial-catalog-v2.js: no debe usar fallback local de regiones');
+  if (!/source:'supabase'/.test(territorial)) errors.push('territorial-catalog-v2.js: no declara Supabase como fuente del catálogo');
+  if (!/catalogo_oficial=eq\.true/.test(territorial)) errors.push('territorial-catalog-v2.js: búsqueda de colegios no filtra catálogo oficial');
+}
+
+const businessAuthority = path.join(ROOT,'assets/business-data-authority-v1.js');
+if (!fs.existsSync(businessAuthority)) errors.push('Falta business-data-authority-v1.js');
+else {
+  const authority = fs.readFileSync(businessAuthority,'utf8');
+  if (!/MICURSOX_BUSINESS_SOURCE\s*=\s*'supabase'/.test(authority)) errors.push('business-data-authority-v1.js: no declara Supabase como fuente de negocio');
+  if (!/CURSAPP_PAYMENTS_V11\?\.refresh/.test(authority)) errors.push('business-data-authority-v1.js: no refresca pagos canónicos');
+  if (!/CURSAPP_TREASURY\?\.hydrate/.test(authority)) errors.push('business-data-authority-v1.js: no hidrata tesorería canónica');
+  if (!/cursapp_payments_snapshot_v584_/.test(authority)) errors.push('business-data-authority-v1.js: no neutraliza snapshots antiguos de pagos');
+}
+
+for (const rel of ['apoderado.html','presidente.html','tesorero.html']) {
+  const html = fs.readFileSync(path.join(ROOT,rel),'utf8');
+  if (!html.includes('/assets/business-data-authority-v1.js?v=1')) errors.push(`${rel}: falta autoridad Supabase de datos de negocio`);
+}
 
 for (const rel of ['registro-apoderado.html','registro-presidente.html']) {
   const html = fs.readFileSync(path.join(ROOT,rel),'utf8');
