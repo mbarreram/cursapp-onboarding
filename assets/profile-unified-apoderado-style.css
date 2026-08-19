@@ -11,22 +11,44 @@
   body.cursapp-profile .container{padding:16px 12px 108px!important}
   body.cursapp-profile .profileCard{border:1px solid #e2e8f0!important;border-radius:24px!important;padding:18px!important;margin-bottom:14px!important;box-shadow:0 10px 28px rgba(15,23,42,.055)!important}
   body.cursapp-profile .profileTitleRow .h2{font-size:22px!important;font-weight:950!important;color:#0f172a!important}
-  body.cursapp-profile .profileTitleRow .muted{font-size:13px!important;font-weight:750!important;color:#64748b!important}
-  body.cursapp-profile .profileTitleRow .pill{font-size:12px!important;border-radius:999px!important;background:#f5f3ff!important;color:#6d28d9!important;padding:7px 10px!important}
-  body.cursapp-profile .profileIdentity{margin:14px 0!important;padding:16px!important;border-radius:24px!important;background:linear-gradient(135deg,#f5f3ff 0%,#eef2ff 100%)!important;gap:14px!important}
-  body.cursapp-profile .profileAvatar{width:76px!important;height:76px!important;flex-basis:76px!important;border-radius:24px!important;background-color:#fff!important}
-  body.cursapp-profile .profileAvatar.mxHasAvatar img{border-radius:24px!important}
-  body.cursapp-profile .profileIdentity .h3{font-size:21px!important;font-weight:950!important;color:#0f172a!important;line-height:1.1!important}
-  body.cursapp-profile .profileIdentity a{font-size:14px!important;color:#64748b!important;font-weight:700!important}
   body.cursapp-profile .profileField{margin:14px 0!important}
   body.cursapp-profile .profileField>span{font-size:14px!important;font-weight:900!important;color:#64748b!important;margin-bottom:7px!important}
   body.cursapp-profile .profileField input{min-height:52px!important;padding:13px 15px!important;border-radius:17px!important;font-size:17px!important;border:1px solid #dbe3ec!important}
   body.cursapp-profile .profileActions{gap:10px!important;margin-top:16px!important}
   body.cursapp-profile .btnPrimary,body.cursapp-profile .btnGhost{min-height:50px!important;border-radius:16px!important;font-size:15px!important;font-weight:900!important;padding:0 16px!important}
-  body.cursapp-profile .profileKv{display:grid!important;grid-template-columns:1fr auto!important;gap:12px 14px!important;font-size:14px!important;align-items:center!important}
-  body.cursapp-profile .profileKv span{color:#64748b!important;font-weight:800!important}
-  body.cursapp-profile .profileKv b{color:#0f172a!important;text-align:right!important}
   body.cursapp-profile .bottomNav{width:calc(100% - 28px)!important;bottom:max(10px,env(safe-area-inset-bottom))!important;padding:8px!important;border-radius:26px!important;box-shadow:0 16px 38px rgba(15,23,42,.14)!important}
   body.cursapp-profile .bottomNav .navItem{min-height:58px!important;border-radius:18px!important;font-size:12px!important;font-weight:850!important}
   body.cursapp-profile .bottomNav .navItem.active{background:#f3e8ff!important;color:#6d28d9!important}
+
+  body.cursapp-profile .mxProfileReferenceHero{display:flex;align-items:center;gap:18px;padding:24px 22px;margin:0 0 16px;border:1px solid #ddd6fe;border-radius:28px;background:linear-gradient(135deg,#fbf8ff 0%,#f2eaff 100%);box-shadow:0 12px 30px rgba(109,40,217,.08);overflow:hidden;position:relative}
+  body.cursapp-profile .mxProfileReferenceHero:after{content:"";position:absolute;width:180px;height:180px;border-radius:50%;right:-65px;top:-76px;background:rgba(139,92,246,.08)}
+  body.cursapp-profile .mxProfileHeroAvatarHost{flex:0 0 112px;position:relative;z-index:1}
+  body.cursapp-profile .mxProfileReferenceHero .profileAvatar{width:112px!important;height:112px!important;flex-basis:112px!important;border-radius:50%!important;background:#fff!important;box-shadow:none!important;font-size:34px!important;display:grid!important;place-items:center!important;color:#6d28d9!important;font-weight:950!important}
+  body.cursapp-profile .mxProfileReferenceHero .profileAvatar.mxHasAvatar img{border-radius:50%!important}
+  body.cursapp-profile .mxProfileHeroText{min-width:0;position:relative;z-index:1}
+  body.cursapp-profile .mxProfileHeroText h1{margin:0;font-size:26px;line-height:1.05;font-weight:950;color:#0f172a}
+  body.cursapp-profile .mxProfileRoleLine{margin:5px 0 14px;color:#6d28d9;font-weight:950;font-size:16px}
+  body.cursapp-profile .mxProfileContactRow,body.cursapp-profile .mxProfilePhoneRow{display:flex;align-items:center;gap:7px;min-width:0;color:#334155;font-size:14px;font-weight:800}
+  body.cursapp-profile .mxProfileContactRow a{color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+  body.cursapp-profile .mxProfilePhoneRow{border:0;background:transparent;padding:8px 0 0;width:100%;text-align:left}
+  body.cursapp-profile .mxProfilePhoneRow span:last-child{color:#6d28d9;margin-left:3px}
+  body.cursapp-profile .mxProfileLock{margin-left:auto}
+
+  body.cursapp-profile .mxProfileReferenceLocked{background:#fff;border:1px solid #e2e8f0;border-radius:26px;padding:16px;margin:0 0 16px;box-shadow:0 10px 26px rgba(15,23,42,.045)}
+  body.cursapp-profile .mxProfileReferenceLocked article{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #edf1f5}
+  body.cursapp-profile .mxProfileReferenceLocked article:last-of-type{border-bottom:0}
+  body.cursapp-profile .mxProfileInfoIcon,body.cursapp-profile .mxProfileLockBox{width:52px;height:52px;border-radius:16px;background:#f5edff;display:grid;place-items:center;font-size:25px}
+  body.cursapp-profile .mxProfileReferenceLocked article b{display:block;font-size:17px;color:#0f172a}
+  body.cursapp-profile .mxProfileReferenceLocked article small{display:block;margin-top:3px;font-size:14px;font-weight:750;color:#64748b}
+  body.cursapp-profile .mxProfileReferenceNote{margin-top:10px;padding:14px;border-radius:17px;background:#f7f1ff;color:#334155;font-size:13px;font-weight:800;line-height:1.35}
+  body.cursapp-profile .mxProfilePersonalCard .profileTitleRow{margin-bottom:12px}
+  body.cursapp-profile .mxProfilePersonalCard .profileIdentity{display:none!important}
+
+  @media(max-width:390px){
+    body.cursapp-profile .mxProfileReferenceHero{gap:14px;padding:20px 16px}
+    body.cursapp-profile .mxProfileHeroAvatarHost{flex-basis:92px}
+    body.cursapp-profile .mxProfileReferenceHero .profileAvatar{width:92px!important;height:92px!important;flex-basis:92px!important}
+    body.cursapp-profile .mxProfileHeroText h1{font-size:23px}
+    body.cursapp-profile .mxProfileContactRow a{max-width:140px}
+  }
 }
