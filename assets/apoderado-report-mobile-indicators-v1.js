@@ -69,23 +69,21 @@
     return {ym:ym,byId:byId,byTitle:byTitle,targetMonth:Math.round(totalTargetMonth),collectedMonth:Math.round(totalCollectedMonth),pendingMonth:Math.max(0,Math.round(totalTargetMonth-totalCollectedMonth)),debtors:maxDebtors};
   }
 
-  function findExactText(root, text){
-    return Array.from(root.querySelectorAll('div,span,p,small')).find(function(el){ return String(el.textContent || '').trim()===text; }) || null;
-  }
-
   function patchReport(){
     var root=document.getElementById('modalRoot');
     var card=document.getElementById('modalCard');
     if(!root || !card) return;
     root.classList.add('mxApoReportOpen');
 
-    var close=document.createElement('button');
-    close.type='button';
-    close.className='mxApoReportFloatingClose';
-    close.setAttribute('aria-label','Cerrar informe');
-    close.textContent='×';
-    close.onclick=function(){ if(typeof window.closeModal==='function') window.closeModal(); };
-    root.appendChild(close);
+    if(!root.querySelector('.mxApoReportFloatingClose')){
+      var close=document.createElement('button');
+      close.type='button';
+      close.className='mxApoReportFloatingClose';
+      close.setAttribute('aria-label','Cerrar informe');
+      close.textContent='×';
+      close.onclick=function(){ if(typeof window.closeModal==='function') window.closeModal(); };
+      root.appendChild(close);
+    }
 
     var data=calc();
     var indicatorHeading=Array.from(card.querySelectorAll('div')).find(function(el){ return String(el.textContent||'').trim()==='📌 Indicadores por campaña'; });
