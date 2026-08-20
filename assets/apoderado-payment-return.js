@@ -4,10 +4,63 @@
   window.__MX_APODERADO_PAYMENT_RETURN__ = true;
 
   var paidPaymentId = '';
-  try{ paidPaymentId = sessionStorage.getItem('justPaidPaymentId') || ''; }catch(_e){}
+  var paidTransactionId = '';
+  var paidAt = '';
+  try{
+    paidPaymentId = sessionStorage.getItem('justPaidPaymentId') || '';
+    paidTransactionId = sessionStorage.getItem('justPaidTransactionId') || '';
+    paidAt = sessionStorage.getItem('justPaidAt') || '';
+  }catch(_e){}
 
   function shouldOpenPaid(){
     return String(location.hash || '').toLowerCase() === '#payments_paid';
+  }
+
+  function paymentsKey(){
+    return (window.CURSAPP && typeof window.CURSAPP.scopedKey === 'function')
+      ? window.CURSAPP.scopedKey('payments_v1')
+      : 'cursapp_payments_v1';
+  }
+
+  function readRows(){
+    try{
+      var rows = JSON.parse(localStorage.getItem(paymentsKey()) || '[]');
+      return Array.isArray(rows) ? rows : [];
+    }catch(_e){ return []; }
+  }
+
+  function rowDate(p){
+    var raw = p && (p.paidAt || p.paid_at || p.updatedAt || p.updated_at || p.createdAt || p.created_at);
+    var d = raw ? new Date(raw) : null;
+    return d && !isNaN(d.getTime()) ? d.getTime() : 0;
+  }
+
+  function findReceiptCandidate(){
+    var rows = readRows();
+    if(!rows.length) return null;
+    if(paidPaymentId){
+      var exact = rows.find(function(p){ return String((p && (p.id || p.remoteId)) || '') === String(paidPaymentId); });
+      if(exact) return exact;
+    }
+    if(paidTransactionId){
+      var tx = rows.find(function(p){
+        return String((p && (p.transactionId || p.transaction_id || (p.webpay && (p.webpay.transactionId || p.webpay.buyOrder)))) || '') === String(paidTransactionId);
+      });
+      if(tx) return tx;
+    }
+    var paidRows = rows.filter(function(p){
+      var st=String((p && (p.status || p.estado)) || '').toLowerCase();
+      return st==='paid' || st==='pagado' || st==='conciliado';
+    }).sort(function(a,b){ return rowDate(b)-rowDate(a); });
+    if(!paidRows.length) return null;
+    if(paidAt){
+      var t = new Date(paidAt).getTime();
+      if(!isNaN(t)){
+        var near = paidRows.find(function(p){ return Math.abs(rowDate(p)-t) <= 10*60*1000; });
+        if(near) return near;
+      }
+    }
+    return paidRows[0];
   }
 
   function openPaid(){
@@ -22,31 +75,35 @@
     }catch(_){ return false; }
   }
 
+  function clearHandoff(){
+    try{
+      sessionStorage.removeItem('justPaidPaymentId');
+      sessionStorage.removeItem('justPaidTaskId');
+      sessionStorage.removeItem('justPaidTransactionId');
+      sessionStorage.removeItem('justPaidAt');
+    }catch(_e){}
+  }
+
   function openReceiptAfterPayment(){
-    if(!shouldOpenPaid() || !paidPaymentId) return;
+    if(!shouldOpenPaid()) return;
     var tries = 0;
     var timer = setInterval(function(){
       tries += 1;
       try{
         if(typeof window.openReceipt === 'function'){
-          var key = (window.CURSAPP && typeof window.CURSAPP.scopedKey === 'function')
-            ? window.CURSAPP.scopedKey('payments_v1')
-            : 'cursapp_payments_v1';
-          var rows = JSON.parse(localStorage.getItem(key) || '[]');
-          var found = Array.isArray(rows) && rows.some(function(p){ return String((p && (p.id || p.remoteId)) || '') === String(paidPaymentId); });
-          if(found){
+          var candidate=findReceiptCandidate();
+          var id=String((candidate && (candidate.id || candidate.remoteId)) || '');
+          if(id){
             clearInterval(timer);
-            window.openReceipt(paidPaymentId);
-            try{
-              sessionStorage.removeItem('justPaidPaymentId');
-              sessionStorage.removeItem('justPaidTaskId');
-            }catch(_e){}
+            setTimeout(function(){
+              try{ window.openReceipt(id); clearHandoff(); }catch(_e){}
+            },220);
             return;
           }
         }
       }catch(_e){}
-      if(tries >= 70) clearInterval(timer);
-    }, 120);
+      if(tries >= 80) clearInterval(timer);
+    }, 125);
   }
 
   async function refreshPaidData(){
@@ -63,8 +120,8 @@
   function boot(){
     if(!shouldOpenPaid()) return;
     refreshPaidData().finally(function(){
-      let tries = 0;
-      const timer = setInterval(function(){
+      var tries = 0;
+      var timer = setInterval(function(){
         tries += 1;
         if(openPaid() || tries >= 40) clearInterval(timer);
       }, 100);
