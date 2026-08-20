@@ -10,7 +10,7 @@
   }
   function clearPending(){try{sessionStorage.removeItem('micursox_pending_tab')}catch(_){ }}
   function normalize(tab){
-    var aliases={inicio:'home',pagos:'payments',reportes:'informes',conciliar:'conciliacion'};
+    var aliases={inicio:'home',pagos:'payments',payments_paid:'payments',reportes:'informes',conciliar:'conciliacion'};
     return aliases[String(tab||'').trim()]||String(tab||'').trim();
   }
   function clickTab(tab){
@@ -41,8 +41,6 @@
       if(tryOpen())return;
       if(++tries<40)setTimeout(attempt,150);
     }
-    // Los módulos de rol terminan de enlazar navegación después de DOMContentLoaded.
-    // Esperar evita que un click prematuro se pierda y la pantalla quede en Inicio.
     setTimeout(attempt,320);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
