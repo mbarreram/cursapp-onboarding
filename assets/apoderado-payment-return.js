@@ -6,14 +6,20 @@
   var paidPaymentId = '';
   var paidTransactionId = '';
   var paidAt = '';
+  var justPaid = '';
   try{
     paidPaymentId = sessionStorage.getItem('justPaidPaymentId') || '';
     paidTransactionId = sessionStorage.getItem('justPaidTransactionId') || '';
     paidAt = sessionStorage.getItem('justPaidAt') || '';
+    justPaid = sessionStorage.getItem('justPaid') || '';
   }catch(_e){}
 
   function shouldOpenPaid(){
     return String(location.hash || '').toLowerCase() === '#payments_paid';
+  }
+
+  function isPaymentReturn(){
+    return shouldOpenPaid() && !!(justPaid || paidPaymentId || paidTransactionId || paidAt);
   }
 
   function paymentsKey(){
@@ -35,6 +41,11 @@
     return d && !isNaN(d.getTime()) ? d.getTime() : 0;
   }
 
+  function isPaid(p){
+    var st=String((p && (p.status || p.estado)) || '').toLowerCase();
+    return st==='paid' || st==='pagado' || st==='conciliado';
+  }
+
   function findReceiptCandidate(){
     var rows = readRows();
     if(!rows.length) return null;
@@ -48,22 +59,19 @@
       });
       if(tx) return tx;
     }
-    var paidRows = rows.filter(function(p){
-      var st=String((p && (p.status || p.estado)) || '').toLowerCase();
-      return st==='paid' || st==='pagado' || st==='conciliado';
-    }).sort(function(a,b){ return rowDate(b)-rowDate(a); });
+    var paidRows = rows.filter(isPaid).sort(function(a,b){ return rowDate(b)-rowDate(a); });
     if(!paidRows.length) return null;
     if(paidAt){
       var t = new Date(paidAt).getTime();
       if(!isNaN(t)){
-        var near = paidRows.find(function(p){ return Math.abs(rowDate(p)-t) <= 10*60*1000; });
+        var near = paidRows.find(function(p){ return Math.abs(rowDate(p)-t) <= 15*60*1000; });
         if(near) return near;
       }
     }
     return paidRows[0];
   }
 
-  function openPaid(){
+  function openPaidOnce(){
     if(!shouldOpenPaid()) return false;
     try{
       if(typeof window.go === 'function') window.go('payments');
@@ -71,12 +79,13 @@
       document.querySelectorAll('.navItem').forEach(function(btn){
         btn.classList.toggle('active', String(btn.dataset.tab || '') === 'payments');
       });
-      return typeof window.go === 'function' && typeof window.setPayFilter === 'function';
+      return typeof window.go === 'function';
     }catch(_){ return false; }
   }
 
   function clearHandoff(){
     try{
+      sessionStorage.removeItem('justPaid');
       sessionStorage.removeItem('justPaidPaymentId');
       sessionStorage.removeItem('justPaidTaskId');
       sessionStorage.removeItem('justPaidTransactionId');
@@ -84,26 +93,49 @@
     }catch(_e){}
   }
 
-  function openReceiptAfterPayment(){
-    if(!shouldOpenPaid()) return;
-    var tries = 0;
-    var timer = setInterval(function(){
-      tries += 1;
-      try{
-        if(typeof window.openReceipt === 'function'){
-          var candidate=findReceiptCandidate();
-          var id=String((candidate && (candidate.id || candidate.remoteId)) || '');
-          if(id){
-            clearInterval(timer);
-            setTimeout(function(){
-              try{ window.openReceipt(id); clearHandoff(); }catch(_e){}
-            },220);
-            return;
-          }
+  function receiptIsOpen(){
+    var root=document.getElementById('modalRoot');
+    if(!root) return false;
+    var txt=String(root.textContent||'').toLowerCase();
+    return !!root.firstElementChild && (txt.indexOf('pago confirmado')>=0 || txt.indexOf('comprobante')>=0 || txt.indexOf('folio')>=0);
+  }
+
+  function openReceiptCandidate(){
+    if(!isPaymentReturn() || typeof window.openReceipt !== 'function') return false;
+    var candidate=findReceiptCandidate();
+    var id=String((candidate && (candidate.id || candidate.remoteId)) || '');
+    if(!id) return false;
+    try{
+      window.openReceipt(id);
+      return true;
+    }catch(_e){ return false; }
+  }
+
+  function pinReceiptOpen(){
+    if(!isPaymentReturn()) return;
+    var attempts=0;
+    var openedAt=0;
+    var timer=setInterval(function(){
+      attempts++;
+      if(!shouldOpenPaid()){
+        clearInterval(timer);
+        return;
+      }
+      if(receiptIsOpen()){
+        if(!openedAt) openedAt=Date.now();
+        if(Date.now()-openedAt > 2600){
+          clearInterval(timer);
+          clearHandoff();
         }
-      }catch(_e){}
-      if(tries >= 80) clearInterval(timer);
-    }, 125);
+        return;
+      }
+      openedAt=0;
+      if(attempts>=5) openReceiptCandidate();
+      if(attempts>=55){
+        clearInterval(timer);
+        if(receiptIsOpen()) clearHandoff();
+      }
+    },180);
   }
 
   async function refreshPaidData(){
@@ -117,19 +149,30 @@
     }catch(_e){}
   }
 
+  function settlePaymentsView(done){
+    var tries=0;
+    var timer=setInterval(function(){
+      tries++;
+      var ok=openPaidOnce();
+      if(ok || tries>=35){
+        clearInterval(timer);
+        setTimeout(done,900);
+      }
+    },120);
+  }
+
   function boot(){
     if(!shouldOpenPaid()) return;
     refreshPaidData().finally(function(){
-      var tries = 0;
-      var timer = setInterval(function(){
-        tries += 1;
-        if(openPaid() || tries >= 40) clearInterval(timer);
-      }, 100);
-      openReceiptAfterPayment();
+      settlePaymentsView(function(){
+        if(isPaymentReturn()){
+          openReceiptCandidate();
+          pinReceiptOpen();
+        }
+      });
     });
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
   else boot();
-  window.addEventListener('hashchange', function(){ openPaid(); openReceiptAfterPayment(); });
 })();
