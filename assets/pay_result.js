@@ -57,9 +57,12 @@
       if(state === "APPROVED"){
         try{
           sessionStorage.setItem("justPaid","1");
-          if(tx.pago_id) sessionStorage.setItem("justPaidPaymentId", tx.pago_id);
+          const paidId = tx.pago_id || tx.payment_id || pid || "";
+          if(paidId) sessionStorage.setItem("justPaidPaymentId", paidId);
+          if(txId) sessionStorage.setItem("justPaidTransactionId", txId);
+          sessionStorage.setItem("justPaidAt", new Date().toISOString());
         }catch(e){}
-        loading("Pago confirmado", "Listo. Te estamos llevando a tus pagos.");
+        loading("Pago confirmado", "Listo. Abriremos tu comprobante de pago.");
         setTimeout(function(){ location.replace(paidUrl); }, 650);
         return;
       }
