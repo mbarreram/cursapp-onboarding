@@ -7,6 +7,7 @@
   var paidTransactionId = '';
   var paidAt = '';
   var justPaid = '';
+  var initialPaidRoute = String(location.hash || '').toLowerCase() === '#payments_paid';
   try{
     paidPaymentId = sessionStorage.getItem('justPaidPaymentId') || '';
     paidTransactionId = sessionStorage.getItem('justPaidTransactionId') || '';
@@ -15,7 +16,7 @@
   }catch(_e){}
 
   function shouldOpenPaid(){
-    return String(location.hash || '').toLowerCase() === '#payments_paid';
+    return initialPaidRoute || String(location.hash || '').toLowerCase() === '#payments_paid';
   }
 
   function isPaymentReturn(){
@@ -117,21 +118,17 @@
     var openedAt=0;
     var timer=setInterval(function(){
       attempts++;
-      if(!shouldOpenPaid()){
-        clearInterval(timer);
-        return;
-      }
       if(receiptIsOpen()){
         if(!openedAt) openedAt=Date.now();
-        if(Date.now()-openedAt > 2600){
+        if(Date.now()-openedAt > 3200){
           clearInterval(timer);
           clearHandoff();
         }
         return;
       }
       openedAt=0;
-      if(attempts>=5) openReceiptCandidate();
-      if(attempts>=55){
+      if(attempts>=4){ openPaidOnce(); openReceiptCandidate(); }
+      if(attempts>=70){
         clearInterval(timer);
         if(receiptIsOpen()) clearHandoff();
       }
