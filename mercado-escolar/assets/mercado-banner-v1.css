@@ -1,19 +1,20 @@
-/* Mercado Escolar · banner institucional v3
+/* Mercado Escolar · banner institucional v4
    Ajuste visual aislado al hero de Inicio. */
 .market-v8 .heroRetail.heroRetailCss.heroV9{
   position:relative!important;
   display:grid!important;
-  grid-template-columns:minmax(0,1.35fr) minmax(120px,.65fr)!important;
+  grid-template-columns:minmax(0,1.42fr) minmax(116px,.58fr)!important;
   grid-template-areas:
     "copy art"
     "cta art"!important;
+  grid-template-rows:auto auto!important;
   align-items:center!important;
-  gap:4px 14px!important;
+  gap:7px 14px!important;
   height:auto!important;
-  min-height:168px!important;
+  min-height:178px!important;
   max-height:none!important;
   margin:18px 0 12px!important;
-  padding:18px 20px 16px!important;
+  padding:18px 20px 17px!important;
   overflow:hidden!important;
   background:linear-gradient(135deg,#fff 0%,#fdfbff 58%,#f7f1ff 100%)!important;
   border:1.5px solid #d9bfff!important;
@@ -24,10 +25,10 @@
   content:""!important;
   display:block!important;
   position:absolute!important;
-  width:148px!important;
-  height:148px!important;
-  right:10px!important;
-  top:10px!important;
+  width:144px!important;
+  height:144px!important;
+  right:7px!important;
+  top:16px!important;
   border-radius:50%!important;
   background:radial-gradient(circle,rgba(124,58,237,.09) 0%,rgba(124,58,237,.04) 58%,transparent 72%)!important;
   pointer-events:none!important;
@@ -37,12 +38,13 @@
   grid-area:copy!important;
   position:relative!important;
   z-index:2!important;
-  max-width:360px!important;
+  max-width:none!important;
   min-width:0!important;
+  align-self:end!important;
 }
 .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
   display:block!important;
-  margin:0 0 5px!important;
+  margin:0 0 6px!important;
   color:#6d28d9!important;
   font-size:10px!important;
   line-height:1!important;
@@ -51,42 +53,47 @@
   white-space:nowrap!important;
 }
 .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
-  display:-webkit-box!important;
+  display:block!important;
   margin:0!important;
-  max-width:340px!important;
+  max-width:none!important;
   color:#111827!important;
-  font-size:26px!important;
-  line-height:1.02!important;
+  font-size:24px!important;
+  line-height:1.03!important;
   letter-spacing:-.03em!important;
   font-weight:900!important;
-  overflow:hidden!important;
-  -webkit-line-clamp:2!important;
-  -webkit-box-orient:vertical!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+  -webkit-line-clamp:unset!important;
+  -webkit-box-orient:initial!important;
 }
 .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
-  display:-webkit-box!important;
-  margin:7px 0 0!important;
-  max-width:315px!important;
+  display:block!important;
+  margin:8px 0 0!important;
+  max-width:300px!important;
   color:#64748b!important;
   font-size:13px!important;
   line-height:1.22!important;
   font-weight:600!important;
-  overflow:hidden!important;
-  -webkit-line-clamp:2!important;
-  -webkit-box-orient:vertical!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+  -webkit-line-clamp:unset!important;
+  -webkit-box-orient:initial!important;
 }
 .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
   grid-area:cta!important;
   justify-self:start!important;
+  align-self:start!important;
   position:relative!important;
   left:auto!important;
   top:auto!important;
   z-index:2!important;
   width:auto!important;
-  min-width:146px!important;
+  min-width:142px!important;
   min-height:0!important;
-  margin:3px 0 0!important;
-  padding:10px 17px!important;
+  margin:0!important;
+  padding:10px 16px!important;
   border:0!important;
   border-radius:13px!important;
   background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;
@@ -106,10 +113,10 @@
   right:auto!important;
   bottom:auto!important;
   top:-2px!important;
-  width:min(100%,190px)!important;
+  width:min(100%,176px)!important;
   max-width:none!important;
   height:auto!important;
-  max-height:142px!important;
+  max-height:136px!important;
   object-fit:contain!important;
   object-position:center!important;
   filter:drop-shadow(0 10px 11px rgba(51,30,92,.10))!important;
@@ -117,66 +124,72 @@
 }
 @media(max-width:680px){
   .market-v8 .heroRetail.heroRetailCss.heroV9{
-    grid-template-columns:minmax(0,1.28fr) minmax(112px,.72fr)!important;
+    grid-template-columns:minmax(0,1.48fr) minmax(104px,.52fr)!important;
     grid-template-rows:auto auto!important;
-    gap:3px 8px!important;
-    min-height:154px!important;
-    padding:16px 16px 15px!important;
+    gap:7px 8px!important;
+    height:auto!important;
+    min-height:176px!important;
+    max-height:none!important;
+    padding:17px 16px 16px!important;
     border-radius:21px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9::before{
-    width:128px!important;
-    height:128px!important;
-    right:0!important;
-    top:12px!important;
+    width:126px!important;
+    height:126px!important;
+    right:-2px!important;
+    top:24px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
     font-size:9px!important;
-    margin-bottom:5px!important;
+    margin-bottom:6px!important;
     letter-spacing:.10em!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
-    max-width:250px!important;
-    font-size:20px!important;
-    line-height:1.03!important;
+    font-size:19px!important;
+    line-height:1.04!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
-    max-width:236px!important;
-    margin-top:6px!important;
+    max-width:218px!important;
+    margin-top:7px!important;
     font-size:11.5px!important;
     line-height:1.2!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
-    min-width:132px!important;
+    min-width:128px!important;
     padding:9px 14px!important;
     font-size:12.5px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
-    width:132px!important;
-    max-height:122px!important;
-    top:-3px!important;
+    width:118px!important;
+    max-height:116px!important;
+    top:-2px!important;
   }
 }
 @media(max-width:390px){
   .market-v8 .heroRetail.heroRetailCss.heroV9{
-    grid-template-columns:minmax(0,1.32fr) minmax(100px,.68fr)!important;
-    min-height:148px!important;
-    padding:15px 14px 14px!important;
+    grid-template-columns:minmax(0,1.52fr) minmax(96px,.48fr)!important;
+    min-height:174px!important;
+    padding:16px 14px 15px!important;
+    gap:6px 6px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
+    font-size:8.5px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
-    max-width:220px!important;
     font-size:18px!important;
+    line-height:1.04!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
-    max-width:210px!important;
+    max-width:202px!important;
     font-size:10.8px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
-    min-width:124px!important;
+    min-width:122px!important;
+    padding:9px 13px!important;
     font-size:12px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
-    width:116px!important;
-    max-height:112px!important;
+    width:108px!important;
+    max-height:108px!important;
   }
 }
