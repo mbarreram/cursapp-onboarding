@@ -72,6 +72,32 @@
     }
   }
 
+  function installSecureSpend(){
+    const api=window.CursappMarketCredits;
+    const sb=window.cursappSupabase;
+    if(!api||!sb||typeof sb.rpc!=='function') return false;
+    api.spendCredits=async function(cost,extra={}){
+      const rule=String(extra.regla||'').toLowerCase();
+      try{
+        const res=await sb.rpc('spend_mercado_credits',{
+          p_rule:rule,
+          p_publicacion_id:extra.publicacion_id?String(extra.publicacion_id):null,
+          p_descripcion:extra.descripcion||extra.regla_label||'Destacado Mercado'
+        });
+        if(res.error) throw res.error;
+        const data=res.data||{};
+        if(typeof api.refresh==='function') await api.refresh();
+        return {ok:true,balance:Number(data.saldo_posterior??0),voucher:null};
+      }catch(e){
+        console.error('mercado-credit-spend',e);
+        const msg=String(e?.message||'').toLowerCase().includes('insuficient')?'No tienes créditos suficientes.':'No se pudo usar los créditos. Intenta nuevamente.';
+        toast(msg);
+        return {ok:false,message:msg};
+      }
+    };
+    return true;
+  }
+
   document.addEventListener('click',function(e){
     const btn=e.target.closest?.('[data-buy-credits]');
     if(!btn) return;
@@ -98,6 +124,13 @@
     },500);
   }
 
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',handleReturn,{once:true});
-  else handleReturn();
+  function boot(){
+    handleReturn();
+    if(!installSecureSpend()){
+      let n=0;
+      const timer=setInterval(()=>{n++;if(installSecureSpend()||n>30)clearInterval(timer);},150);
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
 })();
