@@ -1,0 +1,142 @@
+/* Mercado Escolar · banner institucional v1
+   Cambio visual aislado al hero de Inicio. */
+.market-v8 .heroRetail.heroRetailCss.heroV9{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(150px,.75fr);
+  grid-template-areas:
+    "copy art"
+    "cta art";
+  align-items:center;
+  gap:8px 18px;
+  min-height:206px;
+  margin-top:22px;
+  padding:24px 24px 22px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#fff 0%,#fdfbff 58%,#f7f1ff 100%)!important;
+  border:1.5px solid #d9bfff!important;
+  border-radius:28px!important;
+  box-shadow:0 12px 30px rgba(76,29,149,.08)!important;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9::before{
+  content:"";
+  position:absolute;
+  width:190px;
+  height:190px;
+  right:18px;
+  top:8px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,.10) 0%,rgba(124,58,237,.045) 58%,transparent 72%);
+  pointer-events:none;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy{
+  grid-area:copy;
+  position:relative;
+  z-index:2;
+  max-width:430px;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
+  display:block;
+  margin:0 0 7px;
+  color:#6d28d9!important;
+  font-size:12px!important;
+  line-height:1.15;
+  font-weight:900!important;
+  letter-spacing:.13em;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
+  margin:0!important;
+  max-width:360px;
+  color:#111827!important;
+  font-size:clamp(24px,3.15vw,34px)!important;
+  line-height:1.02!important;
+  letter-spacing:-.035em;
+  font-weight:900!important;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
+  margin:10px 0 0!important;
+  max-width:340px;
+  color:#64748b!important;
+  font-size:15px!important;
+  line-height:1.28!important;
+  font-weight:600!important;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
+  grid-area:cta;
+  justify-self:start;
+  position:relative;
+  z-index:2;
+  width:auto!important;
+  min-width:168px;
+  margin:5px 0 0!important;
+  padding:12px 20px!important;
+  border:0!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;
+  color:#fff!important;
+  box-shadow:0 8px 18px rgba(109,40,217,.20)!important;
+  font-size:15px!important;
+  line-height:1!important;
+  font-weight:900!important;
+}
+.market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
+  grid-area:art;
+  align-self:center;
+  justify-self:end;
+  position:relative!important;
+  z-index:1;
+  right:auto!important;
+  bottom:auto!important;
+  top:auto!important;
+  width:min(100%,230px)!important;
+  height:auto!important;
+  max-height:175px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  filter:drop-shadow(0 12px 13px rgba(51,30,92,.12));
+}
+@media(max-width:680px){
+  .market-v8 .heroRetail.heroRetailCss.heroV9{
+    grid-template-columns:minmax(0,1.18fr) minmax(112px,.82fr);
+    gap:6px 10px;
+    min-height:180px;
+    padding:20px 18px;
+    border-radius:22px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9::before{
+    width:150px;
+    height:150px;
+    right:0;
+    top:22px;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
+    font-size:10px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
+    max-width:235px;
+    font-size:24px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
+    max-width:230px;
+    margin-top:8px!important;
+    font-size:13px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
+    min-width:145px;
+    padding:11px 16px!important;
+    font-size:14px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
+    width:min(100%,165px)!important;
+    max-height:140px!important;
+  }
+}
+@media(max-width:390px){
+  .market-v8 .heroRetail.heroRetailCss.heroV9{
+    grid-template-columns:minmax(0,1.28fr) minmax(96px,.72fr);
+    padding:18px 15px;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{font-size:21px!important;}
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{font-size:12px!important;}
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{width:128px!important;}
+}
