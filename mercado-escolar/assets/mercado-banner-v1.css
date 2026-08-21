@@ -1,5 +1,5 @@
-/* Mercado Escolar · banner institucional v4
-   Ajuste visual aislado al hero de Inicio. */
+/* Mercado Escolar · banner institucional v5
+   Cambio visual aislado al hero de Inicio. */
 .market-v8 .heroRetail.heroRetailCss.heroV9{
   position:relative!important;
   display:grid!important;
@@ -40,7 +40,9 @@
   z-index:2!important;
   max-width:none!important;
   min-width:0!important;
-  align-self:end!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
 }
 .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
   display:block!important;
@@ -122,22 +124,31 @@
   filter:drop-shadow(0 10px 11px rgba(51,30,92,.10))!important;
   transform:none!important;
 }
+
+/* Móvil: flujo normal para texto + CTA, ilustración posicionada aparte.
+   Evita que cualquier regla heredada del hero anterior pueda solapar contenido. */
 @media(max-width:680px){
   .market-v8 .heroRetail.heroRetailCss.heroV9{
-    grid-template-columns:minmax(0,1.48fr) minmax(104px,.52fr)!important;
-    grid-template-rows:auto auto!important;
-    gap:7px 8px!important;
-    height:auto!important;
-    min-height:176px!important;
-    max-height:none!important;
-    padding:17px 16px 16px!important;
+    display:block!important;
+    min-height:190px!important;
+    padding:17px 138px 17px 16px!important;
     border-radius:21px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9::before{
     width:126px!important;
     height:126px!important;
-    right:-2px!important;
-    top:24px!important;
+    right:2px!important;
+    top:26px!important;
+  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy{
+    display:block!important;
+    position:relative!important;
+    z-index:2!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
     font-size:9px!important;
@@ -145,51 +156,72 @@
     letter-spacing:.10em!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
     font-size:19px!important;
     line-height:1.04!important;
+    overflow:visible!important;
+    white-space:normal!important;
+    -webkit-line-clamp:unset!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
-    max-width:218px!important;
-    margin-top:7px!important;
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:7px 0 0!important;
     font-size:11.5px!important;
-    line-height:1.2!important;
+    line-height:1.22!important;
+    overflow:visible!important;
+    white-space:normal!important;
+    -webkit-line-clamp:unset!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
+    display:inline-block!important;
+    position:relative!important;
+    z-index:3!important;
+    left:auto!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:auto!important;
+    width:auto!important;
     min-width:128px!important;
+    margin:12px 0 0!important;
     padding:9px 14px!important;
     font-size:12.5px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
-    width:118px!important;
+    position:absolute!important;
+    z-index:1!important;
+    right:14px!important;
+    top:50%!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:112px!important;
+    max-width:112px!important;
     max-height:116px!important;
-    top:-2px!important;
+    transform:translateY(-46%)!important;
+    object-fit:contain!important;
   }
 }
 @media(max-width:390px){
   .market-v8 .heroRetail.heroRetailCss.heroV9{
-    grid-template-columns:minmax(0,1.52fr) minmax(96px,.48fr)!important;
-    min-height:174px!important;
-    padding:16px 14px 15px!important;
-    gap:6px 6px!important;
+    min-height:188px!important;
+    padding:16px 124px 16px 14px!important;
   }
-  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{
-    font-size:8.5px!important;
-  }
-  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{
-    font-size:18px!important;
-    line-height:1.04!important;
-  }
-  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{
-    max-width:202px!important;
-    font-size:10.8px!important;
-  }
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy>span{font-size:8.5px!important;}
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy h2{font-size:18px!important;}
+  .market-v8 .heroRetail.heroRetailCss.heroV9 .heroCopy p{font-size:10.8px!important;}
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroPublishV9{
     min-width:122px!important;
+    margin-top:11px!important;
     padding:9px 13px!important;
     font-size:12px!important;
   }
   .market-v8 .heroRetail.heroRetailCss.heroV9 .heroItems{
-    width:108px!important;
+    right:10px!important;
+    width:102px!important;
+    max-width:102px!important;
     max-height:108px!important;
   }
 }
