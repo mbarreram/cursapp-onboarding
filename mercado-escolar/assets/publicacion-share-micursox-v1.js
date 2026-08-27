@@ -9,26 +9,25 @@
     const h=headings.find(x=>cleanText(x.textContent)&&cleanText(x.textContent)!=='Detalle del aviso');
     return cleanText(h?.textContent)||'Publicación';
   }
-  function freshShareUrl(){
+  function shareUrl(){
     const u=new URL(location.href);
-    u.searchParams.set('share_preview','micursox_v1');
-    return u.toString();
+    const id=u.searchParams.get('id');
+    return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(id||'')}`;
   }
   function shareText(){
     const title=titleText();
     const price=clpText();
-    return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${title}${price?`\n💰 ${price}`:''}\n\n🔗 Ver publicación:\n${freshShareUrl()}`;
+    return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${title}${price?`\n💰 ${price}`:''}\n\n🔗 Ver publicación:\n${shareUrl()}`;
   }
   async function doShare(ev){
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     const title=titleText();
-    const url=freshShareUrl();
     const text=shareText();
     if(navigator.share){
       try{
-        await navigator.share({title:`${title} · Mercado Escolar MiCursoX`,text,url});
+        await navigator.share({title:`${title} · Mercado Escolar MiCursoX`,text});
         return;
       }catch(e){
         if(e && e.name==='AbortError') return;
