@@ -9,7 +9,7 @@
   function getSession(){
     const s=readJson("cursapp_session_v1",{})||{};
     const p=readJson("cursapp_active_profile_v1",{})||{};
-    return {userId:s.userId||s.usuario_id||p.usuario_id||p.userId||null,email:String(s.email||p.email||"").toLowerCase(),name:s.nombre||s.name||p.nombre||"Apoderado Cursapp",colegioId:s.colegio_id||s.colegioId||p.colegio_id||p.colegioId||null,phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""};
+    return {userId:s.userId||s.usuario_id||p.usuario_id||p.userId||null,email:String(s.email||p.email||"").toLowerCase(),name:s.nombre||s.name||p.nombre||"Apoderado MiCursoX",colegioId:s.colegio_id||s.colegioId||p.colegio_id||p.colegioId||null,phone:s.whatsapp||s.telefono||p.whatsapp||p.telefono||""};
   }
   async function waitSupabase(){for(let i=0;i<50;i++){if(window.cursappSupabase)return window.cursappSupabase;if(window.initCursappSupabase){try{const x=window.initCursappSupabase();if(x)return x;}catch(e){}} await new Promise(r=>setTimeout(r,100));} return null;}
   function toast(t){const el=$("#toast"); if(!el){alert(t);return;} el.textContent=t; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2200)}
@@ -21,11 +21,11 @@
   function activeBoostRule(p){return String(p?.tipo_destacado||p?.destacado_tipo||p?.regla_destacado||p?.regla||'').toLowerCase();}
   function isBoosted(p){const until=boostUntil(p); return !!(p?.destacado||p?.destacada) && (!until || Date.parse(until)>Date.now());}
   function daysLeft(v){const ms=Date.parse(v||'')-Date.now();return Math.max(0,Math.ceil(ms/86400000));}
-  function boostLabel(rule){return {colegio:'Destacado colegio',comuna:'Destacado comuna',cursapp:'Destacado Todo Cursapp'}[rule]||'Destacado';}
+  function boostLabel(rule){return {colegio:'Destacado colegio',comuna:'Destacado comuna',cursapp:'Destacado Todo MiCursoX'}[rule]||'Destacado';}
   function isMine(){return String(post?.usuario_id||post?.vendedor_id||post?.email||'')===String(session.userId||session.email||'') || String(post?.vendedor_email||'').toLowerCase()===String(session.email||'').toLowerCase();}
   function categoryName(p){return p.categoria_nombre||p.categoria||"Otros";}
   function shareUrl(){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(post.id)}`;}
-  function message(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi tu publicación en Mercado Escolar Cursapp.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n¿Sigue disponible?\n\n🔗 Ver publicación:\n${shareUrl()}`;}
+  function message(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n🔗 Ver publicación:\n${shareUrl()}`;}
   function canUseWhatsapp(post){const phone=phoneClean(post.whatsapp||post.vendedor_whatsapp||""); const consent=post.contacto_whatsapp===true||post.whatsapp_consent===true||post.permite_whatsapp===true||String(post.contacto_whatsapp).toLowerCase()==='true'||String(post.whatsapp_consent).toLowerCase()==='true'||String(post.permite_whatsapp).toLowerCase()==='true'; return !!phone&&consent;}
   function canUseChat(post){return post.contacto_chat!==false && String(post.contacto_chat).toLowerCase()!=='false';}
   async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error)return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m&&cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
@@ -42,7 +42,7 @@
     modal.querySelector('#contactChat')?.addEventListener('click',async()=>{
       const msg=(modal.querySelector('#detailContactMsg')?.value||message()).trim();
       const comprador=session.userId||session.email, vendedor=post.vendedor_id||post.usuario_id||post.vendedor_email||post.nombre_vendedor||'vendedor';
-      const conv=await insertFlex('mercado_conversaciones',{publicacion_id:post.id,publicacion_titulo:post.titulo||'Publicación',comprador_id:String(comprador),comprador_email:session.email||'',comprador_nombre:session.name||'Apoderado Cursapp',vendedor_id:String(vendedor),vendedor_nombre:post.nombre_vendedor||'Vendedor Cursapp',medio_contacto:'chat_interno',mensaje:msg,ultimo_mensaje:msg,estado:'nueva',fecha:new Date().toISOString(),created_at:new Date().toISOString()});
+      const conv=await insertFlex('mercado_conversaciones',{publicacion_id:post.id,publicacion_titulo:post.titulo||'Publicación',comprador_id:String(comprador),comprador_email:session.email||'',comprador_nombre:session.name||'Apoderado MiCursoX',vendedor_id:String(vendedor),vendedor_nombre:post.nombre_vendedor||'Vendedor MiCursoX',medio_contacto:'chat_interno',mensaje:msg,ultimo_mensaje:msg,estado:'nueva',fecha:new Date().toISOString(),created_at:new Date().toISOString()});
       if(conv.error){toast('No se pudo crear conversación: '+conv.error.message);return;}
       await insertFlex('mercado_mensajes',{conversacion_id:conv.data?.id||null,publicacion_id:post.id,emisor_id:String(comprador),receptor_id:String(vendedor),mensaje:msg,estado:'enviado',fecha:new Date().toISOString(),created_at:new Date().toISOString()});
       await insertFlex('mercado_contactos',{publicacion_id:post.id,usuario_id:comprador,canal:'chat_interno',medio_contacto:'chat_interno',mensaje:msg,fecha:new Date().toISOString(),created_at:new Date().toISOString()});
@@ -59,7 +59,7 @@
   }
   async function share(){
     const text=message();
-    if(navigator.share){try{await navigator.share({title:post.titulo||"Mercado Escolar",text,url:shareUrl()});return;}catch(e){}}
+    if(navigator.share){try{await navigator.share({title:`${post.titulo||"Publicación"} · Mercado Escolar MiCursoX`,text,url:shareUrl()});return;}catch(e){}}
     try{await navigator.clipboard.writeText(text);toast("Enlace copiado");}catch(e){toast(text)}
   }
   function render(){
@@ -74,7 +74,7 @@
       <p class="bigPrice">${esc(price)}</p>
       <div class="v6Chips"><span>✓ Disponible</span><span>⌖ ${esc(post.visibilidad||"Comunidad")}</span><span>Hoy</span></div>
       <p>${esc(post.descripcion||"")}</p>
-      <div class="v6Seller"><span>${esc((post.nombre_vendedor||"Apoderado Cursapp").slice(0,2).toUpperCase())}</span><div><b>${esc(post.nombre_vendedor||"Apoderado Cursapp")}</b><small>Comunidad registrada</small></div></div>
+      <div class="v6Seller"><span>${esc((post.nombre_vendedor||"Apoderado MiCursoX").slice(0,2).toUpperCase())}</span><div><b>${esc(post.nombre_vendedor||"Apoderado MiCursoX")}</b><small>Comunidad registrada</small></div></div>
       <div class="metricRow"><span>👁️ ${Number(post.visualizaciones||0)} vistas</span><span>💬 ${Number(post.contactos||0)} contactos</span><span>♥ ${Number(post.favoritos||0)} favoritos</span></div>
       <button id="btnContact" class="primary">Contactar vendedor</button>
       <button id="btnShare" class="ghost">Compartir aviso</button>
