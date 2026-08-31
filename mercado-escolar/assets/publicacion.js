@@ -25,7 +25,14 @@
   function isMine(){return String(post?.usuario_id||post?.vendedor_id||post?.email||'')===String(session.userId||session.email||'') || String(post?.vendedor_email||'').toLowerCase()===String(session.email||'').toLowerCase();}
   function categoryName(p){return p.categoria_nombre||p.categoria||"Otros";}
   function shareUrl(){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(post.id)}`;}
+  function previewShareUrl(){
+    const u=new URL('https://ngxistgymgdkoaiulfbq.supabase.co/functions/v1/mercado-share-preview');
+    u.searchParams.set('id',post?.id||'');
+    u.searchParams.set('v',String(Date.now()));
+    return u.href;
+  }
   function message(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n🔗 Ver publicación:\n${shareUrl()}`;}
+  function shareMessage(){const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${post.titulo||"Publicación"}\n💰 ${price}\n\n🔗 Ver publicación:`;}
   function canUseWhatsapp(post){const phone=phoneClean(post.whatsapp||post.vendedor_whatsapp||""); const consent=post.contacto_whatsapp===true||post.whatsapp_consent===true||post.permite_whatsapp===true||String(post.contacto_whatsapp).toLowerCase()==='true'||String(post.whatsapp_consent).toLowerCase()==='true'||String(post.permite_whatsapp).toLowerCase()==='true'; return !!phone&&consent;}
   function canUseChat(post){return post.contacto_chat!==false && String(post.contacto_chat).toLowerCase()!=='false';}
   async function insertFlex(table,row){let cleaned={...row}; for(let i=0;i<8;i++){const res=await sb.from(table).insert([cleaned]).select('*').maybeSingle(); if(!res.error)return res; const msg=String(res.error.message||''); const m=msg.match(/'([^']+)' column of '[^']+' in the schema cache/i)||msg.match(/column "([^"]+)"/i); if(m&&cleaned[m[1]]!==undefined){delete cleaned[m[1]]; continue;} return res;} return sb.from(table).insert([cleaned]).select('*').maybeSingle();}
@@ -58,9 +65,10 @@
     });
   }
   async function share(){
-    const text=message();
-    if(navigator.share){try{await navigator.share({title:`${post.titulo||"Publicación"} · Mercado Escolar MiCursoX`,text,url:shareUrl()});return;}catch(e){}}
-    try{await navigator.clipboard.writeText(text);toast("Enlace copiado");}catch(e){toast(text)}
+    const text=shareMessage();
+    const url=previewShareUrl();
+    if(navigator.share){try{await navigator.share({title:`${post.titulo||"Publicación"} · Mercado Escolar MiCursoX`,text,url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+    try{await navigator.clipboard.writeText(`${text}\n${url}`);toast("Enlace copiado");}catch(e){toast(`${text}\n${url}`)}
   }
   function render(){
     const price=Number(post.precio||0)===0?"Intercambio":clp(post.precio);
