@@ -25,27 +25,29 @@
     u.searchParams.set('v',String(Date.now()));
     return u.href;
   }
-  function shareText(){
+  function messageBody(){
     const title=titleText();
     const price=clpText();
-    return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${title}${price?`\n💰 ${price}`:''}\n\n🔗 Ver publicación:\n${previewUrl()}`;
+    return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${title}${price?`\n💰 ${price}`:''}\n\n🔗 Ver publicación:`;
   }
+  function clipboardText(){return `${messageBody()}\n${previewUrl()}`;}
   async function doShare(ev){
     ev.preventDefault();
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     const title=titleText();
-    const text=shareText();
+    const text=messageBody();
+    const url=previewUrl();
     if(navigator.share){
       try{
-        await navigator.share({title:`${title} · Mercado Escolar MiCursoX`,text});
+        await navigator.share({title:`${title} · Mercado Escolar MiCursoX`,text,url});
         return;
       }catch(e){
         if(e && e.name==='AbortError') return;
       }
     }
     try{
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(clipboardText());
       const toast=document.getElementById('toast');
       if(toast){toast.textContent='Enlace copiado';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200);}
     }catch(e){
