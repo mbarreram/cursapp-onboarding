@@ -11,17 +11,9 @@
   }
   function publicationId(){return new URL(location.href).searchParams.get('id')||'';}
   function directUrl(){return `${location.origin}/mercado-escolar/publicacion.html?id=${encodeURIComponent(publicationId())}`;}
-  function imageUrl(){
-    const img=document.querySelector('#publicacionRoot .publicacionHero img');
-    const src=img?.currentSrc||img?.src||'';
-    try{return src?new URL(src,location.origin).href:'';}catch(_){return '';}
-  }
   function previewUrl(){
     const u=new URL(`${location.origin}/mercado-escolar/share`);
     u.searchParams.set('id',publicationId());
-    u.searchParams.set('title',titleText());
-    if(clpText()) u.searchParams.set('price',clpText());
-    if(imageUrl()) u.searchParams.set('image',imageUrl());
     u.searchParams.set('v',String(Date.now()));
     return u.href;
   }
@@ -31,6 +23,22 @@
     return `Hola 👋\n\nVi esta publicación en Mercado Escolar MiCursoX.\n\n📦 ${title}${price?`\n💰 ${price}`:''}\n\n🔗 Ver publicación:`;
   }
   function clipboardText(){return `${messageBody()}\n${previewUrl()}`;}
+
+  const nativeShare=typeof navigator.share==='function'?navigator.share.bind(navigator):null;
+  if(nativeShare){
+    try{
+      navigator.share=async function(data){
+        const next=Object.assign({},data||{});
+        const dynamic=previewUrl();
+        if(!next.url || String(next.url).includes('/mercado-escolar/publicacion.html')) next.url=dynamic;
+        if(next.text){
+          next.text=String(next.text).replace(/https?:\/\/[^\s]+\/mercado-escolar\/publicacion\.html\?id=[^\s]+/g,'').trim();
+        }
+        return nativeShare(next);
+      };
+    }catch(_){}
+  }
+
   async function doShare(ev){
     ev.preventDefault();
     ev.stopPropagation();
