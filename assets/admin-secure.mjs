@@ -94,6 +94,7 @@ const optionalModules = [
   '/assets/admin-comms-supabase.mjs?v=4',
   '/assets/admin-banner-upload.mjs?v=1',
   '/assets/admin-banner-rotation.mjs?v=1',
+  '/assets/admin-banner-client-report.mjs?v=1',
   '/assets/admin-notifications-dashboard.mjs?v=1',
   '/assets/admin-territories.mjs?v=5',
   '/assets/admin-school-map-markers.mjs?v=1',
