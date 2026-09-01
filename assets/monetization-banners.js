@@ -7,7 +7,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const role=()=>{const p=location.pathname.toLowerCase();if(p.includes('presidente'))return'presidente';if(p.includes('tesorero'))return'tesorero';return'apoderado'};
 const readSession=()=>{try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}')}catch(_){return{}}};
 const dayKey=()=>new Date().toISOString().slice(0,10);
-const exposureKey=()=>`cursapp_banner_exposure_${dayKey()}`;
+const exposureKey=()=>`cursapp_banner_exposure_v2_${dayKey()}`;
 const lastKey=()=>`cursapp_banner_last_${role()}`;
 function exposures(){try{return JSON.parse(localStorage.getItem(exposureKey())||'{}')}catch(_){return{}}}
 function saveExposure(id){const x=exposures();x[id]=(x[id]||0)+1;localStorage.setItem(exposureKey(),JSON.stringify(x));localStorage.setItem(lastKey(),String(id))}
