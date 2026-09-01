@@ -96,6 +96,7 @@ const optionalModules = [
   '/assets/admin-banner-rotation.mjs?v=1',
   '/assets/admin-banner-client-report.mjs?v=1',
   '/assets/admin-clients.mjs?v=1',
+  '/assets/admin-client-commercial.mjs?v=1',
   '/assets/admin-client-report-decorator.mjs?v=1',
   '/assets/admin-notifications-dashboard.mjs?v=1',
   '/assets/admin-territories.mjs?v=5',
