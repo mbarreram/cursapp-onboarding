@@ -1,0 +1,10 @@
+const sb=window.CURSAPP_SUPABASE;
+const modal=document.getElementById('adminModal');
+let clients=[],banners=[],lastReportId='';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function load(){try{const [c,b]=await Promise.all([sb.request('admin_clients?select=id,nombre_comercial,razon_social,rut,contacto_nombre,contacto_email,contacto_telefono'),sb.request('admin_banners?select=id,client_id,title')]);clients=Array.isArray(c)?c:[];banners=Array.isArray(b)?b:[]}catch(_){}}
+function inject(){const report=modal.querySelector('.bannerReportModal');if(!report||report.querySelector('[data-report-client]')||!lastReportId)return;const b=banners.find(x=>String(x.id)===String(lastReportId)),c=clients.find(x=>String(x.id)===String(b?.client_id||''));const section=document.createElement('section');section.className='bannerReportSection';section.dataset.reportClient='1';section.innerHTML=`<h3>Cliente</h3><div class="bannerReportRow"><span>Nombre comercial</span><b>${esc(c?.nombre_comercial||'Sin cliente asociado')}</b></div>${c?.razon_social?`<div class="bannerReportRow"><span>Razón social</span><b>${esc(c.razon_social)}</b></div>`:''}${c?.rut?`<div class="bannerReportRow"><span>RUT</span><b>${esc(c.rut)}</b></div>`:''}${c?.contacto_nombre?`<div class="bannerReportRow"><span>Contacto</span><b>${esc(c.contacto_nombre)}</b></div>`:''}${c?.contacto_email?`<div class="bannerReportRow"><span>Email</span><b>${esc(c.contacto_email)}</b></div>`:''}`;const preview=report.querySelector('.bannerReportPreview');if(preview)preview.insertAdjacentElement('afterend',section);else report.querySelector('.bannerReportHead')?.insertAdjacentElement('afterend',section);}
+document.addEventListener('click',e=>{const btn=e.target.closest('[data-banner-report]');if(btn){lastReportId=btn.dataset.bannerReport;setTimeout(inject,30)}},true);
+await load();
+new MutationObserver(inject).observe(modal,{childList:true,subtree:true});
+window.addEventListener('focus',load);
