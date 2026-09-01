@@ -1,7 +1,8 @@
 (function(){
 'use strict';
 const sb=window.CURSAPP_SUPABASE;
-let rows=[],current=null,timer=null,user=null;
+let rows=[],current=null,timer=null,user=null,rendering=false;
+const lastImpressionAt=new Map();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const role=()=>{const p=location.pathname.toLowerCase();if(p.includes('presidente'))return'presidente';if(p.includes('tesorero'))return'tesorero';return'apoderado'};
 const readSession=()=>{try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}')}catch(_){return{}}};
@@ -25,6 +26,13 @@ async function track(type,b){
     user=user||await sb.getCurrentUser();
     await sb.request('admin_banner_events',{method:'POST',body:JSON.stringify({banner_id:b.id,user_id:user.id,event_type:type,role:role()})});
   }catch(_){ }
+}
+function registerImpression(b){
+  const now=Date.now(),prev=lastImpressionAt.get(String(b.id))||0;
+  if(now-prev<30000)return;
+  lastImpressionAt.set(String(b.id),now);
+  saveExposure(b.id);
+  track('impression',b);
 }
 async function load(){
   if(!sb?.request)return[];
@@ -71,13 +79,23 @@ function draw(){
   current=nextBanner();if(!current){slot?.remove();return}
   if(!slot){slot=document.createElement('section');slot.className='cursappRetailSlot';t.appendChild(slot)}
   const hasAction=!!current.target_url;
-  slot.innerHTML=`<article class="cursappRetailBanner" tabindex="0" role="${hasAction?'link':'img'}" aria-label="${esc(current.title)}">${current.image_url?`<img src="${esc(current.image_url)}" alt="">`:''}<div class="retailCopy"><span>${esc(current.campaign_tier==='premium'?'Beneficio Premium':current.campaign_tier==='exclusive'?'Beneficio exclusivo':'Beneficio Cursapp')}</span><b>${esc(current.title)}</b>${current.message?`<small>${esc(current.message)}</small>`:''}${hasAction?`<button type="button">${esc(current.action_label||'Conocer')}</button>`:''}</div></article>${rows.length>1?`<div class="retailDots">Rotación de ${rows.length} banners</div>`:''}`;
-  saveExposure(current.id);track('impression',current);
+  slot.innerHTML=`<article class="cursappRetailBanner" tabindex="0" role="${hasAction?'link':'img'}" aria-label="${esc(current.title)}">${current.image_url?`<img src="${esc(current.image_url)}" alt="">`:''}<div class="retailCopy"><span>${esc(current.campaign_tier==='premium'?'Beneficio Premium':current.campaign_tier==='exclusive'?'Beneficio exclusivo':'Beneficio MiCursoX')}</span><b>${esc(current.title)}</b>${current.message?`<small>${esc(current.message)}</small>`:''}${hasAction?`<button type="button">${esc(current.action_label||'Conocer')}</button>`:''}</div></article>${rows.length>1?`<div class="retailDots">Rotación de ${rows.length} banners</div>`:''}`;
+  registerImpression(current);
   const open=()=>{if(!current.target_url)return;track('click',current);location.href=current.target_url};
   const card=slot.querySelector('.cursappRetailBanner');card.onclick=open;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
   clearTimeout(timer);const seconds=Math.max(5,Math.min(60,Number(current.rotation_interval_seconds||10)));
-  if(rows.length>1)timer=setTimeout(async()=>{await load();draw()},seconds*1000);
+  if(rows.length>1)timer=setTimeout(async()=>{await render()},seconds*1000);
 }
-async function render(){await load();draw()}
-document.addEventListener('DOMContentLoaded',render);window.addEventListener('pageshow',render);window.CursappMonetization={render};
+async function render(){
+  if(rendering)return;
+  rendering=true;
+  try{await load();draw()}finally{rendering=false}
+}
+function rerenderSoon(){setTimeout(()=>render(),80)}
+document.addEventListener('DOMContentLoaded',render);
+window.addEventListener('pageshow',render);
+window.addEventListener('cursapp:apoderado-ready',rerenderSoon);
+window.addEventListener('cursapp:presidente-ready',rerenderSoon);
+window.addEventListener('cursapp:tesorero-ready',rerenderSoon);
+window.CursappMonetization={render};
 })();
