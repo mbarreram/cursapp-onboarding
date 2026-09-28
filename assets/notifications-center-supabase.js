@@ -104,7 +104,7 @@
       const all=e.target.closest('[data-readall]');
       if(all){all.disabled=true;try{await mark(rows.filter(x=>!x.is_read).map(x=>x.id));root.remove();open()}catch(err){all.disabled=false;alert(err?.message||'No se pudieron marcar como leídas')}return}
       const item=e.target.closest('[data-id]');
-      if(item){item.disabled=true;const row=rows.find(x=>String(x.id)===String(item.dataset.id));try{await mark([item.dataset.id])}catch(err){item.disabled=false;alert(err?.message||'No se pudo guardar la lectura');return}root.remove();navigateNotification(row||{url_destino:item.dataset.url||''})}
+      if(item){item.disabled=true;const row=rows.find(x=>String(x.id)===String(item.dataset.id));try{if(!row||!row.is_read)await mark([item.dataset.id])}catch(err){item.disabled=false;alert(err?.message||'No se pudo guardar la lectura');return}root.remove();navigateNotification(row||{url_destino:item.dataset.url||''})}
     });
     document.body.appendChild(root);
   }
