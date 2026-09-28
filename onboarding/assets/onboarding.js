@@ -570,6 +570,25 @@ function uid(prefix = "id") {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||"").trim());
   }
 
+  async function onboardingOtpRequest(action, email, extra){
+    const api = window.CURSAPP_SUPABASE;
+    if(!api || !api.functions || typeof api.functions.invoke !== "function"){
+      throw new Error("El servicio de verificación no está disponible. Intenta nuevamente.");
+    }
+    const result = await api.functions.invoke("onboarding-email-otp", {
+      body:Object.assign({action,email:String(email||"").trim().toLowerCase()}, extra||{})
+    });
+    if(result && result.error) throw result.error;
+    const data = result && result.data ? result.data : null;
+    if(!data || data.ok !== true) throw new Error((data && data.error) || "No fue posible procesar el código.");
+    return data;
+  }
+
+  function otpCooldownRemaining(sentAt){
+    const elapsed = Date.now() - Number(sentAt||0);
+    return elapsed < 60000 ? Math.ceil((60000-elapsed)/1000) : 0;
+  }
+
   function hashDemo(str){
     let h=5381;
     const s = String(str||"");
@@ -956,20 +975,21 @@ function uid(prefix = "id") {
             </div>
 
             
-<div class="muted" style="margin-top:8px;">Revisa tu correo e ingresa el código para continuar.</div>
+<div class="muted" style="margin-top:8px;">Te enviaremos un código de 6 dígitos a este correo. El código vence en 10 minutos.</div>
 
-<div class="otpRow" style="margin-top:10px;">
-  <div class="otpField">
-    <label style="font-weight:900;">Código (OTP)</label>
-    <input id="pOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
+<button class="btn ghost" id="btnSendOtp" type="button" style="width:100%;margin-top:12px;">${d.pOtpSent ? "Reenviar código" : "Enviar código"}</button>
+
+<div class="otpRow" style="margin-top:12px;">
+  <div class="otpField" style="width:100%;">
+    <label style="font-weight:900;">Código de verificación</label>
+    <input id="pOtp" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6 dígitos"
            value="${escapeHtml(d.pOtp||'')}" />
   </div>
-  <button class="btn ghost" id="btnSendOtp" type="button">Enviar código</button>
-  <button class="btn primary" id="btnVerifyOtp" type="button">Validar</button>
+  <button class="btn primary" id="btnVerifyOtp" type="button" style="width:100%;">Validar código</button>
 </div>
 
 <div id="otpHint" class="muted" style="margin-top:8px; display:${d.pOtpSent ? "block":"none"};">
-  Demo OTP: <b>${escapeHtml(d.pOtpCode||"")}</b>
+  Código enviado${d.pOtpEmailMasked ? " a <b>"+escapeHtml(d.pOtpEmailMasked)+"</b>" : ""}. Revisa tu bandeja de entrada y spam. Expira en 10 minutos.
 </div>
 
 <div id="otpOk" class="otpStatusOk" style="display:${d.pOtpVerified ? "inline-flex":"none"};">${onbIcon("check")} Código verificado</div>
@@ -1026,17 +1046,18 @@ function uid(prefix = "id") {
                        placeholder="correo@dominio.com" value="${escapeHtml(email)}" />
               </div>
 
-              <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
-                <div style="flex:1; min-width:160px;">
-                  <label style="font-weight:900;">Código (OTP)</label>
-                  <input id="aOtp" autocomplete="off" inputmode="numeric" maxlength="6" placeholder="6 dígitos"
+              <div class="muted" style="margin-top:8px;">Te enviaremos un código de 6 dígitos a este correo. El código vence en 10 minutos.</div>
+              <button class="btn ghost" id="btnSendOtpA" type="button" style="width:100%;margin-top:12px;">${d.aOtpSent ? "Reenviar código" : "Enviar código"}</button>
+              <div style="margin-top:12px; display:grid; gap:10px;">
+                <div>
+                  <label style="font-weight:900;">Código de verificación</label>
+                  <input id="aOtp" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6 dígitos"
                          value="${escapeHtml(d.aOtp||'')}" />
                 </div>
-                <button class="btn ghost" id="btnSendOtpA" type="button" style="min-width:160px;">Enviar código</button>
-                <button class="btn primary" id="btnVerifyOtpA" type="button" style="min-width:160px;">Validar</button>
+                <button class="btn primary" id="btnVerifyOtpA" type="button" style="width:100%;">Validar código</button>
               </div>
               <div id="otpHintA" class="muted" style="margin-top:8px; display:${d.aOtpSent ? "block":"none"};">
-                Demo OTP: <b>${escapeHtml(d.aOtpCode||"")}</b>
+                Código enviado${d.aOtpEmailMasked ? " a <b>"+escapeHtml(d.aOtpEmailMasked)+"</b>" : ""}. Revisa tu bandeja de entrada y spam. Expira en 10 minutos.
               </div>
               <div id="otpOkA" class="otpStatusOk" style="display:${d.aOtpVerified ? "inline-flex":"none"};">${onbIcon("check")} Código verificado</div>
 
@@ -1268,6 +1289,9 @@ function uid(prefix = "id") {
           d.aOtpSent = false;
           d.aOtpCode = "";
           d.aOtp = "";
+          d.aOtpChallenge = "";
+          d.aOtpEmailMasked = "";
+          d.aOtpExpiresAt = "";
           d.aOtpVerifiedEmail = "";
           const ok = $("otpOkA"); if(ok) ok.style.display = "none";
           const hint = $("otpHintA"); if(hint) hint.style.display = "none";
@@ -1279,29 +1303,48 @@ function uid(prefix = "id") {
       });
       otpInp && (otpInp.oninput = ()=>{ d.aOtp = otpInp.value; saveDraft(d); });
 
-      sendBtn && (sendBtn.onclick = ()=>{
+      sendBtn && (sendBtn.onclick = async ()=>{
         const e = String(emailInp?.value||"").trim().toLowerCase();
         if(!validateEmail(e)){ alert("Correo inválido."); return; }
-        d.email = e;
-        d.aOtpCode = String(Math.floor(100000 + Math.random()*900000));
-        d.aOtpSent = true;
-        d.aOtpVerified = false;
-        d.aOtpSentAt = Date.now();
-        saveDraft(d);
-        alert("Demo OTP: " + d.aOtpCode);
-        render();
+        const wait = otpCooldownRemaining(d.aOtpSentAt);
+        if(wait){ alert("Espera "+wait+" segundos antes de reenviar el código."); return; }
+        const oldText=sendBtn.textContent;
+        sendBtn.disabled=true; sendBtn.textContent="Enviando…";
+        try{
+          const data=await onboardingOtpRequest("send",e);
+          d.email=e;
+          d.aOtpSent=true;
+          d.aOtpVerified=false;
+          d.aOtpSentAt=Date.now();
+          d.aOtpChallenge=String(data.challenge||"");
+          d.aOtpEmailMasked=String(data.email_masked||"");
+          d.aOtpExpiresAt=String(data.expires_at||"");
+          d.aOtp="";
+          saveDraft(d);
+          render();
+        }catch(err){
+          sendBtn.disabled=false; sendBtn.textContent=oldText;
+          alert(err?.message||"No se pudo enviar el código. Intenta nuevamente.");
+        }
       });
 
-      verBtn && (verBtn.onclick = ()=>{
+      verBtn && (verBtn.onclick = async ()=>{
         const code = String(otpInp?.value||"").trim();
-        if(!d.aOtpSent){ alert("Primero envía el código."); return; }
-        if(Date.now() - (d.aOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
-        if(code !== String(d.aOtpCode||"")){ alert("Código incorrecto."); return; }
-        d.aOtpVerified = true;
-        d.aOtpVerifiedEmail = String(d.email || emailInp?.value || "").trim().toLowerCase();
-        saveDraft(d);
-        // Mostrar estado verificado en UI
-        render();
+        const e = String(emailInp?.value||d.email||"").trim().toLowerCase();
+        if(!d.aOtpSent||!d.aOtpChallenge){ alert("Primero envía el código."); return; }
+        if(!/^\d{6}$/.test(code)){ alert("Ingresa los 6 dígitos del código."); return; }
+        verBtn.disabled=true; verBtn.textContent="Validando…";
+        try{
+          await onboardingOtpRequest("verify",e,{code,challenge:d.aOtpChallenge});
+          d.aOtpVerified=true;
+          d.aOtpVerifiedEmail=e;
+          d.aOtp=code;
+          saveDraft(d);
+          render();
+        }catch(err){
+          verBtn.disabled=false; verBtn.textContent="Validar código";
+          alert(err?.message||"No se pudo validar el código.");
+        }
       });
 
       $("onbPhone") && ($("onbPhone").oninput = ()=>{ d.phone = $("onbPhone").value; saveDraft(d); });
@@ -1326,6 +1369,9 @@ function uid(prefix = "id") {
           d.pOtpSent = false;
           d.pOtpCode = "";
           d.pOtp = "";
+          d.pOtpChallenge = "";
+          d.pOtpEmailMasked = "";
+          d.pOtpExpiresAt = "";
           d.pOtpVerifiedEmail = "";
           const ok = $("otpOk"); if(ok) ok.style.display = "none";
           const hint = $("otpHint"); if(hint) hint.style.display = "none";
@@ -1339,28 +1385,48 @@ function uid(prefix = "id") {
       $("pPass") && ($("pPass").oninput = ()=>{ d.pPass = $("pPass").value; saveDraft(d); });
       $("pPass2") && ($("pPass2").oninput = ()=>{ d.pPass2 = $("pPass2").value; saveDraft(d); });
 
-sendBtn && (sendBtn.onclick = ()=>{
+sendBtn && (sendBtn.onclick = async ()=>{
         const e = String(pEmail?.value||"").trim().toLowerCase();
         if(!validateEmail(e)){ alert("Correo inválido."); return; }
-        d.pEmail = e;
-        d.pOtpCode = String(Math.floor(100000 + Math.random()*900000));
-        d.pOtpSent = true;
-        d.pOtpVerified = false;
-        d.pOtpSentAt = Date.now();
-        saveDraft(d);
-render();
+        const wait = otpCooldownRemaining(d.pOtpSentAt);
+        if(wait){ alert("Espera "+wait+" segundos antes de reenviar el código."); return; }
+        const oldText=sendBtn.textContent;
+        sendBtn.disabled=true; sendBtn.textContent="Enviando…";
+        try{
+          const data=await onboardingOtpRequest("send",e);
+          d.pEmail=e;
+          d.pOtpSent=true;
+          d.pOtpVerified=false;
+          d.pOtpSentAt=Date.now();
+          d.pOtpChallenge=String(data.challenge||"");
+          d.pOtpEmailMasked=String(data.email_masked||"");
+          d.pOtpExpiresAt=String(data.expires_at||"");
+          d.pOtp="";
+          saveDraft(d);
+          render();
+        }catch(err){
+          sendBtn.disabled=false; sendBtn.textContent=oldText;
+          alert(err?.message||"No se pudo enviar el código. Intenta nuevamente.");
+        }
       });
 
-      verBtn && (verBtn.onclick = ()=>{
+      verBtn && (verBtn.onclick = async ()=>{
         const code = String(pOtp?.value||"").trim();
-        if(!d.pOtpSent){ alert("Primero envía el código."); return; }
-        if(Date.now() - (d.pOtpSentAt||0) > 10*60*1000){ alert("Código expirado. Envía uno nuevo."); return; }
-        if(code !== String(d.pOtpCode||"")){ alert("Código incorrecto."); return; }
-        d.pOtpVerified = true;
-        d.pOtpVerifiedEmail = String(d.pEmail || pEmail?.value || "").trim().toLowerCase();
-        saveDraft(d);
-        // Mostrar estado verificado en UI
-        render();
+        const e = String(pEmail?.value||d.pEmail||"").trim().toLowerCase();
+        if(!d.pOtpSent||!d.pOtpChallenge){ alert("Primero envía el código."); return; }
+        if(!/^\d{6}$/.test(code)){ alert("Ingresa los 6 dígitos del código."); return; }
+        verBtn.disabled=true; verBtn.textContent="Validando…";
+        try{
+          await onboardingOtpRequest("verify",e,{code,challenge:d.pOtpChallenge});
+          d.pOtpVerified=true;
+          d.pOtpVerifiedEmail=e;
+          d.pOtp=code;
+          saveDraft(d);
+          render();
+        }catch(err){
+          verBtn.disabled=false; verBtn.textContent="Validar código";
+          alert(err?.message||"No se pudo validar el código.");
+        }
       });
 
       if(d.alsoApoderado){
