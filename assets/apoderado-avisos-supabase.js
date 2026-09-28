@@ -76,7 +76,7 @@
     return true;
   }
 
-  function openCurrentCourseNotices(){
+  async function openCurrentCourseNotices(){
     const root = document.getElementById('modalRoot');
     if(!root) return;
     const rows = lastItems;
@@ -94,6 +94,13 @@
       + '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><h2 style="margin:0;font-size:28px;color:#0f172a">Avisos del curso</h2><p style="margin:4px 0 0;color:#64748b">Solo comunicaciones del curso activo.</p></div>'
       + '<button type="button" data-close-current-course-modal style="border:1px solid #e2e8f0;background:#fff;border-radius:16px;padding:10px 14px;font-weight:800">Cerrar</button></div>'
       + '<div style="margin-top:12px">'+content+'</div></section></div>';
+
+    try{
+      const noticesApi=window.CURSAPP_COURSE_NOTICES;
+      if(noticesApi&&typeof noticesApi.markAllRead==='function') await noticesApi.markAllRead();
+    }catch(error){
+      console.warn('MiCursoX: no se pudieron registrar como leídos los avisos del curso.', error);
+    }
 
     root.querySelector('[data-close-current-course-modal]')?.addEventListener('click', ()=>{ root.innerHTML=''; });
     root.querySelector('[data-current-course-modal]')?.addEventListener('click', (ev)=>{ if(ev.target === ev.currentTarget) root.innerHTML=''; });
