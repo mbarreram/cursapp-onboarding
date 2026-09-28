@@ -106,7 +106,7 @@
     host.className = 'onbSchoolFinder';
     host.innerHTML = '<div class="onbSchoolSearchWrap">' +
       '<span class="onbSchoolSearchIcon">🔎</span>' +
-      '<input class="onbSchoolSearch" type="search" autocomplete="off" placeholder="Buscar colegio por nombre o RBD">' +
+      '<input class="onbSchoolSearch" type="search" autocomplete="off" placeholder="Buscar colegio por nombre">' +
       '<button class="onbSchoolClear" type="button">×</button>' +
       '<div class="onbSchoolResults"></div></div>' +
       '<div class="onbSchoolSelected"></div>' +
@@ -135,7 +135,7 @@
     host.querySelector('.onbSchoolSearch').disabled = !enabled;
     host.querySelector('.onbSchoolMissing').disabled = !enabled;
     host.querySelector('.onbSchoolHint').textContent = enabled
-      ? 'Escribe al menos 2 caracteres del nombre o RBD.'
+      ? 'Escribe al menos 2 caracteres del nombre.'
       : 'Selecciona primero una comuna.';
   }
 
@@ -163,7 +163,7 @@
       if(sequence !== searchSequence) return;
       results.innerHTML = rows.length ? rows.map(row =>
         '<button type="button" class="onbSchoolResult"><b>' + esc(row.nombre) + '</b>' +
-        '<small>RBD ' + esc(row.rbd || '—') + (row.dependencia_nombre ? ' · ' + esc(row.dependencia_nombre) : '') + '</small></button>'
+        (row.dependencia_nombre ? '<small>' + esc(row.dependencia_nombre) + '</small>' : '') + '</button>'
       ).join('') : '<div style="padding:14px;color:#64748b">Sin resultados.</div>';
       results.style.display = 'block';
       hint.textContent = rows.length ? 'Selecciona tu establecimiento oficial.' : 'No se encontraron coincidencias.';
@@ -188,9 +188,8 @@
     };
     writeDraft(patch);
     host.querySelector('.onbSchoolSelected').innerHTML =
-      '<div class="onbSchoolSelectedTop"><div class="onbSchoolBadge">🏫</div><div>' +
+      '<div class="onbSchoolSelectedTop"><div>' +
       '<div class="onbSchoolSelectedName">' + esc(row.nombre) + '</div>' +
-      '<div class="onbSchoolMeta">RBD ' + esc(row.rbd || '—') + '</div>' +
       '<button type="button" class="onbSchoolChange">Cambiar colegio</button></div></div>';
     host.querySelector('.onbSchoolSelected').classList.add('isVisible');
     host.querySelector('.onbSchoolSearchWrap').style.display = 'none';
