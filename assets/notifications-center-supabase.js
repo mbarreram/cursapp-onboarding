@@ -18,7 +18,7 @@
   function setDisplay(el,value){if(el.style.display!==value)el.style.display=value}
   function paintBadge(){
     const n=stats().unread;
-    document.querySelectorAll('#tesHeaderBadge,[data-cursapp-bell] em,.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]').forEach(el=>{
+    document.querySelectorAll('#tesHeaderBadge,[data-cursapp-bell] em,.apoV42BellDot,#notifBadge,#marketAlertsBadge,.presNotificationBadge,[data-notification-count]').forEach(el=>{
       if(el.dataset.canonicalNotificationCount!=='1')el.dataset.canonicalNotificationCount='1';
       if(el.classList.contains('apoV42BellDot')){setDisplay(el,n?'block':'none');return}
       const next=n?String(n):'';
@@ -38,6 +38,47 @@
     const wanted=new Set((categories||[]).map(x=>String(x||'').toLowerCase()));
     if(!rows.length) await load();
     return mark(rows.filter(x=>!x.is_read&&wanted.has(String(x.category||'').toLowerCase())).map(x=>x.id));
+  }
+  function normalizeTargetPath(path){
+    path=String(path||'').trim();
+    const aliases={'/apoderado':'/apoderado.html','/presidente':'/presidente.html','/tesorero':'/tesorero.html'};
+    return aliases[path]||path;
+  }
+  function isMarketPath(path){return String(path||'').startsWith('/mercado-escolar/')}
+  function openSameView(target){
+    const tab=String(target.hash||'').replace(/^#/,'').trim();
+    if(!tab)return true;
+    const bridge=window.MICURSOX_ROLE_ROUTE;
+    if(bridge&&typeof bridge.openTab==='function'){
+      try{if(bridge.openTab(tab))return true}catch(_){}
+    }
+    try{
+      if(location.hash!==target.hash)location.hash=target.hash;
+      else window.dispatchEvent(new HashChangeEvent('hashchange'));
+      return true;
+    }catch(_){return false}
+  }
+  function navigateNotification(row){
+    const raw=String(row?.url_destino||'').trim();
+    if(!raw||raw==='#')return false;
+    let target;
+    try{target=new URL(raw,location.origin)}catch(_){return false}
+    if(target.origin!==location.origin)return false;
+    target.pathname=normalizeTargetPath(target.pathname);
+    const currentPath=normalizeTargetPath(location.pathname);
+    const category=String(row?.category||'').toLowerCase();
+
+    // Un destino genérico "/" no debe sacar al usuario del módulo actual.
+    if(target.pathname==='/'&&currentPath!=='/')return false;
+
+    // Una notificación de Mercado abierta dentro de Mercado nunca debe expulsar al usuario
+    // por un destino legado/genérico.
+    if(isMarketPath(currentPath)&&category==='mercado'&&!isMarketPath(target.pathname))return false;
+
+    if(target.pathname===currentPath)return openSameView(target);
+
+    location.assign(target.pathname+target.search+target.hash);
+    return true;
   }
   function styles(){if(document.getElementById('cnSupabaseCss'))return;const s=document.createElement('style');s.id='cnSupabaseCss';s.textContent=`.cnOverlay{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:999999;display:flex;align-items:flex-end;justify-content:center}.cnCard{width:min(760px,100%);max-height:86vh;background:#fff;border-radius:28px 28px 0 0;overflow:hidden;display:flex;flex-direction:column}.cnHead{padding:24px;display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb}.cnHead h2{margin:0;font-size:28px}.cnHead p{margin:6px 0 0;color:#64748b;font-weight:700}.cnClose{border:1px solid #e5e7eb;background:#fff;border-radius:18px;padding:12px 18px;font-weight:900}.cnList{overflow:auto;-webkit-overflow-scrolling:touch}.cnItem{display:grid;grid-template-columns:54px 1fr;gap:14px;padding:20px 24px;border:0;border-bottom:1px solid #e5e7eb;width:100%;text-align:left;background:#fff;border-left:5px solid transparent}.cnItem.unread{border-left-color:#7c3aed;background:#faf7ff}.cnIcon{width:54px;height:54px;border-radius:18px;background:#f1f5f9;display:grid;place-items:center;font-size:26px}.cnItem b{display:block;font-size:18px}.cnItem p{margin:6px 0;color:#64748b;font-weight:700;line-height:1.35}.cnItem small{color:#94a3b8;font-weight:800}.cnEmpty{padding:28px;color:#64748b;font-weight:800}.cnError{padding:22px 28px;color:#b42318;background:#fff1f0;font-weight:800;line-height:1.4}.cnFoot{padding:16px 24px calc(16px + env(safe-area-inset-bottom));display:flex;gap:12px;border-top:1px solid #e5e7eb}.cnBtn{flex:1;border:0;border-radius:18px;padding:15px;font-weight:900;background:#7c3aed;color:#fff}.cnBtn.ghost{background:#fff;color:#111827;border:1px solid #e5e7eb}@media(max-width:430px){.cnFoot{padding-left:14px;padding-right:14px}.cnBtn{font-size:14px;padding:14px 10px}}@media(min-width:761px){.cnOverlay{align-items:center;padding:20px}.cnCard{border-radius:28px}}`;document.head.appendChild(s)}
   function listHtml(){
@@ -63,7 +104,7 @@
       const all=e.target.closest('[data-readall]');
       if(all){all.disabled=true;try{await mark(rows.filter(x=>!x.is_read).map(x=>x.id));root.remove();open()}catch(err){all.disabled=false;alert(err?.message||'No se pudieron marcar como leídas')}return}
       const item=e.target.closest('[data-id]');
-      if(item){item.disabled=true;try{await mark([item.dataset.id])}catch(err){item.disabled=false;alert(err?.message||'No se pudo guardar la lectura');return}const url=item.dataset.url;if(url&&url!=='#')location.href=url;else{root.remove();open()}}
+      if(item){item.disabled=true;const row=rows.find(x=>String(x.id)===String(item.dataset.id));try{await mark([item.dataset.id])}catch(err){item.disabled=false;alert(err?.message||'No se pudo guardar la lectura');return}root.remove();navigateNotification(row||{url_destino:item.dataset.url||''})}
     });
     document.body.appendChild(root);
   }
@@ -87,7 +128,7 @@
     for(const mutation of mutations){
       for(const node of mutation.addedNodes||[]){
         if(node.nodeType!==1)continue;
-        if(node.matches?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]')||node.querySelector?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,.presNotificationBadge,[data-notification-count]')){needsPaint=true;break}
+        if(node.matches?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,#marketAlertsBadge,.presNotificationBadge,[data-notification-count]')||node.querySelector?.('#tesHeaderBadge,[data-cursapp-bell],.apoV42BellDot,#notifBadge,#marketAlertsBadge,.presNotificationBadge,[data-notification-count]')){needsPaint=true;break}
       }
       if(needsPaint)break;
     }
