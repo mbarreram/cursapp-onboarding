@@ -1,53 +1,95 @@
 (function(){
 'use strict';
-if(window.__MX_RECEIPT_PDF_FIX_V1__) return;
-window.__MX_RECEIPT_PDF_FIX_V1__=true;
+if(window.__MX_RECEIPT_PDF_FIX_V2__) return;
+window.__MX_RECEIPT_PDF_FIX_V2__=true;
 
 function receiptNode(){
   return document.querySelector('.receiptV52Card') || document.querySelector('.receiptV51Card');
 }
 
-function cssLinks(){
-  return Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(function(l){
-    try{return '<link rel="stylesheet" href="'+String(l.href||'')+'">';}catch(_e){return '';}
-  }).join('');
+function textOf(sel, root){
+  var el=(root||document).querySelector(sel);
+  return el ? String(el.textContent||'').trim().replace(/\s+/g,' ') : '';
+}
+
+function esc(v){
+  return String(v||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function collect(){
+  var node=receiptNode();
+  if(!node) return null;
+  var rows=[];
+  node.querySelectorAll('.receiptV51Row').forEach(function(row){
+    var label=textOf('.receiptV51RowLabel',row);
+    var value=textOf('strong',row);
+    if(label && value) rows.push([label,value]);
+  });
+  return {
+    status:textOf('.receiptV51Status',node)||'Pago confirmado',
+    amount:textOf('.receiptV51Amount',node),
+    date:textOf('.receiptV51Date',node),
+    rows:rows,
+    trust:textOf('.receiptV51Trust',node)||'Pago procesado mediante Transbank.'
+  };
 }
 
 function buildHtml(){
-  var node=receiptNode();
-  if(!node) return '';
-  var clone=node.cloneNode(true);
-  clone.querySelectorAll('button,.receiptV52Topbar,.receiptV52BottomActions,.receiptV51Primary,.receiptV51Secondary').forEach(function(x){x.remove();});
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+cssLinks()+
-  '<style>@page{size:A4;margin:10mm}html,body{margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}.mxReceiptPrintWrap{width:100%;max-width:560px;margin:0 auto;padding:0}.mxReceiptPrintWrap .receiptV52Card,.mxReceiptPrintWrap .receiptV51Card{display:block!important;position:static!important;transform:none!important;width:100%!important;max-width:560px!important;height:auto!important;max-height:none!important;overflow:visible!important;margin:0 auto!important;box-shadow:none!important;border:1px solid #e2e8f0!important;background:#fff!important}.mxReceiptPrintWrap *{visibility:visible!important}@media print{html,body{width:auto!important;height:auto!important}.mxReceiptPrintWrap{break-inside:avoid;page-break-inside:avoid}}</style></head><body><div class="mxReceiptPrintWrap">'+clone.outerHTML+'</div></body></html>';
+  var d=collect();
+  if(!d) return '';
+  var rows=d.rows.map(function(r){
+    return '<div class="row"><div class="label">'+esc(r[0])+'</div><div class="value">'+esc(r[1])+'</div></div>';
+  }).join('');
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>Comprobante MiCursoX</title>'+
+    '<style>'+
+    '@page{size:A4;margin:14mm}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}'+
+    'body{padding:0}.sheet{width:100%;max-width:680px;margin:0 auto;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden;background:#fff}'+
+    '.brand{padding:22px 28px;border-bottom:1px solid #ede9fe;font-size:24px;font-weight:800;color:#6d28d9;letter-spacing:.2px}'+
+    '.main{padding:30px}.status{font-size:20px;font-weight:800;color:#16a34a;margin-bottom:14px}.amount{font-size:48px;line-height:1;font-weight:900;color:#0f172a}.date{margin-top:10px;font-size:15px;color:#64748b}'+
+    '.divider{height:1px;background:#e2e8f0;margin:26px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}.row{min-width:0}.label{font-size:13px;font-weight:700;color:#64748b;margin-bottom:5px}.value{font-size:17px;font-weight:800;color:#111827;overflow-wrap:anywhere}'+
+    '.trust{margin-top:28px;padding:16px 18px;border-radius:14px;background:#f8fafc;color:#475569;font-size:14px;line-height:1.5}.footer{padding:16px 28px;text-align:center;background:#faf8ff;border-top:1px solid #ede9fe;color:#64748b;font-size:12px}'+
+    '@media(max-width:560px){.grid{grid-template-columns:1fr}.amount{font-size:42px}.main{padding:24px}.brand{padding:18px 24px}}'+
+    '@media print{body{padding:0}.sheet{box-shadow:none;break-inside:avoid;page-break-inside:avoid}}'+
+    '</style></head><body><div class="sheet">'+
+    '<div class="brand">MiCursoX</div>'+
+    '<div class="main"><div class="status">✓ '+esc(d.status.replace(/^✓\s*/,''))+'</div>'+
+    '<div class="amount">'+esc(d.amount)+'</div><div class="date">'+esc(d.date)+'</div>'+
+    '<div class="divider"></div><div class="grid">'+rows+'</div>'+
+    '<div class="trust">'+esc(d.trust)+'</div></div>'+
+    '<div class="footer">Comprobante de pago · MiCursoX</div></div></body></html>';
 }
 
 function printReceipt(){
   var html=buildHtml();
   if(!html){ alert('No se pudo generar el PDF del comprobante.'); return; }
-  var w=null;
-  try{ w=window.open('','_blank'); }catch(_e){}
-  if(!w){
-    var frame=document.createElement('iframe');
-    frame.style.cssText='position:fixed;left:-10000px;top:0;width:800px;height:1200px;border:0;background:#fff';
-    document.body.appendChild(frame);
-    var d=frame.contentDocument||frame.contentWindow.document;
-    d.open();d.write(html);d.close();
-    setTimeout(function(){try{frame.contentWindow.focus();frame.contentWindow.print();}catch(_e){}setTimeout(function(){try{frame.remove();}catch(_e){}},3000);},1200);
-    return;
-  }
-  try{
-    w.document.open();w.document.write(html);w.document.close();
-    var fire=function(){try{w.focus();w.print();}catch(_e){}};
-    if(w.document.readyState==='complete') setTimeout(fire,900);
-    else w.addEventListener('load',function(){setTimeout(fire,900);},{once:true});
-    setTimeout(fire,1800);
-  }catch(_e){try{w.close();}catch(__e){}}
+  var frame=document.createElement('iframe');
+  frame.setAttribute('aria-hidden','true');
+  frame.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+  document.body.appendChild(frame);
+  var doc=frame.contentDocument||frame.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+  var fired=false;
+  var run=function(){
+    if(fired) return;
+    fired=true;
+    try{ frame.contentWindow.focus(); frame.contentWindow.print(); }
+    catch(_e){ alert('No se pudo abrir la vista para compartir el PDF.'); }
+    setTimeout(function(){ try{ frame.remove(); }catch(_e){} },3500);
+  };
+  frame.onload=function(){ setTimeout(run,120); };
+  setTimeout(run,500);
 }
 
 function install(){
   window.downloadReceiptPdf=printReceipt;
   window.shareReceiptPdf=printReceipt;
+  var brand=document.querySelector('.receiptV52Brand span:last-child,.receiptV51Brand span:last-child');
+  if(brand && String(brand.textContent||'').trim().toUpperCase()==='CURSAPP') brand.textContent='MiCursoX';
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install,{once:true}); else install();
