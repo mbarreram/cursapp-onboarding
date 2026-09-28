@@ -877,7 +877,7 @@ function loadJSON(k, def) {
   async function findSupabaseCoursesByIds(ids){
     const clean = Array.from(new Set((ids || []).map(x=>String(x||"").trim()).filter(Boolean)));
     if(!clean.length) return {};
-    const rows = await supaFetch("cursos?id=in.(" + clean.map(supaQ).join(",") + ")&select=*");
+    const rows = await supaFetch("cursos?id=in.(" + clean.map(supaQ).join(",") + ")&select=*,colegios(nombre,nombre_oficial)");
     const map = {};
     (Array.isArray(rows) ? rows : []).forEach(r=>{ if(r && r.id) map[String(r.id)] = r; });
     return map;
@@ -889,7 +889,15 @@ function loadJSON(k, def) {
     const letra = String(row.letra || "");
     const anio = String(row.anio || "");
     const suffix = ` · ${nivel}${letra} ${anio}`.trim();
-    let schoolName = String(row.school_name || row.colegio_nombre || row.nombre || "Colegio").trim();
+    const school = row.colegios && !Array.isArray(row.colegios) ? row.colegios : (Array.isArray(row.colegios) ? row.colegios[0] : null);
+    let schoolName = String(
+      row.school_name ||
+      row.colegio_nombre ||
+      school?.nombre_oficial ||
+      school?.nombre ||
+      row.nombre ||
+      "Colegio"
+    ).trim();
     // En Supabase cursos.nombre suele venir como "Colegio · IV°B 2026".
     // Para evitar duplicar curso/año en la cabecera, dejamos solo el colegio.
     if(schoolName && nivel && letra){
