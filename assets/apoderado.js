@@ -1603,7 +1603,7 @@ function dueBadge(iso){
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Comprobante Cursapp</title>
+<title>Comprobante MiCursoX</title>
 ${cssLinks}
 <style>
   @page{ size:A4; margin:10mm; }
@@ -1750,14 +1750,14 @@ ${cardHtml}
     try{ activeProfileReceipt = JSON.parse(localStorage.getItem(KEY_ACTIVE_PROFILE) || "{}"); }catch(_e){ activeProfileReceipt = {}; }
     const course = p.courseLabel || p.courseName || activeProfileReceipt.courseLabel || activeProfileReceipt.courseName || activeProfileReceipt.course || activeProfileReceipt.curso || "Curso";
     const school = p.schoolName || p.colegio || activeProfileReceipt.schoolName || activeProfileReceipt.colegio || activeProfileReceipt.school || "Colegio";
-    const shareText = `Comprobante Cursapp ${folio}\nMonto: ${clp(amountPaid)}\nCampaña: ${campaign}\nAlumno/a: ${student}\nEstado: Pagado`;
+    const shareText = `Comprobante MiCursoX ${folio}\nMonto: ${clp(amountPaid)}\nCampaña: ${campaign}\nAlumno/a: ${student}\nEstado: Pagado`;
 
     openModal(`
       <div class="receiptV51Shell">
         <div class="receiptV51Topbar receiptV52Topbar">
           <div class="receiptV51Brand receiptV52Brand">
             <span class="receiptV51BrandIcon">👥</span>
-            <span>CURSAPP</span>
+            <span>MiCursoX</span>
           </div>
           <div class="receiptV52Actions">
             <button class="receiptV52ActionBtn" onclick="downloadReceiptPdf()" aria-label="Descargar PDF"><span>⇩</span><small>PDF</small></button>
