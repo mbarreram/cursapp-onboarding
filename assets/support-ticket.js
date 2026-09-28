@@ -256,8 +256,8 @@
       <div class="supportCard supportCardTabs" role="dialog" aria-modal="true">
         <div class="supportHead">
           <div>
-            <h2>Soporte Cursapp</h2>
-            <p>Levanta un ticket o revisa respuestas del equipo Cursapp.</p>
+            <h2>Soporte MiCursoX</h2>
+            <p>Levanta un ticket o revisa respuestas del equipo MiCursoX.</p>
           </div>
           <button class="supportClose" type="button" data-close>✕</button>
         </div>
