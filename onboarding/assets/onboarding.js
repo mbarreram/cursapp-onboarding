@@ -1500,8 +1500,8 @@ sendBtn && (sendBtn.onclick = async ()=>{
       if(MODE==="directiva"){
         d.pEmail = String($("pEmail")?.value || "").trim().toLowerCase();
         if(!validateEmail(d.pEmail)){ alert("Correo inválido."); return; }
-        if(!d.pOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
-        if(String(d.pOtpVerifiedEmail || "").trim().toLowerCase() !== d.pEmail){ alert("Cambiaste el correo. Debes volver a validar el código (OTP)."); return; }
+        if(!d.pOtpVerified){ alert("Debes validar el código enviado a tu correo."); return; }
+        if(String(d.pOtpVerifiedEmail || "").trim().toLowerCase() !== d.pEmail){ alert("Cambiaste el correo. Debes solicitar y validar un código nuevo."); return; }
 
         d.pPass = String($("pPass")?.value || "");
 d.pPass2 = String($("pPass2")?.value || "");
@@ -1524,8 +1524,8 @@ if(d.alsoApoderado){
 
         d.email = String($("onbEmail")?.value || "").trim().toLowerCase();
         if(!validateEmail(d.email)){ alert("Correo inválido."); return; }
-        if(!d.aOtpVerified){ alert("Debes validar el código (OTP) del correo."); return; }
-        if(String(d.aOtpVerifiedEmail || "").trim().toLowerCase() !== d.email){ alert("Cambiaste el correo. Debes volver a validar el código (OTP)."); return; }
+        if(!d.aOtpVerified){ alert("Debes validar el código enviado a tu correo."); return; }
+        if(String(d.aOtpVerifiedEmail || "").trim().toLowerCase() !== d.email){ alert("Cambiaste el correo. Debes solicitar y validar un código nuevo."); return; }
 
         d.phone = String($("onbPhone")?.value || "").trim();
         d.pass = String($("onbPass")?.value || "");
