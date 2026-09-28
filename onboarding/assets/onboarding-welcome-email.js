@@ -7,7 +7,7 @@
   if(!cfg || !cfg.url || !cfg.publishableKey) return;
   const originalFetch = window.fetch.bind(window);
   const SENT_PREFIX = 'micursox_welcome_sent_';
-  const LOGO_URL = 'https://cursapp-onboarding.pages.dev/assets/brand/micursox-compact.svg';
+  const LOGO_URL = 'https://micursox.cl/assets/brand/micursox-compact.svg';
 
   function requestUrl(input){
     try{return typeof input==='string'?input:(input&&input.url)||'';}catch(_){return '';}
