@@ -1710,7 +1710,30 @@ ${cardHtml}
     catch(_){ alert(msg); }
   };
 
-  window.openReceipt = function(id){
+  async function resolveReceiptCourseSchool(p, activeProfileReceipt){
+    var fallbackCourse = p.courseLabel || p.courseName || activeProfileReceipt.courseLabel || activeProfileReceipt.courseName || activeProfileReceipt.course || activeProfileReceipt.curso || '';
+    var fallbackSchool = p.schoolName || p.colegio || activeProfileReceipt.schoolName || activeProfileReceipt.colegio || activeProfileReceipt.school || '';
+    var cid = String(p.curso_id || p.courseId || p.course_id || activeProfileReceipt.curso_id || activeProfileReceipt.courseId || activeProfileReceipt.course_id || '').trim();
+    if(!cid && window.CURSAPP_APO_FINANCE && typeof window.CURSAPP_APO_FINANCE.courseId === 'function'){
+      try{ cid = String(window.CURSAPP_APO_FINANCE.courseId() || '').trim(); }catch(_e){}
+    }
+    if(cid && window.CURSAPP_SUPABASE && typeof window.CURSAPP_SUPABASE.request === 'function'){
+      try{
+        var rows = await window.CURSAPP_SUPABASE.request('cursos?select=id,nombre,nivel,letra,anio,jornada,colegios(nombre)&id=eq.'+encodeURIComponent(cid)+'&limit=1',{method:'GET'});
+        var row = Array.isArray(rows) ? rows[0] : null;
+        if(row){
+          var course = [row.nivel || '', row.letra || ''].join('').trim();
+          if(row.anio) course = (course ? course + ' ' : '') + String(row.anio);
+          if(!course) course = String(row.nombre || '').replace(/^Colegio\s*·\s*/i,'').trim();
+          var school = row.colegios && row.colegios.nombre ? String(row.colegios.nombre).trim() : '';
+          return { course: course || fallbackCourse || 'Curso', school: school || fallbackSchool || 'Colegio' };
+        }
+      }catch(_e){}
+    }
+    return { course: fallbackCourse || 'Curso', school: fallbackSchool || 'Colegio' };
+  }
+
+  window.openReceipt = async function(id){
     const p = resolveReceiptPayment(id);
     if(!p) return;
 
@@ -1748,8 +1771,9 @@ ${cardHtml}
     const guardian = p.guardianName || p.apoderadoName || p.apoderadoEmail || p.email || "—";
     let activeProfileReceipt = {};
     try{ activeProfileReceipt = JSON.parse(localStorage.getItem(KEY_ACTIVE_PROFILE) || "{}"); }catch(_e){ activeProfileReceipt = {}; }
-    const course = p.courseLabel || p.courseName || activeProfileReceipt.courseLabel || activeProfileReceipt.courseName || activeProfileReceipt.course || activeProfileReceipt.curso || "Curso";
-    const school = p.schoolName || p.colegio || activeProfileReceipt.schoolName || activeProfileReceipt.colegio || activeProfileReceipt.school || "Colegio";
+    const receiptContext = await resolveReceiptCourseSchool(p, activeProfileReceipt);
+    const course = receiptContext.course;
+    const school = receiptContext.school;
     const shareText = `Comprobante MiCursoX ${folio}\nMonto: ${clp(amountPaid)}\nCampaña: ${campaign}\nAlumno/a: ${student}\nEstado: Pagado`;
 
     openModal(`
