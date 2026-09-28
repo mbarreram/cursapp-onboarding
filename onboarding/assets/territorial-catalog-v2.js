@@ -101,6 +101,8 @@
     if(host) return host;
 
     select.style.display = 'none';
+    const nativeShell = select.closest('.onbSelectShell');
+    if(nativeShell) nativeShell.style.display = 'none';
     host = document.createElement('div');
     host.id = 'onbSchoolFinderV2';
     host.className = 'onbSchoolFinder';
