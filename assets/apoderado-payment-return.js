@@ -84,6 +84,22 @@
     }catch(_){ return false; }
   }
 
+  async function sendPaymentEmailOnce(){
+    if(!isPaymentReturn()) return;
+    var ref = String(paidTransactionId || paidPaymentId || '').trim();
+    if(!ref || !window.CURSAPP_SUPABASE || !window.CURSAPP_SUPABASE.functions || typeof window.CURSAPP_SUPABASE.functions.invoke !== 'function') return;
+    var key = 'mxPaymentEmailSent:' + ref;
+    try{ if(sessionStorage.getItem(key)==='1') return; }catch(_e){}
+    try{
+      var result = await window.CURSAPP_SUPABASE.functions.invoke('payment-confirmation-email', {
+        body: { transaction_id: paidTransactionId || undefined, pago_id: paidPaymentId || undefined }
+      });
+      if(result && !result.error){
+        try{ sessionStorage.setItem(key,'1'); }catch(_e){}
+      }
+    }catch(_e){}
+  }
+
   function clearHandoff(){
     try{
       sessionStorage.removeItem('justPaid');
@@ -160,6 +176,7 @@
 
   function boot(){
     if(!shouldOpenPaid()) return;
+    sendPaymentEmailOnce();
     refreshPaidData().finally(function(){
       settlePaymentsView(function(){
         if(isPaymentReturn()){
