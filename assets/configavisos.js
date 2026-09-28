@@ -72,8 +72,21 @@
   const tag=t=>({info:"ℹ️",financial:"💳",report:"📊",campaign:"📌",urgent:"⚠️"})[String(t||"info")]||"ℹ️";
   const date=iso=>{try{return new Date(iso).toLocaleString("es-CL",{dateStyle:"short",timeStyle:"short"})}catch(e){return""}};
 
+  async function resolvedUserId(){
+    const local=userId();
+    if(local) return local;
+    try{
+      const api=window.CURSAPP_SUPABASE;
+      if(api&&typeof api.getCurrentUser==="function"){
+        const current=await api.getCurrentUser();
+        if(current&&current.id) return String(current.id);
+      }
+    }catch(_){}
+    return "";
+  }
+
   async function markRead(id){
-    const uid=userId(); if(!uid||!id) return;
+    const uid=await resolvedUserId(); if(!uid||!id) return;
     try{
       await request("avisos_curso_lecturas?on_conflict=aviso_id,usuario_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({aviso_id:id,usuario_id:uid,leido:true,fecha_lectura:new Date().toISOString()})});
     }catch(e){
@@ -102,6 +115,14 @@
     document.body.appendChild(ov); document.getElementById("cerrarAvisosInbox").onclick=()=>ov.remove();
     await Promise.all(all.filter(a=>!a.isRead).map(a=>markRead(a.id).catch(()=>{}))); await refresh();
   };
+
+  async function markAllVisibleRead(){
+    const all=visible();
+    await Promise.all(all.filter(a=>!a.isRead).map(a=>markRead(a.id).catch(()=>{})));
+    await refresh();
+    return all.length;
+  }
+  window.CURSAPP_COURSE_NOTICES=Object.assign({},window.CURSAPP_COURSE_NOTICES||{},{refresh,markAllRead:markAllVisibleRead});
 
   function sentList(){
     return rows.length?rows.map(a=>`<div style="border:1px solid #e5e7eb;border-radius:18px;padding:14px"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>${tag(a.category)} ${esc(a.title)}</b><p style="color:#667085;font-weight:700">${esc(a.message)}</p><small>${date(a.createdAt)} · ${a.readCount} de ${a.audienceCount} vistos</small></div><button data-del-aviso="${esc(a.id)}" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:12px;padding:8px">Eliminar</button></div></div>`).join(""):`<div style="color:#667085;font-weight:800;padding:14px">Aún no hay avisos enviados.</div>`;
