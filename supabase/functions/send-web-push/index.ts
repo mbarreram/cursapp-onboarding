@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   webpush.setVapidDetails(subject, publicKey, privateKey);
   let sent = 0;
   let failed = 0;
-  const title = String(body.title || 'Cursapp').slice(0, 80);
+  const title = String(body.title || 'MiCursoX').slice(0, 80);
   const message = String(body.body || (mode === 'course'
     ? 'Tienes una nueva notificación de tu curso.'
     : 'Las notificaciones push quedaron activadas correctamente.')).slice(0, 240);
