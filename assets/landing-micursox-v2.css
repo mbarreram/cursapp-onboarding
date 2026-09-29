@@ -355,10 +355,16 @@
   }
   .mx-eyebrow{
     margin:0 0 14px!important;
-    color:#25314d!important;
-    background:rgba(255,255,255,.94)!important;
-    border-color:rgba(255,255,255,.75)!important;
-    backdrop-filter:blur(8px);
+    color:#fff!important;
+    background:rgba(255,255,255,.14)!important;
+    border:1px solid rgba(255,255,255,.36)!important;
+    backdrop-filter:blur(12px)!important;
+    -webkit-backdrop-filter:blur(12px)!important;
+    box-shadow:0 8px 20px rgba(0,0,0,.10)!important;
+  }
+  .mx-eyebrow i{
+    background:rgba(255,255,255,.18)!important;
+    color:#fff!important;
   }
   .mx-hero h1{
     max-width:100%!important;
@@ -402,13 +408,13 @@
     box-shadow:0 10px 24px rgba(0,0,0,.14)!important;
   }
   .mx-primary{
-    background:rgba(124,58,237,.34)!important;
-    border:1px solid rgba(255,255,255,.34)!important;
+    background:rgba(124,58,237,.20)!important;
+    border:1px solid rgba(255,255,255,.28)!important;
     color:#fff!important;
   }
   .mx-secondary{
-    background:rgba(255,255,255,.18)!important;
-    border:1px solid rgba(255,255,255,.52)!important;
+    background:rgba(255,255,255,.10)!important;
+    border:1px solid rgba(255,255,255,.34)!important;
     color:#fff!important;
   }
   .mx-secondary span{display:none!important;}
