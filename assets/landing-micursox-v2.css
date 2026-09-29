@@ -322,14 +322,14 @@
   }
   .mx-hero-media{
     order:1!important;
-    min-height:760px!important;
-    height:760px!important;
+    min-height:620px!important;
+    height:620px!important;
     margin:0!important;
     position:relative!important;
   }
   .mx-family{
-    height:760px!important;
-    min-height:760px!important;
+    height:620px!important;
+    min-height:620px!important;
     object-fit:cover!important;
     object-position:center top!important;
   }
