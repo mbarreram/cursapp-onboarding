@@ -97,11 +97,11 @@
     const map={inicio:'home','campañas':'campanas','deudores':'deudores','informes':'informes','retiros':'retiros'};
     const tab=map[key];
     if(!tab)return false;
-    if(document.body.classList.contains('cursapp-presidente') && typeof window.__cursappPresidentGo==='function'){
-      window.__cursappPresidentGo(tab); return true;
-    }
     if(tab==='retiros' && document.body.classList.contains('cursapp-presidente') && window.MX_FUNDS?.open){
       window.MX_FUNDS.open(); return true;
+    }
+    if(document.body.classList.contains('cursapp-presidente') && typeof window.__cursappPresidentGo==='function'){
+      window.__cursappPresidentGo(tab); return true;
     }
     setPendingTab(tab);
     window.location.assign('/presidente.html#'+tab);
