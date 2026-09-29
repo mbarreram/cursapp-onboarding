@@ -1,0 +1,52 @@
+/* MiCursoX · Presidente · Campañas · Desktop polish v1 */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active .presCampaignPage{
+    width:100%!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignHeader{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:20px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignNewBtn{
+    flex:0 0 auto!important;
+    min-height:42px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignTemplateTrack{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:14px!important;
+    overflow:visible!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignTemplate{
+    min-width:0!important;
+    width:auto!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignFilters{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:8px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignCard{
+    padding:18px!important;
+    border-radius:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignCardTop{
+    gap:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignStats{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignActions{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    flex-wrap:wrap!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presCampaignPrimary{
+    margin-right:auto!important;
+  }
+}
