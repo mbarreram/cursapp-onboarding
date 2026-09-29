@@ -1569,14 +1569,19 @@ function setActive(tab){
         return;
       }
 
+      // Deudores debe permanecer estable mientras el usuario consulta o comparte un resultado.
+      // Los eventos de sincronización de fondo no deben reconstruir la pantalla ni mover el scroll.
+      if(tab==='deudores' && (
+        window.__presDebtQueryActive ||
+        window.__presDebtSearchCommitted ||
+        (document.activeElement && document.activeElement.id === "debtorQuery")
+      )) return;
+
       // materializa pagos faltantes solo si el evento afecta datos operacionales.
       ensurePaymentsForAllApproved();
 
       if(tab==='campanas') renderCampanas();
-      else if(tab==='deudores'){
-        if(window.__presDebtQueryActive || (document.activeElement && document.activeElement.id === "debtorQuery")) return;
-        renderDeudores();
-      }
+      else if(tab==='deudores') renderDeudores();
       else if(tab==='informes') renderInformes();
     }catch(e){}
   };
@@ -2693,6 +2698,9 @@ function buildWhatsappText(profile, summary){
 }
 
 function renderDeudores(){
+  const preserveDebtScroll = state?.tab === "deudores" && document.getElementById("debtorQuery")
+    ? (window.scrollY || 0)
+    : 0;
   const existingDebtQuery = document.getElementById("debtorQuery");
   const debtQueryDraft = String(window.__presDebtQueryDraft ?? existingDebtQuery?.value ?? "");
   const ym = ymFromISO(todayISO());
@@ -3017,6 +3025,12 @@ function renderDeudores(){
   if(window.__presDebtSearchCommitted && qInp){
     qInp.value = window.__presDebtQueryDraft || window.__presDebtSearchCommitted;
     requestAnimationFrame(()=>doSearch());
+  }
+  if(preserveDebtScroll > 0){
+    requestAnimationFrame(()=>{
+      try{ window.scrollTo({top:preserveDebtScroll,left:0,behavior:"auto"}); }
+      catch(_){ window.scrollTo(0,preserveDebtScroll); }
+    });
   }
 }
 
