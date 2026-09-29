@@ -1,0 +1,41 @@
+/* MiCursoX · Presidente · Inicio · Desktop polish v1
+   Solo escritorio. No modifica móvil ni lógica. */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active .presMockPage{
+    gap:18px 20px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presInfoTable article,
+  body.cursapp-presidente.mx-desktop-active .presMockKpi,
+  body.cursapp-presidente.mx-desktop-active .presMockSection{
+    border-color:#e4e9f1!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presInfoTable article{
+    padding:14px 16px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockKpis{
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockKpi{
+    padding:13px 14px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockKpi b{
+    font-size:18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockQuickGrid{
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockQuick{
+    min-height:116px!important;
+    padding:13px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockQuickIcon{
+    margin-bottom:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockCampaignGrid{
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockCampaign{
+    min-height:146px!important;
+    height:146px!important;
+  }
+}
