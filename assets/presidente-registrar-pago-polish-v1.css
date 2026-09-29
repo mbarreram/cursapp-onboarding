@@ -1,0 +1,28 @@
+/* MiCursoX · Presidente · Registrar pago · Desktop polish v1 */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active .presPay23Overlay{
+    align-items:center!important;
+    padding:28px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Sheet{
+    width:min(820px,calc(100vw - 330px))!important;
+    max-width:820px!important;
+    max-height:calc(100vh - 56px)!important;
+    padding:22px!important;
+    border-radius:24px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Results{
+    max-height:220px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Methods{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Methods label{
+    min-height:88px!important;
+    padding:13px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Actions{
+    margin-top:16px!important;
+  }
+}
