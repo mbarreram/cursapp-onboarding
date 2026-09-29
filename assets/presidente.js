@@ -2882,22 +2882,6 @@ function renderDeudores(){
   const qInp = document.getElementById("debtorQuery");
   const btn = document.getElementById("debtorSearchBtn");
   const out = document.getElementById("debtorResults");
-
-  function fallbackCopy(txt){
-    try{
-      const tmp = document.createElement("textarea");
-      tmp.value = txt;
-      document.body.appendChild(tmp);
-      tmp.select();
-      document.execCommand("copy");
-      tmp.remove();
-      toast("Copiado.");
-    }catch(e){
-      // En iOS a veces copia igual pero lanza excepcion. Evitamos alertas invasivas.
-      toast("Si no se copio, selecciona y copia manualmente.");
-    }
-  }
-
   function doSearch(){
     const q = String(qInp?.value||"").trim().toLowerCase();
     if(!q){
@@ -2924,7 +2908,7 @@ function renderDeudores(){
 
     out.innerHTML = shareItems.map(({profile,sum,wa}, shareIndex)=>{
       const monthMand = mandatoryPendingByEmail.get(profile.email) || 0;
-      return 
+      return `
         <div class="resultRow">
           <div class="resultTop">
             <div>
