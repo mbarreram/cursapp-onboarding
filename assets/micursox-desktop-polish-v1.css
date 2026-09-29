@@ -1,0 +1,406 @@
+/* MiCursoX · Desktop polish v1
+   Capa visual final solo escritorio. No modifica lógica ni estilos móviles. */
+@media (min-width:1024px){
+
+  /* =========================================================
+     BASE DE ESCRITORIO
+     ========================================================= */
+  body.cursapp-app-shell #app{
+    --mx-card-border:#e3e8f0;
+    --mx-card-shadow:0 8px 24px rgba(15,23,42,.045);
+    --mx-card-radius:20px;
+    --mx-title:#172033;
+    --mx-muted:#667085;
+  }
+  body.cursapp-app-shell #app .card,
+  body.cursapp-app-shell #app .panel,
+  body.cursapp-app-shell #app [class*="Card"]{
+    box-sizing:border-box;
+  }
+
+  /* =========================================================
+     PRESIDENTE · DASHBOARD
+     ========================================================= */
+  body.cursapp-presidente.mx-desktop-active .presMockPage{
+    gap:18px 20px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockSection,
+  body.cursapp-presidente.mx-desktop-active .presInfoTable,
+  body.cursapp-presidente.mx-desktop-active .presMockKpis{
+    border-color:var(--mx-card-border)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockQuick{
+    transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presMockQuick:hover{
+    transform:translateY(-2px)!important;
+    border-color:#cfd9eb!important;
+    box-shadow:0 10px 24px rgba(15,23,42,.065)!important;
+  }
+
+  /* =========================================================
+     PRESIDENTE · DEUDORES
+     Resultado pensado como herramienta de cobranza desktop.
+     ========================================================= */
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtSearchCard{
+    padding:20px 22px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtSearchControls{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 118px!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorQuery{
+    height:48px!important;
+    font-size:13px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults .resultRow{
+    margin-top:14px!important;
+    padding:20px!important;
+    border:1px solid var(--mx-card-border)!important;
+    border-radius:20px!important;
+    background:#fff!important;
+    box-shadow:var(--mx-card-shadow)!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1.08fr) minmax(360px,.92fr)!important;
+    gap:20px 24px!important;
+    align-items:start!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults .resultTop{
+    grid-column:1/-1!important;
+    padding-bottom:14px!important;
+    border-bottom:1px solid #edf0f4!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults .resultRow>div:nth-child(2){
+    grid-column:1!important;
+    margin-top:0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtShareBox{
+    grid-column:2!important;
+    margin-top:0!important;
+    padding:16px!important;
+    border-radius:18px!important;
+    background:#f8fafc!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtMessagePreview{
+    max-height:260px!important;
+    overflow:auto!important;
+    font-size:13px!important;
+    line-height:1.55!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtShareActions{
+    grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtWhatsappBtn,
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) .presDebtCopyBtn{
+    min-height:44px!important;
+    border-radius:12px!important;
+    font-size:12px!important;
+  }
+
+  /* =========================================================
+     PRESIDENTE · APODERADOS
+     ========================================================= */
+  body.cursapp-presidente.mx-desktop-active #app .apo-registration-card,
+  body.cursapp-presidente.mx-desktop-active #app .registrationCard,
+  body.cursapp-presidente.mx-desktop-active #app .apodChartCard{
+    padding:20px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-table-wrap,
+  body.cursapp-presidente.mx-desktop-active #app .apo-list-card{
+    margin-top:16px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-table thead th,
+  body.cursapp-presidente.mx-desktop-active #app thead th{
+    position:sticky!important;
+    top:0!important;
+    z-index:2!important;
+  }
+
+  /* =========================================================
+     PRESIDENTE · REGISTRAR PAGO
+     ========================================================= */
+  body.cursapp-presidente.mx-desktop-active .presPay23Overlay{
+    align-items:center!important;
+    padding:28px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Sheet{
+    width:min(880px,calc(100vw - 320px))!important;
+    max-width:880px!important;
+    max-height:calc(100vh - 56px)!important;
+    overflow:auto!important;
+    border-radius:24px!important;
+    padding:24px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Methods{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Methods label{
+    min-height:92px!important;
+    padding:14px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Results{
+    max-height:240px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presPay23Actions{
+    position:sticky!important;
+    bottom:-24px!important;
+    margin:18px -24px -24px!important;
+    padding:14px 24px!important;
+    background:rgba(255,255,255,.97)!important;
+    border-top:1px solid #e8edf3!important;
+    backdrop-filter:blur(12px)!important;
+  }
+
+  /* =========================================================
+     PRESIDENTE · CAMPAÑAS / INFORMES
+     ========================================================= */
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLines{
+    gap:10px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app:has(.listLines):has(.chips) .listLine{
+    min-height:76px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .presReportsPage,
+  body.cursapp-presidente.mx-desktop-active #app .presReportsGrid{
+    gap:18px!important;
+  }
+
+  /* =========================================================
+     TESORERO · HOME
+     ========================================================= */
+  body.cursapp-tesorero.mx-desktop-active .tesV57Page{
+    gap:18px!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active .tesCashCard,
+  body.cursapp-tesorero.mx-desktop-active .tesPanel{
+    border:1px solid var(--mx-card-border)!important;
+    box-shadow:var(--mx-card-shadow)!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active .tesCashGrid button{
+    transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active .tesCashGrid button:hover{
+    transform:translateY(-2px)!important;
+    border-color:#cfd9eb!important;
+    box-shadow:0 10px 24px rgba(15,23,42,.06)!important;
+  }
+
+  /* =========================================================
+     TESORERO · CONCILIACIÓN
+     ========================================================= */
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot{
+    display:grid!important;
+    grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr)!important;
+    gap:20px!important;
+    align-items:start!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionHeadingWrap,
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionCampaignCard,
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesMetricGrid,
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionTabs{
+    grid-column:1/-1!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionListCard{
+    grid-column:1!important;
+    min-height:320px!important;
+    margin:0!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionSummaryCard{
+    grid-column:2!important;
+    margin:0!important;
+    position:sticky!important;
+    top:116px!important;
+  }
+
+  /* =========================================================
+     TESORERO · RENDICIONES / MOVIMIENTOS
+     ========================================================= */
+  body.cursapp-tesorero.mx-desktop-active .tesMovementRow,
+  body.cursapp-tesorero.mx-desktop-active .tesCampaignRow{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:18px!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active .tesPanel table{
+    border-collapse:separate!important;
+    border-spacing:0!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active .tesPanel table thead th{
+    position:sticky!important;
+    top:0!important;
+    background:#f8fafc!important;
+    z-index:2!important;
+  }
+
+  /* =========================================================
+     APODERADO · HOME
+     ========================================================= */
+  body.cursapp-apoderado .mxNativeHero{
+    min-height:180px!important;
+  }
+  body.cursapp-apoderado .mxNativeDuesPanel,
+  body.cursapp-apoderado .mxNativeMetrics,
+  body.cursapp-apoderado .mxNativeLower,
+  body.cursapp-apoderado .mxNativeSupport{
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+  body.cursapp-apoderado .mxNativeDuesGrid{
+    gap:14px!important;
+  }
+  body.cursapp-apoderado .mxNativeDueCard{
+    min-height:184px!important;
+  }
+
+  /* =========================================================
+     APODERADO · PAGOS
+     ========================================================= */
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayPage{
+    max-width:none!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayList{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:16px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPaySummary{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayCard,
+  body.apoderado-ui-v24[data-apo-module="payments"] .apoPayItem{
+    min-width:0!important;
+  }
+
+  /* =========================================================
+     APODERADO · INFORMES
+     ========================================================= */
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportPage{
+    gap:18px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportChartCard,
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportDonutCard{
+    min-height:380px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportLineChart{
+    height:270px!important;
+  }
+  body.apoderado-ui-v24[data-apo-module="informes"] .apoReportStats > div{
+    min-height:116px!important;
+  }
+
+  /* =========================================================
+     MERCADO ESCOLAR
+     ========================================================= */
+  body.market-v8 .marketApp{
+    padding-top:0!important;
+  }
+  body.market-v8 .marketHeader{
+    border:1px solid #e5eaf2!important;
+    border-top:0!important;
+    box-shadow:0 10px 28px rgba(15,23,42,.045)!important;
+  }
+  body.market-v8 .searchRow{
+    max-width:none!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 56px!important;
+  }
+  body.market-v8 .categoryRow{
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(120px,1fr))!important;
+    gap:14px!important;
+  }
+  body.market-v8 .categoryRow article{
+    min-height:96px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+  }
+  body.market-v8 .heroRetail,
+  body.market-v8 .heroRetailCss{
+    min-height:280px!important;
+    border-radius:24px!important;
+  }
+  body.market-v8 .productCard{
+    transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease!important;
+  }
+  body.market-v8 .productCard:hover{
+    transform:translateY(-3px)!important;
+    box-shadow:0 16px 32px rgba(15,23,42,.09)!important;
+    border-color:#d6ddeb!important;
+  }
+  body.market-v8 .panel:has(.formGrid){
+    max-width:1120px!important;
+    margin-inline:auto!important;
+    padding:24px!important;
+  }
+  body.market-v8 .panel:has(.formGrid) .formGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:16px 20px!important;
+  }
+  body.market-v8 .panel:has(.formGrid) .formGrid>label:first-child,
+  body.market-v8 .panel:has(.formGrid) .formGrid>.photoPreview,
+  body.market-v8 .panel:has(.formGrid) .formGrid>.primary{
+    grid-column:1/-1!important;
+  }
+  body.market-v8 .bottomBar{
+    width:min(820px,calc(100% - 80px))!important;
+    height:64px!important;
+    border-radius:20px!important;
+    box-shadow:0 14px 34px rgba(15,23,42,.12)!important;
+  }
+
+  /* =========================================================
+     ADMIN
+     ========================================================= */
+  .adminContent{
+    padding:28px 32px 56px!important;
+  }
+  .adminContent .card,
+  .adminContent .panel{
+    border-radius:18px!important;
+    border-color:#e3e8f0!important;
+    box-shadow:0 8px 22px rgba(15,23,42,.04)!important;
+  }
+  .adminContent table{
+    border-collapse:separate!important;
+    border-spacing:0!important;
+  }
+  .adminContent table thead th{
+    position:sticky!important;
+    top:0!important;
+    z-index:3!important;
+    background:#f8fafc!important;
+  }
+  .adminContent input,
+  .adminContent select,
+  .adminContent button{
+    min-height:40px;
+  }
+
+  /* =========================================================
+     LANDING
+     ========================================================= */
+  .landing-shell .mx-market-feature,
+  .landing-shell .highlight-card{
+    border-radius:28px!important;
+  }
+  .landing-shell .mx-market-feature{
+    align-items:center!important;
+  }
+  .landing-shell .payment-highlight{
+    overflow:hidden!important;
+  }
+}
+
+@media (min-width:1440px){
+  body.cursapp-presidente.mx-desktop-active #app:has(.presDebtHero) #debtorResults .resultRow{
+    grid-template-columns:minmax(0,1.18fr) minmax(390px,.82fr)!important;
+  }
+  body.cursapp-tesorero.mx-desktop-active.mx-tes-conciliacion #app .mxTesConciliacionRoot{
+    grid-template-columns:minmax(0,1.45fr) minmax(360px,.55fr)!important;
+  }
+}
