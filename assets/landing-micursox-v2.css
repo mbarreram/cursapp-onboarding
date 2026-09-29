@@ -253,3 +253,227 @@
   .mx-market-primary{width:100%;justify-content:center;text-align:center;}
   .mx-market-product-card{width:100%;padding:15px;border-radius:22px;}
 }
+
+
+/* V20260928 approved landing polish */
+.payment-kicker{
+  display:inline-block;
+  margin-bottom:8px;
+  color:#6d28d9;
+  font-size:12px;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+.payment-highlight h2 em{
+  color:#6d28d9;
+  font-style:normal;
+}
+.webpay-brand{
+  display:inline-flex;
+  align-items:flex-end;
+  gap:6px;
+  min-width:0;
+}
+.webpay-brand strong{
+  white-space:nowrap;
+}
+.webpay-brand strong b{
+  display:inline-block;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#ef4444;
+  color:#fff;
+  font-size:.5em;
+  vertical-align:middle;
+  letter-spacing:0;
+}
+.webpay-brand small{
+  margin:0 0 3px 0!important;
+  color:#ef4444!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  white-space:nowrap;
+}
+.payment-benefits{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:18px;
+}
+.payment-benefits span{
+  padding:8px 10px;
+  border-radius:999px;
+  background:#f4efff;
+  color:#4c1d95;
+  font-size:12px;
+  line-height:1.2;
+  font-weight:800;
+}
+.mx-market-product-card img{
+  object-fit:contain!important;
+  background:linear-gradient(180deg,#fff,#faf8ff)!important;
+}
+@media(max-width:640px){
+  .hero.mx-hero{
+    min-height:0!important;
+    position:relative!important;
+    background:#fff!important;
+  }
+  .mx-hero-media{
+    order:1!important;
+    min-height:760px!important;
+    height:760px!important;
+    margin:0!important;
+    position:relative!important;
+  }
+  .mx-family{
+    height:760px!important;
+    min-height:760px!important;
+    object-fit:cover!important;
+    object-position:center top!important;
+  }
+  .mx-hero-media:after{
+    display:block!important;
+    content:""!important;
+    position:absolute!important;
+    inset:auto 0 0 0!important;
+    width:auto!important;
+    height:58%!important;
+    background:linear-gradient(180deg,rgba(8,20,67,0) 0%,rgba(8,20,67,.28) 28%,rgba(8,20,67,.90) 100%)!important;
+    pointer-events:none!important;
+  }
+  .mx-hero-copy{
+    order:2!important;
+    position:absolute!important;
+    z-index:4!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    padding:0 24px 26px!important;
+    color:#fff!important;
+  }
+  .mx-eyebrow{
+    margin:0 0 14px!important;
+    color:#25314d!important;
+    background:rgba(255,255,255,.94)!important;
+    border-color:rgba(255,255,255,.75)!important;
+    backdrop-filter:blur(8px);
+  }
+  .mx-hero h1{
+    max-width:100%!important;
+    margin:0 0 14px!important;
+    color:#fff!important;
+    font-size:46px!important;
+    line-height:.98!important;
+    letter-spacing:-2.2px!important;
+    text-shadow:0 3px 18px rgba(0,0,0,.22);
+  }
+  .mx-gradient{
+    display:block!important;
+    background:linear-gradient(90deg,#22c55e,#06b6d4 48%,#60a5fa 78%,#a78bfa)!important;
+    -webkit-background-clip:text!important;
+    background-clip:text!important;
+    color:transparent!important;
+  }
+  .mx-lead{
+    margin:0 0 20px!important;
+    max-width:95%!important;
+    color:#fff!important;
+    font-size:16px!important;
+    line-height:1.45!important;
+    font-weight:650!important;
+    text-shadow:0 2px 14px rgba(0,0,0,.28);
+  }
+  .mx-benefits{display:none!important;}
+  .mx-actions{
+    flex-direction:row!important;
+    gap:10px!important;
+  }
+  .mx-primary,.mx-secondary{
+    width:auto!important;
+    flex:1 1 0!important;
+    min-height:54px!important;
+    padding:0 12px!important;
+    font-size:14px!important;
+    border-radius:16px!important;
+  }
+  .mx-secondary{
+    background:rgba(255,255,255,.96)!important;
+    border-color:rgba(255,255,255,.9)!important;
+  }
+  .mx-secondary span{display:none!important;}
+  .mx-trust{
+    margin-top:18px!important;
+    border-radius:26px!important;
+  }
+  .payment-highlight{
+    border-radius:26px!important;
+    overflow:hidden!important;
+  }
+  .payment-highlight>img{
+    height:245px!important;
+    object-fit:cover!important;
+    object-position:center!important;
+  }
+  .payment-highlight>.payment-copy{
+    padding:24px 20px 26px!important;
+  }
+  .payment-highlight h2{
+    margin:0 0 14px!important;
+    font-size:29px!important;
+    line-height:1.08!important;
+    letter-spacing:-.02em!important;
+  }
+  .payment-highlight p{
+    margin:0!important;
+    font-size:16px!important;
+    line-height:1.52!important;
+    font-weight:600!important;
+  }
+  .partner-row{
+    margin-top:20px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:12px!important;
+  }
+  .webpay-brand{
+    width:100%!important;
+    justify-content:flex-start!important;
+    flex-wrap:nowrap!important;
+  }
+  .webpay-brand strong{
+    font-size:26px!important;
+    letter-spacing:-.035em!important;
+  }
+  .secure-pill{
+    margin:0!important;
+    display:flex!important;
+    align-items:center!important;
+    width:max-content!important;
+    max-width:100%!important;
+    font-size:15px!important;
+    line-height:1.25!important;
+  }
+  .secure-pill:before{
+    width:34px!important;
+    height:34px!important;
+    margin-right:10px!important;
+    flex:0 0 auto!important;
+  }
+  .payment-benefits{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:7px!important;
+    margin-top:16px!important;
+  }
+  .payment-benefits span{
+    border-radius:12px!important;
+    font-size:12px!important;
+  }
+  .mx-market-product-card img{
+    aspect-ratio:16/10!important;
+    object-fit:contain!important;
+    padding:8px!important;
+  }
+}
