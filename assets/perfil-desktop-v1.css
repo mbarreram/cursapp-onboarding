@@ -2,7 +2,6 @@
    Capa visual exclusiva para escritorio. Mobile intacto. */
 @media (min-width:1024px){
   body.cursapp-profile{
-    --mx-profile-side:230px;
     padding-bottom:0!important;
     background:#f5f7fb!important;
     min-height:100vh;
@@ -12,8 +11,8 @@
     position:sticky!important;
     top:0!important;
     z-index:120!important;
-    width:calc(100% - var(--mx-profile-side))!important;
-    margin-left:var(--mx-profile-side)!important;
+    width:100%!important;
+    margin:0!important;
     border-top:0!important;
     border-bottom:1px solid #e2e8f0!important;
     box-shadow:none!important;
@@ -21,11 +20,11 @@
     backdrop-filter:blur(16px)!important;
   }
   body.cursapp-profile .topbar{
-    width:min(1180px,calc(100% - 56px))!important;
-    max-width:1180px!important;
-    min-height:88px!important;
-    margin:0 auto!important;
-    padding:12px 20px!important;
+    width:100%!important;
+    max-width:none!important;
+    min-height:78px!important;
+    margin:0!important;
+    padding:12px 34px!important;
   }
   body.cursapp-profile .mx-role-brand-icon{
     width:52px!important;
@@ -48,9 +47,9 @@
   }
 
   body.cursapp-profile .container{
-    width:min(1180px,calc(100% - var(--mx-profile-side) - 64px))!important;
-    max-width:1180px!important;
-    margin:0 0 0 calc(var(--mx-profile-side) + max(32px,(100vw - var(--mx-profile-side) - 1180px)/2))!important;
+    width:min(1440px,calc(100% - 64px))!important;
+    max-width:1440px!important;
+    margin:0 auto!important;
     padding:30px 0 72px!important;
   }
   body.cursapp-profile #perfilContent{
@@ -197,70 +196,16 @@
     font-size:12px!important;
   }
 
-  body.cursapp-profile .bottomNav{
-    position:fixed!important;
-    inset:0 auto 0 0!important;
-    width:var(--mx-profile-side)!important;
-    height:100vh!important;
-    transform:none!important;
-    display:flex!important;
-    flex-direction:column!important;
-    justify-content:flex-start!important;
-    align-items:stretch!important;
-    gap:10px!important;
-    padding:116px 16px 28px!important;
-    border-radius:0!important;
-    border:0!important;
-    border-right:1px solid #e2e8f0!important;
-    background:#fff!important;
-    box-shadow:10px 0 34px rgba(15,23,42,.06)!important;
-    z-index:110!important;
-  }
-  body.cursapp-profile .bottomNav .navItem,
-  body.cursapp-profile .bottomNav .marketBottomTab{
-    width:100%!important;
-    min-height:58px!important;
-    display:grid!important;
-    grid-template-columns:32px minmax(0,1fr)!important;
-    align-items:center!important;
-    justify-items:start!important;
-    gap:12px!important;
-    padding:10px 13px!important;
-    border-radius:14px!important;
-    text-align:left!important;
-    color:#475467!important;
-  }
-  body.cursapp-profile .bottomNav .navItem.active{
-    background:#eef3ff!important;
-    color:#175cff!important;
-  }
-  body.cursapp-profile .bottomNav .presNavIcon,
-  body.cursapp-profile .bottomNav .tesNavIcon,
-  body.cursapp-profile .bottomNav .nav-icon{
-    width:26px!important;
-    height:26px!important;
-  }
-  body.cursapp-profile .bottomNav .navItem>span:last-child,
-  body.cursapp-profile .bottomNav .nav-label{
-    font-size:14px!important;
-    line-height:1.2!important;
-    white-space:normal!important;
-  }
-
   body.cursapp-profile #menuDropdown{
     top:76px!important;
     right:18px!important;
     left:auto!important;
-    width:min(390px,calc(100vw - var(--mx-profile-side) - 40px))!important;
+    width:min(390px,calc(100vw - 40px))!important;
     max-height:calc(100vh - 110px)!important;
     overflow:auto!important;
   }
 }
 
 @media (min-width:1440px){
-  body.cursapp-profile{--mx-profile-side:250px}
-  body.cursapp-profile .container,
-  body.cursapp-profile .topbar{
-    max-width:1280px!important;
-  }
+  body.cursapp-profile .container{max-width:1440px!important}
 }
