@@ -473,9 +473,27 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     if(!msg){ alert("No hay contenido para compartir."); return; }
     const url = "https://wa.me/?text=" + encodeURIComponent(msg);
     const w = window.open(url, "_blank");
-    if(!w){
-      location.href = url;
-    }
+    if(!w) location.href = url;
+  }
+
+  function normalizeWhatsAppPhone(raw){
+    let digits = String(raw||"").replace(/\D/g,"");
+    if(!digits) return "";
+    if(digits.length===9 && digits.startsWith("9")) digits = "56" + digits;
+    if(digits.length===11 && digits.startsWith("569")) return digits;
+    if(digits.length>=10 && digits.length<=15) return digits;
+    return "";
+  }
+
+  function shareWhatsAppTo(text, rawPhone){
+    const msg = String(text || "").trim();
+    if(!msg){ toast("No hay contenido para compartir."); return; }
+    const phone = normalizeWhatsAppPhone(rawPhone);
+    const url = phone
+      ? "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg)
+      : "https://wa.me/?text=" + encodeURIComponent(msg);
+    const w = window.open(url, "_blank");
+    if(!w) location.href = url;
   }
 
   function shareExecutiveWhatsApp(){
@@ -503,37 +521,45 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   }
 
 
-// ---------- clipboard helper (iOS Safari friendly) ----------
-async function copyTextToClipboard(text){
-  const s = String(text||"");
-  // Prefer modern API (HTTPS + user gesture)
-  try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(s);
-      return true;
-    }
-  }catch(e){}
-  // Fallback: temporary textarea + execCommand('copy')
-  try{
-    const ta = document.createElement("textarea");
-    ta.value = s;
-    ta.setAttribute("readonly","");
-    ta.style.position = "fixed";
-    ta.style.top = "0";
-    ta.style.left = "0";
-    ta.style.width = "1px";
-    ta.style.height = "1px";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    ta.setSelectionRange(0, ta.value.length);
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return !!ok;
-  }catch(e){}
-  return false;
-}
+// ---------- clipboard helper (iOS Safari friendly, sin salto de scroll) ----------
+  async function copyTextToClipboard(text){
+    const s = String(text||"");
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(s);
+        return true;
+      }
+    }catch(e){}
+    try{
+      const x = window.scrollX || 0;
+      const y = window.scrollY || 0;
+      const previous = document.activeElement;
+      const ta = document.createElement("textarea");
+      ta.value = s;
+      ta.setAttribute("readonly","");
+      ta.setAttribute("aria-hidden","true");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      ta.style.top = "50%";
+      ta.style.width = "1px";
+      ta.style.height = "1px";
+      ta.style.opacity = "0";
+      ta.style.pointerEvents = "none";
+      document.body.appendChild(ta);
+      try{ ta.focus({preventScroll:true}); }catch(_){ ta.focus(); }
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      window.scrollTo(x,y);
+      try{
+        if(previous && typeof previous.focus==="function") previous.focus({preventScroll:true});
+      }catch(_){}
+      requestAnimationFrame(()=>window.scrollTo(x,y));
+      return !!ok;
+    }catch(e){}
+    return false;
+  }
   const uid = (p = "id") => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 
   function detectKey(candidates) {
@@ -2635,34 +2661,34 @@ function updatePresidentTopbar(){
 }
 
 function buildWhatsappText(profile, summary){
-  const name = (profile.apoderadoName||profile.name||"").trim() || "Apoderado/a";
+  const name = (profile.apoderadoName||profile.name||"").trim() || "apoderado/a";
   const alumno = (profile.alumno||"").trim();
   const c = activeCourse() || {};
-  const courseLine = `${c.schoolName||"Colegio"} · ${c.level||""}${c.letter||""} ${c.year||""} · ${c.jornada||""}`.replace(/\s+/g," ").trim();
-  const today = todayISO();
+  const courseName = [c.level||"", c.letter||"", c.year||""].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
+  const today = new Date();
+  const dateText = today.toLocaleDateString("es-CL",{day:"2-digit",month:"2-digit",year:"numeric"});
 
-  let lines = [];
-  lines.push(`Hola ${name}${alumno?` (Alumno/a: ${alumno})`:``}.`);
-  lines.push(`Te comparto el resumen de cobros del curso ${courseLine} al ${today}:`);
+  const lines = [];
+  lines.push(`Hola ${name} 👋`);
+  lines.push(`Te compartimos el estado de cuotas${alumno ? ` de ${alumno}` : ""} al ${dateText}.`);
   lines.push("");
 
   if(summary.campaigns.length===0){
-    lines.push("No registras deudas pendientes.");
+    lines.push("✅ Al día");
+    lines.push("No registras cuotas pendientes a la fecha.");
   }else{
+    lines.push("*Cuotas pendientes:*");
     summary.campaigns.forEach(ca=>{
-      const tag = ca.mandatory ? "Obligatoria" : "Voluntaria";
-      lines.push(`- ${ca.title} (${tag}): ${ca.pendingCount} pendiente(s) por ${money(ca.pendingAmount)}.`);
-      const det = [];
-      if(ca.overdueAmount>0) det.push(`vencido ${money(ca.overdueAmount)}`);
-      if(ca.upcomingAmount>0) det.push(`por vencer ${money(ca.upcomingAmount)}`);
-      if(det.length) lines.push(`  (${det.join(" · ")})`);
+      lines.push(`• ${ca.title} — ${money(ca.pendingAmount)}`);
     });
     lines.push("");
-    lines.push(`Total pendiente: ${money(summary.totalAll)}.`);
+    lines.push(`*Total pendiente: ${money(summary.totalAll)}*`);
+    lines.push("");
+    lines.push("Si ya realizaste alguno de estos pagos, puedes informarlo a la directiva para actualizar el registro.");
   }
 
   lines.push("");
-  lines.push("Gracias.");
+  lines.push(`MiCursoX${courseName ? " · " + courseName : ""}`);
   return lines.join("\n");
 }
 
@@ -2674,7 +2700,8 @@ function renderDeudores(){
   const aprobados = approvedApoderados().map(e=>({
     email: String(e.email||"").toLowerCase(),
     apoderadoName: e.apoderadoName||e.name||"",
-    alumno: e.alumno||""
+    alumno: e.alumno||"",
+    telefono: e.telefono||e.phone||e.whatsapp||e.apoderadoTelefono||e.apoderadoPhone||""
   }));
 
   // Pendiente del mes (solo obligatorias) por email
@@ -2804,6 +2831,20 @@ function renderDeudores(){
       .pill.bad{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.08);}
       .pill.good{border-color:rgba(34,197,94,.22);background:rgba(34,197,94,.08);}
       textarea{width:100%;min-height:120px;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.10);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+      .presDebtShareBox{margin-top:14px;padding:14px;border:1px solid rgba(15,23,42,.09);border-radius:18px;background:linear-gradient(180deg,#fff,#fafcff);}
+      .presDebtShareHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+      .presDebtShareTotal{flex:0 0 auto;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950;}
+      .presDebtShareTotal.hasDebt{background:#fff1f2;color:#be123c;border:1px solid #fecdd3;}
+      .presDebtShareTotal.isClear{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;}
+      .presDebtMessagePreview{margin-top:12px;padding:13px 14px;border-radius:14px;background:#fff;border:1px solid rgba(15,23,42,.08);font-size:14px;line-height:1.55;color:#263244;}
+      .presDebtShareActions{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:9px;margin-top:12px;}
+      .presDebtWhatsappBtn{background:#25d366!important;border-color:#25d366!important;color:#fff!important;font-weight:900!important;}
+      .presDebtCopyBtn{background:#fff!important;border:1px solid rgba(15,23,42,.14)!important;color:#25314d!important;font-weight:900!important;}
+      @media(max-width:520px){
+        .presDebtShareActions{grid-template-columns:1fr;}
+        .presDebtWhatsappBtn,.presDebtCopyBtn{min-height:48px;}
+        .presDebtMessagePreview{font-size:13px;}
+      }
     </style>
   `;
 
@@ -2876,11 +2917,14 @@ function renderDeudores(){
       return;
     }
 
-    out.innerHTML = matches.map(profile=>{
+    const shareItems = matches.map(profile=>{
       const sum = summarizeDebts(profile.email);
+      return { profile, sum, wa:buildWhatsappText(profile,sum) };
+    });
+
+    out.innerHTML = shareItems.map(({profile,sum,wa}, shareIndex)=>{
       const monthMand = mandatoryPendingByEmail.get(profile.email) || 0;
-      const wa = buildWhatsappText(profile, sum);
-      return `
+      return 
         <div class="resultRow">
           <div class="resultTop">
             <div>
@@ -2915,29 +2959,53 @@ function renderDeudores(){
             ` : `<div class="muted" style="margin-top:8px;">No registra deudas pendientes.</div>`}
           </div>
 
-          <div style="margin-top:12px;">
-            <div style="font-weight:950;">Resumen para WhatsApp</div>
-            <div class="muted" style="margin-top:6px;">Copia y pega este texto.</div>
-            <textarea readonly>${esc(wa)}</textarea>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
-              <button class="btn primary" type="button" data-copy="1">Copiar texto</button>
+          <div class="presDebtShareBox">
+            <div class="presDebtShareHead">
+              <div>
+                <div style="font-weight:950;">Estado para el apoderado</div>
+                <div class="muted" style="margin-top:4px;">Mensaje breve listo para enviar.</div>
+              </div>
+              <span class="presDebtShareTotal ${sum.totalAll>0?"hasDebt":"isClear"}">${sum.totalAll>0 ? money(sum.totalAll) : "Al día"}</span>
+            </div>
+            <div class="presDebtMessagePreview">${esc(wa).replace(/\n/g,"<br>")}</div>
+            <div class="presDebtShareActions">
+              <button class="btn presDebtWhatsappBtn" type="button" data-wa="${shareIndex}">Enviar por WhatsApp</button>
+              <button class="btn presDebtCopyBtn" type="button" data-copy="${shareIndex}">Copiar resumen</button>
             </div>
           </div>
         </div>
       `;
     }).join("");
 
-    out.querySelectorAll('button[data-copy="1"]').forEach((b, idx)=>{
+    out.querySelectorAll("button[data-wa]").forEach((b)=>{
+      b.onclick = (event)=>{
+        event?.preventDefault();
+        event?.stopPropagation();
+        const idx = Number(b.getAttribute("data-wa"));
+        const item = shareItems[idx];
+        if(!item) return;
+        shareWhatsAppTo(item.wa, item.profile.telefono);
+      };
+    });
+
+    out.querySelectorAll("button[data-copy]").forEach((b)=>{
       b.onclick = async (event)=>{
         event?.preventDefault();
         event?.stopPropagation();
+        const idx = Number(b.getAttribute("data-copy"));
+        const item = shareItems[idx];
+        if(!item) return;
         window.__presDebtQueryActive = true;
-        const ta = out.querySelectorAll("textarea")[idx];
-        const txt = ta?.value || "";
-        const copied = await copyTextToClipboard(txt);
-        if(copied) toast("Texto copiado para WhatsApp.");
-        else fallbackCopy(txt);
-        setTimeout(()=>{ window.__presDebtQueryActive = false; }, 1500);
+        const copied = await copyTextToClipboard(item.wa);
+        if(copied){
+          const old = b.textContent;
+          b.textContent = "✓ Copiado";
+          toast("Resumen copiado.");
+          setTimeout(()=>{ b.textContent = old; }, 1300);
+        }else{
+          toast("No se pudo copiar. Usa Enviar por WhatsApp.");
+        }
+        setTimeout(()=>{ window.__presDebtQueryActive = false; }, 300);
       };
     });
   }
