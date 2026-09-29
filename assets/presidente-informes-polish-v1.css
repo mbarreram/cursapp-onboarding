@@ -1,0 +1,34 @@
+/* MiCursoX · Presidente · Informes · Desktop polish v1 */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active #informeRoot{
+    margin-top:14px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #informeRoot > .card{
+    padding:16px 18px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #informeRoot .mxInformeSummaryRow{
+    gap:16px!important;
+    margin-top:24px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #informeRoot > .mxInformeAnalyticsRow{
+    column-gap:18px!important;
+    margin-top:24px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .mxInformeTrendCard svg text{
+    font-size:8.5px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .mxInformeTrendCard svg{
+    width:72%!important;
+    max-width:700px!important;
+    max-height:215px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .mxInformeTrendCard canvas{
+    width:72%!important;
+    max-width:700px!important;
+    height:205px!important;
+    max-height:205px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .mxInformePublishedCard{
+    margin-top:24px!important;
+  }
+}
