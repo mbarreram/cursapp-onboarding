@@ -1,0 +1,30 @@
+/* MiCursoX · Presidente · Apoderados · Desktop polish v1 */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active #app .apo-registration-card,
+  body.cursapp-presidente.mx-desktop-active #app .registrationCard,
+  body.cursapp-presidente.mx-desktop-active #app .apodChartCard{
+    padding:20px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-total-card{
+    min-height:94px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-table-wrap,
+  body.cursapp-presidente.mx-desktop-active #app .apo-list-card{
+    margin-top:16px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-table thead th,
+  body.cursapp-presidente.mx-desktop-active #app table thead th{
+    background:#f7f9fc!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-table tbody tr:hover,
+  body.cursapp-presidente.mx-desktop-active #app table tbody tr:hover{
+    background:#fbfcff!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #app .apo-action,
+  body.cursapp-presidente.mx-desktop-active #app table button{
+    white-space:nowrap!important;
+  }
+}
