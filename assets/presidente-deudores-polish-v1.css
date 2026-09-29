@@ -1,0 +1,57 @@
+/* MiCursoX · Presidente · Deudores · Desktop polish v1 */
+@media (min-width:1024px){
+  body.cursapp-presidente.mx-desktop-active .presDebtSearchCard{
+    padding:20px 22px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active .presDebtSearchControls{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 118px!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorQuery{
+    height:48px!important;
+    font-size:13px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorSearchBtn{
+    height:48px!important;
+    min-width:118px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .resultRow{
+    margin-top:14px!important;
+    padding:18px!important;
+    border-radius:18px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr)!important;
+    gap:18px 22px!important;
+    align-items:start!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .resultTop{
+    grid-column:1/-1!important;
+    padding-bottom:12px!important;
+    border-bottom:1px solid #edf0f4!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .resultRow>div:nth-child(2){
+    grid-column:1!important;
+    margin-top:0!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .presDebtShareBox{
+    grid-column:2!important;
+    margin-top:0!important;
+    padding:15px!important;
+    background:#f8fafc!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .presDebtMessagePreview{
+    max-height:240px!important;
+    overflow:auto!important;
+    font-size:13px!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .presDebtShareActions{
+    grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr)!important;
+  }
+  body.cursapp-presidente.mx-desktop-active #debtorResults .presDebtWhatsappBtn,
+  body.cursapp-presidente.mx-desktop-active #debtorResults .presDebtCopyBtn{
+    min-height:44px!important;
+    font-size:12px!important;
+  }
+}
