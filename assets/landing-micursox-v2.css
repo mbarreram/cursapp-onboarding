@@ -322,14 +322,14 @@
   }
   .mx-hero-media{
     order:1!important;
-    min-height:620px!important;
-    height:620px!important;
+    min-height:570px!important;
+    height:570px!important;
     margin:0!important;
     position:relative!important;
   }
   .mx-family{
-    height:620px!important;
-    min-height:620px!important;
+    height:570px!important;
+    min-height:570px!important;
     object-fit:cover!important;
     object-position:center top!important;
   }
@@ -393,14 +393,23 @@
   .mx-primary,.mx-secondary{
     width:auto!important;
     flex:1 1 0!important;
-    min-height:54px!important;
+    min-height:52px!important;
     padding:0 12px!important;
     font-size:14px!important;
     border-radius:16px!important;
+    backdrop-filter:blur(12px)!important;
+    -webkit-backdrop-filter:blur(12px)!important;
+    box-shadow:0 10px 24px rgba(0,0,0,.14)!important;
+  }
+  .mx-primary{
+    background:rgba(124,58,237,.34)!important;
+    border:1px solid rgba(255,255,255,.34)!important;
+    color:#fff!important;
   }
   .mx-secondary{
-    background:rgba(255,255,255,.96)!important;
-    border-color:rgba(255,255,255,.9)!important;
+    background:rgba(255,255,255,.18)!important;
+    border:1px solid rgba(255,255,255,.52)!important;
+    color:#fff!important;
   }
   .mx-secondary span{display:none!important;}
   .mx-trust{
