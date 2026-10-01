@@ -11,6 +11,7 @@
   let rows=[];
   let resolvedCourse=null;
   let resolvedCourseKey="";
+  let resolvedAuthUserId="";
 
   async function request(path,opts){
     if(!window.CURSAPP_SUPABASE||typeof window.CURSAPP_SUPABASE.request!=="function") throw new Error("Supabase no está disponible.");
@@ -19,6 +20,7 @@
   function resetCourseState(){
     resolvedCourse=null;
     resolvedCourseKey="";
+    resolvedAuthUserId="";
     rows=[];
     try{window.renderAvisosBell&&window.renderAvisosBell()}catch(_){}
   }
@@ -50,7 +52,7 @@
   }
   function normalize(a,readingList=[]){
     const reads=readingList.filter(r=>String(r.aviso_id)===String(a.id)&&r.leido!==false);
-    const me=userId();
+    const me=String(resolvedAuthUserId||userId()||"").trim();
     return {
       id:String(a.id), type:"manual", category:String(a.tipo||"info"), priority:String(a.prioridad||"normal"),
       title:String(a.titulo||"Aviso"), message:String(a.mensaje||""), createdAt:String(a.created_at||""),
@@ -84,6 +86,7 @@
     }
     if(startKey!==courseKey()) throw new Error("El curso activo cambió durante la carga.");
 
+    try{resolvedAuthUserId=await resolvedUserId()}catch(_){resolvedAuthUserId=userId()}
     rows=safeNotices.map(a=>normalize(a,Array.isArray(readings)?readings:[]));
     persist(options.emitDataUpdated!==false);
     return rows;
