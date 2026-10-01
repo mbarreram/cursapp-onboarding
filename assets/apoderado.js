@@ -1296,6 +1296,19 @@ function dueBadge(iso){
   }
 
 
+  function currentCourseUnreadCount(fallbackText){
+    try{
+      const api=window.CURSAPP_COURSE_NOTICES;
+      if(api&&typeof api.getRows==="function"){
+        const list=api.getRows();
+        if(Array.isArray(list)) return list.filter(x=>x&&!x.isRead).length;
+      }
+    }catch(_e){}
+    const raw=String(fallbackText||"").trim();
+    const n=parseInt(raw,10);
+    return Number.isFinite(n)&&n>0?n:0;
+  }
+
   function ensureApoV47FloatingMessages(unreadText){
     let btn = document.getElementById("apoFloatingMessagesBtn");
     if(!btn){
@@ -1308,10 +1321,10 @@ function dueBadge(iso){
       document.body.appendChild(btn);
     }
     const badge = btn.querySelector(".apoV47FloatingMessagesBadge");
-    const clean = String(unreadText || "").trim();
+    const unread=currentCourseUnreadCount(unreadText);
     if(badge){
-      if(clean && clean !== "0"){
-        badge.textContent = clean;
+      if(unread>0){
+        badge.textContent = unread>9?"9+":String(unread);
         badge.style.display = "flex";
       }else{
         badge.textContent = "";
@@ -1357,6 +1370,12 @@ function dueBadge(iso){
     setTimeout(refreshMessages, 300);
     setTimeout(refreshMessages, 1000);
     setTimeout(refreshMessages, 2200);
+
+    if(!window.__APO_V47_NOTICE_SYNC_BOUND__){
+      window.__APO_V47_NOTICE_SYNC_BOUND__=true;
+      window.addEventListener("micursox:course-notices-updated",refreshMessages);
+      window.addEventListener("pageshow",refreshMessages);
+    }
   }
 
   function setupApoV44DueCarousel(){
