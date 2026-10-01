@@ -60,12 +60,15 @@
       isRead:!!(me&&reads.some(r=>String(r.usuario_id)===me)), courseId:String(a.curso_id||""), courseScope:resolvedCourseKey||courseKey()
     };
   }
-  function persist(){
+  function persist(emitDataUpdated=true){
     localStorage.setItem(cacheKey(),JSON.stringify(rows));
-    try{window.dispatchEvent(new CustomEvent("cursapp:dataUpdated",{detail:{kind:"notices"}}))}catch(e){}
+    if(emitDataUpdated){
+      try{window.dispatchEvent(new CustomEvent("cursapp:dataUpdated",{detail:{kind:"notices"}}))}catch(e){}
+    }
+    try{window.dispatchEvent(new CustomEvent("micursox:course-notices-updated",{detail:{courseId:String(resolvedCourse?.id||""),rows:rows.slice()}}))}catch(e){}
     try{window.renderAvisosBell&&window.renderAvisosBell()}catch(e){}
   }
-  async function refresh(){
+  async function refresh(options={}){
     const startKey=courseKey();
     const c=await activeCourse();
     if(startKey!==courseKey()||resolvedCourseKey!==startKey) throw new Error("El curso activo cambió durante la carga.");
@@ -82,7 +85,7 @@
     if(startKey!==courseKey()) throw new Error("El curso activo cambió durante la carga.");
 
     rows=safeNotices.map(a=>normalize(a,Array.isArray(readings)?readings:[]));
-    persist();
+    persist(options.emitDataUpdated!==false);
     return rows;
   }
   const visible=()=>rows.slice();
@@ -133,9 +136,12 @@
     const all=visible();
     const ov=document.createElement("div"); ov.id="cursappAvisosInboxOverlay";
     ov.style.cssText="position:fixed;inset:0;z-index:999998;background:rgba(15,23,42,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px;";
-    ov.innerHTML=`<div style="width:min(720px,100%);max-height:82vh;overflow:auto;background:#fff;border-radius:28px;padding:22px;box-shadow:0 30px 90px rgba(15,23,42,.30);font-family:system-ui,sans-serif;"><div style="display:flex;justify-content:space-between;gap:12px"><div><div style="font-size:24px;font-weight:950">Avisos del curso</div><div style="color:#667085;margin-top:6px;font-weight:750">Comunicados enviados por la directiva.</div></div><button id="cerrarAvisosInbox" class="btn ghost">Cerrar</button></div><div style="margin-top:16px;display:grid;gap:10px;">${all.length?all.map(a=>`<article style="border:1px solid #e5e7eb;border-radius:18px;padding:14px"><b>${tag(a.category)} ${esc(a.title)}</b><p style="color:#667085;font-weight:700">${esc(a.message)}</p><small>${date(a.createdAt)}</small></article>`).join(""):`<div style="color:#667085;font-weight:800;padding:14px">Aún no hay avisos.</div>`}</div></div>`;
+    ov.innerHTML=`<div style="width:min(720px,100%);max-height:82vh;overflow:auto;background:#fff;border-radius:28px;padding:22px;box-shadow:0 30px 90px rgba(15,23,42,.30);font-family:system-ui,sans-serif;"><div style="display:flex;justify-content:space-between;gap:12px"><div><div style="font-size:24px;font-weight:950">Avisos del curso</div><div style="color:#667085;margin-top:6px;font-weight:750">Comunicados enviados por la directiva.</div></div><button id="cerrarAvisosInbox" class="btn ghost">Cerrar</button></div><div style="margin-top:16px;display:grid;gap:10px;">${all.length?all.map(a=>`<article data-aviso-id="${esc(a.id)}" style="border:1px solid ${a.isRead?'#e5e7eb':'#c4b5fd'};background:${a.isRead?'#fff':'#faf7ff'};border-radius:18px;padding:14px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>${tag(a.category)} ${esc(a.title)}</b><span data-notice-state style="font-size:11px;font-weight:900;padding:5px 9px;border-radius:999px;background:${a.isRead?'#f1f5f9':'#ede9fe'};color:${a.isRead?'#64748b':'#6d28d9'}">${a.isRead?'Leído':'Nuevo'}</span></div><p style="color:#667085;font-weight:700">${esc(a.message)}</p><small>${date(a.createdAt)}</small></article>`).join(""):`<div style="color:#667085;font-weight:800;padding:14px">Aún no hay avisos.</div>`}</div></div>`;
     document.body.appendChild(ov); document.getElementById("cerrarAvisosInbox").onclick=()=>ov.remove();
-    await Promise.all(all.filter(a=>!a.isRead).map(a=>markRead(a.id).catch(()=>{}))); await refresh();
+    await Promise.all(all.filter(a=>!a.isRead).map(a=>markRead(a.id).catch(()=>{})));
+    await refresh();
+    ov.querySelectorAll("[data-notice-state]").forEach(el=>{el.textContent="Leído";el.style.background="#f1f5f9";el.style.color="#64748b"});
+    ov.querySelectorAll("[data-aviso-id]").forEach(el=>{el.style.borderColor="#e5e7eb";el.style.background="#fff"});
   };
 
   async function markAllVisibleRead(){
@@ -145,7 +151,7 @@
     await refresh();
     return all.length;
   }
-  window.CURSAPP_COURSE_NOTICES=Object.assign({},window.CURSAPP_COURSE_NOTICES||{},{refresh,markAllRead:markAllVisibleRead});
+  window.CURSAPP_COURSE_NOTICES=Object.assign({},window.CURSAPP_COURSE_NOTICES||{},{refresh,markAllRead:markAllVisibleRead,getRows:()=>rows.slice()});
 
   function sentList(){
     return rows.length?rows.map(a=>`<div style="border:1px solid #e5e7eb;border-radius:18px;padding:14px"><div style="display:flex;justify-content:space-between;gap:10px"><div><b>${tag(a.category)} ${esc(a.title)}</b><p style="color:#667085;font-weight:700">${esc(a.message)}</p><small>${date(a.createdAt)} · ${a.readCount} de ${a.audienceCount} vistos</small></div><button data-del-aviso="${esc(a.id)}" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:12px;padding:8px">Eliminar</button></div></div>`).join(""):`<div style="color:#667085;font-weight:800;padding:14px">Aún no hay avisos enviados.</div>`;
@@ -191,5 +197,11 @@
   window.addEventListener("cursapp:dataChanged",handleCourseContextChange);
   window.addEventListener("pageshow",handleCourseContextChange);
 
-  document.addEventListener("DOMContentLoaded",async()=>{try{await refresh()}catch(e){console.warn("No se pudieron cargar avisos",e)}window.renderAvisosBell()});
+  document.addEventListener("DOMContentLoaded",async()=>{
+    try{await refresh()}catch(e){console.warn("No se pudieron cargar avisos",e)}
+    window.renderAvisosBell();
+    if(role()==="presidente"){
+      setInterval(()=>refresh({emitDataUpdated:false}).catch(()=>{}),15000);
+    }
+  });
 })();
