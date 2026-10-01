@@ -22,8 +22,14 @@
 
   function signature(items){
     return JSON.stringify((Array.isArray(items) ? items : []).slice(0,3).map(a=>[
-      a && a.id || '', a && a.titulo || '', a && a.mensaje || '', a && a.created_at || ''
+      a && a.id || '', a && a.titulo || '', a && a.mensaje || '', a && a.created_at || '', !!(a&&a.isRead)
     ]));
+  }
+  function ensureNoticeStyles(){
+    if(document.getElementById('mx-course-notice-state-css')) return;
+    const s=document.createElement('style');s.id='mx-course-notice-state-css';
+    s.textContent='.apoV40NoticeCard.mx-notice-new{border-color:#c4b5fd!important;background:#faf7ff!important;box-shadow:0 10px 28px rgba(109,40,217,.08)!important}.mxNoticeState{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:950;margin-left:7px;vertical-align:middle}.mxNoticeState.new{background:#ede9fe;color:#6d28d9}.mxNoticeState.read{background:#f1f5f9;color:#64748b}';
+    document.head.appendChild(s);
   }
 
   async function loadCurrentCourseNotices(){
@@ -43,10 +49,19 @@
       + '&order=created_at.desc';
 
     const rows = await api.request(path, { method:'GET' });
-    return Array.isArray(rows) ? rows : [];
+    let readMap=new Map();
+    try{
+      const noticeApi=window.CURSAPP_COURSE_NOTICES;
+      if(noticeApi&&typeof noticeApi.refresh==='function') await noticeApi.refresh({emitDataUpdated:false});
+      if(noticeApi&&typeof noticeApi.getRows==='function'){
+        readMap=new Map(noticeApi.getRows().map(x=>[String(x.id),!!x.isRead]));
+      }
+    }catch(_){}
+    return (Array.isArray(rows) ? rows : []).map(x=>Object.assign({},x,{isRead:readMap.get(String(x.id))===true}));
   }
 
   function renderHome(items, force){
+    ensureNoticeStyles();
     const host = document.querySelector('.apoV2RealAvisos');
     if(!host) return false;
 
@@ -58,9 +73,10 @@
     }else{
       host.innerHTML = items.slice(0,3).map(a=>{
         const date = formatDate(a.created_at);
-        return '<article class="apoV2Notice apoV40NoticeCard">'
+        const state=a.isRead?'Leído':'Nuevo';
+        return '<article class="apoV2Notice apoV40NoticeCard '+(a.isRead?'mx-notice-read':'mx-notice-new')+'">'
           + '<span class="apoV40NoticeIcon">📣</span>'
-          + '<div class="apoV40NoticeCopy"><h3>'+esc(a.titulo || 'Aviso del curso')+'</h3>'
+          + '<div class="apoV40NoticeCopy"><h3>'+esc(a.titulo || 'Aviso del curso')+'<span class="mxNoticeState '+(a.isRead?'read':'new')+'">'+state+'</span></h3>'
           + '<p>'+esc(a.mensaje || 'Revisa el detalle del aviso publicado por la directiva.')+'</p>'
           + (date ? '<small>'+esc(date)+'</small>' : '')
           + '</div><button type="button" data-current-course-notices="1">Ver</button></article>';
@@ -83,7 +99,7 @@
     const content = rows.length ? rows.map(a=>{
       const date = formatDate(a.created_at);
       return '<article style="padding:16px 0;border-bottom:1px solid #e5e7eb">'
-        + '<h3 style="margin:0 0 6px;font-size:18px;color:#0f172a">'+esc(a.titulo || 'Aviso del curso')+'</h3>'
+        + '<h3 style="margin:0 0 6px;font-size:18px;color:#0f172a">'+esc(a.titulo || 'Aviso del curso')+' <span data-modal-notice-state class="mxNoticeState '+(a.isRead?'read':'new')+'">'+(a.isRead?'Leído':'Nuevo')+'</span></h3>'
         + '<p style="margin:0;color:#64748b;line-height:1.45">'+esc(a.mensaje || '')+'</p>'
         + (date ? '<small style="display:block;margin-top:8px;color:#94a3b8">'+esc(date)+'</small>' : '')
         + '</article>';
@@ -98,6 +114,8 @@
     try{
       const noticesApi=window.CURSAPP_COURSE_NOTICES;
       if(noticesApi&&typeof noticesApi.markAllRead==='function') await noticesApi.markAllRead();
+      await refresh();
+      root.querySelectorAll('[data-modal-notice-state]').forEach(el=>{el.textContent='Leído';el.classList.remove('new');el.classList.add('read')});
     }catch(error){
       console.warn('MiCursoX: no se pudieron registrar como leídos los avisos del curso.', error);
     }
@@ -135,6 +153,7 @@
   window.addEventListener('cursapp:dataChanged', ()=>scheduleRefresh(120));
   window.addEventListener('pageshow', ()=>scheduleRefresh(120));
   window.addEventListener('hashchange', ()=>scheduleRefresh(120));
+  window.addEventListener('micursox:course-notices-updated', ()=>scheduleRefresh(60));
 
   const observer = new MutationObserver(()=>{
     const host = document.querySelector('.apoV2RealAvisos');
