@@ -3677,71 +3677,100 @@ window.payNow = async function(id){
 
   renderInformes = function(){
     const active = (()=>{ try{ return JSON.parse(localStorage.getItem(KEY_ACTIVE_PROFILE) || "{}"); }catch(_){ return {}; } })();
-    const courseLabel = active.courseLabel || active.courseName || active.curso || active.course || "2°B";
-    const schoolName = active.schoolName || active.colegio || active.school || "Colegio Central";
-    const reps = reports();
-    let paysAll = load(KEY_PAYMENTS, []);
-    try{ paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll); }catch(e){}
-    try{ paysAll = dedupePaymentsAll(paysAll).list; }catch(e){}
-    try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
-    try{ paysAll = onlySupabasePayments(paysAll).filter(isMinePayment); }catch(e){ paysAll = (paysAll||[]).filter(isMinePayment); }
+    const courseLabel = active.courseLabel || active.courseName || active.curso || active.course || "Curso";
+    const schoolName = active.schoolName || active.colegio || active.school || "Colegio";
+    const reps = reports().slice().filter(r=>r&&r.period).sort((a,b)=>String(b.period).localeCompare(String(a.period)));
+    const financeLive = window.CURSAPP_APO_FINANCE?.snapshot?.() || null;
+    try{ window.CURSAPP_APO_FINANCE?.refresh?.(); }catch(_){}
 
-    const now = new Date();
-    const periodLabel = now.toLocaleDateString('es-CL', { month:'long', year:'numeric' }).replace(/^./, c=>c.toUpperCase());
-    const paidRows = paysAll.filter(p=>String(p.status||'').toLowerCase()==='paid');
-    const pendingRows = paysAll.filter(p=>['pending','partial','overdue'].includes(String(p.status||'').toLowerCase()) && !isPaymentOptedOut(p));
-    const amountOf = (p)=> Number(p.amountPaid ?? p.paidAmount ?? p.amount ?? 0) || 0;
-    const ingresos = paidRows.reduce((a,p)=>a+amountOf(p),0);
-    const ingresosMes = Number(finance?.income_month ?? 0) || 0;
-    const gastos = Number(finance?.expenses_month ?? 0) || 0;
-    const saldoActual = Number(finance?.balance ?? 0) || 0;
-    const rendicionesPendientes = Number(finance?.pending_renditions ?? 0) || 0;
+    const periodName=(period)=>{
+      const p=String(period||"").split("-");
+      const y=Number(p[0]),m=Number(p[1]);
+      if(!y||!m)return String(period||"");
+      return new Date(y,m-1,1).toLocaleDateString("es-CL",{month:"long",year:"numeric"}).replace(/^./,x=>x.toUpperCase());
+    };
+    const defaultPeriod = reps[0]?.period || new Date().toISOString().slice(0,7);
+    let selectedPeriod = String(window.__apoReportSelectedPeriod || defaultPeriod);
+    if(reps.length && !reps.some(r=>String(r.period)===selectedPeriod)) selectedPeriod=String(defaultPeriod);
+    window.__apoReportSelectedPeriod=selectedPeriod;
+    const selectedRep = reps.find(r=>String(r.period)===selectedPeriod) || null;
+    const periodLabel = periodName(selectedPeriod);
 
-    const monthKeys = [];
-    const monthNames = [];
-    for(let i=5;i>=0;i--){
-      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      monthKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
-      monthNames.push(d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''));
+    const reportRec = Number(selectedRep?.recaudadoCurso ?? selectedRep?.recaudado ?? 0) || 0;
+    const reportGas = Number(selectedRep?.gastadoCurso ?? 0) || 0;
+    const reportSaldo = Number(selectedRep?.disponibleCurso ?? (reportRec-reportGas)) || 0;
+    const reportPendingRend = Number(selectedRep?.rendicionesPendientes ?? selectedRep?.pending_renditions ?? 0) || 0;
+
+    const ingresosMes = selectedRep ? reportRec : (Number(financeLive?.income_month ?? 0)||0);
+    const gastos = selectedRep ? reportGas : (Number(financeLive?.expenses_month ?? 0)||0);
+    const saldoActual = selectedRep ? reportSaldo : (Number(financeLive?.balance ?? 0)||0);
+    const rendicionesPendientes = selectedRep ? reportPendingRend : (Number(financeLive?.pending_renditions ?? 0)||0);
+
+    const chartReports = reps.slice().sort((a,b)=>String(a.period).localeCompare(String(b.period))).slice(-6);
+    let monthKeys=[],monthNames=[],evolution=[];
+    if(chartReports.length){
+      monthKeys=chartReports.map(r=>String(r.period));
+      monthNames=chartReports.map(r=>periodName(r.period).split(" ")[0].slice(0,3));
+      evolution=chartReports.map(r=>Number(r.disponibleCurso ?? ((Number(r.recaudadoCurso??r.recaudado??0)||0)-(Number(r.gastadoCurso||0)||0)))||0);
+    }else{
+      const now=new Date();
+      for(let i=5;i>=0;i--){
+        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+        monthKeys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);
+        monthNames.push(d.toLocaleDateString("es-CL",{month:"short"}).replace(".",""));
+      }
+      const evolutionRows=Array.isArray(financeLive?.evolution)?financeLive.evolution:[];
+      evolution=monthKeys.map(key=>Number(evolutionRows.find(x=>x.month===key)?.balance||0));
     }
-    const evolutionRows = Array.isArray(finance?.evolution) ? finance.evolution : [];
-    const evolution = monthKeys.map(key=>Number(evolutionRows.find(x=>x.month===key)?.balance||0));
-    const maxVal = Math.max(...evolution, 1);
-    const pts = evolution.map((v,i)=>{
-      const x = 36 + i*(264/(Math.max(1,evolution.length-1)));
-      const y = 140 - (v/maxVal)*104;
+    const maxVal=Math.max(...evolution,1);
+    const pts=evolution.map((v,i)=>{
+      const x=36+i*(264/(Math.max(1,evolution.length-1)));
+      const y=140-(v/maxVal)*104;
       return `${x},${y}`;
-    }).join(' ');
-    const areaPts = `36,140 ${pts} 300,140`;
+    }).join(" ");
+    const areaPts=`36,140 ${pts} 300,140`;
 
-    const colors=['#5b21b6','#0ea5e9','#22c55e','#f97316','#ef4444','#64748b'];
-    const expenseItems=(Array.isArray(finance?.expenses_by_category)?finance.expenses_by_category:[]).map((x,i)=>[x.name||'Otros',Number(x.amount||0),colors[i%colors.length]]);
-    const donut = (()=>{
-      const total = Math.max(gastos, expenseItems.reduce((a,x)=>a+x[1],0), 1);
-      let acc = 0;
+    const colors=["#5b21b6","#0ea5e9","#22c55e","#f97316","#ef4444","#64748b"];
+    let expenseItems=[];
+    let recent=[];
+    if(selectedRep){
+      const ex=Array.isArray(selectedRep.expenses)?selectedRep.expenses:[];
+      const grouped={};
+      ex.forEach(x=>{const name=String(x.category||x.categoria||x.title||x.concept||"Otros");grouped[name]=(grouped[name]||0)+(Number(x.amount??x.monto??0)||0);});
+      expenseItems=Object.entries(grouped).map(([name,val],i)=>[name,val,colors[i%colors.length]]);
+      recent=ex.slice(0,3).map(x=>({title:x.title||x.concept||x.descripcion||"Rendición del curso",category:x.category||x.categoria||"Otros",amount:Number(x.amount??x.monto??0)||0,date:x.date||x.fecha||x.created_at||selectedRep.generatedAt||""}));
+    }else{
+      expenseItems=(Array.isArray(financeLive?.expenses_by_category)?financeLive.expenses_by_category:[]).map((x,i)=>[x.name||"Otros",Number(x.amount||0),colors[i%colors.length]]);
+      recent=Array.isArray(financeLive?.recent_renditions)?financeLive.recent_renditions.slice(0,3):[];
+    }
+
+    const donut=(()=>{
+      const total=Math.max(gastos,expenseItems.reduce((a,x)=>a+x[1],0),1);
+      let acc=0;
       return expenseItems.map(([name,val,color])=>{
-        const dash = (val/total)*100;
-        const seg = `<circle class="apoReportDonutSeg" r="48" cx="64" cy="64" stroke="${color}" stroke-dasharray="${dash} ${100-dash}" stroke-dashoffset="${25-acc}"/>`;
-        acc += dash;
-        return seg;
-      }).join('');
+        const dash=(val/total)*100;
+        const seg=`<circle class="apoReportDonutSeg" r="48" cx="64" cy="64" stroke="${color}" stroke-dasharray="${dash} ${100-dash}" stroke-dashoffset="${25-acc}"/>`;
+        acc+=dash; return seg;
+      }).join("");
     })();
 
-    const recent = Array.isArray(finance?.recent_renditions) ? finance.recent_renditions.slice(0,3) : [];
-    const recentHtml = recent.length ? recent.map(p=>{
-      const date = p.date || '';
-      const d = date ? new Date(date) : null;
-      const dateTxt = d && !isNaN(d) ? d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}) : 'Publicado recientemente';
-      return `<article class="apoReportMove"><span>${apoSvg('receipt')}</span><div><strong>${esc(p.title || 'Rendición del curso')}</strong><small>${esc(dateTxt)} · ${esc(p.category||'Otros')}</small></div><b>${clp(Number(p.amount||0))}</b></article>`;
-    }).join('') : `<article class="apoReportEmptyMove"><strong>Sin rendiciones publicadas</strong><small>Cuando la directiva publique movimientos aparecerán aquí.</small></article>`;
+    const recentHtml=recent.length?recent.map(p=>{
+      const d=p.date?new Date(p.date):null;
+      const dateTxt=d&&!isNaN(d)?d.toLocaleDateString("es-CL",{day:"2-digit",month:"short",year:"numeric"}):periodLabel;
+      return `<article class="apoReportMove"><span>${apoSvg("receipt")}</span><div><strong>${esc(p.title||"Rendición del curso")}</strong><small>${esc(dateTxt)} · ${esc(p.category||"Otros")}</small></div><b>${clp(Number(p.amount||0))}</b></article>`;
+    }).join(""):`<article class="apoReportEmptyMove"><strong>Sin rendiciones publicadas</strong><small>No hay rendiciones en este período.</small></article>`;
+
+    const periodOptions = reps.length
+      ? reps.map(r=>`<option value="${esc(r.period)}" ${String(r.period)===selectedPeriod?"selected":""}>${esc(periodName(r.period))}</option>`).join("")
+      : `<option value="${esc(selectedPeriod)}" selected>${esc(periodLabel)}</option>`;
 
     app.innerHTML = `<div class="apoReportPage">
       <section class="apoReportHero">
-        <div class="apoReportBrand"><span>👥</span> CURSAPP</div>
+        <div class="apoReportBrand"><span>👥</span> MICURSOX</div>
         <div class="apoReportActions"><button onclick="downloadReportPdf()">⇩<small>PDF</small></button><button onclick="shareReportPdf()">⤴<small>Compartir</small></button></div>
         <h1>Informe apoderado</h1>
         <p>${esc(courseLabel)} · ${esc(schoolName)}</p>
-        <button class="apoReportPeriod">📅 ${esc(periodLabel)} <span>⌄</span></button>
+        <label class="apoReportPeriod" aria-label="Seleccionar período"><span>📅</span><select id="apoReportPeriodSelect" onchange="setApoReportPeriod(this.value)">${periodOptions}</select><span>⌄</span></label>
       </section>
 
       <section class="apoReportCard apoReportChartCard">
@@ -3751,37 +3780,44 @@ window.payNow = async function(id){
           <path d="M36 36H300M36 88H300M36 140H300" stroke="#e2e8f0" stroke-width="1"/>
           <polygon points="${areaPts}" fill="url(#apoReportGrad)"/>
           <polyline points="${pts}" fill="none" stroke="#6d28d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          ${evolution.map((v,i)=>{const [x,y]=pts.split(' ')[i].split(','); return `<circle cx="${x}" cy="${y}" r="4" fill="#6d28d9"/>`;}).join('')}
+          ${evolution.map((v,i)=>{const [x,y]=pts.split(" ")[i].split(",");return `<circle cx="${x}" cy="${y}" r="4" fill="#6d28d9"/>`;}).join("")}
           <text x="300" y="26" text-anchor="end" class="apoReportChartValue">${clp(evolution[evolution.length-1]||0)}</text>
-          ${monthNames.map((m,i)=>`<text x="${36+i*(264/(Math.max(1,monthNames.length-1)))}" y="160" text-anchor="middle" class="apoReportAxis">${esc(m)}</text>`).join('')}
+          ${monthNames.map((m,i)=>`<text x="${36+i*(264/(Math.max(1,monthNames.length-1)))}" y="160" text-anchor="middle" class="apoReportAxis">${esc(m)}</text>`).join("")}
         </svg>
       </section>
 
       <section class="apoReportCard apoReportDonutCard">
-        <h2>Distribución de gastos</h2>
-        <div class="apoReportDonutWrap"><svg class="apoReportDonut" viewBox="0 0 128 128"><circle r="48" cx="64" cy="64" stroke="#edf2f7" stroke-width="24" fill="none"/>${donut}<text x="64" y="60" text-anchor="middle">Total</text><text x="64" y="80" text-anchor="middle">${clp(gastos)}</text></svg><div class="apoReportLegend">${expenseItems.map(([name,val,color])=>`<div><span style="background:${color}"></span><b>${esc(name)}</b><strong>${clp(gastos?val:0)}</strong><small>${gastos?Math.round((val/Math.max(gastos,1))*100):0}%</small></div>`).join('')}</div></div>
+        <h2>Distribución de gastos · ${esc(periodLabel)}</h2>
+        <div class="apoReportDonutWrap"><svg class="apoReportDonut" viewBox="0 0 128 128"><circle r="48" cx="64" cy="64" stroke="#edf2f7" stroke-width="24" fill="none"/>${donut}<text x="64" y="60" text-anchor="middle">Total</text><text x="64" y="80" text-anchor="middle">${clp(gastos)}</text></svg><div class="apoReportLegend">${expenseItems.map(([name,val,color])=>`<div><span style="background:${color}"></span><b>${esc(name)}</b><strong>${clp(val)}</strong><small>${gastos?Math.round((val/Math.max(gastos,1))*100):0}%</small></div>`).join("")}</div></div>
       </section>
 
       <section class="apoReportCard">
-        <div class="apoReportCardHead"><h2>Últimas rendiciones</h2><button>Ver todas</button></div>
+        <div class="apoReportCardHead"><h2>Rendiciones · ${esc(periodLabel)}</h2></div>
         <div class="apoReportMoves">${recentHtml}</div>
       </section>
 
       <section class="apoReportCard">
-        <h2>Estado financiero del curso</h2>
+        <h2>Estado financiero · ${esc(periodLabel)}</h2>
         <div class="apoReportStats">
-          <div class="income"><span>↓</span><small>Ingresos</small><strong>${clp(ingresosMes)}</strong><em>Este mes</em></div>
-          <div class="expense"><span>↑</span><small>Gastos</small><strong>${clp(gastos)}</strong><em>Este mes</em></div>
-          <div class="balance"><span>▣</span><small>Saldo disponible</small><strong>${clp(saldoActual)}</strong><em>Actualizado hoy</em></div>
-          <div class="pending"><span>▤</span><small>Rendiciones pendientes</small><strong>${rendicionesPendientes}</strong><em>Por aprobar</em></div>
+          <div class="income"><span>↓</span><small>Recaudado</small><strong>${clp(ingresosMes)}</strong><em>Período seleccionado</em></div>
+          <div class="expense"><span>↑</span><small>Gastos</small><strong>${clp(gastos)}</strong><em>Período seleccionado</em></div>
+          <div class="balance"><span>▣</span><small>Saldo disponible</small><strong>${clp(saldoActual)}</strong><em>Según informe publicado</em></div>
+          <div class="pending"><span>▤</span><small>Rendiciones pendientes</small><strong>${rendicionesPendientes}</strong><em>Según informe publicado</em></div>
         </div>
       </section>
 
       <section class="apoReportTrust">
-        <div><span>🛡️</span><h2>Transparencia del curso</h2><p>Este informe refleja los movimientos del curso y está disponible para todos los apoderados.</p></div>
-        <ul><li>Último informe <b>${new Date().toLocaleDateString('es-CL')}</b> ✅</li><li>Última conciliación <b>${new Date().toLocaleDateString('es-CL')}</b> ✅</li><li>Última rendición <b>${recent[0] ? 'publicada' : 'sin registros'}</b> ${recent[0]?'✅':'—'}</li></ul>
+        <div><span>🛡️</span><h2>Transparencia del curso</h2><p>Las métricas corresponden al período seleccionado del informe publicado por la directiva.</p></div>
+        <ul><li>Período <b>${esc(periodLabel)}</b> ✅</li><li>Publicado <b>${selectedRep?.generatedAt?esc(new Date(selectedRep.generatedAt).toLocaleDateString("es-CL")):"—"}</b></li><li>Rendiciones <b>${recent.length?recent.length:"sin registros"}</b></li></ul>
       </section>
     </div>`;
+
+    try{window.dispatchEvent(new CustomEvent("micursox:report-period-changed",{detail:{period:selectedPeriod}}));}catch(_){}
+  };
+
+  window.setApoReportPeriod=function(period){
+    window.__apoReportSelectedPeriod=String(period||"");
+    renderInformes();
   };
 
   window.downloadReportPdf = function(){ window.print(); };
