@@ -9,23 +9,44 @@
   const courseKey=()=>String(localStorage.getItem("cursapp_active_course_v1")||session().courseKey||session().activeCourseKey||"").trim();
   const cacheKey=()=>`cursapp_${courseKey().replace(/[^a-zA-Z0-9_-]/g,"_")||"global"}_avisos_v2`;
   let rows=[];
-  let course=null;
+  let resolvedCourse=null;
+  let resolvedCourseKey="";
 
   async function request(path,opts){
     if(!window.CURSAPP_SUPABASE||typeof window.CURSAPP_SUPABASE.request!=="function") throw new Error("Supabase no está disponible.");
     return window.CURSAPP_SUPABASE.request(path,opts||{method:"GET"});
   }
+  function resetCourseState(){
+    resolvedCourse=null;
+    resolvedCourseKey="";
+    rows=[];
+    try{window.renderAvisosBell&&window.renderAvisosBell()}catch(_){}
+  }
+
   async function activeCourse(){
-    if(course&&course.id) return course;
-    const cached=json("cursapp_course_v1",{})||{};
-    const cachedId=String(cached.id||cached.curso_id||cached.course?.id||session().curso_id||session().courseId||session().supabase?.curso_id||"").trim();
-    if(cachedId){ course={id:cachedId,total_alumnos:Number(cached.total_alumnos??cached.totalAlumnos??cached.course?.total_alumnos??0)||0}; return course; }
     const ck=courseKey();
     if(!ck) throw new Error("No se encontró el curso activo.");
-    const found=await request("cursos?course_key=eq."+encodeURIComponent(ck)+"&select=id,total_alumnos&limit=1",{method:"GET"});
-    course=Array.isArray(found)?found[0]:null;
-    if(!course) throw new Error("El curso activo no existe.");
-    return course;
+
+    if(resolvedCourse&&resolvedCourse.id&&resolvedCourseKey===ck) return resolvedCourse;
+
+    const api=window.CURSAPP_SUPABASE;
+    if(!api||typeof api.notificationContext!=="function") throw new Error("No se pudo validar el contexto del curso activo.");
+
+    const ctx=await api.notificationContext();
+    const contextId=String(ctx?.curso_id||"").trim();
+    if(!contextId) throw new Error("No se pudo resolver el curso activo.");
+
+    const found=await request("cursos?id=eq."+encodeURIComponent(contextId)+"&select=id,total_alumnos,course_key&limit=1",{method:"GET"});
+    const current=Array.isArray(found)?found[0]:null;
+    if(!current?.id) throw new Error("El curso activo no existe.");
+
+    const currentKey=String(current.course_key||"").trim();
+    const keyMatches=String(current.id)===ck || (currentKey&&currentKey===ck);
+    if(!keyMatches) throw new Error("El contexto del curso cambió. Intenta nuevamente.");
+
+    resolvedCourse={id:String(current.id),total_alumnos:Number(current.total_alumnos||0)||0,course_key:currentKey};
+    resolvedCourseKey=ck;
+    return resolvedCourse;
   }
   function normalize(a,readingList=[]){
     const reads=readingList.filter(r=>String(r.aviso_id)===String(a.id)&&r.leido!==false);
@@ -35,8 +56,8 @@
       title:String(a.titulo||"Aviso"), message:String(a.mensaje||""), createdAt:String(a.created_at||""),
       readBy:Array.from(new Set(reads.map(r=>String(r.usuario_id||"")).filter(Boolean))),
       readCount:new Set(reads.map(r=>String(r.usuario_id||"")).filter(Boolean)).size,
-      audienceCount:Math.max(0,Number(course?.total_alumnos||0)),
-      isRead:!!(me&&reads.some(r=>String(r.usuario_id)===me)), courseScope:courseKey()
+      audienceCount:Math.max(0,Number(resolvedCourse?.total_alumnos||0)),
+      isRead:!!(me&&reads.some(r=>String(r.usuario_id)===me)), courseId:String(a.curso_id||""), courseScope:resolvedCourseKey||courseKey()
     };
   }
   function persist(){
@@ -45,25 +66,22 @@
     try{window.renderAvisosBell&&window.renderAvisosBell()}catch(e){}
   }
   async function refresh(){
+    const startKey=courseKey();
     const c=await activeCourse();
-    const legacy=json(cacheKey(),[])||[];
-    let notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
-    if(role()==="presidente" && Array.isArray(legacy) && legacy.length){
-      const remote=Array.isArray(notices)?notices:[];
-      const pending=legacy.filter(a=>String(a?.type||"")==="manual" && a?.title && a?.message).filter(a=>
-        !remote.some(r=>String(r.titulo||"").trim()===String(a.title||"").trim() && String(r.mensaje||"").trim()===String(a.message||"").trim())
-      );
-      for(const a of pending.slice(0,50)){
-        try{await request("avisos_curso",{method:"POST",body:JSON.stringify({curso_id:c.id,titulo:String(a.title),mensaje:String(a.message),prioridad:String(a.priority||"normal"),visible:true,tipo:String(a.category||"info"),created_at:a.createdAt||new Date().toISOString()})})}catch(e){console.warn("No se pudo migrar aviso local",e)}
-      }
-      if(pending.length) notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
-    }
-    const ids=(Array.isArray(notices)?notices:[]).map(x=>x.id).filter(Boolean);
+    if(startKey!==courseKey()||resolvedCourseKey!==startKey) throw new Error("El curso activo cambió durante la carga.");
+
+    const notices=await request("avisos_curso?curso_id=eq."+encodeURIComponent(c.id)+"&visible=eq.true&order=created_at.desc&select=*",{method:"GET"});
+    if(startKey!==courseKey()) throw new Error("El curso activo cambió durante la carga.");
+
+    const safeNotices=(Array.isArray(notices)?notices:[]).filter(a=>String(a.curso_id||"")===String(c.id));
+    const ids=safeNotices.map(x=>x.id).filter(Boolean);
     let readings=[];
     if(ids.length){
       try{readings=await request("avisos_curso_lecturas?aviso_id=in.("+ids.map(encodeURIComponent).join(",")+")&select=aviso_id,usuario_id,leido,fecha_lectura",{method:"GET"})}catch(e){console.warn("Lecturas de avisos no disponibles",e)}
     }
-    rows=(Array.isArray(notices)?notices:[]).map(a=>normalize(a,Array.isArray(readings)?readings:[]));
+    if(startKey!==courseKey()) throw new Error("El curso activo cambió durante la carga.");
+
+    rows=safeNotices.map(a=>normalize(a,Array.isArray(readings)?readings:[]));
     persist();
     return rows;
   }
@@ -87,6 +105,9 @@
 
   async function markRead(id){
     const uid=await resolvedUserId(); if(!uid||!id) return;
+    const c=await activeCourse();
+    const row=rows.find(a=>String(a.id)===String(id));
+    if(!row||String(row.courseId)!==String(c.id)) return;
     try{
       await request("avisos_curso_lecturas?on_conflict=aviso_id,usuario_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({aviso_id:id,usuario_id:uid,leido:true,fecha_lectura:new Date().toISOString()})});
     }catch(e){
@@ -108,6 +129,7 @@
   };
 
   window.openAvisosInbox=async function(){
+    try{await refresh()}catch(e){console.warn("No se pudieron refrescar los avisos del curso activo",e)}
     const all=visible();
     const ov=document.createElement("div"); ov.id="cursappAvisosInboxOverlay";
     ov.style.cssText="position:fixed;inset:0;z-index:999998;background:rgba(15,23,42,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px;";
@@ -117,6 +139,7 @@
   };
 
   async function markAllVisibleRead(){
+    await refresh();
     const all=visible();
     await Promise.all(all.filter(a=>!a.isRead).map(a=>markRead(a.id).catch(()=>{})));
     await refresh();
@@ -139,12 +162,34 @@
   window.saveAvisoCurso=async function(){
     const title=document.getElementById("av_title")?.value.trim(),message=document.getElementById("av_msg")?.value.trim(),category=document.getElementById("av_type")?.value||"info";
     if(!title||!message){alert("Completa título y mensaje.");return}
+    const startKey=courseKey();
     const c=await activeCourse();
+    if(!startKey||startKey!==courseKey()||resolvedCourseKey!==startKey){alert("El curso activo cambió. Vuelve a abrir Crear avisos.");return}
     await request("avisos_curso",{method:"POST",body:JSON.stringify({curso_id:c.id,titulo:title,mensaje:message,prioridad:category==="urgent"?"alta":"normal",visible:true,tipo:category})});
     await refresh(); alert("Aviso enviado correctamente ✅"); openSend();
   };
-  window.deleteAvisoCurso=async id=>{await request("avisos_curso?id=eq."+encodeURIComponent(id),{method:"DELETE"});await refresh();openSend()};
+  window.deleteAvisoCurso=async id=>{
+    const c=await activeCourse();
+    const row=rows.find(a=>String(a.id)===String(id));
+    if(!row||String(row.courseId)!==String(c.id)){alert("Este aviso no pertenece al curso activo.");return}
+    await request("avisos_curso?id=eq."+encodeURIComponent(id)+"&curso_id=eq."+encodeURIComponent(c.id),{method:"DELETE"});
+    await refresh();openSend()
+  };
   window.openAvisosCursoSendModal=openSend; window.openAvisosConfigReal=openSend; window.openAvisosConfig=openSend;
+
+  function handleCourseContextChange(){
+    const ck=courseKey();
+    if(ck===resolvedCourseKey) return;
+    resetCourseState();
+    close();
+    refresh().catch(e=>console.warn("No se pudieron refrescar avisos al cambiar de curso",e));
+  }
+
+  window.addEventListener("storage",e=>{
+    if(e.key==="cursapp_active_course_v1"||e.key==="cursapp_session_v1") handleCourseContextChange();
+  });
+  window.addEventListener("cursapp:dataChanged",handleCourseContextChange);
+  window.addEventListener("pageshow",handleCourseContextChange);
 
   document.addEventListener("DOMContentLoaded",async()=>{try{await refresh()}catch(e){console.warn("No se pudieron cargar avisos",e)}window.renderAvisosBell()});
 })();
