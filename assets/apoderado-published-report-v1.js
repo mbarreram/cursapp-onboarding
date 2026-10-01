@@ -80,20 +80,32 @@
   function decorate(){
     var page=document.querySelector('.apoReportPage');if(!page)return;
     var rep=latest();
-    var old=document.getElementById('mxPublishedReportNotice');if(old)old.remove();
-    var box=document.createElement('section');box.id='mxPublishedReportNotice';box.className='mxPublishedNotice';
+    var signature=rep?String(rep.period||'')+'|'+String(rep.generatedAt||rep.created_at||''):'empty';
+    var old=document.getElementById('mxPublishedReportNotice');
+    if(old&&old.dataset.signature===signature){
+      var heroPdfExisting=page.querySelector('.apoReportActions button:first-child');
+      if(heroPdfExisting){heroPdfExisting.onclick=function(){window.downloadPublishedReportPdf();};heroPdfExisting.setAttribute('aria-label','Descargar informe publicado');}
+      return;
+    }
+    var box=old||document.createElement('section');
+    box.id='mxPublishedReportNotice';box.className='mxPublishedNotice';box.dataset.signature=signature;
     if(rep){
+      box.classList.remove('empty');
       box.innerHTML='<div class="mxPublishedNoticeIcon">✓</div><div class="mxPublishedNoticeCopy"><span>INFORME PUBLICADO</span><h2>'+esc(periodLabel(rep.period))+'</h2><p>La directiva publicó un informe oficial del curso'+(publishedAt(rep)?' · '+esc(publishedAt(rep)):'')+'.</p></div><div class="mxPublishedNoticeActions"><button type="button" onclick="openPublishedReport()">Ver informe</button><button type="button" onclick="downloadPublishedReportPdf()">PDF</button></div>';
     }else{
       box.classList.add('empty');box.innerHTML='<div class="mxPublishedNoticeIcon">i</div><div class="mxPublishedNoticeCopy"><span>INFORMES DEL CURSO</span><h2>Sin informe publicado</h2><p>Cuando la directiva publique uno, aparecerá destacado aquí.</p></div>';
     }
-    var hero=page.querySelector('.apoReportHero');if(hero&&hero.nextSibling)page.insertBefore(box,hero.nextSibling);else page.prepend(box);
+    if(!old){
+      var hero=page.querySelector('.apoReportHero');if(hero&&hero.nextSibling)page.insertBefore(box,hero.nextSibling);else page.prepend(box);
+    }
     var heroPdf=page.querySelector('.apoReportActions button:first-child');if(heroPdf){heroPdf.onclick=function(){window.downloadPublishedReportPdf();};heroPdf.setAttribute('aria-label','Descargar informe publicado');}
   }
 
   var style=document.createElement('style');style.textContent='\n.mxPublishedNotice{margin:16px 0 18px;padding:16px;border-radius:20px;background:linear-gradient(135deg,#ede9fe,#faf5ff);border:1px solid #c4b5fd;display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;box-shadow:0 10px 28px rgba(109,40,217,.09)}.mxPublishedNoticeIcon{width:48px;height:48px;border-radius:16px;background:#6d28d9;color:#fff;display:grid;place-items:center;font-size:24px;font-weight:950}.mxPublishedNoticeCopy span{display:block;color:#6d28d9;font-size:10px;font-weight:950;letter-spacing:.08em}.mxPublishedNoticeCopy h2{margin:2px 0 3px;font-size:18px}.mxPublishedNoticeCopy p{margin:0;color:#64748b;font-size:12px;line-height:1.35}.mxPublishedNoticeActions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.mxPublishedNoticeActions button{border:0;border-radius:12px;padding:10px 12px;background:#6d28d9;color:#fff;font-weight:900}.mxPublishedNoticeActions button+button{background:#fff;color:#6d28d9;border:1px solid #c4b5fd}.mxPublishedNotice.empty{background:#f8fafc;border-color:#e2e8f0}.mxPublishedNotice.empty .mxPublishedNoticeIcon{background:#e2e8f0;color:#64748b}.mxPublishedOverlay{position:fixed;inset:0;z-index:100020;background:rgba(15,23,42,.58);display:flex;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));align-items:stretch}.mxPublishedPreview{width:min(900px,100%);margin:auto;background:#fff;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;max-height:100%}.mxPublishedPreviewTop{padding:10px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;flex:0 0 auto}.mxPublishedPreviewTop div{display:flex;gap:7px}.mxPublishedPreviewTop button{border:1px solid #d8dee8;border-radius:11px;padding:8px 11px;background:#fff;font-weight:900}.mxPublishedPreviewTop button:first-child{background:#6d28d9;color:#fff;border-color:#6d28d9}.mxPublishedScroll{overflow:auto;-webkit-overflow-scrolling:touch}.mxPublishedScroll .mxPublishedReport{padding-top:18px}@media(max-width:620px){.mxPublishedNotice{grid-template-columns:44px 1fr}.mxPublishedNoticeIcon{width:44px;height:44px}.mxPublishedNoticeActions{grid-column:1/-1;justify-content:stretch}.mxPublishedNoticeActions button{flex:1}.mxPublishedPreview{border-radius:18px}}\n';document.head.appendChild(style);
 
-  var timer=setInterval(decorate,400);setTimeout(function(){clearInterval(timer);},12000);
+  decorate();
+  setTimeout(decorate,250);
+  setTimeout(decorate,900);
   document.addEventListener('click',function(ev){var btn=ev.target&&ev.target.closest?ev.target.closest('.navItem[data-tab="informes"]'):null;if(btn)setTimeout(decorate,150);},true);
   window.addEventListener('hashchange',function(){setTimeout(decorate,150);});
   window.addEventListener('micursox:report-period-changed',function(){setTimeout(decorate,40);});
