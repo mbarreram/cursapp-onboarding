@@ -2190,12 +2190,12 @@ function renderHome(){
       const readCount = Math.max(0, Number(n.readCount || n.read_count || 0));
       const audience = Math.max(0, Number(n.audienceCount || n.audience_count || courseStudentTotal()));
       return `
-        <article class="presMockNotice">
+        <article class="presMockNotice" data-notice-id="${esc(n.id||"")}">
           <span>A</span>
           <div>
             <h3>${esc(n.title || "Aviso del curso")} <em>${esc(tag)}</em></h3>
             <p>${esc(n.message || "Sin detalle adicional.")}</p>
-            <small>${readCount} de ${audience} apoderados lo han visto</small>
+            <small data-notice-read-count>${readCount} de ${audience} apoderados lo han visto</small>
           </div>
           <time>${esc(when)}</time>
         </article>
@@ -4526,6 +4526,18 @@ function buildSnapshotPrintHTML(r){
     try{ debugPresidenteAlert("después go home"); }catch(e){}
   }
   __bootPresidenteSupabaseFirst();
+
+  window.addEventListener("micursox:course-notices-updated",e=>{
+    try{
+      if(state?.tab!=="home") return;
+      const list=Array.isArray(e.detail?.rows)?e.detail.rows:[];
+      list.forEach(n=>{
+        const card=document.querySelector('.presMockNotice[data-notice-id="'+CSS.escape(String(n.id||""))+'"]');
+        const label=card?.querySelector("[data-notice-read-count]");
+        if(label) label.textContent=Math.max(0,Number(n.readCount||0))+" de "+Math.max(0,Number(n.audienceCount||courseStudentTotal()))+" apoderados lo han visto";
+      });
+    }catch(_){}
+  });
 })();
 
 window.openHelp = function(topic){
