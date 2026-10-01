@@ -7,7 +7,16 @@
   function clp(v){return '$'+Number(v||0).toLocaleString('es-CL');}
   function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='function')return window.CURSAPP.scopedKey(base);}catch(_e){}return 'cursapp_'+base;}
   function reports(){try{var r=JSON.parse(localStorage.getItem(scoped('monthly_reports_v1'))||'[]');return Array.isArray(r)?r:[];}catch(_e){return [];}}
-  function latest(){return reports().slice().sort(function(a,b){return String(b.generatedAt||b.created_at||'').localeCompare(String(a.generatedAt||a.created_at||''));})[0]||null;}
+  function selected(){
+    var list=reports().slice();
+    var period=String(window.__apoReportSelectedPeriod||'').trim();
+    if(period){
+      var hit=list.find(function(r){return String(r&&r.period||'')===period;});
+      if(hit)return hit;
+    }
+    return list.sort(function(a,b){return String(b.period||b.generatedAt||b.created_at||'').localeCompare(String(a.period||a.generatedAt||a.created_at||''));})[0]||null;
+  }
+  function latest(){return selected();}
   function periodLabel(v){if(!v)return 'Informe publicado';var p=String(v).split('-'),y=Number(p[0]),m=Number(p[1]);if(!y||!m)return String(v);return new Date(y,m-1,1).toLocaleDateString('es-CL',{month:'long',year:'numeric'}).replace(/^./,function(c){return c.toUpperCase();});}
   function publishedAt(rep){var raw=rep&& (rep.generatedAt||rep.created_at);if(!raw)return '';try{return new Date(raw).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(_e){return '';}}
   function campaigns(rep){return Array.isArray(rep&&rep.campaigns)?rep.campaigns:[];}
@@ -87,4 +96,5 @@
   var timer=setInterval(decorate,400);setTimeout(function(){clearInterval(timer);},12000);
   document.addEventListener('click',function(ev){var btn=ev.target&&ev.target.closest?ev.target.closest('.navItem[data-tab="informes"]'):null;if(btn)setTimeout(decorate,150);},true);
   window.addEventListener('hashchange',function(){setTimeout(decorate,150);});
+  window.addEventListener('micursox:report-period-changed',function(){setTimeout(decorate,40);});
 })();
