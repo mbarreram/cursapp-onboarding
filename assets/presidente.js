@@ -2541,38 +2541,49 @@ function debtorRowsFor(identity){
 }
 
 function summarizeDebts(identity){
-  const rows = debtorRowsFor(identity);
-  const byCampaign = new Map();
-  let totalAll = 0, totalOverdue = 0, totalUpcoming = 0;
+  const ref=String(identity||'').toLowerCase().trim();
+  const rows=debtorRowsFor(ref);
+  const byCampaign=new Map();
+  let totalAll=0,totalMandatory=0,totalVoluntary=0,totalOverdue=0,totalUpcoming=0;
 
   rows.forEach(r=>{
-    totalAll += r.amount;
-    if(r.overdue) totalOverdue += r.amount; else totalUpcoming += r.amount;
-
-    const id = String(r.task?.id || r.pay.fromTaskId || "unknown");
+    const amount=Number(r.amount||0);
+    totalAll+=amount;
+    if(r.mandatory) totalMandatory+=amount; else totalVoluntary+=amount;
+    if(r.overdue) totalOverdue+=amount; else totalUpcoming+=amount;
+    const id=String(r.task?.id || r.pay.fromTaskId || 'unknown');
     if(!byCampaign.has(id)){
-      byCampaign.set(id, {
-        taskId: id,
-        title: r.task?.title || r.pay.title || "Campaña",
-        mandatory: r.mandatory,
-        pendingCount: 0,
-        overdueAmount: 0,
-        upcomingAmount: 0,
-        pendingAmount: 0
-      });
+      byCampaign.set(id,{taskId:id,title:r.task?.title || r.pay.title || 'Campaña',mandatory:r.mandatory,pendingCount:0,overdueAmount:0,upcomingAmount:0,pendingAmount:0,synthetic:false});
     }
-    const s = byCampaign.get(id);
-    s.pendingCount += 1;
-    s.pendingAmount += r.amount;
-    if(r.overdue) s.overdueAmount += r.amount; else s.upcomingAmount += r.amount;
+    const item=byCampaign.get(id);
+    item.pendingCount+=1;
+    item.pendingAmount+=amount;
+    if(r.overdue) item.overdueAmount+=amount; else item.upcomingAmount+=amount;
   });
 
-  const campaigns = Array.from(byCampaign.values()).sort((a,b)=>{
-    if(a.mandatory !== b.mandatory) return a.mandatory ? -1 : 1;
-    return b.pendingAmount - a.pendingAmount;
+  tasks().filter(t=>t && t.mandatoryParticipation===false && !t.deleted).forEach(t=>{
+    const tid=String(t.id||'');
+    if(!tid || byCampaign.has(tid)) return;
+    const memberPays=campaignPayments(tid).filter(p=>apoderadoKey(p)===ref);
+    const optedOut=memberPays.some(p=>paymentStatusNorm(p)==='opted_out');
+    if(optedOut) return;
+    const paidRows=memberPays.filter(isPaid);
+    const paidAmount=paidRows.reduce((sum,p)=>sum+Number(p.amount||p.montoPagado||p.monto_pagado||0),0);
+    const months=String(t.type||'single').toLowerCase()==='monthly' ? Math.max(1,Number(t.months||1)) : 1;
+    const individualTarget=Math.max(0,Number(t.amount||0)*months);
+    const remaining=Math.max(0,individualTarget-paidAmount);
+    if(remaining<=0) return;
+    byCampaign.set(tid,{taskId:tid,title:t.title||'Campaña',mandatory:false,pendingCount:Math.max(1,months-paidRows.length),overdueAmount:0,upcomingAmount:remaining,pendingAmount:remaining,synthetic:true});
+    totalAll+=remaining;
+    totalVoluntary+=remaining;
+    totalUpcoming+=remaining;
   });
 
-  return { campaigns, totalAll, totalOverdue, totalUpcoming };
+  const campaigns=Array.from(byCampaign.values()).sort((a,b)=>{
+    if(a.mandatory!==b.mandatory) return a.mandatory?-1:1;
+    return b.pendingAmount-a.pendingAmount;
+  });
+  return {campaigns,totalAll,totalMandatory,totalVoluntary,totalOverdue,totalUpcoming};
 }
 
 function monthMandatoryOutstanding(ym){
@@ -2680,10 +2691,11 @@ function buildWhatsappText(profile, summary){
   }else{
     lines.push("*Cuotas pendientes:*");
     summary.campaigns.forEach(ca=>{
-      lines.push(`• ${ca.title} — ${money(ca.pendingAmount)}`);
+      lines.push(`• ${ca.title}${ca.mandatory ? "" : " (voluntaria)"} — ${money(ca.pendingAmount)}`);
     });
     lines.push("");
-    lines.push(`*Total pendiente: ${money(summary.totalAll)}*`);
+    lines.push(`*Total obligatorio pendiente: ${money(summary.totalMandatory)}*`);
+    if(summary.totalVoluntary>0) lines.push(`*Pendiente voluntario: ${money(summary.totalVoluntary)}*`);
     lines.push("");
     lines.push("Si ya realizaste alguno de estos pagos, puedes informarlo a la directiva para actualizar el registro.");
   }
@@ -2892,18 +2904,32 @@ function renderDeudores(){
   const qInp = document.getElementById("debtorQuery");
   const btn = document.getElementById("debtorSearchBtn");
   const out = document.getElementById("debtorResults");
+  function debtSearchNorm(value){
+    return String(value||"")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g,"")
+      .toLowerCase()
+      .replace(/[^a-z0-9@._+-]+/g," ")
+      .trim()
+      .replace(/\s+/g," ");
+  }
+  function debtSearchMatches(value, query){
+    const hay=debtSearchNorm(value);
+    const tokens=debtSearchNorm(query).split(" ").filter(Boolean);
+    return tokens.length>0 && tokens.every(token=>hay.includes(token));
+  }
   function doSearch(){
-    const q = String(qInp?.value||"").trim().toLowerCase();
+    const rawQuery = String(qInp?.value||"").trim();
+    const q = debtSearchNorm(rawQuery);
     if(!q){
       out.innerHTML = `<div class="muted">Escribe un nombre o correo para buscar.</div>`;
       return;
     }
     window.__presDebtSearchCommitted = q;
-    window.__presDebtQueryDraft = qInp?.value || q;
+    window.__presDebtQueryDraft = qInp?.value || rawQuery;
     const matches = aprobados.filter(a=>{
-      return a.email.includes(q) ||
-        String(a.apoderadoName||"").toLowerCase().includes(q) ||
-        String(a.alumno||"").toLowerCase().includes(q);
+      const searchable=[a.email,a.apoderadoName,a.alumno].filter(Boolean).join(" ");
+      return debtSearchMatches(searchable,q);
     }).slice(0,10);
 
     if(!matches.length){
@@ -2928,7 +2954,8 @@ function renderDeudores(){
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <span class="pill ${monthMand>0?"bad":"good"}">Deuda obligatoria mes: ${money(monthMand)}</span>
-              <span class="pill ${sum.totalAll>0?"bad":"good"}">Deuda total: ${money(sum.totalAll)}</span>
+              <span class="pill ${sum.totalMandatory>0?"bad":"good"}">Deuda obligatoria total: ${money(sum.totalMandatory)}</span>
+              ${sum.totalVoluntary>0 ? '<span class="pill">Pendiente voluntario: '+money(sum.totalVoluntary)+'</span>' : ''}
             </div>
           </div>
 
@@ -2959,7 +2986,7 @@ function renderDeudores(){
                 <div style="font-weight:950;">Estado para el apoderado</div>
                 <div class="muted" style="margin-top:4px;">Mensaje breve listo para enviar.</div>
               </div>
-              <span class="presDebtShareTotal ${sum.totalAll>0?"hasDebt":"isClear"}">${sum.totalAll>0 ? money(sum.totalAll) : "Al día"}</span>
+              <span class="presDebtShareTotal ${sum.totalAll>0?"hasDebt":"isClear"}">${sum.totalAll>0 ? money(sum.totalAll)+" pendiente" : "Al día"}</span>
             </div>
             <div class="presDebtMessagePreview">${esc(wa).replace(/\n/g,"<br>")}</div>
             <div class="presDebtShareActions">
