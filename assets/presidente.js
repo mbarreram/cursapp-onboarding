@@ -2742,6 +2742,27 @@ function buildWhatsappText(profile, summary){
   return lines.join('\n');
 }
 
+async function createTemporaryStudentShareLink(miembroId){
+  const id=String(miembroId||"").trim();
+  if(!id) throw new Error("No se pudo identificar al alumno.");
+  const api=window.CURSAPP_SUPABASE?.functions;
+  if(!api || typeof api.invoke!=="function") throw new Error("Servicio de enlaces no disponible.");
+  const result=await api.invoke("student-payment-share",{body:{action:"create",miembro_id:id}});
+  if(result?.error) throw result.error;
+  const url=String(result?.data?.url||"").trim();
+  if(!url) throw new Error("No se pudo generar el enlace.");
+  return {url,expiresAt:result?.data?.expires_at||"",ttlHours:Number(result?.data?.ttl_hours||72)};
+}
+
+function appendTemporaryLinkToWhatsapp(message, share){
+  const base=String(message||"").trim();
+  return base+
+    "\n\n🔎 *¿Necesitas más detalles?*"+
+    "\nRevisa el estado completo y actualizado aquí:"+
+    "\n"+share.url+
+    "\n_Enlace privado válido por 72 horas._";
+}
+
 function renderDeudores(){
   const preserveDebtScroll = state?.tab === "deudores" && document.getElementById("debtorQuery")
     ? (window.scrollY || 0)
@@ -3045,19 +3066,33 @@ function renderDeudores(){
               <button class="btn presDebtWhatsappBtn" type="button" data-wa="${shareIndex}">Enviar por WhatsApp</button>
               <button class="btn presDebtCopyBtn" type="button" data-copy="${shareIndex}">Copiar resumen</button>
             </div>
+            <div class="muted" style="margin-top:8px;font-size:12px;line-height:1.35;">🔒 WhatsApp incluirá automáticamente un enlace privado al detalle, válido por 72 horas.</div>
           </div>
         </div>
       `;
     }).join("");
 
     out.querySelectorAll("button[data-wa]").forEach((b)=>{
-      b.onclick = (event)=>{
+      b.onclick = async (event)=>{
         event?.preventDefault();
         event?.stopPropagation();
         const idx = Number(b.getAttribute("data-wa"));
         const item = shareItems[idx];
         if(!item) return;
-        shareWhatsAppTo(item.wa, item.profile.telefono);
+        const original=b.textContent;
+        b.disabled=true;
+        b.textContent="Generando enlace…";
+        try{
+          const share=await createTemporaryStudentShareLink(item.profile.miembroId);
+          const message=appendTemporaryLinkToWhatsapp(item.wa,share);
+          shareWhatsAppTo(message,item.profile.telefono);
+        }catch(err){
+          console.error("MiCursoX enlace temporal",err);
+          toast("No se pudo generar el enlace privado. Intenta nuevamente.");
+        }finally{
+          b.disabled=false;
+          b.textContent=original;
+        }
       };
     });
 
