@@ -2893,6 +2893,8 @@ function renderDeudores(){
         .presDebtExportIcon,.presDebtExportIcon svg{width:26px;height:26px;}
         .presDebtSearchControls{display:grid !important;grid-template-columns:1fr;gap:10px !important;}
         #debtorQuery{min-width:0 !important;font-size:16px;}
+        .presDebtFriendlySummary{grid-template-columns:1fr;}
+        .presDebtFriendlyMain,.presDebtFriendlyItem,.presDebtFriendlyItem.voluntary{grid-column:1;}
       }
       .kpiGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
       @media (max-width:760px){.kpiGrid{grid-template-columns:1fr;}}
@@ -2910,6 +2912,20 @@ function renderDeudores(){
       .pill{display:inline-flex;padding:6px 10px;border-radius:999px;font-weight:900;font-size:12px;border:1px solid rgba(15,23,42,.12);background:rgba(15,23,42,.04);}
       .pill.bad{border-color:rgba(239,68,68,.22);background:rgba(239,68,68,.08);}
       .pill.good{border-color:rgba(34,197,94,.22);background:rgba(34,197,94,.08);}
+      .presDebtFriendlySummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:min(520px,100%);}
+      .presDebtFriendlyMain,.presDebtFriendlyItem{display:flex;gap:10px;align-items:center;border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:10px 12px;background:#fff;}
+      .presDebtFriendlyMain{grid-column:1/-1;background:#fff7f7;border-color:rgba(239,68,68,.22);}
+      .presDebtFriendlyMain>span,.presDebtFriendlyItem>span{font-size:22px;line-height:1;}
+      .presDebtFriendlyMain small,.presDebtFriendlyItem small{display:block;color:#64748b;font-size:11px;font-weight:900;}
+      .presDebtFriendlyMain strong,.presDebtFriendlyItem strong{display:block;margin-top:2px;font-size:17px;color:#0f172a;}
+      .presDebtFriendlyMain strong{font-size:20px;color:#b91c1c;}
+      .presDebtFriendlyItem.overdue{background:#fff7ed;border-color:#fed7aa;}
+      .presDebtFriendlyItem.overdue strong{color:#c2410c;}
+      .presDebtFriendlyItem.upcoming{background:#eff6ff;border-color:#bfdbfe;}
+      .presDebtFriendlyItem.upcoming strong{color:#1d4ed8;}
+      .presDebtFriendlyItem.voluntary{grid-column:1/-1;background:#faf5ff;border-color:#e9d5ff;}
+      .presDebtFriendlyItem.voluntary strong{color:#6d28d9;}
+      .presDebtFriendlyItem em{display:block;margin-top:2px;color:#7c3aed;font-size:10px;font-style:normal;font-weight:800;}
       textarea{width:100%;min-height:120px;padding:10px;border-radius:12px;border:1px solid rgba(15,23,42,.10);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
       .presDebtShareBox{margin-top:14px;padding:14px;border:1px solid rgba(15,23,42,.09);border-radius:18px;background:linear-gradient(180deg,#fff,#fafcff);}
       .presDebtShareHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
@@ -3010,11 +3026,11 @@ function renderDeudores(){
               <div class="muted" style="margin-top:2px;">Alumno/a: <b>${esc(profile.alumno||"-")}</b></div>
               <div class="muted" style="margin-top:2px;">Correo: <b>${esc(profile.email||"-")}</b></div>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <span class="pill ${sum.totalMandatory>0?"bad":"good"}">Para quedar al día hoy: ${money(sum.totalMandatory)}</span>
-              <span class="pill ${sum.totalOverdueMandatory>0?"bad":"good"}">Atrasado: ${money(sum.totalOverdueMandatory)}</span>
-              <span class="pill ${sum.totalUpcomingMandatory>0?"bad":"good"}">Por vencer: ${money(sum.totalUpcomingMandatory)}</span>
-              ${sum.totalVoluntary>0 ? '<span class="pill">Voluntario proyectado: '+money(sum.totalVoluntary)+'</span>' : ''}
+            <div class="presDebtFriendlySummary">
+              <div class="presDebtFriendlyMain"><span>💳</span><div><small>Para quedar al día hoy</small><strong>${money(sum.totalMandatory)}</strong></div></div>
+              <div class="presDebtFriendlyItem overdue"><span>⏰</span><div><small>Atrasado</small><strong>${money(sum.totalOverdueMandatory)}</strong></div></div>
+              <div class="presDebtFriendlyItem upcoming"><span>📅</span><div><small>Por vencer / pendiente</small><strong>${money(sum.totalUpcomingMandatory)}</strong></div></div>
+              ${sum.totalVoluntary>0 ? '<div class="presDebtFriendlyItem voluntary"><span>🎓</span><div><small>Voluntario proyectado</small><strong>'+money(sum.totalVoluntary)+'</strong><em>No es deuda obligatoria hoy</em></div></div>' : ''}
             </div>
           </div>
 
