@@ -290,3 +290,9 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
     line-height:1.05!important;
   }
 }
+
+
+/* Piloto V1 · ajuste final anillo de recaudación */
+.presCampaignProgressRing.is-complete b{font-size:20px!important;letter-spacing:-.5px!important;line-height:1!important;}
+.presCampaignProgressRing.is-complete small{font-size:9px!important;line-height:1!important;margin-top:2px!important;}
+@media (max-width:560px){.presCampaignProgressRing.is-complete b{font-size:19px!important}.presCampaignProgressRing.is-complete small{font-size:8.5px!important}}
