@@ -5,15 +5,27 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="referrer" content="no-referrer">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Estado de pagos · MiCursoX">
+  <meta property="og:description" content="Revisa de forma privada el estado actualizado de pagos del alumno.">
+  <meta property="og:image" content="https://micursox.cl/assets/brand/micursox-icon-192-v4.png">
+  <meta property="og:image:width" content="192">
+  <meta property="og:image:height" content="192">
+  <meta property="og:site_name" content="MiCursoX">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Estado de pagos · MiCursoX">
+  <meta name="twitter:description" content="Revisa de forma privada el estado actualizado de pagos del alumno.">
+  <meta name="twitter:image" content="https://micursox.cl/assets/brand/micursox-icon-192-v4.png">
   <title>Estado de pagos · MiCursoX</title>
   <link rel="icon" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
     :root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--violet:#6d28d9;--soft:#f8fafc;--danger:#dc2626;--amber:#b45309;--green:#15803d}
     *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#f8f7ff 0,#f8fafc 45%,#fff 100%);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
     .wrap{width:min(760px,100%);margin:0 auto;padding:24px 18px 56px}
     .brand{display:flex;justify-content:center;margin:8px 0 22px}.brand img{width:190px;max-width:58vw;height:auto}
     .hero,.card{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 14px 34px rgba(15,23,42,.06)}
-    .hero{padding:24px}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--violet);text-transform:uppercase}.hero h1{font-size:30px;line-height:1.08;margin:8px 0}.sub{color:var(--muted);font-weight:700;line-height:1.4}
+    .hero{padding:24px;position:relative}.closeBtn{position:absolute;top:16px;right:16px;border:1px solid var(--line);background:#fff;color:#6d28d9;border-radius:14px;padding:9px 13px;font-weight:900;font-size:14px;box-shadow:0 8px 18px rgba(15,23,42,.06);cursor:pointer}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--violet);text-transform:uppercase}.hero h1{font-size:30px;line-height:1.08;margin:8px 0}.sub{color:var(--muted);font-weight:700;line-height:1.4}
     .summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
     .metric{padding:18px;border-radius:20px;background:#fff;border:1px solid var(--line)}.metric strong{display:block;font-size:24px;margin-top:6px}.metric small{font-weight:850;color:var(--muted)}.metric.main{grid-column:1/-1;background:#fff7f7;border-color:#fecaca}.metric.main strong{font-size:30px;color:#b91c1c}
     .metric.overdue{background:#fff7ed;border-color:#fed7aa}.metric.overdue strong{color:#c2410c}.metric.upcoming{background:#eff6ff;border-color:#bfdbfe}.metric.upcoming strong{color:#1d4ed8}.metric.voluntary{grid-column:1/-1;background:#faf5ff;border-color:#e9d5ff}.metric.voluntary strong{color:#6d28d9}
@@ -56,6 +68,7 @@
       app.className="";
       app.innerHTML=
         '<section class="hero">'+
+          '<button class="closeBtn" type="button" data-close>✕ Cerrar</button>'+
           '<div class="eyebrow">Estado privado de pagos</div>'+
           '<h1>'+esc(data.student?.name||"Alumno/a")+'</h1>'+
           '<div class="sub">'+esc(data.course?.school||"Colegio")+(course?' · '+esc(course):'')+'</div>'+
@@ -71,6 +84,14 @@
         (voluntary.length?'<div class="sectionTitle">💜 Aportes voluntarios / proyectados</div>'+voluntary.map(renderVoluntary).join(""):'')+
         '<div class="privacy">🔒 Este enlace muestra únicamente el estado de pagos de este alumno. No permite realizar cambios ni acceder a información de otros alumnos. Caduca automáticamente el <b>'+esc(fmtDate(data.expires_at))+'</b>.</div>'+
         '<div class="updated">Información consultada el '+esc(fmtDate(data.generated_at))+'.</div>';
+      const closeBtn=app.querySelector('[data-close]');
+      if(closeBtn) closeBtn.addEventListener('click',()=>{
+        try{
+          if(history.length>1){ history.back(); return; }
+        }catch(_){}
+        try{ window.close(); }catch(_){}
+        setTimeout(()=>{ location.href='https://micursox.cl'; },120);
+      });
     }
 
     function renderMandatory(c){
