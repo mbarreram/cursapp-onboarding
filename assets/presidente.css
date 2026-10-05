@@ -137,3 +137,116 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
 .presMockHeroEmpty p{margin:0;color:#64748b;line-height:1.4}
 .presMockHeroEmpty button{grid-column:2;justify-self:start;display:inline-flex;align-items:center;gap:8px;max-width:100%;white-space:normal}
 @media(max-width:480px){.presMockHeroEmpty{grid-template-columns:1fr;padding:20px}.presMockHeroEmpty button{grid-column:1;width:100%;justify-content:center}}
+
+
+/* Piloto V1 · Campañas móvil
+   Evita desborde de títulos, montos y métricas sin alterar desktop. */
+@media (max-width: 560px){
+  .presCampaignCard{
+    padding:16px 14px!important;
+    overflow:hidden!important;
+  }
+  .presCampaignCardTop{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 92px!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+  .presCampaignTitleBlock{
+    min-width:0!important;
+  }
+  .presCampaignTitleRow{
+    display:flex!important;
+    align-items:flex-start!important;
+    gap:8px!important;
+    flex-wrap:wrap!important;
+    min-width:0!important;
+  }
+  .presCampaignTitleRow h3{
+    flex:1 1 100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin:0!important;
+    font-size:22px!important;
+    line-height:1.08!important;
+    letter-spacing:-.45px!important;
+    white-space:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    overflow-wrap:anywhere!important;
+  }
+  .presCampaignTitleBlock p{
+    font-size:13px!important;
+    line-height:1.25!important;
+    margin-top:8px!important;
+  }
+  .presCampaignProgressRing{
+    width:88px!important;
+    height:88px!important;
+    min-width:88px!important;
+  }
+  .presCampaignProgressRing b{
+    font-size:28px!important;
+  }
+  .presCampaignProgressRing small{
+    font-size:11px!important;
+  }
+  .presCampaignChips{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:7px!important;
+    margin-top:14px!important;
+  }
+  .presCampaignMiniChip{
+    max-width:100%!important;
+    padding:7px 10px!important;
+    font-size:12px!important;
+    line-height:1.15!important;
+    white-space:normal!important;
+  }
+  .presCampaignStats{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:0!important;
+  }
+  .presCampaignStats>div{
+    min-width:0!important;
+    padding:10px 8px!important;
+    border-bottom:1px solid rgba(148,163,184,.18)!important;
+  }
+  .presCampaignStats>div:nth-child(odd){
+    border-right:1px solid rgba(148,163,184,.18)!important;
+  }
+  .presCampaignStats small{
+    display:block!important;
+    font-size:11px!important;
+    line-height:1.15!important;
+    white-space:normal!important;
+  }
+  .presCampaignStats b{
+    display:block!important;
+    margin-top:4px!important;
+    font-size:18px!important;
+    line-height:1.08!important;
+    letter-spacing:-.35px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .presCampaignPending{
+    font-size:14px!important;
+    line-height:1.2!important;
+  }
+  .presCampaignActions{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:8px!important;
+  }
+  .presCampaignPrimary{
+    min-width:0!important;
+    width:100%!important;
+  }
+  .presCampaignActions button{
+    font-size:13px!important;
+  }
+}
