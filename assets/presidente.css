@@ -250,3 +250,43 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
     font-size:13px!important;
   }
 }
+
+
+/* Piloto V1 · porcentaje de campañas */
+.presCampaignProgressRing{
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.presCampaignProgressRing b{
+  max-width:100%!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-align:center!important;
+  line-height:1!important;
+}
+.presCampaignProgressRing.is-complete{
+  background:conic-gradient(#16a34a 0 100%, #dcfce7 100%)!important;
+  color:#15803d!important;
+}
+.presCampaignProgressRing.is-complete b,
+.presCampaignProgressRing.is-complete small{
+  color:#15803d!important;
+}
+.presCampaignProgressRing.is-complete::before{
+  background:#f0fdf4!important;
+}
+@media (max-width:560px){
+  .presCampaignProgressRing{
+    width:96px!important;
+    height:96px!important;
+    min-width:96px!important;
+  }
+  .presCampaignProgressRing b{
+    font-size:24px!important;
+    letter-spacing:-.8px!important;
+  }
+  .presCampaignProgressRing small{
+    font-size:10px!important;
+    line-height:1.05!important;
+  }
+}
