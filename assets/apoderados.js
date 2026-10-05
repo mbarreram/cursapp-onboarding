@@ -702,7 +702,8 @@
       campanas: "/presidente.html?tab=campanas",
       apoderados: "/apoderados.html",
       deudores: "/presidente.html?tab=deudores",
-      informes: "/presidente.html?tab=informes"
+      informes: "/presidente.html?tab=informes",
+      retiros: "/presidente.html?tab=retiros"
     };
     location.assign(urls[tab] || homeUrl());
   }
@@ -712,13 +713,14 @@
       home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
       campaign:'<path d="M4 14V9a2 2 0 0 1 2-2h2l9-3v15l-9-3H6a2 2 0 0 1-2-2Z"/><path d="M8 16v4"/><path d="M18 9h3"/><path d="M18 14h3"/>',
       debt:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M7 17h10"/>',
-      report:'<path d="M6 3h9l3 3v15H6V3Z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/>'
+      report:'<path d="M6 3h9l3 3v15H6V3Z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/>',
+      wallet:'<rect x="4" y="6" width="16" height="12" rx="1"/><path d="M8 12h8"/>'
     };
     return `<svg class="caSvgIcon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.report}</svg>`;
   }
 
   function hydrateBottomNavIcons(){
-    const icons = { home:"home", campanas:"campaign", deudores:"debt", informes:"report" };
+    const icons = { home:"home", campanas:"campaign", deudores:"debt", informes:"report", retiros:"wallet" };
     document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
       const label = btn.querySelector("span")?.textContent || "";
       btn.setAttribute("data-ca-icon-ready", "1");
