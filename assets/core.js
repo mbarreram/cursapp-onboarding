@@ -1029,8 +1029,12 @@
       if(!m || !m.id || !m.curso_id || !m.rol) return;
       const u = usersById[String(m.usuario_id||"")] || {};
       const email = normEmail(m.email || u.email || "");
-      if(!m.usuario_id && !email) return;
-      const key = [m.curso_id, m.usuario_id || email, String(m.rol||"").toLowerCase()].join("|");
+      const role = String(m.rol||"").toLowerCase();
+      // Los alumnos importados pueden existir sin cuenta/email todavía.
+      // Se mantienen en el universo del curso para métricas, deudas y campañas.
+      if(!m.usuario_id && !email && !(role === "apoderado" && String(m.nombre_alumno||"").trim())) return;
+      const identity = m.usuario_id || email || m.id || String(m.nombre_alumno||"").toLowerCase().trim();
+      const key = [m.curso_id, identity, role].join("|");
       if(seen.has(key)) return;
       seen.add(key);
       miembros.push(Object.assign({}, m, { email, __usuario:u }));
@@ -1254,12 +1258,18 @@
     const existing = new Set(pagos.map(p=> [String(p.campana_id||""), String(p.miembro_id||""), String(p.periodo||"")].join("|")));
     let inserted = 0;
     for(const camp of campanas.filter(isCampanaActive)){
+      // No crear deuda automática para campañas voluntarias ni campañas aún sin monto.
+      if(camp.obligatoria === false || Number(camp.monto||0) <= 0) continue;
       const slots = paymentSlotsForCampana(camp);
+      const isMonthly = isMonthlyCampana(camp);
       for(const m of aps){
         if(!camp.id || !m.id) continue;
         for(const slot of slots){
           const key = [String(camp.id), String(m.id), String(slot.periodo||"")].join("|");
-          if(existing.has(key)) continue;
+          const anySingleExisting = !isMonthly && pagos.some(p =>
+            String(p.campana_id||"")===String(camp.id) && String(p.miembro_id||"")===String(m.id)
+          );
+          if(existing.has(key) || anySingleExisting) continue;
           const body = {
             curso_id: cursoId,
             campana_id: camp.id,
