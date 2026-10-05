@@ -411,7 +411,8 @@ function loadJSON(k, def) {
       const rows = all.filter(p =>
         String(p?.courseKey || "") === String(courseKey || "") &&
         String(p?.role || "").toLowerCase().trim() === "apoderado" &&
-        (!p?.apoderado?.email || String(p.apoderado.email || "").trim().toLowerCase() === emailNorm)
+        !!emailNorm &&
+        String(p?.apoderado?.email || "").trim().toLowerCase() === emailNorm
       );
       const explicit = profilesForCourse
         .filter(x => String(x?.role || "").toLowerCase().trim() === "apoderado" && x.profile)
