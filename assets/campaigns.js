@@ -1293,19 +1293,20 @@
     }
   }
 
-  function saveEdit(taskId) {
+  async function saveEdit(taskId) {
     const ts = load(KEY_TASKS, []);
     const i = ts.findIndex(x => x.id === taskId);
     if (i < 0) return;
 
+    const previous = { ...ts[i] };
     const type = document.getElementById("ec_type").value || ts[i].type;
     const startDate = document.getElementById("ec_start").value || ts[i].startDate;
     let dueDate = document.getElementById("ec_due").value || ts[i].dueDate;
     let months = Number(document.getElementById("ec_months").value || ts[i].months || 1);
 
     const amount = Number(document.getElementById("ec_amount").value || 0);
-    const goal = Number(document.getElementById("ec_goal").value || 0);
-    if (!amount || amount <= 0) { alert("Monto invÃ¡lido."); return; }
+    let goal = Number(document.getElementById("ec_goal").value || 0);
+    if (!amount || amount <= 0) { alert("Monto inválido."); return; }
 
     if (type === "monthly") {
       if (!months || months <= 0) { alert("Si es mensual, indica cuotas/meses."); return; }
@@ -1320,6 +1321,17 @@
     ts[i].description = (document.getElementById("ec_desc").value || "").trim();
     ts[i].type = type;
     ts[i].mandatoryParticipation = document.getElementById("ec_mandatory").value === "true";
+
+    const oldAmount = Number(previous.amount || 0);
+    const oldMonths = Math.max(1, Number(previous.months || 1));
+    const totalStudents = Math.max(0, Number(officialStudentTotal() || 0));
+    const oldDerivedGoal = oldAmount > 0 && totalStudents > 0
+      ? oldAmount * oldMonths * totalStudents
+      : 0;
+    if(goal > 0 && oldDerivedGoal > 0 && Number(previous.goalTotal || 0) === oldDerivedGoal && goal === oldDerivedGoal){
+      goal = amount * Math.max(1, months) * totalStudents;
+    }
+
     ts[i].amount = amount;
     ts[i].goalTotal = goal > 0 ? goal : null;
     ts[i].startDate = startDate;
@@ -1353,11 +1365,65 @@
       ts[i].cotizacion = cleaned[0] || null;
     }
 
+    const remoteId = String(ts[i].supabaseId || ts[i].campana_id || ts[i].id || "").trim();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(remoteId)){
+      alert("No se pudo guardar: la campaña no está vinculada correctamente con Supabase.");
+      return;
+    }
+
+    try{
+      const body = {
+        titulo: ts[i].title,
+        tipo: ts[i].type,
+        monto: Number(ts[i].amount || 0),
+        fecha_inicio: cleanDate(ts[i].startDate),
+        fecha_vencimiento: cleanDate(ts[i].dueDate),
+        meses: Number(ts[i].months || 1) || 1,
+        obligatoria: ts[i].mandatoryParticipation !== false,
+        descripcion: ts[i].description || null,
+        meta: Number(ts[i].goalTotal || 0) || null,
+        goal_total: Number(ts[i].goalTotal || 0) || null
+      };
+      await sb("campanas?id=eq." + sbQ(remoteId), {
+        method:"PATCH",
+        body:JSON.stringify(body)
+      });
+
+      // Al cambiar el valor de una cuota fija, actualizar solamente cobros
+      // pendientes que aún conservan el monto anterior. Nunca reescribe pagos ya abonados.
+      if(Number(previous.amount || 0) !== Number(ts[i].amount || 0) && Number(previous.amount || 0) > 0){
+        await sb(
+          "pagos?campana_id=eq." + sbQ(remoteId) +
+          "&estado=eq.pendiente&monto=eq." + sbQ(Number(previous.amount || 0)),
+          {
+            method:"PATCH",
+            body:JSON.stringify({
+              monto:Number(ts[i].amount || 0),
+              monto_cuota:Number(ts[i].amount || 0)
+            })
+          }
+        );
+      }
+    }catch(e){
+      console.error("No se pudo actualizar campaña en Supabase", e);
+      alert("No se pudo guardar la campaña en Supabase: " + (e && e.message ? e.message : e));
+      return;
+    }
+
     save(KEY_TASKS, ts);
+    try{
+      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("campaign-updated");
+      }
+      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.refresh === "function"){
+        await window.CURSAPP_PAYMENTS_V11.refresh("campaign-updated");
+      }
+    }catch(e){ console.warn("No se pudo refrescar luego de editar campaña", e); }
+
     markDirty();
     emitUpdated("tasks");
     closeModal();
-    alert("Campaña actualizada.");
+    alert("Campaña actualizada ✅");
 }
 
   function openClose(activeTasksProvider) {
