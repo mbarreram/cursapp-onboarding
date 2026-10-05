@@ -1350,8 +1350,10 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
 
   function expectedTaskTotal(t){
     if(!t) return 0;
+    const explicitGoal = Number(t.goalTotal ?? t.goal_total ?? t.meta ?? 0) || 0;
+    if(explicitGoal > 0) return explicitGoal;
     const monto = Number(t.amount||0);
-    const people = t.mandatoryParticipation === false ? approvedCount() : courseStudentTotal();
+    const people = courseStudentTotal();
     const type = String(t.type||"single").toLowerCase();
     const months = type==="monthly" ? Math.max(1, Number(t.months||1)) : 1;
     return monto * months * people;
@@ -1495,7 +1497,7 @@ function cuotasPendientesTask(id){
 
   // ----- state -----
   let state = { tab:"home" };
-  let campaignFilter = "active"; // active | expired | closed | all | deleted
+  let campaignFilter = "all"; // active | expired | closed | all | deleted
 
   
   function normalizeTab(tab){
@@ -2097,7 +2099,7 @@ function renderHome(){
         const expected = Math.max(1, Number(expectedTaskTotal(t)||0), rec + pend);
         const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
         const paidRows = campaignPaidPayments(t.id);
-        const paidKeys = new Set(paidRows.map(p=>String(p.apoderadoEmail || p.email || p.apoderadoId || p.userId || p.payerId || "").toLowerCase()).filter(Boolean));
+        const paidKeys = new Set(paidRows.map(p=>String(p.miembroId || p.memberId || p.alumnoId || p.apoderadoEmail || p.email || p.apoderadoId || p.userId || p.payerId || "").toLowerCase()).filter(Boolean));
         const paidFamilies = paidKeys.size || Math.min(studentTotal, Math.round((pct / 100) * studentTotal));
         const dueTime = t.dueDate ? new Date(t.dueDate + "T23:59:59").getTime() : Number.MAX_SAFE_INTEGER;
         return { t, rec, pend, expected, pct, paidFamilies, dueTime: Number.isFinite(dueTime) ? dueTime : Number.MAX_SAFE_INTEGER };
