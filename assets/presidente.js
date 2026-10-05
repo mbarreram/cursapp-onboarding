@@ -2691,6 +2691,17 @@ function updatePresidentTopbar(){
   try{ updatePresidentHeader(getPresidentVisualContext(approvedCount())); }catch(e){}
 }
 
+function whatsappCampaignIcon(title){
+  const t=String(title||"").toLowerCase();
+  if(t.includes("huevo")) return "🥚";
+  if(t.includes("rifa")) return "🎟️";
+  if(t.includes("gala")) return "🎓";
+  if(t.includes("traje")) return "👕";
+  if(t.includes("conviv")) return "🎉";
+  if(t.includes("niño")||t.includes("alumno")) return "🎈";
+  return "📌";
+}
+
 function buildWhatsappText(profile, summary){
   const name = (profile.apoderadoName||profile.name||'').trim() || 'apoderado/a';
   const alumno = (profile.alumno||'').trim();
@@ -2707,18 +2718,21 @@ function buildWhatsappText(profile, summary){
   lines.push(`Hola ${name} 👋`);
   lines.push(`Te compartimos el estado de cuotas${alumno ? ` de ${alumno}` : ''} al ${dateText}.`);
   lines.push('');
-  lines.push(`*Para quedar al día hoy: ${money(mandatoryDue)}*`);
-  if(overdue>0) lines.push(`• Obligatorio atrasado: ${money(overdue)}`);
-  if(upcoming>0) lines.push(`• Obligatorio por vencer: ${money(upcoming)}`);
+  lines.push(`💳 *Para quedar al día hoy: ${money(mandatoryDue)}*`);
+  if(overdue>0) lines.push(`⏰ Obligatorio atrasado: ${money(overdue)}`);
+  if(upcoming>0) lines.push(`📅 Obligatorio por vencer: ${money(upcoming)}`);
   lines.push('');
 
   const mandatoryCampaigns=summary.campaigns.filter(ca=>ca.mandatory);
   if(mandatoryCampaigns.length){
-    lines.push('*Detalle obligatorio:*');
+    lines.push('📋 *Detalle obligatorio:*');
     mandatoryCampaigns.forEach(ca=>{
-      lines.push(`• ${ca.title} — ${money(ca.pendingAmount)}`);
+      lines.push(`${whatsappCampaignIcon(ca.title)} ${ca.title} — ${money(ca.pendingAmount)}`);
       if(ca.monthBreakdown?.length){
-        ca.monthBreakdown.forEach(item=>lines.push(`   - ${item.label}: ${money(item.amount)} · ${item.statusLabel}`));
+        ca.monthBreakdown.forEach(item=>{
+          const statusIcon=item.overdue?"🔴":"🟡";
+          lines.push(`   ${statusIcon} ${item.label}: ${money(item.amount)} · ${item.statusLabel}`);
+        });
       }
     });
     lines.push('');
@@ -2726,13 +2740,13 @@ function buildWhatsappText(profile, summary){
 
   const voluntaryCampaigns=summary.campaigns.filter(ca=>!ca.mandatory);
   if(voluntaryCampaigns.length){
-    lines.push('*Aportes voluntarios / proyectados:*');
+    lines.push('🎓 *Aportes voluntarios / proyectados:*');
     voluntaryCampaigns.forEach(ca=>{
-      lines.push(`• ${ca.title}: ${money(ca.pendingAmount)} proyectados`);
+      lines.push(`${whatsappCampaignIcon(ca.title)} ${ca.title}: ${money(ca.pendingAmount)} proyectados`);
       if(ca.projectedNote) lines.push(`   ${ca.projectedNote}`);
     });
     lines.push('');
-    lines.push('_Los aportes voluntarios no se consideran deuda obligatoria inmediata._');
+    lines.push('💜 _Los aportes voluntarios no se consideran deuda obligatoria inmediata._');
     lines.push('');
   }
 
