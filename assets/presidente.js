@@ -2523,13 +2523,13 @@ function taskById(id){
   return tasks().find(t => String(t.id) === String(id));
 }
 function apoderadoKey(p){
-  return String((p.apoderadoEmail||p.email||"")).toLowerCase();
+  return String(p?.miembroId || p?.memberId || p?.alumnoId || p?.apoderadoKey || p?.apoderadoId || p?.apoderadoEmail || p?.email || "").toLowerCase().trim();
 }
 function money(n){ return clp(Number(n||0)); }
 
-function debtorRowsFor(email){
-  const em = String(email||"").toLowerCase();
-  const pays = payments().filter(p => apoderadoKey(p) === em);
+function debtorRowsFor(identity){
+  const ref = String(identity||"").toLowerCase().trim();
+  const pays = payments().filter(p => apoderadoKey(p) === ref);
   const pending = pays.filter(isPendingFinancialStatus);
 
   return pending.map(p=>{
@@ -2546,8 +2546,8 @@ function debtorRowsFor(email){
   });
 }
 
-function summarizeDebts(email){
-  const rows = debtorRowsFor(email);
+function summarizeDebts(identity){
+  const rows = debtorRowsFor(identity);
   const byCampaign = new Map();
   let totalAll = 0, totalOverdue = 0, totalUpcoming = 0;
 
@@ -2707,12 +2707,18 @@ function renderDeudores(){
   const debtQueryDraft = String(window.__presDebtQueryDraft ?? existingDebtQuery?.value ?? "");
   const ym = ymFromISO(todayISO());
 
-  const aprobados = approvedApoderados().map(e=>({
-    email: String(e.email||"").toLowerCase(),
-    apoderadoName: e.apoderadoName||e.name||"",
-    alumno: e.alumno||"",
-    telefono: e.telefono||e.phone||e.whatsapp||e.apoderadoTelefono||e.apoderadoPhone||""
-  }));
+  const aprobados = approvedApoderados().map(e=>{
+    const miembroId = String(e.miembroId || e.id || e.profileId || "").trim();
+    const email = String(e.email||"").toLowerCase().trim();
+    return {
+      key: (miembroId || email).toLowerCase(),
+      miembroId,
+      email,
+      apoderadoName: e.apoderadoName||e.name||"",
+      alumno: e.alumno||"",
+      telefono: e.telefono||e.phone||e.whatsapp||e.apoderadoTelefono||e.apoderadoPhone||""
+    };
+  }).filter(e=>e.key);
 
   // Pendiente del mes (solo obligatorias) por email
   const pendingMonth = payments().filter(isPendingFinancialStatus).filter(p=> withinMonth(p.dueDate||"", ym));
@@ -2720,13 +2726,13 @@ function renderDeudores(){
   pendingMonth.forEach(p=>{
     const t = taskById(p.fromTaskId);
     if(t && t.mandatoryParticipation === false) return;
-    const em = apoderadoKey(p);
-    if(!em) return;
-    mandatoryPendingByEmail.set(em, (mandatoryPendingByEmail.get(em)||0) + Number(p.amount||0));
+    const key = apoderadoKey(p);
+    if(!key) return;
+    mandatoryPendingByEmail.set(key, (mandatoryPendingByEmail.get(key)||0) + Number(p.amount||0));
   });
 
   const debtors = aprobados
-    .map(a=>({ ...a, monthPendingMandatory: mandatoryPendingByEmail.get(a.email)||0 }))
+.map(a=>({ ...a, monthPendingMandatory: mandatoryPendingByEmail.get(a.key)||0 }))
     .filter(a=> a.monthPendingMandatory > 0)
     .sort((a,b)=> b.monthPendingMandatory - a.monthPendingMandatory);
 
@@ -2912,12 +2918,12 @@ function renderDeudores(){
     }
 
     const shareItems = matches.map(profile=>{
-      const sum = summarizeDebts(profile.email);
+      const sum = summarizeDebts(profile.key);
       return { profile, sum, wa:buildWhatsappText(profile,sum) };
     });
 
     out.innerHTML = shareItems.map(({profile,sum,wa}, shareIndex)=>{
-      const monthMand = mandatoryPendingByEmail.get(profile.email) || 0;
+      const monthMand = mandatoryPendingByEmail.get(profile.key) || 0;
       return `
         <div class="resultRow">
           <div class="resultTop">
