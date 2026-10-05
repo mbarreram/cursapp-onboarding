@@ -3246,7 +3246,6 @@ window.payNow = async function(id){
 
   function renderInformes(){
     const finance = window.CURSAPP_APO_FINANCE?.snapshot?.() || null;
-    try{ window.CURSAPP_APO_FINANCE?.refresh?.(); }catch(_){ }
     app.innerHTML = `
       <div class="card">
         <div class="kTitle">Informes</div>
@@ -3681,7 +3680,6 @@ window.payNow = async function(id){
     const schoolName = active.schoolName || active.colegio || active.school || "Colegio";
     const reps = reports().slice().filter(r=>r&&r.period).sort((a,b)=>String(b.period).localeCompare(String(a.period)));
     const financeLive = window.CURSAPP_APO_FINANCE?.snapshot?.() || null;
-    try{ window.CURSAPP_APO_FINANCE?.refresh?.(); }catch(_){}
 
     const periodName=(period)=>{
       const p=String(period||"").split("-");
