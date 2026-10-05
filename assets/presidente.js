@@ -1137,19 +1137,13 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function campaignUniqueDebtors(taskId){
-    const task = tasks().find(t=>String(t?.id||"")===String(taskId||""));
+    // Deudores = alumnos con cobros realmente pendientes.
+    // "No participa" / excluidos no se consideran deuda.
     const pendingKeys = new Set();
     campaignPendingPayments(taskId).forEach(p=>{
       const k = String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim();
       if(k) pendingKeys.add(k);
     });
-    if(task && task.mandatoryParticipation !== false){
-      const total = courseStudentTotal();
-      const paidKeys = new Set(campaignPaidPayments(taskId).map(p=>
-        String(p?.miembroId || p?.memberId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || p?.alumnoId || "").toLowerCase().trim()
-      ).filter(Boolean));
-      return Math.max(0, total - paidKeys.size);
-    }
     return pendingKeys.size;
   }
 
@@ -2428,7 +2422,7 @@ function renderHome(){
               </div>
               <p>${esc(dateLine || "Sin fecha definida")}</p>
             </div>
-            <div class="presCampaignProgressRing" style="--pct:${pct}" aria-label="${pct}% recaudado">
+            <div class="presCampaignProgressRing ${pct>=100?"is-complete":""}" style="--pct:${pct}" aria-label="${pct}% recaudado">
               <b>${pct}%</b>
               <small>recaudado</small>
             </div>
