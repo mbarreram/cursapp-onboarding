@@ -935,20 +935,26 @@ function loadJSON(k, def) {
     }catch(e){}
 
     const profiles = loadJSON(KEY_PROFILES, []);
-    // Eliminar perfiles Supabase antiguos del usuario antes de reconstruirlos.
-    // Así un rol removido en la BD no reaparece desde el caché del navegador.
+    // Supabase-only: al iniciar sesión, eliminar todo perfil/enrollment local
+    // del mismo usuario antes de reconstruirlo desde la BD.
     let nextProfiles = (Array.isArray(profiles) ? profiles : []).filter(p => {
-      if(!p?.fromSupabase) return true;
-      const sameUser = String(p?.userId || "") === userId;
-      const sameEmail = String(p?.apoderado?.email || p?.email || "").toLowerCase().trim() === email;
+      const sameUser = String(p?.userId || p?.id || "").trim() === userId;
+      const sameEmail = String(p?.apoderado?.email || p?.email || p?.userEmail || p?.apoderadoEmail || "").toLowerCase().trim() === email;
       return !(sameUser || sameEmail);
     });
     const createdProfiles = [];
     const enrolls = loadJSON(KEY_ENROLL, []);
     let nextEnrolls = (Array.isArray(enrolls) ? enrolls : []).filter(e => {
-      if(!e?.fromSupabase) return true;
-      return String(e?.email || "").toLowerCase().trim() !== email;
+      const sameEmail = String(e?.email || e?.apoderadoEmail || e?.userEmail || "").toLowerCase().trim() === email;
+      const sameUser = String(e?.userId || e?.usuario_id || "").trim() === userId;
+      return !(sameEmail || sameUser);
     });
+    try{
+      localStorage.removeItem("cursapp_alumno_activo_v1");
+      localStorage.removeItem("cursapp_active_enrollment_v1");
+      localStorage.removeItem("cursapp_active_member_profile_v1");
+      localStorage.removeItem("cursapp_active_miembro_id_v1");
+    }catch(e){}
 
     (members || []).forEach(m=>{
       if(!m) return;
