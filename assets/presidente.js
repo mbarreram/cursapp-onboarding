@@ -2544,36 +2544,55 @@ function summarizeDebts(identity){
   const ref=String(identity||'').toLowerCase().trim();
   const rows=debtorRowsFor(ref);
   const byCampaign=new Map();
-  let totalAll=0,totalMandatory=0,totalVoluntary=0,totalOverdue=0,totalUpcoming=0;
+  let totalAll=0,totalMandatory=0,totalVoluntary=0,totalOverdue=0,totalUpcoming=0,totalOverdueMandatory=0,totalUpcomingMandatory=0;
+
+  const periodLabel=(raw)=>{
+    const ym=String(raw||'').slice(0,7);
+    if(!/^\d{4}-\d{2}$/.test(ym)) return String(raw||'').slice(0,10) || 'Sin fecha';
+    const [y,m]=ym.split('-').map(Number);
+    return new Intl.DateTimeFormat('es-CL',{month:'long',year:'numeric'}).format(new Date(y,m-1,1));
+  };
 
   rows.forEach(r=>{
     const amount=Number(r.amount||0);
     totalAll+=amount;
-    if(r.mandatory) totalMandatory+=amount; else totalVoluntary+=amount;
+    if(r.mandatory){
+      totalMandatory+=amount;
+      if(r.overdue) totalOverdueMandatory+=amount; else totalUpcomingMandatory+=amount;
+    }else totalVoluntary+=amount;
     if(r.overdue) totalOverdue+=amount; else totalUpcoming+=amount;
+
     const id=String(r.task?.id || r.pay.fromTaskId || 'unknown');
     if(!byCampaign.has(id)){
-      byCampaign.set(id,{taskId:id,title:r.task?.title || r.pay.title || 'Campaña',mandatory:r.mandatory,pendingCount:0,overdueAmount:0,upcomingAmount:0,pendingAmount:0,synthetic:false});
+      byCampaign.set(id,{taskId:id,title:r.task?.title || r.pay.title || 'Campaña',mandatory:r.mandatory,pendingCount:0,overdueAmount:0,upcomingAmount:0,pendingAmount:0,synthetic:false,monthBreakdown:[],projectedNote:''});
     }
     const item=byCampaign.get(id);
     item.pendingCount+=1;
     item.pendingAmount+=amount;
     if(r.overdue) item.overdueAmount+=amount; else item.upcomingAmount+=amount;
+    item.monthBreakdown.push({
+      label:periodLabel(r.pay?.period || r.pay?.dueDate || r.dueDate),
+      amount,
+      overdue:r.overdue,
+      statusLabel:r.overdue?'Atrasado':'Por vencer'
+    });
   });
 
   tasks().filter(t=>t && t.mandatoryParticipation===false && !t.deleted).forEach(t=>{
     const tid=String(t.id||'');
     if(!tid || byCampaign.has(tid)) return;
     const memberPays=campaignPayments(tid).filter(p=>apoderadoKey(p)===ref);
-    const optedOut=memberPays.some(p=>paymentStatusNorm(p)==='opted_out');
-    if(optedOut) return;
+    if(memberPays.some(p=>paymentStatusNorm(p)==='opted_out')) return;
     const paidRows=memberPays.filter(isPaid);
     const paidAmount=paidRows.reduce((sum,p)=>sum+Number(p.amount||p.montoPagado||p.monto_pagado||0),0);
     const months=String(t.type||'single').toLowerCase()==='monthly' ? Math.max(1,Number(t.months||1)) : 1;
     const individualTarget=Math.max(0,Number(t.amount||0)*months);
     const remaining=Math.max(0,individualTarget-paidAmount);
     if(remaining<=0) return;
-    byCampaign.set(tid,{taskId:tid,title:t.title||'Campaña',mandatory:false,pendingCount:Math.max(1,months-paidRows.length),overdueAmount:0,upcomingAmount:remaining,pendingAmount:remaining,synthetic:true});
+    const note=String(t.type||'single').toLowerCase()==='monthly'
+      ? `${months} cuotas de ${money(Number(t.amount||0))} · pagado ${money(paidAmount)} · saldo proyectado ${money(remaining)}`
+      : `Monto proyectado ${money(individualTarget)} · pagado ${money(paidAmount)}`;
+    byCampaign.set(tid,{taskId:tid,title:t.title||'Campaña',mandatory:false,pendingCount:Math.max(1,months-paidRows.length),overdueAmount:0,upcomingAmount:remaining,pendingAmount:remaining,synthetic:true,monthBreakdown:[],projectedNote:note});
     totalAll+=remaining;
     totalVoluntary+=remaining;
     totalUpcoming+=remaining;
@@ -2583,7 +2602,7 @@ function summarizeDebts(identity){
     if(a.mandatory!==b.mandatory) return a.mandatory?-1:1;
     return b.pendingAmount-a.pendingAmount;
   });
-  return {campaigns,totalAll,totalMandatory,totalVoluntary,totalOverdue,totalUpcoming};
+  return {campaigns,totalAll,totalMandatory,totalVoluntary,totalOverdue,totalUpcoming,totalOverdueMandatory,totalUpcomingMandatory};
 }
 
 function monthMandatoryOutstanding(ym){
@@ -2673,36 +2692,54 @@ function updatePresidentTopbar(){
 }
 
 function buildWhatsappText(profile, summary){
-  const name = (profile.apoderadoName||profile.name||"").trim() || "apoderado/a";
-  const alumno = (profile.alumno||"").trim();
+  const name = (profile.apoderadoName||profile.name||'').trim() || 'apoderado/a';
+  const alumno = (profile.alumno||'').trim();
   const c = activeCourse() || {};
-  const courseName = [c.level||"", c.letter||"", c.year||""].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
+  const courseName = [c.level||'', c.letter||'', c.year||''].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
   const today = new Date();
-  const dateText = today.toLocaleDateString("es-CL",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const dateText = today.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const mandatoryDue = Number(summary.totalMandatory||0);
+  const overdue = Number(summary.totalOverdueMandatory||0);
+  const upcoming = Number(summary.totalUpcomingMandatory||0);
+  const voluntary = Number(summary.totalVoluntary||0);
 
-  const lines = [];
+  const lines=[];
   lines.push(`Hola ${name} 👋`);
-  lines.push(`Te compartimos el estado de cuotas${alumno ? ` de ${alumno}` : ""} al ${dateText}.`);
-  lines.push("");
+  lines.push(`Te compartimos el estado de cuotas${alumno ? ` de ${alumno}` : ''} al ${dateText}.`);
+  lines.push('');
+  lines.push(`*Para quedar al día hoy: ${money(mandatoryDue)}*`);
+  if(overdue>0) lines.push(`• Obligatorio atrasado: ${money(overdue)}`);
+  if(upcoming>0) lines.push(`• Obligatorio por vencer: ${money(upcoming)}`);
+  lines.push('');
 
-  if(summary.campaigns.length===0){
-    lines.push("✅ Al día");
-    lines.push("No registras cuotas pendientes a la fecha.");
-  }else{
-    lines.push("*Cuotas pendientes:*");
-    summary.campaigns.forEach(ca=>{
-      lines.push(`• ${ca.title}${ca.mandatory ? "" : " (voluntaria)"} — ${money(ca.pendingAmount)}`);
+  const mandatoryCampaigns=summary.campaigns.filter(ca=>ca.mandatory);
+  if(mandatoryCampaigns.length){
+    lines.push('*Detalle obligatorio:*');
+    mandatoryCampaigns.forEach(ca=>{
+      lines.push(`• ${ca.title} — ${money(ca.pendingAmount)}`);
+      if(ca.monthBreakdown?.length){
+        ca.monthBreakdown.forEach(item=>lines.push(`   - ${item.label}: ${money(item.amount)} · ${item.statusLabel}`));
+      }
     });
-    lines.push("");
-    lines.push(`*Total obligatorio pendiente: ${money(summary.totalMandatory)}*`);
-    if(summary.totalVoluntary>0) lines.push(`*Pendiente voluntario: ${money(summary.totalVoluntary)}*`);
-    lines.push("");
-    lines.push("Si ya realizaste alguno de estos pagos, puedes informarlo a la directiva para actualizar el registro.");
+    lines.push('');
   }
 
-  lines.push("");
-  lines.push(`MiCursoX${courseName ? " · " + courseName : ""}`);
-  return lines.join("\n");
+  const voluntaryCampaigns=summary.campaigns.filter(ca=>!ca.mandatory);
+  if(voluntaryCampaigns.length){
+    lines.push('*Aportes voluntarios / proyectados:*');
+    voluntaryCampaigns.forEach(ca=>{
+      lines.push(`• ${ca.title}: ${money(ca.pendingAmount)} proyectados`);
+      if(ca.projectedNote) lines.push(`   ${ca.projectedNote}`);
+    });
+    lines.push('');
+    lines.push('_Los aportes voluntarios no se consideran deuda obligatoria inmediata._');
+    lines.push('');
+  }
+
+  lines.push('Si ya realizaste alguno de estos pagos, puedes informarlo a la directiva para actualizar el registro.');
+  lines.push('');
+  lines.push(`MiCursoX${courseName ? ' · ' + courseName : ''}`);
+  return lines.join('\n');
 }
 
 function renderDeudores(){
@@ -2953,9 +2990,10 @@ function renderDeudores(){
               <div class="muted" style="margin-top:2px;">Correo: <b>${esc(profile.email||"-")}</b></div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <span class="pill ${monthMand>0?"bad":"good"}">Deuda obligatoria mes: ${money(monthMand)}</span>
-              <span class="pill ${sum.totalMandatory>0?"bad":"good"}">Deuda obligatoria total: ${money(sum.totalMandatory)}</span>
-              ${sum.totalVoluntary>0 ? '<span class="pill">Pendiente voluntario: '+money(sum.totalVoluntary)+'</span>' : ''}
+              <span class="pill ${sum.totalMandatory>0?"bad":"good"}">Para quedar al día hoy: ${money(sum.totalMandatory)}</span>
+              <span class="pill ${sum.totalOverdueMandatory>0?"bad":"good"}">Atrasado: ${money(sum.totalOverdueMandatory)}</span>
+              <span class="pill ${sum.totalUpcomingMandatory>0?"bad":"good"}">Por vencer: ${money(sum.totalUpcomingMandatory)}</span>
+              ${sum.totalVoluntary>0 ? '<span class="pill">Voluntario proyectado: '+money(sum.totalVoluntary)+'</span>' : ''}
             </div>
           </div>
 
@@ -2964,20 +3002,34 @@ function renderDeudores(){
             ${sum.campaigns.length ? `
               <div style="margin-top:8px;display:grid;gap:8px;">
                 ${sum.campaigns.map(ca=>`
-                  <div style="border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:10px;background:rgba(255,255,255,.9);">
+                  <div style="border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:12px;background:rgba(255,255,255,.9);">
                     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                       <div style="font-weight:950;">${esc(ca.title)}</div>
-                      <div class="muted" style="font-weight:900;">${ca.mandatory ? "Obligatoria" : "Voluntaria"}</div>
+                      <div class="muted" style="font-weight:900;">${ca.mandatory ? "Obligatoria" : "Voluntaria / proyectada"}</div>
                     </div>
                     <div class="muted" style="margin-top:6px;">
-                      Pendientes: <b>${ca.pendingCount}</b> · Monto: <b>${money(ca.pendingAmount)}</b>
-                      ${ca.overdueAmount>0 ? `· Vencido: <b>${money(ca.overdueAmount)}</b>` : ``}
-                      ${ca.upcomingAmount>0 ? `· Por vencer: <b>${money(ca.upcomingAmount)}</b>` : ``}
+                      ${ca.mandatory
+                        ? `Pendiente: <b>${money(ca.pendingAmount)}</b>${ca.overdueAmount>0 ? ` · Atrasado: <b>${money(ca.overdueAmount)}</b>` : ``}${ca.upcomingAmount>0 ? ` · Por vencer: <b>${money(ca.upcomingAmount)}</b>` : ``}`
+                        : `Saldo proyectado: <b>${money(ca.pendingAmount)}</b>`
+                      }
                     </div>
+                    ${ca.monthBreakdown?.length ? `
+                      <details style="margin-top:8px">
+                        <summary style="cursor:pointer;font-weight:900;color:#6d28d9">Ver meses / vencimientos</summary>
+                        <div style="display:grid;gap:6px;margin-top:8px">
+                          ${ca.monthBreakdown.map(item=>`
+                            <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid rgba(15,23,42,.06)">
+                              <span>${esc(item.label)} · ${esc(item.statusLabel)}</span>
+                              <b>${money(item.amount)}</b>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </details>` : ``}
+                    ${ca.projectedNote ? `<div class="muted" style="margin-top:8px">${esc(ca.projectedNote)}</div>` : ``}
                   </div>
                 `).join("")}
               </div>
-            ` : `<div class="muted" style="margin-top:8px;">No registra deudas pendientes.</div>`}
+            ` : `<div class="muted" style="margin-top:8px;">No registra pagos pendientes.</div>`}
           </div>
 
           <div class="presDebtShareBox">
@@ -2986,7 +3038,7 @@ function renderDeudores(){
                 <div style="font-weight:950;">Estado para el apoderado</div>
                 <div class="muted" style="margin-top:4px;">Mensaje breve listo para enviar.</div>
               </div>
-              <span class="presDebtShareTotal ${sum.totalAll>0?"hasDebt":"isClear"}">${sum.totalAll>0 ? money(sum.totalAll)+" pendiente" : "Al día"}</span>
+              <span class="presDebtShareTotal ${sum.totalMandatory>0?"hasDebt":"isClear"}">${sum.totalMandatory>0 ? money(sum.totalMandatory)+" para quedar al día" : "Al día"}</span>
             </div>
             <div class="presDebtMessagePreview">${esc(wa).replace(/\n/g,"<br>")}</div>
             <div class="presDebtShareActions">
