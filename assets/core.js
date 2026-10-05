@@ -1113,10 +1113,43 @@
     if((usuariosRows || []).length){
       saveJSON("cursapp_users_v1", usuariosRows.map(u=>({ userId:u.id, email:u.email, name:u.nombre || u.email || "", phone:u.telefono || "", createdAt:u.created_at || "" })));
     }
-    if((profiles || []).length) saveJSON("cursapp_profiles_v1", profiles);
-    if((enrollments || []).length){
-      saveJSON("cursapp_enrollments_v1", enrollments);
-      saveJSON(scopedKey("enrollments_v1"), enrollments);
+    const currentPath = String(location.pathname || "").toLowerCase();
+    const isApoderadoPage = currentPath.includes("apoderado");
+    if(isApoderadoPage){
+      // En Apoderado, conservar exclusivamente las asociaciones creadas por el login.
+      // Los alumnos importados sin usuario siguen disponibles para Directiva/métricas,
+      // pero nunca pasan a ser "hijos" visibles del apoderado.
+      const existingProfiles = loadJSON("cursapp_profiles_v1", []);
+      const existingEnrollments = loadJSON("cursapp_enrollments_v1", []);
+      const session = getSessionLike() || {};
+      const sessionEmail = normEmail(session.email || session.userEmail || session.userId || "");
+      const activeMiembro = firstNonEmpty(
+        session.activeMiembro,
+        localStorage.getItem("cursapp_active_miembro_id_v1"),
+        ""
+      );
+      const safeProfiles = (Array.isArray(existingProfiles) ? existingProfiles : []).filter(p=>{
+        if(String(p?.role || "").toLowerCase() !== "apoderado") return true;
+        const email = normEmail(p?.apoderado?.email || p?.email || "");
+        const mid = String(p?.supabase?.miembro_id || p?.miembro_id || p?.profileId || p?.id || "");
+        return (sessionEmail && email === sessionEmail) || (activeMiembro && mid === activeMiembro);
+      });
+      const safeEnrollments = (Array.isArray(existingEnrollments) ? existingEnrollments : []).filter(e=>{
+        const email = normEmail(e?.email || e?.apoderadoEmail || "");
+        const mid = String(e?.miembroId || e?.profileId || e?.id || "");
+        return (sessionEmail && email === sessionEmail) || (activeMiembro && mid === activeMiembro);
+      });
+      if(safeProfiles.length) saveJSON("cursapp_profiles_v1", safeProfiles);
+      if(safeEnrollments.length){
+        saveJSON("cursapp_enrollments_v1", safeEnrollments);
+        saveJSON(scopedKey("enrollments_v1"), safeEnrollments);
+      }
+    }else{
+      if((profiles || []).length) saveJSON("cursapp_profiles_v1", profiles);
+      if((enrollments || []).length){
+        saveJSON("cursapp_enrollments_v1", enrollments);
+        saveJSON(scopedKey("enrollments_v1"), enrollments);
+      }
     }
 
     saveJSON(scopedKey("tasks_v1"), tasks);
