@@ -6,7 +6,8 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const icon=c=>({ticket:'🛠️',pago:'💰',payment:'💰',campana:'📅',campaign:'📅',aviso:'📢',announcement:'📢',rendicion:'🧾',rendition:'🧾',mercado:'🛍️',sistema:'🔔',system:'🔔'})[String(c||'').toLowerCase()]||'🔔';
   const ago=v=>{const t=Date.parse(v||'');if(!t)return'';const m=Math.floor((Date.now()-t)/60000);if(m<1)return'Hace segundos';if(m<60)return`Hace ${m} min`;const h=Math.floor(m/60);if(h<24)return`Hace ${h} h`;return`Hace ${Math.floor(h/24)} día(s)`};
-  let user=null,rows=[],lastError='';
+  let user=null,rows=[],lastError='',page=1;
+  const PAGE_SIZE=10;
   const stats=()=>({total:rows.length,unread:rows.filter(x=>!x.is_read).length,read:rows.filter(x=>x.is_read).length,delivered:rows.filter(x=>String(x.delivery_state||'').toLowerCase()==='delivered').length});
   function emit(){try{window.dispatchEvent(new CustomEvent('micursox:notification-stats',{detail:stats()}));}catch(_){}}
   async function load(){
@@ -80,11 +81,29 @@
     location.assign(target.pathname+target.search+target.hash);
     return true;
   }
-  function styles(){if(document.getElementById('cnSupabaseCss'))return;const s=document.createElement('style');s.id='cnSupabaseCss';s.textContent=`.cnOverlay{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:999999;display:flex;align-items:flex-end;justify-content:center}.cnCard{width:min(760px,100%);max-height:86vh;background:#fff;border-radius:28px 28px 0 0;overflow:hidden;display:flex;flex-direction:column}.cnHead{padding:24px;display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb}.cnHead h2{margin:0;font-size:28px}.cnHead p{margin:6px 0 0;color:#64748b;font-weight:700}.cnClose{border:1px solid #e5e7eb;background:#fff;border-radius:18px;padding:12px 18px;font-weight:900}.cnList{overflow:auto;-webkit-overflow-scrolling:touch}.cnItem{display:grid;grid-template-columns:54px 1fr;gap:14px;padding:20px 24px;border:0;border-bottom:1px solid #e5e7eb;width:100%;text-align:left;background:#fff;border-left:5px solid transparent}.cnItem.unread{border-left-color:#7c3aed;background:#faf7ff}.cnIcon{width:54px;height:54px;border-radius:18px;background:#f1f5f9;display:grid;place-items:center;font-size:26px}.cnItem b{display:block;font-size:18px}.cnItem p{margin:6px 0;color:#64748b;font-weight:700;line-height:1.35}.cnItem small{color:#94a3b8;font-weight:800}.cnEmpty{padding:28px;color:#64748b;font-weight:800}.cnError{padding:22px 28px;color:#b42318;background:#fff1f0;font-weight:800;line-height:1.4}.cnFoot{padding:16px 24px calc(16px + env(safe-area-inset-bottom));display:flex;gap:12px;border-top:1px solid #e5e7eb}.cnBtn{flex:1;border:0;border-radius:18px;padding:15px;font-weight:900;background:#7c3aed;color:#fff}.cnBtn.ghost{background:#fff;color:#111827;border:1px solid #e5e7eb}@media(max-width:430px){.cnFoot{padding-left:14px;padding-right:14px}.cnBtn{font-size:14px;padding:14px 10px}}@media(min-width:761px){.cnOverlay{align-items:center;padding:20px}.cnCard{border-radius:28px}}`;document.head.appendChild(s)}
+  function styles(){if(document.getElementById('cnSupabaseCss'))return;const s=document.createElement('style');s.id='cnSupabaseCss';s.textContent=`.cnOverlay{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:999999;display:flex;align-items:flex-end;justify-content:center}.cnCard{width:min(760px,100%);max-height:86vh;background:#fff;border-radius:28px 28px 0 0;overflow:hidden;display:flex;flex-direction:column}.cnHead{padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e5e7eb}.cnHead>div{min-width:0}.cnHead h2{margin:0;font-size:28px}.cnHead p{margin:6px 0 0;color:#64748b;font-weight:700}.cnClose{flex:0 0 auto;min-width:94px;height:48px;border:1px solid #dbe2ea;background:#fff;border-radius:16px;padding:0 18px;font-weight:900;color:#0f172a;display:inline-flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 6px 18px rgba(15,23,42,.06)}.cnList{overflow:auto;-webkit-overflow-scrolling:touch}.cnItem{display:grid;grid-template-columns:54px 1fr;gap:14px;padding:20px 24px;border:0;border-bottom:1px solid #e5e7eb;width:100%;text-align:left;background:#fff;border-left:5px solid transparent}.cnItem.unread{border-left-color:#7c3aed;background:#faf7ff}.cnIcon{width:54px;height:54px;border-radius:18px;background:#f1f5f9;display:grid;place-items:center;font-size:26px}.cnItem b{display:block;font-size:18px}.cnItem p{margin:6px 0;color:#64748b;font-weight:700;line-height:1.35}.cnItem small{color:#94a3b8;font-weight:800}.cnEmpty{padding:28px;color:#64748b;font-weight:800}.cnError{padding:22px 28px;color:#b42318;background:#fff1f0;font-weight:800;line-height:1.4}.cnPager{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 18px;border-top:1px solid #eef2f7;background:#fff}.cnPager span{min-width:110px;text-align:center;color:#64748b;font-size:12px;font-weight:850}.cnPageBtn{height:36px;min-width:78px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#334155;font-weight:850;padding:0 12px}.cnPageBtn:disabled{opacity:.4}.cnFoot{padding:16px 24px calc(16px + env(safe-area-inset-bottom));display:flex;gap:12px;border-top:1px solid #e5e7eb}.cnBtn{flex:1;border:0;border-radius:18px;padding:15px;font-weight:900;background:#7c3aed;color:#fff}.cnBtn.ghost{background:#fff;color:#111827;border:1px solid #e5e7eb}@media(max-width:430px){.cnHead{padding:20px 18px}.cnHead h2{font-size:26px}.cnClose{min-width:84px;height:44px;padding:0 14px}.cnFoot{padding-left:14px;padding-right:14px}.cnBtn{font-size:14px;padding:14px 10px}.cnPager{gap:7px;padding:10px 12px}.cnPageBtn{min-width:70px;padding:0 9px}}@media(min-width:761px){.cnOverlay{align-items:center;padding:20px}.cnCard{border-radius:28px}}`;document.head.appendChild(s)}
+  function pageCount(){return Math.max(1,Math.ceil(rows.length/PAGE_SIZE))}
+  function normalizePage(){page=Math.min(Math.max(1,page),pageCount())}
   function listHtml(){
     if(lastError)return`<div class="cnError">No se pudieron cargar las notificaciones.<br><small>${esc(lastError)}</small></div>`;
     if(!rows.length)return'<p class="cnEmpty">No tienes notificaciones.</p>';
-    return rows.map(n=>`<button type="button" class="cnItem ${n.is_read?'':'unread'}" data-id="${esc(n.id)}" data-url="${esc(n.url_destino||'')}"><span class="cnIcon">${icon(n.category)}</span><span><b>${esc(n.title)}</b><p>${esc(n.message||'')}</p><small>${ago(n.created_at)}</small></span></button>`).join('');
+    normalizePage();
+    const start=(page-1)*PAGE_SIZE;
+    return rows.slice(start,start+PAGE_SIZE).map(n=>`<button type="button" class="cnItem ${n.is_read?'':'unread'}" data-id="${esc(n.id)}" data-url="${esc(n.url_destino||'')}"><span class="cnIcon">${icon(n.category)}</span><span><b>${esc(n.title)}</b><p>${esc(n.message||'')}</p><small>${ago(n.created_at)}</small></span></button>`).join('');
+  }
+  function pagerHtml(){
+    if(lastError||rows.length<=PAGE_SIZE)return'';
+    normalizePage();
+    const pages=pageCount();
+    return `<div class="cnPager"><button type="button" class="cnPageBtn" data-page="${page-1}" ${page<=1?'disabled':''}>Anterior</button><span>Página ${page} de ${pages}</span><button type="button" class="cnPageBtn" data-page="${page+1}" ${page>=pages?'disabled':''}>Siguiente</button></div>`;
+  }
+  function repaintPage(root){
+    const list=root?.querySelector('.cnList');
+    if(list)list.innerHTML=listHtml();
+    const old=root?.querySelector('.cnPager');
+    const html=pagerHtml();
+    if(old)old.remove();
+    if(html&&list)list.insertAdjacentHTML('afterend',html);
   }
   function openPreferences(){
     const api=window.CURSAPP_NOTIFICATION_PREFERENCES;
@@ -96,10 +115,13 @@
   async function open(){
     styles();try{await load()}catch(e){lastError=e?.message||String(e);console.error('No se pudieron cargar notificaciones',e)}
     document.getElementById('cnOverlay')?.remove();
+    page=1;
     const root=document.createElement('div');root.id='cnOverlay';root.className='cnOverlay';
-    root.innerHTML=`<section class="cnCard"><header class="cnHead"><div><h2>Notificaciones</h2><p>Centro de actividad sincronizado</p></div><button class="cnClose" type="button" data-close>Cerrar</button></header><div class="cnList">${listHtml()}</div><footer class="cnFoot"><button type="button" class="cnBtn ghost" data-readall>Marcar todas leídas</button><button type="button" class="cnBtn" data-prefs>Preferencias</button></footer></section>`;
+    root.innerHTML=`<section class="cnCard"><header class="cnHead"><div><h2>Notificaciones</h2><p>Centro de actividad sincronizado</p></div><button class="cnClose" type="button" data-close>Cerrar</button></header><div class="cnList">${listHtml()}</div>${pagerHtml()}<footer class="cnFoot"><button type="button" class="cnBtn ghost" data-readall>Marcar todas leídas</button><button type="button" class="cnBtn" data-prefs>Preferencias</button></footer></section>`;
     root.addEventListener('click',async e=>{
       if(e.target===root||e.target.closest('[data-close]')){root.remove();return}
+      const pageBtn=e.target.closest('[data-page]');
+      if(pageBtn&&!pageBtn.disabled){page=Number(pageBtn.dataset.page)||1;repaintPage(root);return}
       if(e.target.closest('[data-prefs]')){root.remove();openPreferences();return}
       const all=e.target.closest('[data-readall]');
       if(all){all.disabled=true;try{await mark(rows.filter(x=>!x.is_read).map(x=>x.id));root.remove();open()}catch(err){all.disabled=false;alert(err?.message||'No se pudieron marcar como leídas')}return}

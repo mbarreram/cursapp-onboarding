@@ -731,32 +731,8 @@
 
   function setupShell(){
     hydrateBottomNavIcons();
-    const menuBtn = $("menuBtn");
-    const menu = $("menuDropdown");
-    if(menuBtn && menu && !menuBtn.__presMenuBound){
-      menuBtn.__presMenuBound = true;
-      menuBtn.setAttribute("aria-expanded", "false");
-      menuBtn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const visible = menu.style.display === "block";
-        if(visible){
-          window.__closeApoMenu();
-          return;
-        }
-        renderMenu();
-        menu.style.display = "block";
-        menu.classList.add("presMenuPanel", "caMenuOpen");
-        menuBtn.setAttribute("aria-expanded", "true");
-      });
-      document.addEventListener("click", (ev) => {
-        if(!menu || menu.style.display !== "block") return;
-        const target = ev.target;
-        if(target && (menu.contains(target) || menuBtn.contains(target))) return;
-        window.__closeApoMenu();
-      }, true);
-    }
-
+    // El menú hamburguesa lo administra profile-menu-v4 para mantener
+    // exactamente la misma experiencia que Presidente Inicio.
     document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
       if(btn.__apoNavBound) return;
       btn.__apoNavBound = true;
