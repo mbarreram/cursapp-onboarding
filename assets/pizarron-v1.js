@@ -17,7 +17,7 @@ async function req(path,opts){return sb.request(path,opts||{})}
 async function loadContext(){
  state.role=role();state.user=await sb.getCurrentUser();
  const key=courseKey();if(!key)throw new Error('No hay un curso activo.');
- const rows=await req('cursos?select=id,course_key,nombre,nivel,letra,anio,jornada,colegio_id,colegios(nombre)&course_key=eq.'+encodeURIComponent(key)+'&limit=1');
+ const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key); const rows=await req('cursos?select=id,course_key,nombre,nivel,letra,anio,jornada,colegio_id,colegios(nombre)&'+(isUuid?'id':'course_key')+'=eq.'+encodeURIComponent(key)+'&limit=1');
  state.course=Array.isArray(rows)?rows[0]:null;if(!state.course)throw new Error('No se encontró el curso activo.');
  const members=await req('miembros_curso?select=id,rol,nombre_apoderado,email,usuario_id&curso_id=eq.'+state.course.id+'&usuario_id=eq.'+state.user.id+'&limit=10');
  state.member=(Array.isArray(members)?members:[]).find(m=>String(m.rol).toLowerCase()===state.role)||(Array.isArray(members)?members[0]:null);
