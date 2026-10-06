@@ -4,7 +4,7 @@
   if(!sb||typeof sb.request!=='function'||typeof sb.getCurrentUser!=='function') return;
   window.__MICURSOX_NOTIFICATIONS_CANONICAL__=true;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const icon=c=>({ticket:'🛠️',pago:'💰',payment:'💰',campana:'📅',campaign:'📅',aviso:'📢',announcement:'📢',rendicion:'🧾',rendition:'🧾',mercado:'🛍️',sistema:'🔔',system:'🔔'})[String(c||'').toLowerCase()]||'🔔';
+  const icon=c=>({ticket:'🛠️',pago:'💰',payment:'💰',campana:'📅',campaign:'📅',aviso:'📢',announcement:'📢',rendicion:'🧾',rendition:'🧾',pizarron:'📝',mercado:'🛍️',sistema:'🔔',system:'🔔'})[String(c||'').toLowerCase()]||'🔔';
   const ago=v=>{const t=Date.parse(v||'');if(!t)return'';const m=Math.floor((Date.now()-t)/60000);if(m<1)return'Hace segundos';if(m<60)return`Hace ${m} min`;const h=Math.floor(m/60);if(h<24)return`Hace ${h} h`;return`Hace ${Math.floor(h/24)} día(s)`};
   let user=null,rows=[],lastError='',page=1;
   const PAGE_SIZE=10;

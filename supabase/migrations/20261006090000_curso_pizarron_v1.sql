@@ -1,0 +1,5 @@
+-- MiCursoX · Pizarrón del curso V1
+-- Aplicada en producción como migración curso_pizarron_v1.
+-- El aislamiento se realiza por curso_id; colegio_id se sincroniza desde public.cursos.
+-- Las tablas, RLS, RPC de colaboraciones y trigger de notificaciones se administran
+-- mediante Supabase migrations. Ver historial remoto para la definición aplicada.
