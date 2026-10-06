@@ -7,26 +7,35 @@ function items(r){if(r==='presidente')return[['🏠','Inicio','/presidente.html#
 function close(){document.getElementById('mxUnifiedRoleMenuV4')?.remove();document.getElementById('menuBtn')?.setAttribute('aria-expanded','false')}
 function route(h){
   var m=h.match(/^\/(apoderado|presidente|tesorero)\.html#(.+)$/);
-  if(m){
-    var page='/'+m[1]+'.html',tab=m[2];
-    try{sessionStorage.setItem('micursox_pending_tab',tab)}catch(_){}
-    if(location.pathname===page){
-      try{
-        if(window.MICURSOX_ROLE_ROUTE&&typeof window.MICURSOX_ROLE_ROUTE.openTab==='function'&&window.MICURSOX_ROLE_ROUTE.openTab(tab)){
+  if(!m){location.href=h;return}
+  var page='/'+m[1]+'.html',tab=String(m[2]||'home').trim();
+
+  // Si ya estamos en el dashboard del rol, no recargar la página.
+  if(location.pathname===page){
+    try{
+      if(tab!=='retiros'&&typeof window.go==='function'){
+        window.go(tab);
+        try{history.replaceState(null,'',page)}catch(_){}
+        return;
+      }
+      if(window.MICURSOX_ROLE_ROUTE&&typeof window.MICURSOX_ROLE_ROUTE.openTab==='function'){
+        if(window.MICURSOX_ROLE_ROUTE.openTab(tab)){
           try{history.replaceState(null,'',page)}catch(_){}
-          try{sessionStorage.removeItem('micursox_pending_tab')}catch(_){}
           return;
         }
-        if(typeof window.go==='function'){
-          window.go(tab);
-          try{history.replaceState(null,'',page)}catch(_){}
-          try{sessionStorage.removeItem('micursox_pending_tab')}catch(_){}
-          return;
-        }
-      }catch(_){}
-    }
+      }
+    }catch(_){}
   }
-  location.href=h;
+
+  // Navegación entre páginas: usar el mecanismo oficial que consumen los dashboards al iniciar.
+  try{
+    if(window.CURSAPP&&typeof window.CURSAPP.setNextNavTab==='function')window.CURSAPP.setNextNavTab(tab);
+    else{
+      localStorage.setItem('cursapp_nav_tab_v1',tab);
+      localStorage.setItem('cursapp_nav_at_v1',String(Date.now()));
+    }
+  }catch(_){}
+  location.href=page;
 }
 function openNotifications(){close();var n=0;(function w(){var a=window.CURSAPP_NOTIFICATIONS;if(a&&typeof a.open==='function'){close();return a.open()}if(++n<30)setTimeout(w,100)})()}
 function openSupport(){close();var n=0;(function w(){var a=window.CURSAPP_SUPPORT;if(a&&typeof a.openMyTickets==='function'){close();return a.openMyTickets()}if(a&&typeof a.open==='function'){close();return a.open('mine')}if(++n<30)return setTimeout(w,100);alert('Soporte aún se está cargando. Intenta nuevamente en unos segundos.')})()}
