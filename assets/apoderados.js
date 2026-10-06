@@ -722,9 +722,10 @@
   function hydrateBottomNavIcons(){
     const icons = { home:"home", campanas:"campaign", deudores:"debt", informes:"report", retiros:"wallet" };
     document.querySelectorAll(".bottomNav .navItem").forEach(btn => {
-      const label = btn.querySelector("span")?.textContent || "";
+      const labelNode = btn.querySelector(".presNavLabel");
+      const label = (labelNode?.textContent || btn.dataset.tab || "").trim();
       btn.setAttribute("data-ca-icon-ready", "1");
-      btn.innerHTML = `${bottomNavSvg(icons[btn.dataset.tab] || "report")}<span>${esc(label)}</span>`;
+      btn.innerHTML = `<span class="presNavIcon" aria-hidden="true">${bottomNavSvg(icons[btn.dataset.tab] || "report")}</span><span class="presNavLabel">${esc(label)}</span>`;
     });
   }
 
