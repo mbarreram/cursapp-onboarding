@@ -17,16 +17,59 @@ async function data(){
  cache={key:k,rows:Array.isArray(rows)?rows:[],at:Date.now()};return cache.rows
 }
 function target(){const r=role();if(r==='apoderado')return document.querySelector('.apoV2Page.apoderado-home');if(r==='presidente')return document.querySelector('.presMockPage');return document.querySelector('.tesV57Page.tesV68Page')}
-async function mount(){
- if(busy||document.querySelector('.pzHomeCard'))return;const host=target();if(!host)return;busy=true;
- try{styles();const rows=await data(),r=role(),card=document.createElement('section');card.className='pzHomeCard';
- card.innerHTML='<div class="pzHomeHead"><div><h3>📝 Pizarrón del curso</h3><div class="pzHomeSub">'+(rows.length?rows.length+' próximo'+(rows.length===1?'':'s')+' recordatorio'+(rows.length===1?'':'s'):'Sin recordatorios próximos')+'</div></div><button type="button" data-pz-open>Ver pizarrón</button></div>'+(rows.length?'<div class="pzHomeRows">'+rows.slice(0,2).map(x=>'<div class="pzHomeRow"><span>'+({prueba:'📝',materiales:'🎒',tarea:'📚',horario:'🕒',actividad:'🎉',reunion:'👥'}[x.categoria]||'📌')+'</span><b>'+esc(x.titulo)+'</b><span>'+esc(fmt(x.fecha_evento))+'</span></div>').join('')+'</div>':'')+(r!=='apoderado'?'<button class="pzHomeCreate" type="button" data-pz-new>＋ Publicar en el Pizarrón</button>':'');
+function cardHtml(rows,r,loading){
+ return '<div class="pzHomeHead"><div><h3>📝 Pizarrón del curso</h3><div class="pzHomeSub">'+(loading?'Actualizando recordatorios...':(rows.length?rows.length+' próximo'+(rows.length===1?'':'s')+' recordatorio'+(rows.length===1?'':'s'):'Sin recordatorios próximos'))+'</div></div><button type="button" data-pz-open>Ver pizarrón</button></div>'+(rows.length?'<div class="pzHomeRows">'+rows.slice(0,2).map(x=>'<div class="pzHomeRow"><span>'+({prueba:'📝',materiales:'🎒',tarea:'📚',horario:'🕒',actividad:'🎉',reunion:'👥'}[x.categoria]||'📌')+'</span><b>'+esc(x.titulo)+'</b><span>'+esc(fmt(x.fecha_evento))+'</span></div>').join('')+'</div>':'')+(r!=='apoderado'?'<button class="pzHomeCreate" type="button" data-pz-new>＋ Publicar en el Pizarrón</button>':'');
+}
+function bindCard(card){
+ const open=card.querySelector('[data-pz-open]');if(open)open.onclick=()=>location.assign('/pizarron.html');
+ const create=card.querySelector('[data-pz-new]');if(create)create.onclick=()=>location.assign('/pizarron.html?new=1');
+}
+function insertCard(host,card){
  const notice=host.querySelector('.apoV2NoticeSection')||host.querySelector('.presMockSection:last-of-type')||host.querySelector('[data-monetization-slot="tesorero"]');
  if(notice&&notice.parentNode===host)host.insertBefore(card,notice);else host.appendChild(card);
- card.querySelector('[data-pz-open]').onclick=()=>location.assign('/pizarron.html');card.querySelector('[data-pz-new]')?.addEventListener('click',()=>location.assign('/pizarron.html?new=1'));
- }catch(_e){}finally{busy=false}
 }
-const mo=new MutationObserver(()=>setTimeout(mount,40));function boot(){const app=document.getElementById('app');if(app)mo.observe(app,{childList:true,subtree:true});mount()}
-window.addEventListener('cursapp:dataChanged',()=>{cache.at=0;document.querySelector('.pzHomeCard')?.remove();mount()});
+async function mount(){
+ const host=target();if(!host)return;
+ let card=host.querySelector(':scope > .pzHomeCard');
+ if(!card){
+   styles();
+   card=document.createElement('section');
+   card.className='pzHomeCard';
+   const cached=(cache.key===key()?cache.rows:[]);
+   card.innerHTML=cardHtml(cached,role(),!cached.length);
+   bindCard(card);
+   insertCard(host,card);
+ }
+ if(busy)return;
+ busy=true;
+ try{
+   const rows=await data();
+   if(!card.isConnected)return;
+   card.innerHTML=cardHtml(rows,role(),false);
+   bindCard(card);
+ }catch(_e){
+   if(card.isConnected){
+     card.innerHTML=cardHtml(cache.key===key()?cache.rows:[],role(),false);
+     bindCard(card);
+   }
+ }finally{busy=false}
+}
+let mountQueued=false;
+const mo=new MutationObserver(()=>{
+ if(mountQueued)return;
+ mountQueued=true;
+ queueMicrotask(()=>{mountQueued=false;mount()});
+});
+function boot(){
+ const root=document.getElementById('app');
+ if(root)mo.observe(root,{childList:true});
+ mount();
+}
+window.addEventListener('cursapp:dataChanged',()=>{
+ cache.at=0;
+ const card=document.querySelector('.pzHomeCard');
+ if(card){card.querySelector('.pzHomeSub')&&(card.querySelector('.pzHomeSub').textContent='Actualizando recordatorios...')}
+ mount();
+});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
