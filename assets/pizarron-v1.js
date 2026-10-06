@@ -44,7 +44,7 @@ function filtered(){
  if(state.filter==='upcoming')return state.posts.filter(p=>p.fecha_evento>end);
  return state.posts;
 }
-function canEdit(p){return p.autor_usuario_id===state.user.id||state.role==='presidente'||state.role==='tesorero'}
+function canEdit(_p){return state.role==='presidente'||state.role==='tesorero'}
 function card(p){
  const cat=cats[p.categoria]||cats.otro,rows=state.collabs.filter(c=>c.post_id===p.id);
  const badges=[p.recordatorio_dia_anterior?'<span class="pzBadge">🔔 Día anterior</span>':'',p.recordatorio_mismo_dia?'<span class="pzBadge warn">🔔 Mismo día</span>':'',p.importante?'<span class="pzBadge important">! Importante</span>':''].join('');
