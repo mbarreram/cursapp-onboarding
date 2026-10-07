@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -2638,7 +2638,7 @@ __bootTesoreroSupabaseFirst();
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -2791,7 +2791,7 @@ __bootTesoreroSupabaseFirst();
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -3096,7 +3096,7 @@ __bootTesoreroSupabaseFirst();
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -3368,7 +3368,7 @@ __bootTesoreroSupabaseFirst();
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -3612,7 +3612,7 @@ __bootTesoreroSupabaseFirst();
       const health = tesCampaignHealthV68(t);
       return `<article class="tesCampaignRow v68" onclick="window.__tesCampaignId='${esc(t.id)}';go('conciliacion')">
         <div class="tesRowIcon">${tesCampaignIconV68(t,idx)}</div>
-        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong></div>
+        <div class="tesRowMain"><b>${esc(tesCampaignTitleV68(t))}</b><small>Recaudado</small><strong>${clp(rec)}</strong><button type="button" class="tesCampaignExpenseBtn" onclick="event.stopPropagation();go('rendiciones','${esc(t.id)}')">＋ Registrar gasto</button></div>
         <div class="tesCampMeta"><span class="${health.cls}">${esc(health.label)}</span><small>Meta</small><b>${goal?clp(goal):'Por definir'}</b><em>${pct}%</em></div>
         <div class="tesProgress"><i style="width:${pct}%"></i></div><u>›</u>
       </article>`;
@@ -4568,7 +4568,7 @@ __bootTesoreroSupabaseFirst();
     const groups={};rows.forEach(e=>{const cat=categoryOf(e);if(!groups[cat])groups[cat]=[];groups[cat].push(e)});
     const groupHtml=Object.entries(groups).map(([cat,items])=>`<section class="tesV78Group"><button class="tesV77Category" type="button" onclick="tesV77ToggleCategory('${esc(cat)}')"><span>${categoryIcon(cat)}</span><b>${esc(cat)} (${items.length})</b><strong>${clp(sum(items,x=>x.amount))}</strong><i>${window.__tesRendOpenCats?.[cat]?'⌃':'⌄'}</i></button><div class="tesV77CategoryRows ${window.__tesRendOpenCats?.[cat]?'open':''}">${items.map(expenseRow).join('')}</div></section>`).join('');
     el.innerHTML=`<div class="tesV77Page tesV78Page">
-      <h1>Rendiciones por campaña</h1>
+      <h1>Gastos y rendiciones por campaña</h1>
       <section class="tesV77CampaignCard">
         <label class="tesV77CampaignSelect"><span>${campIcon(camp)}</span><select onchange="tesV77SelectCampaign(this.value)">${options}</select><i>⌄</i></label>
         <div class="tesV77State"><small>Estado</small><b>Activa</b></div>
@@ -4578,15 +4578,15 @@ __bootTesoreroSupabaseFirst();
       </section>
       <section class="tesV77Quick"><article><span>🧾</span><small>Gastado</small><b>${clp(spent)}</b></article><article><span>👛</span><small>Saldo disponible</small><b>${clp(saldo)}</b></article><article><span>🕒</span><small>Pendientes aprobación</small><b>${pending}</b></article></section>
       <section class="tesV77Categories">${groupHtml||`<article class="tesV77Empty"><b>Sin rendiciones registradas</b><span>Agrega el primer gasto de esta campaña.</span></article>`}</section>
-      <button class="tesV77Add" type="button" onclick="tesV77OpenCreate()">＋ Agregar rendición</button>
-      <aside class="tesV78Notice"><b>ⓘ Flujo de aprobación</b><span>El tesorero registra la rendición y el presidente del curso la aprueba, observa o rechaza.</span></aside>
+      <button class="tesV77Add" type="button" onclick="tesV77OpenCreate()">＋ Registrar gasto / rendición</button>
+      <aside class="tesV78Notice"><b>ⓘ Registra los gastos de cada campaña</b><span>Esto mantiene actualizado el saldo disponible del curso. El tesorero registra el gasto y el presidente lo aprueba, observa o rechaza.</span></aside>
       <div data-monetization-slot="tesorero"></div>
     </div>`;
   }
   function expenseRow(e){const st=statusInfo(e);return `<article class="tesV77Expense tesV78Expense"><div class="tesV77ExpIcon">${categoryIcon(categoryOf(e))}</div><div class="tesV77ExpMain"><b>${esc(e.title||e.concept||'Rendición')}</b><small>▣ ${esc(dateLabel(e.date||e.createdAt))}</small><small>◇ ${esc(categoryOf(e))}</small>${hasReceipt(e)?'<small>📎 Comprobante adjunto</small>':''}</div><div class="tesV77ExpAmount"><strong>${clp(e.amount)}</strong><span class="${st.cls}">● ${esc(st.label)}</span></div><div class="tesV77ExpActions"><button type="button" onclick="tesV77View('${esc(e.id)}')">◉ Ver</button>${canEdit(e)?`<button type="button" onclick="tesV77Edit('${esc(e.id)}')">✎ Editar</button>`:''}</div></article>`}
   function openModal(html,wide=false){const m=document.getElementById('modalRoot');if(!m)return;m.innerHTML=`<div class="tesV77ModalOverlay"><section class="tesV77Modal ${wide?'wide':''}">${html}</section></div>`;m.querySelector('.tesV77ModalOverlay').onclick=e=>{if(e.target===e.currentTarget)closeModal()}}
   function closeModal(){const m=document.getElementById('modalRoot');if(m)m.innerHTML=''}
-  function formHtml(e={}){return `<button class="tesV77Close" onclick="tesV77Close()">×</button><h2>${e.id?'Editar rendición':'Agregar rendición'}</h2><p class="tesV78FormHelp">Al guardar quedará pendiente de aprobación por el presidente del curso.</p><label>Categoría<select id="rv_cat"><option ${categoryOf(e)==='Alimentación'?'selected':''}>Alimentación</option><option ${categoryOf(e)==='Transporte'?'selected':''}>Transporte</option><option ${categoryOf(e)==='Materiales'?'selected':''}>Materiales</option><option ${categoryOf(e)==='Premios'?'selected':''}>Premios</option><option ${categoryOf(e)==='Otros'?'selected':''}>Otros</option></select></label><label>Concepto<input id="rv_title" value="${esc(e.title||e.concept||'')}" placeholder="Ej: Transporte campeonato"></label><label>Descripción<textarea id="rv_desc" rows="3" placeholder="Describe el gasto">${esc(e.description||e.note||'')}</textarea></label><div class="tesV77FormGrid"><label>Monto<input id="rv_amount" inputmode="numeric" value="${Number(e.amount||0)||''}" placeholder="50000"></label><label>Fecha<input id="rv_date" type="date" value="${esc(String(e.date||new Date().toISOString()).slice(0,10))}"></label></div><label>Comprobante<input id="rv_file" type="file" accept="image/*,application/pdf"><small>${hasReceipt(e)?'Comprobante adjunto. Selecciona otro para reemplazarlo.':'Adjunta foto o PDF (máx. 3 MB)'}</small></label><div class="tesV77ModalActions"><button class="ghost" onclick="tesV77Close()">Cancelar</button><button class="primary" onclick="tesV77Save('${esc(e.id||'')}')">Enviar a aprobación</button></div>`}
+  function formHtml(e={}){return `<button class="tesV77Close" onclick="tesV77Close()">×</button><h2>${e.id?'Editar gasto / rendición':'Registrar gasto / rendición'}</h2><p class="tesV78FormHelp">Ingresa aquí los gastos de la campaña. Al guardar, quedarán pendientes de aprobación por el presidente del curso.</p><label>Categoría<select id="rv_cat"><option ${categoryOf(e)==='Alimentación'?'selected':''}>Alimentación</option><option ${categoryOf(e)==='Transporte'?'selected':''}>Transporte</option><option ${categoryOf(e)==='Materiales'?'selected':''}>Materiales</option><option ${categoryOf(e)==='Premios'?'selected':''}>Premios</option><option ${categoryOf(e)==='Otros'?'selected':''}>Otros</option></select></label><label>Concepto<input id="rv_title" value="${esc(e.title||e.concept||'')}" placeholder="Ej: Transporte campeonato"></label><label>Descripción<textarea id="rv_desc" rows="3" placeholder="Describe el gasto">${esc(e.description||e.note||'')}</textarea></label><div class="tesV77FormGrid"><label>Monto<input id="rv_amount" inputmode="numeric" value="${Number(e.amount||0)||''}" placeholder="50000"></label><label>Fecha<input id="rv_date" type="date" value="${esc(String(e.date||new Date().toISOString()).slice(0,10))}"></label></div><label>Comprobante<input id="rv_file" type="file" accept="image/*,application/pdf"><small>${hasReceipt(e)?'Comprobante adjunto. Selecciona otro para reemplazarlo.':'Adjunta foto o PDF (máx. 3 MB)'}</small></label><div class="tesV77ModalActions"><button class="ghost" onclick="tesV77Close()">Cancelar</button><button class="primary" onclick="tesV77Save('${esc(e.id||'')}')">Enviar a aprobación</button></div>`}
   function success(e){openModal(`<div class="tesV77Success"><div>✓</div><h2>Rendición enviada a aprobación</h2><p>El presidente del curso recibirá la solicitud para revisarla.</p><article><small>Monto</small><b>${clp(e.amount)}</b><small>Campaña</small><b>${esc(titleOf(selectedCampaign()))}</b><small>Estado</small><b>Pendiente aprobación</b></article><button onclick="tesV77Close();tesV77Render()">Aceptar</button></div>`)}
   function historyHtml(e){const h=historyOf(e);if(!h.length)return'<div class="tesV78EmptyHistory">Sin movimientos registrados.</div>';return h.slice().sort((a,b)=>String(a.at||'').localeCompare(String(b.at||''))).map((x,i)=>`<div class="tesV78HistoryItem"><i class="${x.action==='aprobada'?'approved':x.action==='rechazada'?'rejected':x.action==='observada'?'observed':'pending'}"></i><div><b>${esc(x.actor||'Usuario')} ${x.role?`(${esc(x.role)})`:''}</b><small>${esc(actionLabel(x.action))}</small><em>${esc(dateLabel(x.at,true))}</em>${x.note?`<p>${esc(x.note)}</p>`:''}</div></div>`).join('')}
   function actionLabel(a){return({registrada:'Rendición registrada',enviada_aprobacion:'Enviada al Presidente para aprobación',editada:'Rendición corregida y reenviada',aprobada:'Rendición aprobada',rechazada:'Rendición rechazada',observada:'Corrección solicitada'}[a]||String(a||'Movimiento'))}
