@@ -1372,6 +1372,22 @@
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("tesorero-conciliacion"); }catch(e){}
     return updated;
   }
+  async function reversePaymentReconciliation(paymentId, opts){
+    if(!paymentId || !isUuid(paymentId)) throw new Error("Pago inválido");
+    const reason = String(opts?.reason || "").trim();
+    const rows = await sb("rpc/reverse_payment_reconciliation", {
+      method:"POST",
+      body:JSON.stringify({p_payment_id:paymentId,p_reason:reason||null})
+    });
+    try{
+      if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function"){
+        await window.CURSAPP.hydrateOperationalFromSupabase("tesorero-anula-conciliacion");
+      }
+    }catch(e){}
+    if(Array.isArray(rows)) return rows[0] || null;
+    return rows || null;
+  }
+
 
   function getActiveProfileForOptOut(){
     try{
@@ -1512,7 +1528,7 @@
   }
 
   window.CURSAPP = window.CURSAPP || {};
-  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, reconcilePayments, markCampaignOptOut, syncPaidLocalPayment, syncPaidLocalPayments };
+  window.CURSAPP_PAYMENTS_V11 = { refresh, ensurePagosPendientes, markPaid, reconcilePayments, reversePaymentReconciliation, markCampaignOptOut, syncPaidLocalPayment, syncPaidLocalPayments };
   window.CURSAPP.refreshPagosSupabase = refresh;
   window.CURSAPP.markPaymentPaidSupabase = markPaid;
   window.CURSAPP.markCampaignOptOutSupabase = markCampaignOptOut;
