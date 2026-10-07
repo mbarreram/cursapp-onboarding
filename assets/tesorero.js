@@ -4350,14 +4350,13 @@ __bootTesoreroSupabaseFirst();
   function syncHeader(){
     try{
       const s=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');
-      const raw=s.fullName||s.displayName||s.name||s.nombre||s.guardianName||s.apoderadoName||'Tesorero';
-      const name=String(raw).includes('@')?'Tesorero':raw;
+      const name=(typeof treasurerDisplayName==='function'?treasurerDisplayName():'Tesorero')||'Tesorero';
       let wrapper={}; try{wrapper=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};}catch(_){} const official=wrapper.course||wrapper;
       const course=s.courseLabel||s.course||s.curso||[official.level,official.letter,official.year].filter(Boolean).join('')||official.nombre||'Curso no informado';
       const school=s.schoolName||s.colegio||s.school||official.schoolName||official.colegioNombre||'Colegio no informado';
       const n=document.querySelector('.tesHeaderName'); if(n) n.textContent=name;
       const r=document.querySelector('.tesHeaderRole'); if(r) r.textContent='Tesorero';
-      const c=document.querySelector('.tesHeaderCourse'); if(c) c.textContent=`${course} · ${school}`;
+      const ch=document.querySelector('.tesHeaderCourse'); if(ch) ch.textContent=`${course} · ${school}`;
     }catch(_){}
   }
   function setActive(){
