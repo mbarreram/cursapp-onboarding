@@ -13,6 +13,19 @@
     const rows=await sb.request(`notification_preferences?select=*&user_id=eq.${encodeURIComponent(user.id)}&rol_destino=eq.${encodeURIComponent(role())}&limit=1`);
     return {user,row:Array.isArray(rows)&&rows[0]?rows[0]:null};
   }
+  async function currentPushState(){
+    const info=support();
+    if(!info.notification||!info.sw||!info.push)return {registered:false,subscription:null,row:null};
+    try{
+      const registration=await navigator.serviceWorker.getRegistration('/').catch(()=>null) || await navigator.serviceWorker.getRegistration().catch(()=>null);
+      const subscription=registration?.pushManager?await registration.pushManager.getSubscription():null;
+      if(!subscription?.endpoint)return {registered:false,subscription:null,row:null};
+      const user=await sb.getCurrentUser();
+      const rows=await sb.request(`push_subscriptions?select=id,endpoint,enabled,updated_at&user_id=eq.${encodeURIComponent(user.id)}&endpoint=eq.${encodeURIComponent(subscription.endpoint)}&limit=1`);
+      const row=Array.isArray(rows)&&rows[0]?rows[0]:null;
+      return {registered:!!(row&&row.enabled),subscription,row};
+    }catch(_){return {registered:false,subscription:null,row:null}}
+  }
   async function save(patch){
     const {user,row}=await preference();
     const body=Object.assign({user_id:user.id,rol_destino:role(),push_enabled:false,email_enabled:true,campaigns:true,payments:true,announcements:true,market:true,chat:true,tasks:true,support:true,system:true,updated_at:new Date().toISOString()},row||{},patch||{});
@@ -32,6 +45,8 @@
     if(!sub){const key=sb.pushVapidPublicKey;if(!key)throw new Error('Falta la clave pública de notificaciones.');sub=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(key)})}
     const json=sub.toJSON(),keys=json.keys||{},user=await sb.getCurrentUser(),d=device();
     await sb.request('push_subscriptions?on_conflict=user_id%2Cendpoint',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({user_id:user.id,endpoint:json.endpoint,p256dh:keys.p256dh,auth:keys.auth,platform:d.platform,browser:d.browser,device:d.device,enabled:true,updated_at:new Date().toISOString()})});
+    const verified=await currentPushState();
+    if(!verified.registered)throw new Error('El permiso fue concedido, pero este dispositivo no quedó registrado en MiCursoX.');
     await save({push_enabled:true});
     return true;
   }
@@ -47,11 +62,14 @@
   async function open(){
     css();document.getElementById('npOverlay')?.remove();
     const info=support();let pref=null;try{pref=(await preference()).row}catch(_){ }
-    const enabled=info.permission==='granted'&&pref?.push_enabled!==false;
-    const state=!info.notification||!info.sw||!info.push?'No soportadas':enabled?'Activas':info.permission==='denied'?'Bloqueadas':'Pendientes';
+    const pushState=await currentPushState();
+    const enabled=info.permission==='granted'&&pref?.push_enabled===true&&pushState.registered===true;
+    const state=!info.notification||!info.sw||!info.push?'No disponible en esta pestaña':enabled?'Activas':info.permission==='denied'?'Bloqueadas':'Configuración pendiente';
+    const permissionLabel=info.permission==='granted'?'Permitido':info.permission==='denied'?'Bloqueado':info.permission==='default'?'Sin autorizar':'No disponible';
+    const pill=!info.notification||!info.sw||!info.push?'Abrir app':enabled?'Activas':'Configurar';
     const cats=[['payments','💰 Pagos y comprobantes'],['campaigns','📅 Campañas'],['announcements','📢 Avisos del curso'],['support','🛠️ Soporte y tickets'],['chat','💬 Chat y mensajes'],['market','🛍️ Mercado Escolar'],['tasks','✅ Tareas y rendiciones'],['system','🔔 Sistema']];
     const root=document.createElement('div');root.id='npOverlay';root.className='npOverlay';
-    root.innerHTML=`<section class="npCard"><header class="npHead"><div><h2>Preferencias de notificaciones</h2><p>Configuración para el rol ${esc(role())}.</p></div><button class="npClose" data-close aria-label="Cerrar">×</button></header><div class="npBody"><div class="npStatus"><div><b>🔔 Notificaciones Push</b><p>Estado: ${esc(state)} · Permiso: ${esc(info.permission)}</p></div><span class="npPill">${enabled?'Activas':'Pendiente'}</span></div>${info.ios&&!info.standalone?'<div class="npNote">En iPhone debes abrir Cursapp desde el ícono instalado en la pantalla de inicio para activar push.</div>':''}<div class="npActions"><button class="npBtn primary" data-enable ${enabled?'disabled':''}>${enabled?'Notificaciones activas':'Activar notificaciones'}</button><button class="npBtn" data-test ${enabled?'':'disabled'}>Enviar prueba</button></div><div class="npCats"><h3>Categorías</h3>${cats.map(([k,l])=>`<label class="npRow"><span>${l}</span><input type="checkbox" data-pref="${k}" ${pref?.[k]===false?'':'checked'}></label>`).join('')}</div></div></section>`;
+    root.innerHTML=`<section class="npCard"><header class="npHead"><div><h2>Preferencias de notificaciones</h2><p>Configuración para el rol ${esc(role())}.</p></div><button class="npClose" data-close aria-label="Cerrar">×</button></header><div class="npBody"><div class="npStatus"><div><b>🔔 Notificaciones Push</b><p>Estado: ${esc(state)}</p>${info.notification&&info.sw&&info.push?`<p>Permiso del dispositivo: ${esc(permissionLabel)}</p>`:''}</div><span class="npPill">${esc(pill)}</span></div><div class="npNote">${!info.notification||!info.sw||!info.push?'Para recibir notificaciones en iPhone, abre MiCursoX desde el ícono instalado en la pantalla de inicio.':enabled?'Este dispositivo está configurado para recibir notificaciones de MiCursoX. Puedes elegir abajo qué categorías quieres recibir.':'Configura este dispositivo para recibir avisos de pagos, campañas, mensajes y otras novedades de tu curso. Puedes elegir las categorías que quieras recibir.'}</div><div class="npActions"><button class="npBtn primary" data-enable ${enabled||!info.notification||!info.sw||!info.push?'disabled':''}>${enabled?'Notificaciones activas':(!info.notification||!info.sw||!info.push?'Abrir desde la app instalada':'Configurar notificaciones')}</button><button class="npBtn" data-test ${enabled?'':'disabled'}>Enviar prueba</button></div><div class="npCats"><h3>Categorías</h3>${cats.map(([k,l])=>`<label class="npRow"><span>${l}</span><input type="checkbox" data-pref="${k}" ${pref?.[k]===false?'':'checked'}></label>`).join('')}</div></div></section>`;
     root.onclick=async e=>{if(e.target===root||e.target.closest('[data-close]')){root.remove();return}if(e.target.closest('[data-enable]')){const b=e.target.closest('[data-enable]');b.disabled=true;try{await activate();alert('Notificaciones activadas correctamente.');root.remove();open()}catch(err){alert(err?.message||String(err));b.disabled=false}return}if(e.target.closest('[data-test]')){try{const n=await test();alert(`Prueba enviada a ${n} dispositivo(s).`)}catch(err){alert(err?.message||String(err))}}};
     root.onchange=async e=>{const input=e.target.closest('[data-pref]');if(!input)return;try{await save({[input.dataset.pref]:!!input.checked})}catch(err){input.checked=!input.checked;alert(err?.message||'No se pudo guardar la preferencia')}};
     document.body.appendChild(root);
