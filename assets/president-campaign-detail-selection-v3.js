@@ -40,33 +40,35 @@ async function openCampaign(c){
  const amount=Number(c.monto||0);
  const months=norm(c.tipo)==='monthly'?Math.max(1,Number(c.meses||1)):1;
  const voluntary=c.obligatoria===false;
- const excludedStates=['opted_out','no_participa','no participa','anulado','cancelled'];
- const acceptedIds=new Set(rows.filter(p=>!excludedStates.includes(norm(p.estado))).map(p=>String(p.miembro_id||'')).filter(Boolean));
+ const finance=window.CURSAPP_FINANCE_CORE||null;
+ const acceptedIds=new Set(rows.filter(p=>!['opted_out','no_participa','no participa','anulado','cancelled','cancelado'].includes(norm(p.estado))).map(p=>String(p.miembro_id||'')).filter(Boolean));
  const outIds=new Set(rows.filter(p=>['opted_out','no_participa','no participa'].includes(norm(p.estado))).map(p=>String(p.miembro_id||'')).filter(Boolean));
  const participants=voluntary?acceptedIds.size:totalCourse;
  const paid=rows.filter(p=>['pagado','paid','conciliado'].includes(norm(p.estado)));
  const paidIds=new Set(paid.map(p=>String(p.miembro_id||'')).filter(Boolean));
- const collected=paid.reduce((s,p)=>s+Number(p.monto_pagado??p.monto??0),0);
- const eligibleRows=rows.filter(p=>!excludedStates.includes(norm(p.estado)));
- const importedProjected=eligibleRows.reduce((s,p)=>s+Number(p.monto??p.amount??0),0);
+ const collected=rows.reduce((s,p)=>s+(finance?.paidAmount?finance.paidAmount(p):Number(p.monto_pagado??0)),0);
  const explicitGoal=Math.max(0,Number(c.goal_total??c.goalTotal??c.meta??0)||0);
- const projected=Math.max(explicitGoal, importedProjected, participants*amount*months, collected);
- const pending=Math.max(0,projected-collected);
+ const projectedBase=finance?.taskExpectedTotal?finance.taskExpectedTotal(c,totalCourse):Math.max(explicitGoal,participants*amount*months,collected);
+ const pending=finance?.taskPendingTotal?finance.taskPendingTotal(c,rows,totalCourse):Math.max(0,projectedBase-collected);
+ const projected=Math.max(projectedBase,collected+pending,collected);
  const pct=projected?Math.min(100,Math.round(collected/projected*100)):0;
  const acceptanceRate=totalCourse?Math.round(acceptedIds.size/totalCourse*100):0;
  const remain=daysLeft(c.fecha_vencimiento);
- const pendingRows=rows.filter(p=>!['pagado','paid','conciliado','opted_out','no_participa','no participa','anulado','cancelled'].includes(norm(p.estado)));
  const debtorMap=new Map();
- pendingRows.forEach(p=>{
+ rows.filter(p=>!['anulado','cancelled','cancelado'].includes(norm(p.estado))).forEach(p=>{
+   const rem=finance?.remainingForTask?finance.remainingForTask(p,c):Math.max(0,Number(p.monto||amount||0)-Number(p.monto_pagado||0));
+   if(rem<=0)return;
    const mid=String(p.miembro_id||'');
    const m=memberMap.get(mid)||{};
    const key=mid || String(m.nombre_alumno||'sin-id');
    if(!debtorMap.has(key)) debtorMap.set(key,{member:m,count:0,total:0});
    const d=debtorMap.get(key);
    d.count+=1;
-   d.total+=Number(p.monto||amount||0);
+   d.total+=rem;
  });
+ const debtorCount=finance?.taskDebtorCount?finance.taskDebtorCount(c,rows,totalCourse):debtorMap.size;
  const debtorRows=[...debtorMap.values()].sort((a,b)=>String(a.member?.nombre_alumno||'').localeCompare(String(b.member?.nombre_alumno||''),'es'));
+ const unmappedDebtors=Math.max(0,debtorCount-debtorRows.length);
  const timeline=[{icon:'🟢',title:'Campaña creada',detail:date(c.created_at),at:c.created_at},...paid.slice(0,8).map(p=>{const m=memberMap.get(String(p.miembro_id||''))||{};return{icon:'💰',title:m.nombre_alumno||m.nombre_apoderado||'Pago recibido',detail:clp(p.monto_pagado??p.monto),at:p.paid_at||p.created_at}})].sort((a,b)=>Date.parse(b.at||0)-Date.parse(a.at||0)).slice(0,6);
  const ov=document.createElement('div');ov.className='mxCampV3Overlay';
  ov.innerHTML=`<section class="mxCampV3Sheet"><div class="mxCampV3Head"><div><h2>${esc(c.titulo||'Campaña')}</h2><p>Resumen ejecutivo de campaña</p></div><button class="mxCampV3Close">Cerrar</button></div>
@@ -75,7 +77,7 @@ async function openCampaign(c){
  ${voluntary?`<div class="mxCampV3Info">Esta campaña es voluntaria. La proyección se calcula solo con quienes tienen participación confirmada. Los demás alumnos del curso no se incorporan al monto por cobrar hasta que acepten participar.</div><div class="mxCampV3Participation"><article class="mxCampV3Card yes"><small>✅ Aceptaron</small><b>${acceptedIds.size}</b><em>${acceptanceRate}% del curso</em></article><article class="mxCampV3Card no"><small>🚫 No participan</small><b>${outIds.size}</b><em>No se incluyen en la proyección</em></article></div>`:`<div class="mxCampV3Info" style="background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8">Esta campaña es obligatoria. La proyección considera a <b>todos los alumnos del curso (${totalCourse})</b>, aunque todavía no estén registrados en MiCursoX.</div>`}
  <article class="mxCampV3Card mxCampV3Section"><small>Estado de recaudación</small><b>${clp(collected)} recaudado</b><div class="mxCampV3Progress"><i style="width:${pct}%"></i></div><small>${clp(pending)} pendiente · ${pct}% del objetivo</small></article>
  <section class="mxCampV3Section"><h3>Fechas</h3><div class="mxCampV3Dates"><article class="mxCampV3Card"><small>Inicio</small><b>${date(c.fecha_inicio||c.created_at)}</b></article><article class="mxCampV3Card"><small>Vencimiento</small><b>${date(c.fecha_vencimiento)}</b></article><article class="mxCampV3Card wide"><small>Estado del plazo</small><b>${remain==null?'Sin vencimiento':remain<0?`Venció hace ${Math.abs(remain)} día(s)`:remain===0?'Vence hoy':`Restan ${remain} día(s)`}</b></article></div></section>
- <section class="mxCampV3Section mxCampV3Card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h3 style="margin:0">Deudores de la campaña</h3><button type="button" data-toggle-debtors style="border:0;background:#f3e8ff;color:#6d28d9;border-radius:12px;padding:8px 10px;font-weight:900">${debtorRows.length?debtorRows.length+' deudor'+(debtorRows.length===1?'':'es'):'Sin deudores'} ▾</button></div><div class="mxCampV3Lines" data-debtor-list style="display:none;margin-top:10px">${debtorRows.length?debtorRows.map(d=>{const m=d.member||{};return`<div class="mxCampV3Line"><span>👤</span><div><b>${esc(m.nombre_alumno||'Alumno pendiente')}</b><small>${esc(m.nombre_apoderado||m.email||'Apoderado sin cuenta')}</small>${d.count>1?`<small>${d.count} cuotas pendientes</small>`:''}</div><strong>${clp(d.total)}</strong></div>`}).join(''):'<div class="mxCampV3Empty">No hay cobros pendientes registrados.</div>'}</div></section>
+ <section class="mxCampV3Section mxCampV3Card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h3 style="margin:0">Deudores de la campaña</h3><button type="button" data-toggle-debtors style="border:0;background:#f3e8ff;color:#6d28d9;border-radius:12px;padding:8px 10px;font-weight:900">${debtorCount?debtorCount+' deudor'+(debtorCount===1?'':'es'):'Sin deudores'} ▾</button></div><div class="mxCampV3Lines" data-debtor-list style="display:none;margin-top:10px">${debtorRows.length?debtorRows.map(d=>{const m=d.member||{};return`<div class="mxCampV3Line"><span>👤</span><div><b>${esc(m.nombre_alumno||'Alumno pendiente')}</b><small>${esc(m.nombre_apoderado||m.email||'Apoderado sin cuenta')}</small>${d.count>1?`<small>${d.count} cuotas pendientes</small>`:''}</div><strong>${clp(d.total)}</strong></div>`}).join('')+(unmappedDebtors?`<div class="mxCampV3Line"><span>👥</span><div><b>${unmappedDebtors} alumno${unmappedDebtors===1?'':'s'} pendiente${unmappedDebtors===1?'':'s'}</b><small>Aún sin registro individual disponible en MiCursoX</small></div><strong>Incluido en la proyección</strong></div>`:''):'<div class="mxCampV3Empty">No hay cobros pendientes registrados.</div>'}</div></section>
  <section class="mxCampV3Section mxCampV3Card"><h3>Actividad reciente</h3><div class="mxCampV3Lines">${timeline.map(x=>`<div class="mxCampV3Line"><span>${x.icon}</span><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small></div><strong>${date(x.at)}</strong></div>`).join('')}</div></section>
  <section class="mxCampV3Stats" data-stats><div class="mxCampV3Grid"><article class="mxCampV3Card"><small>Pagaron</small><b>${paidIds.size}</b></article><article class="mxCampV3Card"><small>Pendientes</small><b>${Math.max(0,participants-paidIds.size)}</b></article><article class="mxCampV3Card"><small>Alumnos cargados</small><b>${registered}</b></article><article class="mxCampV3Card"><small>${voluntary?'Aceptación':'Cobertura'}</small><b>${voluntary?acceptanceRate+'%':(totalCourse?Math.round(registered/totalCourse*100):0)+'%'}</b></article></div></section>
  <div class="mxCampV3More">Desliza para revisar todo el detalle de la campaña</div>
