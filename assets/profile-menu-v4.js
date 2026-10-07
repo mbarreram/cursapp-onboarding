@@ -13,7 +13,16 @@ function route(h){
   // Si ya estamos en el dashboard del rol, no recargar la página.
   if(location.pathname===page){
     try{
-      if(tab!=='retiros'&&typeof window.go==='function'){
+      if(tab==='retiros'){
+        if(window.MX_DIRECTIVA_FUNDS&&typeof window.MX_DIRECTIVA_FUNDS.open==='function'){
+          window.MX_DIRECTIVA_FUNDS.open();
+          try{history.replaceState(null,'',page)}catch(_){}
+          return;
+        }
+        var funds=document.querySelector('[data-mx-funds="1"]');
+        if(funds){funds.click();try{history.replaceState(null,'',page)}catch(_){}return}
+      }
+      if(typeof window.go==='function'){
         window.go(tab);
         try{history.replaceState(null,'',page)}catch(_){}
         return;
