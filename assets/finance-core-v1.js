@@ -53,6 +53,16 @@
     if(explicit>0)return explicit;
     return taskAmount(t)*Math.max(0,n(studentTotal))*(isMonthly(t)?taskMonths(t):1);
   };
+  const voluntaryOptOut=p=>['opted_out','no_participa','no participa','excluido','excluida'].includes(status(p));
+  const hardExcluded=p=>['void','cancelled','cancelado','cancelada','anulado','anulada','credit_used'].includes(status(p));
+  const excludedForTask=(p,t)=>hardExcluded(p)||(!mandatory(t)&&voluntaryOptOut(p));
+  const remainingForTask=(p,t)=>{
+    if(!p||excludedForTask(p,t))return 0;
+    if(mandatory(t)&&voluntaryOptOut(p))return obligation(p);
+    return remaining(p);
+  };
+  const taskIdentity=p=>identity(p);
+
   function rowsForTaskPeriod(payments,id,period){
     return (payments||[]).filter(p=>taskId(p)===String(id||'')&&obligationPeriod(p)===period&&!excluded(p));
   }
@@ -121,17 +131,32 @@
   }
   function taskPendingTotal(t,payments,studentTotal){
     const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
-    const rows=(payments||[]).filter(p=>taskId(p)===id&&!excluded(p));
-    const materializedPending=rows.reduce((s,p)=>s+remaining(p),0);
+    const rows=(payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p));
+    const materializedPending=rows.reduce((s,p)=>s+remainingForTask(p,t),0);
     if(!mandatory(t))return materializedPending;
     const expected=taskExpectedTotal(t,studentTotal);
-    const paid=rows.reduce((s,p)=>s+paidAmount(p),0);
+    const paid=rows.reduce((s,p)=>s+(!excludedForTask(p,t)?paidAmount(p):0),0);
     return Math.max(materializedPending,Math.max(0,expected-paid));
+  }
+  function taskDebtorCount(t,payments,studentTotal){
+    const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
+    const rows=(payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p));
+    const debtors=new Set();
+    rows.forEach(p=>{if(remainingForTask(p,t)>0){const who=taskIdentity(p);if(who)debtors.add(who)}});
+    if(!mandatory(t))return debtors.size;
+    const universe=Math.max(Math.max(0,n(studentTotal)),new Set(rows.map(taskIdentity).filter(Boolean)).size);
+    const settled=new Set();
+    rows.forEach(p=>{const who=taskIdentity(p);if(who&&remainingForTask(p,t)<=0&&!excludedForTask(p,t))settled.add(who)});
+    return Math.max(debtors.size,Math.max(0,universe-settled.size));
+  }
+  function taskPendingInstallments(t,payments){
+    const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
+    return (payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p)&&remainingForTask(p,t)>0).length;
   }
 
   const api=Object.freeze({
     ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,
-    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,taskMonthMetrics,monthSummary,courseSummary,taskPendingTotal
+    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskPendingInstallments,taskMonthMetrics,monthSummary,courseSummary,taskPendingTotal
   });
   root.CURSAPP_FINANCE_CORE_V1=true;
   root.CURSAPP_FINANCE_CORE=api;
