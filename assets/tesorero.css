@@ -3468,3 +3468,27 @@ body.cursapp-tesorero .tesV77ExpActions button.danger{
   background:#fff7f7!important;
 }
 body.cursapp-tesorero .tesV77ExpActions button.danger:active{transform:scale(.98);}
+
+/* Rendiciones V1090 · acciones compactas alineadas */
+body.cursapp-tesorero .tesV77ExpActions{
+  align-items:center!important;
+}
+body.cursapp-tesorero .tesV77ExpActions button{
+  min-width:74px;
+}
+body.cursapp-tesorero .tesV77ExpActions button.danger{
+  border:1px solid #fecaca!important;
+  color:#b91c1c!important;
+  background:#fff!important;
+}
+@media(max-width:430px){
+  body.cursapp-tesorero .tesV77ExpActions{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  body.cursapp-tesorero .tesV77ExpActions button.danger{
+    grid-column:1/-1;
+    width:100%;
+    height:30px;
+  }
+}
