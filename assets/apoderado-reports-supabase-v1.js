@@ -49,14 +49,17 @@ function reportFromDb(row){
 async function hydratePublished(reason){
   const cid=courseId();
   if(!cid||!api()?.request)return {reports:0,reason:'missing-context'};
-  const rows=await api().request('informes?curso_id=eq.'+encodeURIComponent(cid)+'&publicado=eq.true&select=*&order=publicado_at.desc,actualizado_at.desc');
+  const rows=await api().request('rpc/get_my_published_reports',{method:'POST',body:JSON.stringify({p_curso_id:cid})});
   const reports=(Array.isArray(rows)?rows:[]).map(reportFromDb).filter(r=>r.published);
   try{
-    localStorage.setItem(scoped('monthly_reports_v1'),JSON.stringify(reports));
-    localStorage.setItem('cursapp_monthly_reports_v1',JSON.stringify(reports));
+    if(reports.length){
+      localStorage.setItem(scoped('monthly_reports_v1'),JSON.stringify(reports));
+      localStorage.setItem('cursapp_monthly_reports_v1',JSON.stringify(reports));
+    }
   }catch(_){}
-  window.dispatchEvent(new CustomEvent('micursox:published-reports-hydrated',{detail:{reason:reason||'manual',reports:reports.length}}));
-  return {reports:reports.length};
+  window.MICURSOX_APO_REPORTS_STATE={courseId:cid,reports,loadedAt:new Date().toISOString(),reason:reason||'manual'};
+  window.dispatchEvent(new CustomEvent('micursox:published-reports-hydrated',{detail:{reason:reason||'manual',reports:reports.length,courseId:cid}}));
+  return {reports:reports.length,courseId:cid};
 }
 
 let refreshing=false;
