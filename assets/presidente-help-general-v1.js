@@ -42,8 +42,17 @@ function go(hash){
     const funds=document.querySelector('[data-mx-funds="1"]');if(funds){funds.click();return}
   }
   if(hash==='avisos'){
-    if(typeof window.openAvisosConfigSafe==='function'){window.openAvisosConfigSafe();return}
-    if(typeof window.go==='function'){window.go('home');return}
+    document.getElementById('cnOverlay')?.remove();
+    document.getElementById('npOverlay')?.remove();
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        if(typeof window.openAvisosConfigReal==='function'){window.openAvisosConfigReal();return}
+        if(typeof window.openAvisosConfig==='function'){window.openAvisosConfig();return}
+        if(typeof window.openAvisosCursoSendModal==='function'){window.openAvisosCursoSendModal();return}
+        alert('Avisos aún se está cargando. Intenta nuevamente en unos segundos.');
+      });
+    });
+    return;
   }
   if(typeof window.go==='function'){window.go(hash);return}
   try{
