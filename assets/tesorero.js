@@ -4415,6 +4415,11 @@ __bootTesoreroSupabaseFirst();
           <article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>◎</em></article>
         </div>
 
+        <div class="tesV75ConcMeaning" role="note" style="margin:12px 0 2px;padding:10px 12px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;color:#475569;font-size:11.5px;line-height:1.45;font-weight:700">
+          <b style="color:#1d4ed8">ℹ️ Estados de conciliación:</b>
+          <span><strong>Por conciliar</strong> = pago recibido, falta validarlo · <strong>Deudor</strong> = aún no paga · <strong>Conciliado</strong> = pago recibido y validado.</span>
+        </div>
+
         <div class="tesV73CampaignInfo tesV75Info ${window.__tesShowCampaignInfo?'open':''}">
           <article><small>Creación</small><b>${esc(createdAtOf(camp))}</b></article>
           <article><small>Estado campaña</small><b>${esc(campaignState(camp).label)}</b></article>
@@ -4432,7 +4437,7 @@ __bootTesoreroSupabaseFirst();
       </section>
 
       <section class="tesV73List tesV75List">
-        ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>${filter==='pendientes'?'Esta campaña no tiene pagos pendientes.':'Esta campaña aún no tiene pagos conciliados.'}</span></article>`}
+        ${rows.map(payRow).join('') || `<article class="tesConcEmpty"><b>No hay pagos en esta vista</b><span>${filter==='pendientes'?'No hay pagos recibidos pendientes de conciliación.':'Esta campaña aún no tiene pagos conciliados.'}</span></article>`}
         <button class="tesV73BulkBtn tesV75BulkBtn ${sel.length?'is-active':'is-disabled'}" ${sel.length?'':'disabled'} onclick="${sel.length?'tesV73OpenBulk()':'void(0)'}">☑ Conciliar seleccionados (${sel.length})</button>
       </section>
 
