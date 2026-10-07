@@ -1879,7 +1879,17 @@ ${cardHtml}
 
 
 // -------- Reports --------
-  function reports(){ return load(KEY_REPORTS, []); }
+  function reports(){
+    const dynamicKey = sk("monthly_reports_v1");
+    let rows = load(dynamicKey, []);
+    if(!Array.isArray(rows) || !rows.length){
+      rows = load("cursapp_monthly_reports_v1", []);
+    }
+    if((!Array.isArray(rows) || !rows.length) && dynamicKey!==KEY_REPORTS){
+      rows = load(KEY_REPORTS, []);
+    }
+    return Array.isArray(rows)?rows:[];
+  }
   function latestReport(){ const r = reports(); return r.length ? r[0] : null; }
 
   function reportSummaryCard(){
