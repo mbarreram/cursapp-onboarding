@@ -4387,7 +4387,7 @@ __bootTesoreroSupabaseFirst();
   function payRow(p){
     const st=statusLabel(p); const checked=!!window.__tesBulkSelection[String(p.id)];
     const pending=!isConc(p);
-    return `<article class="tesV73PayRow ${checked?'selected':''} ${pending?'':'done'}">
+    return `<article class="tesV73PayRow ${checked?'selected':''} ${pending?'':'done'}" data-payment-id="${esc(p.id)}">
       <label class="tesV73Check"><input type="checkbox" ${pending?'':'disabled'} ${checked?'checked':''} onchange="tesV73TogglePayment('${esc(p.id)}',this.checked)"><span></span></label>
       <div class="tesV73Avatar ${pending?'':'ok'}">${pending?esc(initials(p)):'✓'}</div>
       <div class="tesV73Person"><b>${esc(p.guardianName || p.apoderadoName || 'Apoderado')}</b><small>Alumno: ${esc(p.studentName || p.alumno || 'Alumno')}</small></div>
