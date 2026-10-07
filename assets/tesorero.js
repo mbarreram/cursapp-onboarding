@@ -4370,7 +4370,7 @@ __bootTesoreroSupabaseFirst();
       <label class="tesV73Check"><input type="checkbox" ${pending?'':'disabled'} ${checked?'checked':''} onchange="tesV73TogglePayment('${esc(p.id)}',this.checked)"><span></span></label>
       <div class="tesV73Avatar ${pending?'':'ok'}">${pending?esc(initials(p)):'✓'}</div>
       <div class="tesV73Person"><b>${esc(p.guardianName || p.apoderadoName || 'Apoderado')}</b><small>Alumno: ${esc(p.studentName || p.alumno || 'Alumno')}</small></div>
-      <strong class="tesV73Amount">${clp(p.amount)}</strong>
+      <strong class="tesV73Amount">${clp(receivedAmount(p))}</strong>
       <span class="tesV73Status ${st.cls}">${esc(st.label)}</span>
       <div class="tesV73Action">${pending?`<button type="button" onclick="tesV73OpenSheet('${esc(p.id)}')">Conciliar</button>`:`<small>${esc(shortDT(p.reconciledAt||p.paidAt||p.createdAt))}</small>`}</div>
     </article>`;
@@ -4385,6 +4385,7 @@ __bootTesoreroSupabaseFirst();
     const pending=all.filter(p=>!isConc(p));
     const conc=all.filter(isConc);
     const rec=sum(financialAll,p=>receivedAmount(p));
+    const concAmt=sum(conc,p=>receivedAmount(p));
     const pendAmt=sum(pending,p=>receivedAmount(p));
     const goal=goalOf(camp);
     const pct=goal?Math.min(100,Math.round(rec/goal*100)):0;
@@ -4437,7 +4438,7 @@ __bootTesoreroSupabaseFirst();
 
       <section class="tesV73Summary tesV75Summary">
         <header><h2>Resumen de la campaña</h2><button type="button">Ver detalle completo ›</button></header>
-        <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Por conciliar</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(rec)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
+        <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Por conciliar</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(concAmt)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
       </section>
     </div>`;
   }
@@ -4460,7 +4461,7 @@ __bootTesoreroSupabaseFirst();
         await window.CURSAPP_PAYMENTS_V11.reconcilePayments(ids,{method,reference:overlay.querySelector('#tesConcRef')?.value||'',note:overlay.querySelector('#tesConcObs')?.value||''});
       }
     }catch(e){ alert('No se pudo guardar la conciliación en Supabase: '+(e?.message||e)); return; }
-    overlay.remove(); showSuccess({count:affected.length,total:sum(affected,p=>p.amount),method:methodLabel(method),guardian:affected[0]?.guardianName||affected[0]?.apoderadoName||'Apoderado',student:affected[0]?.studentName||affected[0]?.alumno||'Alumno',campaign:titleOf(selectedCampaign())});
+    overlay.remove(); showSuccess({count:affected.length,total:sum(affected,p=>receivedAmount(p)),method:methodLabel(method),guardian:affected[0]?.guardianName||affected[0]?.apoderadoName||'Apoderado',student:affected[0]?.studentName||affected[0]?.alumno||'Alumno',campaign:titleOf(selectedCampaign())});
   }
   function showSuccess(info){
     const overlay=document.createElement('div'); overlay.className='tesV72SuccessOverlay tesV73SuccessOverlay';
@@ -4476,8 +4477,8 @@ __bootTesoreroSupabaseFirst();
   window.tesV73TogglePayment=function(id,v){ window.__tesBulkSelection[String(id)]=!!v; render(); };
   window.tesV73ClearSelection=function(clear){ if(clear) window.__tesBulkSelection={}; render(); };
   window.tesV73ToggleInfo=function(){ window.__tesShowCampaignInfo=!window.__tesShowCampaignInfo; render(); };
-  window.tesV73OpenSheet=function(id){ const p=validRows().find(x=>String(x.id)===String(id)); if(!p) return alert('No se encontró el pago.'); openSheet([id],'Conciliar pago',`${p.studentName||p.alumno||'Alumno'} · ${p.guardianName||p.apoderadoName||'Apoderado'}`,Number(p.amount||0)); };
-  window.tesV73OpenBulk=function(){ const sel=selectedRows(rowsByCampaign(selectedCampaign()?.id)); if(!sel.length) return; openSheet(sel.map(p=>p.id),`Conciliar ${sel.length} pagos`,titleOf(selectedCampaign()),sum(sel,p=>p.amount)); };
+  window.tesV73OpenSheet=function(id){ const p=validRows().find(x=>String(x.id)===String(id)); if(!p) return alert('No se encontró el pago.'); openSheet([id],'Conciliar pago',`${p.studentName||p.alumno||'Alumno'} · ${p.guardianName||p.apoderadoName||'Apoderado'}`,receivedAmount(p)); };
+  window.tesV73OpenBulk=function(){ const sel=selectedRows(rowsByCampaign(selectedCampaign()?.id)); if(!sel.length) return; openSheet(sel.map(p=>p.id),`Conciliar ${sel.length} pagos`,titleOf(selectedCampaign()),sum(sel,p=>receivedAmount(p))); };
 
   const previousGo=window.go;
   window.go=function(tab,taskId){ if(String(tab||'').toLowerCase()==='conciliacion'){ render(); return; } return typeof previousGo==='function'?previousGo(tab,taskId):undefined; };
