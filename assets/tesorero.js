@@ -4139,7 +4139,7 @@ __bootTesoreroSupabaseFirst();
       <section class="tesV72Campaign">
         <div class="tesV72SelectFull"><small>Campaña</small><select onchange="tesV72SelectCampaign(this.value)">${list.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===String(c?.id)?'selected':''}>${esc(titleOf(x))}</option>`).join('')}</select></div>
         <div class="tesV72CampaignMain"><div class="tesV72BigIcon">${campaignIcon(c)}</div><div class="tesV72State"><small>Estado conciliación</small><b class="${pending.length?'warn':'ok'}">${pending.length?'Pend. conciliación':'Cuadrada ✓'}</b><em>${pct}% de la meta</em></div></div>
-        <div class="tesV72CampaignMeta"><article><span>▣</span><small>Creación</small><b>${esc(createdAtOf(c))}</b></article><article><span>⚑</span><small>Estado campaña</small><b class="${st.cls}">${esc(st.label)}</b></article><article><span>👥</span><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><span>◎</span><small>Meta total</small><b>${goal?clp(goal):'Por definir'}</b></article></div>
+        <div class="tesV72CampaignMeta"><article><span>▣</span><small>Creación</small><b>${esc(createdAtOf(c))}</b></article><article><span>⚑</span><small>Estado campaña</small><b class="${st.cls}">${esc(st.label)}</b></article><article><span>👥</span><small>Pagaron</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><span>◎</span><small>Meta total</small><b>${goal?clp(goal):'Por definir'}</b></article></div>
       </section>
       <section class="tesV72Stats"><article><span class="amber">◷</span><small>Pendientes</small><b>${pending.length}</b><em>${clp(sum(pending,p=>p.amount))}</em></article><article><span class="green">✓</span><small>Conciliados</small><b>${conc.length}</b><em>${clp(rec)}</em></article><article><span class="blue">↑</span><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?'meta '+clp(goal):'meta no definida'}</em></article><article><span class="violet">◎</span><small>Meta</small><b>${goal?clp(goal):'—'}</b><em>${pct}%</em></article></section>
       <section class="tesV72Search"><label><span>⌕</span><input value="${esc(window.__tesConcQuery||'')}" oninput="tesV72Query(this.value)" placeholder="Buscar apoderado, alumno o código..."></label><button type="button">☷<small>Más filtros</small></button></section>
@@ -4232,10 +4232,28 @@ __bootTesoreroSupabaseFirst();
   function payments(){ const arr=load(KEY_PAYMENTS,[]); return Array.isArray(arr)?arr:[]; }
   function profiles(){ const arr=load(KEY_PROFILES,[]); return Array.isArray(arr)?arr:[]; }
   function titleOf(c){ return String(c?.title || c?.name || c?.concept || 'Campaña').trim(); }
-  function goalOf(c){ return Number(c?.goalTotal || c?.goal_total || c?.goal || c?.target || c?.meta || c?.amountGoal || 0); }
+  function goalOf(c){
+    const f=window.CURSAPP_FINANCE_CORE;
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(c,totalGuardians());
+    return Number(c?.goalTotal || c?.goal_total || c?.goal || c?.target || c?.meta || c?.amountGoal || 0);
+  }
   function payCampId(p){ return String(p?.fromTaskId || p?.taskId || p?.campaignId || ''); }
-  function isConc(p){ const st=String(p?.status||p?.estado||'').toLowerCase(); return ['paid','pagado','conciliado'].includes(st) || String(p?.conciliationStatus || '').toLowerCase()==='conciliado'; }
-  function validRows(){ return payments().filter(p=>String(p?.conciliationStatus||'').toLowerCase()!=='anulado').filter(p=>!['anulado','void','cancelled','opted_out','no_participa'].includes(String(p?.status||p?.estado||'').toLowerCase())); }
+  function finance(){ return window.CURSAPP_FINANCE_CORE || null; }
+  function isConc(p){
+    const cs=String(p?.conciliationStatus || p?.conciliacion_estado || '').toLowerCase().trim();
+    return cs==='conciliado';
+  }
+  function hardInvalid(p){
+    const st=String(p?.status||p?.estado||'').toLowerCase().trim();
+    const cs=String(p?.conciliationStatus||p?.conciliacion_estado||'').toLowerCase().trim();
+    return cs==='anulado' || ['anulado','void','cancelled','cancelado'].includes(st);
+  }
+  function financialRows(){ return payments().filter(p=>!hardInvalid(p)); }
+  function receivedAmount(p){
+    const f=finance();
+    return f?.paidAmount ? f.paidAmount(p) : Math.max(0,Number(p?.paidAmount ?? p?.monto_pagado ?? 0));
+  }
+  function validRows(){ return financialRows().filter(p=>receivedAmount(p)>0); }
   function campaigns(){
     const t=tasks().filter(x=>!x?.hidden);
     if(t.length) return t;
@@ -4249,6 +4267,11 @@ __bootTesoreroSupabaseFirst();
     let c=list.find(x=>String(x.id)===String(window.__tesCampaignId));
     if(!c){ c=list[0]; window.__tesCampaignId=String(c.id); }
     return c;
+  }
+  function financialRowsByCampaign(id){
+    const cid=String(id||'');
+    if(!cid) return financialRows();
+    return financialRows().filter(p=>payCampId(p)===cid || (!payCampId(p) && String(p?.concept||'')===cid));
   }
   function rowsByCampaign(id){
     const cid=String(id||'');
@@ -4278,18 +4301,29 @@ __bootTesoreroSupabaseFirst();
     const session=(()=>{ try{return JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');}catch(_){return {}} })();
     let courseTotal=0;
     try{ const w=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{}; const c=w.course||w; courseTotal=Number(c.totalAlumnos||c.total_alumnos||0)||0; }catch(_){}
+    if(courseTotal>0) return courseTotal;
     const explicit=Number(session.studentCount || session.alumnos || session.guardianCount || 0);
+    if(explicit>0) return explicit;
     const list=profiles();
     const active=String(localStorage.getItem('cursapp_active_course_v1')||session.courseKey||'');
-    const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || explicit || 0;
-    return Math.max(1,courseTotal,explicit,count);
+    const count=list.filter(p=>!active || String(p?.courseKey||'')===active).length || list.length || 0;
+    return Math.max(1,count);
   }
-  function participation(rows){
-    const total=totalGuardians();
-    const set=new Set();
-    (rows||[]).forEach(p=>{ const k=[p?.apoderadoEmail,p?.email,p?.apoderadoKey,p?.guardianName,p?.apoderadoName,p?.studentName].filter(Boolean).join('|'); if(k) set.add(k.toLowerCase()); });
-    const count=Math.min(total,set.size || Math.min(total,(rows||[]).length));
-    return {count,total,pct:Math.round((count/total)*100)};
+  function rowIdentity(p){
+    const f=finance();
+    return f?.identity ? f.identity(p) : [p?.miembroId,p?.memberId,p?.alumnoId,p?.apoderadoEmail,p?.email,p?.guardianName,p?.studentName].filter(Boolean).join('|').toLowerCase();
+  }
+  function paidFamilies(c, rows){
+    const f=finance();
+    const allFinancial=financialRowsByCampaign(c?.id);
+    const paidSet=new Set((rows||[]).map(rowIdentity).filter(Boolean));
+    let total=totalGuardians();
+    if(f?.mandatory && !f.mandatory(c)){
+      const committed=new Set(allFinancial.filter(p=>!f.excludedForTask?.(p,c)).map(rowIdentity).filter(Boolean));
+      total=Math.max(1,committed.size);
+    }
+    const count=Math.min(total,paidSet.size);
+    return {count,total,pct:total?Math.round((count/total)*100):0};
   }
   function syncHeader(){
     try{
@@ -4347,13 +4381,17 @@ __bootTesoreroSupabaseFirst();
     const list=campaigns();
     const camp=selectedCampaign();
     const all=rowsByCampaign(camp?.id);
+    const financialAll=financialRowsByCampaign(camp?.id);
     const pending=all.filter(p=>!isConc(p));
     const conc=all.filter(isConc);
-    const rec=sum(conc,p=>p.amount);
-    const pendAmt=sum(pending,p=>p.amount);
+    const rec=sum(financialAll,p=>receivedAmount(p));
+    const pendAmt=sum(pending,p=>receivedAmount(p));
     const goal=goalOf(camp);
     const pct=goal?Math.min(100,Math.round(rec/goal*100)):0;
-    const part=participation(all);
+    const part=paidFamilies(camp,all);
+    const f=finance();
+    const debtors=f?.taskDebtorCount?f.taskDebtorCount(camp,financialAll,totalGuardians()):0;
+    const debtAmount=f?.taskPendingTotal?f.taskPendingTotal(camp,financialAll,totalGuardians()):0;
     const filter=String(window.__tesConcFilter||'pendientes');
     const rows=filter==='conciliados'?conc:pending;
     const sel=selectedRows(all);
@@ -4370,8 +4408,8 @@ __bootTesoreroSupabaseFirst();
         </label>
 
         <div class="tesV75CampaignMetrics">
-          <article><small>Apoderados</small><b>${part.count} / ${part.total}</b><em>👥</em></article>
-          <article><small>Pendientes</small><b class="warn">${pending.length}</b><em>◷</em></article>
+          <article><small>Pagaron</small><b>${part.count} / ${part.total}</b><em>👥</em></article>
+          <article><small>Pend. conciliación</small><b class="warn">${pending.length}</b><em>◷</em></article>
           <article><small>Recaudado</small><b class="money">${clp(rec)}</b><em>▣</em></article>
           <article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>◎</em></article>
         </div>
@@ -4379,14 +4417,16 @@ __bootTesoreroSupabaseFirst();
         <div class="tesV73CampaignInfo tesV75Info ${window.__tesShowCampaignInfo?'open':''}">
           <article><small>Creación</small><b>${esc(createdAtOf(camp))}</b></article>
           <article><small>Estado campaña</small><b>${esc(campaignState(camp).label)}</b></article>
-          <article><small>Participación</small><b>${part.pct}%</b></article>
+          <article><small>Pagaron</small><b>${part.count} / ${part.total}</b></article>
           <article><small>Avance meta</small><b>${pct}%</b></article>
+          <article><small>Deudores</small><b>${debtors}</b></article>
+          <article><small>Pendiente de cobro</small><b>${clp(debtAmount)}</b></article>
         </div>
         <button class="tesV73InfoBtn tesV75InfoBtn" type="button" onclick="tesV73ToggleInfo()">Ver información de la campaña <span>⌄</span></button>
       </section>
 
       <section class="tesV73Tabs tesV75Tabs">
-        <button class="${filter==='pendientes'?'active':''}" onclick="tesV73Filter('pendientes')">Pendientes (${pending.length})</button>
+        <button class="${filter==='pendientes'?'active':''}" onclick="tesV73Filter('pendientes')">Por conciliar (${pending.length})</button>
         <button class="${filter==='conciliados'?'active ok':''}" onclick="tesV73Filter('conciliados')">Conciliados (${conc.length})</button>
       </section>
 
@@ -4397,7 +4437,7 @@ __bootTesoreroSupabaseFirst();
 
       <section class="tesV73Summary tesV75Summary">
         <header><h2>Resumen de la campaña</h2><button type="button">Ver detalle completo ›</button></header>
-        <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Pendientes</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(rec)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
+        <div><article><small>Recaudado</small><b>${clp(rec)}</b><em>${goal?pct+'% de la meta':'meta no definida'}</em></article><article><small>Por conciliar</small><b>${pending.length} pagos</b><em>${clp(pendAmt)}</em></article><article><small>Conciliados</small><b>${conc.length} pagos</b><em>${clp(rec)}</em></article><article><small>Participación</small><b>${part.count} / ${part.total}</b><em>${part.pct}%</em></article><article><small>Meta total</small><b>${goal?clp(goal):'—'}</b><em>${goal?'Definida':'Por definir'}</em></article></div>
       </section>
     </div>`;
   }
