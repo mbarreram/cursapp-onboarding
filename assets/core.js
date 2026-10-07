@@ -1495,25 +1495,16 @@
     return rows[0] || null;
   }
   async function syncPaidLocalPayments(){
-    try{
-      const ck = activeCourseKey();
-      if(!ck) return {synced:0};
-      const key = (window.CURSAPP && typeof window.CURSAPP.scopedKey === "function") ? window.CURSAPP.scopedKey("payments_v1") : "cursapp_" + ck + "_payments_v1";
-      const arr = JSON.parse(localStorage.getItem(key) || localStorage.getItem("cursapp_payments_v1") || "[]");
-      let synced = 0;
-      for(const p of (Array.isArray(arr)?arr:[])){
-        if(norm(p && p.status) !== "paid") continue;
-        try{ const row = await syncPaidLocalPayment(p); if(row) synced++; }catch(e){}
-      }
-      return {synced};
-    }catch(e){ return {synced:0, error:e.message}; }
+    // Fase 2B: Supabase is authoritative for operational payments.
+    // Never replay legacy/localStorage payment cache back into the database.
+    return {synced:0, disabled:true, source:"supabase-authoritative"};
   }
   async function refresh(reason){
     try{
       const curso = await getCurso();
       if(!curso || !curso.id) return;
       const ensured = await ensurePagosPendientes(curso.id);
-      const synced = await syncPaidLocalPayments();
+      const synced = {synced:0, disabled:true, source:"supabase-authoritative"};
       saveStatus("ok", {reason:reason||"manual", ensured, synced});
       try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-refresh"); }catch(e){}
       return {ensured, synced};
