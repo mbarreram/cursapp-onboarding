@@ -1446,7 +1446,20 @@
   async function syncPaidLocalPayment(payment){
     if(!payment) return null;
     const id = payment.remoteId || payment.id;
-    if(isUuid(id)) return markPaid(id, { amount: payment.amount || payment.monto, method: payment.paymentMethod || payment.paidWith || "manual", paidAt: payment.paidAt || new Date().toISOString() });
+    if(isUuid(id)){
+      const currentRows = await sb("pagos?id=eq." + q(id) + "&select=id,estado,monto_pagado,paid_at,metodo_pago,conciliacion_estado&limit=1");
+      const current = currentRows[0];
+      if(current && ["pagado","paid","conciliado"].includes(norm(current.estado))){
+        // Supabase is authoritative for already-paid rows. Never rewrite reconciliation
+        // state, payment date or amount from legacy/local cache.
+        return current;
+      }
+      return markPaid(id, {
+        amount: payment.paidAmount ?? payment.monto_pagado ?? payment.amount ?? payment.monto,
+        method: payment.paymentMethod || payment.paidWith || "manual",
+        paidAt: payment.paidAt || undefined
+      });
+    }
 
     const curso = await getCurso();
     if(!curso || !curso.id) return null;
@@ -1456,8 +1469,16 @@
     const miembros = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id&limit=1");
     const miembro = miembros[0];
     if(!miembro || !miembro.id) return null;
-    const existentes = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id&limit=1");
-    if(existentes[0]) return markPaid(existentes[0].id, { amount: payment.amount || payment.monto, method: payment.paymentMethod || payment.paidWith || "manual", paidAt: payment.paidAt || new Date().toISOString() });
+    const existentes = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id,estado,monto_pagado,paid_at,metodo_pago,conciliacion_estado&limit=1");
+    if(existentes[0]){
+      const current=existentes[0];
+      if(["pagado","paid","conciliado"].includes(norm(current.estado))) return current;
+      return markPaid(current.id, {
+        amount: payment.paidAmount ?? payment.monto_pagado ?? payment.amount ?? payment.monto,
+        method: payment.paymentMethod || payment.paidWith || "manual",
+        paidAt: payment.paidAt || undefined
+      });
+    }
     const rows = await sb("pagos", { method:"POST", body: JSON.stringify({
       curso_id: curso.id,
       campana_id: campanaId,
