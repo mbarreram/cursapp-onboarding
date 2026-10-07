@@ -16,8 +16,10 @@
   function clickTab(tab){
     tab=normalize(tab);if(!tab)return false;
     if(tab==='retiros'){
+      if(window.MX_DIRECTIVA_FUNDS&&typeof window.MX_DIRECTIVA_FUNDS.open==='function'){window.MX_DIRECTIVA_FUNDS.open();return true}
       var funds=document.querySelector('[data-mx-funds="1"]');
       if(funds){funds.click();return true}
+      return false;
     }
     var direct=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
     if(direct){direct.click();return true}
