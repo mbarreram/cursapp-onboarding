@@ -1334,13 +1334,14 @@
   async function markPaid(paymentId, opts){
     if(!paymentId || !isUuid(paymentId)) return null;
     const amount = Number(opts?.amount || 0) || null;
+    const method = String(opts?.method || opts?.paymentMethod || "webpay").toLowerCase();
     const body = {
       estado: "pagado",
       paid_at: opts?.paidAt || new Date().toISOString(),
-      metodo_pago: opts?.method || opts?.paymentMethod || "webpay"
+      metodo_pago: method,
+      conciliacion_estado: (opts?.conciliated || ["webpay","transbank"].includes(method)) ? "conciliado" : "pendiente"
     };
     if(amount != null) body.monto_pagado = amount;
-    if(opts?.conciliated) body.conciliacion_estado = "conciliado";
     const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
     const paidRow = rows[0] || Object.assign({id: paymentId}, body);
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
@@ -1355,13 +1356,14 @@
     const ids = (Array.isArray(paymentIds)?paymentIds:[]).filter(isUuid);
     const updated = [];
     for(const id of ids){
-      const current = await sb("pagos?id=eq."+q(id)+"&select=id,monto,monto_pagado&limit=1");
+      const current = await sb("pagos?id=eq."+q(id)+"&select=id,monto,monto_pagado,paid_at,metodo_pago&limit=1");
       const row = current[0] || {};
+      const alreadyPaid = Number(row.monto_pagado||0);
       const body = {
         estado:"pagado",
-        monto_pagado:Number(row.monto||row.monto_pagado||0),
-        paid_at:new Date().toISOString(),
-        metodo_pago:opts?.method||"manual",
+        monto_pagado:alreadyPaid>0 ? alreadyPaid : Number(row.monto||0),
+        paid_at:row.paid_at || new Date().toISOString(),
+        metodo_pago:opts?.method||row.metodo_pago||"manual",
         conciliacion_estado:"conciliado"
       };
       const rows = await sb("pagos?id=eq."+q(id),{method:"PATCH",body:JSON.stringify(body)});
@@ -1465,6 +1467,7 @@
       estado: "pagado",
       paid_at: payment.paidAt || new Date().toISOString(),
       metodo_pago: payment.paymentMethod || payment.paidWith || "manual",
+      conciliacion_estado: ["webpay","transbank"].includes(String(payment.paymentMethod || payment.paidWith || "manual").toLowerCase()) ? "conciliado" : "pendiente",
       fecha_vencimiento: payment.dueDate || null,
       periodo: payment.period || ymFromISO(payment.dueDate || payment.paidAt)
     }) });
