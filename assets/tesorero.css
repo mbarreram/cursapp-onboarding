@@ -3461,3 +3461,10 @@ body.cursapp-tesorero .tesCampaignExpenseBtn:active{transform:scale(.98);}
     padding:5px 8px;
   }
 }
+
+body.cursapp-tesorero .tesV77ExpActions button.danger{
+  border-color:#fecaca!important;
+  color:#b91c1c!important;
+  background:#fff7f7!important;
+}
+body.cursapp-tesorero .tesV77ExpActions button.danger:active{transform:scale(.98);}
