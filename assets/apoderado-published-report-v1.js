@@ -6,7 +6,14 @@
   function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function clp(v){return '$'+Number(v||0).toLocaleString('es-CL');}
   function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='function')return window.CURSAPP.scopedKey(base);}catch(_e){}return 'cursapp_'+base;}
-  function reports(){try{var r=JSON.parse(localStorage.getItem(scoped('monthly_reports_v1'))||'[]');return Array.isArray(r)?r:[];}catch(_e){return [];}}
+  function reports(){
+    try{
+      var live=window.MICURSOX_APO_REPORTS_STATE&&window.MICURSOX_APO_REPORTS_STATE.reports;
+      if(Array.isArray(live)&&live.length)return live;
+      var r=JSON.parse(localStorage.getItem(scoped('monthly_reports_v1'))||localStorage.getItem('cursapp_monthly_reports_v1')||'[]');
+      return Array.isArray(r)?r:[];
+    }catch(_e){return [];}
+  }
   function selected(){
     var list=reports().slice();
     var period=String(window.__apoReportSelectedPeriod||'').trim();
