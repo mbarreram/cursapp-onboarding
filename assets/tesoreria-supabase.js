@@ -126,6 +126,25 @@
     await hydrate('rendition-reviewed');return true;
   }
 
+  async function voidExpense(expenseId,actorName){
+    const id=String(expenseId||'');
+    if(!id) throw new Error('Rendición inválida.');
+    const at=now(), actor=actorName||session().fullName||session().name||'Tesorero';
+    const current=await api().request(`rendiciones?gasto_id=eq.${encodeURIComponent(id)}&select=*&limit=1`);
+    const rendition=Array.isArray(current)?current[0]:null;
+    const history=Array.isArray(rendition?.historial)?rendition.historial.slice():[];
+    history.push({at,action:'anulada',actor,role:'Tesorero',note:'Rendición anulada desde MiCursoX.'});
+    await Promise.all([
+      api().request(`gastos?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({estado:'anulada',actualizado_at:at})}),
+      rendition?.id
+        ? api().request(`rendiciones?id=eq.${encodeURIComponent(rendition.id)}`,{method:'PATCH',body:JSON.stringify({estado:'anulada',publicado:false,historial:history,actualizado_at:at})})
+        : Promise.resolve()
+    ]);
+    await hydrate('expense-voided');
+    return true;
+  }
+
+
   async function saveReport(payload,published){
     const cid=courseId(),uid=userId(),at=now(),campaignId=payload.campaignId==='__all__'?null:payload.campaignId||null;
     const body={curso_id:cid,campana_id:campaignId,tipo:campaignId?'campana':'general',titulo:payload.campaignTitle||payload.title||'Informe financiero',periodo:payload.period||at.slice(0,7),contenido:JSON.stringify(payload),publicado:!!published,publicado_at:published?at:null,creado_por:uid,estado:published?'publicado':'borrador',actualizado_at:at,metadata:{version:1}};
@@ -173,6 +192,21 @@
     window.tesV78Approve=review('aprobada','Rendición aprobada.');
     window.tesV78Observe=review('observada','Corrección solicitada.');
     window.tesV78Reject=review('rechazada','Rendición rechazada.');
+    window.tesV77Void=async function(id){
+      const expenses=json(scoped('expenses_v1'),[]);
+      const expense=(expenses||[]).find(x=>String(x.id)===String(id));
+      if(!expense) return;
+      const approved=['aprobada','approved','aprobado'].includes(String(expense.approvalStatus||expense.status||'').toLowerCase());
+      const msg=approved
+        ? '¿Anular esta rendición aprobada? Dejará de sumar en gastos y el saldo disponible se recalculará. La trazabilidad se conservará.'
+        : '¿Eliminar esta rendición? Dejará de aparecer y no sumará en los gastos registrados.';
+      if(!confirm(msg)) return;
+      try{
+        await voidExpense(id,session().fullName||session().name||'Tesorero');
+        window.tesV77Close?.();
+        window.tesV77Render?.();
+      }catch(e){alert('No se pudo eliminar/anular la rendición: '+(e?.message||e));}
+    };
 
     const originalView=window.tesV77View;
     window.tesV77View=function(id){
@@ -245,7 +279,7 @@
     window.addEventListener('cursapp:treasuryHydrated',renderSummary);renderSummary();
   }
 
-  window.CURSAPP_TREASURY={hydrate,saveExpense,updateApproval,saveReport,unpublishReport,signedReceipt,courseId,userId};
+  window.CURSAPP_TREASURY={hydrate,saveExpense,updateApproval,voidExpense,saveReport,unpublishReport,signedReceipt,courseId,userId};
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{
     hydrate('boot').catch(e=>console.warn('Tesorería Supabase:',e));
     installTreasurerBridges();installPresidentBridge();installPresidentRenditions();
