@@ -9,18 +9,36 @@ function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='
 function load(base){try{const x=JSON.parse(localStorage.getItem(scoped(base))||'[]');return Array.isArray(x)?x:[];}catch(_e){return[];}}
 function reports(){return load('monthly_reports_v1').slice().sort((a,b)=>String(b.generatedAt||'').localeCompare(String(a.generatedAt||'')));}
 function getReport(period){const all=reports();return (period?all.find(r=>String(r.period||'')===String(period)):null)||all[0]||null;}
-function paid(p){return ['paid','pagado','conciliado'].includes(norm(p&&(p.status||p.estado)));}
-function excluded(p){return ['opted_out','no_participa','no participa','cancelled','cancelado','void','anulado'].includes(norm(p&&(p.status||p.estado)));}
 function paymentTaskId(p){return String((p&&(p.fromTaskId||p.campana_id||p.taskId||p.campaignId))||'');}
 function title(t){return String((t&&(t.title||t.titulo||t.name||t.nombre))||'Campaña');}
-function goal(t){return Number((t&&(t.goalTotal??t.goal_total??t.meta??t.objetivo))||0)||0;}
-function paidAmount(p){return Number((p&&(p.amountPaid??p.monto_pagado??p.amount??p.monto))||0)||0;}
-function dueAmount(p){return Number((p&&(p.amountRemaining??p.amount??p.monto))||0)||0;}
+function studentTotal(){
+  try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};const c=x.course||x;return Math.max(0,Number(c.totalAlumnos??c.total_alumnos??0)||0)}catch(_e){return 0}
+}
+function finance(){return window.CURSAPP_FINANCE_CORE||null;}
 function snapshot(period){
- const rep=getReport(period)||{}; const tasks=load('tasks_v1').filter(t=>t&&!t.closed&&!['cerrada','closed','cancelada','cancelled'].includes(norm(t.status||t.estado))); const pays=load('payments_v1').filter(p=>p&&!excluded(p)); const rc=Array.isArray(rep.campaigns)?rep.campaigns:[];
- let rows=tasks.map(t=>{const id=String(t.id||t.campana_id||'');const ps=pays.filter(p=>paymentTaskId(p)===id);const sr=rc.find(c=>String(c.id||c.taskId||c.campana_id||'')===id)||rc.find(c=>norm(c.title||c.titulo||c.name)===norm(title(t)))||{};let g=goal(t)||Number(sr.goalTotal??sr.goal_total??sr.meta??sr.objetivo??0)||0;if(!g)g=ps.reduce((a,p)=>a+dueAmount(p),0);const col=Math.max(ps.filter(paid).reduce((a,p)=>a+paidAmount(p),0),Number(sr.recaudado??sr.collected??sr.cobrado??sr.totalPaid??0)||0);return{id,title:title(t),goal:g,collected:col,pending:Math.max(0,g-col),pct:g>0?Math.round(col/g*100):0};});
- if(!rows.length&&rc.length)rows=rc.map(c=>{const g=Number(c.goalTotal??c.goal_total??c.meta??c.objetivo??0)||0;const col=Number(c.recaudado??c.collected??c.cobrado??c.totalPaid??0)||0;return{id:String(c.id||''),title:String(c.title||c.titulo||c.name||'Campaña'),goal:g,collected:col,pending:Math.max(0,g-col),pct:g>0?Math.round(col/g*100):0};});
- const rec=Math.max(Number(rep.recaudadoCurso??rep.recaudado??0)||0,rows.reduce((a,r)=>a+r.collected,0));const gas=Number(rep.gastadoCurso||0)||0;const pending=rows.reduce((a,r)=>a+r.pending,0);const target=rec+pending;return{rep,period:rep.period||period||new Date().toISOString().slice(0,7),rec,gas,saldo:rec-gas,pending,target,pct:target>0?Math.round(rec/target*100):0,rows};
+ const rep=getReport(period)||{};
+ const tasks=load('tasks_v1').filter(t=>t&&!t.closed&&!['cerrada','closed','cancelada','cancelled','eliminada'].includes(norm(t.status||t.estado)));
+ const pays=load('payments_v1');
+ const expenses=load('expenses_v1');
+ const f=finance();
+ const totalStudents=studentTotal();
+ const rc=Array.isArray(rep.campaigns)?rep.campaigns:[];
+ let rows=tasks.map(t=>{
+   const id=String(t.id||t.campana_id||'');
+   const ps=pays.filter(p=>paymentTaskId(p)===id);
+   const sr=rc.find(c=>String(c.id||c.taskId||c.campana_id||'')===id)||rc.find(c=>norm(c.title||c.titulo||c.name)===norm(title(t)))||{};
+   const goal=f?.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):(Number(t.goalTotal??t.goal_total??t.meta??0)||0);
+   const collected=ps.reduce((a,p)=>a+(f?.paidAmount?f.paidAmount(p):0),0);
+   const pending=f?.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0;
+   return{id,title:title(t),goal,collected,pending,pct:goal>0?Math.max(0,Math.min(100,Math.round(collected/goal*100))):0};
+ });
+ if(!rows.length&&rc.length){
+   rows=rc.map(c=>{const g=Number(c.goalTotal??c.goal_total??c.meta??c.objetivo??0)||0;const col=Number(c.recaudado??c.collected??c.cobrado??c.totalPaid??0)||0;const pen=Number(c.pendiente??c.pending??0)||0;return{id:String(c.id||''),title:String(c.title||c.titulo||c.name||'Campaña'),goal:g,collected:col,pending:Math.max(0,pen),pct:g>0?Math.round(col/g*100):0};});
+ }
+ const course=f?.courseSummary?f.courseSummary({payments:pays,expenses}):{collected:Number(rep.recaudadoCurso||0)||0,spent:Number(rep.gastadoCurso||0)||0,balance:Number(rep.disponibleCurso||0)||0};
+ const pending=rows.reduce((a,r)=>a+r.pending,0);
+ const target=course.collected+pending;
+ return{rep,period:period||new Date().toISOString().slice(0,7),rec:course.collected,gas:course.spent,saldo:course.balance,pending,target,pct:target>0?Math.max(0,Math.min(100,Math.round(course.collected/target*100))):0,rows};
 }
 function body(data){return '<section class="mxR2">'+
 '<header><div><h1>Informe ejecutivo del curso</h1><p>Estado actual · Periodo: <b>'+esc(data.period)+'</b></p></div></header>'+
