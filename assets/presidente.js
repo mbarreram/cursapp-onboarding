@@ -798,15 +798,16 @@ function hash32(str){
 
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
-  const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
-  const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
-  // Si no existe cuota/índice (legacy), asumimos 1 (pago único) para evitar duplicados.
-  const cuotaRaw = (p.installmentIndex!=null && p.installmentIndex!=="") ? p.installmentIndex : (p.cuotaNumero || p.installment || p.cuota);
+  if(p?.fromSupabase && p?.id) return "supabase|" + String(p.id);
+  const cid = String(p?.fromTaskId || p?.taskId || p?.campaignId || "");
+  const who = String(p?.miembroId || p?.memberId || p?.apoderadoId || p?.userId || p?.payerId || p?.email || p?.payerEmail || "").toLowerCase();
+  const period = String(p?.period || p?.periodo || "").trim();
+  const cuotaRaw = (p?.installmentIndex!=null && p.installmentIndex!=="") ? p.installmentIndex : (p?.cuotaNumero || p?.installment || p?.cuota);
   const cuota = String((cuotaRaw==null || cuotaRaw==="") ? 1 : cuotaRaw);
-  const due = String(p.dueDate || "");
-  const amt = String(Number(p.amountRemaining ?? p.amount ?? p.monto ?? 0));
-  const typ = String(p.type || p.kind || "");
-  return [cid, who, cuota, due, amt, typ].join("|");
+  const due = String(p?.dueDate || "");
+  const amt = String(Number(p?.obligationAmount ?? p?.amount ?? p?.monto ?? 0));
+  const typ = String(p?.type || p?.kind || "");
+  return [cid, who, period, cuota, due, amt, typ].join("|");
 }
 
 function dedupePaymentsAll(list){
@@ -1093,9 +1094,19 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
     return Math.max(configured, approvedCount(), 0);
   };
 
-  const collectedCourse = () => sum(payments().filter(isPaid), p => p.amount);
-  const spentCourse = () => sum(expenses(), e => e.amount);
-  const saldoCourse = () => collectedCourse() - spentCourse();
+  const financeCore = () => window.CURSAPP_FINANCE_CORE;
+  function financialCourseSummary(){
+    const f=financeCore();
+    if(f?.courseSummary) return f.courseSummary({payments:payments(),expenses:expenses()});
+    return {
+      collected:sum(payments().filter(isPaid),p=>Number(p.paidAmount ?? p.monto_pagado ?? p.amount ?? 0)),
+      spent:sum(expenses(),e=>e.amount),
+      balance:sum(payments().filter(isPaid),p=>Number(p.paidAmount ?? p.monto_pagado ?? p.amount ?? 0))-sum(expenses(),e=>e.amount)
+    };
+  }
+  const collectedCourse = () => financialCourseSummary().collected;
+  const spentCourse = () => financialCourseSummary().spent;
+  const saldoCourse = () => financialCourseSummary().balance;
 
   const creditTotal = () => sum(payments().filter(isCredit), p => p.amount);
   // Pendiente financiero del curso: las campañas obligatorias se proyectan
@@ -1148,7 +1159,8 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function campaignPendingAmount(taskId){
-    return sum(campaignPendingPayments(taskId), p => (p.amountRemaining ?? p.amount ?? 0));
+    const f=financeCore();
+    return sum(campaignPayments(taskId), p => f?.remaining ? f.remaining(p) : (isPendingFinancialStatus(p) ? (p.amountRemaining ?? p.amount ?? 0) : 0));
   }
 
   function campaignPendingInstallments(taskId){
@@ -1199,13 +1211,13 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   // ---- KPIs mes ----
+  function financialMonthSummary(ym){
+    const f=financeCore();
+    if(f?.monthSummary) return f.monthSummary({payments:payments(),tasks:tasks(),studentTotal:courseStudentTotal(),period:ym});
+    return {collected:0,projected:0,pending:0,debtors:0};
+  }
   function collectedMonth(ym){
-    // prefer paidAt / paidDate if exists; fallback dueDate
-    return sum(payments().filter(p=>{
-      if(!isPaid(p)) return false;
-      const dt = p.paidAt || p.paidDate || p.paid_on || "";
-      return withinMonth(String(dt).slice(0,10), ym) || withinMonth(p.createdAt||"", ym);
-    }), p=>p.amount);
+    return financialMonthSummary(ym).collected;
   }
 
   function spentMonth(ym){
@@ -1226,38 +1238,7 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   // obligatorias del período. Los indicadores por campaña conservan su cálculo
   // independiente.
   function deudoresMonth(ym){
-    const mandatory = tasks().filter(t=>{
-      if(t.closed || t.mandatoryParticipation === false) return false;
-      const type = String(t.type||"single").toLowerCase();
-      if(type==="monthly"){
-        const startYM = ymFromISO(t.startDate||t.dueDate||"");
-        if(!startYM) return false;
-        const sy=Number(startYM.slice(0,4)), sm=Number(startYM.slice(5,7));
-        const cy=Number(ym.slice(0,4)), cm=Number(ym.slice(5,7));
-        const idx=(cy-sy)*12+(cm-sm)+1;
-        return idx>=1 && idx<=Math.max(1,Number(t.months||1));
-      }
-      return ymFromISO(t.dueDate||"")===ym;
-    });
-    if(!mandatory.length) return 0;
-    const identity = p=>String(p?.miembroId || p?.memberId || p?.alumnoId || p?.apoderadoKey || p?.apoderadoEmail || p?.email || p?.apoderadoId || "").toLowerCase().trim();
-    const paidByTask = new Map(mandatory.map(t=>[String(t.id), new Set()]));
-    payments().forEach(p=>{
-      const taskId = String(p.fromTaskId || p.campaignId || p.campana_id || "");
-      const paidForTask = paidByTask.get(taskId);
-      if(!paidForTask || !isPaid(p)) return;
-      const period = String(p.period || p.dueDate || "").slice(0,7);
-      if(period && period!==ym) return;
-      const key = identity(p);
-      if(key) paidForTask.add(key);
-    });
-    const candidates = new Set();
-    paidByTask.forEach(set=>set.forEach(key=>candidates.add(key)));
-    let fullyPaid = 0;
-    candidates.forEach(key=>{
-      if(Array.from(paidByTask.values()).every(set=>set.has(key))) fullyPaid += 1;
-    });
-    return Math.max(0, courseStudentTotal() - fullyPaid);
+    return financialMonthSummary(ym).debtors;
   }
 
 
@@ -1269,62 +1250,12 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   // - Usa proyección máxima del mes (campañas) menos lo recaudado.
   // - Evita depender de que los cobros existan ya en payments_v1.
   function pendingMonth(ym){
-    const expected = pendingMonthProjected(ym);
-    const collected = collectedMonth(ym);
-    return Math.max(0, expected - collected);
+    return financialMonthSummary(ym).pending;
   }
 
   // Proyección máxima (ajustada por opt-out si existe)
   function pendingMonthProjected(ym){
-    const tks = tasks();
-    let expected = 0;
-
-    // monthly campaigns: contribute amount if month is within their schedule
-    tks.forEach(t=>{
-      if(t.closed) return;
-      const type = String(t.type||"single").toLowerCase();
-      const amt = Number(t.amount||0);
-      const people = t.mandatoryParticipation === false ? approvedCount() : courseStudentTotal();
-
-      if(type==="monthly"){
-        // month range: from startDate month to start+months-1
-        const startYM = ymFromISO(t.startDate||t.dueDate||"");
-        if(!startYM) return;
-        const months = Math.max(1, Number(t.months||1));
-
-        // compute index of ym relative to startYM
-        const sy = parseInt(startYM.slice(0,4),10), sm = parseInt(startYM.slice(5,7),10);
-        const cy = parseInt(ym.slice(0,4),10), cm = parseInt(ym.slice(5,7),10);
-        const idx = (cy - sy)*12 + (cm - sm) + 1; // 1-based
-        if(idx < 1 || idx > months) return;
-
-        expected += amt * people;
-
-        // opt-out adjustment for non mandatory (if we have opted_out payments for this task+month)
-        if(t.mandatoryParticipation === false){
-          const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && paymentStatusNorm(p)==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
-          }).length;
-          expected -= Math.min(opted, people) * amt;
-        }
-        return;
-      }
-
-      // single payment: only count if dueDate month equals ym
-      const dueYM = ymFromISO(t.dueDate||"");
-      if(dueYM && dueYM===ym){
-        expected += amt * people;
-
-        if(t.mandatoryParticipation === false){
-          const opted = payments().filter(p=>{
-            return p.fromTaskId===t.id && paymentStatusNorm(p)==="opted_out" && withinMonth(p.dueDate||p.period||"", ym);
-          }).length;
-          expected -= Math.min(opted, people) * amt;
-        }
-      }
-    });
-
-    return Math.max(0, expected);
+    return financialMonthSummary(ym).projected;
   }
 
   function debtorsMonthCount(ym){
@@ -1335,55 +1266,28 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function collectedTask(id){
-    return sum(payments().filter(p=>p.fromTaskId===id && isPaid(p)), p=>p.amount);
+    const f=financeCore();
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"")),p=>f?.paidAmount ? f.paidAmount(p) : (isPaid(p)?Number(p.amount||0):0));
   }
   function pendingTask(id){
-    // pendiente operacional (solo cobros instanciados)
-    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"") && isPendingFinancialStatus(p)), p => (p.amountRemaining ?? p.amount ?? 0));
+    const f=financeCore();
+    return sum(payments().filter(p=>String(p.fromTaskId||"")===String(id||"")),p=>f?.remaining ? f.remaining(p) : (isPendingFinancialStatus(p)?(p.amountRemaining ?? p.amount ?? 0):0));
   }
 
   function expectedTaskTotal(t){
+    const f=financeCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
     if(!t) return 0;
-    const explicitGoal = Number(t.goalTotal ?? t.goal_total ?? t.meta ?? 0) || 0;
-    if(explicitGoal > 0) return explicitGoal;
-    const monto = Number(t.amount||0);
-    const people = courseStudentTotal();
-    const type = String(t.type||"single").toLowerCase();
-    const months = type==="monthly" ? Math.max(1, Number(t.months||1)) : 1;
-    return monto * months * people;
+    const explicitGoal=Number(t.goalTotal ?? t.goal_total ?? t.meta ?? 0)||0;
+    if(explicitGoal>0)return explicitGoal;
+    return Number(t.amount||0)*Math.max(1,Number(t.months||1))*courseStudentTotal();
   }
 
   function pendingTaskEstimated(t){
-    const id = String(t?.id || "");
-    const all = campaignPayments(id);
-    const ps = campaignPendingPayments(id);
-
-    // Regla de negocio: en campañas obligatorias el universo es el total
-    // oficial del curso. Los cobros creados para usuarios registrados son sólo
-    // el detalle operacional; nunca reducen la proyección por sí mismos.
-    if(t?.mandatoryParticipation !== false){
-      return Math.max(0, expectedTaskTotal(t) - collectedTask(id));
-    }
-
-    if(ps.length){
-      return sum(ps, p => (p.amountRemaining ?? p.amount ?? 0));
-    }
-
-    // Si es campaña voluntaria y los cobros existentes están todos en opted_out/void/cancelled,
-    // no hay pendiente real aunque exista objetivo teórico.
-    if(t?.mandatoryParticipation === false && all.length){
-      const hasOnlyOptedOut = all.every(p => {
-        const st = String(p?.status || "").toLowerCase();
-        return st === "opted_out" || st === "void" || st === "cancelled";
-      });
-      if(hasOnlyOptedOut) return 0;
-    }
-
-    const expected = expectedTaskTotal(t);
-    const rec = collectedTask(id);
-    return Math.max(0, expected - rec);
+    const f=financeCore();
+    if(f?.taskPendingTotal) return f.taskPendingTotal(t,payments(),courseStudentTotal());
+    return pendingTask(t?.id);
   }
-
 
   function deudoresTask(id){
   return campaignUniqueDebtors(id);
