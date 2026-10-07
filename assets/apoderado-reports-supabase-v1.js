@@ -13,6 +13,11 @@ const courseId=()=>String(course()?.id||course()?.curso_id||session()?.courseId|
 function reportFromDb(row){
   let content={};
   try{content=typeof row.contenido==='string'?JSON.parse(row.contenido||'{}'):(row.contenido||{})}catch(_){content={}}
+  const collected=Number(content.recaudadoCurso ?? content.recaudado ?? content.collected ?? 0)||0;
+  const spent=Number(content.gastadoCurso ?? content.spent ?? 0)||0;
+  const balance=Number(content.disponibleCurso ?? content.balance ?? (collected-spent))||0;
+  const campaignRows=Array.isArray(content.campaigns)?content.campaigns:(Array.isArray(content.campaignRows)?content.campaignRows:[]);
+  const expenseRows=Array.isArray(content.expenses)?content.expenses:(Array.isArray(content.okE)?content.okE:[]);
   return Object.assign({},content,{
     id:row.id,
     supabaseId:row.id,
@@ -24,7 +29,13 @@ function reportFromDb(row){
     publishedAt:row.publicado_at||null,
     createdAt:row.created_at||content.createdAt||null,
     updatedAt:row.actualizado_at||row.created_at||null,
-    state:row.estado||(row.publicado?'publicado':'borrador')
+    state:row.estado||(row.publicado?'publicado':'borrador'),
+    recaudadoCurso:collected,
+    gastadoCurso:spent,
+    disponibleCurso:balance,
+    recaudado:collected,
+    campaigns:campaignRows,
+    expenses:expenseRows
   });
 }
 
