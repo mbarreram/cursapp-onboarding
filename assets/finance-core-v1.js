@@ -120,6 +120,28 @@
     }
     return {period:p,collected,projected,pending,appliedPaid,debtors,byTask};
   }
+  function allSummary({payments=[],tasks=[],expenses=[],studentTotal=0}={}){
+    const usableTasks=(tasks||[]).filter(t=>!['eliminada','eliminado','deleted'].includes(String(t?.status??t?.estado??'').toLowerCase().trim()));
+    const course=courseSummary({payments,expenses});
+    const pending=usableTasks.reduce((s,t)=>s+taskPendingTotal(t,payments,studentTotal),0);
+    const debtorIds=new Set();
+    let projectedDebtors=0;
+    usableTasks.forEach(t=>{
+      const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
+      (payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p)).forEach(p=>{
+        if(remainingForTask(p,t)>0){const who=identity(p);if(who)debtorIds.add(who)}
+      });
+      projectedDebtors=Math.max(projectedDebtors,taskDebtorCount(t,payments,studentTotal));
+    });
+    return {
+      collected:course.collected,
+      spent:course.spent,
+      balance:course.balance,
+      pending,
+      debtors:Math.max(debtorIds.size,projectedDebtors)
+    };
+  }
+
   function expenseCounted(e){
     const st=String(e?.status??e?.estado??e?.approvalStatus??'').toLowerCase().trim();
     return !['rejected','rechazada','rechazado','cancelled','cancelada','cancelado','anulada','anulado'].includes(st);
@@ -156,7 +178,7 @@
 
   const api=Object.freeze({
     ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,
-    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskPendingInstallments,taskMonthMetrics,monthSummary,courseSummary,taskPendingTotal
+    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
   });
   root.CURSAPP_FINANCE_CORE_V1=true;
   root.CURSAPP_FINANCE_CORE=api;
