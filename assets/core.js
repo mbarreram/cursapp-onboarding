@@ -1002,6 +1002,10 @@
       paidAt: row.paid_at || "",
       paymentMethod: row.metodo_pago || "",
       metodo_pago: row.metodo_pago || "",
+      conciliationStatus: row.conciliacion_estado || "",
+      conciliacion_estado: row.conciliacion_estado || "",
+      reconciledBy: row.conciliado_por || "",
+      collectionChannel: row.canal_recaudacion || "",
       createdAt: row.created_at || ""
     };
   }
