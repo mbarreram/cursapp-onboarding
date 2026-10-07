@@ -1290,10 +1290,16 @@ const reports = () => load(KEY_MONTHLY_REPORTS, []);
   }
 
   function deudoresTask(id){
-  return campaignUniqueDebtors(id);
-}
+    const t=tasks().find(x=>String(x?.id||x?.campana_id||'')===String(id||''));
+    const f=financeCore();
+    if(t&&f?.taskDebtorCount)return f.taskDebtorCount(t,payments(),courseStudentTotal());
+    return campaignUniqueDebtors(id);
+  }
 
 function cuotasPendientesTask(id){
+  const t=tasks().find(x=>String(x?.id||x?.campana_id||'')===String(id||''));
+  const f=financeCore();
+  if(t&&f?.taskPendingInstallments)return f.taskPendingInstallments(t,payments());
   return campaignPendingInstallments(id);
 }
 
@@ -2308,7 +2314,8 @@ function renderHome(){
       const tipo = presCleanText(campaignTypeLabel(t));
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
       const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
-      const expected = Math.max(1, meta, rec + pend, monto);
+      const expectedBase = financeCore()?.taskExpectedTotal ? financeCore().taskExpectedTotal(t,courseStudentTotal()) : Math.max(meta, rec + pend, monto);
+      const expected = Math.max(1, expectedBase, rec + pend);
       const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
       const dateLine = [fmtCampDate(t.startDate), fmtCampDate(t.dueDate)].filter(Boolean).join(" — ");
       const chipsInfo = [
