@@ -71,7 +71,7 @@
   }
   function monthSummary({payments=[],tasks=[],studentTotal=0,period}={}){
     const p=period||'';
-    const collected=payments.reduce((s,row)=>s+(paidPeriod(row)===p?paidAmount(row):0),0);
+    const collected=payments.reduce((s,row)=>s+(!excluded(row)&&paidPeriod(row)===p?paidAmount(row):0),0);
     const taskIds=new Set((tasks||[]).map(t=>String(t?.id??t?.supabaseId??t?.campana_id??'')).filter(Boolean));
     const byTask=(tasks||[]).map(t=>taskMonthMetrics(t,payments,studentTotal,p));
     let projected=byTask.reduce((s,x)=>s+x.expected,0);
@@ -97,12 +97,16 @@
         settledByTask.set(id,set);
       });
       const allIds=new Set();
-      settledByTask.forEach(set=>set.forEach(x=>allIds.add(x)));
+      requiredTasks.forEach(t=>{
+        const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
+        rowsForTaskPeriod(payments,id,p).forEach(row=>{const who=identity(row);if(who)allIds.add(who)});
+      });
       let fullySettled=0;
       allIds.forEach(who=>{
         if(requiredTasks.every(t=>settledByTask.get(String(t?.id??t?.supabaseId??t?.campana_id??''))?.has(who)))fullySettled++;
       });
-      debtors=Math.max(0,Math.max(0,n(studentTotal))-fullySettled);
+      const universe=Math.max(Math.max(0,n(studentTotal)),allIds.size);
+      debtors=Math.max(0,universe-fullySettled);
     }
     return {period:p,collected,projected,pending,appliedPaid,debtors,byTask};
   }
