@@ -73,7 +73,11 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -89,8 +93,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -99,21 +104,22 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     updateTreasurerHeader();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
-    const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
-    const saldo = collected - spent;
+    const financial = tesCourseFinancialSummary();
+    const collected = financial.collected;
+    const spent = financial.spent;
+    const saldo = financial.balance;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
@@ -761,8 +767,29 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function expensesGeneral(){ return expensesAll().filter(e => e.scope==="general"); }
   function expensesForTask(taskId){ return expensesAll().filter(e => e.scope==="campaign" && e.campaignId===taskId); }
 
-  function collectedCourse(){ return sum(paymentsAll().filter(p => p.status==="paid"), p=>p.amount); }
-  function collectedForTask(taskId){ return sum(paymentsAll().filter(p => p.status==="paid" && p.fromTaskId===taskId), p=>p.amount); }
+  function tesFinanceCore(){ return window.CURSAPP_FINANCE_CORE || null; }
+  function tesCourseFinancialSummary(){
+    const f=tesFinanceCore();
+    if(f?.courseSummary) return f.courseSummary({payments:paymentsAll(),expenses:expensesAll()});
+    const collected=sum(paymentsAll().filter(p=>String(p.status||"").toLowerCase()==="paid"),p=>Number(p.paidAmount ?? p.monto_pagado ?? p.amount ?? 0));
+    const spent=sum(expensesAll().filter(e=>!["rechazada","rechazado","cancelada","cancelado","anulada","anulado"].includes(String(e.status||e.approvalStatus||"").toLowerCase())),e=>Number(e.amount||0));
+    return {collected,spent,balance:collected-spent};
+  }
+  function tesMonthFinancialSummary(period){
+    const f=tesFinanceCore();
+    if(f?.monthSummary) return f.monthSummary({payments:paymentsAll(),tasks:tasksAll(),expenses:expensesAll(),studentTotal:courseStudentTotal(),period:period||currentYM()});
+    return {collected:0,spent:0,pending:0,debtors:0};
+  }
+  function tesValidExpenseTotal(rows){
+    const f=tesFinanceCore();
+    if(f?.courseSummary) return f.courseSummary({payments:[],expenses:Array.isArray(rows)?rows:[]}).spent;
+    return sum((rows||[]).filter(e=>!["rechazada","rechazado","cancelada","cancelado","anulada","anulado"].includes(String(e.status||e.approvalStatus||"").toLowerCase())),e=>Number(e.amount||0));
+  }
+  function collectedCourse(){ return tesCourseFinancialSummary().collected; }
+  function collectedForTask(taskId){
+    const f=tesFinanceCore();
+    return sum(paymentsAll().filter(p=>String(p.fromTaskId||p.campana_id||p.campaignId||"")===String(taskId||"")),p=>f?.paidAmount?f.paidAmount(p):(String(p.status||"").toLowerCase()==="paid"?Number(p.amount||0):0));
+  }
 
   // ---------- modal ----------
   function openModal(html){
@@ -887,14 +914,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function renderHome(){
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const sinBoleta = missingBoletaCount(exp);
     const pendienteRendir = sum(exp.filter(e=>!hasBoleta(e)), e=>e.amount);
     const active = tasksActive();
     const stats = (typeof conciliationStats === "function") ? conciliationStats() : null;
-    const slides = active.slice(0,5).map((x,i)=>{ const rec=collectedForTask(x.id); const gas=sum(expensesForTask(x.id), e=>e.amount); const s=rec-gas; const miss=missingBoletaCount(expensesForTask(x.id)); return `<article class="cpV6HeroCard"><div class="cpV6HeroIndex">${i+1} de ${Math.max(1,active.length)}</div><div class="cpV6HeroTitle">${esc(x.title||"Campaña")}</div><div class="cpV6HeroMeta">${esc(x.startDate||"")} → ${esc(x.dueDate||"")}${miss ? ` · ${miss} sin boleta` : ``}</div><div class="cpV6HeroAmount">${clp(s)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('rendiciones','${esc(x.id)}')">Rendir</button><button class="cpV6LinkBtn" onclick="go('conciliacion')">Conciliación ›</button></div></article>`; }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Cuando existan campañas, podrás controlar recaudación y rendiciones.</div><div class="cpV6HeroAmount">${clp(saldo)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('rendiciones')">Ver rendiciones</button></div></article>`;
-    app.innerHTML = `<div class="cpV6Page cpV6Treasurer"><section class="cpV6Welcome"><div class="cpV6Avatar">T</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Tesorero 👋</div><div class="cpV6Sub">Control financiero del curso</div><div class="cpV6Sub small">Caja, rendiciones y conciliación</div></div><button class="cpV6IconBtn" onclick="go('conciliacion')">✅</button></section><section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">💼</span><span>ESTADO DE CAJA</span></div><div class="cpV6HeroTrack">${slides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>${isDirty()?`<div class="cpV6Notice"><b>Cambios detectados</b><span>Requiere nuevo informe financiero.</span></div>`:""}<div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>🏦</span><small>Caja disponible</small><b>${clp(saldo)}</b></div><div class="cpV6Kpi"><span>💰</span><small>Recaudado</small><b>${clp(collected)}</b></div><div class="cpV6Kpi"><span>🧾</span><small>Gastado</small><b>${clp(spent)}</b></div><div class="cpV6Kpi"><span>⚠️</span><small>Sin boleta</small><b>${sinBoleta}</b></div></div><details class="cpV6Section" open><summary><span><i>✅</i><b>Conciliación</b><em>Pagos manuales y revisión de ingresos</em></span><strong>${stats ? clp(stats.contable||0) : 'Ir'}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Contable</b><small>Transbank, transferencia, efectivo y saldo a favor</small></div><strong>${stats ? clp(stats.contable||0) : clp(collected)}</strong></div><button class="cpV6SoftBtn" onclick="go('conciliacion')">Ir a conciliación</button></div></details><details class="cpV6Section"><summary><span><i>🧾</i><b>Rendiciones</b><em>Gastos por campaña y respaldo</em></span><strong>${clp(pendienteRendir)}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(x=>{ const rec=collectedForTask(x.id); const gas=sum(expensesForTask(x.id), e=>e.amount); const miss=missingBoletaCount(expensesForTask(x.id)); return `<div class="cpV6ListItem"><div><b>${esc(x.title||"Campaña")}</b><small>Recaudado ${clp(rec)} · Gastado ${clp(gas)}${miss?` · ${miss} sin boleta`:``}</small></div><button class="cpV6MiniBtn" onclick="go('rendiciones','${esc(x.id)}')">Ver</button></div>`; }).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="go('rendiciones')">Ver rendiciones</button></div></details><details class="cpV6Section"><summary><span><i>📊</i><b>Informes</b><em>Resumen para publicar al curso</em></span><strong>Ver</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Saldo disponible</b><small>Recaudado menos gastos rendidos</small></div><strong>${clp(saldo)}</strong></div><button class="cpV6SoftBtn" onclick="go('informes')">Ver informes</button></div></details><div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="go('conciliacion')"><span>✅</span>Conciliar</button><button onclick="go('rendiciones')"><span>🧾</span>Rendiciones</button><button onclick="go('informes')"><span>📊</span>Informes</button><button onclick="openManualPayment()"><span>💵</span>Pago manual</button></div><div data-monetization-slot="tesorero"></div></div>`;
+    const slides = active.slice(0,5).map((x,i)=>{ const rec=collectedForTask(x.id); const gas=tesValidExpenseTotal(expensesForTask(x.id)); const s=rec-gas; const miss=missingBoletaCount(expensesForTask(x.id)); return `<article class="cpV6HeroCard"><div class="cpV6HeroIndex">${i+1} de ${Math.max(1,active.length)}</div><div class="cpV6HeroTitle">${esc(x.title||"Campaña")}</div><div class="cpV6HeroMeta">${esc(x.startDate||"")} → ${esc(x.dueDate||"")}${miss ? ` · ${miss} sin boleta` : ``}</div><div class="cpV6HeroAmount">${clp(s)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('rendiciones','${esc(x.id)}')">Rendir</button><button class="cpV6LinkBtn" onclick="go('conciliacion')">Conciliación ›</button></div></article>`; }).join("") || `<article class="cpV6HeroCard"><div class="cpV6HeroTitle">Sin campañas activas</div><div class="cpV6HeroMeta">Cuando existan campañas, podrás controlar recaudación y rendiciones.</div><div class="cpV6HeroAmount">${clp(saldo)}</div><div class="cpV6HeroActions"><button class="cpV6PrimaryBtn" onclick="go('rendiciones')">Ver rendiciones</button></div></article>`;
+    app.innerHTML = `<div class="cpV6Page cpV6Treasurer"><section class="cpV6Welcome"><div class="cpV6Avatar">T</div><div class="cpV6WelcomeText"><div class="cpV6Hello">Hola, Tesorero 👋</div><div class="cpV6Sub">Control financiero del curso</div><div class="cpV6Sub small">Caja, rendiciones y conciliación</div></div><button class="cpV6IconBtn" onclick="go('conciliacion')">✅</button></section><section class="cpV6Hero"><div class="cpV6HeroHead"><span class="cpV6HeroIcon">💼</span><span>ESTADO DE CAJA</span></div><div class="cpV6HeroTrack">${slides}</div><div class="cpV6Dots"><span class="active"></span><span></span><span></span></div></section>${isDirty()?`<div class="cpV6Notice"><b>Cambios detectados</b><span>Requiere nuevo informe financiero.</span></div>`:""}<div class="cpV6KpiGrid"><div class="cpV6Kpi"><span>🏦</span><small>Caja disponible</small><b>${clp(saldo)}</b></div><div class="cpV6Kpi"><span>💰</span><small>Recaudado</small><b>${clp(collected)}</b></div><div class="cpV6Kpi"><span>🧾</span><small>Gastado</small><b>${clp(spent)}</b></div><div class="cpV6Kpi"><span>⚠️</span><small>Sin boleta</small><b>${sinBoleta}</b></div></div><details class="cpV6Section" open><summary><span><i>✅</i><b>Conciliación</b><em>Pagos manuales y revisión de ingresos</em></span><strong>${stats ? clp(stats.contable||0) : 'Ir'}</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Contable</b><small>Transbank, transferencia, efectivo y saldo a favor</small></div><strong>${stats ? clp(stats.contable||0) : clp(collected)}</strong></div><button class="cpV6SoftBtn" onclick="go('conciliacion')">Ir a conciliación</button></div></details><details class="cpV6Section"><summary><span><i>🧾</i><b>Rendiciones</b><em>Gastos por campaña y respaldo</em></span><strong>${clp(pendienteRendir)}</strong><u>⌄</u></summary><div class="cpV6SectionBody">${active.slice(0,4).map(x=>{ const rec=collectedForTask(x.id); const gas=tesValidExpenseTotal(expensesForTask(x.id)); const miss=missingBoletaCount(expensesForTask(x.id)); return `<div class="cpV6ListItem"><div><b>${esc(x.title||"Campaña")}</b><small>Recaudado ${clp(rec)} · Gastado ${clp(gas)}${miss?` · ${miss} sin boleta`:``}</small></div><button class="cpV6MiniBtn" onclick="go('rendiciones','${esc(x.id)}')">Ver</button></div>`; }).join("") || `<div class="muted">Sin campañas activas.</div>`}<button class="cpV6SoftBtn" onclick="go('rendiciones')">Ver rendiciones</button></div></details><details class="cpV6Section"><summary><span><i>📊</i><b>Informes</b><em>Resumen para publicar al curso</em></span><strong>Ver</strong><u>⌄</u></summary><div class="cpV6SectionBody"><div class="cpV6ListItem"><div><b>Saldo disponible</b><small>Recaudado menos gastos rendidos</small></div><strong>${clp(saldo)}</strong></div><button class="cpV6SoftBtn" onclick="go('informes')">Ver informes</button></div></details><div class="cpV6QuickTitle">Accesos rápidos</div><div class="cpV6QuickGrid"><button onclick="go('conciliacion')"><span>✅</span>Conciliar</button><button onclick="go('rendiciones')"><span>🧾</span>Rendiciones</button><button onclick="go('informes')"><span>📊</span>Informes</button><button onclick="openManualPayment()"><span>💵</span>Pago manual</button></div><div data-monetization-slot="tesorero"></div></div>`;
   }
 
   // ---------- Rendiciones ----------// ---------- Rendiciones ----------
@@ -1363,19 +1390,15 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return String(iso||"").slice(0,7) === String(ym||"");
   }
   function monthCollected(ym){
-    return sum(paymentsAll().filter(p=>{
-      if(String(p.status||"").toLowerCase()!=="paid") return false;
-      const dt = p.paidAt || p.createdAt || p.date || "";
-      return withinMonth(dt, ym);
-    }), p=>p.amount);
+    return tesMonthFinancialSummary(ym||currentYM()).collected;
   }
   function monthSpent(ym){
-    return sum(expensesAll().filter(e=>withinMonth(e.date||"", ym)), e=>e.amount);
+    return tesMonthFinancialSummary(ym||currentYM()).spent;
   }
   function campaignRowsForReport(){
     return tasksActive().map(t=>{
       const rec = collectedForTask(t.id);
-      const gas = sum(expensesForTask(t.id), e=>e.amount);
+      const gas = tesValidExpenseTotal(expensesForTask(t.id));
       const sal = rec - gas;
       return { title: t.title || "Campaña", rec, gas, sal };
     });
@@ -1385,9 +1408,10 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const collectedMes = monthCollected(period);
     const spentMes = monthSpent(period);
     const saldoMes = collectedMes - spentMes;
-    const collectedTotal = collectedCourse();
-    const spentTotal = sum(exp, e=>e.amount);
-    const saldoTotal = collectedTotal - spentTotal;
+    const totalSummary = tesCourseFinancialSummary();
+    const collectedTotal = totalSummary.collected;
+    const spentTotal = totalSummary.spent;
+    const saldoTotal = totalSummary.balance;
     const gastosMes = exp
       .filter(e=>withinMonth(e.date||"", period))
       .sort((a,b)=>String(a.date||"").localeCompare(String(b.date||"")))
@@ -1816,9 +1840,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     }catch(_e){}
   }
 
-  function monthCollected(){
-    const ym = currentYM();
-    return sum(paymentsAll().filter(p => p.status === 'paid' && ymFromISO(p.paidAt || p.createdAt || '') === ym), p=>p.amount);
+  function monthCollected(ym){
+    return tesMonthFinancialSummary(ym||currentYM()).collected;
   }
 
   function todayCollected(){
@@ -1826,9 +1849,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     return sum(paymentsAll().filter(p => p.status === 'paid' && String(p.paidAt || p.createdAt || '').slice(0,10) === today), p=>p.amount);
   }
 
-  function monthExpenses(){
-    const ym = currentYM();
-    return sum(expensesAll().filter(e => ymFromISO(e.date || e.createdAt || '') === ym), e=>e.amount);
+  function monthExpenses(ym){
+    return tesMonthFinancialSummary(ym||currentYM()).spent;
   }
 
   function guardianCount(){
@@ -1852,14 +1874,14 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     updateTreasurerHeader();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const stats = (typeof conciliationStats === "function") ? conciliationStats() : null;
     const pendingConc = stats ? Number(stats.pendiente||0) : 0;
     const contable = stats ? Number(stats.contable||0) : collected;
     const active = tasksActive();
     const sinBoleta = missingBoletaCount(exp);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const spentThisMonth = monthExpenses() || spent;
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
@@ -2543,7 +2565,11 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -2559,8 +2585,9 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -2570,20 +2597,20 @@ __bootTesoreroSupabaseFirst();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
@@ -2691,7 +2718,11 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -2707,8 +2738,9 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -2718,20 +2750,20 @@ __bootTesoreroSupabaseFirst();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
@@ -2991,7 +3023,11 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3007,8 +3043,9 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3018,20 +3055,20 @@ __bootTesoreroSupabaseFirst();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
@@ -3258,7 +3295,11 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3274,8 +3315,9 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3285,20 +3327,20 @@ __bootTesoreroSupabaseFirst();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
@@ -3497,7 +3539,11 @@ __bootTesoreroSupabaseFirst();
     return rows.filter(p=>tesPaymentCampaignIdV68(p)===String(campaignId));
   }
   function tesCampaignTitleV68(t){ return (t && (t.title || t.name || t.concept)) || 'Campaña'; }
-  function tesCampaignGoalV68(t){ return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0); }
+  function tesCampaignGoalV68(t){
+    const f=tesFinanceCore();
+    if(f?.taskExpectedTotal) return f.taskExpectedTotal(t,courseStudentTotal());
+    return Number(t?.goalTotal || t?.goal_total || t?.goal || t?.target || t?.meta || t?.amountGoal || 0);
+  }
   function tesCampaignIconV68(t, idx){
     const title = String(tesCampaignTitleV68(t)).toLowerCase();
     if(title.includes('gira')) return '🌎';
@@ -3513,8 +3559,9 @@ __bootTesoreroSupabaseFirst();
     const missing = (typeof missingBoletaCount === 'function') ? missingBoletaCount(exp) : 0;
     if(pending.length) return {label:'Pend. conciliación', cls:'warn'};
     if(missing) return {label:'Pend. rendición', cls:'warn'};
-    const collected = sum(rows.filter(tesIsConciliated), p=>p.amount);
-    if(tesCampaignGoalV68(t) > collected) return {label:'Pendiente de cobro', cls:'warn'};
+    const collected = typeof collectedForTask==='function' ? collectedForTask(t?.id) : 0;
+    const pendingDebt = tesFinanceCore()?.taskPendingTotal ? tesFinanceCore().taskPendingTotal(t,paymentsAll(),courseStudentTotal()) : Math.max(0,tesCampaignGoalV68(t)-collected);
+    if(pendingDebt > 0) return {label:'Pendiente de cobro', cls:'warn'};
     return {label:'Cuadrada ✓', cls:'ok'};
   }
   window.tesSelectCampaignV68 = function(id){ window.__tesCampaignId = String(id||''); renderConciliacion(); };
@@ -3524,20 +3571,20 @@ __bootTesoreroSupabaseFirst();
     const campaigns = tesCampaignsV68();
     const exp = expensesAll();
     const collected = collectedCourse();
-    const spent = sum(exp, e=>e.amount);
+    const spent = tesValidExpenseTotal(exp);
     const saldo = collected - spent;
     const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
     const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
     const conciliatedAll = allRows.filter(tesIsConciliated);
     const contable = sum(conciliatedAll, p=>p.amount);
-    const collectedThisMonth = monthCollected() || collected;
+    const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
     const estimated = Math.max(courseStudentTotal(), guardians);
     const participation = estimated ? Math.min(100, Math.round((guardians / estimated) * 100)) : 0;
     const updated = new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     const campaignRows = campaigns.slice(0,4).map((t,idx)=>{
       const rows = tesRowsByCampaignV68(t.id);
-      const rec = sum(rows.filter(tesIsConciliated), p=>p.amount) || (typeof collectedForTask==='function' ? collectedForTask(t.id) : 0);
+      const rec = typeof collectedForTask==='function' ? collectedForTask(t.id) : 0;
       const goal = tesCampaignGoalV68(t);
       const pct = goal ? Math.min(100, Math.round((rec/goal)*100)) : 0;
       const health = tesCampaignHealthV68(t);
