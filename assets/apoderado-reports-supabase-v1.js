@@ -8,7 +8,14 @@ const json=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}
 const course=()=>{const x=json('cursapp_course_v1',{})||{};return x.course||x};
 const session=()=>json('cursapp_session_v1',{})||{};
 const scoped=base=>window.CURSAPP?.scopedKey?window.CURSAPP.scopedKey(base):'cursapp_'+base;
-const courseId=()=>String(course()?.id||course()?.curso_id||session()?.courseId||'').trim();
+const courseId=()=>{
+  try{
+    const resolved=window.CURSAPP_APO_FINANCE?.courseId?.();
+    if(resolved)return String(resolved).trim();
+  }catch(_){}
+  const c=course()||{},s=session()||{};
+  return String(c.curso_id||c.courseId||c.course_id||c.id||s.curso_id||s.courseId||s.course_id||'').trim();
+};
 
 function reportFromDb(row){
   let content={};
@@ -57,16 +64,23 @@ async function refresh(reason){
   if(refreshing)return;
   refreshing=true;
   try{
-    await hydratePublished(reason);
+    const result=await hydratePublished(reason);
     if(document.querySelector('.apoReportPage')&&typeof window.go==='function'){
       setTimeout(()=>window.go('informes'),0);
+      setTimeout(()=>window.dispatchEvent(new CustomEvent('micursox:published-reports-hydrated',{detail:result||{}})),40);
     }
-  }catch(e){console.warn('Informes publicados Apoderado:',e)}
+    return result;
+  }catch(e){console.warn('Informes publicados Apoderado:',e);return null}
   finally{refreshing=false}
 }
 
 function boot(){
-  setTimeout(()=>refresh('boot'),250);
+  let tries=0;
+  const timer=setInterval(()=>{
+    const cid=courseId();
+    if(cid&&api()?.request){clearInterval(timer);refresh('boot-resolved');}
+    else if(++tries>40)clearInterval(timer);
+  },250);
   document.addEventListener('click',e=>{
     const btn=e.target?.closest?.('.navItem[data-tab="informes"],[onclick*="go(\'informes\')"],[onclick*="go(&quot;informes&quot;)"]');
     if(btn)setTimeout(()=>refresh('open-informes'),60);
