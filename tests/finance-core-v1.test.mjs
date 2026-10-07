@@ -61,3 +61,23 @@ const pending=(id,task,who,amount,period)=>({
   assert.equal(s.balance,1913520);
 }
 console.log('finance-core-v1: all assertions passed');
+
+// Mandatory campaign: an opt-out marker cannot erase debt.
+{
+  const task={id:'mandatory-opt',type:'single',amount:5000,mandatoryParticipation:true,closed:true,dueDate:'2026-09-30'};
+  const rows=[];
+  for(let i=1;i<=39;i++) rows.push(paid('mo'+i,'mandatory-opt','u'+i,5000,'2026-09','2026-09-18T12:00:00Z'));
+  rows.push({id:'mo40',fromTaskId:'mandatory-opt',miembroId:'u40',amount:5000,obligationAmount:5000,paidAmount:0,monto_pagado:0,amountRemaining:0,status:'opted_out',period:'2026-09',paidAt:''});
+  assert.equal(f.taskPendingTotal(task,rows,40),5000,'mandatory opt-out must remain debt');
+  assert.equal(f.taskDebtorCount(task,rows,40),1,'mandatory opt-out must count as debtor');
+  assert.equal(f.taskPendingInstallments(task,rows),1,'mandatory opt-out must remain pending installment');
+}
+// Voluntary campaign: opt-out must exclude debt.
+{
+  const task={id:'vol-opt',type:'single',amount:5000,mandatoryParticipation:false,closed:false,dueDate:'2026-09-30'};
+  const rows=[{id:'vo1',fromTaskId:'vol-opt',miembroId:'u1',amount:5000,obligationAmount:5000,paidAmount:0,monto_pagado:0,amountRemaining:5000,status:'opted_out',period:'2026-09'}];
+  assert.equal(f.taskPendingTotal(task,rows,40),0);
+  assert.equal(f.taskDebtorCount(task,rows,40),0);
+  assert.equal(f.taskPendingInstallments(task,rows),0);
+}
+console.log('mandatory/voluntary opt-out invariants passed');
