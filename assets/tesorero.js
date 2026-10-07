@@ -108,9 +108,9 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const collected = financial.collected;
     const spent = financial.spent;
     const saldo = financial.balance;
-    const allRows = (typeof tesConciliationRows === 'function') ? tesConciliationRows() : [];
-    const pendingAll = allRows.filter(p=>!tesIsConciliated(p));
-    const conciliatedAll = allRows.filter(tesIsConciliated);
+    const allRows = paymentsAll().filter(p=>tesReceivedAmount(p)>0);
+    const pendingAll = tesStrictPendingConciliationRows();
+    const conciliatedAll = allRows.filter(p=>String(p?.conciliationStatus ?? p?.conciliacion_estado ?? "").toLowerCase().trim()==="conciliado");
     const contable = sum(conciliatedAll, p=>p.amount);
     const collectedThisMonth = monthCollected();
     const guardians = guardianCount();
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
@@ -784,6 +784,22 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const f=tesFinanceCore();
     if(f?.courseSummary) return f.courseSummary({payments:[],expenses:Array.isArray(rows)?rows:[]}).spent;
     return sum((rows||[]).filter(e=>!["rechazada","rechazado","cancelada","cancelado","anulada","anulado"].includes(String(e.status||e.approvalStatus||"").toLowerCase())),e=>Number(e.amount||0));
+  }
+  function tesReceivedAmount(p){
+    const f=tesFinanceCore();
+    return f?.paidAmount ? f.paidAmount(p) : Math.max(0,Number(p?.paidAmount ?? p?.monto_pagado ?? 0));
+  }
+  function tesStrictPendingConciliationRows(){
+    return paymentsAll().filter(p=>{
+      if(tesReceivedAmount(p)<=0) return false;
+      const cs=String(p?.conciliationStatus ?? p?.conciliacion_estado ?? "").toLowerCase().trim();
+      const st=String(p?.status ?? p?.estado ?? "").toLowerCase().trim();
+      if(["anulado","anulada","cancelado","cancelada","void"].includes(st)) return false;
+      return cs!=="conciliado";
+    });
+  }
+  function tesStrictPendingConciliationAmount(){
+    return sum(tesStrictPendingConciliationRows(),p=>tesReceivedAmount(p));
   }
   function collectedCourse(){ return tesCourseFinancialSummary().collected; }
   function collectedForTask(taskId){
@@ -1811,15 +1827,21 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
   function treasurerDisplayName(){
     try{
       const s = JSON.parse(localStorage.getItem("cursapp_session_v1") || "{}");
+      const activeKey = String(localStorage.getItem("cursapp_active_course_v1") || s.courseKey || "");
+      const profiles = JSON.parse(localStorage.getItem("cursapp_profiles_v1") || "[]");
+      const treasurer = (Array.isArray(profiles)?profiles:[]).find(p=>
+        String(p?.role||"").toLowerCase()==="tesorero" &&
+        (!activeKey || String(p?.courseKey||"")===activeKey) &&
+        ["approved","aprobado","activo","activa"].includes(String(p?.status||"approved").toLowerCase())
+      );
+      const memberName = treasurer?.directiva?.name || treasurer?.name || treasurer?.fullName || "";
+      if(memberName) return String(memberName).trim();
       const direct = s.fullName || s.displayName || s.name || s.nombre || s.guardianName || s.apoderadoName || s.userName || s.email;
       if(direct && String(direct).includes('@')){
         const local = String(direct).split('@')[0].replace(/[._-]+/g,' ').trim();
-        return local.replace(/\b\w/g, c=>c.toUpperCase()) || 'Tesorero';
+        return local.replace(/\b\w/g, ch=>ch.toUpperCase()) || 'Tesorero';
       }
       if(direct) return String(direct).trim();
-      const profile = (typeof currentProfile === 'function') ? currentProfile() : null;
-      const profName = profile?.fullName || profile?.name || profile?.nombre || profile?.guardianName;
-      if(profName) return String(profName).trim();
     }catch(_e){}
     return 'Tesorero';
   }
@@ -2634,7 +2656,7 @@ __bootTesoreroSupabaseFirst();
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
@@ -2787,7 +2809,7 @@ __bootTesoreroSupabaseFirst();
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
@@ -3092,7 +3114,7 @@ __bootTesoreroSupabaseFirst();
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
@@ -3364,7 +3386,7 @@ __bootTesoreroSupabaseFirst();
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
@@ -3608,7 +3630,7 @@ __bootTesoreroSupabaseFirst();
 
     app.innerHTML = `<div class="tesV57Page tesV68Page">
       <section class="tesCashCard"><div class="tesCardHead"><div><h1>Estado general del curso <span>ⓘ</span></h1><p>↻ Actualizado: Hoy ${updated}</p></div><b>Cuadrado OK ✓</b></div>
-        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(sum(pendingAll,p=>p.amount))}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
+        <div class="tesCashGrid"><button onclick="go('informes')"><span class="tesIcon green">▰</span><small>Saldo disponible registrado</small><strong>${clp(saldo)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon blue">↑</span><small>Recaudado este mes</small><strong>${clp(collectedThisMonth)}</strong><em>›</em></button><button onclick="go('conciliacion')"><span class="tesIcon amber">◷</span><small>Pendiente conciliación</small><strong>${clp(tesStrictPendingConciliationAmount())}</strong><em>›</em></button><button onclick="go('rendiciones')"><span class="tesIcon violet">▦</span><small>Gastos registrados</small><strong>${clp(spent)}</strong><em>›</em></button></div>
         <button class="tesWideAction" type="button" onclick="go('conciliacion')"><span class="tesConcGoodIcon">▣✓</span> Conciliar pagos pendientes <b>›</b></button></section>
       <section class="tesPanel"><header><h2>Campañas activas</h2><button onclick="go('rendiciones')">Ver todas ›</button></header><div class="tesCampaignList">${campaignRows}</div></section>
       <section class="tesPanel tesMovementsPro"><header><h2>Movimientos recientes</h2><button onclick="go('conciliacion')">Ver todos ›</button></header><div class="tesMovementTableWrap"><div class="tesMovementTableHead"><span>Movimiento</span><span>Campaña / persona</span><span>Monto</span><span>Fecha</span></div>${recent}${expenseRow}</div></section>
