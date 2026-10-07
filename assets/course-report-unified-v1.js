@@ -10,44 +10,32 @@ function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='
 function load(base){try{var x=JSON.parse(localStorage.getItem(scoped(base))||'[]');return Array.isArray(x)?x:[];}catch(_e){return [];}}
 function latestReport(){return load('monthly_reports_v1').slice().sort((a,b)=>String(b.generatedAt||'').localeCompare(String(a.generatedAt||'')))[0]||null;}
 function periodLabel(v){if(!v)return 'Informe actual';var p=String(v).split('-'),y=Number(p[0]),m=Number(p[1]);if(!y||!m)return String(v);return new Date(y,m-1,1).toLocaleDateString('es-CL',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());}
-function paid(p){return ['paid','pagado','conciliado'].includes(norm(p&&(p.status||p.estado)));}
-function excluded(p){return ['opted_out','no_participa','no participa','cancelled','cancelado','void','anulado'].includes(norm(p&&(p.status||p.estado)));}
 function paymentTaskId(p){return String((p&&(p.fromTaskId||p.campana_id||p.taskId||p.campaignId))||'');}
 function taskTitle(t){return String((t&&(t.title||t.titulo||t.name||t.nombre))||'Campaña');}
-function taskGoal(t){return Number((t&&(t.goalTotal??t.goal_total??t.meta??t.objetivo))||0)||0;}
-function taskAmount(t){return Number((t&&(t.amount??t.monto))||0)||0;}
-function amountPaid(p){return Number((p&&(p.amountPaid??p.monto_pagado??p.amount??p.monto))||0)||0;}
-function amountDue(p){return Number((p&&(p.amountRemaining??p.amount??p.monto))||0)||0;}
+function studentTotal(){try{var x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};var c=x.course||x;return Math.max(0,Number(c.totalAlumnos!=null?c.totalAlumnos:c.total_alumnos)||0)}catch(_e){return 0}}
+function finance(){return window.CURSAPP_FINANCE_CORE||null;}
 
 function snapshot(){
   var rep=latestReport()||{};
-  var tasks=load('tasks_v1').filter(t=>t&&!t.closed&&!['cerrada','closed','cancelada','cancelled'].includes(norm(t.status||t.estado)));
-  var pays=load('payments_v1').filter(p=>p&&!excluded(p));
+  var tasks=load('tasks_v1').filter(function(t){return t&&!t.closed&&!['cerrada','closed','cancelada','cancelled','eliminada'].includes(norm(t.status||t.estado));});
+  var pays=load('payments_v1');
+  var expenses=load('expenses_v1');
+  var f=finance(), totalStudents=studentTotal();
   var repCampaigns=Array.isArray(rep.campaigns)?rep.campaigns:[];
   var rows=tasks.map(function(t){
-    var id=String(t.id||t.campana_id||'');
-    var title=taskTitle(t);
-    var ps=pays.filter(p=>paymentTaskId(p)===id);
-    var sr=repCampaigns.find(c=>String(c.id||c.taskId||c.campana_id||'')===id)||repCampaigns.find(c=>norm(c.title||c.titulo||c.name)===norm(title))||{};
-    var goal=taskGoal(t)||Number(sr.goalTotal??sr.goal_total??sr.meta??sr.objetivo??0)||0;
-    if(!goal){var sum=ps.reduce((a,p)=>a+amountDue(p),0);goal=sum||taskAmount(t);}
-    var liveCollected=ps.filter(paid).reduce((a,p)=>a+amountPaid(p),0);
-    var snapCollected=Number(sr.recaudado??sr.collected??sr.cobrado??sr.totalPaid??0)||0;
-    var collected=Math.max(liveCollected,snapCollected);
-    var pending=Math.max(0,goal-collected);
-    return {id,title,goal,collected,pending,pct:goal>0?Math.max(0,Math.min(100,Math.round(collected/goal*100))):0};
+    var id=String(t.id||t.campana_id||''),ps=pays.filter(function(p){return paymentTaskId(p)===id;});
+    var goal=f&&f.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):Number(t.goalTotal||t.goal_total||t.meta||0)||0;
+    var collected=ps.reduce(function(a,p){return a+(f&&f.paidAmount?f.paidAmount(p):0);},0);
+    var pending=f&&f.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0;
+    return{id:id,title:taskTitle(t),goal:goal,collected:collected,pending:pending,pct:goal>0?Math.max(0,Math.min(100,Math.round(collected/goal*100))):0};
   });
-  if(!rows.length&&repCampaigns.length){rows=repCampaigns.map(function(c){var goal=Number(c.goalTotal??c.goal_total??c.meta??c.objetivo??0)||0;var collected=Number(c.recaudado??c.collected??c.cobrado??c.totalPaid??0)||0;return{id:String(c.id||''),title:String(c.title||c.titulo||c.name||'Campaña'),goal,collected,pending:Math.max(0,goal-collected),pct:goal>0?Math.round(collected/goal*100):0};});}
-  var currentCollected=rows.reduce((a,r)=>a+r.collected,0);
-  var currentPending=rows.reduce((a,r)=>a+r.pending,0);
-  var rec=Math.max(Number(rep.recaudadoCurso??rep.recaudado??0)||0,currentCollected);
-  var gas=Number(rep.gastadoCurso??0)||0;
-  var saldo=rec-gas;
-  var target=rec+currentPending;
-  var pct=target>0?Math.max(0,Math.min(100,Math.round(rec/target*100))):0;
-  return {rep,period:rep.period||new Date().toISOString().slice(0,7),rec,gas,saldo,pending:currentPending,target,pct,rows,debtors:Number(rep.deudores||0)||0};
+  if(!rows.length&&repCampaigns.length){rows=repCampaigns.map(function(x){var goal=Number(x.goalTotal||x.goal_total||x.meta||x.objetivo||0)||0,col=Number(x.recaudado||x.collected||x.cobrado||x.totalPaid||0)||0,pen=Number(x.pendiente||x.pending||0)||0;return{id:String(x.id||''),title:String(x.title||x.titulo||x.name||'Campaña'),goal:goal,collected:col,pending:Math.max(0,pen),pct:goal>0?Math.round(col/goal*100):0};});}
+  var course=f&&f.courseSummary?f.courseSummary({payments:pays,expenses:expenses}):{collected:Number(rep.recaudadoCurso||0)||0,spent:Number(rep.gastadoCurso||0)||0,balance:Number(rep.disponibleCurso||0)||0};
+  var currentPending=rows.reduce(function(a,r){return a+r.pending;},0);
+  var target=course.collected+currentPending;
+  var pct=target>0?Math.max(0,Math.min(100,Math.round(course.collected/target*100))):0;
+  return {rep:rep,period:new Date().toISOString().slice(0,7),rec:course.collected,gas:course.spent,saldo:course.balance,pending:currentPending,target:target,pct:pct,rows:rows,debtors:Number(rep.deudores||0)||0};
 }
-
 function reportInner(data, includeActions){
   var rows=data.rows.map(r=>'<article class="mxURCampaign"><div class="mxURCampaignHead"><b>'+esc(r.title)+'</b><strong>'+r.pct+'%</strong></div><div class="mxURBar"><i style="width:'+r.pct+'%"></i></div><div class="mxURVals"><span>💰 Recaudado: <b>'+clp(r.collected)+'</b></span><span>⏳ Pendiente: <b>'+clp(r.pending)+'</b></span><span>🎯 Objetivo: <b>'+clp(r.goal)+'</b></span></div></article>').join('');
   return '<section class="mxUnifiedReport">'+
