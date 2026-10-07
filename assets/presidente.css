@@ -296,3 +296,36 @@ display:flex;justify-content:space-around;padding:10px 8px;z-index:50}
 .presCampaignProgressRing.is-complete b{font-size:20px!important;letter-spacing:-.5px!important;line-height:1!important;}
 .presCampaignProgressRing.is-complete small{font-size:9px!important;line-height:1!important;margin-top:2px!important;}
 @media (max-width:560px){.presCampaignProgressRing.is-complete b{font-size:19px!important}.presCampaignProgressRing.is-complete small{font-size:8.5px!important}}
+
+/* Finance core V2 · campaña: porcentaje siempre contenido en el donut */
+.presCampaignProgressRing{
+  overflow:hidden!important;
+  display:grid!important;
+  place-items:center!important;
+  align-content:center!important;
+  text-align:center!important;
+  padding:10px!important;
+}
+.presCampaignProgressRing b{
+  font-size:21px!important;
+  line-height:.95!important;
+  letter-spacing:-.7px!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:clip!important;
+}
+.presCampaignProgressRing small{
+  font-size:8.5px!important;
+  line-height:1!important;
+  margin-top:3px!important;
+  white-space:nowrap!important;
+}
+.presCampaignProgressRing.is-complete b{font-size:19px!important;}
+.presCampaignProgressRing.is-complete small{font-size:8px!important;}
+@media (max-width:560px){
+  .presCampaignProgressRing{padding:11px!important;}
+  .presCampaignProgressRing b{font-size:20px!important;}
+  .presCampaignProgressRing small{font-size:8px!important;}
+  .presCampaignProgressRing.is-complete b{font-size:18px!important;}
+  .presCampaignProgressRing.is-complete small{font-size:7.5px!important;}
+}
