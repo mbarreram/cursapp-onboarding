@@ -109,4 +109,5 @@
   document.addEventListener('click',function(ev){var btn=ev.target&&ev.target.closest?ev.target.closest('.navItem[data-tab="informes"]'):null;if(btn)setTimeout(decorate,150);},true);
   window.addEventListener('hashchange',function(){setTimeout(decorate,150);});
   window.addEventListener('micursox:report-period-changed',function(){setTimeout(decorate,40);});
+  window.addEventListener('micursox:published-reports-hydrated',function(){setTimeout(decorate,40);});
 })();
