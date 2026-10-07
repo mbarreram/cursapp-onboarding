@@ -33,9 +33,9 @@ function metrics(){
   if(!f)return null;
   const payments=load('payments_v1'),tasks=load('tasks_v1'),expenses=load('expenses_v1'),studentTotal=totalStudents();
   const all=f.allSummary({payments,tasks,expenses,studentTotal});
-  if(scope()==='all')return {scope:'all',collected:all.collected,pending:all.pending,debtors:all.debtors,balance:all.balance};
-  const month=f.monthSummary({payments,tasks,studentTotal,period:currentPeriod()});
-  return {scope:'month',collected:month.collected,pending:month.pending,debtors:month.debtors,balance:all.balance};
+  if(scope()==='all')return {scope:'all',collected:all.collected,pending:all.pending,spent:all.spent,balance:all.balance};
+  const month=f.monthSummary({payments,tasks,expenses,studentTotal,period:currentPeriod()});
+  return {scope:'month',collected:month.collected,pending:month.pending,spent:month.spent,balance:all.balance};
 }
 function cardByLabel(root,label){
   return [...root.querySelectorAll('.presMockKpi')].find(c=>String(c.querySelector('small')?.textContent||'').trim().startsWith(label));
@@ -45,8 +45,13 @@ function updateCards(root,m){
   if(cob){cob.querySelector('b').textContent=money(m.collected);const e=cob.querySelector('em');if(e)e.textContent=m.scope==='all'?'Acumulado':'Este mes'}
   const pen=cardByLabel(root,'Por cobrar');
   if(pen){pen.querySelector('b').textContent=money(m.pending);const e=pen.querySelector('em');if(e)e.textContent=m.scope==='all'?'Pendiente acumulado':'Pendiente'}
-  const fam=cardByLabel(root,'Familias pendientes');
-  if(fam){fam.querySelector('b').textContent=String(m.debtors);const e=fam.querySelector('em');if(e)e.textContent=m.scope==='all'?'Con deuda en cualquier período':'De '+totalStudents()+' alumnos del curso'}
+  const fam=cardByLabel(root,'Familias pendientes')||cardByLabel(root,'Gastos registrados');
+  if(fam){
+    const icon=fam.querySelector('span');if(icon)icon.textContent='🧾';
+    const label=fam.querySelector('small');if(label)label.textContent='Gastos registrados';
+    fam.querySelector('b').textContent=money(m.spent);
+    const e=fam.querySelector('em');if(e)e.textContent=m.scope==='all'?'Acumulado':'Este mes';
+  }
   const sal=[...root.querySelectorAll('.presMockKpi')].find(c=>String(c.querySelector('small')?.textContent||'').trim().startsWith('Saldo disponible'));
   if(sal){sal.querySelector('b').textContent=money(m.balance);const e=sal.querySelector('em');if(e)e.textContent='Ingresos − gastos registrados'}
 }
@@ -68,12 +73,17 @@ function ensureBar(root){
 }
 function removeLegacyHeader(root){
   const parent=root.parentElement;if(!parent)return;
-  [...parent.children].forEach(el=>{
-    if(el===root||el.classList.contains('mxPresSummaryScope'))return;
+  [...parent.querySelectorAll('*')].forEach(el=>{
+    if(el===root||el.classList.contains('mxPresSummaryScope')||el.closest('.mxPresSummaryScope')||root.contains(el))return;
     const t=String(el.textContent||'').trim().replace(/\s+/g,' ');
-    if(t==='Resumen del curso Este mes'||t==='Resumen del curso Todos los meses'){
-      el.style.display='none';
-      el.dataset.mxLegacySummaryHeader='1';
+    const hasTitle=t.includes('Resumen del curso');
+    const hasPeriod=t.includes('Este mes')||t.includes('Todos los meses');
+    if(hasTitle&&hasPeriod){
+      const r=el.getBoundingClientRect(),kr=root.getBoundingClientRect();
+      if(r.bottom<=kr.top+24&&kr.top-r.bottom<180){
+        el.style.display='none';
+        el.dataset.mxLegacySummaryHeader='1';
+      }
     }
   });
 }
