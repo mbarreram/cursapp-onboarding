@@ -36,9 +36,21 @@ function campaignCount(){
 function close(){document.getElementById('mxPresidentHelpV1')?.remove()}
 function go(hash){
   close();
-  if(hash==='/apoderados.html'){location.href=hash;return}
-  try{sessionStorage.setItem('micursox_pending_tab',hash)}catch(_){}
-  location.href='/presidente.html#'+hash;
+  if(hash==='/apoderados.html'||hash==='apoderados'){location.href='/apoderados.html';return}
+  if(hash==='retiros'){
+    if(window.MX_DIRECTIVA_FUNDS&&typeof window.MX_DIRECTIVA_FUNDS.open==='function'){window.MX_DIRECTIVA_FUNDS.open();return}
+    const funds=document.querySelector('[data-mx-funds="1"]');if(funds){funds.click();return}
+  }
+  if(hash==='avisos'){
+    if(typeof window.openAvisosConfigSafe==='function'){window.openAvisosConfigSafe();return}
+    if(typeof window.go==='function'){window.go('home');return}
+  }
+  if(typeof window.go==='function'){window.go(hash);return}
+  try{
+    if(window.CURSAPP&&typeof window.CURSAPP.setNextNavTab==='function')window.CURSAPP.setNextNavTab(hash);
+    else{localStorage.setItem('cursapp_nav_tab_v1',String(hash));localStorage.setItem('cursapp_nav_at_v1',String(Date.now()))}
+  }catch(_){}
+  location.href='/presidente.html';
 }
 function style(){
   if(document.getElementById('mxPresidentHelpStyleV1'))return;
@@ -101,7 +113,7 @@ function open(){
         <button class="mxHelpMini" data-go="deudores"><span>🕘</span><strong>Deudores</strong><small>Revisa pendientes y comparte estados de pago.</small></button>
         <button class="mxHelpMini" data-go="informes"><span>📊</span><strong>Informes</strong><small>Consulta el estado financiero del curso.</small></button>
         <button class="mxHelpMini" data-go="retiros"><span>💰</span><strong>Retiros</strong><small>Revisa recaudación y solicitudes.</small></button>
-        <button class="mxHelpMini" data-go="home"><span>🔔</span><strong>Avisos</strong><small>Comunica novedades importantes al curso.</small></button>
+        <button class="mxHelpMini" data-go="avisos"><span>🔔</span><strong>Avisos</strong><small>Comunica novedades importantes al curso.</small></button>
       </div>
       <div class="mxHelpFooter">Esta guía es opcional. Puedes cerrarla y continuar trabajando normalmente.</div>
     </div>`;
