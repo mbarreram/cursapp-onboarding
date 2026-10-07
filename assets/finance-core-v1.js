@@ -79,7 +79,8 @@
     const missing=Math.max(0,expected-materialized);
     return {taskId:id,materialized,appliedPaid,materializedPending,missing,expected,pending:materializedPending+missing,rows};
   }
-  function monthSummary({payments=[],tasks=[],studentTotal=0,period}={}){
+  const expensePeriod=e=>ym(e?.date??e?.fecha??e?.expenseDate??e?.fecha_gasto??e?.fecha_rendicion??'');
+  function monthSummary({payments=[],tasks=[],expenses=[],studentTotal=0,period}={}){
     const p=period||'';
     const collected=payments.reduce((s,row)=>s+(!excluded(row)&&paidPeriod(row)===p?paidAmount(row):0),0);
     const taskIds=new Set((tasks||[]).map(t=>String(t?.id??t?.supabaseId??t?.campana_id??'')).filter(Boolean));
@@ -118,7 +119,8 @@
       const universe=Math.max(Math.max(0,n(studentTotal)),allIds.size);
       debtors=Math.max(0,universe-fullySettled);
     }
-    return {period:p,collected,projected,pending,appliedPaid,debtors,byTask};
+    const spent=(expenses||[]).filter(expenseCounted).reduce((s,e)=>s+(expensePeriod(e)===p?Math.max(0,n(e?.amount??e?.monto??e?.total_gastado)):0),0);
+    return {period:p,collected,projected,pending,appliedPaid,debtors,spent,byTask};
   }
   function allSummary({payments=[],tasks=[],expenses=[],studentTotal=0}={}){
     const usableTasks=(tasks||[]).filter(t=>!['eliminada','eliminado','deleted'].includes(String(t?.status??t?.estado??'').toLowerCase().trim()));
@@ -177,7 +179,7 @@
   }
 
   const api=Object.freeze({
-    ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,
+    ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,expensePeriod,
     isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
   });
   root.CURSAPP_FINANCE_CORE_V1=true;
