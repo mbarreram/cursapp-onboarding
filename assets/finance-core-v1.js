@@ -49,7 +49,7 @@
     return ym(t?.dueDate??t?.fecha_vencimiento??'')===period;
   };
   const taskExpectedTotal=(t,studentTotal)=>{
-    const explicit=Math.max(0,n(t?.goalTotal??t?.goal_total??t?.meta));
+    const explicit=Math.max(0,n(t?.goalTotal),n(t?.goal_total),n(t?.meta),n(t?.goal),n(t?.target),n(t?.amountGoal));
     if(explicit>0)return explicit;
     return taskAmount(t)*Math.max(0,n(studentTotal))*(isMonthly(t)?taskMonths(t):1);
   };
