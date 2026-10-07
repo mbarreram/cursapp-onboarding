@@ -46,17 +46,21 @@
       @media(max-width:700px){.mxPresProgressWrap{justify-content:center;gap:14px}.mxPresProgressDonut{width:168px;height:168px}.mxPresProgressDonut:after{inset:22px}.mxPresProgressLegend{width:100%;min-width:0}.mxPresProgressCenter b{font-size:23px}.mxPresProgressSub{font-size:14px}}
     `;document.head.appendChild(s);
   }
+  function scoped(base){try{return window.CURSAPP?.scopedKey?window.CURSAPP.scopedKey(base):'cursapp_'+base}catch(_e){return 'cursapp_'+base}}
+  function load(base){try{const x=JSON.parse(localStorage.getItem(scoped(base))||'[]');return Array.isArray(x)?x:[]}catch(_e){return[]}}
+  function studentTotal(){try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};const c=x.course||x;return Math.max(0,Number(c.totalAlumnos??c.total_alumnos??0)||0)}catch(_e){return 0}}
   async function data(){
-    const ck=courseKey(); if(!ck) throw new Error('curso');
-    const c=(await sb('cursos?course_key=eq.'+q(ck)+'&select=id,total_alumnos&limit=1'))[0];
-    if(!c?.id) throw new Error('curso');
-    const camps=await sb('campanas?curso_id=eq.'+q(c.id)+'&estado=eq.activa&select=id,monto');
-    if(!camps.length) return {target:0,paid:0,pending:0,pct:0};
-    const ids=camps.map(x=>x.id);
-    const pagos=await sb('pagos?campana_id=in.('+ids.map(q).join(',')+')&estado=eq.pagado&select=campana_id,monto_pagado');
-    const target=camps.reduce((a,x)=>a+(Number(x.monto)||0)*(Number(c.total_alumnos)||0),0);
-    const paid=pagos.reduce((a,x)=>a+(Number(x.monto_pagado)||0),0);
-    const pending=Math.max(0,target-paid);
+    const f=window.CURSAPP_FINANCE_CORE;
+    const tasks=load('tasks_v1').filter(t=>t&&!t.closed&&!['cerrada','closed','cancelada','cancelled','eliminada'].includes(String(t.status||t.estado||'').toLowerCase()));
+    const pays=load('payments_v1');
+    const totalStudents=studentTotal();
+    if(!tasks.length)return {target:0,paid:0,pending:0,pct:0};
+    const target=tasks.reduce((a,t)=>a+(f?.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):0),0);
+    const paid=tasks.reduce((a,t)=>{
+      const id=String(t.id||t.campana_id||'');
+      return a+pays.filter(p=>String(p.fromTaskId||p.campana_id||p.campaignId||'')===id).reduce((s,p)=>s+(f?.paidAmount?f.paidAmount(p):0),0);
+    },0);
+    const pending=tasks.reduce((a,t)=>a+(f?.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0),0);
     const pct=target>0?Math.max(0,Math.min(100,(paid/target)*100)):0;
     return {target,paid,pending,pct};
   }
