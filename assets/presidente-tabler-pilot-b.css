@@ -13,3 +13,24 @@
 .presMockQuick-rose .mxPresTablerBIcon{background:rgba(219,39,119,.10);color:#db2777}
 .presMockQuick-indigo .mxPresTablerBIcon{background:rgba(79,70,229,.10);color:#4f46e5}
 @media(max-width:520px){.presMockQuick .mxPresTablerBIcon{width:38px;height:38px;flex-basis:38px;border-radius:12px}.presMockQuick .mxPresTablerBIcon svg{width:22px;height:22px}}
+
+/* Anular específicamente los estilos legacy de span/::before en el Dashboard.
+   Evita gradientes sólidos y glifos superpuestos sobre SVG Tabler. */
+body.cursapp-presidente .presMockQuick[data-mx-tabler-b="1"] span::before{
+  content:none!important;display:none!important;
+}
+body.cursapp-presidente .presMockQuick[data-mx-tabler-b="1"] .mxPresTablerBIcon{
+  background:#f2eaff!important;background-image:none!important;
+  color:#6d28d9!important;opacity:1!important;visibility:visible!important;
+  box-shadow:none!important;font-size:initial!important;
+}
+body.cursapp-presidente .presMockQuick-cyan[data-mx-tabler-b="1"] .mxPresTablerBIcon{background:#e8f5fe!important;color:#0284c7!important}
+body.cursapp-presidente .presMockQuick-emerald[data-mx-tabler-b="1"] .mxPresTablerBIcon{background:#e7f9ee!important;color:#16803d!important}
+body.cursapp-presidente .presMockQuick-amber[data-mx-tabler-b="1"] .mxPresTablerBIcon{background:#fff1da!important;color:#b45309!important}
+body.cursapp-presidente .presMockQuick-rose[data-mx-tabler-b="1"] .mxPresTablerBIcon{background:#fce7f3!important;color:#be185d!important}
+body.cursapp-presidente .presMockQuick-indigo[data-mx-tabler-b="1"] .mxPresTablerBIcon{background:#ede9fe!important;color:#4f46e5!important}
+body.cursapp-presidente .presMockQuick[data-mx-tabler-b="1"] .mxPresTablerBIcon svg{
+  display:block!important;width:24px!important;height:24px!important;
+  stroke:currentColor!important;fill:none!important;opacity:1!important;
+  stroke-width:2!important;
+}
