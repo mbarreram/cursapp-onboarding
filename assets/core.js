@@ -1172,6 +1172,12 @@
     saveJSON("cursapp_deleted_tasks_v1", deletedTasks);
     saveJSON("cursapp_avisos_v2", avisos);
 
+    // Canonical in-memory snapshot. A failed or incomplete hydration never publishes state.
+    window.MICURSOX_OPERATIONAL_FINANCE_STATE = Object.freeze({
+      source:"supabase", courseId:String(curso.id), courseKey:ck,
+      tasks:tasks.slice(), payments:payments.slice(), studentTotal:enrollments.length,
+      loadedAt:new Date().toISOString()
+    });
     const status = { ok:true, reason:reason||"manual", courseKey:ck, cursoId:curso.id, usuarios:usuariosRows.length, miembros:miembros.length, apoderados:enrollments.length, campanas:tasks.length, eliminadas:deletedTasks.length, pagos:payments.length, avisos:avisos.length, at:new Date().toISOString() };
     saveJSON(STATUS_KEY, status);
     try{ window.dispatchEvent(new CustomEvent("cursapp:dataChanged", { detail:{ key:"supabase-operational", source:"supabase", status } })); }catch(e){}
