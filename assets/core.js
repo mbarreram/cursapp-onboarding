@@ -1343,7 +1343,9 @@
     };
     if(amount != null) body.monto_pagado = amount;
     const rows = await sb("pagos?id=eq." + q(paymentId), { method:"PATCH", body: JSON.stringify(body) });
-    const paidRow = rows[0] || Object.assign({id: paymentId}, body);
+    // A zero-row update can mean RLS denied the operation; never fabricate success.
+    const paidRow = Array.isArray(rows) ? rows[0] : null;
+    if(!paidRow || String(paidRow.id)!==String(paymentId)) throw new Error("Supabase no confirmó la actualización del pago.");
     try{ if(window.CURSAPP && typeof window.CURSAPP.hydrateOperationalFromSupabase === "function") await window.CURSAPP.hydrateOperationalFromSupabase("fase2a-mark-paid"); }catch(e){}
     try{
       if(window.CURSAPP_NOTIFICATIONS && typeof window.CURSAPP_NOTIFICATIONS.notifyPaymentToDirectiva === "function"){
