@@ -25,3 +25,7 @@ jobs:
         run: node qa/production-core-audit.mjs
       - name: Block new business localStorage writes
         run: node qa/no-new-business-localstorage.mjs
+      - name: Validate Supabase financial authority contract
+        run: node qa/financial-authority-contract.mjs
+      - name: Test canonical financial metrics
+        run: node tests/finance-core-v1.test.mjs
