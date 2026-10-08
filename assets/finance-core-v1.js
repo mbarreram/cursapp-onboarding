@@ -104,7 +104,14 @@
       requiredTasks.forEach(t=>{
         const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
         const set=new Set();
-        rowsForTaskPeriod(payments,id,p).forEach(row=>{const who=identity(row);if(who&&remaining(row)<=0)set.add(who)});
+        const debts=new Set();
+        rowsForTaskPeriod(payments,id,p).forEach(row=>{
+          const who=identity(row);
+          if(!who)return;
+          if(remainingForTask(row,t)>0)debts.add(who);
+          else if(!excludedForTask(row,t))set.add(who);
+        });
+        debts.forEach(who=>set.delete(who));
         settledByTask.set(id,set);
       });
       const allIds=new Set();
