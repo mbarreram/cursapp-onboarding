@@ -173,6 +173,18 @@
     rows.forEach(p=>{const who=taskIdentity(p);if(who&&remainingForTask(p,t)<=0&&!excludedForTask(p,t))settled.add(who)});
     return Math.max(debtors.size,Math.max(0,universe-settled.size));
   }
+  function taskFinancialMetrics(t,payments,studentTotal){
+    const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
+    const rows=(payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p));
+    const collected=rows.reduce((s,p)=>s+(!excludedForTask(p,t)?paidAmount(p):0),0);
+    const pending=taskPendingTotal(t,payments,studentTotal);
+    const expectedBase=taskExpectedTotal(t,studentTotal);
+    const expected=Math.max(0,expectedBase,collected+pending);
+    const debtors=taskDebtorCount(t,payments,studentTotal);
+    const pct=expected>0?Math.max(0,Math.min(100,Math.round((collected/expected)*100))):0;
+    return {taskId:id,collected,pending,expected,debtors,pct};
+  }
+
   function taskPendingInstallments(t,payments){
     const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
     return (payments||[]).filter(p=>taskId(p)===id&&!hardExcluded(p)&&remainingForTask(p,t)>0).length;
@@ -180,7 +192,7 @@
 
   const api=Object.freeze({
     ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,expensePeriod,
-    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
+    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskFinancialMetrics,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
   });
   root.CURSAPP_FINANCE_CORE_V1=true;
   root.CURSAPP_FINANCE_CORE=api;
