@@ -43,7 +43,7 @@ function snapshot(period){
    const collected=metrics?metrics.collected:ps.reduce((a,p)=>a+(f?.paidAmount?f.paidAmount(p):0),0);
    const pending=metrics?metrics.pending:(f?.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0);
    const goal=metrics?metrics.expected:Math.max((f?.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):(Number(t.goalTotal??t.goal_total??t.meta??0)||0)),collected+pending);
-   const spent=expenses.filter(e=>String(e?.campaignId||e?.campana_id||e?.taskId||e?.fromTaskId||'')===id&&!['anulada','anulado','void'].includes(norm(e?.approvalStatus||e?.status||e?.estado))).reduce((a,e)=>a+(Number(e?.amount??e?.monto??0)||0),0);
+   const spent=expenses.filter(e=>String(e?.campaignId||e?.campana_id||e?.taskId||e?.fromTaskId||'')===id&&(f?.expenseCounted?f.expenseCounted(e):!['pendiente','pending','observada','observado','rejected','rechazada','rechazado','anulada','anulado','void'].includes(norm(e?.status||e?.estado||e?.approvalStatus)))).reduce((a,e)=>a+(Number(e?.amount??e?.monto??0)||0),0);
    const state=taskState(t);
    const taskAmount=Math.max(0,Number(t?.amount??t?.monto??0)||0);
    const obligationValues=Array.from(new Set(ps.map(p=>Math.max(0,Number(p?.obligationAmount??p?.amount??p?.monto??0)||0)).filter(v=>v>0))).sort((a,b)=>a-b);
