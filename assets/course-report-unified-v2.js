@@ -6,7 +6,19 @@ const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const clp=v=>'$'+Math.round(Number(v||0)).toLocaleString('es-CL');
 const norm=v=>String(v==null?'':v).trim().toLowerCase();
 function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='function')return window.CURSAPP.scopedKey(base);}catch(_e){}return 'cursapp_'+base;}
-function load(base){try{const x=JSON.parse(localStorage.getItem(scoped(base))||'[]');return Array.isArray(x)?x:[];}catch(_e){return[];}}
+function load(base){
+ // Treasury reports and expenses must come from the successful Supabase hydration.
+ const state=window.MICURSOX_TREASURY_REPORT_STATE;
+ if(state&&state.source==='supabase'){
+   const course=(()=>{try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}');return x.course||x;}catch(_){return {};}})();
+   const cid=String(course.curso_id||course.courseId||course.id||'');
+   if(cid&&cid===String(state.courseId||'')){
+     if(base==='expenses_v1')return state.expenses.slice();
+     if(base==='monthly_reports_v1')return state.reports.slice();
+   }
+ }
+ try{const x=JSON.parse(localStorage.getItem(scoped(base))||'[]');return Array.isArray(x)?x:[];}catch(_e){return[];}
+}
 function reports(){return load('monthly_reports_v1').slice().sort((a,b)=>String(b.generatedAt||'').localeCompare(String(a.generatedAt||'')));}
 function getReport(period){const all=reports();return (period?all.find(r=>String(r.period||'')===String(period)):null)||all[0]||null;}
 function paymentTaskId(p){return String((p&&(p.fromTaskId||p.campana_id||p.taskId||p.campaignId))||'');}
