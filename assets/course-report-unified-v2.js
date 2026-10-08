@@ -39,12 +39,13 @@ function snapshot(period){
    const id=String(t.id||t.campana_id||'');
    const ps=pays.filter(p=>paymentTaskId(p)===id);
    const sr=rc.find(c=>String(c.id||c.taskId||c.campana_id||'')===id)||rc.find(c=>norm(c.title||c.titulo||c.name)===norm(title(t)))||{};
-   const goal=f?.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):(Number(t.goalTotal??t.goal_total??t.meta??0)||0);
-   const collected=ps.reduce((a,p)=>a+(f?.paidAmount?f.paidAmount(p):0),0);
-   const pending=f?.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0;
+   const metrics=f?.taskFinancialMetrics?f.taskFinancialMetrics(t,pays,totalStudents):null;
+   const collected=metrics?metrics.collected:ps.reduce((a,p)=>a+(f?.paidAmount?f.paidAmount(p):0),0);
+   const pending=metrics?metrics.pending:(f?.taskPendingTotal?f.taskPendingTotal(t,pays,totalStudents):0);
+   const goal=metrics?metrics.expected:Math.max((f?.taskExpectedTotal?f.taskExpectedTotal(t,totalStudents):(Number(t.goalTotal??t.goal_total??t.meta??0)||0)),collected+pending);
    const spent=expenses.filter(e=>String(e?.campaignId||e?.campana_id||e?.taskId||e?.fromTaskId||'')===id&&!['anulada','anulado','void'].includes(norm(e?.approvalStatus||e?.status||e?.estado))).reduce((a,e)=>a+(Number(e?.amount??e?.monto??0)||0),0);
    const state=taskState(t);
-   return{id,title:title(t),goal,collected,pending,spent,state,pct:goal>0?Math.max(0,Math.min(100,Math.round(collected/goal*100))):0};
+   return{id,title:title(t),goal,collected,pending,spent,state,pct:metrics?metrics.pct:(goal>0?Math.max(0,Math.min(100,Math.round(collected/goal*100))):0)};
  });
  if(!rows.length&&rc.length){
    rows=rc.map(c=>{const g=Number(c.goalTotal??c.goal_total??c.meta??c.objetivo??0)||0;const col=Number(c.recaudado??c.collected??c.cobrado??c.totalPaid??0)||0;const pen=Number(c.pendiente??c.pending??0)||0;const state=norm(c.status||c.estado)==='vencida'?'vencida':(['cerrada','cerrado','closed','finalizada','finalizado'].includes(norm(c.status||c.estado))?'cerrada':'activa');return{id:String(c.id||''),title:String(c.title||c.titulo||c.name||'Campaña'),goal:g,collected:col,pending:Math.max(0,pen),spent:Number(c.spent??c.gastado??0)||0,state,pct:g>0?Math.round(col/g*100):0};});
