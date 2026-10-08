@@ -50,7 +50,21 @@ function route(h){
 }
 function openNotifications(){close();var n=0;(function w(){var a=window.CURSAPP_NOTIFICATIONS;if(a&&typeof a.open==='function'){close();return a.open()}if(++n<30)setTimeout(w,100)})()}
 function openSupport(){close();var n=0;(function w(){var a=window.CURSAPP_SUPPORT;if(a&&typeof a.openMyTickets==='function'){close();return a.openMyTickets()}if(a&&typeof a.open==='function'){close();return a.open('mine')}if(++n<30)return setTimeout(w,100);alert('Soporte aún se está cargando. Intenta nuevamente en unos segundos.')})()}
-function openHelp(){close();var n=0;(function w(){var a=window.MICURSOX_PRESIDENT_HELP;if(a&&typeof a.open==='function'){close();return a.open()}if(++n<30)return setTimeout(w,100);alert('La ayuda aún se está cargando. Intenta nuevamente en unos segundos.')})()}
+function openHelp(){
+ close();
+ var api=window.MICURSOX_PRESIDENT_HELP;
+ if(api&&typeof api.open==='function'){try{api.open();return}catch(e){console.warn('Ayuda Presidente',e)}}
+ // La hoja de ayuda es autónoma: permitir recargarla si no se inicializó.
+ var current=document.querySelector('script[data-mx-help-retry="1"]');
+ if(current)return;
+ var script=document.createElement('script');
+ script.dataset.mxHelpRetry='1';
+ script.src='/assets/presidente-help-general-v1.js?v=4';
+ script.onload=function(){var a=window.MICURSOX_PRESIDENT_HELP;if(a&&typeof a.open==='function'){try{a.open();return}catch(e){console.warn('Ayuda Presidente',e)}}alert('No se pudo abrir Ayuda y primeros pasos. Intenta recargar la página.')};
+ script.onerror=function(){script.remove();alert('No fue posible cargar Ayuda y primeros pasos. Comprueba tu conexión.')};
+ document.head.appendChild(script);
+}
+
 function openPizarron(){close();var a=window.MICURSOX_PIZARRON;if(a&&typeof a.open==='function')return a.open();location.href='/pizarron.html'}
 async function logout(){try{if(window.cursappSupabase&&window.cursappSupabase.auth&&typeof window.cursappSupabase.auth.signOut==='function')await window.cursappSupabase.auth.signOut()}catch(_){ }try{['cursapp_session_v1','cursapp_active_profile_v1','cursapp_active_role_v1','cursapp_active_course_v1','cursapp_active_miembro_id_v1','cursapp_supabase_auth_session_v1','cursapp_supabase_oauth_v1'].forEach(k=>localStorage.removeItem(k));sessionStorage.clear()}catch(_){ }location.replace('/login.html')}
 var BTN='width:100%!important;min-height:43px!important;border:0!important;background:transparent!important;border-radius:12px!important;padding:9px 10px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;margin:0!important;color:#0f172a!important;font-family:inherit!important;font-size:13.5px!important;font-weight:820!important;line-height:1.2!important;text-align:left!important;box-shadow:none!important;box-sizing:border-box!important;';
