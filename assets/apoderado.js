@@ -1867,7 +1867,7 @@ ${cardHtml}
 // -------- Reports --------
   function reports(){
     const live=window.MICURSOX_APO_REPORTS_STATE?.reports;
-    if(Array.isArray(live) && live.length) return live;
+    if(window.MICURSOX_APO_REPORTS_STATE) return Array.isArray(live)?live:[];
     const dynamicKey = sk("monthly_reports_v1");
     let rows = load(dynamicKey, []);
     if(!Array.isArray(rows) || !rows.length){
