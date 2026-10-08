@@ -210,7 +210,7 @@
 
   const api=Object.freeze({
     ym,status,excluded,taskId,identity,obligation,paidAmount,remaining,paidPeriod,obligationPeriod,expensePeriod,
-    isMonthly,mandatory,closed,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskFinancialMetrics,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
+    isMonthly,mandatory,closed,expenseCounted,taskAppliesInMonth,taskExpectedTotal,excludedForTask,remainingForTask,taskDebtorCount,taskFinancialMetrics,taskPendingInstallments,taskMonthMetrics,monthSummary,allSummary,courseSummary,taskPendingTotal
   });
   root.CURSAPP_FINANCE_CORE_V1=true;
   root.CURSAPP_FINANCE_CORE=api;
