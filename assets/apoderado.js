@@ -203,22 +203,8 @@ function isMinePayment(p){
       }
     }catch(_e){}
   }
+  // Snapshot restoration is disabled: cached payments cannot overrule Supabase.
   function __restorePaymentsSnapshotIfEmptyV584(list){
-    try{
-      const arr = Array.isArray(list) ? list : [];
-      const mine = arr.filter(p=>{ try{ return isMinePayment(p); }catch(_e){ return false; } });
-      if(mine.length) return arr;
-      const raw = localStorage.getItem(__paymentsSnapshotKeyV584());
-      if(!raw) return arr;
-      const snap = JSON.parse(raw);
-      const restored = Array.isArray(snap?.payments) ? snap.payments : [];
-      const restoredMine = restored.filter(p=>{ try{ return isMinePayment(p); }catch(_e){ return false; } });
-      if(restoredMine.length){
-        save(KEY_PAYMENTS, restored);
-        try{ console.warn("Cursapp V58.4: pagos restaurados desde snapshot", {restored:restoredMine.length}); }catch(_e){}
-        return restored;
-      }
-    }catch(_e){}
     return Array.isArray(list) ? list : [];
   }
 
