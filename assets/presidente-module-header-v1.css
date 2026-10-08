@@ -6,3 +6,9 @@ body.cursapp-presidente .mxPresModuleCopy{min-width:0;flex:1}body.cursapp-presid
 body.cursapp-presidente .mxPresModuleDot{width:8px;height:8px;border-radius:50%;background:var(--mxAccent);margin-right:3px;flex-shrink:0}
 body.cursapp-presidente .mxPresModuleOriginalHidden{display:none!important}body.cursapp-presidente .presCampaignHeader{align-items:center!important}body.cursapp-presidente .presCampaignHeader>div:has(>.mxPresModuleOriginalHidden){display:none!important}
 @media(min-width:1024px){body.cursapp-presidente .mxPresModuleHeader{margin:18px 22px;max-width:760px}}
+
+/* Evitar bloque vacío del título anterior en Informes. */
+body.cursapp-presidente .presReportsScreen .presReportsTitle:has(.mxPresModuleOriginalHidden){display:none!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;}
+body.cursapp-presidente .presReportsScreen{margin-top:0!important;padding-top:0!important;}
+/* En Apoderados conservar la identificación del colegio, no el título duplicado. */
+body.cursapp-presidente .mxPresModuleOriginalHidden{display:none!important;}
