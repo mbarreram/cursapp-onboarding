@@ -616,7 +616,8 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       return;
     }
     try{
-      await paymentApi.syncPaidLocalPayment(paidPaymentForSync);
+      const confirmed = await paymentApi.syncPaidLocalPayment(paidPaymentForSync);
+      if(!confirmed || !confirmed.id || !["pagado","paid","conciliado"].includes(String(confirmed.estado||confirmed.status||"").toLowerCase())) throw new Error("Sin confirmación de pago persistido en Supabase");
       await paymentApi.refresh("manual-payment");
     }catch(error){
       console.error("Error registrando pago manual en Supabase",error);
