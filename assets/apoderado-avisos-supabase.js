@@ -60,11 +60,30 @@
     return (Array.isArray(rows) ? rows : []).map(x=>Object.assign({},x,{isRead:readMap.get(String(x.id))===true}));
   }
 
+  function publishedReportNotice(){
+    const state=window.MICURSOX_APO_REPORTS_STATE;
+    if(!state || !Array.isArray(state.reports) || !state.reports.length) return null;
+    if(lastCourseId && String(state.courseId||'')!==lastCourseId) return null;
+    const report=state.reports.find(r=>r && r.published);
+    if(!report) return null;
+    const stamp=String(report.publishedAt||report.generatedAt||report.updatedAt||'');
+    const id=String(report.supabaseId||report.id||report.period||'');
+    return { id:'published-report-'+id+'-'+stamp, titulo:'Informe del curso disponible',
+      mensaje:'La directiva publicó el informe '+String(report.period||'')+'. Revisa el estado financiero del curso.',
+      created_at:stamp, isReport:true, isRead:false };
+  }
+
+  function homeItems(items){
+    const report=publishedReportNotice();
+    return report?[report,...(items||[])]:items||[];
+  }
+
   function renderHome(items, force){
     ensureNoticeStyles();
     const host = document.querySelector('.apoV2RealAvisos');
     if(!host) return false;
 
+    items=homeItems(items);
     const sig = signature(items);
     if(!force && host === lastRenderedHost && sig === lastRenderedSignature) return true;
 
@@ -73,15 +92,21 @@
     }else{
       host.innerHTML = items.slice(0,3).map(a=>{
         const date = formatDate(a.created_at);
-        const state=a.isRead?'Leído':'Nuevo';
+        const state=a.isReport?'Publicado':(a.isRead?'Leído':'Nuevo');
         return '<article class="apoV2Notice apoV40NoticeCard '+(a.isRead?'mx-notice-read':'mx-notice-new')+'">'
-          + '<span class="apoV40NoticeIcon">📣</span>'
+          + '<span class="apoV40NoticeIcon">'+(a.isReport?'📊':'📣')+'</span>'
           + '<div class="apoV40NoticeCopy"><h3>'+esc(a.titulo || 'Aviso del curso')+'<span class="mxNoticeState '+(a.isRead?'read':'new')+'">'+state+'</span></h3>'
           + '<p>'+esc(a.mensaje || 'Revisa el detalle del aviso publicado por la directiva.')+'</p>'
           + (date ? '<small>'+esc(date)+'</small>' : '')
-          + '</div><button type="button" data-current-course-notices="1">Ver</button></article>';
+          + '</div><button type="button" '+(a.isReport?'data-open-published-report="1"':'data-current-course-notices="1"')+'>'+(a.isReport?'Ver informe':'Ver')+'</button></article>';
       }).join('');
 
+      host.querySelectorAll('[data-open-published-report]').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          if(typeof window.go==='function')window.go('informes');
+          setTimeout(()=>{if(typeof window.openPublishedReport==='function')window.openPublishedReport();},180);
+        });
+      });
       host.querySelectorAll('[data-current-course-notices]').forEach(btn=>{
         btn.addEventListener('click', openCurrentCourseNotices);
       });
@@ -154,6 +179,9 @@
   window.addEventListener('pageshow', ()=>scheduleRefresh(120));
   window.addEventListener('hashchange', ()=>scheduleRefresh(120));
   window.addEventListener('micursox:course-notices-updated', ()=>scheduleRefresh(60));
+  window.addEventListener('micursox:published-reports-hydrated', ()=>{
+    if(renderHome(lastItems,true))wireSectionHeader();
+  });
 
   const observer = new MutationObserver(()=>{
     const host = document.querySelector('.apoV2RealAvisos');
