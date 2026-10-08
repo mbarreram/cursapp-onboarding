@@ -3423,7 +3423,7 @@ window.payNow = async function(id){
     }
     function apoV40NoticeIcon(category){
       const c = String(category || "").toLowerCase();
-      if(c.includes("report")) return "📊";
+      if(c.includes("report") || c.includes("informe")) return "📊";
       if(c.includes("payment") || c.includes("financial")) return "💳";
       if(c.includes("urgent")) return "⚠️";
       if(c.includes("campaign")) return "📌";
@@ -3433,16 +3433,48 @@ window.payNow = async function(id){
       if(!iso) return "";
       try{ return new Date(iso).toLocaleString("es-CL", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" }); }catch(e){ return String(iso).slice(0,16); }
     }
-    const noticeItems = apoV40LoadNoticeItems();
+    let noticeItems = apoV40LoadNoticeItems();
+    const newestPublishedReport = latestReport();
+    if(newestPublishedReport && newestPublishedReport.published){
+      const sig=String(newestPublishedReport.supabaseId||newestPublishedReport.id||newestPublishedReport.generatedAt||newestPublishedReport.publishedAt||newestPublishedReport.period||"latest").replace(/[^a-zA-Z0-9_-]/g,"_");
+      const seenKey="cursapp_report_notice_seen_"+sig;
+      let seenReport=false;try{seenReport=localStorage.getItem(seenKey)==="1";}catch(_){}
+      if(!seenReport){
+        let label=String(newestPublishedReport.period||"Informe publicado");
+        try{
+          if(/^\d{4}-\d{2}$/.test(label)){
+            const [yy,mm]=label.split("-").map(Number);
+            label=new Date(yy,mm-1,1).toLocaleDateString("es-CL",{month:"long",year:"numeric"}).replace(/^./,x=>x.toUpperCase());
+          }
+        }catch(_){}
+        noticeItems=[{
+          id:"report:"+sig,
+          title:"Nuevo informe del curso disponible",
+          message:label+" · Revisa el estado financiero actualizado del curso.",
+          category:"informe",
+          createdAt:String(newestPublishedReport.publishedAt||newestPublishedReport.generatedAt||newestPublishedReport.updatedAt||""),
+          isReport:true,
+          period:String(newestPublishedReport.period||""),
+          seenKey
+        },...noticeItems].slice(0,1);
+      }
+    }
+    window.openApoPublishedReportFromHome=function(seenKey,period){
+      try{if(seenKey)localStorage.setItem(String(seenKey),"1");}catch(_){}
+      try{window.CURSAPP_NOTIFICATIONS?.markByCategories?.(["informe","report"]);}catch(_){}
+      window.__apoReportSelectedPeriod=String(period||"");
+      go("informes");
+      setTimeout(()=>{try{if(typeof window.openPublishedReport==="function")window.openPublishedReport();}catch(_){}},140);
+    };
     const realAvisos = noticeItems.length ? noticeItems.map(a=>`
-      <article class="apoV2Notice apoV40NoticeCard">
+      <article class="apoV2Notice apoV40NoticeCard ${a.isReport?"is-report":""}">
         <span class="apoV40NoticeIcon">${apoV40NoticeIcon(a.category)}</span>
         <div class="apoV40NoticeCopy">
           <h3>${esc(a.title)}</h3>
           <p>${esc(a.message || "Revisa el detalle del aviso publicado por la directiva.")}</p>
           ${a.createdAt ? `<small>${esc(apoV40NoticeDate(a.createdAt))}</small>` : ""}
         </div>
-        <button type="button" onclick="openAvisosInbox()">Ver</button>
+        <button type="button" onclick="${a.isReport?`openApoPublishedReportFromHome('${esc(a.seenKey)}','${esc(a.period)}')`:"openAvisosInbox()"}">${a.isReport?"Ver informe":"Ver"}</button>
       </article>`).join("") : `<article class="apoV2Notice apoV40NoticeCard"><span class="apoV40NoticeIcon">📣</span><div class="apoV40NoticeCopy"><h3>Sin avisos nuevos</h3><p>Aún no hay mensajes publicados por la directiva.</p></div></article>`;
 
     app.innerHTML = `
