@@ -25,5 +25,5 @@ function apply(){
  const nav={'home':'home','conciliacion':'cash-banknote','rendiciones':'receipt','informes':'chart-bar'};
  document.querySelectorAll('body.cursapp-tesorero nav .navItem[data-tab]').forEach(b=>{const kind=nav[b.dataset.tab];const holder=b.querySelector('.tesNavIcon');if(kind&&holder&&!holder.querySelector('[data-mx-tabler-nav]')){holder.innerHTML=icons[kind].replace('<svg ','<svg data-mx-tabler-nav="1" ');}});
 }
-function boot(){apply();const el=document.getElementById('app')||document.body;new MutationObserver(apply).observe(el,{childList:true,subtree:true});}
+function boot(){apply();/* La navegación inferior es hermana de #app: V62 la reconstruye al navegar. */ new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();})();
