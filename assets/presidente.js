@@ -2304,19 +2304,18 @@ function renderHome(){
 
     const list = filtered.map(t=>{
       const isDeletedCampaign = String(t && (t.status || t.estado) || "").toLowerCase() === "eliminada";
-      const rec = isDeletedCampaign ? 0 : collectedTask(t.id);
+      const fm = financeCore()?.taskFinancialMetrics ? financeCore().taskFinancialMetrics(t,payments(),courseStudentTotal()) : null;
+      const rec = isDeletedCampaign ? 0 : (fm?fm.collected:collectedTask(t.id));
       const gas = isDeletedCampaign ? 0 : spentTask(t.id);
       const saldo = rec - gas;
-      const pend = pendingTaskEstimated(t);
-      const debtors = deudoresTask(t.id);
+      const pend = fm?fm.pending:pendingTaskEstimated(t);
+      const debtors = fm?fm.debtors:deudoresTask(t.id);
       const cuotasPendientes = cuotasPendientesTask(t.id);
       const monto = Number(t.amount||0);
       const tipo = presCleanText(campaignTypeLabel(t));
       const part = (t.mandatoryParticipation === false) ? "No obligatoria" : "Obligatoria";
-      const meta = (t.goalTotal != null && Number(t.goalTotal)>0) ? Number(t.goalTotal) : 0;
-      const expectedBase = financeCore()?.taskExpectedTotal ? financeCore().taskExpectedTotal(t,courseStudentTotal()) : Math.max(meta, rec + pend, monto);
-      const expected = Math.max(1, expectedBase, rec + pend);
-      const pct = Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
+      const expected = fm?Math.max(1,fm.expected):Math.max(1,(financeCore()?.taskExpectedTotal ? financeCore().taskExpectedTotal(t,courseStudentTotal()) : 0),rec+pend,monto);
+      const pct = fm?fm.pct:Math.max(0, Math.min(100, Math.round((rec / expected) * 100)));
       const dateLine = [fmtCampDate(t.startDate), fmtCampDate(t.dueDate)].filter(Boolean).join(" — ");
       const chipsInfo = [
         `<span class="presCampaignMiniChip"><b>${clp(monto)}</b></span>`,
