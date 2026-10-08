@@ -81,3 +81,30 @@ console.log('finance-core-v1: all assertions passed');
   assert.equal(f.taskPendingInstallments(task,rows),0);
 }
 console.log('mandatory/voluntary opt-out invariants passed');
+
+
+// Regression: one settled installment cannot erase another outstanding month.
+{
+  const task={id:'monthly-debtor',type:'monthly',amount:1500,months:9,startDate:'2026-03-01',mandatoryParticipation:true};
+  const rows=[
+    paid('m1','monthly-debtor','u1',1500,'2026-03','2026-03-05T12:00:00Z'),
+    pending('m2','monthly-debtor','u1',1500,'2026-04'),
+    paid('m3','monthly-debtor','u2',1500,'2026-03','2026-03-05T12:00:00Z'),
+    paid('m4','monthly-debtor','u2',1500,'2026-04','2026-04-05T12:00:00Z')
+  ];
+  assert.equal(f.taskDebtorCount(task,rows,2),1);
+  assert.equal(f.taskFinancialMetrics(task,rows,2).debtors,1);
+}
+// Expenses can reduce the balance only when approved.
+{
+  const expenses=[
+    {status:'aprobada',amount:100},
+    {status:'pendiente',amount:200},
+    {status:'observada',amount:300},
+    {status:'rechazada',amount:400},
+    {status:'anulada',amount:500}
+  ];
+  assert.equal(f.courseSummary({payments:[],expenses}).spent,100);
+  assert.deepEqual(expenses.map(f.expenseCounted),[true,false,false,false,false]);
+}
+console.log('MiCursoX financial cross-role invariants: OK');
