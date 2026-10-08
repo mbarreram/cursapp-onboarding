@@ -79,10 +79,17 @@
     form.submit();
   }
 
+  function offlinePaymentNotice(el){
+    el.innerHTML='<div class="card"><div class="kTitle">Pago no disponible sin Internet</div><div class="muted" style="margin-top:8px">Para proteger tu pago, vuelve a conectarte y consulta nuevamente el estado de la cuota antes de iniciar Webpay.</div><div class="actions" style="margin-top:14px"><button type="button" class="btnx" id="retryPaymentOnline">Reintentar con conexión</button></div></div>';
+    const retry=document.getElementById('retryPaymentOnline');
+    if(retry)retry.onclick=()=>{if(!navigator.onLine){offlinePaymentNotice(el);return}render()};
+  }
+
   async function render(){
     const {pid} = qs();
     const el = document.getElementById("content");
     if(!el) return;
+    if(!navigator.onLine){offlinePaymentNotice(el);return;}
     el.innerHTML = `<div class="card"><div class="kTitle">Cargando pago…</div><div class="muted" style="margin-top:6px;">Consultando Supabase.</div></div>`;
 
     try{
@@ -136,6 +143,7 @@
       const msg = document.getElementById("paymentMessage");
       if(btn){
         btn.onclick = async ()=>{
+          if(!navigator.onLine){if(msg)msg.textContent="Sin conexión a Internet. No se puede iniciar Webpay.";return;}
           const old = btn.textContent;
           btn.disabled = true;
           btn.textContent = "Conectando con Transbank…";
