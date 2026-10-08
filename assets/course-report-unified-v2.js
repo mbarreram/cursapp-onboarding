@@ -7,6 +7,13 @@ const clp=v=>'$'+Math.round(Number(v||0)).toLocaleString('es-CL');
 const norm=v=>String(v==null?'':v).trim().toLowerCase();
 function scoped(base){try{if(window.CURSAPP&&typeof window.CURSAPP.scopedKey==='function')return window.CURSAPP.scopedKey(base);}catch(_e){}return 'cursapp_'+base;}
 function load(base){
+ const operational=window.MICURSOX_OPERATIONAL_FINANCE_STATE;
+ const current=(()=>{try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}');return x.course||x;}catch(_){return {};}})();
+ const cid=String(current.curso_id||current.courseId||current.id||'');
+ if(operational&&operational.source==='supabase'&&cid&&cid===String(operational.courseId||'')){
+   if(base==='tasks_v1')return operational.tasks.slice();
+   if(base==='payments_v1')return operational.payments.slice();
+ }
  // Treasury reports and expenses must come from the successful Supabase hydration.
  const state=window.MICURSOX_TREASURY_REPORT_STATE;
  if(state&&state.source==='supabase'){
@@ -36,7 +43,9 @@ function taskState(t){
 }
 function stateLabel(v){return v==='activa'?'Activa':(v==='vencida'?'Vencida':'Cerrada');}
 function studentTotal(){
-  try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};const c=x.course||x;return Math.max(0,Number(c.totalAlumnos??c.total_alumnos??0)||0)}catch(_e){return 0}
+ const state=window.MICURSOX_OPERATIONAL_FINANCE_STATE;
+ if(state&&state.source==='supabase'&&Number.isFinite(Number(state.studentTotal)))return Math.max(0,Number(state.studentTotal));
+ try{const x=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}')||{};const c=x.course||x;return Math.max(0,Number(c.totalAlumnos??c.total_alumnos??0)||0)}catch(_e){return 0}
 }
 function finance(){return window.CURSAPP_FINANCE_CORE||null;}
 function snapshot(period){
