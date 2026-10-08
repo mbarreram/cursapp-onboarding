@@ -1,0 +1,8 @@
+/* Piloto B: solamente emblemas de campañas del Dashboard de Presidente. */
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB{display:grid!important;place-items:center!important;background:#f2eaff!important;background-image:none!important;color:#6d28d9!important;border-radius:50%!important;font-size:0!important;box-shadow:none!important;overflow:hidden!important;}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB::before{content:none!important;display:none!important;}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB svg{width:32px!important;height:32px!important;stroke:currentColor!important;fill:none!important;display:block!important;opacity:1!important;}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB[data-mx-icon-kind="confetti"]{background:#f3e8ff!important;color:#7c3aed!important}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB[data-mx-icon-kind="ticket"]{background:#e9efff!important;color:#4f46e5!important}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB[data-mx-icon-kind="egg"]{background:#fff1da!important;color:#b45309!important}
+body.cursapp-presidente .presMockCampaignIcon.mxPresCampaignTablerB[data-mx-icon-kind="coins"]{background:#e7f9ee!important;color:#15803d!important}
