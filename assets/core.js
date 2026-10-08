@@ -1485,7 +1485,14 @@
     const miembros = await sb("miembros_curso?curso_id=eq." + q(curso.id) + "&email=eq." + q(email) + "&rol=eq.apoderado&select=id&limit=1");
     const miembro = miembros[0];
     if(!miembro || !miembro.id) return null;
-    const existentes = await sb("pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) + "&miembro_id=eq." + q(miembro.id) + "&select=id,estado,monto_pagado,paid_at,metodo_pago,conciliacion_estado&limit=1");
+    // A legacy local identifier is not sufficient to choose an installment.
+    // Never update the first arbitrary payment of a monthly campaign.
+    const period = String(payment.period || "").trim();
+    const query = "pagos?curso_id=eq." + q(curso.id) + "&campana_id=eq." + q(campanaId) +
+      "&miembro_id=eq." + q(miembro.id) + (period ? "&periodo=eq." + q(period) : "") +
+      "&select=id,estado,monto_pagado,paid_at,metodo_pago,conciliacion_estado&limit=2";
+    const existentes = await sb(query);
+    if(existentes.length !== 1) throw new Error("Obligación ambigua o inexistente; selecciona una cuota válida en Supabase.");
     if(existentes[0]){
       const current=existentes[0];
       if(["pagado","paid","conciliado"].includes(norm(current.estado))) return current;
@@ -1495,20 +1502,9 @@
         paidAt: payment.paidAt || undefined
       });
     }
-    const rows = await sb("pagos", { method:"POST", body: JSON.stringify({
-      curso_id: curso.id,
-      campana_id: campanaId,
-      miembro_id: miembro.id,
-      monto: Number(payment.amount || payment.monto || 0),
-      monto_pagado: Number(payment.amount || payment.monto || 0),
-      estado: "pagado",
-      paid_at: payment.paidAt || new Date().toISOString(),
-      metodo_pago: payment.paymentMethod || payment.paidWith || "manual",
-      conciliacion_estado: ["webpay","transbank"].includes(String(payment.paymentMethod || payment.paidWith || "manual").toLowerCase()) ? "conciliado" : "pendiente",
-      fecha_vencimiento: payment.dueDate || null,
-      periodo: payment.period || ymFromISO(payment.dueDate || payment.paidAt)
-    }) });
-    return rows[0] || null;
+    // Creation of new obligations belongs to the server-side enrollment flow.
+    throw new Error("No existe una obligación única que se pueda pagar.");
+
   }
   async function syncPaidLocalPayments(){
     // Fase 2B: Supabase is authoritative for operational payments.
