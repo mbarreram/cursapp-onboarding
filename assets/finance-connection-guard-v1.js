@@ -39,7 +39,16 @@ function blockedTarget(el){const target=el.closest('button,a,[role="button"],inp
  return target;
 }
 function block(e){if(state==='ready')return;const t=blockedTarget(e.target);if(!t)return;e.preventDefault();e.stopImmediatePropagation();paint();banner().focus?.();if(e.type==='click')alert('No se puede realizar esta operación mientras MiCursoX no confirme conexión. Reintenta cuando los datos estén actualizados.');}
-function init(){paint();check(true);window.addEventListener('online',()=>check(true));window.addEventListener('offline',()=>{++epoch;set('offline')});window.addEventListener('pageshow',()=>check(true));document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check(true)});document.addEventListener('click',block,true);document.addEventListener('submit',block,true);setInterval(()=>{if(document.visibilityState==='visible')check(false)},45000);}
+function protectPaymentNavigation(e){
+ const link=e.target?.closest?.('a[href]');if(!link)return;
+ let url;try{url=new URL(link.href,location.href)}catch(_){return}
+ if(url.origin!==location.origin||!/^\/pay(?:\.html)?\/?$/.test(url.pathname))return;
+ if(state==='ready'&&navigator.onLine)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ alert('No puedes iniciar un pago sin conexión verificada con MiCursoX. Conéctate y vuelve a intentar desde Pagos.');
+ if(navigator.onLine)check(true);
+}
+function init(){paint();check(true);window.addEventListener('online',()=>check(true));window.addEventListener('offline',()=>{++epoch;set('offline')});window.addEventListener('pageshow',()=>check(true));document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check(true)});document.addEventListener('click',protectPaymentNavigation,true);document.addEventListener('click',block,true);document.addEventListener('submit',block,true);setInterval(()=>{if(document.visibilityState==='visible')check(false)},45000);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 window.MICURSOX_CONNECTION={get status(){return state},check:()=>check(true),isReady:()=>state==='ready'};
 })();
