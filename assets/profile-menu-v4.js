@@ -11,7 +11,9 @@ function route(h){
   var page='/'+m[1]+'.html',tab=String(m[2]||'home').trim();
 
   // Usar el controlador existente y los botones reales, sin rutas genéricas a Inicio.
-  if(location.pathname===page){
+  var currentPath=location.pathname.replace(/\/$/,'').replace(/\.html$/,'');
+  var targetPath=page.replace(/\.html$/,'');
+  if(currentPath===targetPath){
     if(tab==='retiros'){
       var funds=document.querySelector('.bottomNav [data-mx-funds="1"], [data-mx-funds="1"]');
       if(funds){funds.click();return}
@@ -26,6 +28,8 @@ function route(h){
     };
     var current=page.slice(1,-5);
     if(!(valid[current]||[]).includes(tab)){alert('La sección seleccionada no está disponible en este perfil.');return}
+    // El controlador de Tesorero preserva la sección incluso cuando V62 reconstruye el menú inferior.
+    if(current==='tesorero'&&typeof window.go==='function'){window.go(tab);return}
     var buttonTab=document.querySelector('.bottomNav [data-tab="'+tab+'"]');
     if(buttonTab){buttonTab.click();return}
     if(typeof window.go==='function'){window.go(tab);return}
@@ -41,7 +45,8 @@ function route(h){
       localStorage.setItem('cursapp_nav_at_v1',String(Date.now()));
     }
   }catch(_){}
-  location.href=page;
+  // El hash conserva la sección si el navegador debe cargar el dashboard.
+  location.href=page+'#'+encodeURIComponent(tab);
 }
 function openNotifications(){close();var n=0;(function w(){var a=window.CURSAPP_NOTIFICATIONS;if(a&&typeof a.open==='function'){close();return a.open()}if(++n<30)setTimeout(w,100)})()}
 function openSupport(){close();var n=0;(function w(){var a=window.CURSAPP_SUPPORT;if(a&&typeof a.openMyTickets==='function'){close();return a.openMyTickets()}if(a&&typeof a.open==='function'){close();return a.open('mine')}if(++n<30)return setTimeout(w,100);alert('Soporte aún se está cargando. Intenta nuevamente en unos segundos.')})()}
