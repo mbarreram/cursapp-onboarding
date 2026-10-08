@@ -1470,6 +1470,7 @@
         // state, payment date or amount from legacy/local cache.
         return current;
       }
+      if(!current) throw new Error("Pago no encontrado en Supabase.");
       return markPaid(id, {
         amount: payment.paidAmount ?? payment.monto_pagado ?? payment.amount ?? payment.monto,
         method: payment.paymentMethod || payment.paidWith || "manual",
