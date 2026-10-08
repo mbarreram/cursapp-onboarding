@@ -56,6 +56,7 @@
     ]);
     const expenses=(Array.isArray(expenseRows)?expenseRows:[]).map(expenseFromDb);
     const reports=(Array.isArray(reportRows)?reportRows:[]).map(reportFromDb);
+    window.MICURSOX_TREASURY_REPORT_STATE={courseId:courseId(),expenses,reports,loadedAt:now(),source:'supabase'};
     write(scoped('expenses_v1'),expenses);write('cursapp_expenses_v1',expenses);
     write(scoped('monthly_reports_v1'),reports);write('cursapp_monthly_reports_v1',reports);
     write('cursapp_campaign_reports_v1',reports);
