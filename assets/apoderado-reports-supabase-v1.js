@@ -23,7 +23,30 @@ function reportFromDb(row){
   const collected=Number(content.recaudadoCurso ?? content.recaudado ?? content.collected ?? 0)||0;
   const spent=Number(content.gastadoCurso ?? content.spent ?? 0)||0;
   const balance=Number(content.disponibleCurso ?? content.balance ?? (collected-spent))||0;
-  const campaignRows=Array.isArray(content.campaigns)?content.campaigns:(Array.isArray(content.campaignRows)?content.campaignRows:[]);
+  // Read-only adaptation of historical published reports (ps/okE schema).
+  // Do not update public.informes or replace a published financial snapshot.
+  const legacyPayments=Array.isArray(content.ps)?content.ps:[];
+  const legacyCampaigns=new Map();
+  if(!Array.isArray(content.campaigns)&&!Array.isArray(content.campaignRows)){
+    for(const p of legacyPayments){
+      const id=String(p.fromTaskId||p.campana_id||p.campaignId||'');
+      if(!id)continue;
+      const entry=legacyCampaigns.get(id)||{id,title:String(p.title||p.concept||'Campaña'),collected:0,pending:0,goalTotal:0};
+      const paid=Math.max(0,Number(p.paidAmount??p.monto_pagado??0)||0);
+      const obligation=Math.max(0,Number(p.obligationAmount??p.amount??p.monto??0)||0);
+      const status=String(p.status||p.estado||'').toLowerCase();
+      const isPaid=['pagado','paid','conciliado'].includes(status);
+      // Historical mandatory opt-out markers are outstanding obligations.
+      // Legacy voluntary campaigns with no recorded payment are never materialized.
+      const remaining=isPaid?0:Math.max(0,obligation-paid);
+      entry.collected+=paid;
+      entry.pending+=remaining;
+      legacyCampaigns.set(id,entry);
+    }
+    for(const c of legacyCampaigns.values())c.goalTotal=c.collected+c.pending;
+  }
+  const campaignRows=Array.isArray(content.campaigns)?content.campaigns:(Array.isArray(content.campaignRows)?content.campaignRows:Array.from(legacyCampaigns.values()));
+  const pendingCourse=Number(content.pendienteCurso??content.pendiente??campaignRows.reduce((s,c)=>s+Number(c.pending??c.pendiente??0),0))||0;
   const expenseRows=Array.isArray(content.expenses)?content.expenses:(Array.isArray(content.okE)?content.okE:[]);
   return Object.assign({},content,{
     id:row.id,
@@ -38,6 +61,7 @@ function reportFromDb(row){
     updatedAt:row.actualizado_at||row.created_at||null,
     state:row.estado||(row.publicado?'publicado':'borrador'),
     recaudadoCurso:collected,
+    pendienteCurso:pendingCourse,
     gastadoCurso:spent,
     disponibleCurso:balance,
     recaudado:collected,
