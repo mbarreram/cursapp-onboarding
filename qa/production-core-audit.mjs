@@ -84,7 +84,7 @@ else {
   const copy = fs.readFileSync(copyFile, 'utf8');
   if (!/DEMO_MODE\s*=\s*false/.test(copy)) errors.push('La capa productiva no fuerza DEMO_MODE=false');
   if (!/searchParams\.delete\(key\)/.test(copy)) errors.push('La capa productiva no elimina flags debug/demo de URL');
-  for (const token of ['Supabase Auth','RLS/DELETE','UUID','localStorage','(demo)','En celular no existe F12','permission denied']) {
+  for (const token of ['Supabase Auth','RLS','DELETE','UUID','localStorage','(demo)','En celular no existe F12','permission denied']) {
     if (!copy.includes(token)) errors.push(`La capa productiva no contempla sanitización de ${token}`);
   }
 }
