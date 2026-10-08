@@ -169,9 +169,20 @@
     rows.forEach(p=>{if(remainingForTask(p,t)>0){const who=taskIdentity(p);if(who)debtors.add(who)}});
     if(!mandatory(t))return debtors.size;
     const universe=Math.max(Math.max(0,n(studentTotal)),new Set(rows.map(taskIdentity).filter(Boolean)).size);
-    const settled=new Set();
-    rows.forEach(p=>{const who=taskIdentity(p);if(who&&remainingForTask(p,t)<=0&&!excludedForTask(p,t))settled.add(who)});
-    return Math.max(debtors.size,Math.max(0,universe-settled.size));
+    // A member is settled only when every materialized obligation in this
+    // campaign is satisfied. One paid installment cannot clear other debts.
+    const grouped=new Map();
+    rows.forEach(p=>{
+      const who=taskIdentity(p);
+      if(!who)return;
+      const entry=grouped.get(who)||{hasDebt:false,hasValidPayment:false};
+      if(remainingForTask(p,t)>0)entry.hasDebt=true;
+      if(!excludedForTask(p,t))entry.hasValidPayment=true;
+      grouped.set(who,entry);
+    });
+    let settled=0;
+    grouped.forEach(v=>{if(v.hasValidPayment&&!v.hasDebt)settled++;});
+    return Math.max(debtors.size,Math.max(0,universe-settled));
   }
   function taskFinancialMetrics(t,payments,studentTotal){
     const id=String(t?.id??t?.supabaseId??t?.campana_id??'');
