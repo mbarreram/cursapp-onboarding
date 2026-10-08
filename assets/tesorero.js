@@ -4629,7 +4629,10 @@ __bootTesoreroSupabaseFirst();
   const taskTitle=t=>String(t?.title||t?.name||t?.concept||'Campaña');
   const pTask=p=>String(p?.fromTaskId||p?.taskId||p?.campaignId||p?.campaign_id||'');
   const eTask=e=>String(e?.campaignId||e?.taskId||e?.campaign_id||e?.scopeId||'');
-  const conc=p=>['conciliado','conciliated','paid','pagado','approved'].includes(String(p?.conciliationStatus||p?.reconciliationStatus||p?.status||'').toLowerCase()) || !!p?.reconciledAt || !!p?.paidAt;
+  const paidValue=p=>{const f=window.CURSAPP_FINANCE_CORE;return f?.paidAmount?f.paidAmount(p):Math.max(0,Number(p?.paidAmount??p?.monto_pagado??0)||0)};
+  const conc=p=>String(p?.conciliationStatus??p?.conciliacion_estado??'').toLowerCase().trim()==='conciliado';
+  const validPayment=p=>!['anulado','anulada','cancelado','cancelada','void'].includes(String(p?.status??p?.estado??'').toLowerCase().trim());
+  const debtRow=p=>validPayment(p)&&Math.max(0,Number(p?.amount??p?.monto??0)-paidValue(p))>0;
   const approved=e=>['aprobada','approved','aprobado'].includes(String(e?.approvalStatus||e?.status||'').toLowerCase());
   const campaigns=()=>{const list=tasks().filter(Boolean); if(list.length)return list; const m=new Map();payments().forEach(p=>{const id=pTask(p)||String(p?.concept||'general');if(!m.has(id))m.set(id,{id,title:p?.concept||'Campaña general'})});return [...m.values()]};
   const GENERAL_ID='__all__';
@@ -4645,15 +4648,36 @@ __bootTesoreroSupabaseFirst();
     }catch(_){return 0}
   };
   function snapshot(c){
-    const id=taskId(c), isGlobal=id===GENERAL_ID; const ps=payments().filter(p=>isGlobal||!id||pTask(p)===id); const ex=expenses().filter(e=>isGlobal||!id||eTask(e)===id);
-    const okP=ps.filter(conc); const okE=ex.filter(approved); const pendingP=ps.filter(p=>!conc(p)); const pendingE=ex.filter(e=>!approved(e));
-    const collected=sum(okP,p=>p.amount), spent=sum(okE,e=>e.amount), balance=collected-spent;
-    const people=new Set(ps.map(p=>String(p.guardianName||p.apoderadoName||p.apoderadoEmail||p.email||p.studentName||'')).filter(Boolean));
-    const total=participantTotal(), participation=Math.min(total,people.size||ps.length||0);
+    const id=taskId(c), isGlobal=id===GENERAL_ID;
+    const ps=payments().filter(p=>(isGlobal||!id||pTask(p)===id)&&validPayment(p));
+    const ex=expenses().filter(e=>(isGlobal||!id||eTask(e)===id)&&!['anulada','anulado','void'].includes(String(e?.approvalStatus||e?.status||'').toLowerCase()));
+    const received=ps.filter(p=>paidValue(p)>0);
+    const okP=received.filter(conc);
+    const pendingConc=received.filter(p=>!conc(p));
+    const pendingPay=ps.filter(debtRow);
+    const okE=ex.filter(approved);
+    const pendingE=ex.filter(e=>!approved(e));
+    const collected=sum(received,p=>paidValue(p)), spent=sum(okE,e=>e.amount), balance=collected-spent;
+    const people=new Set(received.map(p=>String(p.guardianName||p.apoderadoName||p.apoderadoEmail||p.email||p.studentName||'')).filter(Boolean));
+    const total=participantTotal(), participation=Math.min(total,people.size||received.length||0);
     const cats={};okE.forEach(e=>{const k=String(e.category||'Otros');cats[k]=(cats[k]||0)+(Number(e.amount)||0)});
-    return {ps,ex,okP,okE,pendingP,pendingE,collected,spent,balance,participation,total,cats};
+    return {ps,ex,received,okP,okE,pendingP:pendingConc,pendingConc,pendingPay,pendingE,collected,spent,balance,participation,total,cats};
   }
   function latestReport(id){return reports().filter(r=>String(r.campaignId)===String(id)).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')))[0]||null}
+  function latestFinancialChange(s){
+    const stamps=[];
+    [...(s?.ps||[]),...(s?.ex||[])].forEach(x=>{
+      const v=x?.updatedAt||x?.actualizado_at||x?.createdAt||x?.created_at||x?.paidAt||x?.paid_at||x?.date||x?.fecha_gasto;
+      const t=v?Date.parse(v):NaN;if(Number.isFinite(t))stamps.push(t);
+    });
+    return stamps.length?Math.max(...stamps):0;
+  }
+  function reportIsCurrent(rep,s){
+    if(!rep?.published)return false;
+    const rt=Date.parse(rep.updatedAt||rep.createdAt||rep.generatedAt||'');
+    if(!Number.isFinite(rt))return false;
+    return rt>=latestFinancialChange(s);
+  }
   function dateTime(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'numeric'}).replace('.','')+' · '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'})}
   function categoriesRows(s){const entries=Object.entries(s.cats).sort((a,b)=>b[1]-a[1]);return entries.length?entries.map(([k,v])=>`<div><span>${esc(k)}</span><b>${money(v)}</b></div>`).join(''):`<div><span>Sin gastos aprobados</span><b>${money(0)}</b></div>`}
   function donut(s){const entries=Object.entries(s.cats).sort((a,b)=>b[1]-a[1]);const colors=['#2563eb','#f97316','#22c55e','#8b5cf6','#eab308'];let acc=0;const stops=entries.map(([k,v],i)=>{const a=s.spent?acc/s.spent*100:0;acc+=v;const b=s.spent?acc/s.spent*100:0;return `${colors[i%colors.length]} ${a}% ${b}%`}).join(', ')||'#e5e7eb 0 100%';return `<div class="tesV80Donut" style="background:conic-gradient(${stops})"><span><b>${money(s.spent)}</b><small>Total gastos</small></span></div><div class="tesV80Legend">${entries.map(([k,v],i)=>`<div><i style="background:${colors[i%colors.length]}"></i><span>${esc(k)}</span><b>${s.spent?Math.round(v/s.spent*100):0}%</b><em>${money(v)}</em></div>`).join('')||'<small>Sin distribución disponible</small>'}</div>`}
@@ -4662,7 +4686,7 @@ __bootTesoreroSupabaseFirst();
     document.querySelectorAll('.navItem').forEach(b=>b.classList.toggle('active',String(b.dataset.tab)==='informes'));
     const options=`<option value="${GENERAL_ID}" ${taskId(c)===GENERAL_ID?'selected':''}>Todas las campañas</option>`+campaigns().map(x=>`<option value="${esc(taskId(x))}" ${taskId(x)===taskId(c)?'selected':''}>${esc(taskTitle(x))}</option>`).join('');
     const isGlobal=taskId(c)===GENERAL_ID; const scopeTitle=isGlobal?'Resumen de todas las campañas':`Resumen de ${taskTitle(c)}`; const stateTitle=isGlobal?'Estado general del curso':'Estado de la campaña';
-    const published=!!rep?.published; const allOk=!s.pendingP.length&&!s.pendingE.length;
+    const published=!!rep?.published; const reportCurrent=reportIsCurrent(rep,s);
     root.innerHTML=`<div class="tesV80Page">
       <h1>Informes financieros</h1>
       <section class="tesV80Campaign">
@@ -4677,7 +4701,7 @@ __bootTesoreroSupabaseFirst();
       </section>
       <section class="tesV80States">
         <article><h2>Estado del informe</h2><div class="tesV80Status ${published?'ok':'pending'}">✓ ${published?'Publicado':'Borrador'}</div><small>Última actualización</small><b>${rep?dateTime(rep.updatedAt||rep.createdAt):'Pendiente de publicación'}</b><small>Presidente revisó</small><strong>${rep?.presidentApproved?'✓ Aprobado':'Pendiente'}</strong></article>
-        <article class="campaign"><h2>${stateTitle}</h2><p class="${!s.pendingP.length?'ok':''}">✓ Conciliaciones ${!s.pendingP.length?'al día':'pendientes'}</p><p class="${!s.pendingE.length?'ok':''}">✓ Rendiciones ${!s.pendingE.length?'aprobadas':'pendientes'}</p><p class="${!s.pendingP.length?'ok':''}">✓ ${s.pendingP.length?'Pagos pendientes':'Sin pagos pendientes'}</p><p class="${published&&allOk?'ok':''}">✓ Informe ${published&&allOk?'actualizado':'por actualizar'}</p></article>
+        <article class="campaign"><h2>${stateTitle}</h2><p class="${!s.pendingConc.length?'ok':''}">✓ Conciliaciones ${!s.pendingConc.length?'al día':`pendientes (${s.pendingConc.length})`}</p><p class="${!s.pendingE.length?'ok':''}">✓ Rendiciones ${!s.pendingE.length?'aprobadas':`pendientes (${s.pendingE.length})`}</p><p class="${!s.pendingPay.length?'ok':''}">✓ ${s.pendingPay.length?`Pagos pendientes (${s.pendingPay.length})`:'Sin pagos pendientes'}</p><p class="${reportCurrent?'ok':''}">✓ Informe ${reportCurrent?'actualizado':(published?'por actualizar':'sin publicar')}</p></article>
       </section>
       <section class="tesV80Finance">
         <article><h2>${scopeTitle}</h2><h3>Ingresos</h3><div><span>Pagos conciliados</span><b>${money(s.collected)}</b></div><div class="total"><span>Total ingresos</span><b>${money(s.collected)}</b></div><h3 class="expense">Gastos</h3>${categoriesRows(s)}<div class="total spent"><span>Total gastos</span><b>${money(s.spent)}</b></div><div class="final"><span>Saldo final disponible</span><b>${money(s.balance)}</b></div></article>
