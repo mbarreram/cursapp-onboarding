@@ -1,0 +1,13 @@
+/* MiCursoX · Tesorero · Tabler Style B, solo presentación */
+body.cursapp-tesorero .mxTesBIcon{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:46px!important;height:46px!important;border-radius:15px!important;background:#f2eaff!important;color:#6d28d9!important;background-image:none!important;font-size:0!important;box-shadow:none!important}
+body.cursapp-tesorero .mxTesBIcon::before{content:none!important;display:none!important}
+body.cursapp-tesorero .mxTesBIcon svg{width:25px!important;height:25px!important;display:block!important;stroke:currentColor!important;fill:none!important;stroke-width:1.85!important;opacity:1!important}
+body.cursapp-tesorero .mxTesB-bank{background:#e8f5fe!important;color:#0284c7!important}
+body.cursapp-tesorero .mxTesB-income{background:#e7f9ee!important;color:#15803d!important}
+body.cursapp-tesorero .mxTesB-expense{background:#f2eaff!important;color:#6d28d9!important}
+body.cursapp-tesorero .mxTesB-warning{background:#fff1da!important;color:#b45309!important}
+body.cursapp-tesorero .mxTesB-report{background:#e9efff!important;color:#4f46e5!important}
+body.cursapp-tesorero .mxTesB-payment{background:#fce7f3!important;color:#be185d!important}
+body.cursapp-tesorero .mxTesBSmall{font-size:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
+body.cursapp-tesorero .mxTesBSmall svg{width:21px;height:21px;stroke:currentColor;fill:none}
+@media(max-width:520px){body.cursapp-tesorero .mxTesBIcon{width:42px!important;height:42px!important}body.cursapp-tesorero .mxTesBIcon svg{width:23px!important;height:23px!important}}
