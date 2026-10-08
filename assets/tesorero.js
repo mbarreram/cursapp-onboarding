@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
       applyDefaults();
     }
   }
-  function registerManualPayment(){
+  async function registerManualPayment(){
     const profileId = ($("mp_profile")?.value || "").trim();
     const prof = selectedProfileById(profileId);
     const fromTaskId = ($("mp_task")?.value || "").trim();
@@ -608,16 +608,21 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
         createdAt: new Date().toISOString()
       });
     }
-    save(KEY_PAYMENTS, payments);
-
+    // Supabase is authoritative: never present a locally staged payment as paid.
+    const paidPaymentForSync = pendingIdx >= 0 ? payments[pendingIdx] : payments[0];
+    const paymentApi = window.CURSAPP_PAYMENTS_V11;
+    if(!paymentApi || typeof paymentApi.syncPaidLocalPayment !== "function" || typeof paymentApi.refresh !== "function"){
+      alert("No se puede registrar el pago: conexión con Supabase no disponible.");
+      return;
+    }
     try{
-      const paidPaymentForSync = pendingIdx >= 0 ? payments[pendingIdx] : payments[0];
-      if(window.CURSAPP_PAYMENTS_V11 && typeof window.CURSAPP_PAYMENTS_V11.syncPaidLocalPayment === "function"){
-        window.CURSAPP_PAYMENTS_V11.syncPaidLocalPayment(paidPaymentForSync)
-          .then(function(){ try{ return window.CURSAPP_PAYMENTS_V11.refresh("manual-payment"); }catch(e){} })
-          .catch(function(e){ console.warn("No se pudo sincronizar pago manual en Supabase", e); });
-      }
-    }catch(e){}
+      await paymentApi.syncPaidLocalPayment(paidPaymentForSync);
+      await paymentApi.refresh("manual-payment");
+    }catch(error){
+      console.error("Error registrando pago manual en Supabase",error);
+      alert("No se confirmó el pago en Supabase. Actualiza antes de volver a intentarlo.");
+      return;
+    }
 
     try{
       if(typeof window.createAviso === "function"){
@@ -645,7 +650,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     markDirty();
     closeModal();
     renderConciliacion();
-    alert("Pago manual registrado ✅");
+    alert("Pago manual confirmado en Supabase ✅");
   }
 
   function shareWhatsApp(text){
