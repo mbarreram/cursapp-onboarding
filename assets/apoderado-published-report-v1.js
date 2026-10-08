@@ -9,9 +9,7 @@
   function reports(){
     try{
       var live=window.MICURSOX_APO_REPORTS_STATE&&window.MICURSOX_APO_REPORTS_STATE.reports;
-      if(Array.isArray(live)&&live.length)return live;
-      var r=JSON.parse(localStorage.getItem(scoped('monthly_reports_v1'))||localStorage.getItem('cursapp_monthly_reports_v1')||'[]');
-      return Array.isArray(r)?r:[];
+      return Array.isArray(live)?live:[];
     }catch(_e){return [];}
   }
   function selected(){
