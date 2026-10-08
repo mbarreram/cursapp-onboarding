@@ -146,7 +146,7 @@
 
   function expenseCounted(e){
     const st=String(e?.status??e?.estado??e?.approvalStatus??'').toLowerCase().trim();
-    return !['rejected','rechazada','rechazado','cancelled','cancelada','cancelado','anulada','anulado'].includes(st);
+    return !['pending','pendiente','observed','observada','observado','rejected','rechazada','rechazado','cancelled','cancelada','cancelado','anulada','anulado','void'].includes(st);
   }
   function courseSummary({payments=[],expenses=[]}={}){
     const collected=payments.reduce((s,p)=>s+(excluded(p)?0:paidAmount(p)),0);
