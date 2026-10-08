@@ -2,7 +2,7 @@
 'use strict';
 if(window.__MICURSOX_UNIFIED_ROLE_MENU_V4__)return;window.__MICURSOX_UNIFIED_ROLE_MENU_V4__=true;
 function read(k,d){try{return JSON.parse(localStorage.getItem(k)||'')||d}catch(_){return d}}
-function role(){var s=read('cursapp_session_v1',{})||{},r=String(localStorage.getItem('cursapp_active_role_v1')||s.currentRole||s.activeRole||s.role||'apoderado').toLowerCase();if(r.includes('pres'))return'presidente';if(r.includes('tesor'))return'tesorero';return'apoderado'}
+function role(){var body=document.body;if(body?.classList.contains('cursapp-tesorero'))return'tesorero';if(body?.classList.contains('cursapp-presidente'))return'presidente';if(body?.classList.contains('cursapp-apoderado'))return'apoderado';var s=read('cursapp_session_v1',{})||{},r=String(localStorage.getItem('cursapp_active_role_v1')||s.currentRole||s.activeRole||s.role||'apoderado').toLowerCase();if(r.includes('pres'))return'presidente';if(r.includes('tesor'))return'tesorero';return'apoderado'}
 function items(r){if(r==='presidente')return[['🏠','Inicio','/presidente.html#home'],['📣','Campañas','/presidente.html#campanas'],['🕘','Deudores','/presidente.html#deudores'],['📊','Informes','/presidente.html#informes'],['💰','Retiros / Recaudado','/presidente.html#retiros'],['👥','Apoderados del curso','/apoderados.html']];if(r==='tesorero')return[['🏠','Inicio','/tesorero.html#home'],['💳','Conciliar pagos','/tesorero.html#conciliacion'],['🧾','Rendiciones','/tesorero.html#rendiciones'],['📊','Informes','/tesorero.html#informes'],['💰','Retiros / Recaudado','/tesorero.html#retiros']];return[['🏠','Inicio','/apoderado.html#home'],['💳','Pagos','/apoderado.html#payments'],['📄','Informes','/apoderado.html#informes'],['🏪','Mercado Escolar','/mercado-escolar/mercado-escolar.html']]}
 function close(){document.getElementById('mxUnifiedRoleMenuV4')?.remove();document.getElementById('menuBtn')?.setAttribute('aria-expanded','false')}
 function route(h){
@@ -10,30 +10,27 @@ function route(h){
   if(!m){location.href=h;return}
   var page='/'+m[1]+'.html',tab=String(m[2]||'home').trim();
 
-  // Si ya estamos en el dashboard del rol, no recargar la página.
+  // Usar el controlador existente y los botones reales, sin rutas genéricas a Inicio.
   if(location.pathname===page){
-    try{
-      if(tab==='retiros'){
-        if(window.MX_DIRECTIVA_FUNDS&&typeof window.MX_DIRECTIVA_FUNDS.open==='function'){
-          window.MX_DIRECTIVA_FUNDS.open();
-          try{history.replaceState(null,'',page)}catch(_){}
-          return;
-        }
-        var funds=document.querySelector('[data-mx-funds="1"]');
-        if(funds){funds.click();try{history.replaceState(null,'',page)}catch(_){}return}
-      }
-      if(typeof window.go==='function'){
-        window.go(tab);
-        try{history.replaceState(null,'',page)}catch(_){}
-        return;
-      }
-      if(window.MICURSOX_ROLE_ROUTE&&typeof window.MICURSOX_ROLE_ROUTE.openTab==='function'){
-        if(window.MICURSOX_ROLE_ROUTE.openTab(tab)){
-          try{history.replaceState(null,'',page)}catch(_){}
-          return;
-        }
-      }
-    }catch(_){}
+    if(tab==='retiros'){
+      var funds=document.querySelector('.bottomNav [data-mx-funds="1"], [data-mx-funds="1"]');
+      if(funds){funds.click();return}
+      if(typeof window.MX_DIRECTIVA_FUNDS?.open==='function'){window.MX_DIRECTIVA_FUNDS.open();return}
+      alert('La sección Retiros todavía no está disponible. Intenta nuevamente.');
+      return;
+    }
+    var valid={
+      presidente:['home','campanas','deudores','informes'],
+      tesorero:['home','conciliacion','rendiciones','informes'],
+      apoderado:['home','payments','informes']
+    };
+    var current=page.slice(1,-5);
+    if(!(valid[current]||[]).includes(tab)){alert('La sección seleccionada no está disponible en este perfil.');return}
+    var buttonTab=document.querySelector('.bottomNav [data-tab="'+tab+'"]');
+    if(buttonTab){buttonTab.click();return}
+    if(typeof window.go==='function'){window.go(tab);return}
+    alert('No se pudo abrir la sección. Intenta nuevamente.');
+    return;
   }
 
   // Navegación entre páginas: usar el mecanismo oficial que consumen los dashboards al iniciar.
