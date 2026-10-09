@@ -30,7 +30,7 @@
     return {user,row:Array.isArray(rows)?rows[0]:null};
   }
   function card(title,icon,accepted,meta,items,url){
-    return `<section class="mxConsentCard"><div class="mxConsentTop"><div class="mxConsentTitle"><span class="mxConsentIcon">${icon}</span><div><h3>${esc(title)}</h3><p>${accepted?'Autorización entregada durante el registro':'No encontramos una aceptación registrada'}</p></div></div><span class="mxConsentBadge ${accepted?'':'pending'}">${accepted?'✓ Aceptado':'Sin registro'}</span></div><ul class="mxConsentList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mxConsentMeta"><span>${esc(meta.date)}</span><span>·</span><span>${esc(meta.version)}</span></div><div class="mxConsentActions"><a class="mxConsentBtn ghost" href="${url}" target="_blank" rel="noopener">Consultar documento vigente</a></div></section>`;
+    return `<section class="mxConsentCard"><div class="mxConsentTop"><div class="mxConsentTitle"><span class="mxConsentIcon">${icon}</span><div><h3>${esc(title)}</h3><p>${accepted?'Autorización entregada durante el registro':'No encontramos una aceptación registrada'}</p></div></div><span class="mxConsentBadge ${accepted?'':'pending'}">${accepted?'✓ Aceptado':'Sin registro'}</span></div><ul class="mxConsentList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="mxConsentMeta"><span>Firma de aceptación: ${esc(meta.date)}</span><span>·</span><span>${esc(meta.version)}</span></div><div class="mxConsentActions"><a class="mxConsentBtn ghost" href="${url}" target="_blank" rel="noopener">Consultar documento vigente</a></div></section>`;
   }
   async function open(){
     injectCss();document.getElementById('mxConsentOverlay')?.remove();
@@ -39,7 +39,9 @@
     document.body.appendChild(root);
     root.addEventListener('click',e=>{if(e.target===root||e.target.closest('.mxConsentClose'))root.remove()});
     try{
-      const {row}=await getConsent();
+      const {user,row}=await getConsent();
+      const historyRows=await sb.request('consentimientos_usuario?usuario_id=eq.'+encodeURIComponent(user.id)+'&select=version,fecha_aceptacion,created_at,terminos_aceptados,privacidad_aceptada,mercado_aceptado&order=fecha_aceptacion.desc&limit=100');
+      const history=Array.isArray(historyRows)?historyRows:[];
       let publishedPolicy=null;
       try{const versions=await sb.request('politicas_versiones?select=version,titulo,created_at&vigente=eq.true&order=created_at.desc&limit=1');publishedPolicy=Array.isArray(versions)?versions[0]:null;}catch(_){}
       const date=fmt(row?.fecha_aceptacion||row?.created_at);
@@ -48,6 +50,7 @@
       const terms=!!row?.terminos_aceptados,privacy=!!row?.privacidad_aceptada;
       root.querySelector('.mxConsentBody').innerHTML =
         '<div class="mxConsentIntro">Resumen de las autorizaciones asociadas a tu cuenta MiCursoX.</div>'+
+        '<section class="mxConsentCard"><h3>Historial de firmas de aceptación</h3><p style="color:#64748b;font-size:12px">Registros electrónicos de aceptación. No equivalen a firma electrónica avanzada.</p>'+ (history.length?history.map((record,index)=>'<div style="padding:11px 0;border-top:1px solid #e2e8f0"><strong>Firma de aceptación N.º '+(history.length-index)+'</strong><p style="margin:4px 0">Fecha: '+esc(fmt(record.fecha_aceptacion||record.created_at))+'</p><p style="margin:4px 0">Versión: '+esc(versionLabel(record.version))+'</p><small>'+(record.terminos_aceptados?'✓ Términos y Condiciones ':'')+(record.privacidad_aceptada?'✓ Privacidad ':'')+(record.mercado_aceptado?'✓ Mercado Escolar':'')+'</small></div>').join(''):'<p>No se encontraron firmas registradas.</p>')+'</section>'+
         (historical?'<div class="mxConsentNote">Registro histórico: para cuentas creadas antes de esta trazabilidad detallada, la fecha corresponde a la creación de la cuenta.</div>':'')+
         '<div class="mxConsentIntro" style="background:#fff8e8;border-color:#f8dba0;color:#79531c"><b>Documento que aceptaste:</b> la aceptación y la versión están registradas en MiCursoX. Aún no se dispone de una copia certificada e inmutable del texto de esa versión. Los botones inferiores permiten consultar el documento público vigente, que puede ser diferente del aceptado originalmente.</div>'+
         (publishedPolicy&&publishedPolicy.version!==row?.version?'<div class="mxConsentIntro" style="border-color:#c4b5fd;background:#f5f3ff;color:#5b21b6"><b>Actualización documental publicada:</b> versión '+esc(publishedPolicy.version)+'. Tu consentimiento previo sigue registrado; revisa el documento actualizado. Ninguna nueva aceptación se registra automáticamente.</div>':'')+
