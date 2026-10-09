@@ -33,7 +33,7 @@ function open(){
  api.request('miembros_curso?select=id,curso_id,nombre_alumno,nombre_apoderado&curso_id=eq.'+encodeURIComponent(course)+'&order=nombre_alumno.asc&limit=200'),
  api.request('pagos?select=id,curso_id,miembro_id,estado,monto,monto_pagado,concepto,periodo,fecha_vencimiento&curso_id=eq.'+encodeURIComponent(course)+'&limit=2000')]);
  members=Array.isArray(people)?people.filter(p=>p.id&&p.nombre_alumno):[];rows=Array.isArray(debt)?debt:[];
- const map=new Map();members.forEach(m=>{if(!map.has(m.nombre_alumno))map.set(m.nombre_alumno,m)});members=[...map.values()];
+ const map=new Map();members.forEach(m=>{const k=String(m.nombre_alumno).trim().toLocaleLowerCase('es');const prev=map.get(k);const hasPending=id=>rows.some(p=>p.miembro_id===id&&pending(p.estado));if(!prev||(!hasPending(prev.id)&&hasPending(m.id)))map.set(k,m)});members=[...map.values()];
  if(!members.length)throw Error('No se pudo obtener la nómina del curso.');
  status.textContent=members.length+' alumnos encontrados. Busca por nombre o apellido.';search.disabled=false;student.disabled=false;drawStudents();
  }catch(e){status.textContent='No se pudo cargar la nómina y las cuotas: '+(e?.message||String(e))}})();
