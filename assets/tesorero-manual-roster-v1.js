@@ -55,5 +55,6 @@ function open(){
  status.textContent=members.length+' alumnos encontrados. Busca por nombre o apellido.';search.disabled=false;student.disabled=false;drawStudents();
  }catch(e){status.textContent='No se pudo cargar la nómina y las cuotas: '+(e?.message||String(e))}})();
 }
-window.openManualPayment=open;
+if(document.body.classList.contains('cursapp-tesorero'))window.openManualPayment=open;
+if(document.body.classList.contains('cursapp-presidente'))window.openPresidentPaymentModal=open;
 })();
