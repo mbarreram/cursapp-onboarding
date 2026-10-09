@@ -5,7 +5,7 @@
 > Documento preparado para revisión legal. No sustituye los textos publicados ni constituye el texto de la versión 2026-08-19-v1 aceptada anteriormente. Completar los campos [PENDIENTE] y validar las prácticas reales antes de activar una versión.
 
 ## A. Identificación y contactos
-MiCursoX es una plataforma de apoyo para la administración y comunicación de cursos escolares. Su prestador y responsable del tratamiento es **[RAZÓN SOCIAL O PERSONA NATURAL, PENDIENTE]**, RUT **[PENDIENTE]**, domiciliado en **[PENDIENTE]**, Chile. Contacto de privacidad: **[CORREO VALIDADO PENDIENTE]**. Contacto de soporte: **[CORREO VALIDADO PENDIENTE]**. Esta información debe estar visible también en la app.
+MiCursoX es una plataforma de apoyo para la administración y comunicación de cursos escolares. Su prestador y responsable del tratamiento es **[RAZÓN SOCIAL O PERSONA NATURAL, PENDIENTE]**, RUT **77.124.998-1** (informado por el titular; pendiente de corroborar con antecedentes societarios), domiciliado en **[PENDIENTE]**, Chile. Contacto de privacidad: **[CORREO VALIDADO PENDIENTE]**. Contacto de soporte: **[CORREO VALIDADO PENDIENTE]**. Esta información debe estar visible también en la app.
 
 ## B. Términos y condiciones
 ### 1. Servicio, cuentas y roles
