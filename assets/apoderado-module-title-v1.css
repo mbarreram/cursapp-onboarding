@@ -11,3 +11,11 @@ body.cursapp-apoderado .npOverlay .npHead h2{font-size:19px!important;line-heigh
 body.cursapp-apoderado .npOverlay .npHead p{font-size:11px!important;margin:4px 0 0!important;color:#607086}
 body.cursapp-apoderado .npOverlay .npHead .npClose{flex:0 0 40px;width:40px;height:40px;border-radius:13px}
 body.cursapp-apoderado .npOverlay .npBody{padding-top:14px}
+
+/* Informe Apoderado: solo encabezado general y selector de periodo, sin cabecera duplicada. */
+body.cursapp-apoderado .apoReportPage .apoReportHero .apoReportBrand,
+body.cursapp-apoderado .apoReportPage .apoReportHero .apoReportActions,
+body.cursapp-apoderado .apoReportPage .apoReportHero > h1,
+body.cursapp-apoderado .apoReportPage .apoReportHero > p{display:none!important}
+body.cursapp-apoderado .apoReportPage .apoReportHero{min-height:0!important;margin:0 0 14px!important;padding:0 14px 10px!important;display:block!important}
+body.cursapp-apoderado .apoReportPage .apoReportHero .apoReportPeriod{margin-top:0!important}
