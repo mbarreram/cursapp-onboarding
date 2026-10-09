@@ -428,7 +428,6 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
             <option value="transferencia">🏦 Transferencia</option>
             <option value="efectivo">💵 Efectivo</option>
             <option value="saldo_favor">🔁 Saldo a favor</option>
-            <option value="transbank">💳 Transbank</option>
           </select>
         </div>
         <div style="flex:1;min-width:140px;">
@@ -475,6 +474,7 @@ document.addEventListener('DOMContentLoaded',()=>{try{window.CURSAPP_LOADING.sho
     const conciliationStatus = $("mp_status")?.value || "conciliado";
     const note = ($("mp_note")?.value || "").trim();
 
+    if(paymentMethod === "transbank" || !["transferencia","efectivo","saldo_favor"].includes(paymentMethod)) return alert("Transbank se registra exclusivamente por la pasarela automática.");
     if(!prof) return alert("Debes seleccionar apoderado · alumno.");
     if(!fromTaskId) return alert("Debes seleccionar campaña.");
     if(!concept || !amount) return alert("No se pudo cargar el monto de la campaña.");
