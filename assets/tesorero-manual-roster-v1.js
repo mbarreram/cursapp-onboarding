@@ -32,21 +32,25 @@ function open(){
  search.oninput=drawStudents;student.onchange=drawPayments;
  save.onclick=async()=>{
  const chosen=selected();const method=overlay.querySelector('#mxManualMethod').value;if(!chosen.length||!['transferencia','efectivo'].includes(method)||busy)return;
- const svc=window.CURSAPP_PAYMENTS_V11;if(typeof svc?.markPaid!=='function'){status.textContent='Servicio oficial de pagos no disponible.';return}
- if(!window.confirm('¿Confirmas que recibiste y verificaste '+clp(chosen.reduce((v,p)=>v+due(p),0))+' para '+chosen.length+' cuota(s)? Se registrarán y conciliarán.'))return;
- busy=true;save.disabled=true;let successes=0;try{
- for(const p of chosen){
- const check=await api.request('pagos?select=id,estado,monto,monto_pagado,miembro_id,curso_id&id=eq.'+encodeURIComponent(p.id)+'&limit=1');const current=Array.isArray(check)?check[0]:null;
- if(!current||current.miembro_id!==p.miembro_id||!pending(current.estado)||String(current.curso_id)!==String(course))throw Error('La cuota cambió de estado. Actualiza antes de continuar.');
- const balance=due(current);if(balance!==due(p)||balance<=0)throw Error('El saldo de una cuota cambió. Actualiza antes de continuar.');
- const result=await svc.markPaid(p.id,{amount:balance,method,conciliated:true});if(result===false)throw Error('No se confirmó la actualización de una cuota.');
- const checked=await api.request('pagos?select=id,estado,conciliacion_estado,monto,monto_pagado&id=eq.'+encodeURIComponent(p.id)+'&limit=1');const verified=Array.isArray(checked)?checked[0]:null;
- if(!verified||!['pagado','paid','conciliado'].includes(String(verified.estado||'').toLowerCase())||!['conciliado','conciliated'].includes(String(verified.conciliacion_estado||'').toLowerCase()))throw Error('No se verificó el pago conciliado de la cuota '+p.id+'.');successes++;
- }
- if(typeof svc.refresh==='function')await svc.refresh('treasurer-manual-multi');
- overlay.remove();alert(successes+' cuota(s) registradas y conciliadas en Supabase.');try{window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-pago-manual'}}))}catch(_){}
- }catch(e){status.textContent='Se confirmaron '+successes+' de '+chosen.length+' cuotas. '+(e?.message||'Error')+' No repitas el pago: recarga y revisa los movimientos.';try{if(successes&&typeof svc.refresh==='function')await svc.refresh('treasurer-manual-partial')}catch(_){}}
- finally{busy=false;save.disabled=successes>0;save.textContent=successes>0?'Revisa los movimientos':'Registrar y conciliar'}
+ const invoice=chosen.map(p=>({id:p.id,amount:due(p),campaign:cleanName(campaigns.get(p.campana_id)?.titulo||p.concepto),period:p.periodo||p.fecha_vencimiento||''}));
+ const total=invoice.reduce((a,b)=>a+b.amount,0);
+ if(!window.confirm('¿Confirmas que recibiste y verificaste '+clp(total)+' para '+invoice.length+' cuota(s)? Se registrarán y conciliarán en una sola operación.'))return;
+ busy=true;save.disabled=true;
+ const operationId=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():null;
+ if(!operationId){status.textContent='Este navegador no puede generar un identificador seguro. No se registró nada.';busy=false;return;}
+ try{
+  if(window.MICURSOX_CONNECTION?.isReady&&!window.MICURSOX_CONNECTION.isReady())throw Error('Conexión financiera sin verificar. Vuelve a intentar.');
+  const result=await api.request('rpc/registrar_pago_manual_lote',{method:'POST',body:JSON.stringify({
+   p_operacion_id:operationId,p_curso_id:course,p_miembro_id:student.value,
+   p_pagos:invoice.map(p=>p.id),p_medio:method
+  })});
+  const data=Array.isArray(result)?result[0]:result;
+  if(!data||data.id!==operationId||Number(data.monto_total)!==total||Number(data.cuotas)!==invoice.length)throw Error('La operación necesita verificación. No repitas el pago: consulta el historial con el folio '+operationId);
+  overlay.remove();
+  alert('Pago registrado y conciliado: '+clp(total)+' · '+invoice.length+' cuota(s). Folio: '+operationId);
+  try{window.MICURSOX_REFRESH_BUSINESS_DATA?.('pago-manual-conciliado');window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'registro-manual',operacionId}}));}catch(_){}
+ }catch(e){status.textContent='No se confirmó el registro. '+(e?.message||String(e))+' Si hubo una interrupción, verifica el historial antes de intentarlo de nuevo.';save.disabled=true;}
+ finally{busy=false;save.textContent='Registrar y conciliar';}
  };
  (async()=>{try{
  if(!course)throw Error('No se pudo identificar el curso activo. Recarga Tesorero.');
