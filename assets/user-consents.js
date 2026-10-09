@@ -4,8 +4,8 @@
   window.__MICURSOX_USER_CONSENTS__ = true;
 
   const sb = window.CURSAPP_SUPABASE;
-  const TERMS_URL = '/index.html#terminos';
-  const PRIVACY_URL = '/index.html#privacidad';
+  const TERMS_URL = '/legal.html#terminos';
+  const PRIVACY_URL = '/legal.html#privacidad';
 
   function esc(v){ return String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function fmt(v){ try{return v?new Date(v).toLocaleString('es-CL',{dateStyle:'medium',timeStyle:'short'}):'Sin registro de fecha';}catch(_){return v||'Sin registro de fecha';} }
