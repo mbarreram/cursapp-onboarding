@@ -57,7 +57,7 @@ function open(){
  // Unificar entradas visuales repetidas sin fusionar registros financieros: elegir el miembro con cuotas pendientes.
  const canonicalName=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
  const aliases=new Map();
- members.forEach(m=>{const key=canonicalName(m.nombre_alumno);const prior=aliases.get(key);const active=id=>rows.filter(p=>p.miembro_id===id&&pending(p.estado)&&due(p)>0).length;if(!prior||active(m.id)>active(prior.id))aliases.set(key,m)});
+ members.forEach(m=>{const key=canonicalName(m.nombre_alumno)+'|'+canonicalName(m.nombre_apoderado);const prior=aliases.get(key);const active=id=>rows.filter(p=>p.miembro_id===id&&pending(p.estado)&&due(p)>0).length;if(!prior||active(m.id)>active(prior.id))aliases.set(key,m)});
  members=[...aliases.values()];
  members.sort((a,b)=>String(a.nombre_alumno).localeCompare(String(b.nombre_alumno),'es'));
  if(!members.length)throw Error('No se pudo obtener la nómina del curso.');
