@@ -13,7 +13,7 @@ function open(){
  document.body.appendChild(overlay);overlay.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>overlay.remove());overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove()});
  const status=overlay.querySelector('#mxManualRosterStatus'),search=overlay.querySelector('#mxManualSearch'),student=overlay.querySelector('#mxManualStudent'),payment=overlay.querySelector('#mxManualPayment'),detail=overlay.querySelector('#mxManualDetail'),save=overlay.querySelector('#mxManualConfirm');
  let members=[],rows=[],campaigns=new Map();let course=currentCourse();
- const drawStudents=()=>{const needle=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const filtered=members.filter(m=>String(m.nombre_alumno).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(needle));const keep=student.value;student.innerHTML='<option value="">Selecciona un alumno</option>'+filtered.map(m=>'<option value="'+escapeHtml(m.id)+'">'+escapeHtml(m.nombre_alumno)+'</option>').join('');if(filtered.some(m=>m.id===keep))student.value=keep;drawPayments()};
+ const drawStudents=()=>{const needle=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();const filtered=members.filter(m=>[m.nombre_alumno,m.nombre_apoderado].some(v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(needle)));const keep=student.value;student.innerHTML='<option value="">Selecciona un alumno</option>'+filtered.map(m=>'<option value="'+escapeHtml(m.id)+'">'+escapeHtml(m.nombre_alumno)+(m.nombre_apoderado?' · '+escapeHtml(m.nombre_apoderado):'')+'</option>').join('');if(filtered.some(m=>m.id===keep))student.value=keep;drawPayments()};
  let picked=new Set(),busy=false;
  const cleanName=v=>String(v||'Campaña').split(/\s*[·|]\s*(?:Histórico importado|Piloto V\d+|fecha exacta|importaci[oó]n)/i)[0].trim();
  const due=p=>Math.max(0,Number(p.monto||0)-Number(p.monto_pagado||0));
@@ -44,7 +44,7 @@ function open(){
  if(typeof svc.refresh==='function')await svc.refresh('treasurer-manual-multi');
  overlay.remove();alert(successes+' cuota(s) registradas y conciliadas en Supabase.');try{window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'tesorero-pago-manual'}}))}catch(_){}
  }catch(e){status.textContent='Se confirmaron '+successes+' de '+chosen.length+' cuotas. '+(e?.message||'Error')+' No repitas el pago: recarga y revisa los movimientos.';try{if(successes&&typeof svc.refresh==='function')await svc.refresh('treasurer-manual-partial')}catch(_){}}
- finally{busy=false;save.disabled=false;save.textContent='Registrar y conciliar'}
+ finally{busy=false;save.disabled=successes>0;save.textContent=successes>0?'Revisa los movimientos':'Registrar y conciliar'}
  };
  (async()=>{try{
  if(!course)throw Error('No se pudo identificar el curso activo. Recarga Tesorero.');
@@ -54,7 +54,7 @@ function open(){
  members=Array.isArray(people)?people.filter(p=>p.id&&p.nombre_alumno):[];rows=Array.isArray(debt)?debt:[];campaigns=new Map((Array.isArray(activeCampaigns)?activeCampaigns:[]).map(c=>[c.id,c.titulo]));
  members.sort((a,b)=>String(a.nombre_alumno).localeCompare(String(b.nombre_alumno),'es'));
  if(!members.length)throw Error('No se pudo obtener la nómina del curso.');
- status.textContent=members.length+' alumnos encontrados. Busca por nombre o apellido.';search.disabled=false;student.disabled=false;drawStudents();
+ status.textContent=members.length+' alumnos encontrados. Busca por nombre o apellido del alumno o apoderado.';search.disabled=false;student.disabled=false;drawStudents();
  }catch(e){status.textContent='No se pudo cargar la nómina y las cuotas: '+(e?.message||String(e))}})();
 }
 if(document.body.classList.contains('cursapp-tesorero'))if(isPresident){window.openPresidentPaymentModal=open;window.openPresidentManualPayment=open;}else{window.openManualPayment=open;}
