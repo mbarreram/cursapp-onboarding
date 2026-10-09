@@ -40,3 +40,11 @@
 
 /admin-console/assets/*.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/apple-touch-icon.png
+  Content-Type: image/png
+  Cache-Control: public, max-age=3600, must-revalidate
+
+/assets/brand/*.png
+  Content-Type: image/png
+  Cache-Control: public, max-age=3600, must-revalidate
