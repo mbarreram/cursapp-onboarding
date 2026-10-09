@@ -81,5 +81,6 @@
       ev.preventDefault();ev.stopImmediatePropagation();open();
     }
   },true);
+  if(!document.querySelector('script[src*="policy-version-notice-v1.js"]')){const script=document.createElement('script');script.src='/assets/policy-version-notice-v1.js?v=1';script.defer=true;document.head.appendChild(script)}
   window.CURSAPP_USER_CONSENTS=Object.freeze({open});
 })();
