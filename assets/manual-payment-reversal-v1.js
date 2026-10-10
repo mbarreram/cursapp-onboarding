@@ -40,8 +40,9 @@ function renderTransbankHistory(arr){
  if(!list){list=document.createElement('section');list.id='mxTransbankPaymentHistory';list.style.cssText='margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px';panel.appendChild(list)}
  const items=Array.isArray(arr)?arr:[];
  list.innerHTML='<strong>Historial Transbank</strong><small>Últimas '+items.length+' operaciones Transbank del curso (incluye anulaciones).</small>'+
-  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · '+(x.estado==='REFUNDED'?'Anulado':'Autorizado')+'<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.estado==='APPROVED'&&x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':'')+'</div>').join(''):'<p>No hay operaciones Transbank registradas.</p>');
+  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · '+(x.estado==='REFUNDED'?'Anulado':'Autorizado')+'<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.estado==='APPROVED'&&x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':x.estado==='REFUNDED'&&x.refund_id?'<button type="button" data-mx-refund-email="'+escape(x.refund_id)+'">Enviar aviso</button>':'')+'</div>').join(''):'<p>No hay operaciones Transbank registradas.</p>');
  list.querySelectorAll('[data-mx-refund]').forEach(b=>b.addEventListener('click',()=>requestRefund(b.dataset.mxRefund)));
+ list.querySelectorAll('[data-mx-refund-email]').forEach(b=>b.addEventListener('click',async()=>{b.disabled=true;const r=await api().functions.invoke('transbank-refund-email',{body:{refund_id:b.dataset.mxRefundEmail}});window.alert(r.error?'No se pudo enviar el aviso: '+r.error.message:r.data?.already_sent?'El correo ya estaba enviado.':'Correo de anulación enviado.');b.disabled=false;}));
 }
 let refundBusy=false;
 async function requestRefund(id){
@@ -60,6 +61,7 @@ async function requestRefund(id){
   if(res.error)throw res.error;
   if(!res.data?.ok)throw new Error('Transbank no confirmó la anulación.');
   window.alert('Anulación confirmada. Referencia: '+res.data.refund_id);
+  try{const sent=await api().functions.invoke('transbank-refund-email',{body:{refund_id:res.data.refund_id}});if(sent.error)console.warn('[MiCursoX] Correo de anulación pendiente:',sent.error.message)}catch(error){console.warn('[MiCursoX] Correo de anulación pendiente:',error)}
   transbankFetchedAt=0;rendered='';lastTransbank=[];
   window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{financial:true,source:'transbank-refund'}}));
   await reload();
