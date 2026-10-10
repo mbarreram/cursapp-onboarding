@@ -155,6 +155,13 @@ async function receipt(id,existingWindow){
     const pdf=new w.jspdf.jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:true});
     const margin=26,pageWidth=pdf.internal.pageSize.getWidth(),pageHeight=pdf.internal.pageSize.getHeight();
     const targetW=pageWidth-margin*2;
+    const availableH=pageHeight-margin*2;
+    const naturalH=canvas.height*targetW/canvas.width;
+    if(items.length===1 && naturalH>availableH){
+      const fit=Math.min(targetW/canvas.width,availableH/canvas.height);
+      pdf.addImage(canvas.toDataURL('image/png'),'PNG',(pageWidth-canvas.width*fit)/2,margin,canvas.width*fit,canvas.height*fit,undefined,'FAST');
+      return pdf.output('blob');
+    }
     const slicePixels=Math.max(1,Math.floor((pageHeight-margin*2)*canvas.width/targetW));
     let offset=0,page=0;
     while(offset<canvas.height){
