@@ -83,7 +83,7 @@ function syncTransbankMovements(arr){
 }
 async function refreshTransbank(id,force=false){
  if(!(document.body.classList.contains('cursapp-tesorero')||document.body.classList.contains('cursapp-presidente')))return;
- if(!force&&transbankCourse===id&&Date.now()-transbankFetchedAt<30000){syncTransbankMovements(lastTransbank);return}
+ if(!force&&transbankCourse===id&&Date.now()-transbankFetchedAt<30000){renderTransbankHistory(lastTransbank);syncTransbankMovements(lastTransbank);return}
  try{
   const result=await call('movimientos_transbank_curso',{p_curso_id:id});
   if(course()!==id)return;
