@@ -6,8 +6,8 @@ const role=()=>document.body.classList.contains('cursapp-tesorero')?'tesorero':d
 let lastKey='',pending=false,refreshRequested=false,summaryCard=null;
 const FINANCIAL_SOURCES=new Set(['reversa-manual','pago-manual','registro-pago-manual','manual-payment','manual-payment-reversal','conciliacion-manual','transbank-payment']);
 const isFinancialEvent=e=>{const d=e?.detail||{};return d.financial===true||FINANCIAL_SOURCES.has(d.source)};
-async function receipt(id){
- const w=window.open('','_blank');if(!w){alert('Permite ventanas emergentes para ver el comprobante.');return;}
+async function receipt(id,existingWindow){
+ const w=existingWindow||window.open('','_blank');if(!w){alert('Permite ventanas emergentes para ver el comprobante.');return;}
  try{
   const r=await send('comprobante_operacion_manual',{p_operacion_id:id});
   if(!r?.folio)throw Error('Comprobante no disponible');
