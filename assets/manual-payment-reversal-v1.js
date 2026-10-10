@@ -14,11 +14,14 @@ function syncMovements(arr){
  const table=app.querySelector('.tesMovementTableWrap');
  if(!table)return;
  table.querySelectorAll('[data-mx-manual-movement]').forEach(n=>n.remove());
- const recent=arr.filter(x=>x.estado==='conciliado').slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,2);
+ const recent=arr.filter(x=>x.estado==='conciliado'||x.estado==='reversado')
+   .slice().sort((a,b)=>String(b.estado==='reversado'?(b.reversado_at||b.fecha):b.fecha).localeCompare(String(a.estado==='reversado'?(a.reversado_at||a.fecha):a.fecha))).slice(0,3);
  const head=table.querySelector('.tesMovementTableHead');
  recent.reverse().forEach(x=>{
+   const reversed=x.estado==='reversado';
    const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxManualMovement=x.id;
-   row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago manual recibido</b><small>'+escape(x.medio)+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno)+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_total)+'</strong><span class="tesMoveDate">'+escape(new Date(x.fecha).toLocaleDateString('es-CL'))+'</span>';
+   const at=reversed?(x.reversado_at||x.fecha):x.fecha;
+   row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon '+(reversed?'expense':'income')+'" '+(reversed?'style="background:#fee2e2;color:#b91c1c"':'')+'>'+(reversed?'↶':'↓')+'</span><span><b>'+(reversed?'Pago manual reversado':'Pago manual recibido')+'</b><small>'+escape(x.medio)+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno)+'</span><strong class="tesMoveAmount '+(reversed?'':'ok')+'" '+(reversed?'style="color:#b91c1c"':'')+'>'+(reversed?'− ':'+ ')+money(x.monto_total)+'</strong><span class="tesMoveDate">'+escape(new Date(at).toLocaleDateString('es-CL'))+'</span>';
    if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
  });
 }
