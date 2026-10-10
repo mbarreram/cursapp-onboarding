@@ -44,6 +44,7 @@ function syncTransbankMovements(arr){
   row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido · Transbank</b><small>'+escape(x.campana||'Pago Webpay')+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno||'Alumno')+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_cuota)+'</strong><span class="tesMoveDate">'+escape(at&&!isNaN(at.getTime())?at.toLocaleDateString('es-CL'):'')+'</span>';
   if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
  });
+ sortFinancialRows(table);
 }
 async function refreshTransbank(id,force=false){
  if(!document.body.classList.contains('cursapp-tesorero'))return;
