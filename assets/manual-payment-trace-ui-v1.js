@@ -57,7 +57,7 @@ function manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed){
  const streams=[stream];
  if(count>1){
   for(let start=0;start<count;start+=19){
-   let page='1 1 1 rg 0 0 595 842 re f\\n';
+   let page='1 1 1 rg 0 0 595 842 re f\n';
    page+=text(52,790,'MiCursoX',23,true,purple);
    page+=text(52,763,'Detalle de cuotas · '+r.folio,11,true,muted);
    page+=line(52,746,542,746);
@@ -83,17 +83,17 @@ function manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed){
  for(let i=0;i<pageCount;i++){
   const pageId=3+i*2,contentId=pageId+1;
   objects[pageId]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 '+(3+pageCount*2)+' 0 R /F2 '+(4+pageCount*2)+' 0 R >> >> /Contents '+contentId+' 0 R >>';
-  objects[contentId]='<< /Length '+bytes(streams[i]).length+' >>\\nstream\\n'+streams[i]+'endstream';
+  objects[contentId]='<< /Length '+bytes(streams[i]).length+' >>\nstream\n'+streams[i]+'endstream';
  }
  const fontId=3+pageCount*2;
  objects[fontId]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
  objects[fontId+1]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
  const maxId=fontId+1;
- const parts=[bytes('%PDF-1.4\\n%\\xE2\\xE3\\xCF\\xD3\\n')],offsets=[0];let pos=parts[0].length;
- for(let i=1;i<=maxId;i++){offsets[i]=pos;const b=bytes(i+' 0 obj\\n'+objects[i]+'\\nendobj\\n');parts.push(b);pos+=b.length}
- let xref='xref\\n0 '+(maxId+1)+'\\n0000000000 65535 f \\n';
- for(let i=1;i<=maxId;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \\n';
- xref+='trailer\\n<< /Size '+(maxId+1)+' /Root 1 0 R >>\\nstartxref\\n'+pos+'\\n%%EOF';
+ const parts=[bytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n')],offsets=[0];let pos=parts[0].length;
+ for(let i=1;i<=maxId;i++){offsets[i]=pos;const b=bytes(i+' 0 obj\n'+objects[i]+'\nendobj\n');parts.push(b);pos+=b.length}
+ let xref='xref\n0 '+(maxId+1)+'\n0000000000 65535 f \n';
+ for(let i=1;i<=maxId;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+ xref+='trailer\n<< /Size '+(maxId+1)+' /Root 1 0 R >>\nstartxref\n'+pos+'\n%%EOF';
  parts.push(bytes(xref));
  return new Blob(parts,{type:'application/pdf'});
 }
