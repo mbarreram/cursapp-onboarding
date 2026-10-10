@@ -1767,8 +1767,12 @@ ${cardHtml}
   window.openReceipt = async function(id){
     const p = resolveReceiptPayment(id);
     if(!p) return;
-    const operationId=await linkedManualOperation(p);
-    if(operationId){window.MICURSOX_MANUAL_RECEIPT(operationId);return;}
+    const possiblyManual=String(p.source||'').toLowerCase()==='manual'||['transferencia','efectivo'].includes(String(p.paymentMethod||p.paidWith||'').toLowerCase())||
+      !!(p.operacion_manual_id||p.manual_operation_id||p.operacion_id);
+    const receiptWindow=possiblyManual&&window.MICURSOX_MANUAL_RECEIPT?window.open('','_blank'):null;
+    const operationId=possiblyManual?await linkedManualOperation(p):'';
+    if(operationId){window.MICURSOX_MANUAL_RECEIPT(operationId,receiptWindow);return;}
+    if(receiptWindow)receiptWindow.close();
 
     const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
     const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
