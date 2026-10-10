@@ -6,6 +6,46 @@ const role=()=>document.body.classList.contains('cursapp-tesorero')?'tesorero':d
 let lastKey='',pending=false,refreshRequested=false,summaryCard=null;
 const FINANCIAL_SOURCES=new Set(['reversa-manual','pago-manual','registro-pago-manual','manual-payment','manual-payment-reversal','conciliacion-manual','transbank-payment']);
 const isFinancialEvent=e=>{const d=e?.detail||{};return d.financial===true||FINANCIAL_SOURCES.has(d.source)};
+function manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed){
+ const clean=v=>String(v??'—').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\xFF]/g,'-');
+ const escPdf=v=>clean(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+ const text=(x,y,t,size=10,bold=false,color='0.10 0.15 0.26')=>color+' rg BT /'+(bold?'F2':'F1')+' '+size+' Tf 1 0 0 1 '+x+' '+y+' Tm ('+escPdf(t)+') Tj ET\n';
+ const lines=(str,n)=>{let out=[],line='';for(const word of clean(str).split(/\s+/)){if((line+' '+word).trim().length>n&&line){out.push(line);line=word}else line=(line+' '+word).trim()}if(line)out.push(line);return out};
+ let stream='1 1 1 rg 0 0 595 842 re f\n';
+ stream+='0.44 0.17 0.80 rg 32 768 531 56 re f\n';
+ stream+=text(48,789,'MiCursoX  |  Comprobante de pago',19,true,'1 1 1');
+ stream+=text(50,734,reversed?'OPERACION REVERSADA - SIN VIGENCIA':'REGISTRADO POR TESORERIA',17,true,reversed?'0.72 0.13 0.13':'0.09 0.59 0.31');
+ stream+=text(50,689,clp(r.total),34,true);
+ stream+=text(50,667,date,12,false,'0.41 0.46 0.56');
+ stream+='0.84 0.87 0.91 RG 1 w 48 643 m 548 643 l S\n';
+ const fields=[['Campana',items.length===1?(items[0].campana||items[0].concepto):items.length+' cuotas / campanas'],['Alumno',r.alumno],['Apoderado',r.apoderado],['Curso',courseLabel],['Colegio',schoolLabel],['Forma de pago',r.medio],['Estado',reversed?'Reversado':'Pagado y conciliado']];
+ fields.forEach(([label,value],i)=>{
+  const col=i%2,row=Math.floor(i/2),x=50+col*258,y=612-row*64;
+  stream+=text(x,y,label,10,true,'0.41 0.46 0.56');
+  lines(value,32).slice(0,2).forEach((line,j)=>stream+=text(x,y-18-j*15,line,12,true));
+ });
+ stream+=text(50,337,'Folio oficial:',10,true,'0.41 0.46 0.56');
+ stream+=text(50,319,r.folio,12,true);
+ stream+='0.84 0.87 0.91 RG 1 w 48 299 m 548 299 l S\n';
+ let y=279;
+ for(const row of items.slice(0,5)){
+  stream+=text(50,y,(row.campana||row.concepto||'Cuota')+' | '+(row.periodo||'—'),10);
+  stream+=text(454,y,clp(row.monto),10,true);y-=22;
+ }
+ stream+=text(300,148,'Total recibido: '+clp(r.total),15,true);
+ stream+='0.95 0.98 0.97 rg 32 54 531 72 re f\n';
+ stream+=text(46,103,reversed?'Registro conservado como evidencia historica.':'Pago recibido y conciliado manualmente por tesoreria.',11,true,'0.44 0.17 0.80');
+ stream+=text(46,81,'Este comprobante acredita un registro de la directiva del curso.',10);
+ stream+=text(46,63,'No corresponde a una transaccion procesada por Transbank.',9,false,'0.41 0.46 0.56');
+ const bytes=v=>{const a=new Uint8Array(v.length);for(let i=0;i<v.length;i++)a[i]=v.charCodeAt(i)&255;return a};
+ const objects=['','<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>','<< /Length '+bytes(stream).length+' >>\nstream\n'+stream+'endstream'];
+ const parts=[bytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n')],offsets=[0];let pos=parts[0].length;
+ for(let i=1;i<=6;i++){offsets[i]=pos;const b=bytes(i+' 0 obj\n'+objects[i]+'\nendobj\n');parts.push(b);pos+=b.length}
+ let xref='xref\n0 7\n0000000000 65535 f \n';for(let i=1;i<=6;i++)xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+ xref+='trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n'+pos+'\n%%EOF';parts.push(bytes(xref));
+ return new Blob(parts,{type:'application/pdf'});
+}
+
 async function receipt(id,existingWindow){
  const w=existingWindow||window.open('','_blank');
  if(!w){alert('Permite ventanas emergentes para ver el comprobante.');return;}
@@ -44,9 +84,11 @@ async function receipt(id,existingWindow){
    '</style></head><body class="apoderado-home-v40"><div class="mxManualReceiptWrap '+(reversed?'mxReversed':'')+'"><div class="receiptV51Shell"><div class="receiptV51Topbar receiptV52Topbar"><div class="receiptV51Brand receiptV52Brand"><span class="receiptV51BrandIcon">👥</span><span>MiCursoX</span></div><div class="receiptV52Actions"><button class="receiptV52ActionBtn" id="mxPrint">⇩<small>PDF</small></button><button class="receiptV52ActionBtn" id="mxShare">⤴<small>Compartir</small></button><button class="receiptV52ActionBtn" id="mxClose">×<small>Cerrar</small></button></div></div>'+
    '<section class="receiptV51Card receiptV52Card"><div class="receiptV51Status"><span>'+(reversed?'×':'✓')+'</span>'+esc(reversed?'Pago reversado · sin vigencia':'Registrado por tesorería')+'</div><div class="receiptV51Amount">'+clp(r.total)+'</div><div class="receiptV51Date">'+esc(date)+'</div><div class="receiptV51Divider"></div><div class="receiptV51Details"><div class="receiptV51Watermark" aria-hidden="true"><div class="receiptV51StampRing"><div class="receiptV51StampTop">DIRECTIVA</div><div class="receiptV51Shield">'+esc(courseLabel.replace(/\s*2026\s*/,'').trim())+'</div><div class="receiptV51StampYear">'+esc(String(dt?.getFullYear()||''))+'</div><div class="receiptV51StampBottom">'+(reversed?'REVERSADO':'PAGADO')+'</div></div></div>'+rows+'</div>'+detail+'<div class="receiptV51Divider receiptV52DividerBottom"></div><div class="receiptV51Trust"><span>🔒</span><div><p>'+(reversed?'Operación reversada. Comprobante sin vigencia.':'Pago registrado y conciliado por <b>tesorería.</b>')+'</p><small>'+(reversed?'El registro se conserva como evidencia histórica.':'Este comprobante acredita el pago registrado por la directiva del curso.')+'</small></div></div></section><div class="receiptV52BottomActions"><button class="receiptV51Primary" id="mxPrintBottom">⇩ PDF</button><button class="receiptV51Secondary" id="mxShareBottom">⤴ Compartir PDF</button></div></div></div></body></html>';
   w.document.open();w.document.write(html);w.document.close();
-  const print=()=>w.print();
-  const share=async()=>{if(w.navigator.share){try{await w.navigator.share({title:'Comprobante MiCursoX',text:'Folio '+r.folio});return}catch(e){if(e?.name==='AbortError')return}}w.print()};
-  ['mxPrint','mxPrintBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',print));
+  const filename='Comprobante-MiCursoX-'+String(r.folio).replace(/[^a-z0-9-]/gi,'')+'.pdf';
+  const blob=()=>manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed);
+  const download=()=>{const url=URL.createObjectURL(blob());const a=w.document.createElement('a');a.href=url;a.download=filename;w.document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)};
+  const share=async()=>{const file=new File([blob()],filename,{type:'application/pdf'});try{if(w.navigator.share&&(!w.navigator.canShare||w.navigator.canShare({files:[file]}))){await w.navigator.share({title:'Comprobante MiCursoX',files:[file]});return}}catch(e){if(e?.name==='AbortError')return}download()};
+  ['mxPrint','mxPrintBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',download));
   ['mxShare','mxShareBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',share));
   w.document.getElementById('mxClose')?.addEventListener('click',()=>w.close());
  }catch(e){try{w.close()}catch(_){}alert(e?.message||'No se pudo consultar el comprobante.')}
