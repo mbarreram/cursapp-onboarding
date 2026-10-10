@@ -7,19 +7,19 @@ const escape=s=>String(s??'').replace(/[&<>"]/g,x=>({'&':'&amp;','<':'&lt;','>':
 const money=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(n)||0);
 function course(){try{const a=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}'),b=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');return a?.course?.id||a?.id||a?.curso_id||b?.courseId||b?.course?.id||''}catch(e){return''}}
 const call=(name,params)=>api().request('rpc/'+name,{method:'POST',body:JSON.stringify(params)});
-let inFlight=false,rendered='';
+let inFlight=false,rendered='',panelNode=null,refreshAfterFlight=false;
 async function reload(){
  const r=document.body.classList.contains('cursapp-presidente')||document.body.classList.contains('cursapp-tesorero');
  const app=document.getElementById('app'),id=course();
  if(!r||!app||!id||!api()?.request)return;
  const home=app.querySelector('.mxManualPaymentEntry-home');
- if(!home){const panel=document.getElementById('mxManualReversalPanel');if(panel)panel.hidden=true;return}
+ if(!home){if(panelNode)panelNode.hidden=true;return}
  const key=id+'|'+(document.body.classList.contains('cursapp-presidente')?'p':'t');
- const existing=document.getElementById('mxManualReversalPanel');if(existing)existing.hidden=false;if(inFlight||(rendered===key&&existing))return;
+ const existing=panelNode;if(existing&&existing.parentElement!==app)app.appendChild(existing);if(existing)existing.hidden=false;if(inFlight){if(rendered!==key)refreshAfterFlight=true;return}if(rendered===key&&existing)return;
  inFlight=true;
- const el=document.getElementById('mxManualReversalPanel')||document.createElement('section');
+ const el=existing||document.createElement('section');panelNode=el;
  el.id='mxManualReversalPanel';el.className='mxManualTraceCard';el.innerHTML='<strong>Historial de pagos manuales</strong><p>Cargando operaciones…</p>';
- if(!el.isConnected)app.insertAdjacentElement('afterend',el);
+ if(el.parentElement!==app)app.appendChild(el);
  try{
  const data=await call('listar_operaciones_manuales',{p_curso_id:id,p_miembro_id:null});if(!el.isConnected)return;
  const arr=Array.isArray(data)?data:[];
@@ -48,12 +48,12 @@ async function reload(){
  const result=await call('reversar_pago_manual',{p_operacion_id:button.dataset.reverse,p_motivo:reason.trim()});
  if(result?.estado!=='reversado')throw Error('No se confirmó la reversa');
  window.alert('Operación reversada. Folio: '+result.id);
- el.remove();rendered='';
+ rendered='';
  window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'reversa-manual'}}));
  }catch(err){window.alert('No se pudo reversar: '+(err.message||String(err)));button.disabled=false}finally{inFlight=false;reload()}
  }));
  rendered=key;
- }catch(err){el.innerHTML='<strong>Historial de pagos manuales</strong><p>No disponible: '+escape(err.message)+'</p>';rendered=''}finally{inFlight=false}
+ }catch(err){el.innerHTML='<strong>Historial de pagos manuales</strong><p>No disponible: '+escape(err.message)+'</p>';rendered=''}finally{inFlight=false;if(refreshAfterFlight){refreshAfterFlight=false;rendered='';queueMicrotask(reload)}}
 }
 function init(){
  const app=document.getElementById('app');
@@ -64,18 +64,17 @@ function init(){
   scheduled=true;
   setTimeout(()=>{
    scheduled=false;
-   const panel=document.getElementById('mxManualReversalPanel');
    const onHome=!!app.querySelector('.mxManualPaymentEntry-home');
-   if(panel)panel.hidden=!onHome;
-   if(onHome&&!panel)reload();
+   if(panelNode)panelNode.hidden=!onHome;
+   if(onHome)reload();
   },350);
  });
  observer.observe(app,{childList:true,subtree:false});
- window.addEventListener('cursapp:dataUpdated',()=>{
+ window.addEventListener('cursapp:dataUpdated',e=>{
+  const source=e?.detail?.source;
+  if(e?.detail?.financial!==true&&!['reversa-manual','pago-manual','registro-pago-manual','manual-payment','manual-payment-reversal','conciliacion-manual','transbank-payment'].includes(source))return;
   rendered='';
-  const panel=document.getElementById('mxManualReversalPanel');
-  if(panel)panel.remove();
-  reload();
+  if(inFlight)refreshAfterFlight=true;else reload();
  });
  reload();
 }
