@@ -45,8 +45,8 @@ function manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed){
   stream+=circle(x-16,y-7,9,purple);
   stream+=text(x-20,y-11,i===0?'C':i===1?'A':i===2?'P':i===3?'G':i===4?'E':i===5?'M':i===6?'V':'#',9,true,purple);
   stream+=text(x,y,label,11,true,muted);
-  const width=i===7?24:col===0?26:26;
-  lines(value,width).slice(0,i===7?3:2).forEach((part,j)=>stream+=text(x,y-23-j*17,part,13,true,ink));
+  const width=i===7?18:26;
+  (i===7?(String(value||'').match(/.{1,18}/g)||[]):lines(value,width)).slice(0,i===7?3:2).forEach((part,j)=>stream+=text(x,y-23-j*17,part,i===7?10:13,true,ink));
  });
  stream+=line(78,195,520,195);
  const count=items.length;
