@@ -4271,8 +4271,7 @@ __bootApoderadoSupabaseFirst();
       if(typeof core?.refreshPagosSupabase==='function')await core.refreshPagosSupabase('post-transbank-return');
       if(typeof core?.hydrateOperationalFromSupabase==='function')await core.hydrateOperationalFromSupabase('post-transbank-return');
       const active=document.querySelector('.navItem.active')?.dataset?.tab||'home';
-      if(active==='payments'&&typeof window.renderPayments==='function')window.renderPayments();
-      else if(active==='home'&&typeof window.renderHome==='function')window.renderHome();
+      if(typeof window.go==='function'&&['payments','home'].includes(active))window.go(active);
       window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'post-transbank-return'}}));
     }catch(e){console.warn('[MiCursoX] Postpago: no se pudo sincronizar Supabase',e)}
     finally{busy=false}
