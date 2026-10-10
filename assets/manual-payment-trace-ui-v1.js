@@ -136,10 +136,43 @@ async function receipt(id,existingWindow){
    '</style></head><body class="apoderado-home-v40"><div class="mxManualReceiptWrap '+(reversed?'mxReversed':'')+'"><div class="receiptV51Shell"><div class="receiptV51Topbar receiptV52Topbar"><div class="receiptV51Brand receiptV52Brand"><span class="receiptV51BrandIcon">👥</span><span>MiCursoX</span></div><div class="receiptV52Actions"><button class="receiptV52ActionBtn" id="mxPrint">⇩<small>PDF</small></button><button class="receiptV52ActionBtn" id="mxShare">⤴<small>Compartir</small></button><button class="receiptV52ActionBtn" id="mxClose">×<small>Cerrar</small></button></div></div>'+
    '<section class="receiptV51Card receiptV52Card"><div class="receiptV51Status"><span>'+(reversed?'×':'✓')+'</span>'+esc(reversed?'Pago reversado · sin vigencia':'Registrado por tesorería')+'</div><div class="receiptV51Amount">'+clp(r.total)+'</div><div class="receiptV51Date">'+esc(date)+'</div><div class="receiptV51Divider"></div><div class="receiptV51Details"><div class="receiptV51Watermark" aria-hidden="true"><div class="receiptV51StampRing"><div class="receiptV51StampTop">DIRECTIVA</div><div class="receiptV51Shield">'+esc(courseLabel.replace(/\s*2026\s*/,'').trim())+'</div><div class="receiptV51StampYear">'+esc(String(dt?.getFullYear()||''))+'</div><div class="receiptV51StampBottom">'+(reversed?'REVERSADO':'PAGADO')+'</div></div></div>'+rows+'</div>'+detail+'<div class="receiptV51Divider receiptV52DividerBottom"></div><div class="receiptV51Trust"><span>🔒</span><div><p>'+(reversed?'Operación reversada. Comprobante sin vigencia.':'Pago registrado y conciliado por <b>tesorería.</b>')+'</p><small>'+(reversed?'El registro se conserva como evidencia histórica.':'Este comprobante acredita el pago registrado por la directiva del curso.')+'</small></div></div></section><div class="receiptV52BottomActions"><button class="receiptV51Primary" id="mxPrintBottom">⇩ PDF</button><button class="receiptV51Secondary" id="mxShareBottom">⤴ Compartir PDF</button></div></div></div></body></html>';
   w.document.open();w.document.write(html);w.document.close();
+  const loadScript=(url,test)=>new Promise((resolve,reject)=>{
+    if(test()){resolve();return}
+    const script=w.document.createElement('script');
+    script.src=url;script.onload=()=>test()?resolve():reject(new Error('Dependencia no disponible'));script.onerror=()=>reject(new Error('No fue posible cargar el generador visual'));
+    w.document.head.appendChild(script);
+  });
+  const visualPdf=async()=>{
+    await Promise.all([
+      loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',()=>typeof w.html2canvas==='function'),
+      loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',()=>!!w.jspdf?.jsPDF)
+    ]);
+    await w.document.fonts?.ready;
+    const card=w.document.querySelector('.receiptV52Card');
+    if(!card)throw new Error('Tarjeta de comprobante no encontrada');
+    const canvas=await w.html2canvas(card,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false,scrollX:0,scrollY:0,windowWidth:Math.max(w.innerWidth,card.scrollWidth)});
+    if(!canvas.width||!canvas.height)throw new Error('Captura vacía');
+    const pdf=new w.jspdf.jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:true});
+    const margin=26,pageWidth=pdf.internal.pageSize.getWidth(),pageHeight=pdf.internal.pageSize.getHeight();
+    const targetW=pageWidth-margin*2;
+    const slicePixels=Math.max(1,Math.floor((pageHeight-margin*2)*canvas.width/targetW));
+    let offset=0,page=0;
+    while(offset<canvas.height){
+      if(page++)pdf.addPage();
+      const h=Math.min(slicePixels,canvas.height-offset);
+      const fragment=w.document.createElement('canvas');fragment.width=canvas.width;fragment.height=h;
+      fragment.getContext('2d').drawImage(canvas,0,offset,canvas.width,h,0,0,canvas.width,h);
+      pdf.addImage(fragment.toDataURL('image/png'),'PNG',margin,margin,targetW,h*targetW/canvas.width,undefined,'FAST');
+      offset+=h;
+    }
+    const out=pdf.output('blob');
+    if(out.size<1000)throw new Error('PDF visual vacío');
+    return out;
+  };
   const filename='Comprobante-MiCursoX-'+String(r.folio).replace(/[^a-z0-9-]/gi,'')+'.pdf';
-  const blob=()=>manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed);
-  const download=()=>{const url=URL.createObjectURL(blob());const a=w.document.createElement('a');a.href=url;a.download=filename;w.document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)};
-  const share=async()=>{const file=new File([blob()],filename,{type:'application/pdf'});try{if(w.navigator.share&&(!w.navigator.canShare||w.navigator.canShare({files:[file]}))){await w.navigator.share({title:'Comprobante MiCursoX',files:[file]});return}}catch(e){if(e?.name==='AbortError')return}download()};
+  const blob=async()=>{try{return await visualPdf()}catch(e){console.warn('[MiCursoX] Respaldo PDF vectorial',e);return manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed)}};
+  const download=async()=>{const url=URL.createObjectURL(await blob());const a=w.document.createElement('a');a.href=url;a.download=filename;w.document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)};
+  const share=async()=>{const file=new File([await blob()],filename,{type:'application/pdf'});try{if(w.navigator.share&&(!w.navigator.canShare||w.navigator.canShare({files:[file]}))){await w.navigator.share({title:'Comprobante MiCursoX',files:[file]});return}}catch(e){if(e?.name==='AbortError')return}download()};
   ['mxPrint','mxPrintBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',download));
   ['mxShare','mxShareBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',share));
   w.document.getElementById('mxClose')?.addEventListener('click',()=>w.close());
