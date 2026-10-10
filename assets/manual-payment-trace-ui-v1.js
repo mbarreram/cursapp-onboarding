@@ -11,32 +11,53 @@ function manualReceiptPdf(r,items,courseLabel,schoolLabel,date,reversed){
  const escPdf=v=>clean(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
  const text=(x,y,t,size=10,bold=false,color='0.10 0.15 0.26')=>color+' rg BT /'+(bold?'F2':'F1')+' '+size+' Tf 1 0 0 1 '+x+' '+y+' Tm ('+escPdf(t)+') Tj ET\n';
  const lines=(str,n)=>{let out=[],line='';for(const word of clean(str).split(/\s+/)){if((line+' '+word).trim().length>n&&line){out.push(line);line=word}else line=(line+' '+word).trim()}if(line)out.push(line);return out};
+ const rect=(x,y,w,h,fill)=>fill+' rg '+x+' '+y+' '+w+' '+h+' re f\n';
+ const line=(x1,y1,x2,y2,color='0.83 0.86 0.90')=>color+' RG 1.2 w '+x1+' '+y1+' m '+x2+' '+y2+' l S\n';
+ const circle=(x,y,r,color,fill=false)=>{const k=.5522847498*r;return color+(fill?' rg ':' RG ')+(fill?'':'2 w ')+(x+r)+' '+y+' m '+(x+r)+' '+(y+k)+' '+(x+k)+' '+(y+r)+' '+x+' '+(y+r)+' c '+(x-k)+' '+(y+r)+' '+(x-r)+' '+(y+k)+' '+(x-r)+' '+y+' c '+(x-r)+' '+(y-k)+' '+(x-k)+' '+(y-r)+' '+x+' '+(y-r)+' c '+(x+k)+' '+(y-r)+' '+(x+r)+' '+(y-k)+' '+(x+r)+' '+y+' c '+(fill?'f':'S')+'\n'};
+ const purple='0.44 0.16 0.83',green='0.08 0.64 0.34',muted='0.40 0.46 0.55',ink='0.07 0.10 0.19';
  let stream='1 1 1 rg 0 0 595 842 re f\n';
- stream+='0.44 0.17 0.80 rg 32 768 531 56 re f\n';
- stream+=text(48,789,'MiCursoX  |  Comprobante de pago',19,true,'1 1 1');
- stream+=text(50,734,reversed?'OPERACION REVERSADA - SIN VIGENCIA':'REGISTRADO POR TESORERIA',17,true,reversed?'0.72 0.13 0.13':'0.09 0.59 0.31');
- stream+=text(50,689,clp(r.total),34,true);
- stream+=text(50,667,date,12,false,'0.41 0.46 0.56');
- stream+='0.84 0.87 0.91 RG 1 w 48 643 m 548 643 l S\n';
- const fields=[['Campana',items.length===1?(items[0].campana||items[0].concepto):items.length+' cuotas / campanas'],['Alumno',r.alumno],['Apoderado',r.apoderado],['Curso',courseLabel],['Colegio',schoolLabel],['Forma de pago',r.medio],['Estado',reversed?'Reversado':'Pagado y conciliado']];
+ stream+=rect(28,28,539,786,'0.995 0.995 1');
+ stream+=rect(40,767,515,49,'1 1 1');
+ stream+=text(55,785,'MiCursoX',24,true,purple);
+ stream+=text(427,789,'COMPROBANTE',9,true,purple);
+ stream+=line(52,764,542,764);
+ stream+=rect(52,81,490,666,'1 1 1');
+ stream+=circle(162,709,17,green);
+ stream+=green+' RG 3 w 154 709 m 160 703 l 170 717 l S\n';
+ stream+=text(193,705,reversed?'Pago reversado':'Registrado por tesoreria',18,true,reversed?'0.73 0.15 0.17':green);
+ stream+=text(208,654,clp(r.total),39,true,ink);
+ stream+=text(211,633,date,12,true,muted);
+ stream+=line(77,613,520,613);
+ // Marca de agua circular tenue y centrada en el detalle.
+ stream+=circle(301,406,165,'0.95 0.93 0.98');
+ stream+=circle(301,406,72,'0.95 0.93 0.98');
+ stream+=text(237,519,'DIRECTIVA',21,true,'0.95 0.93 0.98');
+ stream+=text(261,405,courseLabel.replace(/\s*2026\s*/,'').trim(),22,true,'0.95 0.93 0.98');
+ stream+=text(252,333,String(new Date(r.fecha).getFullYear()||2026),25,true,'0.95 0.93 0.98');
+ stream+=text(251,294,reversed?'REVERSADO':'PAGADO',18,true,'0.95 0.93 0.98');
+ const fields=[
+  ['Campana',items.length===1?(items[0].campana||items[0].concepto||'—'):items.length+' cuotas / campanas'],
+  ['Alumno',r.alumno],['Apoderado',r.apoderado],['Curso',courseLabel],
+  ['Colegio',schoolLabel],['Forma de pago',String(r.medio||'').replace(/^./,x=>x.toUpperCase())],
+  ['Estado',reversed?'Reversado':'Pagado'],['Folio',r.folio]];
  fields.forEach(([label,value],i)=>{
-  const col=i%2,row=Math.floor(i/2),x=50+col*258,y=612-row*64;
-  stream+=text(x,y,label,10,true,'0.41 0.46 0.56');
-  lines(value,32).slice(0,2).forEach((line,j)=>stream+=text(x,y-18-j*15,line,12,true));
+  const col=i%2,row=Math.floor(i/2),x=91+col*244,y=576-row*94;
+  stream+=circle(x-16,y-7,9,purple);
+  stream+=text(x-20,y-11,i===0?'C':i===1?'A':i===2?'P':i===3?'G':i===4?'E':i===5?'M':i===6?'V':'#',9,true,purple);
+  stream+=text(x,y,label,11,true,muted);
+  const width=i===7?24:col===0?26:26;
+  lines(value,width).slice(0,i===7?3:2).forEach((part,j)=>stream+=text(x,y-23-j*17,part,13,true,ink));
  });
- stream+=text(50,337,'Folio oficial:',10,true,'0.41 0.46 0.56');
- stream+=text(50,319,r.folio,12,true);
- stream+='0.84 0.87 0.91 RG 1 w 48 299 m 548 299 l S\n';
- let y=279;
- for(const row of items.slice(0,5)){
-  stream+=text(50,y,(row.campana||row.concepto||'Cuota')+' | '+(row.periodo||'—'),10);
-  stream+=text(454,y,clp(row.monto),10,true);y-=22;
+ stream+=line(78,195,520,195);
+ const count=items.length;
+ if(count>1){
+  stream+=text(91,177,'Detalle de cuotas ('+count+')',10,true,purple);
+  items.slice(0,2).forEach((item,i)=>stream+=text(91,160-i*14,(item.campana||item.concepto||'Cuota')+' '+(item.periodo||'')+'  '+clp(item.monto),9));
  }
- stream+=text(300,148,'Total recibido: '+clp(r.total),15,true);
- stream+='0.95 0.98 0.97 rg 32 54 531 72 re f\n';
- stream+=text(46,103,reversed?'Registro conservado como evidencia historica.':'Pago recibido y conciliado manualmente por tesoreria.',11,true,'0.44 0.17 0.80');
- stream+=text(46,81,'Este comprobante acredita un registro de la directiva del curso.',10);
- stream+=text(46,63,'No corresponde a una transaccion procesada por Transbank.',9,false,'0.41 0.46 0.56');
+ stream+=rect(69,94,458,75,'0.965 0.985 0.979');
+ stream+=text(138,142,reversed?'Operacion reversada - sin vigencia':'Pago registrado y conciliado por tesoreria.',12,true,purple);
+ stream+=text(123,121,'Este comprobante acredita un pago registrado por la directiva del curso.',9,false,muted);
+ stream+=text(146,105,reversed?'Conservado como evidencia historica.':'No fue procesado mediante Transbank.',9,false,muted);
  const bytes=v=>{const a=new Uint8Array(v.length);for(let i=0;i<v.length;i++)a[i]=v.charCodeAt(i)&255;return a};
  const objects=['','<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>','<< /Length '+bytes(stream).length+' >>\nstream\n'+stream+'endstream'];
  const parts=[bytes('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n')],offsets=[0];let pos=parts[0].length;
