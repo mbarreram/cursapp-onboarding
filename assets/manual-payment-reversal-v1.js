@@ -20,19 +20,26 @@ function syncMovements(arr){
  recent.reverse().forEach(x=>{
    const reversed=x.estado==='reversado';
    const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxManualMovement=x.id;
-   const at=reversed?(x.reversado_at||x.fecha):x.fecha;
+   const at=reversed?(x.reversado_at||x.fecha):x.fecha;row.dataset.mxFinancialAt=at;
    row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon '+(reversed?'expense':'income')+'" '+(reversed?'style="background:#fee2e2;color:#b91c1c"':'')+'>'+(reversed?'↶':'↓')+'</span><span><b>'+(reversed?'Pago manual reversado':'Pago manual recibido')+'</b><small>'+escape(x.medio)+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno)+'</span><strong class="tesMoveAmount '+(reversed?'':'ok')+'" '+(reversed?'style="color:#b91c1c"':'')+'>'+(reversed?'− ':'+ ')+money(x.monto_total)+'</strong><span class="tesMoveDate">'+escape(new Date(at).toLocaleDateString('es-CL'))+'</span>';
    if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
  });
+ sortFinancialRows(table);
 }
 let lastTransbank=[],transbankCourse='',transbankFetchedAt=0;
+function sortFinancialRows(table){
+ const head=table.querySelector('.tesMovementTableHead');if(!head)return;
+ const rows=Array.from(table.querySelectorAll('[data-mx-manual-movement],[data-mx-transbank-movement]'));
+ rows.sort((a,b)=>String(b.dataset.mxFinancialAt||'').localeCompare(String(a.dataset.mxFinancialAt||'')));
+ let anchor=head;for(const row of rows){anchor.insertAdjacentElement('afterend',row);anchor=row}
+}
 function syncTransbankMovements(arr){
  const table=document.querySelector('#app .tesMovementTableWrap');
  if(!table||!document.body.classList.contains('cursapp-tesorero'))return;
  table.querySelectorAll('[data-mx-transbank-movement]').forEach(x=>x.remove());
  const head=table.querySelector('.tesMovementTableHead');
  arr.slice(0,3).reverse().forEach(x=>{
-  const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxTransbankMovement=x.id;
+  const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxTransbankMovement=x.id;row.dataset.mxFinancialAt=x.fecha||'';
   const at=x.fecha?new Date(x.fecha):null;
   row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido · Transbank</b><small>'+escape(x.campana||'Pago Webpay')+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno||'Alumno')+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_cuota)+'</strong><span class="tesMoveDate">'+escape(at&&!isNaN(at.getTime())?at.toLocaleDateString('es-CL'):'')+'</span>';
   if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
