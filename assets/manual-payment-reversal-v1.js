@@ -13,13 +13,13 @@ async function reload(){
  const app=document.getElementById('app'),id=course();
  if(!r||!app||!id||!api()?.request)return;
  const home=app.querySelector('.mxManualPaymentEntry-home');
- if(!home){document.getElementById('mxManualReversalPanel')?.remove();rendered='';return}
+ if(!home){const panel=document.getElementById('mxManualReversalPanel');if(panel)panel.hidden=true;return}
  const key=id+'|'+(document.body.classList.contains('cursapp-presidente')?'p':'t');
- if(inFlight||rendered===key&&document.getElementById('mxManualReversalPanel'))return;
+ const existing=document.getElementById('mxManualReversalPanel');if(existing)existing.hidden=false;if(inFlight||(rendered===key&&existing))return;
  inFlight=true;
  const el=document.getElementById('mxManualReversalPanel')||document.createElement('section');
  el.id='mxManualReversalPanel';el.className='mxManualTraceCard';el.innerHTML='<strong>Historial de pagos manuales</strong><p>Cargando operaciones…</p>';
- if(!el.isConnected)app.appendChild(el);
+ if(!el.isConnected)app.insertAdjacentElement('afterend',el);
  try{
  const data=await call('listar_operaciones_manuales',{p_curso_id:id,p_miembro_id:null});if(!el.isConnected)return;
  const arr=Array.isArray(data)?data:[];
@@ -56,10 +56,27 @@ async function reload(){
  }catch(err){el.innerHTML='<strong>Historial de pagos manuales</strong><p>No disponible: '+escape(err.message)+'</p>';rendered=''}finally{inFlight=false}
 }
 function init(){
- const root=document.getElementById('app')||document.body;
- let queued=false;
- new MutationObserver(()=>{if(inFlight||queued)return;if(rendered&&document.getElementById('mxManualReversalPanel'))return;queued=true;setTimeout(()=>{queued=false;reload()},200)}).observe(root,{childList:true});
- window.addEventListener('cursapp:dataUpdated',()=>{document.getElementById('mxManualReversalPanel')?.remove();rendered='';reload()});
+ const app=document.getElementById('app');
+ if(!app)return;
+ let scheduled=false;
+ const observer=new MutationObserver(()=>{
+  if(scheduled)return;
+  scheduled=true;
+  setTimeout(()=>{
+   scheduled=false;
+   const panel=document.getElementById('mxManualReversalPanel');
+   const onHome=!!app.querySelector('.mxManualPaymentEntry-home');
+   if(panel)panel.hidden=!onHome;
+   if(onHome&&!panel)reload();
+  },350);
+ });
+ observer.observe(app,{childList:true,subtree:false});
+ window.addEventListener('cursapp:dataUpdated',()=>{
+  rendered='';
+  const panel=document.getElementById('mxManualReversalPanel');
+  if(panel)panel.remove();
+  reload();
+ });
  reload();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
