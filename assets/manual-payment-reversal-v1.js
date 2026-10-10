@@ -23,6 +23,19 @@ async function reload(){
  try{
  const data=await call('listar_operaciones_manuales',{p_curso_id:id,p_miembro_id:null});if(!el.isConnected)return;
  const arr=Array.isArray(data)?data:[];
+ if(document.body.classList.contains('cursapp-tesorero')){
+   const table=app.querySelector('.tesMovementTableWrap');
+   if(table){
+     table.querySelectorAll('[data-mx-manual-movement]').forEach(n=>n.remove());
+     const recent=arr.filter(x=>x.estado==='conciliado').slice(0,2);
+     const head=table.querySelector('.tesMovementTableHead');
+     recent.reverse().forEach(x=>{
+       const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxManualMovement=x.id;
+       row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago manual recibido</b><small>'+escape(x.medio)+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno)+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_total)+'</strong><span class="tesMoveDate">'+escape(new Date(x.fecha).toLocaleDateString('es-CL'))+'</span>';
+       if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
+     });
+   }
+ }
  el.innerHTML='<strong>Historial de pagos manuales</strong><small>Puedes reversar un registro incorrecto dejando evidencia y motivo.</small>'+(arr.length?arr.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno)+' · '+escape(new Date(x.fecha).toLocaleString('es-CL'))+'<br><b>'+money(x.monto_total)+'</b> · '+escape(x.medio)+'<br><small>'+escape(x.estado==='reversado'?'Reversado · '+(x.reversa_motivo||''): 'Conciliado')+'</small></span>'+(x.estado==='conciliado'?'<button type="button" data-reverse="'+escape(x.id)+'">Reversar</button>':'')+'</div>').join(''):'<p>Sin operaciones manuales registradas.</p>');
  el.querySelectorAll('[data-reverse]').forEach(button=>button.addEventListener('click',async()=>{
  if(inFlight)return;
@@ -42,6 +55,12 @@ async function reload(){
  rendered=key;
  }catch(err){el.innerHTML='<strong>Historial de pagos manuales</strong><p>No disponible: '+escape(err.message)+'</p>';rendered=''}finally{inFlight=false}
 }
-function init(){new MutationObserver(()=>{if(!inFlight)reload()}).observe(document.getElementById('app')||document.body,{childList:true});window.addEventListener('cursapp:dataUpdated',()=>{document.getElementById('mxManualReversalPanel')?.remove();rendered='';reload()});reload()}
+function init(){
+ const root=document.getElementById('app')||document.body;
+ let queued=false;
+ new MutationObserver(()=>{if(inFlight||queued)return;if(rendered&&document.getElementById('mxManualReversalPanel'))return;queued=true;setTimeout(()=>{queued=false;reload()},200)}).observe(root,{childList:true});
+ window.addEventListener('cursapp:dataUpdated',()=>{document.getElementById('mxManualReversalPanel')?.remove();rendered='';reload()});
+ reload();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
