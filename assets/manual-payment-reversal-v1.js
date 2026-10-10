@@ -40,7 +40,32 @@ function renderTransbankHistory(arr){
  if(!list){list=document.createElement('section');list.id='mxTransbankPaymentHistory';list.style.cssText='margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px';panel.appendChild(list)}
  const items=Array.isArray(arr)?arr:[];
  list.innerHTML='<strong>Historial Transbank</strong><small>Últimas '+items.length+' transacciones autorizadas del curso, según Supabase.</small>'+
-  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · Autorizado<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span></div>').join(''):'<p>No hay transacciones Transbank autorizadas.</p>');
+  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · Autorizado<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':'')+'</div>').join(''):'<p>No hay transacciones Transbank autorizadas.</p>');
+ list.querySelectorAll('[data-mx-refund]').forEach(b=>b.addEventListener('click',()=>requestRefund(b.dataset.mxRefund)));
+}
+let refundBusy=false;
+async function requestRefund(id){
+ if(refundBusy)return;
+ const tx=lastTransbank.find(x=>x.id===id);
+ if(!tx||tx.environment!=='integration')return;
+ const reason=window.prompt('Motivo de anulación total de '+money(tx.monto_cobrado)+' (mínimo 8 caracteres):','Pago de prueba en integración');
+ if(reason===null)return;
+ if(reason.trim().length<8){window.alert('Indica un motivo de al menos 8 caracteres.');return}
+ if(!window.confirm('ATENCIÓN: se enviará una anulación TOTAL a Transbank por '+money(tx.monto_cobrado)+'. El curso dejará de contabilizar '+money(tx.monto_cuota)+'. ¿Continuar?'))return;
+ if(!window.confirm('Confirma por segunda vez la anulación de '+escape(tx.alumno||'este alumno')+'. Esta solicitud no se debe repetir si ocurre un error.'))return;
+ refundBusy=true;
+ const buttons=document.querySelectorAll('[data-mx-refund]');buttons.forEach(b=>b.disabled=true);
+ try{
+  const res=await api().functions.invoke('webpay-refund',{body:{transaction_id:id,reason:reason.trim()}});
+  if(res.error)throw res.error;
+  if(!res.data?.ok)throw new Error('Transbank no confirmó la anulación.');
+  window.alert('Anulación confirmada. Referencia: '+res.data.refund_id);
+  transbankFetchedAt=0;rendered='';lastTransbank=[];
+  window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{financial:true,source:'transbank-refund'}}));
+  await reload();
+ }catch(e){
+  window.alert('No se confirmó la anulación: '+String(e.message||e)+'. Si existe una solicitud, revisa el estado antes de volver a intentar.');
+ }finally{refundBusy=false;buttons.forEach(b=>b.disabled=false)}
 }
 function syncTransbankMovements(arr){
  const table=document.querySelector('#app .tesMovementTableWrap');
