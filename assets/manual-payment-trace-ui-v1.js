@@ -7,31 +7,47 @@ let lastKey='',pending=false,refreshRequested=false,summaryCard=null;
 const FINANCIAL_SOURCES=new Set(['reversa-manual','pago-manual','registro-pago-manual','manual-payment','manual-payment-reversal','conciliacion-manual','transbank-payment']);
 const isFinancialEvent=e=>{const d=e?.detail||{};return d.financial===true||FINANCIAL_SOURCES.has(d.source)};
 async function receipt(id,existingWindow){
- const w=existingWindow||window.open('','_blank');if(!w){alert('Permite ventanas emergentes para ver el comprobante.');return;}
+ const w=existingWindow||window.open('','_blank');
+ if(!w){alert('Permite ventanas emergentes para ver el comprobante.');return;}
  try{
   const r=await send('comprobante_operacion_manual',{p_operacion_id:id});
   if(!r?.folio)throw Error('Comprobante no disponible');
-  const items=Array.isArray(r.cuotas)?r.cuotas:[];
-  const reversed=r.estado==='reversado';
+  const reversed=r.estado==='reversado',items=Array.isArray(r.cuotas)?r.cuotas:[];
   let courseLabel='—',schoolLabel='—';
-  try{const cr=await api().request('cursos?select=nombre,nivel,letra,anio,colegios(nombre)&id=eq.'+encodeURIComponent(course())+'&limit=1');const c=Array.isArray(cr)?cr[0]:null;if(c){courseLabel=[c.nivel||'',c.letra||''].join('').trim()+(c.anio?' '+c.anio:'');courseLabel=courseLabel.trim()||c.nombre||'—';schoolLabel=c.colegios?.nombre||'—';}}catch(_){}
-  const date=r.fecha?new Date(r.fecha).toLocaleString('es-CL',{dateStyle:'medium',timeStyle:'short'}):'—';
-  const parts=items.map(x=>'<tr><td>'+esc(x.campana||x.concepto||'—')+'</td><td>'+esc(x.periodo||'—')+'</td><td>'+clp(x.monto)+'</td></tr>').join('');
-  const label=(name,value)=>'<div class="field"><small>'+name+'</small><b>'+esc(value||'—')+'</b></div>';
-  const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comprobante · MiCursoX</title><style>'+
-  ':root{font-family:system-ui,-apple-system,sans-serif;color:#14213d;background:#f5f6fb}*{box-sizing:border-box}body{margin:0;padding:24px 12px}main{max-width:640px;margin:auto;background:white;border-radius:24px;padding:24px;box-shadow:0 12px 36px #18223b16}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}.brand{font-size:22px;color:#7029ce;font-weight:850}.actions{display:flex;gap:8px}button{cursor:pointer;border:0;border-radius:10px;background:#f1e8ff;color:#6d28d9;padding:10px;font-weight:750}.receipt{border:1px solid #e0e4ed;border-radius:24px;padding:25px 19px;position:relative;overflow:hidden}.stamp{text-align:center;border-bottom:2px dashed #e4e6ef;padding-bottom:22px}.status{color:#18a052;font-size:21px;font-weight:800}.status.rev{color:#b91c1c}.amount{font-size:clamp(35px,9vw,52px);font-weight:850;margin:10px 0 2px}.date{color:#64748b}.details{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px;padding:24px 0}.field{min-width:0;overflow-wrap:anywhere}.field small{display:block;color:#64748b;font-weight:700;margin-bottom:7px}.field b{font-size:15px}.paid{color:#168447;background:#dffae9;border-radius:20px;padding:5px 10px;display:inline-block}.reversed{color:#b91c1c;background:#fee2e2;border-radius:20px;padding:5px 10px;display:inline-block}.folio{grid-column:1/-1}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;border-bottom:1px solid #e7e9ef;padding:10px 5px}td:last-child,th:last-child{text-align:right}.foot{text-align:center;background:#f3fbf9;border-radius:13px;padding:17px;color:#64748b;font-size:13px;line-height:1.5}.foot strong{display:block;color:#7030c1;margin-bottom:5px}.bottom{display:flex;gap:12px;margin-top:18px}.bottom button{flex:1;background:#6d28d9;color:#fff;padding:15px}.bottom button+button{background:white;color:#6d28d9;border:1px solid #b99ae9}@media print{:root{background:#fff}body{padding:0}main{box-shadow:none;border-radius:0;max-width:none}.toolbar,.bottom{display:none}.receipt{border:1px solid #ddd;break-inside:avoid}}'+
-  '</style></head><body><main><div class="toolbar"><span class="brand">MiCursoX</span><div class="actions"><button id="mxPrint">↓ PDF</button><button id="mxShare">↥ Compartir</button><button id="mxClose">✕ Cerrar</button></div></div><section class="receipt"><div class="stamp"><div class="status'+(reversed?' rev':'')+'">'+(reversed?'⊗ Pago reversado · sin vigencia':'✓ Registrado por tesorería')+'</div><div class="amount">'+clp(r.total)+'</div><div class="date">'+esc(date)+'</div></div><div class="details">'+
-   label('Campaña',items.length===1?(items[0].campana||items[0].concepto):items.length+' cuotas / campañas')+
-   label('Alumno',r.alumno)+label('Apoderado',r.apoderado)+label('Curso',courseLabel)+label('Colegio',schoolLabel)+label('Forma de pago',String(r.medio||'').replace(/^./,x=>x.toUpperCase()))+
-   '<div class="field"><small>Estado</small><b class="'+(reversed?'reversed':'paid')+'">'+(reversed?'Reversado':'Pagado y conciliado')+'</b></div>'+
-   '<div class="field folio"><small>Folio de operación</small><b>'+esc(r.folio)+'</b></div></div>'+
-   '<table><thead><tr><th>Campaña</th><th>Período</th><th>Monto</th></tr></thead><tbody>'+parts+'</tbody></table>'+
-   '<p style="text-align:right;font-weight:800">Total recibido: '+clp(r.total)+'</p><div class="foot"><strong>'+(reversed?'Operación reversada':'Pago recibido y registrado manualmente por tesorería')+'</strong>'+(reversed?'Este comprobante se conserva como evidencia histórica y no acredita un pago vigente.':'Este comprobante acredita el registro y conciliación de un pago por la directiva del curso. No fue procesado mediante Transbank.')+'</div></section>'+
-   '<div class="bottom"><button id="mxPrintBottom">↓ PDF</button><button id="mxShareBottom">↥ Compartir PDF</button></div></main></body></html>';
+  try{
+    const cr=await api().request('cursos?select=nombre,nivel,letra,anio,colegios(nombre)&id=eq.'+encodeURIComponent(course())+'&limit=1');
+    const c=Array.isArray(cr)?cr[0]:null;
+    if(c){courseLabel=([c.nivel||'',c.letra||''].join('').trim()+(c.anio?' '+c.anio:'')).trim()||c.nombre||'—';schoolLabel=c.colegios?.nombre||'—';}
+  }catch(_){}
+  const dt=r.fecha?new Date(r.fecha):null;
+  const date=dt&&!isNaN(dt.getTime())?dt.toLocaleString('es-CL',{dateStyle:'medium',timeStyle:'short'}):'—';
+  const icon=name=>({
+   bookmark:'<svg viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3-5 3V4Z"/><path d="M10 8h4"/></svg>',
+   user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+   guardian:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 9v8M15 13h8"/></svg>',
+   cap:'<svg viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5ZM7 12v5m10-5v5"/></svg>',
+   school:'<svg viewBox="0 0 24 24"><path d="M4 21h16M6 21V9l6-4 6 4v12M9 12h6"/></svg>',
+   card:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>',
+   check:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>'
+  })[name]||'';
+  const fields=[
+   ['bookmark','Campaña',items.length===1?(items[0].campana||items[0].concepto):items.length+' cuotas / campañas'],
+   ['user','Alumno',r.alumno],['guardian','Apoderado',r.apoderado],
+   ['cap','Curso',courseLabel],['school','Colegio',schoolLabel],
+   ['card','Forma de pago',String(r.medio||'—').replace(/^./,v=>v.toUpperCase())],
+   ['check','Estado',reversed?'Reversado':'Pagado'],['check','Folio',r.folio]
+  ];
+  const rows=fields.map(([kind,label,value])=>'<div class="receiptV51Row '+(label==='Estado'?'is-status':'')+'"><span class="receiptV51RowIcon">'+icon(kind)+'</span><span class="receiptV51RowLabel">'+esc(label)+'</span><strong>'+(label==='Estado'?'<span class="receiptV51PaidPill">'+esc(value)+'</span>':esc(value||'—'))+'</strong></div>').join('');
+  const detail=items.length>1?'<div class="mxManualReceiptBreakdown"><b>Detalle de cuotas</b>'+items.map(x=>'<div>'+esc(x.campana||x.concepto||'Cuota')+' · '+esc(x.periodo||'—')+' <b>'+clp(x.monto)+'</b></div>').join('')+'</div>':'';
+  const html='<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comprobante MiCursoX</title><link rel="stylesheet" href="/assets/apoderado-home-v40.css?v=58"><style>'+
+   'html,body{margin:0;min-height:100%;background:#f4f6fb}body{padding:20px 12px;font-family:system-ui,-apple-system,sans-serif;color:#0f172a}.mxManualReceiptWrap{max-width:620px;margin:0 auto;background:white;padding:14px;border-radius:24px}.receiptV51Shell{min-height:auto!important}.receiptV52Topbar{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px!important;padding:8px 4px 16px!important}.receiptV52Actions{display:flex!important;gap:8px!important}.receiptV52ActionBtn{cursor:pointer}.receiptV51Card{margin:0 auto!important}.receiptV51Row strong{overflow-wrap:anywhere}.receiptV51Details{position:relative}.mxManualReceiptBreakdown{margin:0 22px 18px;text-align:left;font-size:13px}.mxManualReceiptBreakdown>div{display:flex;justify-content:space-between;border-top:1px solid #e2e8f0;padding:7px 0;gap:8px}.receiptV52BottomActions{display:flex!important;gap:12px!important;padding:14px 2px}.receiptV52BottomActions button{flex:1}.mxReversed .receiptV51Status{color:#b91c1c!important}.mxReversed .receiptV51PaidPill{background:#fee2e2!important;color:#b91c1c!important}@media print{@page{margin:10mm}html,body{background:white!important;padding:0!important}.mxManualReceiptWrap{padding:0!important;max-width:560px}.receiptV52Topbar,.receiptV52BottomActions{display:none!important}.receiptV51Card{break-inside:avoid!important;box-shadow:none!important}}'+
+   '</style></head><body class="apoderado-home-v40"><div class="mxManualReceiptWrap '+(reversed?'mxReversed':'')+'"><div class="receiptV51Shell"><div class="receiptV51Topbar receiptV52Topbar"><div class="receiptV51Brand receiptV52Brand"><span class="receiptV51BrandIcon">👥</span><span>MiCursoX</span></div><div class="receiptV52Actions"><button class="receiptV52ActionBtn" id="mxPrint">⇩<small>PDF</small></button><button class="receiptV52ActionBtn" id="mxShare">⤴<small>Compartir</small></button><button class="receiptV52ActionBtn" id="mxClose">×<small>Cerrar</small></button></div></div>'+
+   '<section class="receiptV51Card receiptV52Card"><div class="receiptV51Status"><span>'+(reversed?'×':'✓')+'</span>'+esc(reversed?'Pago reversado · sin vigencia':'Registrado por tesorería')+'</div><div class="receiptV51Amount">'+clp(r.total)+'</div><div class="receiptV51Date">'+esc(date)+'</div><div class="receiptV51Divider"></div><div class="receiptV51Details"><div class="receiptV51Watermark" aria-hidden="true"><div class="receiptV51StampRing"><div class="receiptV51StampTop">DIRECTIVA</div><div class="receiptV51Shield">'+esc(courseLabel.replace(/\s*2026\s*/,'').trim())+'</div><div class="receiptV51StampYear">'+esc(String(dt?.getFullYear()||''))+'</div><div class="receiptV51StampBottom">'+(reversed?'REVERSADO':'PAGADO')+'</div></div></div>'+rows+'</div>'+detail+'<div class="receiptV51Divider receiptV52DividerBottom"></div><div class="receiptV51Trust"><span>🔒</span><div><p>'+(reversed?'Operación reversada. Comprobante sin vigencia.':'Pago registrado y conciliado por <b>tesorería.</b>')+'</p><small>'+(reversed?'El registro se conserva como evidencia histórica.':'Este comprobante acredita el pago registrado por la directiva del curso.')+'</small></div></div></section><div class="receiptV52BottomActions"><button class="receiptV51Primary" id="mxPrintBottom">⇩ PDF</button><button class="receiptV51Secondary" id="mxShareBottom">⤴ Compartir PDF</button></div></div></div></body></html>';
   w.document.open();w.document.write(html);w.document.close();
-  const print=()=>w.print();const share=async()=>{if(w.navigator.share){try{await w.navigator.share({title:'Comprobante MiCursoX',text:'Comprobante de pago · folio '+r.folio});return}catch(e){if(e?.name==='AbortError')return}}w.print()};
-  ['mxPrint','mxPrintBottom'].forEach(key=>w.document.getElementById(key)?.addEventListener('click',print));
-  ['mxShare','mxShareBottom'].forEach(key=>w.document.getElementById(key)?.addEventListener('click',share));
+  const print=()=>w.print();
+  const share=async()=>{if(w.navigator.share){try{await w.navigator.share({title:'Comprobante MiCursoX',text:'Folio '+r.folio});return}catch(e){if(e?.name==='AbortError')return}}w.print()};
+  ['mxPrint','mxPrintBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',print));
+  ['mxShare','mxShareBottom'].forEach(x=>w.document.getElementById(x)?.addEventListener('click',share));
   w.document.getElementById('mxClose')?.addEventListener('click',()=>w.close());
  }catch(e){try{w.close()}catch(_){}alert(e?.message||'No se pudo consultar el comprobante.')}
 }
