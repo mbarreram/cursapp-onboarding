@@ -39,8 +39,8 @@ function renderTransbankHistory(arr){
  let list=panel.querySelector('#mxTransbankPaymentHistory');
  if(!list){list=document.createElement('section');list.id='mxTransbankPaymentHistory';list.style.cssText='margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px';panel.appendChild(list)}
  const items=Array.isArray(arr)?arr:[];
- list.innerHTML='<strong>Historial Transbank</strong><small>Últimas '+items.length+' transacciones autorizadas del curso, según Supabase.</small>'+
-  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · Autorizado<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':'')+'</div>').join(''):'<p>No hay transacciones Transbank autorizadas.</p>');
+ list.innerHTML='<strong>Historial Transbank</strong><small>Últimas '+items.length+' operaciones Transbank del curso (incluye anulaciones).</small>'+
+  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · '+(x.estado==='REFUNDED'?'Anulado':'Autorizado')+'<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.estado==='APPROVED'&&x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':'')+'</div>').join(''):'<p>No hay transacciones Transbank autorizadas.</p>');
  list.querySelectorAll('[data-mx-refund]').forEach(b=>b.addEventListener('click',()=>requestRefund(b.dataset.mxRefund)));
 }
 let refundBusy=false;
@@ -75,8 +75,8 @@ function syncTransbankMovements(arr){
  const head=table.querySelector('.tesMovementTableHead');
  arr.slice(0,3).reverse().forEach(x=>{
   const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxTransbankMovement=x.id;row.dataset.mxFinancialAt=x.fecha||'';
-  const at=x.fecha?new Date(x.fecha):null;
-  row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido · Transbank</b><small>'+escape(x.campana||'Pago Webpay')+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno||'Alumno')+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_cuota)+'</strong><span class="tesMoveDate">'+escape(at&&!isNaN(at.getTime())?at.toLocaleDateString('es-CL'):'')+'</span>';
+  const at=x.fecha?new Date(x.fecha):null;const reversed=x.estado==='REFUNDED';
+  row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon '+(reversed?'expense':'income')+'">'+(reversed?'↶':'↓')+'</span><span><b>'+(reversed?'Pago Transbank anulado':'Pago recibido · Transbank')+'</b><small>'+escape(x.campana||'Pago Webpay')+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno||'Alumno')+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_cuota)+'</strong><span class="tesMoveDate">'+escape(at&&!isNaN(at.getTime())?at.toLocaleDateString('es-CL'):'')+'</span>';
   if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
  });
  sortFinancialRows(table);
