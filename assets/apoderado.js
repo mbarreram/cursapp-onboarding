@@ -4258,6 +4258,30 @@ async function __bootApoderadoSupabaseFirst(){
 __bootApoderadoSupabaseFirst();
 })();
 
+/* Post-Transbank: rehidratar estado oficial antes de volver a mostrar cuotas. */
+(function(){
+  if(window.__MX_APO_POSTPAY_REFRESH__)return;
+  window.__MX_APO_POSTPAY_REFRESH__=true;
+  let pending=null,busy=false,last=0;
+  async function refresh(){
+    if(busy||document.visibilityState==='hidden'||Date.now()-last<1800)return;
+    busy=true;last=Date.now();
+    try{
+      const core=window.CURSAPP;
+      if(typeof core?.refreshPagosSupabase==='function')await core.refreshPagosSupabase('post-transbank-return');
+      if(typeof core?.hydrateOperationalFromSupabase==='function')await core.hydrateOperationalFromSupabase('post-transbank-return');
+      const active=document.querySelector('.navItem.active')?.dataset?.tab||'home';
+      if(active==='payments'&&typeof window.renderPayments==='function')window.renderPayments();
+      else if(active==='home'&&typeof window.renderHome==='function')window.renderHome();
+      window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'post-transbank-return'}}));
+    }catch(e){console.warn('[MiCursoX] Postpago: no se pudo sincronizar Supabase',e)}
+    finally{busy=false}
+  }
+  function schedule(){if(pending)clearTimeout(pending);pending=setTimeout(()=>{pending=null;refresh()},180)}
+  window.addEventListener('pageshow',schedule);
+  window.addEventListener('focus',schedule);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')schedule()});
+})();
 /* Re-render banners después de cada render de Apoderado */
 (function(){
   if(window.__CURSAPP_APODERADO_MONETIZATION_RERENDER__) return;
