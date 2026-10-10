@@ -50,7 +50,7 @@ function open(){
   if(!data||data.id!==operationId||Number(data.monto_total)!==total||Number(data.cuotas)!==invoice.length)throw Error('La operación necesita verificación. No repitas el pago: consulta el historial con el folio '+operationId);
   overlay.remove();
   alert('Pago registrado y conciliado: '+clp(total)+' · '+invoice.length+' cuota(s). Folio: '+operationId);
-  try{window.MICURSOX_REFRESH_BUSINESS_DATA?.('pago-manual-conciliado');window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'registro-manual',operacionId}}));}catch(_){}
+  try{window.MICURSOX_REFRESH_BUSINESS_DATA?.('pago-manual-conciliado');window.dispatchEvent(new CustomEvent('cursapp:dataUpdated',{detail:{source:'registro-pago-manual',financial:true,operacionId}}));}catch(_){}
  }catch(e){status.textContent='No se confirmó el registro. '+(e?.message||String(e))+' Si hubo una interrupción, verifica el historial antes de intentarlo de nuevo.';save.disabled=true;}
  finally{busy=false;save.textContent='Registrar y conciliar';}
  };
