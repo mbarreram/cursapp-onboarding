@@ -35,7 +35,7 @@ function sortFinancialRows(table){
 }
 function renderTransbankHistory(arr){
  const panel=document.getElementById('mxManualReversalPanel');
- if(!panel||!document.body.classList.contains('cursapp-tesorero'))return;
+ if(!panel||!(document.body.classList.contains('cursapp-tesorero')||document.body.classList.contains('cursapp-presidente')))return;
  let list=panel.querySelector('#mxTransbankPaymentHistory');
  if(!list){list=document.createElement('section');list.id='mxTransbankPaymentHistory';list.style.cssText='margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px';panel.appendChild(list)}
  const items=Array.isArray(arr)?arr:[];
@@ -82,12 +82,13 @@ function syncTransbankMovements(arr){
  sortFinancialRows(table);
 }
 async function refreshTransbank(id,force=false){
- if(!document.body.classList.contains('cursapp-tesorero'))return;
+ if(!(document.body.classList.contains('cursapp-tesorero')||document.body.classList.contains('cursapp-presidente')))return;
  if(!force&&transbankCourse===id&&Date.now()-transbankFetchedAt<30000){syncTransbankMovements(lastTransbank);return}
  try{
   const result=await call('movimientos_transbank_curso',{p_curso_id:id});
   if(course()!==id)return;
   lastTransbank=Array.isArray(result)?result:[];transbankCourse=id;transbankFetchedAt=Date.now();
+  renderTransbankHistory(lastTransbank);
   syncTransbankMovements(lastTransbank);
  }catch(e){console.warn('[MiCursoX] Movimientos Transbank',e)}
 }
@@ -98,7 +99,8 @@ async function reload(){
  const home=app.querySelector('.mxManualPaymentEntry-home');
  if(!home){if(panelNode)panelNode.hidden=true;return}
  const key=id+'|'+(document.body.classList.contains('cursapp-presidente')?'p':'t');
- if(document.body.classList.contains('cursapp-tesorero')){if(lastOperations.length)syncMovements(lastOperations);refreshTransbank(id);}
+ if(document.body.classList.contains('cursapp-tesorero')&&lastOperations.length)syncMovements(lastOperations);
+ refreshTransbank(id);
  const existing=panelNode;if(existing&&existing.parentElement!==app)app.appendChild(existing);if(existing)existing.hidden=false;if(inFlight){if(rendered!==key)refreshAfterFlight=true;return}if(rendered===key&&existing)return;
  inFlight=true;
  const el=existing||document.createElement('section');panelNode=el;
