@@ -1835,7 +1835,7 @@ ${cardHtml}
           <div class="receiptV51Trust">
             <span>🔒</span>
             <div>
-              <p>Pago procesado mediante <b>transbank.</b></p>
+              <p>${isManual || isConciliated ? 'Pago registrado y conciliado por <b>tesorería.</b>' : 'Pago procesado mediante <b>Transbank.</b>'}</p>
               <small>${esc(statusSub)}</small>
             </div>
           </div>
