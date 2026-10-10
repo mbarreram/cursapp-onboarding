@@ -1738,9 +1738,37 @@ ${cardHtml}
     return { course: fallbackCourse || 'Curso', school: fallbackSchool || 'Colegio' };
   }
 
+  async function linkedManualOperation(payment){
+    const api=window.CURSAPP_SUPABASE;
+    if(!api?.request||!window.MICURSOX_MANUAL_RECEIPT)return '';
+    const direct=[payment.operacion_manual_id,payment.manual_operation_id,payment.operacion_id].filter(Boolean);
+    if(direct.length)return String(direct[0]);
+    const paymentId=String(payment.id||'');
+    const courseId=String(payment.curso_id||payment.courseId||payment.course_id||'');
+    if(!paymentId||!courseId)return '';
+    try{
+      const user=await api.getCurrentUser();
+      if(!user?.id)return '';
+      const ms=await api.request('miembros_curso?select=id&curso_id=eq.'+encodeURIComponent(courseId)+'&usuario_id=eq.'+encodeURIComponent(user.id)+'&limit=20');
+      const ops=[];
+      for(const m of (Array.isArray(ms)?ms:[])){
+        const data=await api.request('rpc/listar_operaciones_manuales',{method:'POST',body:JSON.stringify({p_curso_id:courseId,p_miembro_id:m.id})});
+        if(Array.isArray(data))ops.push(...data.filter(o=>o.estado==='conciliado'));
+      }
+      for(const op of ops){
+        const doc=await api.request('rpc/comprobante_operacion_manual',{method:'POST',body:JSON.stringify({p_operacion_id:op.id})});
+        const cuotas=Array.isArray(doc?.cuotas)?doc.cuotas:[];
+        if(cuotas.some(c=>[c.pago_id,c.payment_id,c.id_pago].some(v=>v!=null&&String(v)===paymentId)))return String(op.id);
+      }
+    }catch(e){console.warn('[MiCursoX] No se pudo resolver vínculo de comprobante manual',e)}
+    return '';
+  }
+
   window.openReceipt = async function(id){
     const p = resolveReceiptPayment(id);
     if(!p) return;
+    const operationId=await linkedManualOperation(p);
+    if(operationId){window.MICURSOX_MANUAL_RECEIPT(operationId);return;}
 
     const task = load(KEY_TASKS,[]).find(t=>String(t.id||"")===String(p.fromTaskId||""));
     const campaign = task?.title || p.campaignTitle || p.concept || "Pago";
