@@ -8,6 +8,20 @@ const money=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',ma
 function course(){try{const a=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}'),b=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');return a?.course?.id||a?.id||a?.curso_id||b?.courseId||b?.course?.id||''}catch(e){return''}}
 const call=(name,params)=>api().request('rpc/'+name,{method:'POST',body:JSON.stringify(params)});
 let inFlight=false,rendered='',panelNode=null,refreshAfterFlight=false,lastOperations=[];
+function syncMovements(arr){
+ const app=document.getElementById('app');
+ if(!app||!document.body.classList.contains('cursapp-tesorero'))return;
+ const table=app.querySelector('.tesMovementTableWrap');
+ if(!table)return;
+ table.querySelectorAll('[data-mx-manual-movement]').forEach(n=>n.remove());
+ const recent=arr.filter(x=>x.estado==='conciliado').slice().sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))).slice(0,2);
+ const head=table.querySelector('.tesMovementTableHead');
+ recent.reverse().forEach(x=>{
+   const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxManualMovement=x.id;
+   row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago manual recibido</b><small>'+escape(x.medio)+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno)+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_total)+'</strong><span class="tesMoveDate">'+escape(new Date(x.fecha).toLocaleDateString('es-CL'))+'</span>';
+   if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
+ });
+}
 async function reload(){
  const r=document.body.classList.contains('cursapp-presidente')||document.body.classList.contains('cursapp-tesorero');
  const app=document.getElementById('app'),id=course();
