@@ -9,13 +9,20 @@ async function receipt(id){const w=window.open('','_blank');if(!w){alert('Permit
  w.document.open();w.document.write(html);w.document.close();
  }catch(e){try{w.close()}catch(_){}alert(e?.message||'No se pudo consultar el comprobante.')}}
 window.MICURSOX_MANUAL_RECEIPT=receipt;
-async function render(){const r=role(),c=course();const app=document.getElementById('app');if(!app||!c||!api()?.request)return;const pay=r==='apoderado'&&!!app.querySelector('.apoPayPage');const dash=r!=='apoderado'&&!!app.querySelector('.mxManualPaymentEntry-home');if(!pay&&!dash){lastKey='';return}
- const key=r+'|'+c+'|'+(pay?'pay':'home');if(lastKey===key||pending)return;pending=true;lastKey=key;
- const wrapper=document.createElement('section');wrapper.className='mxManualTraceCard';wrapper.innerHTML='<strong>'+(pay?'Comprobantes de pagos manuales':'Recaudación por medio de pago')+'</strong><p>Consultando información actualizada…</p>';
- (pay?app.querySelector('.apoPayPage'):app).appendChild(wrapper);
+async function render(){const r=role(),c=course();const app=document.getElementById('app');if(!app||!c||!api()?.request)return;const pay=r==='apoderado'&&!!app.querySelector('.apoPayPage');const dash=r!=='apoderado'&&!!app.querySelector('.mxManualPaymentEntry-home');if(!pay&&!dash){const old=document.getElementById('mxManualTraceSummary');if(old)old.hidden=true;return}
+ const key=r+'|'+c+'|'+(pay?'pay':'home');const existing=dash?document.getElementById('mxManualTraceSummary'):null;if(existing)existing.hidden=false;if((lastKey===key&&existing)||pending)return;pending=true;lastKey=key;
+ const wrapper=document.createElement('section');wrapper.className='mxManualTraceCard';if(dash)wrapper.id='mxManualTraceSummary';wrapper.innerHTML='<strong>'+(pay?'Comprobantes de pagos manuales':'Recaudación por medio de pago')+'</strong><p>Consultando información actualizada…</p>';
+ (pay?app.querySelector('.apoPayPage'):app.parentElement||document.body).appendChild(wrapper);
  try{if(dash){const x=await send('resumen_medios_pago_curso',{p_curso_id:c});if(!wrapper.isConnected)return;wrapper.innerHTML='<strong>Recaudación por medio de pago</strong><div class="mxManualTraceGrid">'+[['Transferencias',x.transferencia],['Efectivo',x.efectivo],['Transbank',x.transbank],['Saldo a favor',x.saldo_favor],['Histórico sin clasificar',x.sin_clasificar],['Total recaudado',x.total]].map(a=>'<div><small>'+esc(a[0])+'</small><b>'+clp(a[1])+'</b></div>').join('')+'</div><small>Los pagos históricos sin medio acreditado no se asignan a efectivo ni transferencia.</small>';}
  else{const user=await api().getCurrentUser();const ms=await api().request('miembros_curso?select=id,curso_id,usuario_id&curso_id=eq.'+encodeURIComponent(c)+'&usuario_id=eq.'+encodeURIComponent(user.id)+'&limit=20');const ids=(Array.isArray(ms)?ms:[]).map(m=>m.id);let list=[];for(const id of ids){const rows=await send('listar_operaciones_manuales',{p_curso_id:c,p_miembro_id:id});if(Array.isArray(rows))list.push(...rows)}list.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));if(!wrapper.isConnected)return;wrapper.innerHTML='<strong>Comprobantes de pagos manuales</strong>'+(list.length?list.map(o=>'<div class="mxManualTraceRow"><span>'+esc(new Date(o.fecha).toLocaleDateString('es-CL'))+' · '+esc(o.alumno)+'<br><b>'+clp(o.monto_total)+'</b> · '+esc(o.medio)+'</span><button type="button" data-receipt="'+esc(o.id)+'">Ver comprobante</button></div>').join(''):'<p>Aún no hay comprobantes de pagos manuales vinculados a tu cuenta.</p>');wrapper.querySelectorAll('[data-receipt]').forEach(b=>b.addEventListener('click',()=>receipt(b.dataset.receipt)));}
  }catch(e){if(wrapper.isConnected)wrapper.innerHTML='<strong>'+(pay?'Comprobantes de pagos manuales':'Recaudación por medio de pago')+'</strong><p>Información no disponible: '+esc(e?.message||'Revisa tu sesión.')+'</p>';lastKey='';}finally{pending=false}}
-function boot(){let scheduled=false;const tick=()=>{if(scheduled)return;scheduled=true;setTimeout(()=>{scheduled=false;render()},300)};new MutationObserver(tick).observe(document.getElementById('app')||document.body,{childList:true,subtree:true});document.addEventListener('click',tick);window.addEventListener('cursapp:dataUpdated',()=>{document.querySelectorAll('.mxManualTraceCard').forEach(n=>n.remove());lastKey='';tick()});tick()}
+function boot(){
+ const app=document.getElementById('app')||document.body;
+ let queued=false;
+ const tick=()=>{if(queued)return;queued=true;setTimeout(()=>{queued=false;render()},350)};
+ new MutationObserver(tick).observe(app,{childList:true,subtree:false});
+ window.addEventListener('cursapp:dataUpdated',()=>{document.getElementById('mxManualTraceSummary')?.remove();document.querySelectorAll('.apoPayPage .mxManualTraceCard').forEach(n=>n.remove());lastKey='';tick()});
+ tick();
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
