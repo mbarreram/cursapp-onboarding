@@ -25,6 +25,29 @@ function syncMovements(arr){
    if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
  });
 }
+let lastTransbank=[],transbankCourse='',transbankFetchedAt=0;
+function syncTransbankMovements(arr){
+ const table=document.querySelector('#app .tesMovementTableWrap');
+ if(!table||!document.body.classList.contains('cursapp-tesorero'))return;
+ table.querySelectorAll('[data-mx-transbank-movement]').forEach(x=>x.remove());
+ const head=table.querySelector('.tesMovementTableHead');
+ arr.slice(0,3).reverse().forEach(x=>{
+  const row=document.createElement('article');row.className='tesMovementProRow v68';row.dataset.mxTransbankMovement=x.id;
+  const at=x.fecha?new Date(x.fecha):null;
+  row.innerHTML='<div class="tesMoveInfo"><span class="tesRowIcon income">↓</span><span><b>Pago recibido · Transbank</b><small>'+escape(x.campana||'Pago Webpay')+'</small></span></div><span class="tesMovePerson">'+escape(x.alumno||'Alumno')+'</span><strong class="tesMoveAmount ok">+ '+money(x.monto_cuota)+'</strong><span class="tesMoveDate">'+escape(at&&!isNaN(at.getTime())?at.toLocaleDateString('es-CL'):'')+'</span>';
+  if(head)head.insertAdjacentElement('afterend',row);else table.prepend(row);
+ });
+}
+async function refreshTransbank(id,force=false){
+ if(!document.body.classList.contains('cursapp-tesorero'))return;
+ if(!force&&transbankCourse===id&&Date.now()-transbankFetchedAt<30000){syncTransbankMovements(lastTransbank);return}
+ try{
+  const result=await call('movimientos_transbank_curso',{p_curso_id:id});
+  if(course()!==id)return;
+  lastTransbank=Array.isArray(result)?result:[];transbankCourse=id;transbankFetchedAt=Date.now();
+  syncTransbankMovements(lastTransbank);
+ }catch(e){console.warn('[MiCursoX] Movimientos Transbank',e)}
+}
 async function reload(){
  const r=document.body.classList.contains('cursapp-presidente')||document.body.classList.contains('cursapp-tesorero');
  const app=document.getElementById('app'),id=course();
@@ -32,7 +55,7 @@ async function reload(){
  const home=app.querySelector('.mxManualPaymentEntry-home');
  if(!home){if(panelNode)panelNode.hidden=true;return}
  const key=id+'|'+(document.body.classList.contains('cursapp-presidente')?'p':'t');
- if(document.body.classList.contains('cursapp-tesorero')&&lastOperations.length)syncMovements(lastOperations);
+ if(document.body.classList.contains('cursapp-tesorero')){if(lastOperations.length)syncMovements(lastOperations);refreshTransbank(id);}
  const existing=panelNode;if(existing&&existing.parentElement!==app)app.appendChild(existing);if(existing)existing.hidden=false;if(inFlight){if(rendered!==key)refreshAfterFlight=true;return}if(rendered===key&&existing)return;
  inFlight=true;
  const el=existing||document.createElement('section');panelNode=el;
@@ -43,6 +66,7 @@ async function reload(){
  const arr=Array.isArray(data)?data:[];
  lastOperations=arr;
  syncMovements(arr);
+ refreshTransbank(id,true);
  el.innerHTML='<strong>Historial de pagos manuales</strong><small>Puedes reversar un registro incorrecto dejando evidencia y motivo.</small>'+(arr.length?arr.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno)+' · '+escape(new Date(x.fecha).toLocaleString('es-CL'))+'<br><b>'+money(x.monto_total)+'</b> · '+escape(x.medio)+'<br><small>'+escape(x.estado==='reversado'?'Reversado · '+(x.reversa_motivo||''): 'Conciliado')+'</small></span>'+(x.estado==='conciliado'?'<button type="button" data-reverse="'+escape(x.id)+'">Reversar</button>':'')+'</div>').join(''):'<p>Sin operaciones manuales registradas.</p>');
  el.querySelectorAll('[data-reverse]').forEach(button=>button.addEventListener('click',async()=>{
  if(inFlight)return;
