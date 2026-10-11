@@ -25,7 +25,7 @@ async function drawAudit(){
   host.insertAdjacentHTML('beforeend',section('mxAuditServer','Bitácora verificable · Supabase',
    '<p class="muted">Busca la actividad de un usuario o una operación para reconstruir la secuencia de acciones. Los clics son indicios de navegación; la confirmación financiera se verifica en eventos del servidor.</p>'+
    '<div id="mxAuditControls" style="display:grid;grid-template-columns:2fr repeat(2,minmax(120px,1fr));gap:10px;padding:12px 16px">'+
-   '<input id="mxAuditQuery" type="search" placeholder="Usuario UUID, curso, referencia o acción" style="min-width:0" aria-label="Buscar eventos">'+
+   '<input id="mxAuditQuery" type="search" placeholder="Correo, usuario, curso, folio o acción" style="min-width:0" aria-label="Buscar eventos">'+
    '<select id="mxAuditEvent"><option value="">Todos los eventos</option><option value="button_click">Clics</option><option value="form_submit">Formularios</option><option value="payment_confirmed">Pago confirmado</option><option value="payment_unpaid">Pago revertido</option><option value="transbank_refund_completed">Anulación Transbank</option><option value="manual_payment_reversed">Reversa manual</option></select>'+
    '<select id="mxAuditSource"><option value="">Todos los orígenes</option><option value="client">Interfaz</option><option value="server">Servidor</option></select>'+
    '<label>Desde <input id="mxAuditFrom" type="date"></label><label>Hasta <input id="mxAuditTo" type="date"></label>'+
