@@ -4,8 +4,10 @@ Deno.serve(async req=>{
  if(req.method!=="POST")return resp({error:"method_not_allowed"},405);
  const base=Deno.env.get("SUPABASE_URL")||"",service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",destination=Deno.env.get("MX_AUDIT_URL")||"",key=Deno.env.get("MX_AUDIT_SERVICE_ROLE_KEY")||"";
  if(!base||!service||!destination||!key)return resp({error:"missing_server_config"},503);
- const auth=req.headers.get("Authorization")||"";
- if(auth!=="Bearer "+service)return resp({error:"forbidden"},403);
+ const internalSecret=req.headers.get("x-cursapp-queue-secret")||"";
+ const validation=createClient(base,Deno.env.get("SUPABASE_ANON_KEY")||"",{auth:{persistSession:false}});
+ const verified=await validation.rpc("verify_audit_worker_secret",{p_secret:internalSecret});
+ if(verified.error||verified.data!==true)return resp({error:"forbidden"},403);
  const db=createClient(base,service,{auth:{persistSession:false}}), audit=createClient(destination,key,{auth:{persistSession:false}});
  const {data:jobs,error}=await db.from("audit_delivery_outbox").select("id,events,attempts").eq("status","pending").lte("next_attempt_at",new Date().toISOString()).order("created_at",{ascending:true}).limit(40);
  if(error)return resp({error:"queue_unavailable"},503);
