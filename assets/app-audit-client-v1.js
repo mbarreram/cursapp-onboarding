@@ -4,11 +4,12 @@
  if(window.__MX_ACTION_AUDIT_V1__)return;window.__MX_ACTION_AUDIT_V1__=true;
  const sb=()=>window.CURSAPP_SUPABASE;
  const role=()=>{const p=location.pathname.toLowerCase();return p.includes('admin')?'admin':p.includes('tesorero')?'tesorero':p.includes('presidente')?'presidente':p.includes('apoderado')?'apoderado':null};
+ const courseId=()=>{try{const a=JSON.parse(localStorage.getItem('cursapp_course_v1')||'{}');const b=JSON.parse(localStorage.getItem('cursapp_session_v1')||'{}');const id=a?.course?.id||a?.id||a?.curso_id||b?.courseId||b?.course?.id||'';return /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)?id:null}catch(_){return null}};
  const tag=node=>{
   const chosen=node.closest('[data-tab],[data-action],button,a,[role="button"],[type="submit"]');
   if(!chosen)return null;
   if(chosen.matches('input,textarea,select,[contenteditable="true"]'))return null;
-  let name=chosen.getAttribute('data-tab')||chosen.getAttribute('data-action')||chosen.id||chosen.getAttribute('type')||chosen.tagName.toLowerCase();
+  let name=chosen.getAttribute('data-tab')||chosen.getAttribute('data-action')||chosen.id||chosen.getAttribute('type')||(chosen.className&&typeof chosen.className==='string'?chosen.className.trim().split(/\s+/).slice(0,2).join('_'):'')||chosen.tagName.toLowerCase();
   if(name==='a'&&chosen.getAttribute('href')){try{name='link_'+new URL(chosen.getAttribute('href'),location.origin).pathname.split('/').pop()}catch(_){}}
   return String(name).replace(/[^a-zA-Z0-9_:-]/g,'').slice(0,100)||'control';
  };
@@ -26,7 +27,7 @@
   busy=true;
   try{
    const item=queue[0];
-   await sb().request('rpc/record_app_event',{method:'POST',body:JSON.stringify({p_event_type:item.type,p_target:item.target,p_curso_id:null,p_actor_role:role()})});
+   await sb().request('rpc/record_app_event',{method:'POST',body:JSON.stringify({p_event_type:item.type,p_target:item.target,p_curso_id:courseId(),p_actor_role:role()})});
    queue.shift();ready=true;
   }catch(e){queue.shift();if(ready)console.warn('[MiCursoX] Audit unavailable',e?.message||e)}
   finally{busy=false;if(queue.length)schedule()}
