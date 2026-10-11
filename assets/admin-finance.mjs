@@ -12,7 +12,7 @@ function n(v){ const x = Number(v || 0); return Number.isFinite(x) ? x : 0; }
 const PAGE_SIZE = 20;
 const METRICS = {
   gross:{label:'Volumen cobrado',field:'monto_total_cobrado',money:true},
-  micursox:{label:'Ganancia MiCursoX',field:'comision_micursox',money:true},
+  micursox:{label:'Comisiones MiCursoX (brutas)',field:'comision_micursox',money:true},
   transbank:{label:'Comisiones Transbank',field:'comision_transbank',money:true},
   course:{label:'Fondos de cursos',field:'monto_curso',money:true},
   payments:{label:'Cantidad de pagos',field:null,money:false}
