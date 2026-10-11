@@ -10,6 +10,19 @@
   const q = (v)=> encodeURIComponent(String(v == null ? "" : v));
   const isUuid = (v)=> /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||""));
 
+  // Diagnóstico de pagos: solo referencias UUID; sin datos de tarjeta, token, monto ni contenido de formularios.
+  async function auditPayment(type,pagoId){
+    if(!isUuid(pagoId))return;
+    try{
+      const api=window.CURSAPP_SUPABASE;
+      if(!api?.functions?.invoke)return;
+      await Promise.race([
+        api.functions.invoke("audit-ingest-v1",{body:{events:[{event_id:crypto.randomUUID(),type,target:"pay_webpay",pago_id:pagoId}]}}),
+        new Promise(resolve=>setTimeout(resolve,1200))
+      ]);
+    }catch(_){}
+  }
+
   function qs(){
     const u = new URL(location.href);
     return { pid: u.searchParams.get("pid")||u.searchParams.get("pago")||"" };
@@ -149,13 +162,16 @@
           btn.textContent = "Conectando con Transbank…";
           if(msg) msg.textContent = "Creando una transacción segura…";
           try{
+            await auditPayment("payment_ui_start",pago.id);
             const tx = await startWebpay(pago.id);
             try{
               sessionStorage.setItem("micursox_webpay_tx", tx.transaction_id || "");
               sessionStorage.setItem("micursox_webpay_pid", pago.id);
             }catch(e){}
+            await auditPayment("payment_ui_redirect",pago.id);
             submitToWebpay(tx.url, tx.token);
           }catch(e){
+            await auditPayment("payment_ui_error",pago.id);
             btn.disabled = false;
             btn.textContent = old;
             if(msg) msg.textContent = (e && e.message) ? e.message : "No se pudo iniciar el pago.";
