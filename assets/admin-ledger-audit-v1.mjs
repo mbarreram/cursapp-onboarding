@@ -15,7 +15,7 @@ async function drawRefunds(){
   ((Array.isArray(rows)?rows:[]).map(r=>'<tr><td>'+escape(fmt(r.completed_at||r.requested_at))+'</td><td>'+escape(r.status)+'</td><td>'+clp(r.total_reversed)+'</td><td>'+clp(r.course_reversal)+'</td><td>'+clp(r.micursox_reversal)+'</td><td>'+clp(r.gateway_fee_reference)+'</td><td>'+escape(r.reason)+'</td><td><small>'+escape(r.id)+'</small></td></tr>').join('')||'<tr><td colspan="8">Sin anulaciones registradas</td></tr>')+'</tbody></table></div>'));
  }catch(error){console.warn('[Admin] Refund ledger',error)}
 }
-const auditState={page:1,size:25,query:'',event:'',source:'',from:'',to:'',store:'independent',cursors:[null],next:null};
+const auditState={page:1,size:25,query:'',queryType:'user',event:'',source:'',from:'',to:'',store:'independent',cursors:[null],next:null};
 let auditSerial=0;
 async function drawAudit(){
  const host=document.getElementById('adminApp');if(!host||!document.querySelector('.sideItem[data-tab="auditoria"].active'))return;
@@ -25,7 +25,7 @@ async function drawAudit(){
   host.insertAdjacentHTML('beforeend',section('mxAuditServer','Bitácora verificable · Supabase',
    '<p class="muted">Busca la actividad de un usuario o una operación para reconstruir la secuencia de acciones. Los clics son indicios de navegación; la confirmación financiera se verifica en eventos del servidor.</p>'+
    '<div id="mxAuditControls" style="display:grid;grid-template-columns:2fr repeat(2,minmax(120px,1fr));gap:10px;padding:12px 16px">'+
-   '<select id="mxAuditStore"><option value="independent">Auditoría independiente</option><option value="legacy">Histórico base principal</option></select>'+ '<input id="mxAuditQuery" type="search" placeholder="Correo, usuario, curso, folio o acción" style="min-width:0" aria-label="Buscar eventos">'+
+   '<select id="mxAuditStore"><option value="independent">Auditoría independiente</option><option value="legacy">Histórico base principal</option></select>'+ '<select id="mxAuditQueryType"><option value="user">Buscar usuario</option><option value="reference">Buscar pago / transacción</option></select>'+ '<input id="mxAuditQuery" type="search" placeholder="Correo, usuario, curso, folio o acción" style="min-width:0" aria-label="Buscar eventos">'+
    '<select id="mxAuditEvent"><option value="">Todos los eventos</option><option value="button_click">Clics</option><option value="form_submit">Formularios</option><option value="payment_confirmed">Pago confirmado</option><option value="payment_unpaid">Pago revertido</option><option value="transbank_refund_completed">Anulación Transbank</option><option value="manual_payment_reversed">Reversa manual</option></select>'+
    '<select id="mxAuditSource"><option value="">Todos los orígenes</option><option value="client">Interfaz</option><option value="server">Servidor</option></select>'+
    '<label>Desde <input id="mxAuditFrom" type="date"></label><label>Hasta <input id="mxAuditTo" type="date"></label>'+
@@ -38,12 +38,14 @@ async function drawAudit(){
   panel.querySelector('#mxAuditStore').value=auditState.store;
   panel.querySelector('#mxAuditStore').addEventListener('change',e=>{auditState.store=e.target.value;auditState.page=1;auditState.cursors=[null];drawAudit()});
   panel.querySelector('#mxAuditQuery').value=auditState.query;
+  panel.querySelector('#mxAuditQueryType').value=auditState.queryType;
   panel.querySelector('#mxAuditEvent').value=auditState.event;
   panel.querySelector('#mxAuditSource').value=auditState.source;
   panel.querySelector('#mxAuditFrom').value=auditState.from;
   panel.querySelector('#mxAuditTo').value=auditState.to;
   const search=()=>{
    auditState.query=panel.querySelector('#mxAuditQuery').value.trim();
+   auditState.queryType=panel.querySelector('#mxAuditQueryType').value;
    auditState.event=panel.querySelector('#mxAuditEvent').value;
    auditState.source=panel.querySelector('#mxAuditSource').value;
    auditState.from=panel.querySelector('#mxAuditFrom').value;
@@ -77,7 +79,7 @@ async function drawAudit(){
   if(independent){
     const cursor=auditState.cursors[auditState.page-1]||null;
     const result=await sb.functions.invoke('audit-search-v1',{body:{
-     actor_user_id:query||null,reference_id:null,event_type:auditState.event||null,
+     actor_user_id:auditState.queryType==='user'?(query||null):null,reference_id:auditState.queryType==='reference'?(query||null):null,event_type:auditState.event||null,
      from:dates.from,to:dates.to,before_at:cursor?.before_at||null,before_id:cursor?.before_id||null,limit:auditState.size}});
     if(result.error||!result.data?.rows)throw new Error(result.error?.message||result.data?.error||'Consulta independiente fallida');
     data={rows:result.data.rows,total:0};
