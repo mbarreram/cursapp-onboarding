@@ -81,7 +81,7 @@ try {
   console.error('[Admin] Finanzas / Contabilidad no cargó:', error);
 }
 
-try { await import('/assets/admin-ledger-audit-v1.mjs?v=5'); } catch(error) { console.error('[Admin] Auditoría financiera',error); }
+try { await import('/assets/admin-ledger-audit-v1.mjs?v=6'); } catch(error) { console.error('[Admin] Auditoría financiera',error); }
 
 try {
   await import('/assets/admin-privacy-compliance.mjs?v=1');
