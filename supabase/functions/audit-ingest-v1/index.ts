@@ -11,6 +11,8 @@ Deno.serve(async(req)=>{
  const primary=createClient(main,anon,{global:{headers:{Authorization:auth}},auth:{persistSession:false}});
  const session=await primary.auth.getUser();
  if(!session.data.user)return reply({error:"unauthorized"},401);
+ const adminRole=await primary.rpc("is_admin");
+ const verifiedAdmin=adminRole.data===true && !adminRole.error;
  const payload=await req.json().catch(()=>null);
  if(!Array.isArray(payload?.events)||payload.events.length<1||payload.events.length>25)return reply({error:"invalid_batch"},400);
  
@@ -22,7 +24,7 @@ Deno.serve(async(req)=>{
   const target=String(e.target||"").replace(/[^a-zA-Z0-9_:-]/g,"").slice(0,120);
   if(!target)return [];
   return [{event_id:eventId,occurred_at:new Date().toISOString(),actor_user_id:session.data.user.id,curso_id:null,
-   actor_role:null,event_type:String(e.type),target,source:"client",metadata:{}}];
+   actor_role:verifiedAdmin?"admin":null,event_type:String(e.type),target,source:"client",metadata:{}}];
  });
  if(!entries.length)return reply({error:"empty_batch"},400);
  const db=createClient(main,service,{auth:{persistSession:false}});
