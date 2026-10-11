@@ -57,7 +57,7 @@ async function drawAudit(){
     const result=await sb.functions.invoke('audit-ingest-v1',{body:payload});
     if(result.error||!result.data?.ok)throw new Error(result.error?.message||result.data?.error||'Respuesta no confirmada');
     window.alert('Evento diagnóstico enviado a la nueva base. Referencia: '+eventId+'. Ahora verificaremos su registro en Supabase.');
-   }catch(error){window.alert('Conexión de auditoría aún no validada: '+String(error.message||error))}
+   }catch(error){window.alert('No se pudo confirmar la respuesta en el navegador ('+String(error.message||error)+'). La solicitud podría haberse guardado correctamente; revisaremos su referencia en Supabase antes de reintentar.')}
    finally{btn.disabled=false;btn.textContent='Probar base independiente'}
   });
   panel.querySelector('#mxAuditQuery').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
