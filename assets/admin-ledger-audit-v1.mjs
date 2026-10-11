@@ -15,7 +15,7 @@ async function drawRefunds(){
   ((Array.isArray(rows)?rows:[]).map(r=>'<tr><td>'+escape(fmt(r.completed_at||r.requested_at))+'</td><td>'+escape(r.status)+'</td><td>'+clp(r.total_reversed)+'</td><td>'+clp(r.course_reversal)+'</td><td>'+clp(r.micursox_reversal)+'</td><td>'+clp(r.gateway_fee_reference)+'</td><td>'+escape(r.reason)+'</td><td><small>'+escape(r.id)+'</small></td></tr>').join('')||'<tr><td colspan="8">Sin anulaciones registradas</td></tr>')+'</tbody></table></div>'));
  }catch(error){console.warn('[Admin] Refund ledger',error)}
 }
-const auditState={page:1,size:25,query:'',event:'',source:'',from:'',to:''};
+const auditState={page:1,size:25,query:'',event:'',source:'',from:'',to:'',store:'independent',cursors:[null],next:null};
 let auditSerial=0;
 async function drawAudit(){
  const host=document.getElementById('adminApp');if(!host||!document.querySelector('.sideItem[data-tab="auditoria"].active'))return;
@@ -25,7 +25,7 @@ async function drawAudit(){
   host.insertAdjacentHTML('beforeend',section('mxAuditServer','Bitácora verificable · Supabase',
    '<p class="muted">Busca la actividad de un usuario o una operación para reconstruir la secuencia de acciones. Los clics son indicios de navegación; la confirmación financiera se verifica en eventos del servidor.</p>'+
    '<div id="mxAuditControls" style="display:grid;grid-template-columns:2fr repeat(2,minmax(120px,1fr));gap:10px;padding:12px 16px">'+
-   '<input id="mxAuditQuery" type="search" placeholder="Correo, usuario, curso, folio o acción" style="min-width:0" aria-label="Buscar eventos">'+
+   '<select id="mxAuditStore"><option value="independent">Auditoría independiente</option><option value="legacy">Histórico base principal</option></select>'+ '<input id="mxAuditQuery" type="search" placeholder="Correo, usuario, curso, folio o acción" style="min-width:0" aria-label="Buscar eventos">'+
    '<select id="mxAuditEvent"><option value="">Todos los eventos</option><option value="button_click">Clics</option><option value="form_submit">Formularios</option><option value="payment_confirmed">Pago confirmado</option><option value="payment_unpaid">Pago revertido</option><option value="transbank_refund_completed">Anulación Transbank</option><option value="manual_payment_reversed">Reversa manual</option></select>'+
    '<select id="mxAuditSource"><option value="">Todos los orígenes</option><option value="client">Interfaz</option><option value="server">Servidor</option></select>'+
    '<label>Desde <input id="mxAuditFrom" type="date"></label><label>Hasta <input id="mxAuditTo" type="date"></label>'+
@@ -35,6 +35,8 @@ async function drawAudit(){
   panel=host.querySelector('#mxAuditServer');
   const controls=panel.querySelector('#mxAuditControls');
   controls.style.gridTemplateColumns='repeat(auto-fit,minmax(155px,1fr))';
+  panel.querySelector('#mxAuditStore').value=auditState.store;
+  panel.querySelector('#mxAuditStore').addEventListener('change',e=>{auditState.store=e.target.value;auditState.page=1;auditState.cursors=[null];drawAudit()});
   panel.querySelector('#mxAuditQuery').value=auditState.query;
   panel.querySelector('#mxAuditEvent').value=auditState.event;
   panel.querySelector('#mxAuditSource').value=auditState.source;
@@ -46,7 +48,7 @@ async function drawAudit(){
    auditState.source=panel.querySelector('#mxAuditSource').value;
    auditState.from=panel.querySelector('#mxAuditFrom').value;
    auditState.to=panel.querySelector('#mxAuditTo').value;
-   auditState.page=1;drawAudit();
+   auditState.page=1;auditState.cursors=[null];drawAudit();
   };
   panel.querySelector('#mxAuditSearchBtn').addEventListener('click',search);
   panel.querySelector('#mxAuditTestConnection').addEventListener('click',async()=>{
@@ -65,21 +67,37 @@ async function drawAudit(){
  }
  const tbody=panel.querySelector('#mxAuditRows');tbody.innerHTML='<tr><td colspan="8">Consultando eventos…</td></tr>';
  try{
-  const data=await sb.request('rpc/admin_audit_search',{method:'POST',body:JSON.stringify({
-   p_query:auditState.query,p_event_type:auditState.event,p_source:auditState.source,
-   p_from:auditState.from?auditState.from+'T00:00:00-03:00':null,
-   p_to:auditState.to?new Date(new Date(auditState.to+'T12:00:00-03:00').getTime()+86400000).toISOString().slice(0,10)+'T00:00:00-03:00':null,
-   p_page:auditState.page,p_size:auditState.size})});
+  const independent=auditState.store==='independent';
+  const dates={from:auditState.from?auditState.from+'T00:00:00-03:00':null,to:auditState.to?new Date(new Date(auditState.to+'T12:00:00-03:00').getTime()+86400000).toISOString().slice(0,10)+'T00:00:00-03:00':null};
+  const query=auditState.query.trim();
+  if(independent&&query&&!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(query)){
+    throw new Error('Para buscar en la base independiente utiliza UUID de usuario o referencia; correo y texto siguen disponibles en Histórico base principal.');
+  }
+  let data;
+  if(independent){
+    const cursor=auditState.cursors[auditState.page-1]||null;
+    const result=await sb.functions.invoke('audit-search-v1',{body:{
+     actor_user_id:query||null,reference_id:null,event_type:auditState.event||null,
+     from:dates.from,to:dates.to,before_at:cursor?.before_at||null,before_id:cursor?.before_id||null,limit:auditState.size}});
+    if(result.error||!result.data?.rows)throw new Error(result.error?.message||result.data?.error||'Consulta independiente fallida');
+    data={rows:result.data.rows,total:0};
+    auditState.next=result.data.rows.length===auditState.size?result.data.next_cursor:null;
+    if(auditState.next)auditState.cursors[auditState.page]=auditState.next;
+  }else{
+    data=await sb.request('rpc/admin_audit_search',{method:'POST',body:JSON.stringify({
+     p_query:query,p_event_type:auditState.event,p_source:auditState.source,p_from:dates.from,p_to:dates.to,
+     p_page:auditState.page,p_size:auditState.size})});
+  }
   if(serial!==auditSerial||!document.getElementById('mxAuditRows'))return;
   const rows=Array.isArray(data?.rows)?data.rows:[];const total=Number(data?.total||0);
-  tbody.innerHTML=rows.map(r=>'<tr><td>'+escape(fmt(r.created_at))+'</td><td>'+escape(r.event_type)+'</td><td>'+escape(r.source)+'</td><td>'+escape(r.actor_role)+'</td><td><button type="button" class="mxAuditUser" data-user="'+escape(r.actor_user_id||'')+'" style="border:0;background:none;color:#6d28d9;text-decoration:underline;max-width:145px;overflow-wrap:anywhere">'+escape(r.actor_user_id||'—')+'</button></td><td><small>'+escape(r.curso_id)+'</small></td><td>'+escape(r.target)+'</td><td><small>'+escape(r.reference_id)+'</small></td></tr>').join('')||'<tr><td colspan="8">Sin resultados</td></tr>';
+  tbody.innerHTML=rows.map(r=>'<tr><td>'+escape(fmt(r.created_at||r.occurred_at))+'</td><td>'+escape(r.event_type)+'</td><td>'+escape(r.source)+'</td><td>'+escape(r.actor_role)+'</td><td><button type="button" class="mxAuditUser" data-user="'+escape(r.actor_user_id||'')+'" style="border:0;background:none;color:#6d28d9;text-decoration:underline;max-width:145px;overflow-wrap:anywhere">'+escape(r.actor_user_id||'—')+'</button></td><td><small>'+escape(r.curso_id)+'</small></td><td>'+escape(r.target)+'</td><td><small>'+escape(r.reference_id)+'</small></td></tr>').join('')||'<tr><td colspan="8">Sin resultados</td></tr>';
   panel.querySelectorAll('.mxAuditUser').forEach(b=>b.addEventListener('click',()=>{if(!b.dataset.user)return;panel.querySelector('#mxAuditQuery').value=b.dataset.user;panel.querySelector('#mxAuditSearchBtn').click()}));
-  panel.querySelector('#mxAuditCount').textContent='Mostrando '+(total?((auditState.page-1)*auditState.size+1)+'–'+Math.min(total,auditState.page*auditState.size):'0')+' de '+total.toLocaleString('es-CL')+' eventos · '+auditState.size+' por página';
-  const pages=Math.max(1,Math.ceil(total/auditState.size));
+  panel.querySelector('#mxAuditCount').textContent=(independent?'Base independiente · ':'Base principal · ')+'Mostrando '+(total?((auditState.page-1)*auditState.size+1)+'–'+Math.min(total,auditState.page*auditState.size):'0')+' de '+total.toLocaleString('es-CL')+' eventos · '+auditState.size+' por página';
+  const pages=independent?(auditState.page+(auditState.next?1:0)):Math.max(1,Math.ceil(total/auditState.size));
   const pager=panel.querySelector('#mxAuditPager');
   pager.innerHTML='<button type="button" data-page="prev" '+(auditState.page<=1?'disabled':'')+'>‹ Anterior</button><strong>Página '+auditState.page+' de '+pages+'</strong><button type="button" data-page="next" '+(auditState.page>=pages?'disabled':'')+'>Siguiente ›</button>';
   pager.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{auditState.page+=(b.dataset.page==='next'?1:-1);drawAudit()}));
- }catch(error){if(serial===auditSerial){tbody.innerHTML='<tr><td colspan="8">No se pudo consultar la bitácora.</td></tr>';console.warn('[Admin] Audit search',error)}}
+ }catch(error){if(serial===auditSerial){tbody.innerHTML='<tr><td colspan="8">'+escape(error.message||'No se pudo consultar la bitácora.')+'</td></tr>';console.warn('[Admin] Audit search',error)}}
 }
 
 let timer=null;
