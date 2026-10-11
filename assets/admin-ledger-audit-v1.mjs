@@ -54,8 +54,8 @@ async function drawAudit(){
    try{
     const eventId=crypto.randomUUID();
     const payload={events:[{event_id:eventId,type:'navigation',target:'admin_audit_connection_test'}]};
-    const result=await sb.request('functions/v1/audit-ingest-v1',{method:'POST',body:JSON.stringify(payload)});
-    if(!result?.ok)throw new Error(result?.error||'Respuesta no confirmada');
+    const result=await sb.functions.invoke('audit-ingest-v1',{body:payload});
+    if(result.error||!result.data?.ok)throw new Error(result.error?.message||result.data?.error||'Respuesta no confirmada');
     window.alert('Evento diagnóstico enviado a la nueva base. Referencia: '+eventId+'. Ahora verificaremos su registro en Supabase.');
    }catch(error){window.alert('Conexión de auditoría aún no validada: '+String(error.message||error))}
    finally{btn.disabled=false;btn.textContent='Probar base independiente'}
