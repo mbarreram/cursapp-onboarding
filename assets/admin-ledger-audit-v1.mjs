@@ -5,10 +5,10 @@ const clp=n=>'$'+Number(n||0).toLocaleString('es-CL');
 const fmt=d=>d?new Date(d).toLocaleString('es-CL'):'—';
 function section(id,title,body){return '<section class="panel" id="'+id+'" style="margin-top:16px"><div class="panelHead"><h2>'+title+'</h2></div>'+body+'</section>';}
 async function drawRefunds(){
- const host=document.getElementById('adminApp');if(!host||!document.querySelector('.sideItem[data-tab="finanzas"].active'))return;
+ const host=document.getElementById('adminApp');if(!host||!document.getElementById('mxFinRows'))return;
  try{
   const rows=await sb.request('rpc/admin_financial_refunds',{method:'POST',body:'{}'});
-  if(!document.querySelector('.sideItem[data-tab="finanzas"].active'))return;
+  if(!document.getElementById('mxFinRows'))return;
   host.querySelector('#mxFinanceRefunds')?.remove();
   host.insertAdjacentHTML('beforeend',section('mxFinanceRefunds','Anulaciones Transbank · libro histórico',
   '<p class="muted">Montos de anulación; no se suman nuevamente a la recaudación ni a los ingresos. Comisión pasarela referencial sujeta a liquidación.</p><div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Estado</th><th>Total anulado</th><th>Cuota</th><th>MiCursoX</th><th>Pasarela</th><th>Motivo</th><th>Referencia</th></tr></thead><tbody>'+
@@ -29,7 +29,9 @@ async function drawAudit(){
 let timer=null;
 function update(){
  clearTimeout(timer);
- timer=setTimeout(()=>{if(document.querySelector('.sideItem[data-tab="finanzas"].active'))drawRefunds();if(document.querySelector('.sideItem[data-tab="auditoria"].active'))drawAudit()},550);
+ timer=setTimeout(()=>{if(document.getElementById('mxFinRows')&&!document.getElementById('mxFinanceRefunds'))drawRefunds();if(document.querySelector('.sideItem[data-tab="auditoria"].active'))drawAudit()},550);
 }
 document.addEventListener('click',e=>{if(e.target.closest?.('.sideItem[data-tab="finanzas"],.sideItem[data-tab="auditoria"]'))update()},true);
 window.addEventListener('cursapp:dataUpdated',update);
+
+const host=document.getElementById('adminApp');if(host){new MutationObserver(()=>{if(document.getElementById('mxFinRows')&&!document.getElementById('mxFinanceRefunds'))update()}).observe(host,{childList:true});}
