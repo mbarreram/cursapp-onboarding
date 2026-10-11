@@ -26,10 +26,10 @@
   if(busy||!queue.length||document.visibilityState==='hidden')return;
   busy=true;
   try{
-   const item=queue[0];
-   await sb().request('rpc/record_app_event',{method:'POST',body:JSON.stringify({p_event_type:item.type,p_target:item.target,p_curso_id:courseId(),p_actor_role:role()})});
-   queue.shift();ready=true;
-  }catch(e){queue.shift();if(ready)console.warn('[MiCursoX] Audit unavailable',e?.message||e)}
+   const batch=queue.slice(0,25).map(item=>({type:item.type,target:item.target,course_id:courseId(),role:role()}));
+   await sb().request('rpc/record_app_events_batch',{method:'POST',body:JSON.stringify({p_events:batch})});
+   queue.splice(0,batch.length);ready=true;
+  }catch(e){queue.splice(0,Math.min(queue.length,25));if(ready)console.warn('[MiCursoX] Audit unavailable',e?.message||e)}
   finally{busy=false;if(queue.length)schedule()}
  }
  document.addEventListener('click',e=>{const target=e.target?.closest?.('button,a,[role="button"],[data-tab],[data-action]');if(!target)return;const id=tag(target);if(id)push('button_click',id)},true);
