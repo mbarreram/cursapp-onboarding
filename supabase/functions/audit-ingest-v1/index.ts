@@ -1,6 +1,8 @@
 import {createClient} from "npm:@supabase/supabase-js@2";
-const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json","Cache-Control":"no-store"}});
+const cors={"Access-Control-Allow-Origin":"https://micursox.cl","Access-Control-Allow-Headers":"authorization,apikey,content-type,x-client-info","Access-Control-Allow-Methods":"POST, OPTIONS"};
+const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json","Cache-Control":"no-store"}});
 Deno.serve(async(req)=>{
+ if(req.method==="OPTIONS")return new Response(null,{status:204,headers:cors});
  if(req.method!=="POST")return reply({error:"method_not_allowed"},405);
  const main=Deno.env.get("SUPABASE_URL"),anon=Deno.env.get("SUPABASE_ANON_KEY"),service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
  const auditUrl=Deno.env.get("MX_AUDIT_URL"),auditKey=Deno.env.get("MX_AUDIT_SERVICE_ROLE_KEY");
