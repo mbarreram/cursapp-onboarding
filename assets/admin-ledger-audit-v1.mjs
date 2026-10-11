@@ -29,7 +29,7 @@ async function drawAudit(){
    '<select id="mxAuditEvent"><option value="">Todos los eventos</option><option value="button_click">Clics</option><option value="form_submit">Formularios</option><option value="payment_confirmed">Pago confirmado</option><option value="payment_unpaid">Pago revertido</option><option value="transbank_refund_completed">Anulación Transbank</option><option value="manual_payment_reversed">Reversa manual</option></select>'+
    '<select id="mxAuditSource"><option value="">Todos los orígenes</option><option value="client">Interfaz</option><option value="server">Servidor</option></select>'+
    '<label>Desde <input id="mxAuditFrom" type="date"></label><label>Hasta <input id="mxAuditTo" type="date"></label>'+
-   '<button type="button" id="mxAuditSearchBtn" class="adminBtn">Buscar</button></div>'+
+   '<button type="button" id="mxAuditSearchBtn" class="adminBtn">Buscar</button><button type="button" id="mxAuditTestConnection" class="adminBtn ghost">Probar base independiente</button></div>'+
    '<div id="mxAuditCount" style="padding:4px 16px;color:#667085"></div><div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Evento</th><th>Origen</th><th>Rol</th><th>Usuario</th><th>Curso</th><th>Acción</th><th>Referencia</th></tr></thead><tbody id="mxAuditRows"></tbody></table></div>'+
    '<div id="mxAuditPager" style="padding:14px;display:flex;gap:10px;align-items:center;justify-content:center"></div>'));
   panel=host.querySelector('#mxAuditServer');
@@ -49,6 +49,16 @@ async function drawAudit(){
    auditState.page=1;drawAudit();
   };
   panel.querySelector('#mxAuditSearchBtn').addEventListener('click',search);
+  panel.querySelector('#mxAuditTestConnection').addEventListener('click',async()=>{
+   const btn=panel.querySelector('#mxAuditTestConnection');btn.disabled=true;btn.textContent='Probando…';
+   try{
+    const eventId=crypto.randomUUID();
+    const result=await sb.functions.invoke('audit-ingest-v1',{body:{events:[{event_id:eventId,type:'navigation',target:'admin_audit_connection_test'}]}});
+    if(result.error||!result.data?.ok)throw new Error(result.error?.message||result.data?.error||'Respuesta no confirmada');
+    window.alert('Evento diagnóstico enviado a la nueva base. Referencia: '+eventId+'. Ahora verificaremos su registro en Supabase.');
+   }catch(error){window.alert('Conexión de auditoría aún no validada: '+String(error.message||error))}
+   finally{btn.disabled=false;btn.textContent='Probar base independiente'}
+  });
   panel.querySelector('#mxAuditQuery').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
   panel.querySelectorAll('select,input[type=date]').forEach(el=>el.addEventListener('change',search));
  }
