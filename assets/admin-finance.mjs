@@ -203,7 +203,7 @@ async function renderFinance(force=false){
     <div class="mxFinActions"><button class="adminBtn ghost" id="mxFinRefresh">Actualizar</button><button class="adminBtn" id="mxFinCsv">Exportar CSV</button></div>
     <section class="mxFinKpis">
       <article class="mxFinCard"><span>Volumen cobrado</span><strong>${clp(s.gross_collected)}</strong><small>${Number(s.payments_count||0)} pagos confirmados</small></article>
-      <article class="mxFinCard"><span>Ingreso MiCursoX</span><strong>${clp(s.micursox_income)}</strong><small>Comisión acumulada</small></article>
+      <article class="mxFinCard"><span>Comisiones MiCursoX (brutas)</span><strong>${clp(s.micursox_income)}</strong><small>Comisión acumulada</small></article>
       <article class="mxFinCard"><span>Costo Transbank</span><strong>${clp(s.transbank_fees)}</strong><small>Comisiones pagadas</small></article>
       <article class="mxFinCard"><span>Fondos de cursos</span><strong>${clp(s.course_amount)}</strong><small>Monto base destinado a cursos</small></article>
       <article class="mxFinCard"><span>En liquidación</span><strong>${clp(s.pending_settlement)}</strong><small>Aún no disponible para retiro</small></article>
@@ -211,7 +211,7 @@ async function renderFinance(force=false){
       <article class="mxFinCard"><span>Retiros pagados</span><strong>${clp(s.withdrawals_paid)}</strong><small>Depósitos ya procesados</small></article>
     </section>
     <section class="panel mxFinChartPanel">
-      <div class="mxFinChartHead"><div><h2>Evolución financiera</h2><p class="muted">Misma información de las cards, agrupada por período.</p></div><div class="mxFinChartTools"><select id="mxFinMetric"><option value="gross">Volumen cobrado</option><option value="micursox">Ganancia MiCursoX</option><option value="transbank">Comisiones Transbank</option><option value="course">Fondos de cursos</option><option value="payments">Cantidad de pagos</option></select><div class="mxFinSeg" id="mxFinGranularity"><button data-granularity="day">Días</button><button data-granularity="week">Semanas</button><button data-granularity="month">Meses</button></div></div></div>
+      <div class="mxFinChartHead"><div><h2>Evolución financiera</h2><p class="muted">Misma información de las cards, agrupada por período.</p></div><div class="mxFinChartTools"><select id="mxFinMetric"><option value="gross">Volumen cobrado</option><option value="micursox">Comisiones MiCursoX (brutas)</option><option value="transbank">Comisiones Transbank</option><option value="course">Fondos de cursos</option><option value="payments">Cantidad de pagos</option></select><div class="mxFinSeg" id="mxFinGranularity"><button data-granularity="day">Días</button><button data-granularity="week">Semanas</button><button data-granularity="month">Meses</button></div></div></div>
       <div class="mxFinChartWrap"><div class="mxFinChart" id="mxFinChart"></div></div>
       <div class="mxFinChartFoot"><span id="mxFinChartTotal"></span><span id="mxFinChartBuckets"></span></div>
     </section>
