@@ -89,10 +89,10 @@ async function drawAudit(){
      p_page:auditState.page,p_size:auditState.size})});
   }
   if(serial!==auditSerial||!document.getElementById('mxAuditRows'))return;
-  const rows=Array.isArray(data?.rows)?data.rows:[];const total=Number(data?.total||0);
+  const rows=Array.isArray(data?.rows)?data.rows:[];const total=Number(data?.total||0);const displayed=independent?rows.length:total;
   tbody.innerHTML=rows.map(r=>'<tr><td>'+escape(fmt(r.created_at||r.occurred_at))+'</td><td>'+escape(r.event_type)+'</td><td>'+escape(r.source)+'</td><td>'+escape(r.actor_role)+'</td><td><button type="button" class="mxAuditUser" data-user="'+escape(r.actor_user_id||'')+'" style="border:0;background:none;color:#6d28d9;text-decoration:underline;max-width:145px;overflow-wrap:anywhere">'+escape(r.actor_user_id||'—')+'</button></td><td><small>'+escape(r.curso_id)+'</small></td><td>'+escape(r.target)+'</td><td><small>'+escape(r.reference_id)+'</small></td></tr>').join('')||'<tr><td colspan="8">Sin resultados</td></tr>';
   panel.querySelectorAll('.mxAuditUser').forEach(b=>b.addEventListener('click',()=>{if(!b.dataset.user)return;panel.querySelector('#mxAuditQuery').value=b.dataset.user;panel.querySelector('#mxAuditSearchBtn').click()}));
-  panel.querySelector('#mxAuditCount').textContent=(independent?'Base independiente · ':'Base principal · ')+'Mostrando '+(total?((auditState.page-1)*auditState.size+1)+'–'+Math.min(total,auditState.page*auditState.size):'0')+' de '+total.toLocaleString('es-CL')+' eventos · '+auditState.size+' por página';
+  panel.querySelector('#mxAuditCount').textContent=(independent?'Base independiente · ':'Base principal · ')+'Mostrando '+(displayed?((auditState.page-1)*auditState.size+1)+'–'+(independent?((auditState.page-1)*auditState.size+displayed):Math.min(total,auditState.page*auditState.size)):'0')+(independent?' eventos (paginación por cursor)':' de '+total.toLocaleString('es-CL')+' eventos')+' · '+auditState.size+' por página';
   const pages=independent?(auditState.page+(auditState.next?1:0)):Math.max(1,Math.ceil(total/auditState.size));
   const pager=panel.querySelector('#mxAuditPager');
   pager.innerHTML='<button type="button" data-page="prev" '+(auditState.page<=1?'disabled':'')+'>‹ Anterior</button><strong>Página '+auditState.page+' de '+pages+'</strong><button type="button" data-page="next" '+(auditState.page>=pages?'disabled':'')+'>Siguiente ›</button>';
