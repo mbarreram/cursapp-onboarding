@@ -11,6 +11,7 @@ Deno.serve(async(req)=>{
  const primary=createClient(main,anon,{global:{headers:{Authorization:auth}},auth:{persistSession:false}});
  const session=await primary.auth.getUser();
  if(!session.data.user)return reply({error:"unauthorized"},401);
+ const db=createClient(main,service,{auth:{persistSession:false}});
  const adminCheck=await primary.rpc("is_admin");
  const isAdmin=!adminCheck.error&&adminCheck.data===true;
  const payload=await req.json().catch(()=>null);
@@ -18,12 +19,12 @@ Deno.serve(async(req)=>{
  
  const allowed=new Set(["button_click","form_submit","navigation","download","share","payment_ui_start","payment_ui_redirect","payment_ui_error"]);
  const proposed=[...new Set(payload.events.map((e:Record<string,unknown>)=>String(e?.course_id||"")).filter((x:string)=>/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(x)))].slice(0,25);
- const membership=proposed.length?await primary.from("miembros_curso").select("curso_id,rol").eq("usuario_id",session.data.user.id).in("curso_id",proposed):{data:[],error:null};
+ const membership=proposed.length?await db.from("miembros_curso").select("curso_id,rol").eq("usuario_id",session.data.user.id).in("curso_id",proposed):{data:[],error:null};
  const allowedCourses=new Map((membership.data||[]).map((m:{curso_id:string,rol:string})=>[m.curso_id,m.rol]));
  const paymentIds=[...new Set(payload.events.map((e:Record<string,unknown>)=>String(e?.pago_id||"")).filter((x:string)=>/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(x)))].slice(0,25);
  const authorizedPayments=new Map<string,{id:string,curso_id:string}>();
  if(paymentIds.length){
-  const rows=await primary.from("pagos").select("id,curso_id,miembro_id").in("id",paymentIds);
+  const rows=await db.from("pagos").select("id,curso_id,miembro_id").in("id",paymentIds);
   const allowedMembers=await primary.from("miembros_curso").select("id,curso_id").eq("usuario_id",session.data.user.id);
   const owns=new Set((allowedMembers.data||[]).map((m:{id:string,curso_id:string})=>m.id+"|"+m.curso_id));
   for(const p of rows.data||[])if(owns.has(p.miembro_id+"|"+p.curso_id))authorizedPayments.set(p.id,{id:p.id,curso_id:p.curso_id});
@@ -38,12 +39,11 @@ Deno.serve(async(req)=>{
   if(String(e.type).startsWith("payment_ui_")&&!payment)return [];
   const requestedCourse=payment?.curso_id||String(e.course_id||"");
   const verifiedRole=allowedCourses.get(requestedCourse);
-  const course=verifiedRole?requestedCourse:null;
+  const course=verifiedRole||payment?requestedCourse:null;
   return [{event_id:eventId,occurred_at:new Date().toISOString(),actor_user_id:session.data.user.id,curso_id:course,
-   actor_role:isAdmin?"admin":(verifiedRole||null),event_type:String(e.type),target,source:"client",reference_id:payment?.id||null,correlation_id:payment?.id||null,metadata:{}}];
+   actor_role:isAdmin?"admin":(verifiedRole||(payment?"apoderado":null)),event_type:String(e.type),target,source:"client",reference_id:payment?.id||null,correlation_id:payment?.id||null,metadata:{}}];
  });
  if(!entries.length)return reply({error:"empty_batch"},400);
- const db=createClient(main,service,{auth:{persistSession:false}});
  const queued=await db.from("audit_delivery_outbox").insert({actor_user_id:session.data.user.id,events:entries}).select("id").single();
  if(queued.error)return reply({error:"queue_unavailable"},503);
  if(auditUrl&&auditKey){
