@@ -11,20 +11,26 @@ Deno.serve(async(req)=>{
  const primary=createClient(main,anon,{global:{headers:{Authorization:auth}},auth:{persistSession:false}});
  const session=await primary.auth.getUser();
  if(!session.data.user)return reply({error:"unauthorized"},401);
- const adminRole=await primary.rpc("is_admin");
- const verifiedAdmin=adminRole.data===true && !adminRole.error;
+ const adminCheck=await primary.rpc("is_admin");
+ const isAdmin=!adminCheck.error&&adminCheck.data===true;
  const payload=await req.json().catch(()=>null);
  if(!Array.isArray(payload?.events)||payload.events.length<1||payload.events.length>25)return reply({error:"invalid_batch"},400);
  
  const allowed=new Set(["button_click","form_submit","navigation","download","share"]);
+ const proposed=[...new Set(payload.events.map((e:Record<string,unknown>)=>String(e?.course_id||"")).filter((x:string)=>/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(x)))].slice(0,25);
+ const membership=proposed.length?await primary.from("miembros_curso").select("curso_id,rol").eq("usuario_id",session.data.user.id).in("curso_id",proposed):{data:[],error:null};
+ const allowedCourses=new Map((membership.data||[]).map((m:{curso_id:string,rol:string})=>[m.curso_id,m.rol]));
  const entries=payload.events.flatMap((e:Record<string,unknown>)=>{
   if(!e||!allowed.has(String(e.type)))return [];
   const eventId=String(e.event_id||"");
   if(!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(eventId))return [];
   const target=String(e.target||"").replace(/[^a-zA-Z0-9_:-]/g,"").slice(0,120);
   if(!target)return [];
-  return [{event_id:eventId,occurred_at:new Date().toISOString(),actor_user_id:session.data.user.id,curso_id:null,
-   actor_role:verifiedAdmin?"admin":null,event_type:String(e.type),target,source:"client",metadata:{}}];
+  const requestedCourse=String(e.course_id||"");
+  const verifiedRole=allowedCourses.get(requestedCourse);
+  const course=verifiedRole?requestedCourse:null;
+  return [{event_id:eventId,occurred_at:new Date().toISOString(),actor_user_id:session.data.user.id,curso_id:course,
+   actor_role:isAdmin?"admin":(verifiedRole||null),event_type:String(e.type),target,source:"client",metadata:{}}];
  });
  if(!entries.length)return reply({error:"empty_batch"},400);
  const db=createClient(main,service,{auth:{persistSession:false}});
