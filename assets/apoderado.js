@@ -3347,7 +3347,7 @@ window.payNow = async function(id){
       }
       if(changed){
         if(document.querySelector('.apoPayPage')&&typeof renderPayments==='function')renderPayments();
-        else if(typeof renderHome==='function'&&document.querySelector('.cpV5NextCard, .cpV5Home, .apoHome, .cpV5Due'))renderHome();
+        else if(typeof renderHome==='function'&&document.querySelector('.navItem[data-tab="home"].active'))renderHome();
       }
     }catch(error){console.warn('[MiCursoX] Verificación de estados de pago',error?.message||error)}
     finally{mxPaymentCheckBusy=false}
