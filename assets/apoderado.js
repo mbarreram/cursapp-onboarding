@@ -3323,12 +3323,57 @@ window.payNow = async function(id){
       </div>`;
   }
 
+  // Estado oficial por UUID. La caché antigua nunca puede reabrir una cuota ya pagada.
+  const mxAuthoritativePayments=new Map();
+  let mxPaymentCheckAt=0,mxPaymentCheckBusy=false,mxPaymentContext='';
+  async function mxVerifyPaymentStatuses(payments){
+    const mid=String(getActiveMemberIdV584()||'');
+    const ids=[...new Set((payments||[]).filter(p=>isSupabaseUuid(p?.id)).map(p=>String(p.id)))].slice(0,150);
+    if(!mid||!ids.length||mxPaymentCheckBusy||Date.now()-mxPaymentCheckAt<6000)return;
+    mxPaymentCheckBusy=true;mxPaymentCheckAt=Date.now();
+    try{
+      const api=window.CURSAPP_SUPABASE;
+      if(!api?.request)return;
+      const context=mid;
+      const rows=await api.request('pagos?select=id,miembro_id,estado,monto_pagado,paid_at&id=in.('+ids.map(encodeURIComponent).join(',')+')&miembro_id=eq.'+encodeURIComponent(mid));
+      if(String(getActiveMemberIdV584()||'')!==context)return;
+      let changed=false;
+      if(mxPaymentContext!==context){mxAuthoritativePayments.clear();mxPaymentContext=context;}
+      for(const row of (Array.isArray(rows)?rows:[])){
+        if(!ids.includes(String(row.id)))continue;
+        const prev=mxAuthoritativePayments.get(row.id);
+        const next={status:String(row.estado||'').toLowerCase(),amount:Number(row.monto_pagado||0),paidAt:row.paid_at||''};
+        if(!prev||JSON.stringify(prev)!==JSON.stringify(next)){mxAuthoritativePayments.set(row.id,next);changed=true;}
+      }
+      if(changed){
+        if(document.querySelector('.apoPayPage')&&typeof renderPayments==='function')renderPayments();
+        else if(typeof renderHome==='function'&&document.querySelector('.cpV5NextCard, .cpV5Home, .apoHome, .cpV5Due'))renderHome();
+      }
+    }catch(error){console.warn('[MiCursoX] Verificación de estados de pago',error?.message||error)}
+    finally{mxPaymentCheckBusy=false}
+  }
+  function mxApplyAuthoritativePayments(list){
+    const active=String(getActiveMemberIdV584()||'');
+    if(mxPaymentContext&&mxPaymentContext!==active)mxAuthoritativePayments.clear();
+    if(mxPaymentContext!==active)mxPaymentContext=active;
+    return list.map(p=>{
+      const db=mxAuthoritativePayments.get(String(p?.id||''));
+      if(!db)return p;
+      const paid=['pagado','paid','conciliado'].includes(db.status);
+      const remaining=paid?0:Math.max(0,Number(p.amount||0)-db.amount);
+      return {...p,status:paid?'paid':(remaining>0?'pending':'paid'),estado:db.status,
+        amountPaid:db.amount,paidAmount:db.amount,amountRemaining:remaining,
+        paidAt:db.paidAt||p.paidAt};
+    });
+  }
   renderHome = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
     try{ paysAll = dedupePaymentsAll(paysAll).list; }catch(e){}
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, normalizeTasks(load(KEY_TASKS, []))).list; }catch(e){}
     paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
+    void mxVerifyPaymentStatuses(paysAll);
+    paysAll = mxApplyAuthoritativePayments(paysAll);
 
     const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
     const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid");
@@ -3512,32 +3557,6 @@ window.payNow = async function(id){
     try{ keepApoV45BellAlive(); }catch(e){}
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
-  // Estado oficial por UUID. La caché antigua nunca puede reabrir una cuota ya pagada.
-  const mxAuthoritativePayments=new Map();
-  let mxPaymentCheckAt=0,mxPaymentCheckBusy=false,mxPaymentContext='';
-  async function mxVerifyPaymentStatuses(payments){
-    const mid=String(getActiveMemberIdV584()||'');
-    const ids=[...new Set((payments||[]).filter(p=>isSupabaseUuid(p?.id)).map(p=>String(p.id)))].slice(0,150);
-    if(!mid||!ids.length||mxPaymentCheckBusy||Date.now()-mxPaymentCheckAt<6000)return;
-    mxPaymentCheckBusy=true;mxPaymentCheckAt=Date.now();
-    try{
-      const api=window.CURSAPP_SUPABASE;
-      if(!api?.request)return;
-      const context=mid;
-      const rows=await api.request('pagos?select=id,miembro_id,estado,monto_pagado,paid_at&id=in.('+ids.map(encodeURIComponent).join(',')+')&miembro_id=eq.'+encodeURIComponent(mid));
-      if(String(getActiveMemberIdV584()||'')!==context)return;
-      let changed=false;
-      if(mxPaymentContext!==context){mxAuthoritativePayments.clear();mxPaymentContext=context;}
-      for(const row of (Array.isArray(rows)?rows:[])){
-        if(!ids.includes(String(row.id)))continue;
-        const prev=mxAuthoritativePayments.get(row.id);
-        const next={status:String(row.estado||'').toLowerCase(),amount:Number(row.monto_pagado||0),paidAt:row.paid_at||''};
-        if(!prev||JSON.stringify(prev)!==JSON.stringify(next)){mxAuthoritativePayments.set(row.id,next);changed=true;}
-      }
-      if(changed&&typeof renderPayments==='function'&&document.querySelector('.apoPayPage'))renderPayments();
-    }catch(error){console.warn('[MiCursoX] Verificación de estados de pago',error?.message||error)}
-    finally{mxPaymentCheckBusy=false}
-  }
   renderPayments = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
