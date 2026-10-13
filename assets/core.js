@@ -1043,8 +1043,9 @@
       // Los alumnos importados pueden existir sin cuenta/email todavía.
       // Se mantienen en el universo del curso para métricas, deudas y campañas.
       if(!m.usuario_id && !email && !(role === "apoderado" && String(m.nombre_alumno||"").trim())) return;
-      const identity = m.usuario_id || email || m.id || String(m.nombre_alumno||"").toLowerCase().trim();
-      const key = [m.curso_id, identity, role].join("|");
+      // Una misma cuenta puede representar varios alumnos del mismo curso.
+      // La identidad canonica de cada membresia es su ID, no usuario+rol.
+      const key = [m.curso_id, m.id].join("|");
       if(seen.has(key)) return;
       seen.add(key);
       miembros.push(Object.assign({}, m, { email, __usuario:u }));
