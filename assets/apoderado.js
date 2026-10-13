@@ -3512,6 +3512,32 @@ window.payNow = async function(id){
     try{ keepApoV45BellAlive(); }catch(e){}
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
+  // Estado oficial por UUID. La caché antigua nunca puede reabrir una cuota ya pagada.
+  const mxAuthoritativePayments=new Map();
+  let mxPaymentCheckAt=0,mxPaymentCheckBusy=false,mxPaymentContext='';
+  async function mxVerifyPaymentStatuses(payments){
+    const mid=String(getActiveMemberIdV584()||'');
+    const ids=[...new Set((payments||[]).filter(p=>isSupabaseUuid(p?.id)).map(p=>String(p.id)))].slice(0,150);
+    if(!mid||!ids.length||mxPaymentCheckBusy||Date.now()-mxPaymentCheckAt<6000)return;
+    mxPaymentCheckBusy=true;mxPaymentCheckAt=Date.now();
+    try{
+      const api=window.CURSAPP_SUPABASE;
+      if(!api?.request)return;
+      const context=mid;
+      const rows=await api.request('pagos?select=id,miembro_id,estado,monto_pagado,paid_at&id=in.('+ids.map(encodeURIComponent).join(',')+')&miembro_id=eq.'+encodeURIComponent(mid));
+      if(String(getActiveMemberIdV584()||'')!==context)return;
+      let changed=false;
+      if(mxPaymentContext!==context){mxAuthoritativePayments.clear();mxPaymentContext=context;}
+      for(const row of (Array.isArray(rows)?rows:[])){
+        if(!ids.includes(String(row.id)))continue;
+        const prev=mxAuthoritativePayments.get(row.id);
+        const next={status:String(row.estado||'').toLowerCase(),amount:Number(row.monto_pagado||0),paidAt:row.paid_at||''};
+        if(!prev||JSON.stringify(prev)!==JSON.stringify(next)){mxAuthoritativePayments.set(row.id,next);changed=true;}
+      }
+      if(changed&&typeof renderPayments==='function'&&document.querySelector('.apoPayPage'))renderPayments();
+    }catch(error){console.warn('[MiCursoX] Verificación de estados de pago',error?.message||error)}
+    finally{mxPaymentCheckBusy=false}
+  }
   renderPayments = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
@@ -3519,13 +3545,14 @@ window.payNow = async function(id){
     const tasksAll = normalizeTasks(load(KEY_TASKS, []));
     try{ paysAll = cleanVisiblePaymentsV11(paysAll, tasksAll).list; }catch(e){}
     paysAll = onlySupabasePayments(paysAll).filter(isMinePayment);
+    void mxVerifyPaymentStatuses(paysAll);
 
     const yearNow = new Date().getFullYear();
     const monthNow = new Date().getMonth();
-    const statusOf = (p)=>String(p?.status||"pending").toLowerCase();
+    const statusOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db?(["pagado","paid","conciliado"].includes(db.status)?"paid":db.status==="pendiente"?"pending":String(p?.status||"pending").toLowerCase()):String(p?.status||"pending").toLowerCase()};
     const isPaid = (p)=>statusOf(p)==="paid";
     const isPending = (p)=>["pending","partial","overdue"].includes(statusOf(p)) && !isPaymentOptedOut(p);
-    const amountOf = (p)=>Number((isPaid(p) ? (p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0);
+    const amountOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db&&isPaid(p)?db.amount:Number((isPaid(p) ? (p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0)};
     const taskOf = (p)=> tasksAll.find(t=>String(t.id)===String(p.fromTaskId)) || null;
     const titleOf = (p)=>{
       const t = taskOf(p);
@@ -3633,7 +3660,7 @@ window.payNow = async function(id){
         <div class="apoPayLineIcon">${paid ? '✓' : (ds.cls==='danger' ? '!' : '•')}</div>
         <div class="apoPayLineInfo">
           <h4>${esc(p.installmentLabel || p.cuota || month || titleOf(p))}</h4>
-          <p>${paid ? `Pagado ${esc(fmtDate(String(p.paidAt||p.createdAt||'').slice(0,10)))}` : esc(ds.text)}</p>
+          <p>${paid ? `Pagado ${esc(fmtDate(String(mxAuthoritativePayments.get(String(p.id))?.paidAt||p.paidAt||p.createdAt||'').slice(0,10)))}` : esc(ds.text)}</p>
         </div>
         <strong>${clp(amountOf(p))}</strong>
         ${paid ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
