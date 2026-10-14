@@ -65,7 +65,7 @@ async function drawAudit(){
     const result=await sb.functions.invoke('webpay-gateway-status',{body:{transaction_id:id}});
     const data=result.data||{};
     if(result.error||!data.ok){out.textContent='Consulta no confirmada: '+String(data.error||result.error?.message||'sin respuesta');return;}
-    out.textContent='Transbank: '+String(data.gateway_status||'desconocido')+' · MiCursoX: '+String(data.local_status||'desconocido')+' · Orden y monto verificados';
+    out.textContent='Transbank: '+String(data.gateway_status||'desconocido')+' · MiCursoX: '+String(data.local_status||'desconocido')+' · Orden y monto verificados · '+(data.classification==='uncompleted_unconfirmed'?'Operación sin completar; resultado final no confirmado. No reintentar sin revisión.':data.classification==='confirmed_failure'?'Fallo confirmado por pasarela. Cuota sin modificación.':data.classification==='approved_pending_reconciliation'?'Autorización detectada: revisar conciliación antes de cualquier nuevo intento.':'Revisión necesaria.');
    }catch(error){out.textContent='No se pudo consultar la pasarela: '+String(error.message||error)}
    finally{btn.disabled=false}
   });
