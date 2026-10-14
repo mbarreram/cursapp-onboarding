@@ -33,6 +33,13 @@ function sortFinancialRows(table){
  rows.sort((a,b)=>String(b.dataset.mxFinancialAt||'').localeCompare(String(a.dataset.mxFinancialAt||'')));
  let anchor=head;for(const row of rows){anchor.insertAdjacentElement('afterend',row);anchor=row}
 }
+function mxTransbankPeriodLabel(value){
+ const raw=String(value||'').trim();
+ const match=raw.match(/^(20\d{2})-(0[1-9]|1[0-2])(?:-\d{2})?$/);
+ if(!match)return raw&&raw.length<=30?raw:'';
+ const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+ return months[Number(match[2])-1]+' '+match[1];
+}
 function renderTransbankHistory(arr){
  const panel=document.getElementById('mxManualReversalPanel');
  if(!panel||!(document.body.classList.contains('cursapp-tesorero')||document.body.classList.contains('cursapp-presidente')))return;
@@ -40,7 +47,7 @@ function renderTransbankHistory(arr){
  if(!list){list=document.createElement('section');list.id='mxTransbankPaymentHistory';list.style.cssText='margin-top:16px;border-top:1px solid #e2e8f0;padding-top:14px';panel.appendChild(list)}
  const items=Array.isArray(arr)?arr:[];
  list.innerHTML='<strong>Historial Transbank</strong><small>Últimas '+items.length+' operaciones Transbank del curso (incluye anulaciones).</small>'+
-  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · '+(x.estado==='REFUNDED'?'Anulado':'Autorizado')+'<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.estado==='APPROVED'&&x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':x.estado==='REFUNDED'&&x.refund_id?'<button type="button" data-mx-refund-email="'+escape(x.refund_id)+'">Enviar aviso</button>':'')+'</div>').join(''):'<p>No hay operaciones Transbank registradas.</p>');
+  (items.length?items.map(x=>'<div class="mxManualTraceRow"><span>'+escape(x.alumno||'Alumno')+' · '+escape(x.campana||'Campaña')+(mxTransbankPeriodLabel(x.periodo)?' · '+escape(mxTransbankPeriodLabel(x.periodo)):'')+'<br><b>'+money(x.monto_cuota)+'</b> · Transbank · '+(x.estado==='REFUNDED'?'Anulado':'Autorizado')+'<br><small>'+escape(x.fecha?new Date(x.fecha).toLocaleString('es-CL'):'Sin fecha')+'</small></span>'+(x.estado==='APPROVED'&&x.environment==='integration'?'<button type="button" data-mx-refund="'+escape(x.id)+'">Anular pago</button>':x.estado==='REFUNDED'&&x.refund_id?'<button type="button" data-mx-refund-email="'+escape(x.refund_id)+'">Enviar aviso</button>':'')+'</div>').join(''):'<p>No hay operaciones Transbank registradas.</p>');
  list.querySelectorAll('[data-mx-refund]').forEach(b=>b.addEventListener('click',()=>requestRefund(b.dataset.mxRefund)));
  list.querySelectorAll('[data-mx-refund-email]').forEach(b=>b.addEventListener('click',async()=>{b.disabled=true;const r=await api().functions.invoke('transbank-refund-email',{body:{refund_id:b.dataset.mxRefundEmail}});window.alert(r.error?'No se pudo enviar el aviso: '+r.error.message:r.data?.already_sent?'El correo ya estaba enviado.':'Correo de anulación enviado.');b.disabled=false;}));
 }
