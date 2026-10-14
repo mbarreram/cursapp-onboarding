@@ -27,7 +27,7 @@ Deno.serve(async(req)=>{
     const token=String(body.token_ws||u.searchParams.get('token_ws')||'').trim();
     const cancelBuy=String(body.TBK_ORDEN_COMPRA||'').trim();
     if(!token){
-      if(cancelBuy){const f=await admin.from('transbank_transactions').select('id,pago_id').eq('buy_order',cancelBuy).maybeSingle();if(f.data){await admin.from('transbank_transactions').update({status:'CANCELLED',error_message:'Usuario canceló o abandonó Webpay.'}).eq('id',f.data.id);return redirect({ok:'0',pid:f.data.pago_id,tx:f.data.id,reason:'cancelled'});}}
+      if(cancelBuy){const f=await admin.from('transbank_transactions').select('id,pago_id,status').eq('buy_order',cancelBuy).limit(2);if(!f.error&&f.data?.length===1){const tx=f.data[0];if(tx.status==='INITIALIZED')await admin.from('transbank_transactions').update({status:'CANCELLED',error_message:'Cancelación identificada en retorno de Webpay.'}).eq('id',tx.id).eq('status','INITIALIZED');return redirect({ok:'0',pid:tx.pago_id,tx:tx.id,reason:'cancelled'});}}
       return redirect({ok:'0',reason:'no_token_ws'});
     }
     const found=await admin.from('transbank_transactions').select('*').eq('token_ws',token).maybeSingle();
