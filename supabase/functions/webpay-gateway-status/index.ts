@@ -29,6 +29,14 @@ Deno.serve(async req=>{
   const data=await response.json().catch(()=>null);
   if(!response.ok||!data)return respond({ok:false,error:"gateway_query_failed",http_status:response.status,local_status:tx.status},502);
   if(String(data.buy_order||"")!==String(tx.buy_order)||Number(data.amount)!==Number(tx.amount))return respond({ok:false,error:"gateway_identity_mismatch",local_status:tx.status},409);
-  return respond({ok:true,transaction_id:tx.id,pago_id:tx.pago_id,local_status:tx.status,gateway_status:String(data.status||"UNKNOWN"),response_code:data.response_code??null,identity_verified:true,read_only:true});
+  const status=String(data.status||"UNKNOWN").toUpperCase();
+  const responseCode=Number.isInteger(Number(data.response_code))?Number(data.response_code):null;
+  const classification=status==="AUTHORIZED"?"approved_pending_reconciliation":(["FAILED","REJECTED","NULLIFIED","REVERSED"].includes(status)?"confirmed_failure":status==="INITIALIZED"?"uncompleted_unconfirmed":"other_unconfirmed");
+  const observation=await db.from("transbank_status_observations").insert({
+    transaction_id:tx.id,local_status:tx.status,gateway_status:status,
+    gateway_response_code:responseCode,amount_and_order_verified:true,classification
+  });
+  if(observation.error)return respond({ok:false,error:"audit_observation_failed",local_status:tx.status},503);
+  return respond({ok:true,transaction_id:tx.id,pago_id:tx.pago_id,local_status:tx.status,gateway_status:status,response_code:responseCode,classification,identity_verified:true,read_only:true});
  }catch(_){return respond({ok:false,error:"gateway_unreachable",local_status:tx.status},503)}
 });
