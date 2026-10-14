@@ -54,7 +54,11 @@ Deno.serve(async(req)=>{
     const buyOrder=`MX${pagoId.replace(/-/g,'').slice(0,10).toUpperCase()}${stamp}`.slice(0,26);
     const sessionId=`MX-${user.id.replace(/-/g,'').slice(0,20)}-${stamp}`.slice(0,61);
     const cfg=tbk();
+    const active=await admin.from('transbank_transactions').select('id,status').eq('pago_id',pagoId).in('status',['CREATING','INITIALIZED','COMMITTING','COMMIT_ERROR']).limit(1);
+    if(active.error)return json({error:'No fue posible comprobar el intento anterior. Intenta más tarde.'},503);
+    if(active.data?.length)return json({error:'Existe una transacción Webpay anterior sin resolver. Contacta a soporte antes de repetir el pago.',code:'PAYMENT_ATTEMPT_UNRESOLVED'},409);
     const inserted=await admin.from('transbank_transactions').insert({pago_id:pagoId,curso_id:pago.curso_id||null,user_id:user.id,environment:cfg.env,buy_order:buyOrder,session_id:sessionId,amount,status:'CREATING'}).select('id').single();
+    if(inserted.error?.code==='23505')return json({error:'Ya existe un intento Webpay en proceso para esta cuota.',code:'PAYMENT_ATTEMPT_UNRESOLVED'},409);
     if(inserted.error||!inserted.data) throw new Error('No se pudo registrar el intento de pago.');
     const response=await fetch(cfg.api,{method:'POST',headers:{'Content-Type':'application/json','Tbk-Api-Key-Id':cfg.commerceCode,'Tbk-Api-Key-Secret':cfg.apiKey},body:JSON.stringify({buy_order:buyOrder,session_id:sessionId,amount,return_url:`${url}/functions/v1/webpay-commit`})});
     const text=await response.text(); let data:any=null; try{data=text?JSON.parse(text):null;}catch(_){data=null;}
