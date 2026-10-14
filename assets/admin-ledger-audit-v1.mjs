@@ -29,7 +29,8 @@ async function drawAudit(){
    '<select id="mxAuditEvent"><option value="">Todos los eventos</option><option value="button_click">Clics</option><option value="form_submit">Formularios</option><option value="payment_confirmed">Pago confirmado</option><option value="payment_unpaid">Pago revertido</option><option value="transbank_refund_completed">Anulación Transbank</option><option value="manual_payment_reversed">Reversa manual</option></select>'+
    '<select id="mxAuditSource"><option value="">Todos los orígenes</option><option value="client">Interfaz</option><option value="server">Servidor</option></select>'+
    '<label>Desde <input id="mxAuditFrom" type="date"></label><label>Hasta <input id="mxAuditTo" type="date"></label>'+
-   '<button type="button" id="mxAuditSearchBtn" class="adminBtn">Buscar</button><button type="button" id="mxAuditTestConnection" class="adminBtn ghost">Probar base independiente</button></div>'+
+   '<button type="button" id="mxAuditSearchBtn" class="adminBtn">Buscar</button><button type="button" id="mxAuditGatewayStatus" class="adminBtn ghost">Consultar Transbank</button><button type="button" id="mxAuditTestConnection" class="adminBtn ghost">Probar base independiente</button></div>'+
+   '<p id="mxAuditGatewayResult" class="muted" style="padding:0 16px" aria-live="polite"></p>'+
    '<div id="mxAuditCount" style="padding:4px 16px;color:#667085"></div><div class="tableWrap"><table><thead><tr><th>Fecha</th><th>Evento</th><th>Origen</th><th>Rol</th><th>Usuario</th><th>Curso</th><th>Acción</th><th>Referencia</th></tr></thead><tbody id="mxAuditRows"></tbody></table></div>'+
    '<div id="mxAuditPager" style="padding:14px;display:flex;gap:10px;align-items:center;justify-content:center"></div>'));
   panel=host.querySelector('#mxAuditServer');
@@ -53,6 +54,22 @@ async function drawAudit(){
    auditState.page=1;auditState.cursors=[null];drawAudit();
   };
   panel.querySelector('#mxAuditSearchBtn').addEventListener('click',search);
+  panel.querySelector('#mxAuditGatewayStatus').addEventListener('click',async()=>{
+   const btn=panel.querySelector('#mxAuditGatewayStatus'),out=panel.querySelector('#mxAuditGatewayResult');
+   const id=panel.querySelector('#mxAuditQuery').value.trim();
+   if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id)){
+    out.textContent='Ingresa el UUID de la transacción Transbank para consultar su estado.';return;
+   }
+   btn.disabled=true;out.textContent='Consultando estado en Transbank…';
+   try{
+    const result=await sb.functions.invoke('webpay-gateway-status',{body:{transaction_id:id}});
+    const data=result.data||{};
+    if(result.error||!data.ok){out.textContent='Consulta no confirmada: '+String(data.error||result.error?.message||'sin respuesta');return;}
+    out.textContent='Transbank: '+String(data.gateway_status||'desconocido')+' · MiCursoX: '+String(data.local_status||'desconocido')+' · Orden y monto verificados';
+   }catch(error){out.textContent='No se pudo consultar la pasarela: '+String(error.message||error)}
+   finally{btn.disabled=false}
+  });
+
   panel.querySelector('#mxAuditTestConnection').addEventListener('click',async()=>{
    const btn=panel.querySelector('#mxAuditTestConnection');btn.disabled=true;btn.textContent='Probando…';
    try{
