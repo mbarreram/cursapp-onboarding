@@ -66,6 +66,20 @@ async function drawAudit(){
     const data=result.data||{};
     if(result.error||!data.ok){out.textContent='Consulta no confirmada: '+String(data.error||result.error?.message||'sin respuesta');return;}
     out.textContent='Transbank: '+String(data.gateway_status||'desconocido')+' · MiCursoX: '+String(data.local_status||'desconocido')+' · Orden y monto verificados · '+(data.classification==='uncompleted_unconfirmed'?'Operación sin completar; resultado final no confirmado. No reintentar sin revisión.':data.classification==='confirmed_failure'?'Fallo confirmado por pasarela. Cuota sin modificación.':data.classification==='approved_pending_reconciliation'?'Autorización detectada: revisar conciliación antes de cualquier nuevo intento.':'Revisión necesaria.');
+    if(data.classification==='confirmed_failure'&&['FAILED','REJECTED'].includes(String(data.gateway_status||''))){
+      const close=document.createElement('button');
+      close.type='button';close.textContent='Cerrar fallo confirmado';close.className='adminBtn ghost';
+      close.addEventListener('click',async()=>{
+        if(!window.confirm('Cerrar solo esta transacción fallida verificada, sin modificar la cuota ni cobrar de nuevo?'))return;
+        close.disabled=true;
+        try{
+          const closed=await sb.request('rpc/admin_close_confirmed_webpay_failure',{method:'POST',body:JSON.stringify({p_transaction_id:id})});
+          out.textContent=closed?.ok?'Fallo cerrado de forma segura. Cuota sin modificar.':'No se cerró la operación: '+String(closed?.reason||'validación no superada');
+        }catch(error){out.textContent='No se pudo cerrar la operación: '+String(error.message||error)}
+        finally{close.remove()}
+      });
+      out.after(close);
+    }
    }catch(error){out.textContent='No se pudo consultar la pasarela: '+String(error.message||error)}
    finally{btn.disabled=false}
   });
