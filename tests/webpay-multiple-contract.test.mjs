@@ -1,0 +1,34 @@
+// Tests de resguardo estático: no reemplazan la prueba transaccional en Supabase.
+// Ejecutar: node --test tests/webpay-multiple-contract.test.mjs
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read = path => readFileSync(new URL('../'+path, import.meta.url),'utf8');
+const sql=read('supabase/migrations/20261026_webpay_group_staging.sql');
+const create=read('supabase/functions/webpay-create/index.ts');
+const commit=read('supabase/functions/webpay-commit/index.ts');
+const status=read('supabase/functions/webpay-status/index.ts');
+const refund=read('supabase/functions/webpay-refund/index.ts');
+test('Las 3 RPC financieras solo autorizan a service_role',()=>{
+ assert.equal((sql.match(/auth\.role\(\) IS DISTINCT FROM 'service_role'/g)||[]).length,3);
+ for(const name of ['mx_webpay_reserve_group','mx_webpay_settle_group','mx_webpay_finalize_group_refund']){
+  assert.match(sql,new RegExp('REVOKE ALL ON FUNCTION public\\.'+name));
+  assert.match(sql,new RegExp('GRANT EXECUTE ON FUNCTION public\\.'+name+'.*TO service_role'));
+ }
+});
+test('Las operaciones agrupadas no se habilitan por defecto',()=>{
+ assert.match(create,/MX_WEBPAY_GROUP_ENABLED/);
+ assert.match(refund,/MX_WEBPAY_GROUP_ENABLED/);
+});
+test('No se actualiza individualmente la primera cuota de una orden agrupada',()=>{
+ assert.match(commit,/approved\s*&&\s*!isGroup/);
+ assert.match(status,/grouped\?\{data:null\}/);
+ assert.match(commit,/mx_webpay_settle_group/);
+ assert.match(status,/mx_webpay_settle_group/);
+});
+test('La reversa usa orden completa y función transaccional',()=>{
+ assert.match(refund,/mx_webpay_finalize_group_refund/);
+ assert.match(refund,/Cuotas múltiples inconsistentes/);
+ assert.match(sql,/UPDATE public\.pagos p SET estado='pendiente'/);
+ assert.match(sql,/WHERE i\.transaction_id=t\.id AND p\.id=i\.pago_id/);
+});
