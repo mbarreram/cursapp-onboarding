@@ -86,3 +86,36 @@ GRANT EXECUTE ON FUNCTION public.mx_webpay_settle_group(uuid,numeric,text) TO se
 
 -- NOTE: deploy group-aware webpay-commit and webpay-status before enabling group creation.
 -- Until then this migration remains un-applied; single-payment production code stays unchanged.
+
+
+-- Full-order refund finalization. Gateway refund is performed once by the Edge Function.
+-- This procedure is service-role only and rolls back all associated payments atomically.
+CREATE OR REPLACE FUNCTION public.mx_webpay_finalize_group_refund(p_refund_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE r public.transbank_refunds%rowtype; t public.transbank_transactions%rowtype;
+        it record; item_count integer:=0; total_items numeric:=0;
+BEGIN
+ IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'access_denied'; END IF;
+ SELECT * INTO r FROM public.transbank_refunds WHERE id=p_refund_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'refund_not_found'; END IF;
+ IF r.status='COMPLETED' THEN RETURN jsonb_build_object('status','COMPLETED','idempotent',true,'refund_id',r.id); END IF;
+ IF r.status<>'GATEWAY_CONFIRMED' OR r.gateway_type NOT IN ('REVERSED','NULLIFIED') THEN RAISE EXCEPTION 'gateway_not_confirmed'; END IF;
+ SELECT * INTO t FROM public.transbank_transactions WHERE id=r.transaction_id FOR UPDATE;
+ IF NOT FOUND OR t.status<>'APPROVED' OR r.curso_id IS DISTINCT FROM t.curso_id OR r.amount IS DISTINCT FROM t.amount THEN RAISE EXCEPTION 'transaction_mismatch'; END IF;
+ IF r.gateway_type='NULLIFIED' AND (coalesce((r.gateway_response->>'nullified_amount')::numeric,-1)<>r.amount OR coalesce((r.gateway_response->>'balance')::numeric,-1)<>0) THEN RAISE EXCEPTION 'partial_refund_not_permitted'; END IF;
+ IF r.gateway_type='REVERSED' AND coalesce((r.gateway_response->>'balance')::numeric,-1)<>0 THEN RAISE EXCEPTION 'remaining_refund_balance'; END IF;
+ SELECT count(*),sum(monto_total_cobrado) INTO item_count,total_items FROM public.transbank_transaction_items WHERE transaction_id=t.id;
+ IF item_count<2 OR item_count>20 OR total_items IS DISTINCT FROM t.amount THEN RAISE EXCEPTION 'item_total_mismatch'; END IF;
+ FOR it IN SELECT i.*,p.estado,p.metodo_pago,p.monto_pagado
+ FROM public.transbank_transaction_items i JOIN public.pagos p ON p.id=i.pago_id
+ WHERE i.transaction_id=t.id ORDER BY i.pago_id FOR UPDATE OF p LOOP
+  IF it.curso_id IS DISTINCT FROM t.curso_id OR it.estado<>'pagado' OR it.metodo_pago<>'transbank' OR it.monto_pagado IS DISTINCT FROM it.monto_cuota THEN RAISE EXCEPTION 'payment_mismatch'; END IF;
+ END LOOP;
+ UPDATE public.pagos p SET estado='pendiente',monto_pagado=0,metodo_pago=NULL,canal_recaudacion=NULL,paid_at=NULL,conciliacion_estado=NULL,liquidacion_estado='anulado'
+ FROM public.transbank_transaction_items i WHERE i.transaction_id=t.id AND p.id=i.pago_id;
+ UPDATE public.transbank_transactions SET status='REFUNDED',updated_at=now(),raw_response=coalesce(raw_response,'{}'::jsonb)||jsonb_build_object('refund',r.gateway_response) WHERE id=t.id;
+ UPDATE public.transbank_refunds SET status='COMPLETED',completed_at=now() WHERE id=r.id;
+ RETURN jsonb_build_object('status','COMPLETED','refund_id',r.id,'transaction_id',t.id,'payments_reverted',item_count);
+END $$;
+REVOKE ALL ON FUNCTION public.mx_webpay_finalize_group_refund(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.mx_webpay_finalize_group_refund(uuid) TO service_role;
