@@ -54,3 +54,14 @@ test('El comprobante agrupado exige autenticación y usa datos de orden oficial'
  assert.match(resultPage,/window\.print\(\)/);
  assert.match(resultPage,/navigator\.share/);
 });
+
+test('La migración contiene exactamente una definición completa de cada RPC',()=>{
+ for(const name of ['mx_webpay_reserve_group','mx_webpay_settle_group','mx_webpay_finalize_group_refund']){
+  assert.equal(sql.split('CREATE OR REPLACE FUNCTION public.'+name+'(').length-1,1,name+' duplicada');
+ }
+ assert.equal((sql.match(/END \$\$;/g)||[]).length,3);
+ assert.equal((sql.match(/auth\.role\(\) IS DISTINCT FROM 'service_role'/g)||[]).length,3);
+ assert.doesNotMatch(sql,/cuotas por\s*\n\s*RETURN/);
+ assert.match(sql,/event','approved'/);
+ assert.match(sql,/event','refunded'/);
+});
