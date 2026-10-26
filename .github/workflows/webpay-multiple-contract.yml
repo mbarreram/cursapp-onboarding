@@ -1,0 +1,22 @@
+name: Webpay multiple contract
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261026_webpay_group_staging.sql'
+      - 'supabase/functions/webpay-*/index.ts'
+      - 'tests/webpay-multiple-contract.test.mjs'
+      - 'package.json'
+      - '.github/workflows/webpay-multiple-contract.yml'
+  workflow_dispatch:
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run financial contract checks
+        run: npm run test:webpay-contract
