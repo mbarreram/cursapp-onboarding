@@ -13,7 +13,7 @@
   if(name==='a'&&chosen.getAttribute('href')){try{name='link_'+new URL(chosen.getAttribute('href'),location.origin).pathname.split('/').pop()}catch(_){}}
   return String(name).replace(/[^a-zA-Z0-9_:-]/g,'').slice(0,100)||'control';
  };
- let queue=[],busy=false,ready=false;
+ let queue=[],busy=false,ready=false,retryAfter=0;
  function push(type,target){
   if(!sb()?.request||!target)return;
   if(queue.length>=120)return;
@@ -21,28 +21,18 @@
   schedule();
  }
  let scheduled=false;
- function schedule(){if(scheduled)return;scheduled=true;setTimeout(()=>{scheduled=false;drain()},1100)}
+ function schedule(){if(scheduled)return;scheduled=true;setTimeout(()=>{scheduled=false;drain()},Math.max(1100,retryAfter-Date.now()))}
  async function drain(){
   if(busy||!queue.length||document.visibilityState==='hidden')return;
   busy=true;
   try{
    const batch=queue.slice(0,25).map(item=>({type:item.type,target:item.target,course_id:courseId(),role:role()}));
-   if(role()==='admin'){
-    const response=await sb().functions.invoke('audit-ingest-v1',{body:{events:batch.map((e,i)=>({...e,event_id:queue[i].event_id}))}});
-    if(response.error||!response.data?.ok)throw new Error(response.error?.message||response.data?.error||'audit_ingest_unconfirmed');
-   }else{
-    await sb().request('rpc/record_app_events_batch',{method:'POST',body:JSON.stringify({p_events:batch})});
-   }
-   queue.splice(0,batch.length);ready=true;
+   const response=await sb().functions.invoke('audit-ingest-v1',{body:{events:batch.map((e,i)=>({...e,event_id:queue[i].event_id}))}});
+   if(response.error||!response.data?.ok)throw new Error(response.error?.message||response.data?.error||'audit_ingest_unconfirmed');
+   queue.splice(0,batch.length);ready=true;retryAfter=0;
   }catch(e){
-   // Roll back only Admin interaction logging to the existing RPC if the new service cannot confirm receipt.
-   if(role()==='admin'){
-    try{
-     const fallback=queue.slice(0,25).map(item=>({type:item.type,target:item.target,role:'admin',course_id:null}));
-     await sb().request('rpc/record_app_events_batch',{method:'POST',body:JSON.stringify({p_events:fallback})});
-    }catch(error){console.warn('[MiCursoX] Audit fallback unavailable',error?.message||error)}
-   }
-   queue.splice(0,Math.min(queue.length,25));
+   // Keep events in memory and back off on delivery failure. Never acknowledge failed batches.
+   retryAfter=Date.now()+30000;
    if(ready)console.warn('[MiCursoX] Audit unavailable',e?.message||e)
   }
   finally{busy=false;if(queue.length)schedule()}
