@@ -62,7 +62,11 @@
           if(txId) sessionStorage.setItem("justPaidTransactionId", txId);
           sessionStorage.setItem("justPaidAt", new Date().toISOString());
         }catch(e){}
-        try{if(tx.id && await groupedReceipt(tx))return;}catch(_){}
+        if(tx.is_group){
+          try{if(tx.id && await groupedReceipt(tx))return;}catch(_){}
+          errorState('Pago confirmado', 'Las cuotas fueron aprobadas, pero el comprobante agrupado no está disponible en este momento. Consulta tus pagos; no repitas el cobro.');
+          return;
+        }
         loading("Pago confirmado", "Listo. Abriremos tu comprobante de pago.");
         setTimeout(function(){ location.replace(paidUrl); }, 650);
         return;
