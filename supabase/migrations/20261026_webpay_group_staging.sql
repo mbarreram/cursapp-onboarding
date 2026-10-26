@@ -25,6 +25,7 @@ CREATE OR REPLACE FUNCTION public.mx_webpay_reserve_group(
 DECLARE rowp record; first_course uuid; first_member uuid; total numeric:=0;
  count_requested int; tx uuid; component numeric; fee_tb numeric; fee_mx numeric; total_line numeric;
 BEGIN
+ IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'access_denied'; END IF;
  IF p_user_id IS NULL OR p_pago_ids IS NULL OR array_length(p_pago_ids,1) IS NULL THEN RAISE EXCEPTION 'invalid_request'; END IF;
  count_requested := array_length(p_pago_ids,1);
  IF count_requested<2 OR count_requested>20 OR (SELECT count(DISTINCT i) FROM unnest(p_pago_ids) i)<>count_requested THEN RAISE EXCEPTION 'invalid_selection'; END IF;
@@ -64,6 +65,7 @@ CREATE OR REPLACE FUNCTION public.mx_webpay_settle_group(p_transaction_id uuid, 
  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE tx record; item record; n int:=0; expected_amount numeric;
 BEGIN
+ IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'access_denied'; END IF;
  SELECT * INTO tx FROM public.transbank_transactions WHERE id=p_transaction_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'transaction_not_found'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.transbank_transaction_items WHERE transaction_id=tx.id) THEN RAISE EXCEPTION 'not_grouped'; END IF;
