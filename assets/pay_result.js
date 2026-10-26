@@ -98,6 +98,7 @@
     if(result.error||!result.data?.ok)return false;
     const r=result.data.receipt;
     if(!r||!Array.isArray(r.cuotas)||r.cuotas.length<2)return false;
+    try{['justPaid','justPaidPaymentId','justPaidTransactionId','justPaidAt'].forEach(k=>sessionStorage.removeItem(k));}catch(_){}
     const rows=r.cuotas.map(x=>`<div style="border-top:1px solid #e2e8f0;padding:12px 0;display:flex;justify-content:space-between;gap:14px;"><div><b>${esc(x.campana)}</b><div style="color:#64748b;font-size:12px;">${esc(x.periodo)}</div></div><strong>${money(x.cuota)}</strong></div>`).join('');
     el.innerHTML=`<section id="mxGroupReceipt" style="max-width:620px;margin:20px auto;background:white;border:1px solid #e2e8f0;border-radius:20px;padding:26px;color:#172033;">
      <div style="font-size:15px;color:#5b50b6;font-weight:900;">MiCursoX</div><h1 style="font-size:25px;margin:12px 0;">${r.status==='REFUNDED'?'Comprobante de pago anulado':'Pago múltiple confirmado'}</h1>
