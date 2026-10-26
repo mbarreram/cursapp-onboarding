@@ -3377,9 +3377,11 @@ window.payNow = async function(id){
     paysAll = mxApplyAuthoritativePayments(paysAll);
 
     const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
-    const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid");
+    const yearNow = new Date().getFullYear();
+    // Cifras anuales basadas en fecha efectiva, no fecha de importación ni vencimiento.
+    const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid" && p.paidAt && new Date(p.paidAt).getFullYear()===yearNow);
     const pendingTotal = pending.reduce((a,p)=>a+Number(p.amountRemaining ?? p.amount ?? 0),0);
-    const paidTotal = paid.reduce((a,p)=>a+Number(p.amount ?? p.amountPaid ?? 0),0);
+    const paidTotal = paid.reduce((a,p)=>a+Number(p.monto_pagado ?? p.paidAmount ?? p.amountPaid ?? p.amount ?? 0),0);
     const nextDue = pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
     const nextTitle = nextDue?.title || nextDue?.concept || "Sin pagos pendientes";
     const nextAmount = nextDue ? clp(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0";
@@ -3572,7 +3574,7 @@ window.payNow = async function(id){
     const statusOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db?(["pagado","paid","conciliado"].includes(db.status)?"paid":db.status==="pendiente"?"pending":String(p?.status||"pending").toLowerCase()):String(p?.status||"pending").toLowerCase()};
     const isPaid = (p)=>statusOf(p)==="paid";
     const isPending = (p)=>["pending","partial","overdue"].includes(statusOf(p)) && !isPaymentOptedOut(p);
-    const amountOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db&&isPaid(p)?db.amount:Number((isPaid(p) ? (p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0)};
+    const amountOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db&&isPaid(p)?db.amount:Number((isPaid(p) ? (p.monto_pagado ?? p.paidAmount ?? p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0)};
     const taskOf = (p)=> tasksAll.find(t=>String(t.id)===String(p.fromTaskId)) || null;
     const titleOf = (p)=>{
       const t = taskOf(p);
