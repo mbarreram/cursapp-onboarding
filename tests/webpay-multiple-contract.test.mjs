@@ -42,3 +42,15 @@ test('Una orden agrupada genera un aviso idempotente y recibo consultable solo p
  assert.match(sql,/mx_webpay_group_receipt WITH \(security_invoker=true\)/);
  assert.match(sql,/REVOKE ALL ON public\.mx_webpay_group_receipt FROM PUBLIC,anon,authenticated/);
 });
+
+test('El comprobante agrupado exige autenticación y usa datos de orden oficial',()=>{
+ const receipt=read('supabase/functions/webpay-group-receipt/index.ts');
+ const resultPage=read('assets/pay_result.js');
+ assert.match(receipt,/caller\.auth\.getUser\(\)/);
+ assert.match(receipt,/tx\.user_id!==user\.id/);
+ assert.match(receipt,/transbank_transaction_items/);
+ assert.match(receipt,/items\.reduce/);
+ assert.match(resultPage,/webpay-group-receipt/);
+ assert.match(resultPage,/window\.print\(\)/);
+ assert.match(resultPage,/navigator\.share/);
+});
