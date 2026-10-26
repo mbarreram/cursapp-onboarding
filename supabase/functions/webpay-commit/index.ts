@@ -42,8 +42,15 @@ Deno.serve(async(req)=>{
     const text=await response.text();let data:any=null;try{data=text?JSON.parse(text):null;}catch(_){data=null;}
     if(!response.ok||!data){await admin.from('transbank_transactions').update({status:'COMMIT_ERROR',error_message:text.slice(0,500)}).eq('id',tx.id);return redirect({ok:'0',pid:tx.pago_id,tx:tx.id,reason:'commit_error'});}
     const approved=Number(data.amount)===Number(tx.amount)&&String(data.buy_order||'')===String(tx.buy_order||'')&&Number(data.response_code)===0&&String(data.status||'').toUpperCase()==='AUTHORIZED';
+    const items=await admin.from('transbank_transaction_items').select('pago_id').eq('transaction_id',tx.id);
+    if(items.error)return redirect({ok:'0',pid:tx.pago_id,tx:tx.id,reason:'group_lookup_error'});
+    const isGroup=(items.data?.length||0)>1;
+    if(isGroup&&approved){
+      const result=await admin.rpc('mx_webpay_settle_group',{p_transaction_id:tx.id,p_authorized_amount:Number(data.amount),p_authorized_order:String(data.buy_order)});
+      if(result.error){await admin.from('transbank_transactions').update({status:'COMMIT_ERROR',error_message:'GROUP_SETTLEMENT_REVIEW'}).eq('id',tx.id);return redirect({ok:'0',pid:tx.pago_id,tx:tx.id,reason:'group_settlement_review'});}
+    }
     await admin.from('transbank_transactions').update({status:approved?'APPROVED':'REJECTED',response_code:Number.isFinite(Number(data.response_code))?Number(data.response_code):null,authorization_code:data.authorization_code||null,payment_type_code:data.payment_type_code||null,installments_number:Number.isFinite(Number(data.installments_number))?Number(data.installments_number):null,card_number:data.card_detail?.card_number||null,accounting_date:data.accounting_date||null,transaction_date:data.transaction_date||null,vci:data.vci||null,transbank_status:data.status||null,raw_response:{commit:data},error_message:approved?null:'Transacción rechazada o datos no coincidentes.',committed_at:new Date().toISOString()}).eq('id',tx.id);
-    if(approved){
+    if(approved&&!isGroup){
       const p=await admin.from('pagos').select('monto,monto_cuota,estado').eq('id',tx.pago_id).maybeSingle();const cuota=Math.max(0,Number(p.data?.monto_cuota??p.data?.monto??0)||0);
       if(p.data&&!['pagado','paid'].includes(String(p.data.estado||'').toLowerCase())) await admin.from('pagos').update({estado:'pagado',monto_pagado:cuota,metodo_pago:'transbank',canal_recaudacion:'webpay_plus',paid_at:new Date().toISOString()}).eq('id',tx.pago_id);
       await admin.from('notifications').insert({user_id:tx.user_id,curso_id:tx.curso_id||null,rol_destino:'apoderado',category:'payment',title:'Pago confirmado',message:`Tu pago por $${Number(tx.amount).toLocaleString('es-CL')} fue confirmado por Transbank.`,url_destino:'/apoderado.html#payments_paid',payload:{pago_id:tx.pago_id,transbank_transaction_id:tx.id,amount:tx.amount},is_read:false,delivery_state:'created'});
