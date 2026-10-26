@@ -58,3 +58,31 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.mx_webpay_reserve_group(uuid,uuid[],text,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.mx_webpay_reserve_group(uuid,uuid[],text,text,text) TO service_role;
+
+-- Atomic settlement after the Webpay response has been verified server-side.
+CREATE OR REPLACE FUNCTION public.mx_webpay_settle_group(p_transaction_id uuid, p_authorized_amount numeric, p_authorized_order text)
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE tx record; item record; n int:=0; expected_amount numeric;
+BEGIN
+ SELECT * INTO tx FROM public.transbank_transactions WHERE id=p_transaction_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'transaction_not_found'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM public.transbank_transaction_items WHERE transaction_id=tx.id) THEN RAISE EXCEPTION 'not_grouped'; END IF;
+ IF tx.status='APPROVED' THEN RETURN jsonb_build_object('ok',true,'already_settled',true,'transaction_id',tx.id); END IF;
+ IF tx.status NOT IN ('COMMITTING','COMMIT_ERROR') THEN RAISE EXCEPTION 'invalid_transaction_state'; END IF;
+ IF tx.buy_order IS DISTINCT FROM p_authorized_order OR tx.amount IS DISTINCT FROM p_authorized_amount THEN RAISE EXCEPTION 'gateway_order_amount_mismatch'; END IF;
+ SELECT count(*),sum(monto_total_cobrado) INTO n,expected_amount FROM public.transbank_transaction_items WHERE transaction_id=tx.id;
+ IF n<2 OR n>20 OR expected_amount IS DISTINCT FROM tx.amount THEN RAISE EXCEPTION 'invalid_group_total'; END IF;
+ FOR item IN SELECT i.*,p.estado,p.monto_pagado FROM public.transbank_transaction_items i JOIN public.pagos p ON p.id=i.pago_id
+  WHERE i.transaction_id=tx.id ORDER BY i.pago_id FOR UPDATE OF p LOOP
+  IF item.estado NOT IN ('pendiente','pending') OR coalesce(item.monto_pagado,0)<>0 THEN RAISE EXCEPTION 'payment_state_changed'; END IF;
+ END LOOP;
+ UPDATE public.pagos p SET estado='pagado',monto_pagado=i.monto_cuota,metodo_pago='transbank',canal_recaudacion='webpay_plus',
+ paid_at=now() FROM public.transbank_transaction_items i WHERE i.transaction_id=tx.id AND p.id=i.pago_id;
+ UPDATE public.transbank_transactions SET status='APPROVED',committed_at=now(),error_message=NULL WHERE id=tx.id;
+ RETURN jsonb_build_object('ok',true,'transaction_id',tx.id,'items',n,'amount',expected_amount);
+END $$;
+REVOKE ALL ON FUNCTION public.mx_webpay_settle_group(uuid,numeric,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.mx_webpay_settle_group(uuid,numeric,text) TO service_role;
+
+-- NOTE: deploy group-aware webpay-commit and webpay-status before enabling group creation.
+-- Until then this migration remains un-applied; single-payment production code stays unchanged.
