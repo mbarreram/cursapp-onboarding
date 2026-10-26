@@ -1999,7 +1999,8 @@ const ym = currentYM();
   `;
 
   const campRows = (tasks||[])
-    .filter(t=>t && !t.closed)
+    // Las campañas cerradas con pagos deben permanecer consultables en el historial.
+    .filter(t=>t && (!t.closed || (byTask[String(t.id)] || []).some(p=>String(p.status||'').toLowerCase()==='paid')))
     .map(t=>{
       const tid = String(t.id);
       const title = String(t.title || "Campaña");
@@ -3376,9 +3377,11 @@ window.payNow = async function(id){
     paysAll = mxApplyAuthoritativePayments(paysAll);
 
     const pending = paysAll.filter(p => ["pending","partial","overdue"].includes(String(p.status||"").toLowerCase()) && !isPaymentOptedOut(p));
-    const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid");
+    const yearNow = new Date().getFullYear();
+    // Cifras anuales basadas en fecha efectiva, no fecha de importación ni vencimiento.
+    const paid = paysAll.filter(p => String(p.status||"").toLowerCase()==="paid" && p.paidAt && new Date(p.paidAt).getFullYear()===yearNow);
     const pendingTotal = pending.reduce((a,p)=>a+Number(p.amountRemaining ?? p.amount ?? 0),0);
-    const paidTotal = paid.reduce((a,p)=>a+Number(p.amount ?? p.amountPaid ?? 0),0);
+    const paidTotal = paid.reduce((a,p)=>a+Number(p.monto_pagado ?? p.paidAmount ?? p.amountPaid ?? p.amount ?? 0),0);
     const nextDue = pending.slice().sort((a,b)=>daysTo(a.dueDate)-daysTo(b.dueDate))[0];
     const nextTitle = nextDue?.title || nextDue?.concept || "Sin pagos pendientes";
     const nextAmount = nextDue ? clp(nextDue.amountRemaining ?? nextDue.amount ?? 0) : "$0";
@@ -3571,7 +3574,7 @@ window.payNow = async function(id){
     const statusOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db?(["pagado","paid","conciliado"].includes(db.status)?"paid":db.status==="pendiente"?"pending":String(p?.status||"pending").toLowerCase()):String(p?.status||"pending").toLowerCase()};
     const isPaid = (p)=>statusOf(p)==="paid";
     const isPending = (p)=>["pending","partial","overdue"].includes(statusOf(p)) && !isPaymentOptedOut(p);
-    const amountOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db&&isPaid(p)?db.amount:Number((isPaid(p) ? (p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0)};
+    const amountOf = (p)=>{const db=mxAuthoritativePayments.get(String(p?.id||""));return db&&isPaid(p)?db.amount:Number((isPaid(p) ? (p.monto_pagado ?? p.paidAmount ?? p.amountPaid ?? p.amount) : (p.amountRemaining ?? p.amount)) || 0)};
     const taskOf = (p)=> tasksAll.find(t=>String(t.id)===String(p.fromTaskId)) || null;
     const titleOf = (p)=>{
       const t = taskOf(p);
@@ -3597,7 +3600,8 @@ window.payNow = async function(id){
       if(d <= 7) return {cls:"warn", label:"Próxima", text:`Vence en ${d} día(s) · ${fmtDate(p.dueDate)}`};
       return {cls:"neutral", label:"Pendiente", text:`Vence el ${fmtDate(p.dueDate)}`};
     };
-    const paidThisYear = paysAll.filter(p=>isPaid(p) && new Date(p.paidAt || p.createdAt || 0).getFullYear()===yearNow);
+    // Año contable del pago: fecha efectiva de pago, no fecha de creación/importación.
+    const paidThisYear = paysAll.filter(p=>isPaid(p) && p.paidAt && new Date(p.paidAt).getFullYear()===yearNow);
     const pendingRowsAll = paysAll.filter(isPending).sort((a,b)=>dueTime(a)-dueTime(b));
     const next = pendingRowsAll[0];
     const totalPending = pendingRowsAll.reduce((a,p)=>a+amountOf(p),0);
@@ -3688,7 +3692,7 @@ window.payNow = async function(id){
 
     function yearOfPayment(p){
       try{
-        const raw = p?.dueDate || p?.paidAt || p?.createdAt;
+        const raw = isPaid(p) ? (p?.paidAt || "") : (p?.dueDate || p?.createdAt || "");
         const d = raw ? new Date(String(raw).slice(0,10)+"T00:00:00") : null;
         return d && !Number.isNaN(d.getTime()) ? d.getFullYear() : "Sin fecha";
       }catch(e){ return "Sin fecha"; }
@@ -3719,6 +3723,7 @@ window.payNow = async function(id){
 
     function renderGroup(rows){
       const title = groupTitleOf(rows);
+      const isClosedCampaign = !!taskOf(rows[0])?.closed;
       const pending = rows.filter(isPending);
       const paid = rows.filter(isPaid);
       const monthly = rows.length > 1;
@@ -3729,7 +3734,7 @@ window.payNow = async function(id){
       const collapseMonthly = monthly && rows.length > 3;
       return `<section class="apoPayGroup ${collapseMonthly ? 'is-collapsible' : ''}">
         <div class="apoPayGroupHead">
-          <div><span>${monthly ? 'Pago mensual' : 'Pago único'}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
+          <div><span>${isClosedCampaign ? 'Campaña cerrada · Historial' : (monthly ? 'Pago mensual' : 'Pago único')}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
           <div class="apoPayGroupAmount"><small>${pending.length ? 'Por pagar' : 'Total'}</small><strong>${clp(pending.length ? pendingTotal : total)}</strong></div>
         </div>
         ${monthly ? `<div class="apoPayMonthHint">${collapseMonthly ? 'Las cuotas están organizadas por año. Abre cada período para revisar y pagar el mes correspondiente.' : 'Esta campaña se paga en cuotas mensuales. Revisa cada mes y paga la cuota correspondiente.'}</div>` : ``}
