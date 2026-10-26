@@ -1999,7 +1999,8 @@ const ym = currentYM();
   `;
 
   const campRows = (tasks||[])
-    .filter(t=>t && !t.closed)
+    // Las campañas cerradas con pagos deben permanecer consultables en el historial.
+    .filter(t=>t && (!t.closed || (byTask[String(t.id)] || []).some(p=>String(p.status||'').toLowerCase()==='paid')))
     .map(t=>{
       const tid = String(t.id);
       const title = String(t.title || "Campaña");
@@ -3597,7 +3598,8 @@ window.payNow = async function(id){
       if(d <= 7) return {cls:"warn", label:"Próxima", text:`Vence en ${d} día(s) · ${fmtDate(p.dueDate)}`};
       return {cls:"neutral", label:"Pendiente", text:`Vence el ${fmtDate(p.dueDate)}`};
     };
-    const paidThisYear = paysAll.filter(p=>isPaid(p) && new Date(p.paidAt || p.createdAt || 0).getFullYear()===yearNow);
+    // Año contable del pago: fecha efectiva de pago, no fecha de creación/importación.
+    const paidThisYear = paysAll.filter(p=>isPaid(p) && p.paidAt && new Date(p.paidAt).getFullYear()===yearNow);
     const pendingRowsAll = paysAll.filter(isPending).sort((a,b)=>dueTime(a)-dueTime(b));
     const next = pendingRowsAll[0];
     const totalPending = pendingRowsAll.reduce((a,p)=>a+amountOf(p),0);
