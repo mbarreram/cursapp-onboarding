@@ -2217,6 +2217,8 @@ const ym = currentYM();
 
 // -------- Deduplicación de pagos (estabilidad) --------
 function paymentStableKey(p){
+  // Pagos canónicos de Supabase: nunca fusionar UUID distintos por importe o vencimiento.
+  if(isSupabaseUuid(p?.id || p?.remoteId)) return 'db:'+String(p.id || p.remoteId).toLowerCase();
   const cid = String(p.fromTaskId || p.taskId || p.campaignId || "");
   const who = String(p.apoderadoId || p.userId || p.payerId || p.email || p.payerEmail || "").toLowerCase();
   const cuota = String(p.cuotaNumero || p.installment || p.cuota || "");
@@ -2259,6 +2261,8 @@ function dedupePaymentsAll(list){
 
 // --- FIX v11: dedupe canónico para cambio Presidente -> Apoderado sin cerrar sesión ---
 function paymentCanonicalKeyV11(p, tasksAll){
+  // Cada registro financiero oficial tiene identidad propia, incluso en la misma campaña.
+  if(isSupabaseUuid(p?.id || p?.remoteId)) return 'db:'+String(p.id || p.remoteId).toLowerCase();
   const taskId = String(p?.fromTaskId || p?.taskId || p?.campaignId || "").trim();
   const task = (tasksAll||[]).find(t => String(t?.id||"") === taskId);
   const courseKey = String(p?.courseKey || localStorage.getItem(KEY_ACTIVE_COURSE) || "").trim();
