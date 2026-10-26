@@ -20,3 +20,7 @@ jobs:
           node-version: '22'
       - name: Run financial contract checks
         run: npm run test:webpay-contract
+      - name: Parse PostgreSQL migration syntax
+        run: |
+          python -m pip install --quiet 'pglast>=7,<8'
+          python -c "from pglast import parse_sql; from pathlib import Path; parse_sql(Path('supabase/migrations/20261026_webpay_group_staging.sql').read_text()); print('PostgreSQL SQL parser OK')"
