@@ -18,7 +18,7 @@ Deno.serve(async req=>{
  if(!tx||tx.status!=="APPROVED"||tx.environment!=="integration"||!tx.token_ws)return send({error:"Transacción no anulable"},409);
  const {data:members}=await db.from("miembros_curso").select("id").eq("curso_id",tx.curso_id).eq("usuario_id",user.id).in("rol",["presidente","tesorero"]).not("estado","in","(eliminado,bloqueado)").limit(1);
  if(!members?.length)return send({error:"Sin permisos de directiva"},403);
- const group=await db.from("transbank_transaction_items").select("pago_id").eq("transaction_id",tx.id);if(group.error)return send({error:"No se pudo comprobar la composición de la transacción."},503);if((group.data?.length||0)>1)return send({error:"Anulación agrupada aún no habilitada: requiere reversa integral."},409);
+ const group=await db.from("transbank_transaction_items").select("pago_id").eq("transaction_id",tx.id);if(group.error)return send({error:"No se pudo comprobar la composición de la transacción."},503);const grouped=(group.data?.length||0)>1;if(grouped)return send({error:"Anulación agrupada bloqueada hasta completar y probar la reversa total."},409);
  const {data:p}=await db.from("pagos").select("estado,metodo_pago,monto_pagado,monto_total_cobrado,curso_id").eq("id",tx.pago_id).maybeSingle();
  if(!p||p.curso_id!==tx.curso_id||p.estado!=="pagado"||p.metodo_pago!=="transbank"||Number(p.monto_total_cobrado)!==Number(tx.amount)||Number(p.monto_pagado)<=0)return send({error:"Cuadratura inválida"},409);
  const {data:r,error:insertError}=await db.from("transbank_refunds").insert({transaction_id:tx.id,pago_id:tx.pago_id,curso_id:tx.curso_id,requested_by:user.id,reason,amount:tx.amount,status:"PROCESSING"}).select("id").single();
