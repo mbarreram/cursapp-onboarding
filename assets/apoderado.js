@@ -3692,7 +3692,7 @@ window.payNow = async function(id){
 
     function yearOfPayment(p){
       try{
-        const raw = p?.dueDate || p?.paidAt || p?.createdAt;
+        const raw = isPaid(p) ? (p?.paidAt || "") : (p?.dueDate || p?.createdAt || "");
         const d = raw ? new Date(String(raw).slice(0,10)+"T00:00:00") : null;
         return d && !Number.isNaN(d.getTime()) ? d.getFullYear() : "Sin fecha";
       }catch(e){ return "Sin fecha"; }
@@ -3723,6 +3723,7 @@ window.payNow = async function(id){
 
     function renderGroup(rows){
       const title = groupTitleOf(rows);
+      const isClosedCampaign = !!taskOf(rows[0])?.closed;
       const pending = rows.filter(isPending);
       const paid = rows.filter(isPaid);
       const monthly = rows.length > 1;
@@ -3733,7 +3734,7 @@ window.payNow = async function(id){
       const collapseMonthly = monthly && rows.length > 3;
       return `<section class="apoPayGroup ${collapseMonthly ? 'is-collapsible' : ''}">
         <div class="apoPayGroupHead">
-          <div><span>${monthly ? 'Pago mensual' : 'Pago único'}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
+          <div><span>${isClosedCampaign ? 'Campaña cerrada · Historial' : (monthly ? 'Pago mensual' : 'Pago único')}</span><h3>${esc(title)}</h3><p>${monthly ? `${rows.length} cuotas · ${pending.length} pendiente(s)` : (pending.length ? ds.text : `${paid.length} pago(s) realizado(s)`)}</p></div>
           <div class="apoPayGroupAmount"><small>${pending.length ? 'Por pagar' : 'Total'}</small><strong>${clp(pending.length ? pendingTotal : total)}</strong></div>
         </div>
         ${monthly ? `<div class="apoPayMonthHint">${collapseMonthly ? 'Las cuotas están organizadas por año. Abre cada período para revisar y pagar el mes correspondiente.' : 'Esta campaña se paga en cuotas mensuales. Revisa cada mes y paga la cuota correspondiente.'}</div>` : ``}
