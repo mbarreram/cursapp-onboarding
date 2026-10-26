@@ -32,3 +32,13 @@ test('La reversa usa orden completa y función transaccional',()=>{
  assert.match(sql,/UPDATE public\.pagos p SET estado='pendiente'/);
  assert.match(sql,/WHERE i\.transaction_id=t\.id AND p\.id=i\.pago_id/);
 });
+
+
+test('Una orden agrupada genera un aviso idempotente y recibo consultable solo por servicio',()=>{
+ assert.match(sql,/notifications_webpay_group_event_uidx/);
+ assert.match(sql,/group_transaction_id/);
+ assert.match(sql,/INSERT INTO public\.notifications/);
+ assert.match(sql,/ON CONFLICT DO NOTHING/);
+ assert.match(sql,/mx_webpay_group_receipt WITH \(security_invoker=true\)/);
+ assert.match(sql,/REVOKE ALL ON public\.mx_webpay_group_receipt FROM PUBLIC,anon,authenticated/);
+});
