@@ -579,7 +579,7 @@
     // El correo puede compartirse entre hermanos; nunca buscar solo por email.
     if(rol === "apoderado" && alumno){
       const candidates = await sb("miembros_curso?curso_id=eq." + q(cursoId) + "&rol=eq.apoderado&select=id,nombre_alumno,email,usuario_id&order=created_at.asc");
-      found = candidates.find(x => norm(x.nombre_alumno) === norm(alumno) && ((userId && String(x.usuario_id||"") === String(userId)) || (email && norm(x.email) === norm(email)))) || null;
+      found = (Array.isArray(candidates) ? candidates : []).find(x => String(x.nombre_alumno||"").toLocaleLowerCase("es-CL").trim() === alumno.toLocaleLowerCase("es-CL").trim() && ((userId && String(x.usuario_id||"") === String(userId)) || (email && String(x.email||"").toLowerCase().trim() === String(email).toLowerCase().trim()))) || null;
     }else if(email){
       found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id");
     }
