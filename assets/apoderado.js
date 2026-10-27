@@ -3564,6 +3564,25 @@ window.payNow = async function(id){
     try{ keepApoV45BellAlive(); }catch(e){}
     try{ if(window.CursappMonetization) setTimeout(()=>window.CursappMonetization.render(),120); }catch(e){}
   };
+  // Selección temporal del pago múltiple; el servidor validará la membresía y los montos.
+  window.__mxMultiPaymentIds = window.__mxMultiPaymentIds || new Set();
+  window.mxToggleMultiPayment = function(id, checked){
+    if(!isSupabaseUuid(id)) return;
+    const selected=window.__mxMultiPaymentIds;
+    if(checked) selected.add(id); else selected.delete(id);
+    const bar=document.getElementById('mxMultiPayBar');
+    if(bar){
+      const n=selected.size;
+      bar.hidden=n===0;
+      const count=bar.querySelector('[data-mx-multi-count]');
+      if(count) count.textContent=n+' cuota'+(n===1?'':'s')+' seleccionada'+(n===1?'':'s');
+    }
+  };
+  window.mxReviewMultiPayment=function(){
+    const ids=Array.from(window.__mxMultiPaymentIds);
+    if(!ids.length)return;
+    location.href='/pay.html?pagos='+encodeURIComponent(ids.join(','));
+  };
   renderPayments = function(){
     let paysAll = load(KEY_PAYMENTS, []);
     paysAll = __restorePaymentsSnapshotIfEmptyV584(paysAll);
@@ -3690,7 +3709,7 @@ window.payNow = async function(id){
           <p>${paid ? `Pagado ${esc(fmtDate(String(mxAuthoritativePayments.get(String(p.id))?.paidAt||p.paidAt||p.createdAt||'').slice(0,10)))}` : esc(ds.text)}</p>
         </div>
         <strong>${clp(amountOf(p))}</strong>
-        ${paid ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Comprobante</button>` : `<button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button>`}
+        ${paid ? `<button type="button" onclick="openReceipt('${esc(p.id)}')">Comprobante</button>` : `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;"><input type="checkbox" aria-label="Seleccionar cuota" onchange="mxToggleMultiPayment('${esc(p.id)}',this.checked)" ${window.__mxMultiPaymentIds.has(String(p.id))?'checked':''}>Seleccionar</label><button type="button" onclick="payNow('${esc(p.id)}')">Pagar</button></div>`}
       </article>`;
     }
 
@@ -3771,6 +3790,10 @@ window.payNow = async function(id){
       </section>
       ${renderPaidState()}
       <section class="apoPayList">${groupsHtml || empty}</section>
+      <section id="mxMultiPayBar" style="position:sticky;bottom:90px;z-index:5;background:white;border:1px solid #e9e3fb;border-radius:16px;padding:12px;box-shadow:0 8px 25px #1e1b4b18;display:flex;justify-content:space-between;align-items:center;gap:10px;" ${window.__mxMultiPaymentIds.size?'':'hidden'}>
+        <strong data-mx-multi-count>${window.__mxMultiPaymentIds.size} cuotas seleccionadas</strong>
+        <button type="button" class="btnx primary" onclick="mxReviewMultiPayment()">Revisar selección</button>
+      </section>
     </div>`;
 
     localStorage.setItem(KEY_LAST_SEEN_PAYMENTS, nowISO());

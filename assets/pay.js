@@ -25,7 +25,10 @@
 
   function qs(){
     const u = new URL(location.href);
-    return { pid: u.searchParams.get("pid")||u.searchParams.get("pago")||"" };
+    const pid=u.searchParams.get("pid")||u.searchParams.get("pago")||"";
+    const raw=u.searchParams.get("pagos")||"";
+    const ids=[...new Set(raw.split(",").map(x=>x.trim()).filter(isUuid))].slice(0,20);
+    return {pid,ids};
   }
 
   async function sb(path, opts){
@@ -106,6 +109,19 @@
     el.innerHTML = `<div class="card"><div class="kTitle">Cargando pago…</div><div class="muted" style="margin-top:6px;">Consultando Supabase.</div></div>`;
 
     try{
+      if(qs().ids.length){
+        const ids=qs().ids;
+        if(ids.length!==String(new URL(location.href).searchParams.get("pagos")||"").split(",").length){throw new Error("Hay referencias de cuota inválidas o repetidas.");}
+        const rows=await Promise.all(ids.map(loadPago));
+        if(rows.some(x=>!x))throw new Error("No se pudieron consultar todas las cuotas.");
+        if(new Set(rows.map(x=>x.curso_id)).size!==1||new Set(rows.map(x=>x.miembro_id)).size!==1)throw new Error("Solo se pueden agrupar cuotas de un mismo alumno y curso.");
+        if(rows.some(x=>!["pendiente","pending"].includes(String(x.estado||"").toLowerCase())||Number(x.monto_pagado||0)>0))throw new Error("Una cuota cambió de estado. Actualiza la selección.");
+        const fin=rows.map(financialBreakdown);
+        const subtotal=fin.reduce((s,x)=>s+x.cuota,0), cargos=fin.reduce((s,x)=>s+x.tb+x.mx,0);
+        const total=fin.reduce((s,x)=>s+x.total,0);
+        el.innerHTML=`<div class="card"><div class="kTitle">Revisar cuotas seleccionadas</div><div class="muted" style="margin:8px 0 12px;">${rows.length} cuota(s) del mismo alumno · ${esc((rows[0].miembros_curso||{}).nombre_alumno||"")}</div>${rows.map((x,i)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid #eceaf3"><span>${esc(x.campanas?.titulo||"Campaña")} · ${esc(x.periodo||x.fecha_vencimiento||"")}</span><b>${clp(fin[i].cuota)}</b></div>`).join("")}<div style="border-top:1px solid #ddd;padding-top:12px;display:grid;gap:8px;"><div style="display:flex;justify-content:space-between"><span>Destinado al curso</span><b>${clp(subtotal)}</b></div><div style="display:flex;justify-content:space-between"><span>Cargos estimados</span><b>${clp(cargos)}</b></div><div style="display:flex;justify-content:space-between;font-size:20px"><strong>Total estimado</strong><strong>${clp(total)}</strong></div></div><p class="muted" style="margin-top:12px;">El monto definitivo siempre será validado por el servidor al iniciar Webpay.</p><p class="muted">La confirmación agrupada y la reversa total aún están en preparación. No se iniciará ninguna transacción hasta completar las pruebas.</p><button class="btnx" type="button" onclick="location.href='/apoderado.html#payments'">Volver a mis pagos</button></div>`;
+        return;
+      }
       const pago = await loadPago(pid);
       if(!pago){
         el.innerHTML = `<div class="card"><div class="kTitle">Pago no encontrado</div><div class="muted" style="margin-top:6px;">Vuelve a Pagos e inténtalo nuevamente.</div></div>`;
