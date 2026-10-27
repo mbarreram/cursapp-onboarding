@@ -52,3 +52,28 @@ BEGIN
   IF SQLERRM='Incorrect settlement amount was accepted' THEN RAISE; END IF;
  END;
 END $test$;
+
+
+-- Recovery of a transaction whose gateway authorization succeeded but local commit was uncertain.
+INSERT INTO pagos(id,curso_id,miembro_id,monto,monto_cuota,estado) VALUES
+ ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',1500,1500,'pendiente'),
+ ('00000000-0000-4000-8000-000000000042','00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',1500,1500,'pendiente');
+SELECT public.mx_webpay_reserve_group('00000000-0000-4000-8000-000000000003',
+ ARRAY['00000000-0000-4000-8000-000000000041'::uuid,'00000000-0000-4000-8000-000000000042'::uuid],
+ 'RECOVERY','TEST','integration');
+UPDATE transbank_transactions SET status='COMMIT_ERROR' WHERE buy_order='RECOVERY';
+DO $recovery$
+DECLARE txid uuid; charge numeric; succeeded boolean:=false;
+BEGIN
+ SELECT id,amount INTO txid,charge FROM transbank_transactions WHERE buy_order='RECOVERY';
+ BEGIN
+  PERFORM public.mx_webpay_settle_group(txid,charge+1,'RECOVERY');
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM='gateway_order_amount_mismatch' THEN succeeded:=true; ELSE RAISE; END IF;
+ END;
+ IF NOT succeeded THEN RAISE EXCEPTION 'Tampered gateway amount was accepted'; END IF;
+ IF (SELECT count(*) FROM pagos WHERE id IN ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000042') AND estado='pendiente')<>2 THEN RAISE EXCEPTION 'Invalid response changed payment'; END IF;
+ PERFORM public.mx_webpay_settle_group(txid,charge,'RECOVERY');
+ IF (SELECT count(*) FROM pagos WHERE id IN ('00000000-0000-4000-8000-000000000041','00000000-0000-4000-8000-000000000042') AND estado='pagado')<>2 THEN RAISE EXCEPTION 'Recovery failed'; END IF;
+ IF (SELECT count(*) FROM notifications WHERE payload->>'group_transaction_id'=txid::text AND payload->>'event'='approved')<>1 THEN RAISE EXCEPTION 'Recovery notification mismatch'; END IF;
+END $recovery$;
