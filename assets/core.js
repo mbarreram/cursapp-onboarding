@@ -575,7 +575,14 @@
     const key = [cursoId, email || profile.userId || "sin-email", rol, alumno].join("|");
     const m = mapLoad(); if(m.miembros[key]) return m.miembros[key];
     let found = null;
-    if(email) found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id");
+    // Reutilizar al alumno exacto para no crear un miembro duplicado al sincronizar.
+    // El correo puede compartirse entre hermanos; nunca buscar solo por email.
+    if(rol === "apoderado" && alumno){
+      const candidates = await sb("miembros_curso?curso_id=eq." + q(cursoId) + "&rol=eq.apoderado&select=id,nombre_alumno,email,usuario_id&order=created_at.asc");
+      found = candidates.find(x => norm(x.nombre_alumno) === norm(alumno) && ((userId && String(x.usuario_id||"") === String(userId)) || (email && norm(x.email) === norm(email)))) || null;
+    }else if(email){
+      found = await selectOne("miembros_curso", "curso_id=eq." + q(cursoId) + "&email=eq." + q(email) + "&rol=eq." + q(rol) + "&select=id");
+    }
     if(found && found.id){ const mm = mapLoad(); mm.miembros[key] = found.id; mapSave(mm); return found.id; }
     const row = await insert("miembros_curso", {
       curso_id: cursoId,
