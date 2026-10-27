@@ -2508,6 +2508,22 @@ function summarizeDebts(identity){
     totalUpcoming+=remaining;
   });
 
+  // Mostrar cuotas por período cronológico en el detalle y el mensaje WhatsApp.
+  // Conservar estados y montos; ordenar únicamente la presentación.
+  for(const campaign of byCampaign.values()){
+    campaign.monthBreakdown.sort((a,b)=>{
+      const period=v=>{
+        const match=String(v||'').match(/(20\\d{2})-(\\d{2})/);
+        if(match)return Number(match[1])*100+Number(match[2]);
+        const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        const s=String(v||'').toLocaleLowerCase('es-CL');
+        const idx=months.findIndex(m=>s.includes(m));
+        const yr=s.match(/20\\d{2}/);
+        return idx>=0?(yr?Number(yr[0]):new Date().getFullYear())*100+idx+1:Number.MAX_SAFE_INTEGER;
+      };
+      return period(a.label)-period(b.label);
+    });
+  }
   const campaigns=Array.from(byCampaign.values()).sort((a,b)=>{
     if(a.mandatory!==b.mandatory) return a.mandatory?-1:1;
     return b.pendingAmount-a.pendingAmount;
