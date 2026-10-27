@@ -1,6 +1,8 @@
 -- Synthetic isolated schema; no Supabase credentials or pilot records.
 CREATE SCHEMA auth;
 CREATE ROLE service_role NOLOGIN;
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
 CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT current_setting('request.jwt.claim.role',true) $$;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE public.cursos(id uuid PRIMARY KEY);
