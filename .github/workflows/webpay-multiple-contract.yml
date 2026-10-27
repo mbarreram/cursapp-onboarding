@@ -24,3 +24,32 @@ jobs:
         run: |
           python -m pip install --quiet 'pglast>=7,<8'
           python -c "from pglast import parse_sql; from pathlib import Path; parse_sql(Path('supabase/migrations/20261026_webpay_group_staging.sql').read_text()); print('PostgreSQL SQL parser OK')"
+
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: webpay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGUSER: postgres
+      PGDATABASE: webpay_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare synthetic database
+        run: psql -v ON_ERROR_STOP=1 -f tests/webpay-isolated-fixture.sql
+      - name: Apply staged financial migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026_webpay_group_staging.sql
+      - name: Exercise grouped reserve settle refund
+        run: psql -v ON_ERROR_STOP=1 -f tests/webpay-isolated-flow.sql
