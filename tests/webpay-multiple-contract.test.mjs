@@ -22,7 +22,7 @@ test('Las operaciones agrupadas no se habilitan por defecto',()=>{
 });
 test('No se actualiza individualmente la primera cuota de una orden agrupada',()=>{
  assert.match(commit,/approved\s*&&\s*!isGroup/);
- assert.match(status,/grouped\?\{data:null\}/);
+ assert.match(status,/grouped\s*\?\s*\{\s*data\s*:\s*null\s*\}/);
  assert.match(commit,/mx_webpay_settle_group/);
  assert.match(status,/mx_webpay_settle_group/);
 });
