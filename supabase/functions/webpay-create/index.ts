@@ -52,6 +52,29 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: 'Sesión inválida.' }, 401);
 
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const grouped=Array.isArray(body.pago_ids)?body.pago_ids.map(String):[];
+    if(grouped.length){
+      if(Deno.env.get('MX_WEBPAY_GROUP_ENABLED')!=='true')return json({error:'Pago múltiple deshabilitado hasta finalizar QA.'},503);
+      if(grouped.length<2||grouped.length>20||new Set(grouped).size!==grouped.length||!grouped.every(isUuid))return json({error:'Cuotas inválidas.'},400);
+      const admin=createClient(supabaseUrl,serviceKey,{auth:{persistSession:false}});
+      const tbk=config(),stamp=Date.now().toString().slice(-9);
+      const buyOrder=('MG'+crypto.randomUUID().replaceAll('-','').slice(0,15)+stamp).slice(0,26);
+      const sessionId=('MXG-'+user.id.replaceAll('-','').slice(0,18)+'-'+stamp).slice(0,61);
+      const reserved=await admin.rpc('mx_webpay_reserve_group',{p_user_id:user.id,p_pago_ids:grouped,p_buy_order:buyOrder,p_session_id:sessionId,p_environment:tbk.env});
+      if(reserved.error||!reserved.data?.transaction_id)return json({error:'No fue posible reservar todas las cuotas.'},409);
+      const txId=reserved.data.transaction_id,amount=Number(reserved.data.amount);
+      try{
+        const response=await fetch(tbk.api,{method:'POST',headers:{'Content-Type':'application/json','Tbk-Api-Key-Id':tbk.commerceCode,'Tbk-Api-Key-Secret':tbk.apiKey},body:JSON.stringify({buy_order:buyOrder,session_id:sessionId,amount,return_url:supabaseUrl+'/functions/v1/webpay-commit'})});
+        const data=await response.json().catch(()=>null);
+        if(!response.ok||!data?.token||!data?.url)throw Error('Inicio externo no confirmado');
+        const saved=await admin.from('transbank_transactions').update({token_ws:data.token,status:'INITIALIZED',raw_response:{create:data}}).eq('id',txId).eq('status','CREATING').select('id');
+        if(saved.error||!saved.data?.length)throw Error('Persistencia no confirmada');
+        return json({ok:true,transaction_id:txId,token:data.token,url:data.url,amount});
+      }catch(error){
+        await admin.from('transbank_transactions').update({status:'COMMIT_ERROR',error_message:'Revisión requerida: '+String(error).slice(0,150)}).eq('id',txId).eq('status','CREATING');
+        return json({error:'Inicio incierto; revisar antes de reintentar.',transaction_id:txId},502);
+      }
+    }
     const pagoId = String(body.pago_id || '').trim();
     if (!isUuid(pagoId)) return json({ error: 'Pago inválido.' }, 400);
 

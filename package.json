@@ -5,7 +5,8 @@
   "scripts": {
     "test:clicks": "playwright test",
     "test:clicks:headed": "playwright test --headed",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "test:webpay-contract": "node --test tests/webpay-multiple-contract.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.45.0"
