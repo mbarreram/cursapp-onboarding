@@ -86,11 +86,10 @@
         '<div class="updated">Información consultada el '+esc(fmtDate(data.generated_at))+'.</div>';
       const closeBtn=app.querySelector('[data-close]');
       if(closeBtn) closeBtn.addEventListener('click',()=>{
-        try{
-          if(history.length>1){ history.back(); return; }
-        }catch(_){}
-        try{ window.close(); }catch(_){}
-        setTimeout(()=>{ location.href='https://micursox.cl'; },120);
+        // La página privada se abre desde enlaces externos: history.back() puede
+        // volver a WhatsApp u otra pestaña, y window.close() es bloqueado en iOS.
+        // Salir siempre al inicio de MiCursoX, sin conservar el token en historial.
+        window.location.replace('https://micursox.cl/');
       });
     }
 
