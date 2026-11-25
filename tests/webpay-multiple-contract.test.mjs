@@ -65,3 +65,31 @@ test('La migración contiene exactamente una definición completa de cada RPC',(
  assert.match(sql,/event','approved'/);
  assert.match(sql,/event','refunded'/);
 });
+
+ 
+// Ejecuta el predicado real de confirmación de la pasarela sin red ni credenciales.
+test('Reversa: solo confirma una respuesta total y exitosa de la pasarela',()=>{
+ const expression=refund.match(/const full=([\s\S]*?);\s*if\(!full\)/);
+ assert.ok(expression,'Predicado de confirmación no encontrado');
+ const confirmed=new Function('result','response','tx','return '+expression[1]);
+ const tx={amount:15000};
+ const cases=[
+  [{type:'REVERSED',balance:0},true,true],
+  [{type:'NULLIFIED',response_code:0,nullified_amount:15000,balance:0},true,true],
+  [{type:'NULLIFIED',response_code:0,nullified_amount:5000,balance:10000},true,false],
+  [{type:'NULLIFIED',response_code:-1,nullified_amount:15000,balance:0},true,false],
+  [{type:'REVERSED',balance:100},true,false],
+  [{type:'REVERSED',balance:0},false,false],
+  [{type:'UNKNOWN',balance:0},true,false],
+  [null,true,false],
+  [{type:'REVERSED'},true,false]
+ ];
+ for(const [result,ok,expected] of cases) assert.equal(confirmed(result,{ok},tx),expected,JSON.stringify({result,ok}));
+});
+test('Reversa: incertidumbre de pasarela y fallo de conciliación no informan éxito',()=>{
+ assert.match(refund,/catch\(_\)\{await db\.from\("transbank_refunds"\)\.update\(\{status:"NEEDS_REVIEW"/);
+ assert.match(refund,/if\(!full\).*?return send\(\{error:/s);
+ assert.match(refund,/if\(saved\.error\)return send\(\{error:/);
+ assert.match(refund,/if\(done\.error\).*?status:"NEEDS_REVIEW".*?return send\(\{error:/s);
+ assert.match(refund,/grouped\?"mx_webpay_finalize_group_refund":"finalizar_anulacion_transbank"/);
+});
