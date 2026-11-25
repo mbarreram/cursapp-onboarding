@@ -35,8 +35,8 @@ Deno.serve(async req=>{
  catch(_){await db.from("transbank_refunds").update({status:"NEEDS_REVIEW",error_message:"Respuesta incierta de pasarela"}).eq("id",r.id);return send({error:"Resultado incierto: no repetir",refund_id:r.id},502);}
  const raw=await response.text();let result:any=null;try{result=JSON.parse(raw)}catch(_){}
  const full=!!result&&response.ok&&(
-  result.type==="REVERSED"&&Number(result.balance)===0 ||
-  result.type==="NULLIFIED"&&Number(result.response_code)===0&&Number(result.nullified_amount)===Number(tx.amount)&&Number(result.balance)===0
+  result.type==="REVERSED"&&(typeof result.balance==="number"||typeof result.balance==="string"&&result.balance.trim()!=="")&&Number(result.balance)===0 ||
+  result.type==="NULLIFIED"&&(typeof result.response_code==="number"||typeof result.response_code==="string"&&result.response_code.trim()!=="")&&Number(result.response_code)===0&&Number(result.nullified_amount)===Number(tx.amount)&&(typeof result.balance==="number"||typeof result.balance==="string"&&result.balance.trim()!=="")&&Number(result.balance)===0
  );
  if(!full){const ambiguous=response.status>=500||response.ok;await db.from("transbank_refunds").update({status:ambiguous?"NEEDS_REVIEW":"FAILED",gateway_response:result||{http_status:response.status},error_message:"Transbank no confirmó anulación total"}).eq("id",r.id);return send({error:ambiguous?"Resultado incierto: revisar antes de reintentar":"Anulación rechazada",refund_id:r.id},ambiguous?502:409)}
  const saved=await db.from("transbank_refunds").update({status:"GATEWAY_CONFIRMED",gateway_type:result.type,gateway_response:result,gateway_confirmed_at:new Date().toISOString()}).eq("id",r.id);

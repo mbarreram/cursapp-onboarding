@@ -82,7 +82,9 @@ test('Reversa: solo confirma una respuesta total y exitosa de la pasarela',()=>{
   [{type:'REVERSED',balance:0},false,false],
   [{type:'UNKNOWN',balance:0},true,false],
   [null,true,false],
-  [{type:'REVERSED'},true,false]
+  [{type:'REVERSED'},true,false],
+  ...[null,""," ",false].map(balance=>[{type:"REVERSED",balance},true,false]),
+  ...[null,""," ",false].map(response_code=>[{type:"NULLIFIED",response_code,nullified_amount:15000,balance:0},true,false])
  ];
  for(const [result,ok,expected] of cases) assert.equal(confirmed(result,{ok},tx),expected,JSON.stringify({result,ok}));
 });
